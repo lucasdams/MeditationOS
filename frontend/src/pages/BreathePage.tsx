@@ -50,6 +50,7 @@ export default function BreathePage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [audioOn, setAudioOn] = useState(false)
+  const [chimeOn, setChimeOn] = useState(false)
   const [volume, setVolume] = useState(0.2)
   const [targetMin, setTargetMin] = useState(0)
   // Save-a-pattern form
@@ -86,11 +87,13 @@ export default function BreathePage() {
   // Audio guide (lazily created so the AudioContext only opens on a user gesture).
   const audioRef = useRef<BreathAudio | null>(null)
   const audioOnRef = useRef(audioOn)
+  const chimeOnRef = useRef(chimeOn)
   const volumeRef = useRef(volume)
   useEffect(() => {
     audioOnRef.current = audioOn
+    chimeOnRef.current = chimeOn
     volumeRef.current = volume
-  }, [audioOn, volume])
+  }, [audioOn, chimeOn, volume])
 
   const targetRef = useRef(targetMin)
   useEffect(() => {
@@ -104,6 +107,7 @@ export default function BreathePage() {
   }
 
   function cuePhase(p: Phase) {
+    if (chimeOnRef.current) audio().chime(p)
     if (!audioOnRef.current) return
     const dur = p === 'inhale' ? phaseSecsRef.current.inhale : phaseSecsRef.current.exhale
     audio().playPhase(p, dur)
@@ -161,7 +165,7 @@ export default function BreathePage() {
     phaseRef.current = 'inhale'
     setPhase('inhale')
     setRunning(true)
-    if (audioOnRef.current) audio().resume()
+    if (audioOnRef.current || chimeOnRef.current) audio().resume()
     cuePhase('inhale')
   }
 
@@ -174,6 +178,11 @@ export default function BreathePage() {
     setAudioOn(on)
     if (on) audio().resume()
     else audioRef.current?.stop()
+  }
+
+  function toggleChime(on: boolean) {
+    setChimeOn(on)
+    if (on) audio().resume()
   }
 
   function reset() {
@@ -326,7 +335,15 @@ export default function BreathePage() {
             checked={audioOn}
             onChange={(e) => toggleAudio(e.target.checked)}
           />{' '}
-          Audio guide
+          Guide tone
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={chimeOn}
+            onChange={(e) => toggleChime(e.target.checked)}
+          />{' '}
+          Chime
         </label>
         <input
           type="range"
@@ -334,7 +351,7 @@ export default function BreathePage() {
           max="1"
           step="0.05"
           value={volume}
-          disabled={!audioOn}
+          disabled={!audioOn && !chimeOn}
           aria-label="Volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />

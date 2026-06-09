@@ -52,6 +52,23 @@ export class BreathAudio {
     this.gain = gain
   }
 
+  /** A short bell ping marking a phase transition. Higher for inhale, lower for
+   *  exhale. Independent of the guide tone (own nodes), so it can play alone. */
+  chime(phase: Phase): void {
+    const ctx = this.ensureContext()
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.value = phase === 'inhale' ? 660 : 440
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.volume), now + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + 0.4)
+  }
+
   stop(): void {
     if (this.osc) {
       try {
