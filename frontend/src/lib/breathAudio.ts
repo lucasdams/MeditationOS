@@ -1,13 +1,12 @@
-// A gliding/fading guide tone for the breathing pacer.
-// Each phase schedules an oscillator whose pitch + volume ramp across the phase's
-// exact duration, so the changing sound tells you where you are in the breath.
+// A soft guide tone for the breathing pacer. Warm sine + a sub-octave through a
+// low-pass filter (singing-bowl-ish), swelling in and fading fully to silence over
+// each phase — so there's no click at the end and the holds are clean silence.
 
 type Phase = 'inhale' | 'exhale'
 
 export class BreathAudio {
   private ctx: AudioContext | null = null
-  private osc: OscillatorNode | null = null
-  private gain: GainNode | null = null
+  private toneNodes: OscillatorNode[] = []
   volume = 0.2
 
   private ensureContext(): AudioContext {
@@ -22,65 +21,71 @@ export class BreathAudio {
 
   playPhase(phase: Phase, durationSec: number): void {
     const ctx = this.ensureContext()
-    this.stop()
+    this.stop() // stop the previous phase's tone (not chimes)
 
     const now = ctx.currentTime
     const end = now + durationSec
-    const osc = ctx.createOscillator()
+    const [from, to] = phase === 'inhale' ? [196, 262] : [262, 174] // gentle rise / fall
+
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 1100 // warm, takes the edge off
+
+    // Slow swell in, hold, then fade fully to silence by the end (no click).
+    const attack = Math.min(0.6, durationSec * 0.35)
+    const release = Math.min(0.7, durationSec * 0.4)
     const gain = ctx.createGain()
-    osc.type = 'sine'
-
-    // Inhale glides up; exhale glides down.
-    const [from, to] = phase === 'inhale' ? [196, 294] : [294, 165]
-    osc.frequency.setValueAtTime(from, now)
-    osc.frequency.linearRampToValueAtTime(to, end)
-
-    // Inhale swells then holds; exhale fades to silence by the end.
     gain.gain.setValueAtTime(0.0001, now)
-    if (phase === 'inhale') {
-      gain.gain.linearRampToValueAtTime(this.volume, now + durationSec * 0.5)
-      gain.gain.linearRampToValueAtTime(this.volume * 0.85, end)
-    } else {
-      gain.gain.linearRampToValueAtTime(this.volume, now + durationSec * 0.2)
-      gain.gain.linearRampToValueAtTime(0.0001, end)
-    }
+    gain.gain.linearRampToValueAtTime(this.volume, now + attack)
+    gain.gain.setValueAtTime(this.volume, Math.max(now + attack, end - release))
+    gain.gain.linearRampToValueAtTime(0.0001, end)
+    filter.connect(gain).connect(ctx.destination)
 
-    osc.connect(gain).connect(ctx.destination)
-    osc.start(now)
-    osc.stop(end + 0.05)
-    this.osc = osc
-    this.gain = gain
+    // Fundamental + a softer octave below for warmth.
+    for (const [mult, level] of [
+      [1, 1],
+      [0.5, 0.5],
+    ] as const) {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(from * mult, now)
+      osc.frequency.linearRampToValueAtTime(to * mult, end)
+      const g = ctx.createGain()
+      g.gain.value = level
+      osc.connect(g).connect(filter)
+      osc.start(now)
+      osc.stop(end + 0.1)
+      this.toneNodes.push(osc)
+    }
   }
 
-  /** A short bell ping marking a phase transition. Higher for inhale, lower for
-   *  exhale. Independent of the guide tone (own nodes), so it can play alone. */
+  /** Soft bell at a phase transition — fire-and-forget, independent of the tone. */
   chime(phase: Phase): void {
     const ctx = this.ensureContext()
     const now = ctx.currentTime
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    osc.type = 'triangle'
-    osc.frequency.value = phase === 'inhale' ? 660 : 440
+    osc.type = 'sine'
+    osc.frequency.value = phase === 'inhale' ? 396 : 297 // gentle, distinct in/out
     gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.volume), now + 0.01)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35)
+    gain.gain.linearRampToValueAtTime(this.volume * 0.7, now + 0.04)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3) // long, soft decay
     osc.connect(gain).connect(ctx.destination)
     osc.start(now)
-    osc.stop(now + 0.4)
+    osc.stop(now + 1.4)
   }
 
+  /** Stop the gliding tone (chimes are short and ring out on their own). */
   stop(): void {
-    if (this.osc) {
+    for (const osc of this.toneNodes) {
       try {
-        this.osc.stop()
+        osc.stop()
       } catch {
         // already stopped
       }
-      this.osc.disconnect()
-      this.osc = null
+      osc.disconnect()
     }
-    this.gain?.disconnect()
-    this.gain = null
+    this.toneNodes = []
   }
 
   close(): void {
