@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.session import Session
-from app.schemas.session import SessionCreate
+from app.schemas.session import SessionCreate, SessionUpdate
 
 
 def create_session(db: DBSession, user_id: uuid.UUID, data: SessionCreate) -> Session:
@@ -20,6 +20,35 @@ def create_session(db: DBSession, user_id: uuid.UUID, data: SessionCreate) -> Se
     db.commit()
     db.refresh(session)
     return session
+
+
+def get_session(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> Session | None:
+    """Fetch one session owned by the user. None if missing or not theirs."""
+    stmt = select(Session).where(Session.id == session_id, Session.user_id == user_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def update_session(
+    db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID, data: SessionUpdate
+) -> Session | None:
+    session = get_session(db, user_id, session_id)
+    if session is None:
+        return None
+    # Only the fields the client actually sent are changed (partial update).
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(session, field, value)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def delete_session(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> bool:
+    session = get_session(db, user_id, session_id)
+    if session is None:
+        return False
+    db.delete(session)
+    db.commit()
+    return True
 
 
 def list_sessions(

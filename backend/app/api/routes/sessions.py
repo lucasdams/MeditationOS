@@ -2,18 +2,21 @@
 always scoped to the authenticated user.
 """
 
+import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
 from app.core.db import get_db
 from app.models.user import User
-from app.schemas.session import SessionCreate, SessionRead
+from app.schemas.session import SessionCreate, SessionRead, SessionUpdate
 from app.services import session_service
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
 
 @router.post("", response_model=SessionRead, status_code=status.HTTP_201_CREATED)
@@ -44,3 +47,39 @@ def list_sessions(
         limit=limit,
         offset=offset,
     )
+
+
+# Unowned (or missing) IDs return 404 — never 403 — to avoid leaking which IDs exist.
+@router.get("/{session_id}", response_model=SessionRead)
+def get_session(
+    session_id: uuid.UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SessionRead:
+    session = session_service.get_session(db, current_user.id, session_id)
+    if session is None:
+        raise _NOT_FOUND
+    return session
+
+
+@router.patch("/{session_id}", response_model=SessionRead)
+def update_session(
+    session_id: uuid.UUID,
+    data: SessionUpdate,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SessionRead:
+    session = session_service.update_session(db, current_user.id, session_id, data)
+    if session is None:
+        raise _NOT_FOUND
+    return session
+
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_session(
+    session_id: uuid.UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    if not session_service.delete_session(db, current_user.id, session_id):
+        raise _NOT_FOUND
