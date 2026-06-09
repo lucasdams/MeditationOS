@@ -1,8 +1,17 @@
+import { Routes, Route } from 'react-router-dom'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import DashboardPage from './pages/DashboardPage'
+import ProtectedRoute from './components/ProtectedRoute'
+
 export default function App() {
   return (
-    <main>
-      <h1>MeditationOS</h1>
-      <p>Frontend scaffold is running. Features land in upcoming tickets.</p>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<DashboardPage />} />
+      </Route>
+    </Routes>
   )
 }
