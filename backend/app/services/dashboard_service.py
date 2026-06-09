@@ -1,7 +1,7 @@
 """Dashboard aggregates, computed from `sessions` by SQL (not Python loops).
 
-Streak fields are added in a follow-up ticket. The calendar date is the date of
-`occurred_at` in UTC for V1 (per-user timezone is a known later improvement).
+Streaks are computed from the distinct calendar dates of `occurred_at` (UTC for
+V1 — per-user timezone is a known later improvement), not stored.
 """
 
 import uuid
@@ -12,6 +12,33 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.session import Session
 from app.schemas.dashboard import DailyTotal, DashboardStats
+
+
+def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
+    """Return (current_streak_days, longest_streak_days) from days-with-a-session.
+
+    - longest: the longest run of consecutive days, ever.
+    - current: the run ending today OR yesterday (grace through end of today);
+      0 if neither has a session.
+    """
+    if not dates:
+        return 0, 0
+
+    ordered = sorted(dates)
+    longest = run = 1
+    for prev, cur in zip(ordered, ordered[1:], strict=False):
+        run = run + 1 if (cur - prev).days == 1 else 1
+        longest = max(longest, run)
+
+    current = 0
+    anchor = today if today in dates else today - timedelta(days=1)
+    if anchor in dates:
+        day = anchor
+        while day in dates:
+            current += 1
+            day -= timedelta(days=1)
+
+    return current, longest
 
 
 def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardStats:
@@ -43,8 +70,16 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         day = week_start + timedelta(days=i)
         this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
 
+    # All distinct practice days (for streaks).
+    day_rows = db.execute(
+        select(func.date(Session.occurred_at)).where(Session.user_id == user_id).distinct()
+    ).all()
+    current_streak, longest_streak = _compute_streaks({row[0] for row in day_rows}, today)
+
     return DashboardStats(
         total_seconds=int(total_seconds),
         session_count=int(session_count),
+        current_streak_days=current_streak,
+        longest_streak_days=longest_streak,
         this_week=this_week,
     )

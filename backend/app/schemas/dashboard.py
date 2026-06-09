@@ -13,4 +13,6 @@ class DailyTotal(BaseModel):
 class DashboardStats(BaseModel):
     total_seconds: int
     session_count: int
+    current_streak_days: int
+    longest_streak_days: int
     this_week: list[DailyTotal]
