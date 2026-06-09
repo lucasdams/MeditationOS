@@ -30,6 +30,9 @@ export interface SessionCreate {
   duration_seconds: number
   occurred_at: string
   notes?: string | null
+  inhale_seconds?: number | null
+  exhale_seconds?: number | null
+  cycles_completed?: number | null
 }
 
 export interface DailyTotal {
