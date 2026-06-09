@@ -76,8 +76,24 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 - [ ] Generic auth-failure messages (no account enumeration)
 - [ ] `Secure` cookie flag enforced outside local dev
 - [ ] CORS restricted to known origins; credentials allowed only for those
-- [ ] `SECRET_KEY` from env; rotated on suspected compromise
+- [x] `SECRET_KEY` from env; the app **refuses to boot** in production with the default key
 - [ ] All user-data routes go through `get_current_user` and filter by `user_id`
+
+## Known tradeoffs
+
+- **Registration is enumerable.** `POST /auth/register` returns `409` for an
+  already-registered email, which reveals that the address has an account —
+  unlike login, which returns a generic `401`. This is accepted for V1; the real
+  mitigation is email verification (deferred below), where registration succeeds
+  silently and confirmation is gated on the email.
+
+## Deploy-time hardening (before AWS, Cycle 5)
+
+- **Rate limiter client IP.** `slowapi` keys on the socket peer. Behind a reverse
+  proxy / load balancer this is the proxy's IP — switch to a trusted
+  `X-Forwarded-For` source so limits are per-user, not per-proxy.
+- **Postgres driver.** `psycopg2-binary` is convenient for dev but discouraged
+  for production; use the source build or psycopg3.
 
 ## Deliberately deferred (post-V1)
 
