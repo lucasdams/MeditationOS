@@ -20,7 +20,7 @@ Store session date, duration, meditation type, and notes.
 
 Guided **slow** breathing that paces the user at a target resonance rate (~1–6 breaths/min) — parasympathetic, for calm and focus. The user picks a **rate** (breaths per minute); the app derives the inhale/exhale seconds at a **2:3 in:out ratio** (a longer exhale, which adds vagal/parasympathetic activation). The `sessions` table stores `inhale_seconds`/`exhale_seconds` separately, so a custom ratio is possible later — but 2:3 is the default.
 
-> **Distinct from high-rate breathwork** (e.g. Wim Hof–style), which is a *separate* feature — fast breathing + breath holds, stimulating rather than calming. See [future-features](../future-features.md#hrv--breathing).
+> **Distinct from high-rate breathwork** (e.g. Wim Hof–style), which is a *separate* feature — fast breathing + breath holds, stimulating rather than calming. See [future-features](future-features.md#hrv--breathing).
 
 **Configuration**
 
@@ -54,9 +54,8 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 
 **Presets & custom**
 
-- Built-in presets by difficulty (slower = harder): **Easy** (6 bpm, default), **Medium** (3 bpm), **Advanced** (1.5 bpm), **Extreme** (1 bpm)
-- Rate slider across the slow range (~1–6 bpm); 2:3 ratio fixed by default
-- *(Later)* custom in:out ratio for advanced users with a known resonance frequency
+- Built-in presets by difficulty (slower = harder), chosen from a dropdown: **Easy** (6 bpm, default), **Medium** (3 bpm), **Advanced** (1.5 bpm), **Extreme** (1 bpm)
+- *(Later)* a free rate slider + custom in:out ratios for advanced users with a known resonance frequency. The API already supports saved patterns (`breathing_patterns`); the V1 UI exposes the presets only.
 - Validation: sensible min/max bounds on phase length and total cycle duration
 
 **Demonstrates:** real-time UI state, timer logic, user preferences, session metadata storage
