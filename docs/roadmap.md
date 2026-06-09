@@ -18,37 +18,39 @@ Store session date, duration, meditation type, and notes.
 
 ### HRV Resonance Breathing
 
-Guided breathing practice that paces the user through inhale and exhale cycles at a target resonance rate. Users set **inhale duration** and **exhale duration** (in seconds); the app derives **breaths per minute** from the cycle length.
+Guided **slow** breathing that paces the user at a target resonance rate (~1–6 breaths/min) — parasympathetic, for calm and focus. The user picks a **rate** (breaths per minute); the app derives the inhale/exhale seconds at a **2:3 in:out ratio** (a longer exhale, which adds vagal/parasympathetic activation). The `sessions` table stores `inhale_seconds`/`exhale_seconds` separately, so a custom ratio is possible later — but 2:3 is the default.
+
+> **Distinct from high-rate breathwork** (e.g. Wim Hof–style), which is a *separate* feature — fast breathing + breath holds, stimulating rather than calming. See [future-features](../future-features.md#hrv--breathing).
 
 **Configuration**
 
 | Field | Description |
 |-------|-------------|
-| `inhale_seconds` | Length of the in-breath (e.g. `5`, `10`, `20`) |
-| `exhale_seconds` | Length of the out-breath (e.g. `5`, `10`, `20`) |
-| `breaths_per_minute` | Calculated: `60 ÷ (inhale_seconds + exhale_seconds)` |
+| `breaths_per_minute` | The control the user sets (e.g. `6`, `3`, `1.5`, `1`) |
+| `inhale_seconds` | Derived: `(60 ÷ bpm) × 2/5` |
+| `exhale_seconds` | Derived: `(60 ÷ bpm) × 3/5` |
 
-**Example patterns**
+**Example rates (2:3 ratio)**
 
-| In-breath | Out-breath | Cycle | Breaths/min |
-|-----------|------------|-------|-------------|
-| 5 s | 5 s | 10 s | 6 |
-| 4 s | 6 s | 10 s | 6 |
-| 10 s | 10 s | 20 s | 3 |
-| 15 s | 5 s | 20 s | 3 |
-| 20 s | 20 s | 40 s | 1.5 |
+| Rate (bpm) | Cycle | In (2) | Out (3) |
+|-----------|-------|--------|---------|
+| 6 | 10 s | 4 s | 6 s |
+| 3 | 20 s | 8 s | 12 s |
+| 1.5 | 40 s | 16 s | 24 s |
+| 1 | 60 s | 24 s | 36 s |
 
 **In-session experience**
 
-- Visual breathing guide (expand/contract circle or bar) synced to inhale/exhale phases
+- Visual breathing guide (expand/contract circle) synced to inhale/exhale phases
 - Optional audio cues at phase transitions
 - Elapsed time, cycles completed, and current breaths/min displayed
 - Save completed practice as a meditation session (`type: resonance_breathing`) with the pattern used
 
-**Presets & custom patterns**
+**Presets & custom**
 
-- Built-in presets (e.g. 6 bpm balanced, 3 bpm slow, 1.5 bpm extended)
-- User-saved custom patterns (name + inhale/exhale values)
+- Built-in presets: **6 bpm balanced** (default), **3 bpm slow**, **1.5 bpm extended**, **1 bpm advanced**
+- Rate slider across the slow range (~1–6 bpm); 2:3 ratio fixed by default
+- *(Later)* custom in:out ratio for advanced users with a known resonance frequency
 - Validation: sensible min/max bounds on phase length and total cycle duration
 
 **Demonstrates:** real-time UI state, timer logic, user preferences, session metadata storage
