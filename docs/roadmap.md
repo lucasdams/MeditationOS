@@ -42,13 +42,15 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 **In-session experience**
 
 - Visual breathing guide (expand/contract circle) synced to inhale/exhale phases
-- **Audio cues — the primary guidance, since users practice eyes-closed.** A **distinct sound for the inhale vs the exhale** (e.g. a rising tone in, a softer falling tone out) so the rhythm can be followed without watching the screen. Volume control + on/off; an **audio-only mode** that needs no visual.
+- **Audio guide — the primary guidance, since users practice eyes-closed.** Each phase has a **continuous tone that glides and fades across its full duration**, not just a beep at the start. The inhale tone **rises/swells** toward the top of the breath; the exhale tone **descends and fades to silence** as the out-breath finishes. Because the sound changes the whole way through, you can *hear where you are within the phase* — so, eyes-closed, you sense whether to **breathe out harder to finish in time** or **slow down because there's more left**, and land exactly on the transition. Distinct timbres for in vs out; volume + on/off; an **audio-only mode** that needs no visual.
 - Elapsed time, cycles completed, and current breaths/min displayed
 - Save completed practice as a meditation session (`type: resonance_breathing`) with the pattern used
 
-> **Audio implementation notes:** generate tones via the Web Audio API (no asset
-> downloads, exact timing) or preload short clips; schedule cues precisely on the
-> phase boundaries; respect the device's mute/volume; keep sounds gentle/non-jarring.
+> **Audio implementation notes:** Web Audio API oscillator(s) with **frequency/gain
+> ramps scheduled across each phase** (`linearRampToValueAtTime`), so the tone glides
+> and fades exactly over the inhale (e.g. 4 s) and exhale (e.g. 6 s) durations.
+> Recompute the ramps when the rate changes; respect the device's mute/volume; keep
+> timbres gentle and non-jarring.
 
 **Presets & custom**
 
