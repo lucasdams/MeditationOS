@@ -59,20 +59,34 @@ export class BreathAudio {
     }
   }
 
-  /** Soft bell at a phase transition — fire-and-forget, independent of the tone. */
+  /** Soft bell at a phase transition — fire-and-forget, independent of the tone.
+   *  Sits well above the low guide tone so it cuts through instead of being masked. */
   chime(phase: Phase): void {
     const ctx = this.ensureContext()
     const now = ctx.currentTime
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = phase === 'inhale' ? 396 : 297 // gentle, distinct in/out
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.linearRampToValueAtTime(this.volume * 0.7, now + 0.04)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3) // long, soft decay
-    osc.connect(gain).connect(ctx.destination)
-    osc.start(now)
-    osc.stop(now + 1.4)
+    const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
+    const peak = Math.max(0.16, this.volume) // audible even at a low guide volume
+
+    const out = ctx.createGain()
+    out.gain.setValueAtTime(0.0001, now)
+    out.gain.linearRampToValueAtTime(peak, now + 0.012) // quick strike
+    out.gain.exponentialRampToValueAtTime(0.0001, now + 1.6) // long, soft decay
+    out.connect(ctx.destination)
+
+    // Fundamental + a softer, brighter partial for a bell-like shimmer.
+    for (const [mult, level] of [
+      [1, 1],
+      [2.01, 0.35],
+    ] as const) {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.value = base * mult
+      const g = ctx.createGain()
+      g.gain.value = level
+      osc.connect(g).connect(out)
+      osc.start(now)
+      osc.stop(now + 1.7)
+    }
   }
 
   /** Stop the gliding tone (chimes are short and ring out on their own). */
