@@ -68,9 +68,9 @@ export class BreathAudio {
     const peak = Math.max(0.16, this.volume) // audible even at a low guide volume
 
     const out = ctx.createGain()
-    out.gain.setValueAtTime(0.0001, now)
-    out.gain.linearRampToValueAtTime(peak, now + 0.012) // quick strike
-    out.gain.exponentialRampToValueAtTime(0.0001, now + 1.6) // long, soft decay
+    out.gain.setValueAtTime(0, now)
+    out.gain.linearRampToValueAtTime(peak, now + 0.008) // quick strike
+    out.gain.setTargetAtTime(0, now + 0.008, 0.4) // natural bell decay (no zero-value pitfall)
     out.connect(ctx.destination)
 
     // Fundamental + a softer, brighter partial for a bell-like shimmer.
@@ -85,7 +85,7 @@ export class BreathAudio {
       g.gain.value = level
       osc.connect(g).connect(out)
       osc.start(now)
-      osc.stop(now + 1.7)
+      osc.stop(now + 2)
     }
   }
 

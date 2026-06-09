@@ -127,10 +127,23 @@ export default function BreathePage() {
   }
 
   function cuePhase(p: Phase) {
-    if (chimeOnRef.current) audio().chime(p)
-    if (!audioOnRef.current) return
-    const dur = p === 'inhale' ? phaseSecsRef.current.inhale : phaseSecsRef.current.exhale
-    audio().playPhase(p, dur)
+    const a = audio()
+    // Each guarded independently so a failure in one never silences the other.
+    if (audioOnRef.current) {
+      const dur = p === 'inhale' ? phaseSecsRef.current.inhale : phaseSecsRef.current.exhale
+      try {
+        a.playPhase(p, dur)
+      } catch (err) {
+        console.warn('guide tone failed', err)
+      }
+    }
+    if (chimeOnRef.current) {
+      try {
+        a.chime(p)
+      } catch (err) {
+        console.warn('chime failed', err)
+      }
+    }
   }
 
   useEffect(() => () => audioRef.current?.close(), [])
