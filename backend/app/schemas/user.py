@@ -23,6 +23,12 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UsernameUpdate(BaseModel):
+    """Set / change the public username."""
+
+    username: str = Field(min_length=3, max_length=20, pattern=r"^[a-zA-Z0-9_]+$")
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 
@@ -30,4 +36,5 @@ class UserRead(BaseModel):
 
     id: uuid.UUID
     email: EmailStr
+    username: str | None
     created_at: datetime

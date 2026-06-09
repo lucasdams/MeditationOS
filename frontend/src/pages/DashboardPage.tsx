@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
 import type { DashboardStats } from '../types'
@@ -18,8 +17,6 @@ const dayLabel = (iso: string) => {
 }
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,29 +27,11 @@ export default function DashboardPage() {
       .catch(() => setError('Could not load your stats.'))
   }, [])
 
-  async function handleLogout() {
-    await logout()
-    navigate('/login')
-  }
-
   const maxSeconds = stats ? Math.max(1, ...stats.this_week.map((d) => d.seconds)) : 1
 
   return (
     <main className="dashboard">
-      <header>
-        <h1>MeditationOS</h1>
-        <button type="button" onClick={handleLogout}>
-          Log out
-        </button>
-      </header>
-      <p>
-        Signed in as <strong>{user?.email}</strong>.
-      </p>
-      <nav className="dash-nav">
-        <Link to="/breathe">🫁 Breathe</Link>
-        <Link to="/sessions/new">+ Log a session</Link>
-        <Link to="/sessions">View your sessions</Link>
-      </nav>
+      <h1>Your practice</h1>
 
       {error && (
         <p role="alert" className="error">

@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.exceptions import EmailAlreadyExistsError
+from app.core.exceptions import EmailAlreadyExistsError, UsernameTakenError
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, UserRead
+from app.schemas.user import UserCreate, UserLogin, UsernameUpdate, UserRead
 from app.services import user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -66,3 +66,17 @@ def logout(response: Response) -> None:
 @router.get("/me", response_model=UserRead)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.post("/username", response_model=UserRead)
+def set_username(
+    data: UsernameUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    try:
+        return user_service.set_username(db, current_user, data.username)
+    except UsernameTakenError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Username taken"
+        ) from None

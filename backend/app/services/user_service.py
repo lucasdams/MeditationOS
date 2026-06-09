@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import EmailAlreadyExistsError
+from app.core.exceptions import EmailAlreadyExistsError, UsernameTakenError
 from app.core.security import hash_password, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -15,6 +15,19 @@ from app.schemas.user import UserCreate
 
 def get_user_by_email(db: Session, email: str) -> User | None:
     return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+
+
+def set_username(db: Session, user: User, username: str) -> User:
+    """Set the user's public username. Raises if it's taken (case-insensitive)."""
+    existing = db.execute(
+        select(User).where(User.username == username)
+    ).scalar_one_or_none()
+    if existing is not None and existing.id != user.id:
+        raise UsernameTakenError(username)
+    user.username = username
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def get_user_by_id(db: Session, user_id: str) -> User | None:

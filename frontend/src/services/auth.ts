@@ -11,4 +11,6 @@ export const authService = {
   logout: () => api.post<void>('/auth/logout'),
 
   me: () => api.get<User>('/auth/me'),
+
+  setUsername: (username: string) => api.post<User>('/auth/username', { username }),
 }
