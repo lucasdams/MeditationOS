@@ -54,6 +54,12 @@ class Session(Base):
     inhale_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     exhale_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cycles_completed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Optional link to the saved pattern used (kept if the pattern is later deleted).
+    breathing_pattern_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("breathing_patterns.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
