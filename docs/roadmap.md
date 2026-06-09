@@ -41,7 +41,7 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 
 **In-session experience**
 
-- Visual breathing guide (expand/contract circle) synced to inhale/exhale phases
+- **Visual guide — the eyes-open counterpart to the audio.** A circle that **continuously expands over the inhale and contracts over the exhale**, so its size at any moment shows *where you are in the breath* (fully expanded = top of the inhale; fully shrunk = end of the exhale). The growth/shrink is eased over each phase's exact duration (e.g. expand over a 4 s inhale, contract over a 6 s exhale) — the same envelope as the audio ramps. Optional "Breathe in / Breathe out" label and a subtle colour shift per phase.
 - **Audio guide — the primary guidance, since users practice eyes-closed.** Each phase has a **continuous tone that glides and fades across its full duration**, not just a beep at the start. The inhale tone **rises/swells** toward the top of the breath; the exhale tone **descends and fades to silence** as the out-breath finishes. Because the sound changes the whole way through, you can *hear where you are within the phase* — so, eyes-closed, you sense whether to **breathe out harder to finish in time** or **slow down because there's more left**, and land exactly on the transition. Distinct timbres for in vs out; volume + on/off; an **audio-only mode** that needs no visual.
 - Elapsed time, cycles completed, and current breaths/min displayed
 - Save completed practice as a meditation session (`type: resonance_breathing`) with the pattern used
