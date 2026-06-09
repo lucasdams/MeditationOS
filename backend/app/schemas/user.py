@@ -16,6 +16,13 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class UserLogin(BaseModel):
+    """Login input."""
+
+    email: EmailStr
+    password: str
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 

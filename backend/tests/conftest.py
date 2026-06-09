@@ -5,15 +5,21 @@ transaction that is rolled back afterward, so tests are isolated even though the
 service layer calls `commit()` (the session joins via savepoint).
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+import os
 
-import app.models  # noqa: F401  — register models on Base.metadata
-from app.core.config import settings
-from app.core.db import Base, get_db
-from app.main import app
+# Must be set before importing the app: disables the rate limiter and the
+# Secure-cookie flag so auth tests are deterministic over the test client's http.
+os.environ["ENVIRONMENT"] = "test"
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+
+import app.models  # noqa: F401,E402  — register models on Base.metadata
+from app.core.config import settings  # noqa: E402
+from app.core.db import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 _BASE = settings.database_url.rsplit("/", 1)[0]
 TEST_DB_URL = f"{_BASE}/meditationos_test"
