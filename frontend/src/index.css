@@ -287,6 +287,22 @@ button:disabled {
   padding: 0;
 }
 
+.breathe-save {
+  margin-top: 1.5rem;
+  text-align: left;
+  color: #6b6b70;
+}
+
+.breathe-save summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.breathe-save input,
+.breathe-save select {
+  margin-top: 0.5rem;
+}
+
 /* Works at mobile widths */
 @media (max-width: 480px) {
   .auth-card {
