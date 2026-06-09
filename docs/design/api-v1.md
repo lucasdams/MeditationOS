@@ -105,6 +105,7 @@ GET /api/v1/breathing-patterns
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET | `/dashboard/stats` | ✓ | Aggregates for the caller |
+| GET | `/dashboard/activity` | ✓ | A year of daily totals for the activity heatmap |
 
 ```
 GET /api/v1/dashboard/stats
@@ -130,6 +131,23 @@ GET /api/v1/dashboard/stats
 `sessions` (see [data-model](data-model.md#design-notes)), not stored:
 **current** = consecutive days ending today *or yesterday* (grace through end of
 today); **longest** = the longest run ever.
+
+```
+GET /api/v1/dashboard/activity
+→ 200
+{
+  "start": "2025-06-09",
+  "end": "2026-06-09",
+  "days": [
+    { "date": "2026-06-08", "seconds": 1200 },
+    { "date": "2026-06-09", "seconds": 600 }
+  ]
+}
+```
+
+`days` is **sparse** — only days with at least one session over the last 365 — so
+the payload stays small; the frontend fills the `start`..`end` grid (GitHub-style
+heatmap). Kept separate from `/stats` so the per-navigation stats call stays light.
 
 ## Health ✅ implemented
 

@@ -1,4 +1,4 @@
-"""Tests for GET /api/v1/dashboard/stats (totals + weekly)."""
+"""Tests for the dashboard routes: /stats (totals + weekly) and /activity."""
 
 from datetime import UTC, datetime
 
@@ -54,3 +54,26 @@ def test_stats_user_scoped(client):
     body = client.get("/api/v1/dashboard/stats").json()
     assert body["total_seconds"] == 0
     assert body["session_count"] == 0
+
+
+def test_activity_requires_auth(client):
+    assert client.get("/api/v1/dashboard/activity").status_code == 401
+
+
+def test_activity_sparse_and_summed_per_day(client):
+    _auth(client, "activity@example.com")
+    today = datetime.now(UTC).date()
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600)
+    _session(client, f"{today.isoformat()}T17:00:00", seconds=300)  # same day → summed
+    body = client.get("/api/v1/dashboard/activity").json()
+    assert body["end"] == today.isoformat()
+    assert len(body["days"]) == 1  # sparse: only the one active day
+    assert body["days"][0] == {"date": today.isoformat(), "seconds": 900}
+
+
+def test_activity_user_scoped(client):
+    _auth(client, "act_owner@example.com")
+    _session(client, "2026-01-01T08:00:00", seconds=600)
+    _auth(client, "act_other@example.com")  # different user
+    body = client.get("/api/v1/dashboard/activity").json()
+    assert body["days"] == []

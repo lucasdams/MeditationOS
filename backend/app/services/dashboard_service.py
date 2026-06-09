@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.session import Session
-from app.schemas.dashboard import DailyTotal, DashboardStats
+from app.schemas.dashboard import ActivityCalendar, DailyTotal, DashboardStats
 
 
 def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
@@ -105,3 +105,25 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         xp_for_next_level=xp_for_next_level,
         this_week=this_week,
     )
+
+
+def get_activity(
+    db: DBSession, user_id: uuid.UUID, *, today: date, days: int = 365
+) -> ActivityCalendar:
+    """Daily practice totals over the last `days`, sparse (active days only)."""
+    start = today - timedelta(days=days - 1)
+    rows = db.execute(
+        select(
+            func.date(Session.occurred_at),
+            func.coalesce(func.sum(Session.duration_seconds), 0),
+        )
+        .where(
+            Session.user_id == user_id,
+            func.date(Session.occurred_at) >= start,
+            func.date(Session.occurred_at) <= today,
+        )
+        .group_by(func.date(Session.occurred_at))
+        .order_by(func.date(Session.occurred_at))
+    ).all()
+    active_days = [DailyTotal(date=row[0], seconds=int(row[1])) for row in rows]
+    return ActivityCalendar(start=start, end=today, days=active_days)
