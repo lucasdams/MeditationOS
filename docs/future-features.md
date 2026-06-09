@@ -51,6 +51,8 @@ A persistent space the user grows by practicing — a calm **sanctuary** (garden
 farm / home / retreat) that becomes a long-term reason to keep the streak alive.
 The strongest retention loop in the product.
 
+> A **first step shipped in V1**: XP (= minutes practiced) drives a level, and a `<pre>` ASCII tree on the dashboard grows through tiers as you level up. The Sanctuary below is the fuller version (currency you *spend*, multiple upgrade tracks).
+
 **Core loop:** `practice → earn currency → spend → upgrade → see your space change`
 
 - [ ] **Earn currency** ("calm points" / seeds) from each session, with **bonuses for streak milestones** — a longer daily streak earns faster, so consistency is rewarded over bingeing.

@@ -41,6 +41,21 @@ def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
     return current, longest
 
 
+def _level_progress(xp: int) -> tuple[int, int, int]:
+    """Pokémon-style rising curve. XP = minutes practiced.
+
+    Cumulative XP to *reach* level L is 10·L·(L−1) (so each level needs 20·level
+    more than the last — quick early levels, slower later). Returns
+    (level, xp_into_level, xp_for_next_level).
+    """
+    level = 1
+    while 10 * (level + 1) * level <= xp:  # cumulative XP needed for level+1
+        level += 1
+    xp_into_level = xp - 10 * level * (level - 1)
+    xp_for_next_level = 20 * level
+    return level, xp_into_level, xp_for_next_level
+
+
 def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardStats:
     total_seconds, session_count = db.execute(
         select(
@@ -76,10 +91,17 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
     ).all()
     current_streak, longest_streak = _compute_streaks({row[0] for row in day_rows}, today)
 
+    xp = int(total_seconds) // 60  # 1 XP per minute practiced
+    level, xp_into_level, xp_for_next_level = _level_progress(xp)
+
     return DashboardStats(
         total_seconds=int(total_seconds),
         session_count=int(session_count),
         current_streak_days=current_streak,
         longest_streak_days=longest_streak,
+        xp=xp,
+        level=level,
+        xp_into_level=xp_into_level,
+        xp_for_next_level=xp_for_next_level,
         this_week=this_week,
     )
