@@ -1,5 +1,7 @@
 # MeditationOS
 
+[![CI](https://github.com/lucasdams/MeditationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasdams/MeditationOS/actions/workflows/ci.yml)
+
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
 **Status:** Cycle 1 complete — register / login / logout working locally · 14 backend tests passing · Cycle 2 (Sessions API) up next
