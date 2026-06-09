@@ -71,7 +71,7 @@ export default function BreathePage() {
   const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
   const [audioOn, setAudioOn] = useState(true) // guide tone on by default
   const [chimeOn, setChimeOn] = useState(true) // transition bell on by default
-  const [volume, setVolume] = useState(0.2)
+  const [volume, setVolume] = useState(0.4)
   const [targetMin, setTargetMin] = useState(0)
 
   const selected = patterns?.find((p) => p.id === selectedId) ?? null
