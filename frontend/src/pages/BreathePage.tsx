@@ -61,10 +61,8 @@ export default function BreathePage() {
       .catch(() => setError('Could not load breathing patterns.'))
   }, [])
 
-  // Animation state in refs so the rAF loop reads fresh values without re-subscribing.
-  const rafRef = useRef<number | undefined>(undefined)
+  // Timing state in refs so the loops read fresh values without re-subscribing.
   const startRef = useRef(0)
-  const phaseStartRef = useRef(0)
   const phaseRef = useRef<Phase>('inhale')
   const cyclesRef = useRef(0)
   const phaseSecsRef = useRef({ inhale, exhale })
@@ -103,58 +101,69 @@ export default function BreathePage() {
 
   useEffect(() => () => audioRef.current?.close(), [])
 
+  // Visuals (rAF). Position is derived from absolute time, so when the tab is
+  // backgrounded — where rAF pauses — the heart simply catches up on return.
   useEffect(() => {
     if (!running) return
-    const loop = (now: number) => {
-      const durMs =
-        (phaseRef.current === 'inhale'
-          ? phaseSecsRef.current.inhale
-          : phaseSecsRef.current.exhale) * 1000
-      const frac = Math.min(1, (now - phaseStartRef.current) / durMs)
-      setScale(
-        phaseRef.current === 'inhale'
-          ? MIN_SCALE + (MAX_SCALE - MIN_SCALE) * frac
-          : MAX_SCALE - (MAX_SCALE - MIN_SCALE) * frac,
-      )
+    let raf = 0
+    const draw = (now: number) => {
+      const { inhale: inh, exhale: exh } = phaseSecsRef.current
+      const cycle = inh + exh
       const el = (now - startRef.current) / 1000
       setElapsed(el)
+      const pos = el % cycle
+      setScale(
+        pos < inh
+          ? MIN_SCALE + (MAX_SCALE - MIN_SCALE) * (pos / inh)
+          : MAX_SCALE - (MAX_SCALE - MIN_SCALE) * ((pos - inh) / exh),
+      )
+      raf = requestAnimationFrame(draw)
+    }
+    raf = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(raf)
+  }, [running])
 
-      // Auto-finish + save when a duration target is reached.
+  // Phase transitions + audio cues run on setInterval, which keeps firing in a
+  // background tab (unlike rAF) — so the sound keeps playing when you switch away.
+  useEffect(() => {
+    if (!running) return
+    const id = setInterval(() => {
+      const { inhale: inh, exhale: exh } = phaseSecsRef.current
+      const cycle = inh + exh
+      const el = (performance.now() - startRef.current) / 1000
+
       if (targetRef.current > 0 && el >= targetRef.current * 60) {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        clearInterval(id)
         setRunning(false)
         audioRef.current?.stop()
         void saveSession(targetRef.current * 60)
         return
       }
 
-      if (now - phaseStartRef.current >= durMs) {
-        if (phaseRef.current === 'exhale') {
-          cyclesRef.current += 1
-          setCycles(cyclesRef.current)
-        }
-        phaseRef.current = phaseRef.current === 'inhale' ? 'exhale' : 'inhale'
-        setPhase(phaseRef.current)
-        phaseStartRef.current = now
-        cuePhase(phaseRef.current)
+      const completed = Math.floor(el / cycle)
+      if (completed > cyclesRef.current) {
+        cyclesRef.current = completed
+        setCycles(completed)
       }
-      rafRef.current = requestAnimationFrame(loop)
-    }
-    rafRef.current = requestAnimationFrame(loop)
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
+      const phase: Phase = el % cycle < inh ? 'inhale' : 'exhale'
+      if (phase !== phaseRef.current) {
+        phaseRef.current = phase
+        setPhase(phase)
+        cuePhase(phase)
+      }
+    }, 200)
+    return () => clearInterval(id)
   }, [running])
 
   function start() {
-    const now = performance.now()
-    startRef.current = now - elapsed * 1000
-    phaseStartRef.current = now
-    phaseRef.current = 'inhale'
-    setPhase('inhale')
+    startRef.current = performance.now() - elapsed * 1000
+    const cycle = inhale + exhale
+    const phase: Phase = elapsed % cycle < inhale ? 'inhale' : 'exhale'
+    phaseRef.current = phase
+    setPhase(phase)
     setRunning(true)
     if (audioOnRef.current || chimeOnRef.current) audio().resume()
-    cuePhase('inhale')
+    cuePhase(phase)
   }
 
   function pause() {
