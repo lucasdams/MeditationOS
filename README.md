@@ -14,6 +14,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - [AI-Assisted Development](#ai-assisted-development)
 - [Claude Rules](#claude-rules)
 - [Architecture](#architecture)
+- [Design & Decisions](#design--decisions)
 - [Roadmap](#roadmap)
 - [Future Features](#future-features)
 - [Database Design](#database-design)
@@ -363,6 +364,32 @@ Hosted on AWS · Managed with Docker
 
 ---
 
+## Design & Decisions
+
+The engineering reasoning behind the build — written up as it's decided, so the *why* is visible, not just the *what*.
+
+### Design docs
+
+| Doc | Covers |
+|-----|--------|
+| [Authentication](docs/design/authentication.md) | httpOnly-cookie JWT, full auth flows, XSS-vs-CSRF tradeoff, hardening checklist |
+| [Data Model](docs/design/data-model.md) | Detailed schema: column types, constraints, indexes, and why streaks are computed |
+| [API Contract (V1)](docs/design/api-v1.md) | Endpoints, request/response shapes, status codes, and the error envelope |
+
+### Architecture Decision Records
+
+Numbered, immutable records of significant choices — see [`docs/decisions/`](docs/decisions/README.md).
+
+| # | Decision |
+|---|----------|
+| [0002](docs/decisions/0002-postgresql.md) | PostgreSQL as the primary datastore |
+| [0003](docs/decisions/0003-fastapi-stack.md) | FastAPI + SQLAlchemy + Alembic |
+| [0004](docs/decisions/0004-uuid-primary-keys.md) | UUID primary keys (anti-enumeration) |
+| [0005](docs/decisions/0005-httponly-cookie-jwt-auth.md) | httpOnly-cookie JWT authentication |
+| [0006](docs/decisions/0006-layered-architecture.md) | Layered backend (routes / services / models / schemas) |
+
+---
+
 ## Roadmap
 
 Three versions, each shippable on its own. Full details — HRV breathing config, example patterns, and what each feature demonstrates — in **[docs/roadmap.md](docs/roadmap.md)**.
@@ -387,7 +414,7 @@ See the full checklist in **[docs/future-features.md](docs/future-features.md)**
 
 Core tables (V1–V2): `users`, `sessions`, `breathing_patterns`, `journals`, `goals`, `streaks`. Future tables (V3+): `friendships`, `groups`, `challenges`, `notifications`.
 
-Full schema diagram and notes in **[docs/database-design.md](docs/database-design.md)**.
+Full schema — column types, constraints, indexes, and design notes — in **[docs/design/data-model.md](docs/design/data-model.md)**.
 
 **Demonstrates:** relational modeling, foreign keys, query design, indexing
 
