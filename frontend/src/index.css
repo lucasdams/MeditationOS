@@ -272,6 +272,21 @@ button:disabled {
   background: #1c1c1e;
 }
 
+.breathe-audio {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #6b6b70;
+}
+
+.breathe-audio input[type='range'] {
+  flex: 1;
+  padding: 0;
+}
+
 /* Works at mobile widths */
 @media (max-width: 480px) {
   .auth-card {

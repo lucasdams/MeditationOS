@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { ApiError } from '../services/api'
+import { BreathAudio } from '../lib/breathAudio'
 
 const PRESETS = [
   { label: '6 bpm · balanced', bpm: 6 },
@@ -31,6 +32,8 @@ export default function BreathePage() {
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [audioOn, setAudioOn] = useState(false)
+  const [volume, setVolume] = useState(0.2)
 
   // Animation state in refs so the rAF loop reads fresh values without re-subscribing.
   const rafRef = useRef<number | undefined>(undefined)
@@ -42,6 +45,30 @@ export default function BreathePage() {
   useEffect(() => {
     phaseSecsRef.current = phaseSeconds(bpm)
   }, [bpm])
+
+  // Audio guide (lazily created so the AudioContext only opens on a user gesture).
+  const audioRef = useRef<BreathAudio | null>(null)
+  const audioOnRef = useRef(audioOn)
+  const volumeRef = useRef(volume)
+  useEffect(() => {
+    audioOnRef.current = audioOn
+    volumeRef.current = volume
+  }, [audioOn, volume])
+
+  function audio(): BreathAudio {
+    if (!audioRef.current) audioRef.current = new BreathAudio()
+    audioRef.current.volume = volumeRef.current
+    return audioRef.current
+  }
+
+  function cuePhase(p: Phase) {
+    if (!audioOnRef.current) return
+    const dur = p === 'inhale' ? phaseSecsRef.current.inhale : phaseSecsRef.current.exhale
+    audio().playPhase(p, dur)
+  }
+
+  // Stop the tone on unmount.
+  useEffect(() => () => audioRef.current?.close(), [])
 
   useEffect(() => {
     if (!running) return
@@ -66,6 +93,7 @@ export default function BreathePage() {
         phaseRef.current = phaseRef.current === 'inhale' ? 'exhale' : 'inhale'
         setPhase(phaseRef.current)
         phaseStartRef.current = now
+        cuePhase(phaseRef.current)
       }
       rafRef.current = requestAnimationFrame(loop)
     }
@@ -82,6 +110,19 @@ export default function BreathePage() {
     phaseRef.current = 'inhale'
     setPhase('inhale')
     setRunning(true)
+    if (audioOnRef.current) audio().resume()
+    cuePhase('inhale')
+  }
+
+  function pause() {
+    setRunning(false)
+    audioRef.current?.stop()
+  }
+
+  function toggleAudio(on: boolean) {
+    setAudioOn(on)
+    if (on) audio().resume()
+    else audioRef.current?.stop()
   }
 
   function reset() {
@@ -95,6 +136,7 @@ export default function BreathePage() {
 
   async function finish() {
     setRunning(false)
+    audioRef.current?.stop()
     if (elapsed < 1) {
       reset()
       navigate('/')
@@ -163,6 +205,27 @@ export default function BreathePage() {
         ))}
       </select>
 
+      <div className="breathe-audio">
+        <label>
+          <input
+            type="checkbox"
+            checked={audioOn}
+            onChange={(e) => toggleAudio(e.target.checked)}
+          />{' '}
+          Audio guide
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={volume}
+          disabled={!audioOn}
+          aria-label="Volume"
+          onChange={(e) => setVolume(Number(e.target.value))}
+        />
+      </div>
+
       {error && (
         <p role="alert" className="error">
           {error}
@@ -175,7 +238,7 @@ export default function BreathePage() {
             {elapsed > 0 ? 'Resume' : 'Start'}
           </button>
         ) : (
-          <button type="button" onClick={() => setRunning(false)}>
+          <button type="button" onClick={pause}>
             Pause
           </button>
         )}
