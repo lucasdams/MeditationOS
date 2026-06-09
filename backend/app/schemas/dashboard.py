@@ -20,3 +20,15 @@ class DashboardStats(BaseModel):
     xp_into_level: int
     xp_for_next_level: int
     this_week: list[DailyTotal]
+
+
+class ActivityCalendar(BaseModel):
+    """A year of daily practice for a GitHub-style heatmap.
+
+    `days` is sparse — only days with at least one session — and the client
+    fills the grid for the `start`..`end` range.
+    """
+
+    start: date
+    end: date
+    days: list[DailyTotal]

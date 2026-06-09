@@ -53,6 +53,12 @@ export interface DashboardStats {
   this_week: DailyTotal[]
 }
 
+export interface ActivityCalendar {
+  start: string
+  end: string
+  days: DailyTotal[] // sparse — only days with practice
+}
+
 export interface BreathingPattern {
   id: string
   name: string

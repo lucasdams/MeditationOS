@@ -365,6 +365,99 @@ button:disabled {
   margin-top: 0.35rem;
 }
 
+/* GitHub-style activity heatmap */
+.calendar {
+  margin-top: 1.5rem;
+}
+
+.calendar h2 {
+  font-size: 1rem;
+}
+
+.heatmap-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.heatmap {
+  display: inline-block;
+}
+
+.heatmap-months {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  color: #6b6b70;
+}
+
+.heatmap-month {
+  width: 12px;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 3px;
+}
+
+.heatmap-week {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #ebedf0; /* lvl-0 / no practice */
+}
+
+.heatmap-cell.lvl-1 {
+  background: #c7d2fe;
+}
+
+.heatmap-cell.lvl-2 {
+  background: #818cf8;
+}
+
+.heatmap-cell.lvl-3 {
+  background: #4f46e5;
+}
+
+.heatmap-cell.lvl-4 {
+  background: #3730a3;
+}
+
+.heatmap-cell.out {
+  background: transparent; /* padding days outside the range */
+}
+
+.heatmap-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b6b70;
+}
+
+.heatmap-key {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.heatmap-key .heatmap-cell {
+  width: 11px;
+  height: 11px;
+}
+
 /* Breathing pacer */
 .breathe {
   max-width: 30rem;

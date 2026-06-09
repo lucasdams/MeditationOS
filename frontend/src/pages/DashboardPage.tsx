@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
+import ActivityHeatmap from '../components/ActivityHeatmap'
 import type { DashboardStats } from '../types'
 
 const formatTotal = (seconds: number) => {
@@ -87,6 +88,8 @@ export default function DashboardPage() {
               ))}
             </div>
           </section>
+
+          <ActivityHeatmap />
         </>
       )}
     </main>
