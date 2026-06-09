@@ -140,6 +140,67 @@ button:disabled {
   cursor: pointer;
 }
 
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6b6b70;
+}
+
+.week {
+  margin-top: 1.5rem;
+}
+
+.week h2 {
+  font-size: 1rem;
+}
+
+.week-bars {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.week-day {
+  flex: 1;
+}
+
+.week-track {
+  height: 100px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.week-bar {
+  width: 100%;
+  min-height: 2px;
+  background: #4f46e5;
+  border-radius: 4px 4px 0 0;
+}
+
+.week-label {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #6b6b70;
+  margin-top: 0.35rem;
+}
+
 /* Works at mobile widths */
 @media (max-width: 480px) {
   .auth-card {

@@ -4,15 +4,16 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–2 complete — auth + meditation session tracking working locally · 31 backend tests passing · Cycle 3 (dashboard + streaks) up next
+**Status:** Cycles 1–3 complete — auth, session tracking, and a stats dashboard working locally · 43 backend tests passing · Cycle 4 (HRV breathing UI) up next
 
-**What's working now (Cycles 1–2):**
+**What's working now (Cycles 1–3):**
 
 - ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
+- ✅ Stats dashboard — total practice time, current/longest streak, and a weekly breakdown
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
-- ✅ 31 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 43 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 
