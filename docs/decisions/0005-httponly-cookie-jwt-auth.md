@@ -8,13 +8,13 @@ Auth is the most security-sensitive surface and the one most likely to be probed
 
 ## Decision
 
-Issue a **short-lived JWT (30 min) in an `HttpOnly; Secure; SameSite=Lax` cookie**. Passwords hashed with **argon2**. Refresh-token rotation is deferred to V1.5; V1 users re-login on expiry.
+Issue a **short-lived JWT (60 min, configurable) in an `HttpOnly; Secure; SameSite=Lax` cookie**. Passwords hashed with **argon2**. Refresh-token rotation is deferred to V1.5; V1 users re-login on expiry.
 
 ## Consequences
 
 - JavaScript cannot read the token, so an XSS bug can't exfiltrate the session — the most damaging common failure mode is closed off.
 - `SameSite=Lax` blocks the typical cross-site CSRF vector; if a future state-changing flow needs more, add a CSRF token.
-- Stateless tokens mean **logout can't instantly revoke** a copied token — bounded by the 30-min TTL. Accepted for V1; the V1.5 refresh store adds real revocation.
+- Stateless tokens mean **logout can't instantly revoke** a copied token — bounded by the 60-min TTL. Accepted for V1; the V1.5 refresh store adds real revocation.
 - A single `get_current_user` dependency enforces default-deny on all protected routes.
 
 ## Alternatives considered
