@@ -1,41 +1,5 @@
+import { tierFor } from '../lib/tree'
 import type { DashboardStats } from '../types'
-
-// Tiers ordered high → low; the tree grows as the level climbs.
-const TREE_TIERS: { min: number; name: string; art: string[] }[] = [
-  {
-    min: 12,
-    name: 'Elder tree',
-    art: ['      /\\', '     /  \\', '    /    \\', '   /      \\', '  /        \\', ' /__________\\', '     ||||'],
-  },
-  {
-    min: 8,
-    name: 'Tree',
-    art: ['     /\\', '    /  \\', '   /    \\', '  /      \\', ' /________\\', '    ||||'],
-  },
-  {
-    min: 5,
-    name: 'Young tree',
-    art: ['    /\\', '   /  \\', '  /    \\', ' /______\\', '   ||'],
-  },
-  {
-    min: 3,
-    name: 'Sapling',
-    art: ['   /\\', '  /  \\', ' /____\\', '   ||'],
-  },
-  {
-    min: 2,
-    name: 'Sprout',
-    art: ['  \\|/', '   |', '   |'],
-  },
-  {
-    min: 1,
-    name: 'Seedling',
-    art: ['   ,', '  (.)', '   |'],
-  },
-]
-
-const tierFor = (level: number) =>
-  TREE_TIERS.find((t) => level >= t.min) ?? TREE_TIERS[TREE_TIERS.length - 1]
 
 export default function LevelCard({ stats }: { stats: DashboardStats }) {
   const tier = tierFor(stats.level)

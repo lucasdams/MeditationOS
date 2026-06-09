@@ -229,6 +229,58 @@ button:disabled {
   margin-top: 0.35rem;
 }
 
+.reward-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.reward-card {
+  width: 22rem;
+  max-width: calc(100vw - 2rem);
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.reward-card .level-tree {
+  display: inline-block;
+  text-align: left;
+  color: #15803d;
+  margin-bottom: 1rem;
+}
+
+.reward-level {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.reward-up {
+  color: #059669;
+}
+
+.reward-card .xp-bar {
+  height: 14px;
+}
+
+.reward-card button {
+  margin-top: 1.5rem;
+}
+
 .stat-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

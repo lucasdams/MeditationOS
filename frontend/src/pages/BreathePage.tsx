@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { breathingPatternService } from '../services/breathingPatterns'
+import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio } from '../lib/breathAudio'
+import RewardOverlay from '../components/RewardOverlay'
 import type { BreathingPattern } from '../types'
 
 const MIN_SCALE = 0.35
@@ -36,6 +38,7 @@ export default function BreathePage() {
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
   const [audioOn, setAudioOn] = useState(true) // guide tone on by default
   const [chimeOn, setChimeOn] = useState(false)
   const [volume, setVolume] = useState(0.2)
@@ -190,7 +193,8 @@ export default function BreathePage() {
         exhale_seconds: exhale,
         cycles_completed: cyclesRef.current,
       })
-      navigate('/sessions')
+      const stats = await dashboardService.getStats()
+      setReward({ afterXp: stats.xp, xpGained: Math.round(durationSec / 60) })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
@@ -319,6 +323,14 @@ export default function BreathePage() {
           {saving ? 'Saving…' : 'Finish & save'}
         </button>
       </div>
+
+      {reward && (
+        <RewardOverlay
+          afterXp={reward.afterXp}
+          xpGained={reward.xpGained}
+          onClose={() => navigate('/sessions')}
+        />
+      )}
     </main>
   )
 }

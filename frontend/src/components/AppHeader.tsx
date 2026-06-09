@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
 
 export default function AppHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [level, setLevel] = useState<number | null>(null)
 
+  // Refetch on every navigation so the level stays live after earning XP.
   useEffect(() => {
     dashboardService
       .getStats()
       .then((s) => setLevel(s.level))
       .catch(() => {})
-  }, [])
+  }, [location.pathname])
 
   async function handleLogout() {
     await logout()
