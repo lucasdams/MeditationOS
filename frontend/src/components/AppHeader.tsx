@@ -28,7 +28,9 @@ export default function AppHeader() {
         MeditationOS
       </Link>
       <nav className="app-nav">
-        <Link to="/breathe">Breathe</Link>
+        <Link to="/breathe" className="primary">
+          🫁 Breathe
+        </Link>
         <Link to="/sessions/new">Log</Link>
         <Link to="/sessions">Sessions</Link>
       </nav>
