@@ -193,164 +193,44 @@ AI implements **one ticket at a time**. The ticket's acceptance criteria become 
 
 ## AI-Assisted Development
 
-This project uses **Claude Code** as part of a deliberate, professional development workflow, the same way modern teams adopt linters, CI pipelines, and code review to ship reliable software faster.
+This project uses **Claude Code** the way modern teams adopt linters and CI — to accelerate execution while **engineering judgment** (architecture, security, testing, review) stays human-owned.
 
-AI accelerates execution. **Engineering judgment** (architecture, security, testing, and review) remains human-owned. That combination is increasingly standard in industry and is a skill worth demonstrating on its own.
+### Principles
 
-### AI Philosophy
+- **Own the design first** — architecture, schema, and API contracts are decided before AI implements against them.
+- **Review every change like a junior's PR** — read the full diff, run the tests, verify behavior. Nothing is committed unexplained.
+- **Tests are the source of truth**, not the AI's summary; behavior changes ship with tests.
+- **Scope tightly** — one concern per prompt; small diffs are easier to review and reason about.
+- **Protect sensitive areas** — auth, migrations, secrets, and infra config get explicit human review (Claude reads [`.claude/rules/security.md`](.claude/rules/security.md) for that work).
+- **Document the *why*** in commits and docs, so humans and AI share context.
 
-- Use AI to accelerate implementation, not replace engineering judgment.
-- Requirements, architecture, and tests are more important than generated code.
-- Write clear specifications before asking AI to implement features.
-- Treat tests as the source of truth and use them to validate all AI-generated work.
-- Verify AI output against system architecture, security, and business requirements.
-- Document decisions, edge cases, and operational knowledge so both humans and AI share context.
-- Challenge AI assumptions and actively look for failure modes.
-- Maintain understanding of the codebase; developers are responsible for systems they ship.
-- Optimize for architectural thinking, verification, and supervision rather than raw coding speed.
+This is where the real skill shows: technical judgment (catching wrong APIs or logic), prompt engineering, code-review discipline, architecture ownership, security awareness, and accountability for every commit.
 
-### What This Demonstrates
+### Prompting approach
 
-| Skill | How it shows up in this project |
-|-------|----------------------------------|
-| **Technical judgment** | Evaluating AI output, catching incorrect APIs or logic, and choosing what to accept, edit, or rewrite |
-| **Prompt engineering** | Writing precise, constrained prompts that produce maintainable, reviewable code |
-| **Code review discipline** | Treating every AI-generated change like a PR from a junior contributor: read the diff, run tests, verify behavior |
-| **Architecture ownership** | Defining system design, data models, and API contracts before delegating implementation details |
-| **Security awareness** | Personally reviewing auth, validation, secrets handling, and production configuration |
-| **Accountability** | Standing behind every commit: able to explain, debug, and extend any code in the repository |
-
-### Workflow
+Good prompts mirror good tickets — specific, contextual, bounded:
 
 ```
-Ticket + acceptance criteria → Prompt with context & constraints → Review diff →
-Test locally → PR linked to issue → Merge
-```
-
-The goal is not speed alone; it is **shipping production-quality code** with a shorter iteration loop.
-
-### Engineering Standards
-
-| Standard | Practice |
-|----------|----------|
-| **Own the design** | Architecture, schema, and API contracts are decided first; AI helps implement against them |
-| **Review every change** | No commit without reading the full diff and understanding the behavior |
-| **Verify with tests** | Automated tests and manual runs confirm correctness, not the AI's summary |
-| **Keep diffs focused** | Small, scoped prompts produce changes that are easier to review and reason about |
-| **Protect sensitive areas** | Auth, database migrations, secrets, and infrastructure config get explicit human review |
-| **Document decisions** | Commit messages and README updates reflect *why* a change was made |
-
-### Where AI Adds the Most Value
-
-- Bootstrapping project structure, Docker configs, and repetitive CRUD patterns
-- Exploring tradeoffs ("JWT vs session auth for this use case")
-- Generating test cases from specifications
-- Accelerating debugging with full codebase context
-- Refactoring within explicit constraints ("extract this service without changing the public API")
-- Drafting documentation that is then verified for accuracy
-
-### Where I Retain Direct Ownership
-
-Authentication, database schema, security, architecture, secrets, and production config require personal design and review. Claude reads [`.claude/rules/security.md`](.claude/rules/security.md) for auth and data-access work.
-
-### Quality Gate (Before Every Commit)
-
-See [`.claude/rules/new-feature-checklist.md`](.claude/rules/new-feature-checklist.md) for the full list. Minimum bar:
-
-- [ ] Full diff reviewed and understood
-- [ ] Feature verified locally; tests and linters passing
-- [ ] No scope creep, invented dependencies, or secrets in code
-- [ ] Commit message describes intent
-
-### Prompting Approach
-
-Effective prompts mirror good ticket writing: specific, contextual, and bounded:
-
-```
-✅ "Add a POST /api/v1/sessions endpoint that validates duration > 0,
-    associates the session with the authenticated user, and returns 201.
-    Follow the pattern in backend/app/api/routes/users.py."
-
+✅ "Add POST /api/v1/sessions that validates duration > 0, scopes to the
+    authenticated user, and returns 201. Follow backend/app/api/routes/auth.py."
 ❌ "Build the meditation session feature."
 ```
 
-- Reference **existing files and patterns** to follow
-- State **constraints**: stack, libraries, and what must not change
-- Scope **one concern at a time** for non-trivial work
-- Ask for **explanations** when working in an unfamiliar area
-
-The same rigor applies to development AI and product AI: clear prompts, bounded context, cost awareness, and human review before anything ships.
+Reference real files, state constraints, scope one concern, and ask for explanations in unfamiliar areas. The full per-feature gate (migrations, tests, security) lives in [`.claude/rules/new-feature-checklist.md`](.claude/rules/new-feature-checklist.md).
 
 ---
 
 ## Claude Rules
 
-Rules are split into **tiers** so Claude Code loads only what the current task needs. Large always-on rule files waste context and get ignored. Each tier maps to a native Claude Code mechanism:
+Development is guided by tiered [Claude Code](https://claude.com/claude-code) rules, so the AI loads only what each task needs instead of one bloated always-on file. The root [`CLAUDE.md`](CLAUDE.md) holds the always-on context and indexes the rest.
 
-- **Root `CLAUDE.md`** is read automatically at the start of every session.
-- **Nested `CLAUDE.md`** files load automatically when Claude reads or edits files in that directory.
-- **`.claude/rules/*.md`** files are read on demand, when the trigger in the root file's index applies.
+| Tier | Mechanism | Files |
+|------|-----------|-------|
+| **Always-on** | root `CLAUDE.md`, read every session | project context + code standards |
+| **Directory-scoped** | nested `CLAUDE.md`, auto-loaded in that folder | [`backend/`](backend/CLAUDE.md) · [`frontend/`](frontend/CLAUDE.md) |
+| **Read-on-demand** | `.claude/rules/*.md`, pulled when its trigger applies | [security](.claude/rules/security.md) · [database](.claude/rules/database.md) · [infrastructure](.claude/rules/infrastructure.md) · [ai-product](.claude/rules/ai-product.md) · [new-feature-checklist](.claude/rules/new-feature-checklist.md) |
 
-**Design question per rule:** *What does Claude need to know right now for this task?*
-
-### The 2-2-5 Setup (adapted for this project)
-
-Based on the tiered rules approach: **always-on context**, **directory-scoped zones**, and **read-on-demand specialist rules**. Exact file count grows with the project; the **tiering principle** matters more than the number.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  TIER 1: Always-on — root CLAUDE.md                     │
-│  project context · code standards (naming, errors, etc.)│
-├─────────────────────────────────────────────────────────┤
-│  TIER 2: Directory-scoped — nested CLAUDE.md            │
-│  backend/CLAUDE.md · frontend/CLAUDE.md                 │
-├─────────────────────────────────────────────────────────┤
-│  TIER 3: Read-on-demand — .claude/rules/*.md            │
-│  security · database · infrastructure · ai-product      │
-│  · new-feature-checklist                                │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Tier 1: Always-On
-
-Loaded every conversation. Keep it lean.
-
-| File | Purpose |
-|------|---------|
-| [`CLAUDE.md`](CLAUDE.md) | Project context (stack, folder layout, non-negotiable rules) plus code standards: naming, errors, working style, libraries not to add. Also indexes the on-demand rules below. |
-
-### Tier 2: Directory-Scoped
-
-Nested `CLAUDE.md` files load automatically when Claude works on files in that directory. They can be longer since they are not always in context.
-
-| File | Zone | Covers |
-|------|------|--------|
-| [`backend/CLAUDE.md`](backend/CLAUDE.md) | `backend/**/*.py` | FastAPI routes, services, Pydantic, pytest |
-| [`frontend/CLAUDE.md`](frontend/CLAUDE.md) | `frontend/**/*.{ts,tsx}` | Components, services layer, loading states, UX |
-
-### Tier 3: Read-On-Demand
-
-Claude Code has no glob auto-attach or `description`-based requesting, so these stay out of context until needed. The root `CLAUDE.md` lists each with a **when to read** trigger; `backend/CLAUDE.md` cross-links the backend ones. The trigger must say **when** to use the rule.
-
-| File | Read when… |
-|------|------------|
-| [`security.md`](.claude/rules/security.md) | Adding auth, routes, user data access, env secrets, CORS |
-| [`database.md`](.claude/rules/database.md) | Editing models, queries, or Alembic migrations |
-| [`infrastructure.md`](.claude/rules/infrastructure.md) | Editing Docker, Compose, CI, or AWS deployment config |
-| [`ai-product.md`](.claude/rules/ai-product.md) | Working on V3 LLM integration, prompts, or AI features |
-| [`new-feature-checklist.md`](.claude/rules/new-feature-checklist.md) | Building a feature end to end from ticket to PR |
-
-Write triggers like you are telling a coworker when to grab a binder: specific and actionable.
-
-### Rule-Writing Principles
-
-| Principle | Practice |
-|-----------|----------|
-| **Patterns, not features** | Specs live in GitHub Issues; rules describe how to implement. |
-| **Say what NOT to do** | Do not add axios (use `fetch`); do not commit secrets. |
-| **Use real file paths** | `backend/app/api/routes/sessions.py`, not "follow the established pattern." |
-| **Keep always-on minimal** | Database rules belong in `.claude/rules/database.md`, not the root `CLAUDE.md`. |
-| **Review every few weeks** | Stale rules are worse than none. |
+**Rule-writing principles:** describe patterns, not features (specs live in Issues); say what *not* to do; use real file paths; keep the always-on file minimal.
 
 ---
 
