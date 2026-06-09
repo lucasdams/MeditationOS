@@ -22,6 +22,20 @@ const deriveAt23 = (bpm: number) => {
   return { inhale: Math.round((cycle * 2) / 5), exhale: Math.round((cycle * 3) / 5) }
 }
 
+// Optional session length; 0 = open-ended (finish manually).
+const DURATIONS = [
+  { label: 'Open', min: 0 },
+  { label: '5 min', min: 5 },
+  { label: '10 min', min: 10 },
+  { label: '20 min', min: 20 },
+  { label: '60 min', min: 60 },
+]
+
+const mmss = (totalSec: number) => {
+  const s = Math.max(0, Math.floor(totalSec))
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+}
+
 type Phase = 'inhale' | 'exhale'
 
 export default function BreathePage() {
@@ -37,6 +51,7 @@ export default function BreathePage() {
   const [saving, setSaving] = useState(false)
   const [audioOn, setAudioOn] = useState(false)
   const [volume, setVolume] = useState(0.2)
+  const [targetMin, setTargetMin] = useState(0)
   // Save-a-pattern form
   const [newName, setNewName] = useState('')
   const [newRate, setNewRate] = useState(6)
@@ -77,6 +92,11 @@ export default function BreathePage() {
     volumeRef.current = volume
   }, [audioOn, volume])
 
+  const targetRef = useRef(targetMin)
+  useEffect(() => {
+    targetRef.current = targetMin
+  }, [targetMin])
+
   function audio(): BreathAudio {
     if (!audioRef.current) audioRef.current = new BreathAudio()
     audioRef.current.volume = volumeRef.current
@@ -104,7 +124,17 @@ export default function BreathePage() {
           ? MIN_SCALE + (MAX_SCALE - MIN_SCALE) * frac
           : MAX_SCALE - (MAX_SCALE - MIN_SCALE) * frac,
       )
-      setElapsed((now - startRef.current) / 1000)
+      const el = (now - startRef.current) / 1000
+      setElapsed(el)
+
+      // Auto-finish + save when a duration target is reached.
+      if (targetRef.current > 0 && el >= targetRef.current * 60) {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        setRunning(false)
+        audioRef.current?.stop()
+        void saveSession(targetRef.current * 60)
+        return
+      }
 
       if (now - phaseStartRef.current >= durMs) {
         if (phaseRef.current === 'exhale') {
@@ -155,20 +185,13 @@ export default function BreathePage() {
     setPhase('inhale')
   }
 
-  async function finish() {
-    setRunning(false)
-    audioRef.current?.stop()
-    if (elapsed < 1) {
-      reset()
-      navigate('/')
-      return
-    }
+  async function saveSession(durationSec: number) {
     setError(null)
     setSaving(true)
     try {
       await sessionService.create({
         type: 'resonance_breathing',
-        duration_seconds: Math.round(elapsed),
+        duration_seconds: Math.round(durationSec),
         occurred_at: new Date().toISOString(),
         inhale_seconds: inhale,
         exhale_seconds: exhale,
@@ -179,6 +202,23 @@ export default function BreathePage() {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
     }
+  }
+
+  function finish() {
+    setRunning(false)
+    audioRef.current?.stop()
+    if (elapsed < 1) {
+      reset()
+      navigate('/')
+      return
+    }
+    void saveSession(elapsed)
+  }
+
+  // Switching pattern starts a fresh session — a saved session is one pattern.
+  function selectPattern(id: string) {
+    setSelectedId(id)
+    reset()
   }
 
   async function savePattern() {
@@ -218,8 +258,6 @@ export default function BreathePage() {
     }
   }
 
-  const mins = Math.floor(elapsed / 60)
-  const secs = Math.floor(elapsed % 60)
   const bpm = selected?.breaths_per_minute ?? 0
 
   return (
@@ -241,7 +279,8 @@ export default function BreathePage() {
 
       <div className="breathe-stats">
         <span>
-          {mins}:{secs.toString().padStart(2, '0')}
+          {mmss(elapsed)}
+          {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}
         </span>
         <span>{cycles} cycles</span>
         <span>{bpm} bpm</span>
@@ -252,7 +291,7 @@ export default function BreathePage() {
         id="pattern"
         value={selectedId}
         disabled={running || !patterns}
-        onChange={(e) => setSelectedId(e.target.value)}
+        onChange={(e) => selectPattern(e.target.value)}
       >
         {(patterns ?? []).map((p) => (
           <option key={p.id} value={p.id}>
@@ -265,6 +304,20 @@ export default function BreathePage() {
           Delete this pattern
         </button>
       )}
+
+      <label htmlFor="duration">Duration</label>
+      <select
+        id="duration"
+        value={targetMin}
+        disabled={running}
+        onChange={(e) => setTargetMin(Number(e.target.value))}
+      >
+        {DURATIONS.map((d) => (
+          <option key={d.min} value={d.min}>
+            {d.label}
+          </option>
+        ))}
+      </select>
 
       <div className="breathe-audio">
         <label>
