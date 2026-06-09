@@ -92,9 +92,29 @@ streaks → earn/spend wallet → upgrade catalog → the builder UI.
 ## Social & Community
 
 - [ ] Friend connections and shared streak visibility
-- [ ] Practice groups with shared goals
-- [ ] Group challenges (e.g. collective minutes in a week)
 - [ ] Optional accountability partners
+
+### Clubs (communities)
+
+Named communities users join around a theme or goal — e.g. "Morning Meditators",
+"Beginners", "Breathwork", "Anxiety Support". A reason to keep coming back that's
+*social*, not just personal — and a strong retention loop.
+
+- [ ] Create / join clubs; **public** (discoverable) or **invite-only**
+- [ ] Roles: owner / admin / member; light moderation (remove member, edit club, transfer ownership)
+- [ ] Club page: members, combined stats (total minutes, how many are on a streak), and an **opt-in leaderboard** (by streak or minutes)
+- [ ] **Club challenges** — a collective goal (e.g. "10,000 minutes this month") with shared progress (subsumes the earlier group-challenge idea)
+- [ ] **Activity feed** of members' shared milestones / sessions — respects each session's public/private [visibility](#practice--sessions)
+- [ ] Discovery: browse / search clubs by theme; recommended clubs
+
+**Data model sketch:** `clubs` (name, description, visibility, owner_id) ·
+`club_members` (club_id, user_id, role, joined_at) · `club_challenges`
+(club_id, goal, period).
+
+**Ties to:** session visibility (what shows in the feed), streaks (leaderboards),
+avatars (identity in a club), goals/badges. **Depends on** the friends/social layer
+and **careful privacy defaults** — clubs surface activity, so sharing is opt-in and
+sessions stay private unless a member chooses otherwise.
 
 ### Profiles & Avatars
 
