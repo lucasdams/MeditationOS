@@ -99,7 +99,7 @@ GET /api/v1/breathing-patterns
 ]
 ```
 
-## Dashboard ⏳ planned (Cycle 3)
+## Dashboard ✅ implemented (streak fields ⏳ next)
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
@@ -111,8 +111,6 @@ GET /api/v1/dashboard/stats
 {
   "total_seconds": 54000,
   "session_count": 42,
-  "current_streak_days": 7,
-  "longest_streak_days": 14,
   "this_week": [
     { "date": "2026-06-03", "seconds": 600 },
     { "date": "2026-06-04", "seconds": 0 }
@@ -120,7 +118,9 @@ GET /api/v1/dashboard/stats
 }
 ```
 
-Streak values are computed from `sessions` (see [data-model](data-model.md#design-notes)).
+`this_week` is the last 7 calendar days, zero-filled. **`current_streak_days` /
+`longest_streak_days` are added in the streak ticket** — computed from `sessions`
+(see [data-model](data-model.md#design-notes)), not stored.
 
 ## Health ✅ implemented
 
