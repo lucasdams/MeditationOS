@@ -108,7 +108,7 @@ Trackers capture minutes but not meditation-specific context: type, breathing pa
 | **Backend** | FastAPI, Python, SQLAlchemy, Alembic |
 | **Database** | PostgreSQL |
 | **Infrastructure** | Docker, Linux, AWS (EC2, RDS, S3, CloudWatch) |
-| **Workflow** | Git, GitHub Issues, PRs, milestones, Claude Code |
+| **Workflow** | Git, GitHub Issues, PRs, milestones, GitHub Actions CI, Claude Code |
 | **Product AI** (V3) | Anthropic Claude API for coaching and journal analysis |
 
 ---
@@ -163,7 +163,7 @@ Open PRs early                 Demo + retrospective
 | **Cycle 2** | Sessions API + DB schema + basic frontend form |
 | **Cycle 3** | Dashboard stats + streak calculation |
 | **Cycle 4** | HRV breathing UI + save as session |
-| **Cycle 5** | Deploy V1 to AWS (CI + production config) |
+| **Cycle 5** | Deploy V1 to AWS (production config) |
 
 **Per cycle guidelines (solo dev):**
 
@@ -491,6 +491,7 @@ A deployed, working Version 1 is already a stronger portfolio piece than most tu
 - Ticket-driven development with two-week delivery cycles (one PR per ticket, each issue-linked)
 - Tiered Claude Code rules and structured AI review
 - A real test suite (pytest against PostgreSQL) plus a security review that was acted on (fail-fast on an insecure default secret)
+- CI on every PR (GitHub Actions: ruff lint + pytest + frontend build) gating a protected `main`
 - Architecture tradeoffs documented as ADRs, with meaningful commit history
 
 ---
