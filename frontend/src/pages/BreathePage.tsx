@@ -36,7 +36,7 @@ export default function BreathePage() {
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [audioOn, setAudioOn] = useState(false)
+  const [audioOn, setAudioOn] = useState(true) // guide tone on by default
   const [chimeOn, setChimeOn] = useState(false)
   const [volume, setVolume] = useState(0.2)
   const [targetMin, setTargetMin] = useState(0)
