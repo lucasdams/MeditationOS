@@ -48,6 +48,7 @@ export default function DashboardPage() {
         Signed in as <strong>{user?.email}</strong>.
       </p>
       <nav className="dash-nav">
+        <Link to="/breathe">🫁 Breathe</Link>
         <Link to="/sessions/new">+ Log a session</Link>
         <Link to="/sessions">View your sessions</Link>
       </nav>
