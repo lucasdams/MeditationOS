@@ -91,7 +91,12 @@ export default function BreathePage() {
   }, [])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
-  const startRef = useRef(0)
+  // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
+  // on every start/resume so a breath always begins at the inhale — that keeps the
+  // (scheduled, fixed-length) audio tone in lock-step with the (sampled) visual.
+  // `baseElapsedRef` accumulates total active time across pauses for the timer/XP.
+  const cycleStartRef = useRef(0)
+  const baseElapsedRef = useRef(0)
   const phaseRef = useRef<Segment>('inhale')
   const cyclesRef = useRef(0)
   const phaseSecsRef = useRef({ inhale, exhale })
@@ -137,9 +142,9 @@ export default function BreathePage() {
     let raf = 0
     const draw = (now: number) => {
       const { inhale: inh, exhale: exh } = phaseSecsRef.current
-      const el = (now - startRef.current) / 1000
-      setElapsed(el)
-      setScale(scaleAt(el % cycleLength(inh, exh), inh, exh))
+      const runSec = (now - cycleStartRef.current) / 1000
+      setElapsed(baseElapsedRef.current + runSec)
+      setScale(scaleAt(runSec % cycleLength(inh, exh), inh, exh))
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
@@ -153,9 +158,10 @@ export default function BreathePage() {
     const id = setInterval(() => {
       const { inhale: inh, exhale: exh } = phaseSecsRef.current
       const cycle = cycleLength(inh, exh)
-      const el = (performance.now() - startRef.current) / 1000
+      const runSec = (performance.now() - cycleStartRef.current) / 1000
+      const elapsed = baseElapsedRef.current + runSec
 
-      if (targetRef.current > 0 && el >= targetRef.current * 60) {
+      if (targetRef.current > 0 && elapsed >= targetRef.current * 60) {
         clearInterval(id)
         setRunning(false)
         audioRef.current?.stop()
@@ -163,30 +169,32 @@ export default function BreathePage() {
         return
       }
 
-      const completed = Math.floor(el / cycle)
-      if (completed > cyclesRef.current) {
-        cyclesRef.current = completed
-        setCycles(completed)
-      }
-      const seg = segmentAt(el % cycle, inh, exh)
+      const seg = segmentAt(runSec % cycle, inh, exh)
       if (seg !== phaseRef.current) {
+        // A full breath completes when we roll from the empty-hold back into an inhale.
+        if (seg === 'inhale' && phaseRef.current === 'hold-empty') {
+          cyclesRef.current += 1
+          setCycles(cyclesRef.current)
+        }
         phaseRef.current = seg
         setPhase(seg)
         // Sound only at the start of an actual breath, not during the holds.
         if (seg === 'inhale' || seg === 'exhale') cuePhase(seg)
       }
-    }, 200)
+    }, 60)
     return () => clearInterval(id)
   }, [running])
 
   function start() {
-    startRef.current = performance.now() - elapsed * 1000
-    const seg = segmentAt(elapsed % cycleLength(inhale, exhale), inhale, exhale)
-    phaseRef.current = seg
-    setPhase(seg)
+    // Restart the breath at the inhale, carrying total elapsed forward. The cue
+    // below and the visual both begin the inhale together, so they can't drift.
+    cycleStartRef.current = performance.now()
+    baseElapsedRef.current = elapsed
+    phaseRef.current = 'inhale'
+    setPhase('inhale')
     setRunning(true)
     if (audioOnRef.current || chimeOnRef.current) audio().resume()
-    if (seg === 'inhale' || seg === 'exhale') cuePhase(seg)
+    cuePhase('inhale')
   }
 
   function pause() {
@@ -210,6 +218,7 @@ export default function BreathePage() {
     setElapsed(0)
     setCycles(0)
     cyclesRef.current = 0
+    baseElapsedRef.current = 0
     setScale(MIN_SCALE)
     setPhase('inhale')
   }
