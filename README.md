@@ -488,16 +488,39 @@ A deployed, working Version 1 is already a stronger portfolio piece than most tu
 
 ## Getting Started
 
-> Setup instructions will be added as the project is scaffolded.
+The whole stack — React frontend, FastAPI backend, and PostgreSQL — runs with Docker Compose.
+
+**Prerequisites:** Docker Desktop (or Docker Engine + Compose v2).
 
 ```bash
-# Clone the repository
-git clone https://github.com/<your-username>/MeditationOS.git
+# 1. Clone
+git clone https://github.com/lucasdams/MeditationOS.git
 cd MeditationOS
 
-# Start with Docker (coming soon)
-docker compose up
+# 2. Create your local env file from the template, then edit values
+cp .env.example .env
+
+# 3. Build and start all three services
+docker compose up --build
 ```
+
+Once it's up:
+
+| Service | URL |
+|---------|-----|
+| Frontend (Vite) | http://localhost:5173 |
+| Backend (FastAPI) | http://localhost:8000 |
+| API docs (OpenAPI) | http://localhost:8000/docs |
+| Database (Postgres) | `localhost:5432` |
+
+The backend waits for Postgres to report healthy before starting. Source folders are bind-mounted, so backend (`--reload`) and frontend (Vite HMR) pick up changes live.
+
+```bash
+docker compose down        # stop the stack
+docker compose down -v      # stop and wipe the database volume
+```
+
+> **Port 5432 already in use?** Another Postgres is running locally. Either stop it, or change the database's host port in `docker-compose.yml` (e.g. `"5433:5432"`) — the backend connects internally as `database:5432`, so nothing else needs to change.
 
 ---
 
