@@ -4,7 +4,7 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, and guided HRV breathing working locally · 50 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, and guided HRV breathing working locally · 61 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
@@ -15,7 +15,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets), gliding/fading audio guide + transition chime, optional duration timer; saves as a session
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
-- ✅ 50 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 61 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 
