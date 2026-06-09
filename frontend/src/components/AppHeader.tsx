@@ -28,11 +28,12 @@ export default function AppHeader() {
         MeditationOS
       </Link>
       <nav className="app-nav">
+        <Link to="/">Home</Link>
         <Link to="/breathe" className="primary">
           🫁 Breathe
         </Link>
-        <Link to="/sessions/new">Log</Link>
-        <Link to="/sessions">Sessions</Link>
+        <Link to="/sessions/new">+ Log</Link>
+        <Link to="/sessions">History</Link>
       </nav>
       <div className="app-user">
         <span>
