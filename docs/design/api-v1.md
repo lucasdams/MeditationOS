@@ -4,6 +4,8 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
+**Status legend:** ✅ implemented · ⏳ planned. This is the V1 *contract* — only Auth and Health are built so far; the rest is the surface upcoming cycles code against.
+
 ## Conventions
 
 - **Base path:** `/api/v1`
@@ -15,11 +17,14 @@ REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentica
 
 ### Error envelope
 
-Every non-2xx returns a consistent shape:
+Errors return FastAPI's default shape:
 
 ```json
-{ "detail": "Human-readable message", "code": "invalid_credentials" }
+{ "detail": "Human-readable message" }
 ```
+
+> _Planned:_ add a machine-readable `code` field (e.g. `"invalid_credentials"`) via a
+> custom exception handler, so clients can branch on a stable value instead of prose.
 
 | Status | When |
 |--------|------|
@@ -31,7 +36,7 @@ Every non-2xx returns a consistent shape:
 | `422` | Validation failed (Pydantic field errors) |
 | `429` | Rate limit exceeded |
 
-## Auth
+## Auth ✅ implemented
 
 | Method | Path | Auth | Body | Success |
 |--------|------|------|------|---------|
@@ -47,7 +52,7 @@ POST /api/v1/auth/register
 { "id": "…", "email": "user@example.com", "created_at": "2026-06-09T14:00:00Z" }
 ```
 
-## Sessions
+## Sessions ⏳ planned (Cycle 2)
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
@@ -75,7 +80,7 @@ POST /api/v1/sessions
 
 `breaths_per_minute` is computed in the response, never stored.
 
-## Breathing patterns
+## Breathing patterns ⏳ planned (Cycle 4)
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
@@ -94,7 +99,7 @@ GET /api/v1/breathing-patterns
 ]
 ```
 
-## Dashboard
+## Dashboard ⏳ planned (Cycle 3)
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
@@ -117,11 +122,11 @@ GET /api/v1/dashboard/stats
 
 Streak values are computed from `sessions` (see [data-model](data-model.md#design-notes)).
 
-## Health
+## Health ✅ implemented
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/health` | — | Liveness probe → `{ "status": "ok" }` |
+| GET | `/health` | — | Liveness probe → `{ "status": "ok" }` (DB-readiness check planned) |
 
 ## Out of scope for V1
 
