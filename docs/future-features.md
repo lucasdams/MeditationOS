@@ -53,6 +53,8 @@ The strongest retention loop in the product.
 
 > A **first step shipped in V1**: XP (= minutes practiced) drives a level, and a `<pre>` ASCII tree on the dashboard grows through tiers as you level up. The Sanctuary below is the fuller version (currency you *spend*, multiple upgrade tracks).
 
+- [ ] **A tree unique to each person** — instead of fixed tiers, *generate* the tree from the user's data so it reflects how they practice: dominant meditation type → the tree's character (e.g. resonance breathing → tall/slender, body scan → bushy, loving-kindness → blossoms), streak → fullness (leafy vs sparse), level → size, plus a per-user seed for a distinct base shape. Deterministic (same data → same tree). Likely via an **L-system**. Two flavours to choose from: **procedural ASCII** (keeps the retro look, low-risk) or **procedural SVG** (vector, more beautiful, bigger swing).
+
 **Core loop:** `practice → earn currency → spend → upgrade → see your space change`
 
 - [ ] **Earn currency** ("calm points" / seeds) from each session, with **bonuses for streak milestones** — a longer daily streak earns faster, so consistency is rewarded over bingeing.
