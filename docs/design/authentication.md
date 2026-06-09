@@ -115,6 +115,10 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
   `X-Forwarded-For` source so limits are per-user, not per-proxy.
 - **Postgres driver.** `psycopg2-binary` is convenient for dev but discouraged
   for production; use the source build or psycopg3.
+- **Google OAuth origins.** Add the production domain as an *Authorized JavaScript
+  origin* on the Google OAuth client, and set `GOOGLE_CLIENT_ID` /
+  `VITE_GOOGLE_CLIENT_ID` in the production environment. With `ENVIRONMENT=production`
+  the session cookie is already issued `Secure` (HTTPS-only).
 
 ## Deliberately deferred (post-V1)
 
