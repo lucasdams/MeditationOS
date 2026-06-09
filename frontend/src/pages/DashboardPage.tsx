@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
+import LevelCard from '../components/LevelCard'
 import type { DashboardStats } from '../types'
 
 const formatTotal = (seconds: number) => {
@@ -61,10 +62,12 @@ export default function DashboardPage() {
 
       {!stats && !error && <p>Loading…</p>}
 
+      {stats && <LevelCard stats={stats} />}
+
       {stats && stats.session_count === 0 && (
         <p className="muted">
-          No practice yet. <Link to="/sessions/new">Log your first session</Link> to start your
-          streak.
+          Your tree is just a seedling. <Link to="/sessions/new">Log a session</Link> or{' '}
+          <Link to="/breathe">breathe</Link> to earn XP and help it grow.
         </p>
       )}
 

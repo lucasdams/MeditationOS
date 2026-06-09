@@ -140,6 +140,55 @@ button:disabled {
   cursor: pointer;
 }
 
+.level-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 1.25rem 0;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border: 1px solid #d1fae5;
+  border-radius: 12px;
+}
+
+.level-tree {
+  margin: 0;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  line-height: 1.05;
+  font-size: 0.8rem;
+  color: #15803d;
+  white-space: pre;
+}
+
+.level-meta {
+  flex: 1;
+}
+
+.level-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.xp-bar {
+  height: 10px;
+  background: #d1fae5;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #059669);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.xp-text {
+  font-size: 0.8rem;
+  color: #6b6b70;
+  margin-top: 0.35rem;
+}
+
 .stat-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

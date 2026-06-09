@@ -15,4 +15,8 @@ class DashboardStats(BaseModel):
     session_count: int
     current_streak_days: int
     longest_streak_days: int
+    xp: int
+    level: int
+    xp_into_level: int
+    xp_for_next_level: int
     this_week: list[DailyTotal]

@@ -11,6 +11,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, and a weekly breakdown
+- ✅ Levels & XP — earn XP from practice, level up, and grow an ASCII tree on your dashboard
 - ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets), gliding/fading audio guide + transition chime, optional duration timer; saves as a session
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
