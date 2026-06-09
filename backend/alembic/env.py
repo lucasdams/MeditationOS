@@ -4,12 +4,11 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from app.core.config import settings
-from app.core.db import Base
-
 # Importing the models package registers every model's table on Base.metadata
 # so `alembic revision --autogenerate` can see them.
 from app import models  # noqa: F401,E402
+from app.core.config import settings
+from app.core.db import Base
 
 # Alembic Config object, providing access to values in alembic.ini.
 config = context.config
