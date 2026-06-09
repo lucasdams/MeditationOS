@@ -7,7 +7,7 @@ type Phase = 'inhale' | 'exhale'
 export class BreathAudio {
   private ctx: AudioContext | null = null
   private toneNodes: OscillatorNode[] = []
-  volume = 0.2
+  volume = 0.4
 
   private ensureContext(): AudioContext {
     if (!this.ctx) this.ctx = new AudioContext()
@@ -25,11 +25,13 @@ export class BreathAudio {
 
     const now = ctx.currentTime
     const end = now + durationSec
-    const [from, to] = phase === 'inhale' ? [196, 262] : [262, 174] // gentle rise / fall
+    // Mid-range so laptop speakers can actually reproduce it (a low sub-octave is
+    // inaudible on small speakers). Gentle rise on the in-breath, fall on the out.
+    const [from, to] = phase === 'inhale' ? [262, 330] : [330, 247] // C4→E4 in / E4→B3 out
 
     const filter = ctx.createBiquadFilter()
     filter.type = 'lowpass'
-    filter.frequency.value = 1100 // warm, takes the edge off
+    filter.frequency.value = 2400 // soften the upper partial, keep it warm
 
     // Slow swell in, hold, then fade fully to silence by the end (no click).
     const attack = Math.min(0.6, durationSec * 0.35)
@@ -41,10 +43,10 @@ export class BreathAudio {
     gain.gain.linearRampToValueAtTime(0.0001, end)
     filter.connect(gain).connect(ctx.destination)
 
-    // Fundamental + a softer octave below for warmth.
+    // Fundamental + a soft octave above for a little air/warmth.
     for (const [mult, level] of [
       [1, 1],
-      [0.5, 0.5],
+      [2, 0.2],
     ] as const) {
       const osc = ctx.createOscillator()
       osc.type = 'sine'
