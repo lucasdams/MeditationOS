@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
+import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
+import RewardOverlay from '../components/RewardOverlay'
 import type { MeditationType } from '../types'
 
 const TYPES: { value: MeditationType; label: string }[] = [
@@ -28,6 +30,7 @@ export default function LogSessionPage() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -51,7 +54,8 @@ export default function LogSessionPage() {
         occurred_at: occurredAt,
         notes: notes.trim() || null,
       })
-      navigate('/sessions')
+      const stats = await dashboardService.getStats()
+      setReward({ afterXp: stats.xp, xpGained: Math.round(mins) })
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -114,6 +118,14 @@ export default function LogSessionPage() {
       <p>
         <Link to="/">Back to dashboard</Link>
       </p>
+
+      {reward && (
+        <RewardOverlay
+          afterXp={reward.afterXp}
+          xpGained={reward.xpGained}
+          onClose={() => navigate('/sessions')}
+        />
+      )}
     </main>
   )
 }
