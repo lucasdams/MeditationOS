@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function DashboardPage() {
@@ -21,7 +21,9 @@ export default function DashboardPage() {
       <p>
         Signed in as <strong>{user?.email}</strong>.
       </p>
-      <p>Session tracking, breathing, and your dashboard land in upcoming tickets.</p>
+      <p>
+        <Link to="/sessions/new">+ Log a session</Link>
+      </p>
     </main>
   )
 }
