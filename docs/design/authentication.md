@@ -10,7 +10,7 @@ V1 uses a **short-lived JWT access token delivered in an httpOnly cookie**, not 
 |----------|-------|
 | Token type | JWT (HS256), signed with `SECRET_KEY` |
 | Transport | `Set-Cookie`, `HttpOnly; Secure; SameSite=Lax` |
-| Access token TTL | 30 minutes |
+| Access token TTL | 60 minutes (configurable via `ACCESS_TOKEN_EXPIRE_MINUTES`) |
 | Refresh strategy | V1: re-login on expiry. V1.5: rotating refresh token (httpOnly cookie, hash stored in DB) |
 | Password hashing | `argon2` (via `passlib`), per-password salt |
 
@@ -41,7 +41,7 @@ POST /api/v1/auth/register  { email, password }
 POST /api/v1/auth/login  { email, password }
   → look up user by email
   → verify password against argon2 hash (constant-time)
-  → on success: sign JWT { sub: user_id, exp: now+30m }
+  → on success: sign JWT { sub: user_id, exp: now+60m }
   → Set-Cookie: access_token=<jwt>; HttpOnly; Secure; SameSite=Lax
   → 200 { id, email }
   → on failure: 401 (generic "invalid credentials" — no user-enumeration hint)
@@ -67,7 +67,7 @@ POST /api/v1/auth/logout
   → 204
 ```
 
-Because V1 uses stateless JWTs, logout clears the cookie but the token stays valid until expiry if it was copied. The 30-minute TTL bounds that window. True server-side revocation arrives with the V1.5 refresh-token store.
+Because V1 uses stateless JWTs, logout clears the cookie but the token stays valid until expiry if it was copied. The 60-minute TTL bounds that window. True server-side revocation arrives with the V1.5 refresh-token store.
 
 ## Hardening checklist (tracked against `.claude/rules/security.md`)
 
