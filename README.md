@@ -4,18 +4,18 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, and guided HRV breathing working locally · 61 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, and guided HRV breathing working locally · 64 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
 - ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing; public usernames + a top banner (name · level)
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
-- ✅ Stats dashboard — total practice time, current/longest streak, and a weekly breakdown
+- ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap
 - ✅ Levels & XP — earn XP from practice, level up, and grow an ASCII tree on your dashboard
-- ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets), gliding/fading audio guide + transition chime, optional duration timer; saves as a session
+- ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, soft mid-range audio guide + transition bell, optional duration timer; saves as a session
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
-- ✅ 61 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 64 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 
