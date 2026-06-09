@@ -38,8 +38,31 @@ body {
 
 .app-nav {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   flex: 1;
+}
+
+.app-nav a {
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  background: #f0f0f3;
+  color: #1c1c1e;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.app-nav a:hover {
+  background: #e5e5ea;
+}
+
+.app-nav a.primary {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.app-nav a.primary:hover {
+  background: #4338ca;
 }
 
 .app-user {
