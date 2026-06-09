@@ -2,9 +2,16 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** V1 in progress · Repo structure and Claude Code rules defined · App code not yet started
+**Status:** Cycle 1 complete — register / login / logout working locally · 14 backend tests passing · Cycle 2 (Sessions API) up next
 
-> 📸 _Demo and screenshots coming with the V1 release._
+**What's working now (Cycle 1):**
+
+- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing
+- ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
+- ✅ React + TypeScript frontend — protected routes, loading and error states
+- ✅ 14 backend tests (pytest against Postgres), Dockerized dev stack, security review actioned
+
+> 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 
 ## Contents
 
@@ -154,7 +161,7 @@ Open PRs early                 Demo + retrospective
 | **Cycle 2** | Sessions API + DB schema + basic frontend form |
 | **Cycle 3** | Dashboard stats + streak calculation |
 | **Cycle 4** | HRV breathing UI + save as session |
-| **Cycle 5** | Docker compose + deploy V1 to AWS |
+| **Cycle 5** | Deploy V1 to AWS (CI + production config) |
 
 **Per cycle guidelines (solo dev):**
 
@@ -404,7 +411,7 @@ Three versions, each shippable on its own. Full details — HRV breathing config
 
 ## Future Features
 
-Planned capabilities beyond the current roadmap, across practice & sessions, HRV & breathing, journaling, goals & gamification, AI, practice environment, social/community, and platform. Priority may shift as V1 ships and user feedback comes in.
+Planned capabilities beyond the current roadmap, across practice & sessions, HRV & breathing, journaling, goals & gamification, accounts & auth (incl. Sign in with Google), payments & monetization (Stripe), AI, practice environment, social/community, and platform. Priority may shift as V1 ships and user feedback comes in.
 
 See the full checklist in **[docs/future-features.md](docs/future-features.md)**.
 
@@ -412,7 +419,7 @@ See the full checklist in **[docs/future-features.md](docs/future-features.md)**
 
 ## Database Design
 
-Core tables (V1–V2): `users`, `sessions`, `breathing_patterns`, `journals`, `goals`, `streaks`. Future tables (V3+): `friendships`, `groups`, `challenges`, `notifications`.
+Core tables (V1–V2): `users`, `sessions`, `breathing_patterns`, `journals`, `goals`. Streak stats are **computed from `sessions`**, not stored (see the design note in the linked doc). Future tables (V3+): `friendships`, `groups`, `challenges`, `notifications`.
 
 Full schema — column types, constraints, indexes, and design notes — in **[docs/design/data-model.md](docs/design/data-model.md)**.
 
@@ -479,10 +486,10 @@ A deployed, working Version 1 is already a stronger portfolio piece than most tu
 
 ### Software Engineering
 
-- Ticket-driven development with two-week delivery cycles
+- Ticket-driven development with two-week delivery cycles (one PR per ticket, each issue-linked)
 - Tiered Claude Code rules and structured AI review
-- Testing strategy and quality gates
-- Architecture tradeoffs and meaningful commit history
+- A real test suite (pytest against PostgreSQL) plus a security review that was acted on (fail-fast on an insecure default secret)
+- Architecture tradeoffs documented as ADRs, with meaningful commit history
 
 ---
 
