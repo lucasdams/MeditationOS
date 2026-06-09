@@ -35,6 +35,36 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Achievement badges for streaks and hour milestones
 - [ ] Progress toward long-term targets (e.g. 100-hour practice)
 
+### Sanctuary — build & upgrade your space (streak rewards)
+
+A persistent space the user grows by practicing — a calm **sanctuary** (garden /
+farm / home / retreat) that becomes a long-term reason to keep the streak alive.
+The strongest retention loop in the product.
+
+**Core loop:** `practice → earn currency → spend → upgrade → see your space change`
+
+- [ ] **Earn currency** ("calm points" / seeds) from each session, with **bonuses for streak milestones** — a longer daily streak earns faster, so consistency is rewarded over bingeing.
+- [ ] **Spend on upgrades** across a few tracks, so there's always a next thing to work toward:
+  - *Nature* — garden beds, trees, a pond, wildlife
+  - *Structures* — meditation hut → cabin → temple
+  - *Ambiance* — time-of-day, weather, soundscape, lighting
+  - *Companions* — animals/creatures that appear in the space
+- [ ] **Streak drives growth.** An active streak keeps the space thriving; a long gap lets it go gently dormant — **never punishing** (no destroyed progress; it recovers when you return). Wellness app: nudge, not shame.
+- [ ] **Milestone unlocks** — streak/hour milestones unlock new upgrade tiers and one-off cosmetics (pairs with achievement badges and avatars).
+
+**Monetization tie-in:** premium cosmetic upgrade packs or a currency boost via
+Stripe — purely cosmetic, never pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
+
+**Data model sketch (when built):**
+- `user_wallet` — `balance`, `lifetime_earned`
+- `upgrades` — catalog: `key`, `category`, `tier`, `cost`
+- `user_upgrades` — which upgrades a user owns + level
+- earning rules derive from `sessions` + the streak engine
+
+**Depends on:** the **streak engine (Cycle 3)** for "current streak", and a
+small **rewards/economy** service to grant + spend currency. Build order:
+streaks → earn/spend wallet → upgrade catalog → the builder UI.
+
 ## AI (Post-V3)
 
 - [ ] Proactive check-ins based on missed sessions or journal sentiment
