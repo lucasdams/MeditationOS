@@ -20,6 +20,16 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Session stats per pattern (which rates users practice most, time of day)
 - [ ] Optional breath holds between inhale and exhale
 - [ ] Haptic or audio-only breathing modes
+- [ ] Custom in:out ratio for resonance breathing (default is 2:3; advanced users with a known resonance frequency)
+
+### High-rate breathwork (Wim Hof–style) — separate mode
+
+A **different practice** from slow resonance breathing: stimulating (sympathetic), not calming. Its own screen and flow, not a ratio/rate slider.
+
+- [ ] Rounds of fast deep breaths (e.g. 30–40), then an **exhale breath-hold** (retention) timer, then a short **recovery inhale-hold**, repeated for N rounds
+- [ ] Round + breath counter, hold timers, and gentle audio cues
+- [ ] Save as a session with a distinct type (e.g. `breathwork`) — needs a new value in the session-type CHECK constraint
+- [ ] Safety note in-app: never practice in/near water or while driving; stop if lightheaded (controlled hyperventilation)
 
 ## Journaling & Insights
 
