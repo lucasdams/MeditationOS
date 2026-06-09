@@ -1,0 +1,104 @@
+# ─────────────────────────────────────────────
+# Secrets & environment — NEVER commit
+# ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+credentials.json
+.aws/
+
+# ─────────────────────────────────────────────
+# Personal / local scratch (not for reviewers)
+# ─────────────────────────────────────────────
+personal/
+notes/
+scratch/
+TODO.local.md
+*.local
+
+# Claude Code — keep CLAUDE.md and .claude/rules/ tracked,
+# but ignore local machine settings and session data
+.claude/settings.local.json
+.claude/*.local.json
+.claude/sessions/
+.claude/todos/
+.claude/shell-snapshots/
+
+# ─────────────────────────────────────────────
+# Python / backend (FastAPI)
+# ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ─────────────────────────────────────────────
+# Node / frontend (React + Vite)
+# ─────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# ─────────────────────────────────────────────
+# Databases & dumps (no local data in the repo)
+# ─────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.bak
+pgdata/
+
+# ─────────────────────────────────────────────
+# Logs & temp
+# ─────────────────────────────────────────────
+*.log
+logs/
+tmp/
+*.tmp
+
+# ─────────────────────────────────────────────
+# Editor / IDE noise
+# ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─────────────────────────────────────────────
+# OS cruft (macOS / Windows)
+# ─────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ─────────────────────────────────────────────
+# Local Docker overrides
+# ─────────────────────────────────────────────
+docker-compose.override.yml
