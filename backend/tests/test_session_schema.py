@@ -1,7 +1,7 @@
 """Unit tests for the SessionRead computed field (no DB needed)."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from app.schemas.session import SessionRead
 
@@ -11,7 +11,7 @@ def _make(**overrides) -> SessionRead:
         "id": uuid.uuid4(),
         "type": "resonance_breathing",
         "duration_seconds": 600,
-        "session_date": date(2026, 1, 1),
+        "occurred_at": datetime(2026, 1, 1, 8, 0, tzinfo=UTC),
         "notes": None,
         "inhale_seconds": None,
         "exhale_seconds": None,

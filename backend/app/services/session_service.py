@@ -7,7 +7,7 @@ model. All queries are scoped to a `user_id`.
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.session import Session
@@ -62,15 +62,12 @@ def list_sessions(
     offset: int = 0,
 ) -> list[Session]:
     stmt = select(Session).where(Session.user_id == user_id)
+    # `from`/`to` filter on the calendar date of occurrence (inclusive).
     if date_from is not None:
-        stmt = stmt.where(Session.session_date >= date_from)
+        stmt = stmt.where(func.date(Session.occurred_at) >= date_from)
     if date_to is not None:
-        stmt = stmt.where(Session.session_date <= date_to)
+        stmt = stmt.where(func.date(Session.occurred_at) <= date_to)
     if type is not None:
         stmt = stmt.where(Session.type == type)
-    stmt = (
-        stmt.order_by(Session.session_date.desc(), Session.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = stmt.order_by(Session.occurred_at.desc()).limit(limit).offset(offset)
     return list(db.execute(stmt).scalars().all())

@@ -2,7 +2,7 @@
 
 import uuid
 
-MINDFUL = {"type": "mindfulness", "duration_seconds": 600, "session_date": "2026-01-01"}
+MINDFUL = {"type": "mindfulness", "duration_seconds": 600, "occurred_at": "2026-01-01T08:00:00"}
 
 
 def _auth(client, email):

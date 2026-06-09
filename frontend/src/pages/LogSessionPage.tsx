@@ -13,13 +13,18 @@ const TYPES: { value: MeditationType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-const today = () => new Date().toISOString().slice(0, 10)
+// Local "now" formatted for a <input type="datetime-local"> (YYYY-MM-DDThh:mm).
+const nowLocal = () => {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
 
 export default function LogSessionPage() {
   const navigate = useNavigate()
   const [type, setType] = useState<MeditationType>('mindfulness')
   const [minutes, setMinutes] = useState('10')
-  const [date, setDate] = useState(today())
+  const [occurredAt, setOccurredAt] = useState(nowLocal())
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -33,8 +38,8 @@ export default function LogSessionPage() {
       setError('Duration must be a positive number of minutes.')
       return
     }
-    if (!date) {
-      setError('Please choose a date.')
+    if (!occurredAt) {
+      setError('Please choose a date and time.')
       return
     }
 
@@ -43,7 +48,7 @@ export default function LogSessionPage() {
       await sessionService.create({
         type,
         duration_seconds: Math.round(mins * 60),
-        session_date: date,
+        occurred_at: occurredAt,
         notes: notes.trim() || null,
       })
       navigate('/sessions')
@@ -80,8 +85,13 @@ export default function LogSessionPage() {
           onChange={(e) => setMinutes(e.target.value)}
         />
 
-        <label htmlFor="date">Date</label>
-        <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <label htmlFor="occurred">Date &amp; time</label>
+        <input
+          id="occurred"
+          type="datetime-local"
+          value={occurredAt}
+          onChange={(e) => setOccurredAt(e.target.value)}
+        />
 
         <label htmlFor="notes">Notes (optional)</label>
         <textarea

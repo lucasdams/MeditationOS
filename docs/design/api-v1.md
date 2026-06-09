@@ -67,7 +67,7 @@ POST /api/v1/sessions
 {
   "type": "resonance_breathing",
   "duration_seconds": 600,
-  "session_date": "2026-06-09",
+  "occurred_at": "2026-06-09T07:30:00",
   "inhale_seconds": 5,
   "exhale_seconds": 5,
   "cycles_completed": 60,
@@ -75,7 +75,7 @@ POST /api/v1/sessions
 }
 → 201
 { "id": "…", "type": "resonance_breathing", "duration_seconds": 600,
-  "breaths_per_minute": 6, "session_date": "2026-06-09", "created_at": "…" }
+  "breaths_per_minute": 6, "occurred_at": "2026-06-09T07:30:00", "created_at": "…" }
 ```
 
 `breaths_per_minute` is computed in the response, never stored.
