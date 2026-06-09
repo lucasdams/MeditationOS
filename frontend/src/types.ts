@@ -47,3 +47,18 @@ export interface DashboardStats {
   longest_streak_days: number
   this_week: DailyTotal[]
 }
+
+export interface BreathingPattern {
+  id: string
+  name: string
+  inhale_seconds: number
+  exhale_seconds: number
+  is_preset: boolean
+  breaths_per_minute: number
+}
+
+export interface BreathingPatternCreate {
+  name: string
+  inhale_seconds: number
+  exhale_seconds: number
+}

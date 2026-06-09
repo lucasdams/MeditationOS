@@ -1,30 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
+import { breathingPatternService } from '../services/breathingPatterns'
 import { ApiError } from '../services/api'
 import { BreathAudio } from '../lib/breathAudio'
-
-const PRESETS = [
-  { label: '6 bpm · balanced', bpm: 6 },
-  { label: '3 bpm · slow', bpm: 3 },
-  { label: '1.5 bpm · extended', bpm: 1.5 },
-  { label: '1 bpm · advanced', bpm: 1 },
-]
-
-// 2:3 in:out ratio: inhale = 40% of the cycle, exhale = 60%.
-const phaseSeconds = (bpm: number) => {
-  const cycle = 60 / bpm
-  return { inhale: (cycle * 2) / 5, exhale: (cycle * 3) / 5 }
-}
+import type { BreathingPattern } from '../types'
 
 const MIN_SCALE = 0.35
 const MAX_SCALE = 1
+
+// Rates offered in the "save a pattern" form; in/out derived at the 2:3 ratio.
+const SAVE_RATES = [6, 3, 1.5, 1]
+const deriveAt23 = (bpm: number) => {
+  const cycle = 60 / bpm
+  return { inhale: Math.round((cycle * 2) / 5), exhale: Math.round((cycle * 3) / 5) }
+}
 
 type Phase = 'inhale' | 'exhale'
 
 export default function BreathePage() {
   const navigate = useNavigate()
-  const [bpm, setBpm] = useState(6)
+  const [patterns, setPatterns] = useState<BreathingPattern[] | null>(null)
+  const [selectedId, setSelectedId] = useState('')
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Phase>('inhale')
   const [scale, setScale] = useState(MIN_SCALE)
@@ -34,6 +31,25 @@ export default function BreathePage() {
   const [saving, setSaving] = useState(false)
   const [audioOn, setAudioOn] = useState(false)
   const [volume, setVolume] = useState(0.2)
+  // Save-a-pattern form
+  const [newName, setNewName] = useState('')
+  const [newRate, setNewRate] = useState(6)
+
+  const selected = patterns?.find((p) => p.id === selectedId) ?? null
+  const inhale = selected?.inhale_seconds ?? 4
+  const exhale = selected?.exhale_seconds ?? 6
+
+  // Load patterns; default to the first preset.
+  useEffect(() => {
+    breathingPatternService
+      .list()
+      .then((list) => {
+        setPatterns(list)
+        const def = list.find((p) => p.is_preset) ?? list[0]
+        if (def) setSelectedId(def.id)
+      })
+      .catch(() => setError('Could not load breathing patterns.'))
+  }, [])
 
   // Animation state in refs so the rAF loop reads fresh values without re-subscribing.
   const rafRef = useRef<number | undefined>(undefined)
@@ -41,10 +57,10 @@ export default function BreathePage() {
   const phaseStartRef = useRef(0)
   const phaseRef = useRef<Phase>('inhale')
   const cyclesRef = useRef(0)
-  const phaseSecsRef = useRef(phaseSeconds(bpm))
+  const phaseSecsRef = useRef({ inhale, exhale })
   useEffect(() => {
-    phaseSecsRef.current = phaseSeconds(bpm)
-  }, [bpm])
+    phaseSecsRef.current = { inhale, exhale }
+  }, [inhale, exhale])
 
   // Audio guide (lazily created so the AudioContext only opens on a user gesture).
   const audioRef = useRef<BreathAudio | null>(null)
@@ -67,7 +83,6 @@ export default function BreathePage() {
     audio().playPhase(p, dur)
   }
 
-  // Stop the tone on unmount.
   useEffect(() => () => audioRef.current?.close(), [])
 
   useEffect(() => {
@@ -105,7 +120,7 @@ export default function BreathePage() {
 
   function start() {
     const now = performance.now()
-    startRef.current = now - elapsed * 1000 // resume preserves elapsed
+    startRef.current = now - elapsed * 1000
     phaseStartRef.current = now
     phaseRef.current = 'inhale'
     setPhase('inhale')
@@ -144,27 +159,62 @@ export default function BreathePage() {
     }
     setError(null)
     setSaving(true)
-    const { inhale, exhale } = phaseSeconds(bpm)
     try {
       await sessionService.create({
         type: 'resonance_breathing',
         duration_seconds: Math.round(elapsed),
         occurred_at: new Date().toISOString(),
-        inhale_seconds: Math.round(inhale),
-        exhale_seconds: Math.round(exhale),
+        inhale_seconds: inhale,
+        exhale_seconds: exhale,
         cycles_completed: cyclesRef.current,
       })
       navigate('/sessions')
     } catch (err) {
-      setError(
-        err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.',
-      )
+      setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
+    }
+  }
+
+  async function savePattern() {
+    if (!newName.trim()) {
+      setError('Give the pattern a name.')
+      return
+    }
+    setError(null)
+    const { inhale: i, exhale: e } = deriveAt23(newRate)
+    try {
+      const created = await breathingPatternService.create({
+        name: newName.trim(),
+        inhale_seconds: i,
+        exhale_seconds: e,
+      })
+      setPatterns((prev) => (prev ? [...prev, created] : [created]))
+      setSelectedId(created.id)
+      setNewName('')
+    } catch {
+      setError('Could not save the pattern.')
+    }
+  }
+
+  async function deleteSelected() {
+    if (!selected || selected.is_preset) return
+    const id = selected.id
+    try {
+      await breathingPatternService.remove(id)
+      setPatterns((prev) => {
+        const next = prev?.filter((p) => p.id !== id) ?? null
+        const def = next?.find((p) => p.is_preset) ?? next?.[0]
+        setSelectedId(def?.id ?? '')
+        return next
+      })
+    } catch {
+      setError('Could not delete the pattern.')
     }
   }
 
   const mins = Math.floor(elapsed / 60)
   const secs = Math.floor(elapsed % 60)
+  const bpm = selected?.breaths_per_minute ?? 0
 
   return (
     <main className="breathe">
@@ -191,19 +241,24 @@ export default function BreathePage() {
         <span>{bpm} bpm</span>
       </div>
 
-      <label htmlFor="rate">Pace</label>
+      <label htmlFor="pattern">Pattern</label>
       <select
-        id="rate"
-        value={bpm}
-        disabled={running}
-        onChange={(e) => setBpm(Number(e.target.value))}
+        id="pattern"
+        value={selectedId}
+        disabled={running || !patterns}
+        onChange={(e) => setSelectedId(e.target.value)}
       >
-        {PRESETS.map((p) => (
-          <option key={p.bpm} value={p.bpm}>
-            {p.label}
+        {(patterns ?? []).map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name} · {p.breaths_per_minute} bpm
           </option>
         ))}
       </select>
+      {selected && !selected.is_preset && !running && (
+        <button type="button" className="link-danger" onClick={deleteSelected}>
+          Delete this pattern
+        </button>
+      )}
 
       <div className="breathe-audio">
         <label>
@@ -234,7 +289,7 @@ export default function BreathePage() {
 
       <div className="breathe-controls">
         {!running ? (
-          <button type="button" onClick={start} disabled={saving}>
+          <button type="button" onClick={start} disabled={saving || !selected}>
             {elapsed > 0 ? 'Resume' : 'Start'}
           </button>
         ) : (
@@ -246,6 +301,28 @@ export default function BreathePage() {
           {saving ? 'Saving…' : 'Finish & save'}
         </button>
       </div>
+
+      {!running && (
+        <details className="breathe-save">
+          <summary>Save a custom pattern</summary>
+          <input
+            type="text"
+            placeholder="Pattern name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+          />
+          <select value={newRate} onChange={(e) => setNewRate(Number(e.target.value))}>
+            {SAVE_RATES.map((r) => (
+              <option key={r} value={r}>
+                {r} bpm (2:3)
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={savePattern}>
+            Save pattern
+          </button>
+        </details>
+      )}
     </main>
   )
 }
