@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     access_token_expire_minutes: int = 60
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
+    login_rate_limit: str = "5/minute"
 
     @property
     def cors_origins_list(self) -> list[str]:
