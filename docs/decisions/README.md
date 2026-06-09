@@ -12,3 +12,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0004](0004-uuid-primary-keys.md) | UUID primary keys | Accepted |
 | [0005](0005-httponly-cookie-jwt-auth.md) | httpOnly-cookie JWT authentication | Accepted |
 | [0006](0006-layered-architecture.md) | Layered backend (routes / services / models / schemas) | Accepted |
+| [0007](0007-google-oauth-id-token.md) | Sign in with Google via ID-token verification | Accepted |
