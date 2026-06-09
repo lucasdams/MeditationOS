@@ -92,7 +92,7 @@ POST /api/v1/sessions
 GET /api/v1/breathing-patterns
 → 200
 [
-  { "id": "…", "name": "6 bpm balanced", "inhale_seconds": 5, "exhale_seconds": 5,
+  { "id": "…", "name": "Easy", "inhale_seconds": 4, "exhale_seconds": 6,
     "breaths_per_minute": 6, "is_preset": true },
   { "id": "…", "name": "My slow", "inhale_seconds": 15, "exhale_seconds": 5,
     "breaths_per_minute": 3, "is_preset": false }

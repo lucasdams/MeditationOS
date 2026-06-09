@@ -54,7 +54,7 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 
 **Presets & custom**
 
-- Built-in presets: **6 bpm balanced** (default), **3 bpm slow**, **1.5 bpm extended**, **1 bpm advanced**
+- Built-in presets by difficulty (slower = harder): **Easy** (6 bpm, default), **Medium** (3 bpm), **Advanced** (1.5 bpm), **Extreme** (1 bpm)
 - Rate slider across the slow range (~1–6 bpm); 2:3 ratio fixed by default
 - *(Later)* custom in:out ratio for advanced users with a known resonance frequency
 - Validation: sensible min/max bounds on phase length and total cycle duration
