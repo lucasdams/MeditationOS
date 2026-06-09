@@ -100,4 +100,8 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 - Refresh-token rotation + reuse detection
 - Password reset via email token
 - Email verification
-- MFA / OAuth social login
+- **Sign in with Google** — OAuth 2.0 / OIDC. The Google ID token's verified
+  email links to an existing `users` row or creates one; OAuth-only accounts
+  have no `password_hash`. The session still rides the same httpOnly cookie, so
+  the rest of the app is unaffected. (See [future-features](../future-features.md#accounts--auth).)
+- Other social providers / MFA (TOTP)

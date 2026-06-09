@@ -63,6 +63,22 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Avatars earned through milestones (streaks, hours practiced) alongside purchasable ones
 - [ ] Avatar showcase on profile, friend lists, and group/challenge leaderboards
 
+## Accounts & Auth
+
+- [ ] **Sign in with Google** (OAuth 2.0 / OIDC); link by verified email — see [auth design](design/authentication.md#deliberately-deferred-post-v1)
+- [ ] Other social providers (Apple, GitHub)
+- [ ] Email verification and password reset
+- [ ] Multi-factor authentication (TOTP)
+
+## Payments & Monetization
+
+Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side; no card data touches our servers (PCI scope stays minimal).
+
+- [ ] Subscription tiers / freemium model via Stripe Billing (if productized beyond portfolio)
+- [ ] One-off avatar purchases via Stripe Checkout (cosmetic — see [Profiles & Avatars](#profiles--avatars))
+- [ ] Stripe webhooks → entitlement updates (subscription active, payment failed, refund)
+- [ ] Customer billing portal for plan changes and cancellations
+
 ## Platform & Product
 
 - [ ] Mobile-responsive layout and PWA support
@@ -70,5 +86,3 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] GitHub Actions CI (lint, test, build on PR)
 - [ ] Staging environment separate from production
 - [ ] User data export and account deletion (privacy compliance)
-- [ ] Subscription tiers / freemium model (if productized beyond portfolio)
-- [ ] Cosmetic monetization (avatar purchases) as a revenue stream alongside subscriptions
