@@ -7,9 +7,9 @@ from alembic import context
 from app.core.config import settings
 from app.core.db import Base
 
-# Import model modules here so their tables register on Base.metadata and
-# `alembic revision --autogenerate` can see them. (Models added from ticket #4.)
-# e.g. from app.models import user  # noqa: F401
+# Importing the models package registers every model's table on Base.metadata
+# so `alembic revision --autogenerate` can see them.
+from app import models  # noqa: F401,E402
 
 # Alembic Config object, providing access to values in alembic.ini.
 config = context.config
