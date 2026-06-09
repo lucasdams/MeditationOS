@@ -21,9 +21,10 @@ export default function DashboardPage() {
       <p>
         Signed in as <strong>{user?.email}</strong>.
       </p>
-      <p>
+      <nav className="dash-nav">
         <Link to="/sessions/new">+ Log a session</Link>
-      </p>
+        <Link to="/sessions">View your sessions</Link>
+      </nav>
     </main>
   )
 }

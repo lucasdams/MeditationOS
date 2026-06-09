@@ -46,7 +46,7 @@ export default function LogSessionPage() {
         session_date: date,
         notes: notes.trim() || null,
       })
-      navigate('/')
+      navigate('/sessions')
     } catch (err) {
       setError(
         err instanceof ApiError
