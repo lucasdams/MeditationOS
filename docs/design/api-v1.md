@@ -80,7 +80,7 @@ POST /api/v1/sessions
 
 `breaths_per_minute` is computed in the response, never stored.
 
-## Breathing patterns ⏳ planned (Cycle 4)
+## Breathing patterns ✅ implemented
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
