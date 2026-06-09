@@ -11,6 +11,35 @@ import type { BreathingPattern } from '../types'
 
 const MIN_SCALE = 0.35
 const MAX_SCALE = 1
+const HOLD = 1 // 1s pause at the top (full) and bottom (empty) of each breath
+
+// A cycle is inhale → hold-full → exhale → hold-empty.
+type Segment = 'inhale' | 'hold-full' | 'exhale' | 'hold-empty'
+
+const cycleLength = (inhale: number, exhale: number) => inhale + exhale + 2 * HOLD
+
+const segmentAt = (pos: number, inhale: number, exhale: number): Segment => {
+  if (pos < inhale) return 'inhale'
+  if (pos < inhale + HOLD) return 'hold-full'
+  if (pos < inhale + HOLD + exhale) return 'exhale'
+  return 'hold-empty'
+}
+
+const scaleAt = (pos: number, inhale: number, exhale: number): number => {
+  if (pos < inhale) return MIN_SCALE + (MAX_SCALE - MIN_SCALE) * (pos / inhale)
+  if (pos < inhale + HOLD) return MAX_SCALE
+  if (pos < inhale + HOLD + exhale) {
+    return MAX_SCALE - (MAX_SCALE - MIN_SCALE) * ((pos - inhale - HOLD) / exhale)
+  }
+  return MIN_SCALE
+}
+
+const SEGMENT_LABEL: Record<Segment, string> = {
+  inhale: 'Breathe in',
+  'hold-full': 'Hold',
+  exhale: 'Breathe out',
+  'hold-empty': 'Hold',
+}
 
 // Optional session length; 0 = open-ended (finish manually).
 const DURATIONS = [
@@ -33,7 +62,7 @@ export default function BreathePage() {
   const [patterns, setPatterns] = useState<BreathingPattern[] | null>(null)
   const [selectedId, setSelectedId] = useState('')
   const [running, setRunning] = useState(false)
-  const [phase, setPhase] = useState<Phase>('inhale')
+  const [phase, setPhase] = useState<Segment>('inhale')
   const [scale, setScale] = useState(MIN_SCALE)
   const [elapsed, setElapsed] = useState(0)
   const [cycles, setCycles] = useState(0)
@@ -63,7 +92,7 @@ export default function BreathePage() {
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   const startRef = useRef(0)
-  const phaseRef = useRef<Phase>('inhale')
+  const phaseRef = useRef<Segment>('inhale')
   const cyclesRef = useRef(0)
   const phaseSecsRef = useRef({ inhale, exhale })
   useEffect(() => {
@@ -108,15 +137,9 @@ export default function BreathePage() {
     let raf = 0
     const draw = (now: number) => {
       const { inhale: inh, exhale: exh } = phaseSecsRef.current
-      const cycle = inh + exh
       const el = (now - startRef.current) / 1000
       setElapsed(el)
-      const pos = el % cycle
-      setScale(
-        pos < inh
-          ? MIN_SCALE + (MAX_SCALE - MIN_SCALE) * (pos / inh)
-          : MAX_SCALE - (MAX_SCALE - MIN_SCALE) * ((pos - inh) / exh),
-      )
+      setScale(scaleAt(el % cycleLength(inh, exh), inh, exh))
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
@@ -129,7 +152,7 @@ export default function BreathePage() {
     if (!running) return
     const id = setInterval(() => {
       const { inhale: inh, exhale: exh } = phaseSecsRef.current
-      const cycle = inh + exh
+      const cycle = cycleLength(inh, exh)
       const el = (performance.now() - startRef.current) / 1000
 
       if (targetRef.current > 0 && el >= targetRef.current * 60) {
@@ -145,11 +168,12 @@ export default function BreathePage() {
         cyclesRef.current = completed
         setCycles(completed)
       }
-      const phase: Phase = el % cycle < inh ? 'inhale' : 'exhale'
-      if (phase !== phaseRef.current) {
-        phaseRef.current = phase
-        setPhase(phase)
-        cuePhase(phase)
+      const seg = segmentAt(el % cycle, inh, exh)
+      if (seg !== phaseRef.current) {
+        phaseRef.current = seg
+        setPhase(seg)
+        // Sound only at the start of an actual breath, not during the holds.
+        if (seg === 'inhale' || seg === 'exhale') cuePhase(seg)
       }
     }, 200)
     return () => clearInterval(id)
@@ -157,13 +181,12 @@ export default function BreathePage() {
 
   function start() {
     startRef.current = performance.now() - elapsed * 1000
-    const cycle = inhale + exhale
-    const phase: Phase = elapsed % cycle < inhale ? 'inhale' : 'exhale'
-    phaseRef.current = phase
-    setPhase(phase)
+    const seg = segmentAt(elapsed % cycleLength(inhale, exhale), inhale, exhale)
+    phaseRef.current = seg
+    setPhase(seg)
     setRunning(true)
     if (audioOnRef.current || chimeOnRef.current) audio().resume()
-    cuePhase(phase)
+    if (seg === 'inhale' || seg === 'exhale') cuePhase(seg)
   }
 
   function pause() {
@@ -242,9 +265,7 @@ export default function BreathePage() {
           className={`breathe-circle ${running ? phase : 'idle'}`}
           style={{ transform: `scale(${scale})` }}
         />
-        <div className="breathe-phase">
-          {running ? (phase === 'inhale' ? 'Breathe in' : 'Breathe out') : 'Ready'}
-        </div>
+        <div className="breathe-phase">{running ? SEGMENT_LABEL[phase] : 'Ready'}</div>
       </div>
 
       <div className="breathe-stats">
