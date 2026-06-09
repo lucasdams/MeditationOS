@@ -42,9 +42,13 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 **In-session experience**
 
 - Visual breathing guide (expand/contract circle) synced to inhale/exhale phases
-- Optional audio cues at phase transitions
+- **Audio cues — the primary guidance, since users practice eyes-closed.** A **distinct sound for the inhale vs the exhale** (e.g. a rising tone in, a softer falling tone out) so the rhythm can be followed without watching the screen. Volume control + on/off; an **audio-only mode** that needs no visual.
 - Elapsed time, cycles completed, and current breaths/min displayed
 - Save completed practice as a meditation session (`type: resonance_breathing`) with the pattern used
+
+> **Audio implementation notes:** generate tones via the Web Audio API (no asset
+> downloads, exact timing) or preload short clips; schedule cues precisely on the
+> phase boundaries; respect the device's mute/volume; keep sounds gentle/non-jarring.
 
 **Presets & custom**
 
