@@ -83,6 +83,5 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 
 - [ ] Mobile-responsive layout and PWA support
 - [ ] Dark mode and accessibility improvements
-- [ ] GitHub Actions CI (lint, test, build on PR)
 - [ ] Staging environment separate from production
 - [ ] User data export and account deletion (privacy compliance)
