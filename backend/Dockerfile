@@ -12,4 +12,6 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Runs migrations then starts uvicorn. Kept as CMD (not ENTRYPOINT) so one-off
+# overrides like `docker compose run backend alembic ...` still work.
+CMD ["sh", "entrypoint.sh"]

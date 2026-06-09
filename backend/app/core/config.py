@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-to-a-random-secret"
     cors_origins: str = "http://localhost:5173"
     access_token_expire_minutes: int = 60
+    database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
 
     @property
     def cors_origins_list(self) -> list[str]:
