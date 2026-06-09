@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
     login_rate_limit: str = "5/minute"
+    # OAuth client ID for "Sign in with Google" (public value). Empty = disabled.
+    google_client_id: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

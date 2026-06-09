@@ -11,3 +11,7 @@ class EmailAlreadyExistsError(Exception):
 
 class UsernameTakenError(Exception):
     """Raised when setting a username that another account already uses."""
+
+
+class GoogleAuthError(Exception):
+    """Raised when a Google ID token is invalid, expired, or its email is unverified."""

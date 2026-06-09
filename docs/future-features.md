@@ -130,7 +130,7 @@ sessions stay private unless a member chooses otherwise.
 
 ## Accounts & Auth
 
-- [ ] **Sign in with Google** (OAuth 2.0 / OIDC); link by verified email — see [auth design](design/authentication.md#deliberately-deferred-post-v1)
+- [x] **Sign in with Google** (OIDC ID-token verification); links by verified email — see [auth design](design/authentication.md#sign-in-with-google--implemented)
 - [ ] Other social providers (Apple, GitHub)
 - [ ] Email verification and password reset
 - [ ] Multi-factor authentication (TOTP)

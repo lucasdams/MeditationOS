@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function LoginPage() {
   const { refresh } = useAuth()
@@ -71,6 +72,12 @@ export default function LoginPage() {
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
+
+      <div className="auth-divider">
+        <span>or</span>
+      </div>
+      <GoogleSignInButton onError={setError} />
+
       <p>
         No account? <Link to="/register">Register</Link>
       </p>
