@@ -47,6 +47,27 @@ POST /api/v1/auth/login  { email, password }
   → on failure: 401 (generic "invalid credentials" — no user-enumeration hint)
 ```
 
+## Sign in with Google ✅ implemented
+
+```
+POST /api/v1/auth/google  { credential }      (Google ID token from the GIS button)
+  → verify the token against Google's keys: signature, aud == GOOGLE_CLIENT_ID,
+    issuer, expiry (via the `google-auth` library), and email_verified
+  → resolve the account:
+      1. linked Google identity (users.google_sub == token.sub) → reuse
+      2. same verified email already registered → link (set google_sub)
+      3. otherwise → create a new, passwordless account
+  → sign the SAME JWT + Set-Cookie as password login
+  → 200 user · 401 if the token is invalid/unverified
+```
+
+We verify the **ID token** on the backend rather than running the redirect /
+authorization-code flow, so there is **no client secret** to store — only the
+public `GOOGLE_CLIENT_ID`. Google-only accounts have `password_hash = NULL`
+(so `authenticate()` can never log into them with a password), and `google_sub`
+(Google's stable subject id) is unique. Linking by **verified** email is safe
+because Google asserts `email_verified`. Rate-limited like `/login`.
+
 ## Authenticated request
 
 ```
@@ -100,8 +121,4 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 - Refresh-token rotation + reuse detection
 - Password reset via email token
 - Email verification
-- **Sign in with Google** — OAuth 2.0 / OIDC. The Google ID token's verified
-  email links to an existing `users` row or creates one; OAuth-only accounts
-  have no `password_hash`. The session still rides the same httpOnly cookie, so
-  the rest of the app is unaffected. (See [future-features](../future-features.md#accounts--auth).)
 - Other social providers / MFA (TOTP)

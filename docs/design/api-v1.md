@@ -42,6 +42,7 @@ Errors return FastAPI's default shape:
 |--------|------|------|------|---------|
 | POST | `/auth/register` | — | `{ email, password }` | `201` user |
 | POST | `/auth/login` | — | `{ email, password }` | `200` user + sets cookie |
+| POST | `/auth/google` | — | `{ credential }` | `200` user + sets cookie · `401` if invalid |
 | POST | `/auth/logout` | ✓ | — | `204` |
 | GET | `/auth/me` | ✓ | — | `200` current user |
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
@@ -52,6 +53,14 @@ POST /api/v1/auth/register
 → 201
 { "id": "…", "email": "user@example.com", "username": null, "created_at": "2026-06-09T14:00:00Z" }
 ```
+
+**Sign in with Google.** `POST /auth/google` takes the ID token (`credential`)
+from Google Identity Services. The backend verifies it against Google's keys
+(audience = `GOOGLE_CLIENT_ID`, issuer, expiry; via `google-auth`), then resolves
+the account: an existing Google-linked account → a same-email account (linked,
+since Google verified the email) → otherwise a new passwordless account. On
+success it sets the **same httpOnly session cookie** as password login. Rate-limited
+like `/login`. Requires `GOOGLE_CLIENT_ID` to be configured (else `401`).
 
 ## Sessions ✅ implemented
 

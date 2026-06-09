@@ -6,11 +6,15 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.exceptions import EmailAlreadyExistsError, UsernameTakenError
+from app.core.exceptions import (
+    EmailAlreadyExistsError,
+    GoogleAuthError,
+    UsernameTakenError,
+)
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, UsernameUpdate, UserRead
+from app.schemas.user import GoogleLogin, UserCreate, UserLogin, UsernameUpdate, UserRead
 from app.services import user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -54,6 +58,25 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+    _set_auth_cookie(response, create_access_token(str(user.id)))
+    return user
+
+
+@router.post("/google", response_model=UserRead)
+@limiter.limit(settings.login_rate_limit)
+def google_login(
+    request: Request,  # required by the rate limiter
+    response: Response,
+    data: GoogleLogin,
+    db: Session = Depends(get_db),
+) -> UserRead:
+    try:
+        user = user_service.login_with_google(db, data.credential)
+    except GoogleAuthError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google sign-in failed",
+        ) from None
     _set_auth_cookie(response, create_access_token(str(user.id)))
     return user
 

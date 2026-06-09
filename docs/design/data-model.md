@@ -32,12 +32,13 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 | `id` | UUID | PK, default `uuid4` |
 | `email` | `citext` | UNIQUE, NOT NULL |
 | `username` | `citext` | UNIQUE, NULL until the user picks one (public display name) |
-| `password_hash` | text | NOT NULL |
+| `password_hash` | text | NULL — null for Google-only accounts |
+| `google_sub` | text | UNIQUE, NULL — Google's subject id, set when linked to Google |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
 
 - `email` uses `citext` so uniqueness is case-insensitive (`A@x.com` == `a@x.com`).
-- `password_hash` never leaves the data layer — no Pydantic response schema exposes it.
+- `password_hash` never leaves the data layer — no Pydantic response schema exposes it. It is **nullable**: accounts created via "Sign in with Google" have no password (`authenticate()` rejects a password login against them). `google_sub` links a verified Google identity to the row.
 
 ### `sessions`
 

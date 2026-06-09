@@ -95,6 +95,31 @@ body {
   font-size: 1.4rem;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #9b9ba0;
+  font-size: 0.85rem;
+  margin: 1.25rem 0 1rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e5e5ea;
+}
+
+.auth-divider span {
+  padding: 0 0.75rem;
+}
+
+.google-signin {
+  display: flex;
+  justify-content: center;
+}
+
 form {
   display: flex;
   flex-direction: column;

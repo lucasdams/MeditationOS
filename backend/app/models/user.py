@@ -20,7 +20,10 @@ class User(Base):
     email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
     # Public display name, distinct from email. Null until the user picks one.
     username: Mapped[str | None] = mapped_column(CITEXT, unique=True, nullable=True)
-    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    # Nullable: Google-only accounts have no password. Email/password users do.
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Google's stable subject id ("sub"), set when the account is linked to Google.
+    google_sub: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

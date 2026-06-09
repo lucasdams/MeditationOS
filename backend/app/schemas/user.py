@@ -29,6 +29,12 @@ class UsernameUpdate(BaseModel):
     username: str = Field(min_length=3, max_length=20, pattern=r"^[a-zA-Z0-9_]+$")
 
 
+class GoogleLogin(BaseModel):
+    """Sign in with Google — the ID token (JWT) from Google Identity Services."""
+
+    credential: str = Field(min_length=1)
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 
