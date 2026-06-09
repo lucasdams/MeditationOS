@@ -9,19 +9,6 @@ import type { BreathingPattern } from '../types'
 const MIN_SCALE = 0.35
 const MAX_SCALE = 1
 
-// Rates offered in the "save a pattern" form; in/out derived at the 2:3 ratio.
-// Slower breathing is harder, so slowest = hardest.
-const SAVE_RATES = [
-  { label: 'Easy', bpm: 6 },
-  { label: 'Medium', bpm: 3 },
-  { label: 'Advanced', bpm: 1.5 },
-  { label: 'Extreme', bpm: 1 },
-]
-const deriveAt23 = (bpm: number) => {
-  const cycle = 60 / bpm
-  return { inhale: Math.round((cycle * 2) / 5), exhale: Math.round((cycle * 3) / 5) }
-}
-
 // Optional session length; 0 = open-ended (finish manually).
 const DURATIONS = [
   { label: 'Open', min: 0 },
@@ -53,9 +40,6 @@ export default function BreathePage() {
   const [chimeOn, setChimeOn] = useState(false)
   const [volume, setVolume] = useState(0.2)
   const [targetMin, setTargetMin] = useState(0)
-  // Save-a-pattern form
-  const [newName, setNewName] = useState('')
-  const [newRate, setNewRate] = useState(6)
 
   const selected = patterns?.find((p) => p.id === selectedId) ?? null
   const inhale = selected?.inhale_seconds ?? 4
@@ -230,43 +214,6 @@ export default function BreathePage() {
     reset()
   }
 
-  async function savePattern() {
-    if (!newName.trim()) {
-      setError('Give the pattern a name.')
-      return
-    }
-    setError(null)
-    const { inhale: i, exhale: e } = deriveAt23(newRate)
-    try {
-      const created = await breathingPatternService.create({
-        name: newName.trim(),
-        inhale_seconds: i,
-        exhale_seconds: e,
-      })
-      setPatterns((prev) => (prev ? [...prev, created] : [created]))
-      setSelectedId(created.id)
-      setNewName('')
-    } catch {
-      setError('Could not save the pattern.')
-    }
-  }
-
-  async function deleteSelected() {
-    if (!selected || selected.is_preset) return
-    const id = selected.id
-    try {
-      await breathingPatternService.remove(id)
-      setPatterns((prev) => {
-        const next = prev?.filter((p) => p.id !== id) ?? null
-        const def = next?.find((p) => p.is_preset) ?? next?.[0]
-        setSelectedId(def?.id ?? '')
-        return next
-      })
-    } catch {
-      setError('Could not delete the pattern.')
-    }
-  }
-
   const bpm = selected?.breaths_per_minute ?? 0
 
   return (
@@ -308,11 +255,6 @@ export default function BreathePage() {
           </option>
         ))}
       </select>
-      {selected && !selected.is_preset && !running && (
-        <button type="button" className="link-danger" onClick={deleteSelected}>
-          Delete this pattern
-        </button>
-      )}
 
       <label htmlFor="duration">Duration</label>
       <select
@@ -377,28 +319,6 @@ export default function BreathePage() {
           {saving ? 'Saving…' : 'Finish & save'}
         </button>
       </div>
-
-      {!running && (
-        <details className="breathe-save">
-          <summary>Save a custom pattern</summary>
-          <input
-            type="text"
-            placeholder="Pattern name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <select value={newRate} onChange={(e) => setNewRate(Number(e.target.value))}>
-            {SAVE_RATES.map((r) => (
-              <option key={r.bpm} value={r.bpm}>
-                {r.label} · {r.bpm} bpm
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={savePattern}>
-            Save pattern
-          </button>
-        </details>
-      )}
     </main>
   )
 }

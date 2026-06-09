@@ -56,9 +56,3 @@ export interface BreathingPattern {
   is_preset: boolean
   breaths_per_minute: number
 }
-
-export interface BreathingPatternCreate {
-  name: string
-  inhale_seconds: number
-  exhale_seconds: number
-}
