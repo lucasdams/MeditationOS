@@ -12,6 +12,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Session templates (duration + type + breathing pattern presets)
 - [ ] Timer-only mode for unguided practice
 - [ ] Export session history (CSV / JSON)
+- [ ] Session visibility — public/private per session (default private); public sessions are shareable to friends (needs the social layer). Planned `sessions.visibility` column.
 
 ## HRV & Breathing
 

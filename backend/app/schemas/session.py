@@ -5,7 +5,7 @@ never stored (see docs/design/data-model.md).
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -23,7 +23,7 @@ SessionType = Literal[
 class SessionCreate(BaseModel):
     type: SessionType
     duration_seconds: int = Field(gt=0)
-    session_date: date
+    occurred_at: datetime
     notes: str | None = Field(default=None, max_length=2000)
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
@@ -35,7 +35,7 @@ class SessionUpdate(BaseModel):
 
     type: SessionType | None = None
     duration_seconds: int | None = Field(default=None, gt=0)
-    session_date: date | None = None
+    occurred_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=2000)
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
@@ -48,7 +48,7 @@ class SessionRead(BaseModel):
     id: uuid.UUID
     type: str
     duration_seconds: int
-    session_date: date
+    occurred_at: datetime
     notes: str | None
     inhale_seconds: int | None
     exhale_seconds: int | None

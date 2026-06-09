@@ -16,7 +16,7 @@ export interface Session {
   id: string
   type: MeditationType
   duration_seconds: number
-  session_date: string
+  occurred_at: string
   notes: string | null
   inhale_seconds: number | null
   exhale_seconds: number | null
@@ -28,6 +28,6 @@ export interface Session {
 export interface SessionCreate {
   type: MeditationType
   duration_seconds: number
-  session_date: string
+  occurred_at: string
   notes?: string | null
 }

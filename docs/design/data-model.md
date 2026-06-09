@@ -48,7 +48,7 @@ A logged meditation. Resonance-breathing sessions reuse this table via `type` + 
 | `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
 | `type` | text | NOT NULL, CHECK in (`mindfulness`,`body_scan`,`resonance_breathing`,…) |
 | `duration_seconds` | int | NOT NULL, CHECK > 0 |
-| `session_date` | date | NOT NULL (the day it counts toward, user-local) |
+| `occurred_at` | timestamptz | NOT NULL (when the session happened — date + time) |
 | `notes` | text | NULL |
 | `breathing_pattern_id` | UUID | FK → `breathing_patterns.id`, `ON DELETE SET NULL`, NULL |
 | `inhale_seconds` | int | NULL, CHECK > 0 (set when `type = resonance_breathing`) |
@@ -56,7 +56,9 @@ A logged meditation. Resonance-breathing sessions reuse this table via `type` + 
 | `cycles_completed` | int | NULL, CHECK >= 0 |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
-**Indexes:** `(user_id, session_date)` — every dashboard/streak query filters by user and date.
+**Indexes:** `(user_id, occurred_at)` — every dashboard/streak query filters by user and time.
+
+**Planned:** `visibility` (`public` / `private`, default `private`) so a user can share a session — deferred to the Social/Community phase (see [future-features](../future-features.md#practice--sessions)).
 
 ### `breathing_patterns`
 
@@ -102,7 +104,7 @@ Saved inhale/exhale presets. Built-in presets and user-created patterns share th
 
 ## Design notes
 
-**Streaks are computed, not stored.** The README sketches a `streaks` table, but a stored streak is a denormalization that can drift and needs careful invalidation. For V1 the current and longest streak are **derived from `sessions` by SQL** (group distinct `session_date` per user, find consecutive runs). If profiling later shows the dashboard query is hot, add a `user_streak_cache` row updated on session write — but only with a documented recompute path. Starting computed keeps correctness simple.
+**Streaks are computed, not stored.** The README sketches a `streaks` table, but a stored streak is a denormalization that can drift and needs careful invalidation. For V1 the current and longest streak are **derived from `sessions` by SQL** (group by the calendar date of `occurred_at` per user, find consecutive runs). If profiling later shows the dashboard query is hot, add a `user_streak_cache` row updated on session write — but only with a documented recompute path. Starting computed keeps correctness simple.
 
 **Breathing data lives on `sessions`, not a separate table.** A resonance-breathing session *is* a meditation session with extra columns, so it shares streak/duration/aggregation logic for free rather than forcing a UNION across two tables.
 

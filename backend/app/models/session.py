@@ -5,11 +5,10 @@ plus the optional breathing columns — it shares this table (no separate table)
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     CheckConstraint,
-    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -47,7 +46,8 @@ class Session(Base):
     )
     type: Mapped[str] = mapped_column(String, nullable=False)
     duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
-    session_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # When the session happened (date + time of day).
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Set only for type='resonance_breathing'.
@@ -62,6 +62,6 @@ class Session(Base):
     __table_args__ = (
         CheckConstraint("duration_seconds > 0", name="ck_sessions_duration_positive"),
         CheckConstraint(f"type IN ({_TYPE_LIST})", name="ck_sessions_type"),
-        # Every dashboard/streak query filters by user and date.
-        Index("ix_sessions_user_id_session_date", "user_id", "session_date"),
+        # Every dashboard/streak query filters by user and time.
+        Index("ix_sessions_user_id_occurred_at", "user_id", "occurred_at"),
     )

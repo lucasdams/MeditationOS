@@ -14,6 +14,9 @@ const TYPE_LABELS: Record<MeditationType, string> = {
 
 const formatDuration = (seconds: number) => `${Math.round(seconds / 60)} min`
 
+// ISO timestamp -> "2026-06-09 07:30"
+const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
+
 export default function HistoryPage() {
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -67,7 +70,7 @@ export default function HistoryPage() {
                 <strong>{TYPE_LABELS[s.type] ?? s.type}</strong> · {formatDuration(s.duration_seconds)}
                 {s.breaths_per_minute != null && <> · {s.breaths_per_minute} bpm</>}
                 <div className="muted">
-                  {s.session_date}
+                  {formatWhen(s.occurred_at)}
                   {s.notes ? ` — ${s.notes}` : ''}
                 </div>
               </div>

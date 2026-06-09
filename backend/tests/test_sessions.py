@@ -1,6 +1,6 @@
 """Tests for POST /api/v1/sessions and GET /api/v1/sessions."""
 
-MINDFUL = {"type": "mindfulness", "duration_seconds": 600, "session_date": "2026-01-01"}
+MINDFUL = {"type": "mindfulness", "duration_seconds": 600, "occurred_at": "2026-01-01T08:00:00"}
 
 
 def _auth(client, email):
@@ -27,7 +27,7 @@ def test_create_resonance_session_reports_bpm(client):
         json={
             "type": "resonance_breathing",
             "duration_seconds": 600,
-            "session_date": "2026-01-01",
+            "occurred_at": "2026-01-01T08:00:00",
             "inhale_seconds": 5,
             "exhale_seconds": 5,
             "cycles_completed": 60,
