@@ -10,7 +10,13 @@ const MIN_SCALE = 0.35
 const MAX_SCALE = 1
 
 // Rates offered in the "save a pattern" form; in/out derived at the 2:3 ratio.
-const SAVE_RATES = [6, 3, 1.5, 1]
+// Slower breathing is harder, so slowest = hardest.
+const SAVE_RATES = [
+  { label: 'Easy', bpm: 6 },
+  { label: 'Medium', bpm: 3 },
+  { label: 'Advanced', bpm: 1.5 },
+  { label: 'Extreme', bpm: 1 },
+]
 const deriveAt23 = (bpm: number) => {
   const cycle = 60 / bpm
   return { inhale: Math.round((cycle * 2) / 5), exhale: Math.round((cycle * 3) / 5) }
@@ -313,8 +319,8 @@ export default function BreathePage() {
           />
           <select value={newRate} onChange={(e) => setNewRate(Number(e.target.value))}>
             {SAVE_RATES.map((r) => (
-              <option key={r} value={r}>
-                {r} bpm (2:3)
+              <option key={r.bpm} value={r.bpm}>
+                {r.label} · {r.bpm} bpm
               </option>
             ))}
           </select>
