@@ -6,6 +6,7 @@ import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio } from '../lib/breathAudio'
 import RewardOverlay from '../components/RewardOverlay'
+import BreathingInfo from '../components/BreathingInfo'
 import type { BreathingPattern } from '../types'
 
 const MIN_SCALE = 0.35
@@ -323,6 +324,8 @@ export default function BreathePage() {
           {saving ? 'Saving…' : 'Finish & save'}
         </button>
       </div>
+
+      <BreathingInfo />
 
       {reward && (
         <RewardOverlay
