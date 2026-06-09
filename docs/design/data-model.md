@@ -31,6 +31,7 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 |--------|------|-------------|
 | `id` | UUID | PK, default `uuid4` |
 | `email` | `citext` | UNIQUE, NOT NULL |
+| `username` | `citext` | UNIQUE, NULL until the user picks one (public display name) |
 | `password_hash` | text | NOT NULL |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |

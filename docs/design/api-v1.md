@@ -44,12 +44,13 @@ Errors return FastAPI's default shape:
 | POST | `/auth/login` | — | `{ email, password }` | `200` user + sets cookie |
 | POST | `/auth/logout` | ✓ | — | `204` |
 | GET | `/auth/me` | ✓ | — | `200` current user |
+| POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 
 ```
 POST /api/v1/auth/register
 { "email": "user@example.com", "password": "correct horse battery" }
 → 201
-{ "id": "…", "email": "user@example.com", "created_at": "2026-06-09T14:00:00Z" }
+{ "id": "…", "email": "user@example.com", "username": null, "created_at": "2026-06-09T14:00:00Z" }
 ```
 
 ## Sessions ✅ implemented
@@ -113,6 +114,10 @@ GET /api/v1/dashboard/stats
   "session_count": 42,
   "current_streak_days": 7,
   "longest_streak_days": 14,
+  "xp": 900,
+  "level": 7,
+  "xp_into_level": 60,
+  "xp_for_next_level": 140,
   "this_week": [
     { "date": "2026-06-03", "seconds": 600 },
     { "date": "2026-06-04", "seconds": 0 }
@@ -120,7 +125,8 @@ GET /api/v1/dashboard/stats
 }
 ```
 
-`this_week` is the last 7 calendar days, zero-filled. Streaks are computed from
+`this_week` is the last 7 calendar days, zero-filled. **XP = minutes practiced**;
+`level` follows a rising curve (computed, not stored). Streaks are computed from
 `sessions` (see [data-model](data-model.md#design-notes)), not stored:
 **current** = consecutive days ending today *or yesterday* (grace through end of
 today); **longest** = the longest run ever.
