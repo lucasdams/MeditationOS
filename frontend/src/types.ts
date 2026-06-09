@@ -31,3 +31,16 @@ export interface SessionCreate {
   occurred_at: string
   notes?: string | null
 }
+
+export interface DailyTotal {
+  date: string
+  seconds: number
+}
+
+export interface DashboardStats {
+  total_seconds: number
+  session_count: number
+  current_streak_days: number
+  longest_streak_days: number
+  this_week: DailyTotal[]
+}
