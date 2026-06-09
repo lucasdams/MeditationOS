@@ -95,7 +95,7 @@ streaks → earn/spend wallet → upgrade catalog → the builder UI.
 
 ## Social & Community
 
-- [ ] Friend connections and shared streak visibility
+- [ ] **Friends** — send/accept friend requests; see friends' level, streak, and recent activity (privacy-respecting, opt-in). The **username** added in V1 is the groundwork; closely tied to Clubs below. Data: a `friendships` table (requester/addressee/status).
 - [ ] Optional accountability partners
 
 ### Clubs (communities)

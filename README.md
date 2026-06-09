@@ -8,7 +8,7 @@ A production-style **business application** for meditation and wellness. Portfol
 
 **What's working now (Cycles 1–4):**
 
-- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing
+- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing; public usernames + a top banner (name · level)
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, and a weekly breakdown
 - ✅ Levels & XP — earn XP from practice, level up, and grow an ASCII tree on your dashboard

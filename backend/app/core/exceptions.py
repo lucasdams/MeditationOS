@@ -7,3 +7,7 @@ Keeping these separate from HTTP keeps the service layer transport-agnostic
 
 class EmailAlreadyExistsError(Exception):
     """Raised when registering an email that already has an account."""
+
+
+class UsernameTakenError(Exception):
+    """Raised when setting a username that another account already uses."""
