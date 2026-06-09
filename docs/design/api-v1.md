@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. This is the V1 *contract* — only Auth and Health are built so far; the rest is the surface upcoming cycles code against.
+**Status legend:** ✅ implemented · ⏳ planned. This is the V1 *contract* — Auth, Sessions, and Health are built; Dashboard and Breathing patterns are the surface upcoming cycles code against.
 
 ## Conventions
 
@@ -52,7 +52,7 @@ POST /api/v1/auth/register
 { "id": "…", "email": "user@example.com", "created_at": "2026-06-09T14:00:00Z" }
 ```
 
-## Sessions ⏳ planned (Cycle 2)
+## Sessions ✅ implemented
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
