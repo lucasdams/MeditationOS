@@ -17,15 +17,34 @@ const dayLabel = (iso: string) => {
   return new Date(y, mo - 1, d).toLocaleDateString(undefined, { weekday: 'short' })
 }
 
+// Quests reset at 00:00 UTC (the backend keys them on the UTC date).
+const msUntilUtcMidnight = () => {
+  const now = new Date()
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+  return next - now.getTime()
+}
+const formatReset = (ms: number) => {
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [resetIn, setResetIn] = useState(msUntilUtcMidnight())
 
   useEffect(() => {
     dashboardService
       .getStats()
       .then(setStats)
       .catch(() => setError('Could not load your stats.'))
+  }, [])
+
+  // Live countdown to the daily quest reset.
+  useEffect(() => {
+    const id = setInterval(() => setResetIn(msUntilUtcMidnight()), 30_000)
+    return () => clearInterval(id)
   }, [])
 
   const maxSeconds = stats ? Math.max(1, ...stats.this_week.map((d) => d.seconds)) : 1
@@ -46,7 +65,10 @@ export default function DashboardPage() {
 
       {stats && (
         <section className="quests">
-          <h2>Today's quests</h2>
+          <div className="quests-head">
+            <h2>Today's quests</h2>
+            <span className="quest-reset muted">resets in {formatReset(resetIn)}</span>
+          </div>
           <ul className="quest-list">
             {stats.daily_quests.map((q) => {
               const to =
@@ -71,7 +93,7 @@ export default function DashboardPage() {
           {stats.streak_bonus_xp > 0 && (
             <p className="quest-streak muted">
               🔥 Streak bonus: +{stats.streak_bonus_xp} XP from your{' '}
-              {stats.longest_streak_days}-day best streak
+              {stats.current_streak_days}-day streak
             </p>
           )}
         </section>

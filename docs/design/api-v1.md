@@ -171,8 +171,9 @@ GET /api/v1/dashboard/stats
 + a streak bonus**; `level` follows a rising curve (computed, not stored).
 `daily_quests` lists today's three quests (write a gratitude · breathe a minute ·
 log a session) with `done` status — each completed day awards **+15 XP**, counted
-across all history so the total only grows. `streak_bonus_xp` is **10 × your longest
-streak** (monotonic, so a broken streak never costs XP). Streaks are computed from
+across all history so that part only grows. `streak_bonus_xp` is **10 × your current
+streak** (grows as you keep the streak, falls back if it lapses). Quests reset at
+**00:00 UTC**. Streaks are computed from
 `sessions` (see [data-model](data-model.md#design-notes)), not stored:
 **current** = consecutive days ending today *or yesterday* (grace through end of
 today); **longest** = the longest run ever.

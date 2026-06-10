@@ -19,7 +19,7 @@ from app.services.gratitude_service import GRATITUDE_XP
 BREATHING_XP_MULTIPLIER = 3
 # Each daily quest, completed on a given day, is worth this much (counts once per day).
 QUEST_XP = 15
-# Bonus XP per day of your longest streak (monotonic — never lost when a streak breaks).
+# Bonus XP per day of your current streak (grows as you keep it up, falls if it lapses).
 STREAK_BONUS_PER_DAY = 10
 # A day with at least this much resonance breathing completes the breathing quest.
 BREATHE_QUEST_SECONDS = 60
@@ -134,9 +134,10 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
     breathing_days = {row[0] for row in breathing_day_rows}
 
     # Daily quests reset each day; total XP counts every day they were ever completed,
-    # so it only ever grows. The streak bonus is keyed on the (monotonic) longest streak.
+    # so that part only ever grows. The streak bonus rides the *current* streak, so it
+    # grows as you keep it up and falls back if the streak lapses.
     quest_bonus_xp = (len(gratitude_days) + len(session_days) + len(breathing_days)) * QUEST_XP
-    streak_bonus_xp = longest_streak * STREAK_BONUS_PER_DAY
+    streak_bonus_xp = current_streak * STREAK_BONUS_PER_DAY
 
     # 1 XP per minute practiced, but resonance breathing counts 3×; plus
     # GRATITUDE_XP per gratitude moment, daily-quest bonuses, and the streak bonus.
