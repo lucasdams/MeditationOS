@@ -306,7 +306,7 @@ See the full checklist in **[docs/future-features.md](docs/future-features.md)**
 
 ## Database Design
 
-Core tables (V1–V2): `users`, `sessions`, `breathing_patterns`, `journals`, `goals`. Streak stats are **computed from `sessions`**, not stored (see the design note in the linked doc). Future tables (V3+): `friendships`, `groups`, `challenges`, `notifications`.
+Core tables (V1–V2): `users`, `sessions`, `breathing_patterns`, `gratitude_entries`, `journals`, `goals`. Streak stats are **computed from `sessions`**, not stored (see the design note in the linked doc). Future tables (V3+): `friendships`, `groups`, `challenges`, `notifications`.
 
 Full schema — column types, constraints, indexes, and design notes — in **[docs/design/data-model.md](docs/design/data-model.md)**.
 
