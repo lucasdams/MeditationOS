@@ -4,19 +4,19 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, guided HRV breathing, and an AI gratitude tool working locally · 81 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, guided HRV breathing, an AI gratitude tool, and daily quests/XP working locally · 91 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
 - ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing, **Sign in with Google** (OIDC); public usernames + a top banner (name · level)
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
-- ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap
-- ✅ Levels & XP — earn XP from practice, level up, and grow an ASCII tree on your dashboard
+- ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap (bucketed on the user's **local day**, per-user timezone)
+- ✅ Levels & XP + **daily quests** — earn XP from practice (breathing counts 3×), level up, grow an ASCII tree; three daily quests + a streak bonus, with a live reset countdown
 - ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, an ocean-breath audio guide + transition bell, optional duration timer; saves as a session
-- ✅ Gratitude tool — pick a theme, get AI-suggested prompts (Claude Haiku, with a curated fallback) or write your own; each moment earns XP
+- ✅ Gratitude tool — pick from 36 themes, get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
-- ✅ 81 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 91 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 
@@ -269,6 +269,7 @@ The engineering reasoning behind the build — written up as it's decided, so th
 | [Authentication](docs/design/authentication.md) | httpOnly-cookie JWT, full auth flows, XSS-vs-CSRF tradeoff, hardening checklist |
 | [Data Model](docs/design/data-model.md) | Detailed schema: column types, constraints, indexes, and why streaks are computed |
 | [API Contract (V1)](docs/design/api-v1.md) | Endpoints, request/response shapes, status codes, and the error envelope |
+| [Gamification](docs/design/gamification.md) | XP, levels, daily quests, streaks — all computed from activity (per-user local day) |
 
 ### Architecture Decision Records
 
@@ -281,6 +282,9 @@ Numbered, immutable records of significant choices — see [`docs/decisions/`](d
 | [0004](docs/decisions/0004-uuid-primary-keys.md) | UUID primary keys (anti-enumeration) |
 | [0005](docs/decisions/0005-httponly-cookie-jwt-auth.md) | httpOnly-cookie JWT authentication |
 | [0006](docs/decisions/0006-layered-architecture.md) | Layered backend (routes / services / models / schemas) |
+| [0007](docs/decisions/0007-google-oauth-id-token.md) | Sign in with Google via ID-token verification |
+| [0008](docs/decisions/0008-ai-suggestions-curated-fallback.md) | AI suggestions with a curated fallback |
+| [0009](docs/decisions/0009-gamification-computed-from-activity.md) | Gamification computed from activity, not stored |
 
 ---
 
