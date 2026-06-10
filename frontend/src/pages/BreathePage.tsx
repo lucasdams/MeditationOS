@@ -132,7 +132,7 @@ export default function BreathePage() {
     if (audioOnRef.current) {
       const dur = p === 'inhale' ? phaseSecsRef.current.inhale : phaseSecsRef.current.exhale
       try {
-        a.playPhase(p, dur)
+        a.glide(p, dur)
       } catch (err) {
         console.warn('guide tone failed', err)
       }
