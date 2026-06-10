@@ -79,6 +79,18 @@ def test_activity_user_scoped(client):
     assert body["days"] == []
 
 
+def test_stats_breathing_earns_triple_xp(client):
+    _auth(client, "breathe_xp@example.com")
+    today = datetime.now(UTC).date()
+    # 10 min of mindfulness = 10 XP; 10 min of resonance breathing = 30 XP.
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600, type="mindfulness")
+    _session(
+        client, f"{today.isoformat()}T09:00:00", seconds=600, type="resonance_breathing"
+    )
+    body = client.get("/api/v1/dashboard/stats").json()
+    assert body["xp"] == 40
+
+
 def test_stats_gratitude_adds_xp(client):
     _auth(client, "grat_xp@example.com")
     base = client.get("/api/v1/dashboard/stats").json()

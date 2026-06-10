@@ -163,8 +163,9 @@ GET /api/v1/dashboard/stats
 }
 ```
 
-`this_week` is the last 7 calendar days, zero-filled. **XP = minutes practiced**;
-`level` follows a rising curve (computed, not stored). Streaks are computed from
+`this_week` is the last 7 calendar days, zero-filled. **XP = minutes practiced**
+(resonance breathing counts **3×**) **+ 5 per gratitude moment**; `level` follows a
+rising curve (computed, not stored). Streaks are computed from
 `sessions` (see [data-model](data-model.md#design-notes)), not stored:
 **current** = consecutive days ending today *or yesterday* (grace through end of
 today); **longest** = the longest run ever.

@@ -55,7 +55,9 @@ export default function LogSessionPage() {
         notes: notes.trim() || null,
       })
       const stats = await dashboardService.getStats()
-      setReward({ afterXp: stats.xp, xpGained: Math.round(mins) })
+      // Resonance breathing counts 3× (mirrors BREATHING_XP_MULTIPLIER on the backend).
+      const gained = Math.round(mins) * (type === 'resonance_breathing' ? 3 : 1)
+      setReward({ afterXp: stats.xp, xpGained: gained })
     } catch (err) {
       setError(
         err instanceof ApiError

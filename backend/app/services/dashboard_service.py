@@ -15,6 +15,9 @@ from app.models.session import Session
 from app.schemas.dashboard import ActivityCalendar, DailyTotal, DashboardStats
 from app.services.gratitude_service import GRATITUDE_XP
 
+# Resonance breathing earns this multiple of the usual 1 XP/minute.
+BREATHING_XP_MULTIPLIER = 3
+
 
 def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
     """Return (current_streak_days, longest_streak_days) from days-with-a-session.
@@ -66,6 +69,14 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         ).where(Session.user_id == user_id)
     ).one()
 
+    # Resonance breathing earns extra XP (it's the harder, signature practice).
+    breathing_seconds = db.execute(
+        select(func.coalesce(func.sum(Session.duration_seconds), 0)).where(
+            Session.user_id == user_id,
+            Session.type == "resonance_breathing",
+        )
+    ).scalar_one()
+
     # Last 7 calendar days, zero-filled, oldest → today.
     week_start = today - timedelta(days=6)
     rows = db.execute(
@@ -97,8 +108,14 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
     ).scalar_one()
 
-    # 1 XP per minute practiced + GRATITUDE_XP per gratitude moment.
-    xp = int(total_seconds) // 60 + int(gratitude_count) * GRATITUDE_XP
+    # 1 XP per minute practiced, but resonance breathing counts 3×; plus
+    # GRATITUDE_XP per gratitude moment.
+    non_breathing_seconds = int(total_seconds) - int(breathing_seconds)
+    xp = (
+        non_breathing_seconds // 60
+        + int(breathing_seconds) // 60 * BREATHING_XP_MULTIPLIER
+        + int(gratitude_count) * GRATITUDE_XP
+    )
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
 
     return DashboardStats(
