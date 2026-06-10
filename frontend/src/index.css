@@ -662,9 +662,11 @@ button:disabled {
 }
 
 .chip-active {
-  background: #4f46e5;
-  border-color: #4f46e5;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: #b45309;
   color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
 }
 
 .chip-soft {

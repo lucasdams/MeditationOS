@@ -107,6 +107,7 @@ export type GratitudeCategory =
   | 'abundance'
   | 'community'
   | 'beauty'
+  | 'custom'
 
 export interface Gratitude {
   id: string

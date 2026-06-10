@@ -53,6 +53,8 @@ CATEGORIES = (
     "abundance",
     "community",
     "beauty",
+    # A free-form entry the user writes without picking a theme.
+    "custom",
 )
 _CATEGORY_LIST = ", ".join(f"'{c}'" for c in CATEGORIES)
 
