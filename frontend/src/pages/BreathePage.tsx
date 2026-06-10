@@ -249,7 +249,8 @@ export default function BreathePage() {
         cycles_completed: cyclesRef.current,
       })
       const stats = await dashboardService.getStats()
-      setReward({ afterXp: stats.xp, xpGained: Math.round(durationSec / 60) })
+      // Resonance breathing earns 3× XP (mirrors BREATHING_XP_MULTIPLIER on the backend).
+      setReward({ afterXp: stats.xp, xpGained: Math.round(durationSec / 60) * 3 })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)

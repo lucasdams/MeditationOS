@@ -45,24 +45,39 @@ body {
 .app-nav a {
   padding: 0.4rem 0.85rem;
   border-radius: 8px;
-  background: #f0f0f3;
-  color: #1c1c1e;
   text-decoration: none;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+/* A distinct soft color per destination. */
+.app-nav a.nav-home {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.app-nav a.nav-breathe {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.app-nav a.nav-gratitude {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.app-nav a.nav-log {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.app-nav a.nav-history {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .app-nav a:hover {
-  background: #e5e5ea;
-}
-
-.app-nav a.primary {
-  background: #4f46e5;
-  color: #fff;
-}
-
-.app-nav a.primary:hover {
-  background: #4338ca;
+  filter: brightness(0.96);
 }
 
 .app-user {
