@@ -5,6 +5,7 @@ import { breathingPatternService } from '../services/breathingPatterns'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio } from '../lib/breathAudio'
+import { audioDiagnostics } from '../lib/audioContext'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
@@ -77,6 +78,7 @@ export default function BreathePage() {
   const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
   const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
   const [volume, setVolume] = useState(0.6)
+  const [audioStatus, setAudioStatus] = useState('')
   const [targetMin, setTargetMin] = useState(0)
 
   const selected = patterns?.find((p) => p.id === selectedId) ?? null
@@ -365,10 +367,22 @@ export default function BreathePage() {
           aria-label="Volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />
-        <button type="button" className="test-sound" onClick={() => audio().testBeep()}>
+        <button
+          type="button"
+          className="test-sound"
+          onClick={() => {
+            audio().testBeep()
+            setAudioStatus(audioDiagnostics())
+          }}
+        >
           🔊 Test sound
         </button>
       </div>
+      {audioStatus && (
+        <p className="muted" style={{ textAlign: 'center', fontSize: '0.75rem' }}>
+          audio: {audioStatus}
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="error">
