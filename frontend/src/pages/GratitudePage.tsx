@@ -4,8 +4,6 @@ import { dashboardService } from '../services/dashboard'
 import RewardOverlay from '../components/RewardOverlay'
 import type { Gratitude, GratitudeCategory } from '../types'
 
-const GRATITUDE_XP = 5
-
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
   { key: 'people', label: 'People', emoji: '🧡' },
   { key: 'health', label: 'Health', emoji: '🌿' },
@@ -18,7 +16,7 @@ const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
   { key: 'small_moments', label: 'Small moments', emoji: '🍃' },
   { key: 'big_moments', label: 'Big moments', emoji: '🎉' },
   { key: 'spiritual', label: 'Spiritual', emoji: '🕊️' },
-  { key: 'material', label: 'Material things', emoji: '🎁' },
+  { key: 'material', label: 'Things I have', emoji: '🎁' },
   { key: 'work', label: 'Work', emoji: '💼' },
   { key: 'food', label: 'Food', emoji: '🍽️' },
   { key: 'learning', label: 'Learning', emoji: '📚' },
@@ -92,11 +90,13 @@ export default function GratitudePage() {
     setSaving(true)
     setError(null)
     try {
+      const before = await dashboardService.getStats()
       const entry = await gratitudeService.create({ category, text: text.trim() })
       setEntries((prev) => [entry, ...(prev ?? [])])
       setText('')
-      const stats = await dashboardService.getStats()
-      setReward({ afterXp: stats.xp, xpGained: GRATITUDE_XP })
+      const after = await dashboardService.getStats()
+      // True gain from the server (gratitude XP + any daily-quest/streak bonus).
+      setReward({ afterXp: after.xp, xpGained: Math.max(0, after.xp - before.xp) })
     } catch {
       setError('Could not save. Please try again.')
     } finally {
@@ -169,7 +169,7 @@ export default function GratitudePage() {
             onChange={(e) => setText(e.target.value)}
           />
           <button type="button" onClick={save} disabled={saving || !text.trim()}>
-            {saving ? 'Saving…' : 'Save (+5 XP)'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </section>
       )}

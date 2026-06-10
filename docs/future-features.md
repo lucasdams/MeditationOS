@@ -41,6 +41,8 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 
 ## Goals & Gamification
 
+- [x] **Daily quests** (write a gratitude · breathe a minute · log a session) with bonus XP, reset daily
+- [x] **Streak bonus XP** (scaled to your longest streak)
 - [ ] Custom goals (daily minutes, weekly session count, breathing milestones)
 - [ ] Two-week practice goals (user-facing sprints, e.g. "meditate 10 min/day for 14 days")
 - [ ] Achievement badges for streaks and hour milestones
@@ -149,5 +151,6 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 
 - [ ] Mobile-responsive layout and PWA support
 - [ ] Dark mode and accessibility improvements
+- [ ] **Internationalization (i18n)** — start with a **Japanese (JP) version** of the site (UI strings + AI prompts/suggestions in Japanese)
 - [ ] Staging environment separate from production
 - [ ] User data export and account deletion (privacy compliance)

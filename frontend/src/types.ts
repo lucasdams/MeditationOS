@@ -41,6 +41,13 @@ export interface DailyTotal {
   seconds: number
 }
 
+export interface DailyQuest {
+  key: string
+  label: string
+  xp: number
+  done: boolean
+}
+
 export interface DashboardStats {
   total_seconds: number
   session_count: number
@@ -52,6 +59,8 @@ export interface DashboardStats {
   xp_for_next_level: number
   this_week: DailyTotal[]
   gratitude_count: number
+  streak_bonus_xp: number
+  daily_quests: DailyQuest[]
 }
 
 export interface ActivityCalendar {

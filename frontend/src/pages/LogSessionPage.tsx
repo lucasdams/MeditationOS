@@ -48,16 +48,16 @@ export default function LogSessionPage() {
 
     setSubmitting(true)
     try {
+      const before = await dashboardService.getStats()
       await sessionService.create({
         type,
         duration_seconds: Math.round(mins * 60),
         occurred_at: occurredAt,
         notes: notes.trim() || null,
       })
-      const stats = await dashboardService.getStats()
-      // Resonance breathing counts 3× (mirrors BREATHING_XP_MULTIPLIER on the backend).
-      const gained = Math.round(mins) * (type === 'resonance_breathing' ? 3 : 1)
-      setReward({ afterXp: stats.xp, xpGained: gained })
+      const after = await dashboardService.getStats()
+      // True gain from the server (XP weighting + any daily-quest/streak bonus).
+      setReward({ afterXp: after.xp, xpGained: Math.max(0, after.xp - before.xp) })
     } catch (err) {
       setError(
         err instanceof ApiError

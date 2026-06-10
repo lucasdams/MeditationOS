@@ -12,11 +12,17 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
 from app.models.session import Session
-from app.schemas.dashboard import ActivityCalendar, DailyTotal, DashboardStats
+from app.schemas.dashboard import ActivityCalendar, DailyTotal, DashboardStats, QuestStatus
 from app.services.gratitude_service import GRATITUDE_XP
 
 # Resonance breathing earns this multiple of the usual 1 XP/minute.
 BREATHING_XP_MULTIPLIER = 3
+# Each daily quest, completed on a given day, is worth this much (counts once per day).
+QUEST_XP = 15
+# Bonus XP per day of your longest streak (monotonic — never lost when a streak breaks).
+STREAK_BONUS_PER_DAY = 10
+# A day with at least this much resonance breathing completes the breathing quest.
+BREATHE_QUEST_SECONDS = 60
 
 
 def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
@@ -98,25 +104,72 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         day = week_start + timedelta(days=i)
         this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
 
-    # All distinct practice days (for streaks).
+    # All distinct practice days (for streaks + the "log a session" quest).
     day_rows = db.execute(
         select(func.date(Session.occurred_at)).where(Session.user_id == user_id).distinct()
     ).all()
-    current_streak, longest_streak = _compute_streaks({row[0] for row in day_rows}, today)
+    session_days = {row[0] for row in day_rows}
+    current_streak, longest_streak = _compute_streaks(session_days, today)
 
-    gratitude_count = db.execute(
-        select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
-    ).scalar_one()
+    # Days with a gratitude entry (the "write a gratitude" quest).
+    grat_day_rows = db.execute(
+        select(func.date(GratitudeEntry.created_at))
+        .where(GratitudeEntry.user_id == user_id)
+        .distinct()
+    ).all()
+    gratitude_days = {row[0] for row in grat_day_rows}
+    gratitude_count = int(
+        db.execute(
+            select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
+        ).scalar_one()
+    )
+
+    # Days with at least a minute of resonance breathing (the "breathe" quest).
+    breathing_day_rows = db.execute(
+        select(func.date(Session.occurred_at))
+        .where(Session.user_id == user_id, Session.type == "resonance_breathing")
+        .group_by(func.date(Session.occurred_at))
+        .having(func.sum(Session.duration_seconds) >= BREATHE_QUEST_SECONDS)
+    ).all()
+    breathing_days = {row[0] for row in breathing_day_rows}
+
+    # Daily quests reset each day; total XP counts every day they were ever completed,
+    # so it only ever grows. The streak bonus is keyed on the (monotonic) longest streak.
+    quest_bonus_xp = (len(gratitude_days) + len(session_days) + len(breathing_days)) * QUEST_XP
+    streak_bonus_xp = longest_streak * STREAK_BONUS_PER_DAY
 
     # 1 XP per minute practiced, but resonance breathing counts 3×; plus
-    # GRATITUDE_XP per gratitude moment.
+    # GRATITUDE_XP per gratitude moment, daily-quest bonuses, and the streak bonus.
     non_breathing_seconds = int(total_seconds) - int(breathing_seconds)
     xp = (
         non_breathing_seconds // 60
         + int(breathing_seconds) // 60 * BREATHING_XP_MULTIPLIER
-        + int(gratitude_count) * GRATITUDE_XP
+        + gratitude_count * GRATITUDE_XP
+        + quest_bonus_xp
+        + streak_bonus_xp
     )
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
+
+    daily_quests = [
+        QuestStatus(
+            key="gratitude",
+            label="Write a gratitude",
+            xp=QUEST_XP,
+            done=today in gratitude_days,
+        ),
+        QuestStatus(
+            key="breathe",
+            label="Breathe for a minute",
+            xp=QUEST_XP,
+            done=today in breathing_days,
+        ),
+        QuestStatus(
+            key="session",
+            label="Log a session",
+            xp=QUEST_XP,
+            done=today in session_days,
+        ),
+    ]
 
     return DashboardStats(
         total_seconds=int(total_seconds),
@@ -128,7 +181,9 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         xp_into_level=xp_into_level,
         xp_for_next_level=xp_for_next_level,
         this_week=this_week,
-        gratitude_count=int(gratitude_count),
+        gratitude_count=gratitude_count,
+        streak_bonus_xp=streak_bonus_xp,
+        daily_quests=daily_quests,
     )
 
 

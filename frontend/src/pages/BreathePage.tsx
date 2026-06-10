@@ -240,6 +240,7 @@ export default function BreathePage() {
     setError(null)
     setSaving(true)
     try {
+      const before = await dashboardService.getStats()
       await sessionService.create({
         type: 'resonance_breathing',
         duration_seconds: Math.round(durationSec),
@@ -248,9 +249,9 @@ export default function BreathePage() {
         exhale_seconds: exhale,
         cycles_completed: cyclesRef.current,
       })
-      const stats = await dashboardService.getStats()
-      // Resonance breathing earns 3× XP (mirrors BREATHING_XP_MULTIPLIER on the backend).
-      setReward({ afterXp: stats.xp, xpGained: Math.round(durationSec / 60) * 3 })
+      const after = await dashboardService.getStats()
+      // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
+      setReward({ afterXp: after.xp, xpGained: Math.max(0, after.xp - before.xp) })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)

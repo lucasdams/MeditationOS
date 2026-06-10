@@ -88,7 +88,9 @@ def test_stats_breathing_earns_triple_xp(client):
         client, f"{today.isoformat()}T09:00:00", seconds=600, type="resonance_breathing"
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    assert body["xp"] == 40
+    # 10 min mindfulness (10) + 10 min breathing (30) + session & breathe quests (30)
+    # + 1-day streak bonus (10) = 80.
+    assert body["xp"] == 80
 
 
 def test_stats_gratitude_adds_xp(client):
@@ -99,4 +101,37 @@ def test_stats_gratitude_adds_xp(client):
     client.post("/api/v1/gratitude", json={"category": "self", "text": "I showed up today"})
     after = client.get("/api/v1/dashboard/stats").json()
     assert after["gratitude_count"] == 1
-    assert after["xp"] == 5  # GRATITUDE_XP per entry
+    # 5 (gratitude) + 15 (gratitude quest) = 20.
+    assert after["xp"] == 20
+
+
+def test_daily_quests_track_today(client):
+    _auth(client, "quests@example.com")
+    today = datetime.now(UTC).date()
+
+    before = client.get("/api/v1/dashboard/stats").json()
+    assert {q["key"] for q in before["daily_quests"]} == {"gratitude", "breathe", "session"}
+    assert all(q["done"] is False for q in before["daily_quests"])
+
+    # A 10-minute breathing session completes the breathe + session quests.
+    _session(
+        client, f"{today.isoformat()}T08:00:00", seconds=600, type="resonance_breathing"
+    )
+    after = client.get("/api/v1/dashboard/stats").json()
+    done = {q["key"]: q["done"] for q in after["daily_quests"]}
+    assert done == {"breathe": True, "session": True, "gratitude": False}
+    assert after["streak_bonus_xp"] == 10  # longest streak 1 day × 10
+    # 30 (breathing) + 30 (two quests) + 10 (streak) = 70.
+    assert after["xp"] == 70
+
+
+def test_breathe_quest_needs_a_full_minute(client):
+    _auth(client, "shortbreath@example.com")
+    today = datetime.now(UTC).date()
+    _session(
+        client, f"{today.isoformat()}T08:00:00", seconds=30, type="resonance_breathing"
+    )
+    body = client.get("/api/v1/dashboard/stats").json()
+    quests = {q["key"]: q["done"] for q in body["daily_quests"]}
+    assert quests["breathe"] is False  # only 30s < 60s threshold
+    assert quests["session"] is True

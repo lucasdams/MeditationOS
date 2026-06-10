@@ -167,8 +167,12 @@ GET /api/v1/dashboard/stats
 ```
 
 `this_week` is the last 7 calendar days, zero-filled. **XP = minutes practiced**
-(resonance breathing counts **3×**) **+ 5 per gratitude moment**; `level` follows a
-rising curve (computed, not stored). Streaks are computed from
+(resonance breathing counts **3×**) **+ 5 per gratitude moment + daily-quest bonuses
++ a streak bonus**; `level` follows a rising curve (computed, not stored).
+`daily_quests` lists today's three quests (write a gratitude · breathe a minute ·
+log a session) with `done` status — each completed day awards **+15 XP**, counted
+across all history so the total only grows. `streak_bonus_xp` is **10 × your longest
+streak** (monotonic, so a broken streak never costs XP). Streaks are computed from
 `sessions` (see [data-model](data-model.md#design-notes)), not stored:
 **current** = consecutive days ending today *or yesterday* (grace through end of
 today); **longest** = the longest run ever.

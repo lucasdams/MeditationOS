@@ -10,6 +10,13 @@ class DailyTotal(BaseModel):
     seconds: int
 
 
+class QuestStatus(BaseModel):
+    key: str
+    label: str
+    xp: int
+    done: bool
+
+
 class DashboardStats(BaseModel):
     total_seconds: int
     session_count: int
@@ -21,6 +28,8 @@ class DashboardStats(BaseModel):
     xp_for_next_level: int
     this_week: list[DailyTotal]
     gratitude_count: int = 0
+    streak_bonus_xp: int = 0
+    daily_quests: list[QuestStatus] = []
 
 
 class ActivityCalendar(BaseModel):
