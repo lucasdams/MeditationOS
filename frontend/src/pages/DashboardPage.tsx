@@ -70,6 +70,10 @@ export default function DashboardPage() {
               <div className="stat-value">{stats.session_count}</div>
               <div className="stat-label">Sessions</div>
             </div>
+            <div className="stat-card">
+              <div className="stat-value">{stats.gratitude_count} 🙏</div>
+              <div className="stat-label">Gratitude moments</div>
+            </div>
           </section>
 
           <section className="week">

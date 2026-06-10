@@ -20,6 +20,7 @@ class DashboardStats(BaseModel):
     xp_into_level: int
     xp_for_next_level: int
     this_week: list[DailyTotal]
+    gratitude_count: int = 0
 
 
 class ActivityCalendar(BaseModel):

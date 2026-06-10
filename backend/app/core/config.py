@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     login_rate_limit: str = "5/minute"
     # OAuth client ID for "Sign in with Google" (public value). Empty = disabled.
     google_client_id: str = ""
+    # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.
+    anthropic_api_key: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

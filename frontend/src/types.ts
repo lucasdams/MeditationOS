@@ -51,12 +51,40 @@ export interface DashboardStats {
   xp_into_level: number
   xp_for_next_level: number
   this_week: DailyTotal[]
+  gratitude_count: number
 }
 
 export interface ActivityCalendar {
   start: string
   end: string
   days: DailyTotal[] // sparse — only days with practice
+}
+
+export type GratitudeCategory =
+  | 'people'
+  | 'health'
+  | 'nature'
+  | 'experiences'
+  | 'growth'
+  | 'home'
+  | 'self'
+  | 'simple_pleasures'
+
+export interface Gratitude {
+  id: string
+  category: GratitudeCategory
+  text: string
+  created_at: string
+}
+
+export interface GratitudeCreate {
+  category: GratitudeCategory
+  text: string
+}
+
+export interface GratitudeSuggestions {
+  category: GratitudeCategory
+  options: string[]
 }
 
 export interface BreathingPattern {

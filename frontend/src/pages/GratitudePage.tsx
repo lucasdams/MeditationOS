@@ -1,0 +1,177 @@
+import { useEffect, useState } from 'react'
+import { gratitudeService } from '../services/gratitude'
+import { dashboardService } from '../services/dashboard'
+import RewardOverlay from '../components/RewardOverlay'
+import type { Gratitude, GratitudeCategory } from '../types'
+
+const GRATITUDE_XP = 5
+
+const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
+  { key: 'people', label: 'People', emoji: '🧡' },
+  { key: 'health', label: 'Health', emoji: '🌿' },
+  { key: 'nature', label: 'Nature', emoji: '🌅' },
+  { key: 'experiences', label: 'Experiences', emoji: '✨' },
+  { key: 'growth', label: 'Growth', emoji: '🌱' },
+  { key: 'home', label: 'Home', emoji: '🏡' },
+  { key: 'self', label: 'Yourself', emoji: '💪' },
+  { key: 'simple_pleasures', label: 'Simple pleasures', emoji: '☕' },
+]
+const LABELS: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.key, c.label]),
+)
+
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+
+export default function GratitudePage() {
+  const [category, setCategory] = useState<GratitudeCategory | null>(null)
+  const [options, setOptions] = useState<string[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(false)
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [entries, setEntries] = useState<Gratitude[] | null>(null)
+  const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
+
+  useEffect(() => {
+    gratitudeService
+      .list()
+      .then(setEntries)
+      .catch(() => setError('Could not load your gratitude journal.'))
+  }, [])
+
+  async function pickCategory(cat: GratitudeCategory) {
+    setCategory(cat)
+    setText('')
+    setOptions([])
+    setLoadingOptions(true)
+    try {
+      const res = await gratitudeService.suggestions(cat)
+      setOptions(res.options)
+    } catch {
+      setOptions([]) // suggestions are a nicety; manual input still works
+    } finally {
+      setLoadingOptions(false)
+    }
+  }
+
+  async function save() {
+    if (!category || !text.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      const entry = await gratitudeService.create({ category, text: text.trim() })
+      setEntries((prev) => [entry, ...(prev ?? [])])
+      setText('')
+      const stats = await dashboardService.getStats()
+      setReward({ afterXp: stats.xp, xpGained: GRATITUDE_XP })
+    } catch {
+      setError('Could not save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove(id: string) {
+    try {
+      await gratitudeService.remove(id)
+      setEntries((prev) => prev?.filter((e) => e.id !== id) ?? null)
+    } catch {
+      setError('Could not delete that entry.')
+    }
+  }
+
+  return (
+    <main className="gratitude">
+      <h1>Gratitude</h1>
+      <p className="muted">
+        What are you grateful for right now? Pick a theme for ideas, or write your own.
+      </p>
+
+      <div className="grat-categories">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            className={`chip${category === c.key ? ' chip-active' : ''}`}
+            onClick={() => pickCategory(c.key)}
+          >
+            <span aria-hidden="true">{c.emoji}</span> {c.label}
+          </button>
+        ))}
+      </div>
+
+      {category && (
+        <section className="grat-compose">
+          {loadingOptions && <p className="muted">Finding ideas…</p>}
+          {!loadingOptions && options.length > 0 && (
+            <div className="grat-options">
+              {options.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className="chip chip-soft"
+                  onClick={() => setText(opt)}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+          <textarea
+            rows={3}
+            value={text}
+            placeholder="I'm grateful for…"
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button type="button" onClick={save} disabled={saving || !text.trim()}>
+            {saving ? 'Saving…' : 'Save (+5 XP)'}
+          </button>
+        </section>
+      )}
+
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+
+      <section className="grat-journal">
+        <h2>Recent</h2>
+        {!entries && !error && <p className="muted">Loading…</p>}
+        {entries && entries.length === 0 && (
+          <p className="muted">No entries yet — your first grateful moment starts here.</p>
+        )}
+        {entries && entries.length > 0 && (
+          <ul className="session-list">
+            {entries.map((e) => (
+              <li key={e.id}>
+                <div>
+                  <div>{e.text}</div>
+                  <div className="muted">
+                    {LABELS[e.category] ?? e.category} · {fmtDate(e.created_at)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="link-danger"
+                  onClick={() => remove(e.id)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {reward && (
+        <RewardOverlay
+          afterXp={reward.afterXp}
+          xpGained={reward.xpGained}
+          onClose={() => setReward(null)}
+        />
+      )}
+    </main>
+  )
+}
