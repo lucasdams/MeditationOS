@@ -62,9 +62,30 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 
 ### Dashboard
 
-Display total meditation time, current streak, longest streak, and weekly statistics.
+Display total meditation time, current streak, longest streak, and weekly statistics,
+plus a GitHub-style year activity heatmap. All date bucketing is on the user's **local
+day** (per-user timezone).
 
-**Demonstrates:** data aggregation, backend calculations
+**Demonstrates:** data aggregation, backend calculations, timezone-aware SQL
+
+### Gamification (added during V1)
+
+XP, levels, and a growing ASCII tree; three **daily quests** (write a gratitude ·
+breathe a minute · log a session) with a streak bonus and a local-midnight reset.
+All **computed from activity**, nothing stored — see
+[gamification design](design/gamification.md) and
+[ADR-0009](decisions/0009-gamification-computed-from-activity.md).
+
+**Demonstrates:** derived state, engagement mechanics without write-path drift
+
+### Gratitude tool (an early taste of V3 AI)
+
+Pick from 36 themes and get **AI-suggested prompts** (Claude Haiku) or write your own;
+each moment earns XP. Ships with a deep curated fallback so it works with no API key —
+see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md). A first, safe step
+toward the V3 AI features below.
+
+**Demonstrates:** LLM integration with untrusted-output validation + graceful fallback
 
 ---
 
