@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
+import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import type { Gratitude, GratitudeCategory } from '../types'
 
@@ -57,7 +58,11 @@ export default function GratitudePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [entries, setEntries] = useState<Gratitude[] | null>(null)
-  const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
+  const [reward, setReward] = useState<{
+    afterXp: number
+    xpGained: number
+    quests: string[]
+  } | null>(null)
 
   useEffect(() => {
     gratitudeService
@@ -93,10 +98,17 @@ export default function GratitudePage() {
       const before = await dashboardService.getStats()
       const entry = await gratitudeService.create({ category, text: text.trim() })
       setEntries((prev) => [entry, ...(prev ?? [])])
-      setText('')
       const after = await dashboardService.getStats()
       // True gain from the server (gratitude XP + any daily-quest/streak bonus).
-      setReward({ afterXp: after.xp, xpGained: Math.max(0, after.xp - before.xp) })
+      setReward({
+        afterXp: after.xp,
+        xpGained: Math.max(0, after.xp - before.xp),
+        quests: newlyCompletedQuests(before, after),
+      })
+      // Return to the "pick a category" state for next time.
+      setCategory(null)
+      setText('')
+      setOptions([])
     } catch {
       setError('Could not save. Please try again.')
     } finally {
@@ -213,6 +225,7 @@ export default function GratitudePage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
+          questsCompleted={reward.quests}
           onClose={() => setReward(null)}
         />
       )}

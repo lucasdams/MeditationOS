@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
+import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import type { MeditationType } from '../types'
 
@@ -30,7 +31,11 @@ export default function LogSessionPage() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
+  const [reward, setReward] = useState<{
+    afterXp: number
+    xpGained: number
+    quests: string[]
+  } | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -57,7 +62,11 @@ export default function LogSessionPage() {
       })
       const after = await dashboardService.getStats()
       // True gain from the server (XP weighting + any daily-quest/streak bonus).
-      setReward({ afterXp: after.xp, xpGained: Math.max(0, after.xp - before.xp) })
+      setReward({
+        afterXp: after.xp,
+        xpGained: Math.max(0, after.xp - before.xp),
+        quests: newlyCompletedQuests(before, after),
+      })
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -125,6 +134,7 @@ export default function LogSessionPage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
+          questsCompleted={reward.quests}
           onClose={() => navigate('/sessions')}
         />
       )}

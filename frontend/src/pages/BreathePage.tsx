@@ -5,6 +5,7 @@ import { breathingPatternService } from '../services/breathingPatterns'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio } from '../lib/breathAudio'
+import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
 import type { BreathingPattern } from '../types'
@@ -68,10 +69,14 @@ export default function BreathePage() {
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
+  const [reward, setReward] = useState<{
+    afterXp: number
+    xpGained: number
+    quests: string[]
+  } | null>(null)
   const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
   const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
-  const [volume, setVolume] = useState(0.4)
+  const [volume, setVolume] = useState(0.6)
   const [targetMin, setTargetMin] = useState(0)
 
   const selected = patterns?.find((p) => p.id === selectedId) ?? null
@@ -251,7 +256,11 @@ export default function BreathePage() {
       })
       const after = await dashboardService.getStats()
       // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
-      setReward({ afterXp: after.xp, xpGained: Math.max(0, after.xp - before.xp) })
+      setReward({
+        afterXp: after.xp,
+        xpGained: Math.max(0, after.xp - before.xp),
+        quests: newlyCompletedQuests(before, after),
+      })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
@@ -298,7 +307,7 @@ export default function BreathePage() {
           {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}
         </span>
         <span>{cycles} cycles</span>
-        <span>{bpm} bpm</span>
+        <span>{bpm} breaths per minute</span>
       </div>
 
       <label htmlFor="pattern">Pattern</label>
@@ -310,7 +319,7 @@ export default function BreathePage() {
       >
         {(patterns ?? []).map((p) => (
           <option key={p.id} value={p.id}>
-            {p.name} · {p.breaths_per_minute} bpm
+            {p.name} · {p.breaths_per_minute} breaths per minute
           </option>
         ))}
       </select>
@@ -385,6 +394,7 @@ export default function BreathePage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
+          questsCompleted={reward.quests}
           onClose={() => navigate('/sessions')}
         />
       )}
