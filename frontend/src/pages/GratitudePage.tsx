@@ -15,6 +15,10 @@ const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
   { key: 'home', label: 'Home', emoji: '🏡' },
   { key: 'self', label: 'Yourself', emoji: '💪' },
   { key: 'simple_pleasures', label: 'Simple pleasures', emoji: '☕' },
+  { key: 'small_moments', label: 'Small moments', emoji: '🍃' },
+  { key: 'big_moments', label: 'Big moments', emoji: '🎉' },
+  { key: 'spiritual', label: 'Spiritual', emoji: '🕊️' },
+  { key: 'material', label: 'Material things', emoji: '🎁' },
 ]
 const LABELS: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
@@ -40,9 +44,7 @@ export default function GratitudePage() {
       .catch(() => setError('Could not load your gratitude journal.'))
   }, [])
 
-  async function pickCategory(cat: GratitudeCategory) {
-    setCategory(cat)
-    setText('')
+  async function fetchOptions(cat: GratitudeCategory) {
     setOptions([])
     setLoadingOptions(true)
     try {
@@ -53,6 +55,12 @@ export default function GratitudePage() {
     } finally {
       setLoadingOptions(false)
     }
+  }
+
+  function pickCategory(cat: GratitudeCategory) {
+    setCategory(cat)
+    setText('')
+    void fetchOptions(cat)
   }
 
   async function save() {
@@ -103,7 +111,19 @@ export default function GratitudePage() {
 
       {category && (
         <section className="grat-compose">
-          {loadingOptions && <p className="muted">Finding ideas…</p>}
+          <div className="grat-options-head">
+            <span className="muted">
+              {loadingOptions ? 'Finding ideas…' : 'Tap an idea, or write your own'}
+            </span>
+            <button
+              type="button"
+              className="grat-reload"
+              onClick={() => void fetchOptions(category)}
+              disabled={loadingOptions}
+            >
+              ↻ New ideas
+            </button>
+          </div>
           {!loadingOptions && options.length > 0 && (
             <div className="grat-options">
               {options.map((opt) => (

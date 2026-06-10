@@ -25,6 +25,10 @@ CATEGORIES = (
     "home",
     "self",
     "simple_pleasures",
+    "small_moments",
+    "big_moments",
+    "spiritual",
+    "material",
 )
 _CATEGORY_LIST = ", ".join(f"'{c}'" for c in CATEGORIES)
 

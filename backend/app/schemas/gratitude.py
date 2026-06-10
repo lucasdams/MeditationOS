@@ -15,6 +15,10 @@ GratitudeCategory = Literal[
     "home",
     "self",
     "simple_pleasures",
+    "small_moments",
+    "big_moments",
+    "spiritual",
+    "material",
 ]
 
 

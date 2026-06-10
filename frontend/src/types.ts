@@ -69,6 +69,10 @@ export type GratitudeCategory =
   | 'home'
   | 'self'
   | 'simple_pleasures'
+  | 'small_moments'
+  | 'big_moments'
+  | 'spiritual'
+  | 'material'
 
 export interface Gratitude {
   id: string
