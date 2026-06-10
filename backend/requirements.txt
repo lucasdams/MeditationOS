@@ -5,6 +5,7 @@ sqlalchemy==2.0.36
 alembic==1.14.0
 psycopg2-binary==2.9.10
 email-validator==2.2.0
+tzdata==2024.2
 passlib[argon2]==1.7.4
 pyjwt==2.10.1
 google-auth==2.37.0

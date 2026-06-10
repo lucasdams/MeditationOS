@@ -15,4 +15,6 @@ export const authService = {
   me: () => api.get<User>('/auth/me'),
 
   setUsername: (username: string) => api.post<User>('/auth/username', { username }),
+
+  setTimezone: (timezone: string) => api.post<User>('/auth/timezone', { timezone }),
 }

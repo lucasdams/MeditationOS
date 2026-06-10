@@ -9,12 +9,20 @@ from app.core.db import get_db
 from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
+    InvalidTimezoneError,
     UsernameTakenError,
 )
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.models.user import User
-from app.schemas.user import GoogleLogin, UserCreate, UserLogin, UsernameUpdate, UserRead
+from app.schemas.user import (
+    GoogleLogin,
+    TimezoneUpdate,
+    UserCreate,
+    UserLogin,
+    UsernameUpdate,
+    UserRead,
+)
 from app.services import user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -89,6 +97,20 @@ def logout(response: Response) -> None:
 @router.get("/me", response_model=UserRead)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.post("/timezone", response_model=UserRead)
+def set_timezone(
+    data: TimezoneUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    try:
+        return user_service.set_timezone(db, current_user, data.timezone)
+    except InvalidTimezoneError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid timezone"
+        ) from None
 
 
 @router.post("/username", response_model=UserRead)

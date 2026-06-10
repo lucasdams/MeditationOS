@@ -1,7 +1,8 @@
 """Dashboard aggregates, computed from `sessions` by SQL (not Python loops).
 
-Streaks are computed from the distinct calendar dates of `occurred_at` (UTC for
-V1 — per-user timezone is a known later improvement), not stored.
+Streaks, daily quests, the heatmap, and the weekly view are computed from the
+distinct calendar dates of `occurred_at` in the **user's timezone** (Postgres
+`timezone(tz, ...)`), so the day rolls over at the user's local midnight. Not stored.
 """
 
 import uuid
@@ -67,7 +68,14 @@ def _level_progress(xp: int) -> tuple[int, int, int]:
     return level, xp_into_level, xp_for_next_level
 
 
-def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardStats:
+def _local_date(tz: str, column):
+    """The calendar date of a timestamptz column in the given IANA timezone."""
+    return func.date(func.timezone(tz, column))
+
+
+def get_stats(
+    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC"
+) -> DashboardStats:
     total_seconds, session_count = db.execute(
         select(
             func.coalesce(func.sum(Session.duration_seconds), 0),
@@ -85,17 +93,18 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
 
     # Last 7 calendar days, zero-filled, oldest → today.
     week_start = today - timedelta(days=6)
+    local_day = _local_date(tz, Session.occurred_at)
     rows = db.execute(
         select(
-            func.date(Session.occurred_at),
+            local_day,
             func.coalesce(func.sum(Session.duration_seconds), 0),
         )
         .where(
             Session.user_id == user_id,
-            func.date(Session.occurred_at) >= week_start,
-            func.date(Session.occurred_at) <= today,
+            local_day >= week_start,
+            local_day <= today,
         )
-        .group_by(func.date(Session.occurred_at))
+        .group_by(local_day)
     ).all()
     by_date = {row[0]: int(row[1]) for row in rows}
 
@@ -106,14 +115,16 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
 
     # All distinct practice days (for streaks + the "log a session" quest).
     day_rows = db.execute(
-        select(func.date(Session.occurred_at)).where(Session.user_id == user_id).distinct()
+        select(_local_date(tz, Session.occurred_at))
+        .where(Session.user_id == user_id)
+        .distinct()
     ).all()
     session_days = {row[0] for row in day_rows}
     current_streak, longest_streak = _compute_streaks(session_days, today)
 
     # Days with a gratitude entry (the "write a gratitude" quest).
     grat_day_rows = db.execute(
-        select(func.date(GratitudeEntry.created_at))
+        select(_local_date(tz, GratitudeEntry.created_at))
         .where(GratitudeEntry.user_id == user_id)
         .distinct()
     ).all()
@@ -125,10 +136,11 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
     )
 
     # Days with at least a minute of resonance breathing (the "breathe" quest).
+    breathing_local_day = _local_date(tz, Session.occurred_at)
     breathing_day_rows = db.execute(
-        select(func.date(Session.occurred_at))
+        select(breathing_local_day)
         .where(Session.user_id == user_id, Session.type == "resonance_breathing")
-        .group_by(func.date(Session.occurred_at))
+        .group_by(breathing_local_day)
         .having(func.sum(Session.duration_seconds) >= BREATHE_QUEST_SECONDS)
     ).all()
     breathing_days = {row[0] for row in breathing_day_rows}
@@ -189,22 +201,23 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
 
 
 def get_activity(
-    db: DBSession, user_id: uuid.UUID, *, today: date, days: int = 365
+    db: DBSession, user_id: uuid.UUID, *, today: date, days: int = 365, tz: str = "UTC"
 ) -> ActivityCalendar:
     """Daily practice totals over the last `days`, sparse (active days only)."""
     start = today - timedelta(days=days - 1)
+    local_day = _local_date(tz, Session.occurred_at)
     rows = db.execute(
         select(
-            func.date(Session.occurred_at),
+            local_day,
             func.coalesce(func.sum(Session.duration_seconds), 0),
         )
         .where(
             Session.user_id == user_id,
-            func.date(Session.occurred_at) >= start,
-            func.date(Session.occurred_at) <= today,
+            local_day >= start,
+            local_day <= today,
         )
-        .group_by(func.date(Session.occurred_at))
-        .order_by(func.date(Session.occurred_at))
+        .group_by(local_day)
+        .order_by(local_day)
     ).all()
     active_days = [DailyTotal(date=row[0], seconds=int(row[1])) for row in rows]
     return ActivityCalendar(start=start, end=today, days=active_days)
