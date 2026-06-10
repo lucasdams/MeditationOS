@@ -3,7 +3,7 @@
 The Anthropic SDK is imported lazily so the dependency only loads when the feature
 is configured, and so tests can patch `suggest_options` without it. Model output is
 treated as untrusted and validated; any failure (no key, timeout, bad shape) falls
-back to a curated set. The fallback draws a random sample from a larger pool, so the
+back to a curated set. The fallback draws a random sample from a large pool, so the
 "show different ideas" reload feels fresh even without a key. We never send the
 user's own gratitude text to the model. See .claude/rules/ai-product.md.
 """
@@ -18,12 +18,12 @@ from app.prompts.gratitude import SYSTEM, user_message
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5-20251001"
-MAX_OPTIONS = 8
+MAX_OPTIONS = 10
 MAX_OPTION_LEN = 60
 TIMEOUT_SECONDS = 8.0
 
-# Curated pools (larger than MAX_OPTIONS) — sampled randomly, so reloading shows a
-# fresh set. Used when the API key is unset, or on any error / timeout / bad output.
+# Curated pools (much larger than MAX_OPTIONS) — sampled randomly, so reloading
+# keeps surfacing fresh sets. Used when the API key is unset, or on any failure.
 FALLBACK_OPTIONS: dict[str, list[str]] = {
     "people": [
         "A friend who checked in on me",
@@ -38,6 +38,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "Reconnecting with an old friend",
         "Someone who really listened",
         "A community I belong to",
+        "A friend's honesty",
+        "Someone's patience with me",
+        "A grandparent's wisdom",
+        "A child's energy",
+        "Someone who forgave me",
+        "A coworker who helped out",
+        "An old friend who stayed",
+        "Someone who showed up when it mattered",
     ],
     "health": [
         "A good night's sleep",
@@ -52,6 +60,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "Healing, slow as it is",
         "Clean water to drink",
         "A moment without pain",
+        "A doctor or nurse who helped",
+        "Recovering from being sick",
+        "My beating heart",
+        "Being able to see clearly",
+        "Strength I didn't know I had",
+        "Waking up rested",
+        "A calm, quiet mind",
+        "Two feet to stand on",
     ],
     "nature": [
         "Sunlight on my face",
@@ -66,6 +82,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "The feel of a breeze",
         "Flowers in bloom",
         "The ocean or a river",
+        "Stars on a clear night",
+        "The smell after rain",
+        "Warm sand or grass",
+        "A sunset",
+        "Mountains or hills",
+        "Light changing at dusk",
+        "Snow falling quietly",
+        "Leaves turning color",
     ],
     "experiences": [
         "Something that made me smile",
@@ -80,6 +104,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "Getting lost in a hobby",
         "A memory that resurfaced",
         "A moment of flow",
+        "A film that moved me",
+        "Dancing to a song",
+        "A meal shared with others",
+        "A spontaneous yes",
+        "A long, easy drive",
+        "Seeing something for the first time",
+        "A celebration",
+        "Time that flew by",
     ],
     "growth": [
         "A small win today",
@@ -94,6 +126,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "Patience with myself",
         "A challenge that stretched me",
         "How far I've come",
+        "Asking for help",
+        "Saying no when I needed to",
+        "A lesson learned the hard way",
+        "Becoming more patient",
+        "A skill I'm building",
+        "Owning a mistake",
+        "A perspective that shifted",
+        "Starting over",
     ],
     "home": [
         "A warm, safe place to be",
@@ -108,6 +148,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "A place to rest",
         "My own space",
         "Light through a window",
+        "A door that locks",
+        "A kitchen to cook in",
+        "A chair that fits me",
+        "Familiar sounds at home",
+        "A pet at my feet",
+        "A tidy room",
+        "Somewhere to come back to",
+        "The hum of a quiet house",
     ],
     "self": [
         "Something I did well",
@@ -122,6 +170,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "Trusting my gut",
         "Forgiving myself",
         "Just being here",
+        "My imagination",
+        "A choice I'm proud of",
+        "Standing up for myself",
+        "My ability to begin again",
+        "Noticing the good",
+        "A calm I found",
+        "My honesty",
+        "Letting myself rest",
     ],
     "simple_pleasures": [
         "My first sip of coffee",
@@ -136,6 +192,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "A deep breath",
         "A good meal",
         "Crossing something off my list",
+        "An unhurried nap",
+        "Cold water on a hot day",
+        "A good book",
+        "A favorite mug",
+        "Music in the background",
+        "A slow morning",
+        "Fresh, clean laundry",
+        "A perfectly ripe piece of fruit",
     ],
     "small_moments": [
         "A stranger's smile",
@@ -150,6 +214,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "The smell of fresh air",
         "A kind word, offered or received",
         "A moment that just felt easy",
+        "Holding a warm mug",
+        "A door held open for me",
+        "A perfectly timed break",
+        "Sun breaking through clouds",
+        "A good parking spot",
+        "A message that made me smile",
+        "One small thing going right",
+        "A breath of fresh air",
     ],
     "big_moments": [
         "A milestone I reached",
@@ -164,6 +236,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "A chance I took",
         "A door that opened",
         "A dream I'm living",
+        "A graduation or first day",
+        "Moving somewhere new",
+        "Meeting someone important",
+        "A leap of faith",
+        "Coming through a loss",
+        "A long-held wish coming true",
+        "A bold decision",
+        "A new chapter beginning",
     ],
     "spiritual": [
         "A sense of something larger",
@@ -178,6 +258,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "The mystery of being alive",
         "A feeling of being held",
         "Letting go of control",
+        "A prayer or meditation",
+        "A sense of grace",
+        "Forgiveness, given or received",
+        "Trust in something unseen",
+        "A quiet kind of hope",
+        "Feeling part of something",
+        "The gift of this day",
+        "Surrender",
     ],
     "material": [
         "A roof over my head",
@@ -192,6 +280,14 @@ FALLBACK_OPTIONS: dict[str, list[str]] = {
         "Running water and heat",
         "A gift someone gave me",
         "Enough — and a little extra",
+        "Shoes that fit",
+        "A working phone",
+        "Heat on a cold night",
+        "A full fridge",
+        "A bed of my own",
+        "Tools for my work",
+        "Savings, however small",
+        "A comfortable chair",
     ],
 }
 
@@ -214,7 +310,7 @@ def _validate(raw: object) -> list[str] | None:
 
 
 def suggest_options(category: str) -> list[str]:
-    """Return ~8 gratitude prompts for a category. Never raises — degrades to fallback."""
+    """Return ~10 gratitude prompts for a category. Never raises — degrades to fallback."""
     if not settings.anthropic_api_key:
         return _fallback(category)
     try:
@@ -225,7 +321,7 @@ def suggest_options(category: str) -> list[str]:
         )
         message = client.messages.create(
             model=MODEL,
-            max_tokens=400,
+            max_tokens=500,
             temperature=1.0,
             system=SYSTEM,
             messages=[{"role": "user", "content": user_message(category)}],
