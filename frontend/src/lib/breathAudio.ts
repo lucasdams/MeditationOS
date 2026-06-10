@@ -1,22 +1,20 @@
-// A continuous guide tone for the breathing pacer.
+// An "ocean breath" guide for the breathing pacer.
 //
-// One sine oscillator runs for the whole session and never restarts — we only
-// *glide its pitch*: up over the inhale, resting at the top during the hold,
-// down over the exhale, resting at the bottom. Because the oscillator never
-// starts/stops mid-session and the gain stays steady, there are no clicks and
-// the tone never cuts out (the old per-breath approach created/destroyed a tone
-// each phase, which clicked and felt like a dropping signal).
+// A loop of soft brown noise runs for the whole session; we shape it with the
+// breath: the wash swells up and opens brighter on the inhale, rests full during
+// the top hold, recedes and darkens on the exhale, rests low during the bottom
+// hold. It never fully cuts out (so there's no dropping-signal feel) and nothing
+// starts/stops mid-session (so there are no clicks).
 
 type Phase = 'inhale' | 'exhale'
 
-const LOW = 247 // B3 — bottom of the breath (rest after exhale)
-const HIGH = 330 // E4 — top of the breath (rest after inhale)
-
 export class BreathAudio {
   private ctx: AudioContext | null = null
-  private osc: OscillatorNode | null = null
+  private source: AudioBufferSourceNode | null = null
+  private filter: BiquadFilterNode | null = null
   private gain: GainNode | null = null
-  volume = 0.3
+  private noiseBuffer: AudioBuffer | null = null
+  volume = 0.5
 
   private ensureContext(): AudioContext {
     if (!this.ctx) this.ctx = new AudioContext()
@@ -28,52 +26,74 @@ export class BreathAudio {
     void this.ensureContext().resume()
   }
 
-  /** Glide the continuous tone toward this phase's pitch over `durationSec`.
-   *  Lazily spins up the oscillator on the first call (with a soft fade-in). */
+  /** A couple of seconds of brown noise (soft, low — ocean/waterfall-like). */
+  private noise(ctx: AudioContext): AudioBuffer {
+    if (this.noiseBuffer) return this.noiseBuffer
+    const size = ctx.sampleRate * 2
+    const buffer = ctx.createBuffer(1, size, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    let last = 0
+    for (let i = 0; i < size; i++) {
+      const white = Math.random() * 2 - 1
+      last = (last + 0.02 * white) / 1.02
+      data[i] = last * 3.5 // brown noise is quiet; bring it up to ~unity
+    }
+    this.noiseBuffer = buffer
+    return buffer
+  }
+
+  /** Shape the wash toward this phase over `durationSec`. Lazily starts the loop. */
   glide(phase: Phase, durationSec: number): void {
     const ctx = this.ensureContext()
     const now = ctx.currentTime
 
-    if (!this.osc || !this.gain) {
+    if (!this.source || !this.gain || !this.filter) {
+      const source = ctx.createBufferSource()
+      source.buffer = this.noise(ctx)
+      source.loop = true
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.Q.value = 0.6
+      filter.frequency.setValueAtTime(phase === 'inhale' ? 400 : 1400, now)
       const gain = ctx.createGain()
-      gain.gain.setValueAtTime(0.0001, now)
-      gain.gain.exponentialRampToValueAtTime(this.volume, now + 0.4) // soft fade-in, no click
-      const osc = ctx.createOscillator()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(phase === 'inhale' ? LOW : HIGH, now)
-      osc.connect(gain).connect(ctx.destination)
-      osc.start(now)
-      this.osc = osc
+      gain.gain.setValueAtTime(0.0001, now) // ramped up by the inhale below
+      source.connect(filter).connect(gain).connect(ctx.destination)
+      source.start(now)
+      this.source = source
+      this.filter = filter
       this.gain = gain
     }
 
-    const target = phase === 'inhale' ? HIGH : LOW
-    const freq = this.osc.frequency
-    freq.cancelScheduledValues(now)
-    freq.setValueAtTime(freq.value, now) // continue from wherever we are
-    freq.linearRampToValueAtTime(target, now + durationSec)
+    const swelling = phase === 'inhale'
+    const targetGain = swelling ? this.volume : this.volume * 0.1 // recede, don't silence
+    const targetCutoff = swelling ? 1400 : 400 // open brighter in / darker out
 
-    // Keep the level steady (and pick up any volume-slider change) without dipping.
     const g = this.gain.gain
     g.cancelScheduledValues(now)
-    g.setValueAtTime(g.value, now)
-    g.linearRampToValueAtTime(this.volume, now + 0.1)
+    g.setValueAtTime(Math.max(g.value, 0.0001), now)
+    g.linearRampToValueAtTime(Math.max(targetGain, 0.0001), now + durationSec)
+
+    const f = this.filter.frequency
+    f.cancelScheduledValues(now)
+    f.setValueAtTime(f.value, now)
+    f.linearRampToValueAtTime(targetCutoff, now + durationSec)
   }
 
-  /** Fade out and stop the tone (on pause / finish / toggle off) — no click. */
+  /** Fade out and stop the wash (on pause / finish / toggle off) — no click. */
   stop(): void {
-    if (!this.osc || !this.gain || !this.ctx) return
+    if (!this.source || !this.gain || !this.ctx) return
     const now = this.ctx.currentTime
     const g = this.gain.gain
     g.cancelScheduledValues(now)
-    g.setValueAtTime(g.value, now)
-    g.linearRampToValueAtTime(0.0001, now + 0.15)
-    this.osc.stop(now + 0.2)
-    this.osc = null
+    g.setValueAtTime(Math.max(g.value, 0.0001), now)
+    g.linearRampToValueAtTime(0.0001, now + 0.2)
+    this.source.stop(now + 0.25)
+    this.source = null
+    this.filter = null
     this.gain = null
   }
 
-  /** Optional soft bell at a transition — fire-and-forget, independent of the tone. */
+  /** Optional soft bell at a transition — fire-and-forget, independent of the wash. */
   chime(phase: Phase): void {
     const ctx = this.ensureContext()
     const now = ctx.currentTime
@@ -105,5 +125,6 @@ export class BreathAudio {
     this.stop()
     void this.ctx?.close()
     this.ctx = null
+    this.noiseBuffer = null
   }
 }

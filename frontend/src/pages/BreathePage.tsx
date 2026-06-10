@@ -69,7 +69,7 @@ export default function BreathePage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
-  const [audioOn, setAudioOn] = useState(true) // guide tone on by default
+  const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
   const [chimeOn, setChimeOn] = useState(false) // transition bell off by default
   const [volume, setVolume] = useState(0.4)
   const [targetMin, setTargetMin] = useState(0)
@@ -134,7 +134,7 @@ export default function BreathePage() {
       try {
         a.glide(p, dur)
       } catch (err) {
-        console.warn('guide tone failed', err)
+        console.warn('ocean sound failed', err)
       }
     }
     if (chimeOnRef.current) {
@@ -334,7 +334,7 @@ export default function BreathePage() {
             checked={audioOn}
             onChange={(e) => toggleAudio(e.target.checked)}
           />{' '}
-          Guide tone
+          Ocean sound
         </label>
         <label>
           <input
