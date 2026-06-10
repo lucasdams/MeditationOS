@@ -134,7 +134,7 @@ GET /api/v1/gratitude/suggestions?category=people
 `experiences`, `growth`, `home`, `self`, `simple_pleasures`, `small_moments`,
 `big_moments`, `spiritual`, `material`). **Suggestions** (10 per call) are generated
 by Claude Haiku from the category alone (no user text is sent to the model) and fall
-back to a randomized sample of a ~20-deep curated pool per category when
+back to a randomized sample of a ~30-deep curated pool per category when
 `ANTHROPIC_API_KEY` is unset or the call fails — so "show different ideas" stays fresh
 either way; see
 [ADR-0008](../decisions/0008-ai-suggestions-curated-fallback.md). Each saved entry
