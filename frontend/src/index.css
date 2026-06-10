@@ -837,6 +837,15 @@ button:disabled {
   padding: 0;
 }
 
+.test-sound {
+  margin: 0;
+  width: auto;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  background: #1c1c1e;
+  white-space: nowrap;
+}
+
 
 /* Works at mobile widths */
 @media (max-width: 480px) {

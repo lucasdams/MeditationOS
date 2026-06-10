@@ -365,6 +365,9 @@ export default function BreathePage() {
           aria-label="Volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />
+        <button type="button" className="test-sound" onClick={() => audio().testBeep()}>
+          🔊 Test sound
+        </button>
       </div>
 
       {error && (

@@ -2,6 +2,21 @@
 
 let ctx: AudioContext | null = null
 
+// Create + unlock the context on the first user gesture, so the fanfare (which
+// fires after async work, outside the original click) isn't blocked by autoplay.
+if (typeof window !== 'undefined') {
+  const warm = () => {
+    try {
+      if (!ctx) ctx = new AudioContext()
+      void ctx.resume()
+    } catch {
+      // audio unavailable — ignore
+    }
+  }
+  window.addEventListener('pointerdown', warm)
+  window.addEventListener('keydown', warm)
+}
+
 export function playLevelUp(): void {
   try {
     if (!ctx) ctx = new AudioContext()
