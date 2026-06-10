@@ -49,7 +49,11 @@ export class BreathAudio {
   /** Shape the wash toward this phase over `durationSec`. Lazily starts the loop. */
   glide(phase: Phase, durationSec: number): void {
     const ctx = this.ensureContext()
-    void ctx.resume() // guarantee the context is running before we schedule
+    // Safari drops sound scheduled while suspended — resume first, then retry.
+    if (ctx.state !== 'running') {
+      void ctx.resume().then(() => this.glide(phase, durationSec)).catch(() => {})
+      return
+    }
     const now = ctx.currentTime
 
     if (!this.source || !this.gain || !this.filter) {
@@ -105,28 +109,32 @@ export class BreathAudio {
     this.filterTarget = 320
   }
 
-  /** A clear, loud test tone played synchronously — the simplest possible Web Audio
-   *  path, for confirming sound output works at all. */
+  /** A clear test tone for confirming sound output works at all. Kept Safari-proof:
+   *  constant gain (no exponential ramps) and played only once the context is
+   *  actually running (Safari drops sound scheduled while it's still suspended). */
   testBeep(): void {
     const ctx = this.ensureContext()
-    void ctx.resume()
-    const now = ctx.currentTime
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = 440
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45)
-    osc.connect(gain).connect(ctx.destination)
-    osc.start(now)
-    osc.stop(now + 0.5)
+    const play = () => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = 440
+      gain.gain.value = 0.3 // constant — no ramps
+      osc.connect(gain).connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.4)
+    }
+    if (ctx.state === 'running') play()
+    else void ctx.resume().then(play).catch(() => {})
   }
 
   /** Soft bell at a transition — fire-and-forget, independent of the wash. */
   chime(phase: Phase): void {
     const ctx = this.ensureContext()
-    void ctx.resume()
+    if (ctx.state !== 'running') {
+      void ctx.resume().then(() => this.chime(phase)).catch(() => {})
+      return
+    }
     const now = ctx.currentTime
     const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
     const peak = Math.max(0.14, this.volume * 0.4) // audible bell, still soft
