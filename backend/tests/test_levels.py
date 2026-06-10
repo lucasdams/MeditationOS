@@ -40,8 +40,8 @@ def test_stats_endpoint_reports_xp_and_level(client):
         },
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # 60 practice + 15 (session quest for that day) + 10 (longest-streak bonus) = 85,
-    # still level 3 (cumulative XP for L3=60, L4=120).
-    assert body["xp"] == 85
+    # 60 practice + 15 (session quest for that day) + 0 (current streak is 0 — the
+    # session is back in January) = 75, still level 3 (L3=60, L4=120).
+    assert body["xp"] == 75
     assert body["level"] == 3
     assert body["xp_for_next_level"] == 60
