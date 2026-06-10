@@ -103,6 +103,24 @@ export class BreathAudio {
     this.filterTarget = 320
   }
 
+  /** A clear, loud test tone played synchronously — the simplest possible Web Audio
+   *  path, for confirming sound output works at all. */
+  testBeep(): void {
+    const ctx = this.ensureContext()
+    void ctx.resume()
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = 440
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + 0.5)
+  }
+
   /** Soft bell at a transition — fire-and-forget, independent of the wash. */
   chime(phase: Phase): void {
     const ctx = this.ensureContext()
