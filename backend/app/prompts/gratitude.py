@@ -5,8 +5,9 @@ Given a category, suggest short, specific things a person might feel grateful fo
 gentle reflective prompts, never clinical or medical advice.
 
 Rules:
-- Return ONLY a JSON array of 6 strings. No prose, no object, no keys.
+- Return ONLY a JSON array of 8 strings. No prose, no object, no keys.
 - Each string is 2-7 words, concrete and evocative (e.g. "A friend who checked in").
+- Vary them; avoid near-duplicates so repeat requests feel fresh.
 - No numbering, no emojis, no quotation marks inside the strings.
 - Keep them broadly relatable and emotionally safe."""
 
@@ -20,9 +21,13 @@ CATEGORY_LABELS = {
     "home": "Home and comfort",
     "self": "Myself",
     "simple_pleasures": "Simple pleasures",
+    "small_moments": "Small everyday moments",
+    "big_moments": "Big moments and milestones",
+    "spiritual": "Spiritual and meaning",
+    "material": "Material things and comforts",
 }
 
 
 def user_message(category: str) -> str:
     label = CATEGORY_LABELS.get(category, category)
-    return f"Category: {label}. Give 6 gratitude prompts as a JSON array of strings."
+    return f"Category: {label}. Give 8 gratitude prompts as a JSON array of strings."
