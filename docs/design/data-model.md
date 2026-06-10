@@ -7,18 +7,18 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
 ## Entity-relationship overview
 
 ```
-                ┌──────────────┐
-                │    users     │
-                └──────┬───────┘
-                       │ 1
-        ┌──────────────┼──────────────┬───────────────┐
-        │ N            │ N            │ N             │ N
- ┌──────▼─────┐ ┌──────▼──────────┐ ┌─▼────────┐ ┌────▼─────┐
- │  sessions  │ │ breathing_      │ │ journals │ │  goals   │
- │            │ │ patterns        │ │          │ │          │
- └──────┬─────┘ └─────────────────┘ └──────────┘ └──────────┘
-        │ 0..1 (a session may reference the pattern it used)
-        └────────────► breathing_patterns
+                     ┌──────────────┐
+                     │    users     │
+                     └──────┬───────┘
+                            │ 1
+     ┌──────────┬───────────┼───────────┬───────────┬──────────┐
+     │ N        │ N         │ N         │ N         │ N        │ N
+┌────▼────┐ ┌───▼──────┐ ┌──▼────────┐ ┌▼─────────┐ ┌▼───────┐ ┌▼──────┐
+│sessions │ │breathing_│ │gratitude_ │ │ journals │ │ goals  │ │  …    │
+│         │ │patterns  │ │entries    │ │  (V2)    │ │ (V2)   │ │       │
+└────┬────┘ └──────────┘ └───────────┘ └──────────┘ └────────┘ └───────┘
+     │ 0..1 (a session may reference the pattern it used)
+     └────────────► breathing_patterns
 ```
 
 All child tables carry `user_id` and are always queried scoped to the authenticated user.
