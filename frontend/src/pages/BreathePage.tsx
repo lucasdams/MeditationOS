@@ -70,7 +70,7 @@ export default function BreathePage() {
   const [saving, setSaving] = useState(false)
   const [reward, setReward] = useState<{ afterXp: number; xpGained: number } | null>(null)
   const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
-  const [chimeOn, setChimeOn] = useState(false) // transition bell off by default
+  const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
   const [volume, setVolume] = useState(0.4)
   const [targetMin, setTargetMin] = useState(0)
 

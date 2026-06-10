@@ -54,7 +54,7 @@ export class BreathAudio {
       const filter = ctx.createBiquadFilter()
       filter.type = 'lowpass'
       filter.Q.value = 0.6
-      filter.frequency.setValueAtTime(phase === 'inhale' ? 400 : 1400, now)
+      filter.frequency.setValueAtTime(phase === 'inhale' ? 280 : 1600, now)
       const gain = ctx.createGain()
       gain.gain.setValueAtTime(0.0001, now) // ramped up by the inhale below
       source.connect(filter).connect(gain).connect(ctx.destination)
@@ -65,8 +65,9 @@ export class BreathAudio {
     }
 
     const swelling = phase === 'inhale'
-    const targetGain = swelling ? this.volume : this.volume * 0.1 // recede, don't silence
-    const targetCutoff = swelling ? 1400 : 400 // open brighter in / darker out
+    // Wide swell-to-trough gap so it feels like a wave rolling in and far out.
+    const targetGain = swelling ? this.volume : this.volume * 0.04
+    const targetCutoff = swelling ? 1600 : 280 // open brighter in / darker out
 
     const g = this.gain.gain
     g.cancelScheduledValues(now)
@@ -98,7 +99,7 @@ export class BreathAudio {
     const ctx = this.ensureContext()
     const now = ctx.currentTime
     const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
-    const peak = Math.max(0.16, this.volume)
+    const peak = this.volume * 0.35 // soft — sits under the ocean wash
 
     const out = ctx.createGain()
     out.gain.setValueAtTime(0, now)
