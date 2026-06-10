@@ -63,18 +63,25 @@ export default function HistoryPage() {
       )}
 
       {sessions !== null && sessions.length > 0 && (
-        <ul className="session-list">
+        <ul className="session-cards">
           {sessions.map((s) => (
-            <li key={s.id}>
-              <div>
-                <strong>{TYPE_LABELS[s.type] ?? s.type}</strong> · {formatDuration(s.duration_seconds)}
-                {s.breaths_per_minute != null && <> · {s.breaths_per_minute} bpm</>}
-                <div className="muted">
-                  {formatWhen(s.occurred_at)}
-                  {s.notes ? ` — ${s.notes}` : ''}
+            <li key={s.id} className="session-card">
+              <div className="session-card-main">
+                <div className="session-card-title">{TYPE_LABELS[s.type] ?? s.type}</div>
+                <div className="session-card-meta">
+                  {formatDuration(s.duration_seconds)}
+                  {s.breaths_per_minute != null && (
+                    <> · {s.breaths_per_minute} breaths per minute</>
+                  )}{' '}
+                  · {formatWhen(s.occurred_at)}
                 </div>
+                {s.notes && <div className="session-card-notes">{s.notes}</div>}
               </div>
-              <button type="button" className="link-danger" onClick={() => handleDelete(s.id)}>
+              <button
+                type="button"
+                className="link-danger"
+                onClick={() => handleDelete(s.id)}
+              >
                 Delete
               </button>
             </li>

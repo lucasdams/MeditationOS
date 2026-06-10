@@ -1,10 +1,10 @@
 // An "ocean breath" guide for the breathing pacer.
 //
 // A loop of soft brown noise runs for the whole session; we shape it with the
-// breath: the wash swells up and opens brighter on the inhale, rests full during
-// the top hold, recedes and darkens on the exhale, rests low during the bottom
-// hold. It never fully cuts out (so there's no dropping-signal feel) and nothing
-// starts/stops mid-session (so there are no clicks).
+// breath: the wash swells up and opens brighter on the inhale, recedes and darkens
+// on the exhale. It never fully cuts out and nothing starts/stops mid-session (so
+// there are no clicks). Gain/filter are ramped from a *tracked* rest value (not a
+// read of AudioParam.value, which is ambiguous across browsers).
 
 type Phase = 'inhale' | 'exhale'
 
@@ -14,7 +14,9 @@ export class BreathAudio {
   private filter: BiquadFilterNode | null = null
   private gain: GainNode | null = null
   private noiseBuffer: AudioBuffer | null = null
-  volume = 0.5
+  private gainTarget = 0.0001
+  private filterTarget = 320
+  volume = 0.6
 
   private ensureContext(): AudioContext {
     if (!this.ctx) this.ctx = new AudioContext()
@@ -45,6 +47,7 @@ export class BreathAudio {
   /** Shape the wash toward this phase over `durationSec`. Lazily starts the loop. */
   glide(phase: Phase, durationSec: number): void {
     const ctx = this.ensureContext()
+    void ctx.resume() // guarantee the context is running before we schedule
     const now = ctx.currentTime
 
     if (!this.source || !this.gain || !this.filter) {
@@ -54,9 +57,11 @@ export class BreathAudio {
       const filter = ctx.createBiquadFilter()
       filter.type = 'lowpass'
       filter.Q.value = 0.6
-      filter.frequency.setValueAtTime(phase === 'inhale' ? 280 : 1600, now)
+      this.filterTarget = phase === 'inhale' ? 320 : 1600
+      filter.frequency.setValueAtTime(this.filterTarget, now)
       const gain = ctx.createGain()
-      gain.gain.setValueAtTime(0.0001, now) // ramped up by the inhale below
+      this.gainTarget = 0.0001
+      gain.gain.setValueAtTime(this.gainTarget, now)
       source.connect(filter).connect(gain).connect(ctx.destination)
       source.start(now)
       this.source = source
@@ -65,19 +70,21 @@ export class BreathAudio {
     }
 
     const swelling = phase === 'inhale'
-    // Wide swell-to-trough gap so it feels like a wave rolling in and far out.
-    const targetGain = swelling ? this.volume : this.volume * 0.04
-    const targetCutoff = swelling ? 1600 : 280 // open brighter in / darker out
+    // Swells loud on the in-breath, recedes (but stays audible) on the out-breath.
+    const targetGain = swelling ? this.volume : this.volume * 0.2
+    const targetCutoff = swelling ? 1600 : 320 // open brighter in / darker out
 
     const g = this.gain.gain
     g.cancelScheduledValues(now)
-    g.setValueAtTime(Math.max(g.value, 0.0001), now)
-    g.linearRampToValueAtTime(Math.max(targetGain, 0.0001), now + durationSec)
+    g.setValueAtTime(this.gainTarget, now) // continue from the last rest value
+    g.linearRampToValueAtTime(targetGain, now + durationSec)
+    this.gainTarget = targetGain
 
     const f = this.filter.frequency
     f.cancelScheduledValues(now)
-    f.setValueAtTime(f.value, now)
+    f.setValueAtTime(this.filterTarget, now)
     f.linearRampToValueAtTime(targetCutoff, now + durationSec)
+    this.filterTarget = targetCutoff
   }
 
   /** Fade out and stop the wash (on pause / finish / toggle off) — no click. */
@@ -86,25 +93,28 @@ export class BreathAudio {
     const now = this.ctx.currentTime
     const g = this.gain.gain
     g.cancelScheduledValues(now)
-    g.setValueAtTime(Math.max(g.value, 0.0001), now)
+    g.setValueAtTime(this.gainTarget, now)
     g.linearRampToValueAtTime(0.0001, now + 0.2)
     this.source.stop(now + 0.25)
     this.source = null
     this.filter = null
     this.gain = null
+    this.gainTarget = 0.0001
+    this.filterTarget = 320
   }
 
-  /** Optional soft bell at a transition — fire-and-forget, independent of the wash. */
+  /** Soft bell at a transition — fire-and-forget, independent of the wash. */
   chime(phase: Phase): void {
     const ctx = this.ensureContext()
+    void ctx.resume()
     const now = ctx.currentTime
     const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
-    const peak = this.volume * 0.2 // very soft — sits well under the ocean wash
+    const peak = Math.max(0.14, this.volume * 0.4) // audible bell, still soft
 
     const out = ctx.createGain()
-    out.gain.setValueAtTime(0, now)
-    out.gain.linearRampToValueAtTime(peak, now + 0.008) // quick strike
-    out.gain.setTargetAtTime(0, now + 0.008, 0.4) // natural bell decay
+    out.gain.setValueAtTime(0.0001, now)
+    out.gain.linearRampToValueAtTime(peak, now + 0.01) // quick strike
+    out.gain.setTargetAtTime(0, now + 0.01, 0.4) // natural bell decay
     out.connect(ctx.destination)
 
     for (const [mult, level] of [

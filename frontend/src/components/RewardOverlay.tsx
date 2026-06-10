@@ -10,10 +10,12 @@ import { playLevelUp } from '../lib/sfx'
 export default function RewardOverlay({
   afterXp,
   xpGained,
+  questsCompleted = [],
   onClose,
 }: {
   afterXp: number
   xpGained: number
+  questsCompleted?: string[]
   onClose: () => void
 }) {
   const startXp = Math.max(0, afterXp - xpGained)
@@ -61,6 +63,13 @@ export default function RewardOverlay({
         <div className="xp-text">
           +{xpGained} XP · {prog.xpIntoLevel} / {prog.xpForNextLevel} to next
         </div>
+        {questsCompleted.length > 0 && (
+          <ul className="reward-quests">
+            {questsCompleted.map((q) => (
+              <li key={q}>✓ Quest complete: {q}</li>
+            ))}
+          </ul>
+        )}
         <button type="button" onClick={onClose}>
           Continue
         </button>

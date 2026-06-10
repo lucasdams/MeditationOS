@@ -227,6 +227,57 @@ button:disabled {
   border-bottom: 1px solid #e5e5ea;
 }
 
+/* Session history as cards */
+.session-cards {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.session-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.session-card-title {
+  font-weight: 700;
+}
+
+.session-card-meta {
+  font-size: 0.85rem;
+  color: #6b6b70;
+  margin-top: 0.15rem;
+}
+
+.session-card-notes {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+
+/* Completed-quest lines in the reward overlay */
+.reward-quests {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.reward-quests li {
+  margin: 0.2rem 0;
+}
+
 .muted {
   color: #6b6b70;
   font-size: 0.9rem;
