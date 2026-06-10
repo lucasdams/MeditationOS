@@ -6,6 +6,8 @@
 // there are no clicks). Gain/filter are ramped from a *tracked* rest value (not a
 // read of AudioParam.value, which is ambiguous across browsers).
 
+import { getAudioContext } from './audioContext'
+
 type Phase = 'inhale' | 'exhale'
 
 export class BreathAudio {
@@ -19,7 +21,7 @@ export class BreathAudio {
   volume = 0.6
 
   private ensureContext(): AudioContext {
-    if (!this.ctx) this.ctx = new AudioContext()
+    if (!this.ctx) this.ctx = getAudioContext()
     return this.ctx
   }
 
@@ -151,8 +153,9 @@ export class BreathAudio {
   }
 
   close(): void {
+    // The AudioContext is shared app-wide (see audioContext.ts) — stop our nodes
+    // but never close it, or other sounds (the level-up fanfare) would go silent.
     this.stop()
-    void this.ctx?.close()
     this.ctx = null
     this.noiseBuffer = null
   }
