@@ -99,7 +99,7 @@ export class BreathAudio {
     const ctx = this.ensureContext()
     const now = ctx.currentTime
     const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
-    const peak = this.volume * 0.35 // soft — sits under the ocean wash
+    const peak = this.volume * 0.2 // very soft — sits well under the ocean wash
 
     const out = ctx.createGain()
     out.gain.setValueAtTime(0, now)
