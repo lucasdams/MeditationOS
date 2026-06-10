@@ -90,13 +90,13 @@ def test_create_accepts_new_category(client):
     assert res.json()["category"] == "spiritual"
 
 
-def test_suggestions_fallback_returns_eight(client):
+def test_suggestions_fallback_returns_ten(client):
     _auth(client, "g12@example.com")
     # Force the no-key path so we exercise the curated fallback (no real API call).
     with patch("app.services.ai.gratitude_suggester.settings.anthropic_api_key", ""):
         res = client.get("/api/v1/gratitude/suggestions?category=material")
     assert res.status_code == 200
-    assert len(res.json()["options"]) == 8
+    assert len(res.json()["options"]) == 10
 
 
 def test_suggestions_rejects_bad_category(client):
