@@ -32,6 +32,7 @@ export default function AppHeader() {
         <Link to="/breathe" className="primary">
           🫁 Breathe
         </Link>
+        <Link to="/gratitude">Gratitude</Link>
         <Link to="/sessions/new">+ Log</Link>
         <Link to="/sessions">History</Link>
       </nav>

@@ -77,3 +77,14 @@ def test_activity_user_scoped(client):
     _auth(client, "act_other@example.com")  # different user
     body = client.get("/api/v1/dashboard/activity").json()
     assert body["days"] == []
+
+
+def test_stats_gratitude_adds_xp(client):
+    _auth(client, "grat_xp@example.com")
+    base = client.get("/api/v1/dashboard/stats").json()
+    assert base["xp"] == 0
+    assert base["gratitude_count"] == 0
+    client.post("/api/v1/gratitude", json={"category": "self", "text": "I showed up today"})
+    after = client.get("/api/v1/dashboard/stats").json()
+    assert after["gratitude_count"] == 1
+    assert after["xp"] == 5  # GRATITUDE_XP per entry

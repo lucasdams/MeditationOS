@@ -33,6 +33,7 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 
 ## Journaling & Insights
 
+- [x] **Gratitude tool** — category → AI-suggested prompts (Claude Haiku, curated fallback) or free text; earns XP — see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md)
 - [ ] Journal prompts tied to session type or streak milestones
 - [ ] Mood tagging and trend charts over time
 - [ ] Search and filter past journal entries

@@ -4,7 +4,7 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, and guided HRV breathing working locally · 64 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, guided HRV breathing, and an AI gratitude tool working locally · 81 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
@@ -12,10 +12,11 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap
 - ✅ Levels & XP — earn XP from practice, level up, and grow an ASCII tree on your dashboard
-- ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, soft mid-range audio guide + transition bell, optional duration timer; saves as a session
+- ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, an ocean-breath audio guide + transition bell, optional duration timer; saves as a session
+- ✅ Gratitude tool — pick a theme, get AI-suggested prompts (Claude Haiku, with a curated fallback) or write your own; each moment earns XP
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
-- ✅ 64 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 81 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 

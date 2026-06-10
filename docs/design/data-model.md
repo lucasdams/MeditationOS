@@ -80,6 +80,24 @@ Saved inhale/exhale presets. Built-in presets and user-created patterns share th
 - Global presets have `user_id = NULL` and `is_preset = true`.
 - **Index:** `user_id`.
 
+### `gratitude_entries`
+
+A logged moment of gratitude. The user picks a fixed **category** and writes (or
+accepts an AI-suggested) prompt as free `text`.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
+| `category` | text | NOT NULL, CHECK in (`people`,`health`,`nature`,`experiences`,`growth`,`home`,`self`,`simple_pleasures`) |
+| `text` | text | NOT NULL |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Index:** `(user_id, created_at)`.
+
+- The **category taxonomy is fixed** (constrained by the CHECK) so entries stay filterable; the precise prompt is free text. The AI only generates *suggested* prompts within a category (never stored as the category).
+- Each entry awards **+5 XP** (computed in `dashboard_service`, like practice minutes); gratitude does **not** affect the practice streak.
+
 ### `journals` (V2)
 
 | Column | Type | Constraints |

@@ -10,8 +10,10 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
+from app.models.gratitude import GratitudeEntry
 from app.models.session import Session
 from app.schemas.dashboard import ActivityCalendar, DailyTotal, DashboardStats
+from app.services.gratitude_service import GRATITUDE_XP
 
 
 def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
@@ -91,7 +93,12 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
     ).all()
     current_streak, longest_streak = _compute_streaks({row[0] for row in day_rows}, today)
 
-    xp = int(total_seconds) // 60  # 1 XP per minute practiced
+    gratitude_count = db.execute(
+        select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
+    ).scalar_one()
+
+    # 1 XP per minute practiced + GRATITUDE_XP per gratitude moment.
+    xp = int(total_seconds) // 60 + int(gratitude_count) * GRATITUDE_XP
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
 
     return DashboardStats(
@@ -104,6 +111,7 @@ def get_stats(db: DBSession, user_id: uuid.UUID, *, today: date) -> DashboardSta
         xp_into_level=xp_into_level,
         xp_for_next_level=xp_for_next_level,
         this_week=this_week,
+        gratitude_count=int(gratitude_count),
     )
 
 
