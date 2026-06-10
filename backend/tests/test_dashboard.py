@@ -68,7 +68,8 @@ def test_activity_sparse_and_summed_per_day(client):
     body = client.get("/api/v1/dashboard/activity").json()
     assert body["end"] == today.isoformat()
     assert len(body["days"]) == 1  # sparse: only the one active day
-    assert body["days"][0] == {"date": today.isoformat(), "seconds": 900}
+    # Session-only day: active, but not all quests (no gratitude, no full-minute breathing).
+    assert body["days"][0] == {"date": today.isoformat(), "seconds": 900, "all_quests": False}
 
 
 def test_activity_user_scoped(client):
@@ -135,3 +136,23 @@ def test_breathe_quest_needs_a_full_minute(client):
     quests = {q["key"]: q["done"] for q in body["daily_quests"]}
     assert quests["breathe"] is False  # only 30s < 60s threshold
     assert quests["session"] is True
+
+
+def test_activity_all_quests_flag(client):
+    _auth(client, "perfectday@example.com")
+    today = datetime.now(UTC).date().isoformat()
+    _session(client, f"{today}T08:00:00", seconds=600)  # session quest
+    _session(client, f"{today}T09:00:00", seconds=120, type="resonance_breathing")  # breathe
+    client.post("/api/v1/gratitude", json={"category": "people", "text": "a friend"})  # gratitude
+    days = client.get("/api/v1/dashboard/activity").json()["days"]
+    day = next(d for d in days if d["date"] == today)
+    assert day["all_quests"] is True
+
+
+def test_activity_partial_quests_not_flagged(client):
+    _auth(client, "partialday@example.com")
+    today = datetime.now(UTC).date().isoformat()
+    _session(client, f"{today}T08:00:00", seconds=600)  # only a session — not all quests
+    days = client.get("/api/v1/dashboard/activity").json()["days"]
+    day = next(d for d in days if d["date"] == today)
+    assert day["all_quests"] is False

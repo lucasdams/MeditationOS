@@ -32,6 +32,15 @@ class DashboardStats(BaseModel):
     daily_quests: list[QuestStatus] = []
 
 
+class ActivityDay(BaseModel):
+    """One active day in the heatmap. `all_quests` drives the 3-state colouring:
+    inactive (not present) / active (present) / all daily quests completed."""
+
+    date: date
+    seconds: int
+    all_quests: bool
+
+
 class ActivityCalendar(BaseModel):
     """A year of daily practice for a GitHub-style heatmap.
 
@@ -41,4 +50,4 @@ class ActivityCalendar(BaseModel):
 
     start: date
     end: date
-    days: list[DailyTotal]
+    days: list[ActivityDay]

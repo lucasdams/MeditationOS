@@ -64,10 +64,16 @@ export interface DashboardStats {
   daily_quests: DailyQuest[]
 }
 
+export interface ActivityDay {
+  date: string
+  seconds: number
+  all_quests: boolean // all three daily quests completed that day
+}
+
 export interface ActivityCalendar {
   start: string
   end: string
-  days: DailyTotal[] // sparse — only days with practice
+  days: ActivityDay[] // sparse — only days with practice
 }
 
 export type GratitudeCategory =
