@@ -344,6 +344,74 @@ button:disabled {
   margin-top: 1.5rem;
 }
 
+.quests {
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+}
+
+.quests h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.quest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.quest {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f3;
+}
+
+.quest:last-child {
+  border-bottom: none;
+}
+
+.quest-check {
+  font-weight: 700;
+  color: #c4c4c9;
+  width: 1.2rem;
+  text-align: center;
+}
+
+.quest.done .quest-check {
+  color: #059669;
+}
+
+.quest-label {
+  flex: 1;
+  color: #1c1c1e;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.quest-label:hover {
+  text-decoration: underline;
+}
+
+.quest.done .quest-label {
+  color: #6b6b70;
+  text-decoration: line-through;
+}
+
+.quest-xp {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.quest-streak {
+  margin: 0.6rem 0 0;
+}
+
 .stat-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

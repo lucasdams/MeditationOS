@@ -44,6 +44,39 @@ export default function DashboardPage() {
 
       {stats && <LevelCard stats={stats} />}
 
+      {stats && (
+        <section className="quests">
+          <h2>Today's quests</h2>
+          <ul className="quest-list">
+            {stats.daily_quests.map((q) => {
+              const to =
+                q.key === 'gratitude'
+                  ? '/gratitude'
+                  : q.key === 'breathe'
+                    ? '/breathe'
+                    : '/sessions/new'
+              return (
+                <li key={q.key} className={q.done ? 'quest done' : 'quest'}>
+                  <span className="quest-check" aria-hidden="true">
+                    {q.done ? '✓' : '○'}
+                  </span>
+                  <Link to={to} className="quest-label">
+                    {q.label}
+                  </Link>
+                  <span className="quest-xp">+{q.xp} XP</span>
+                </li>
+              )
+            })}
+          </ul>
+          {stats.streak_bonus_xp > 0 && (
+            <p className="quest-streak muted">
+              🔥 Streak bonus: +{stats.streak_bonus_xp} XP from your{' '}
+              {stats.longest_streak_days}-day best streak
+            </p>
+          )}
+        </section>
+      )}
+
       {stats && stats.session_count === 0 && (
         <p className="muted">
           Your tree is just a seedling. <Link to="/sessions/new">Log a session</Link> or{' '}

@@ -24,7 +24,7 @@ CATEGORY_LABELS = {
     "small_moments": "Small everyday moments",
     "big_moments": "Big moments and milestones",
     "spiritual": "Spiritual and meaning",
-    "material": "Material things and comforts",
+    "material": "Things I have",
     "work": "Work and livelihood",
     "food": "Food and drink",
     "learning": "Learning and ideas",
