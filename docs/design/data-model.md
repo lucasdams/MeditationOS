@@ -89,7 +89,7 @@ accepts an AI-suggested) prompt as free `text`.
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
-| `category` | text | NOT NULL, CHECK in 12 fixed values (`people`,`health`,`nature`,`experiences`,`growth`,`home`,`self`,`simple_pleasures`,`small_moments`,`big_moments`,`spiritual`,`material`) |
+| `category` | text | NOT NULL, CHECK in 36 fixed values (`people`, `health`, `nature`, … `community`, `beauty` — see `app/models/gratitude.py` `CATEGORIES`) |
 | `text` | text | NOT NULL |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
