@@ -15,3 +15,7 @@ class UsernameTakenError(Exception):
 
 class GoogleAuthError(Exception):
     """Raised when a Google ID token is invalid, expired, or its email is unverified."""
+
+
+class InvalidTimezoneError(Exception):
+    """Raised when setting a timezone that isn't a valid IANA zone."""

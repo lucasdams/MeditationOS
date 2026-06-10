@@ -3,6 +3,7 @@ touch the database directly (see docs/decisions/0006-layered-architecture.md).
 """
 
 import uuid
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
+    InvalidTimezoneError,
     UsernameTakenError,
 )
 from app.core.google import verify_id_token
@@ -30,6 +32,18 @@ def set_username(db: Session, user: User, username: str) -> User:
     if existing is not None and existing.id != user.id:
         raise UsernameTakenError(username)
     user.username = username
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_timezone(db: Session, user: User, timezone: str) -> User:
+    """Set the user's IANA timezone. Raises if it isn't a valid zone."""
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError) as err:
+        raise InvalidTimezoneError(timezone) from err
+    user.timezone = timezone
     db.commit()
     db.refresh(user)
     return user

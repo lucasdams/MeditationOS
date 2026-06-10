@@ -24,6 +24,10 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     # Google's stable subject id ("sub"), set when the account is linked to Google.
     google_sub: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    # IANA timezone (e.g. "Asia/Tokyo") for local-day streaks/quests. Default UTC.
+    timezone: Mapped[str] = mapped_column(
+        String, nullable=False, server_default="UTC", default="UTC"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

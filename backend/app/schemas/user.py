@@ -35,6 +35,12 @@ class GoogleLogin(BaseModel):
     credential: str = Field(min_length=1)
 
 
+class TimezoneUpdate(BaseModel):
+    """Set the user's IANA timezone (e.g. "Asia/Tokyo")."""
+
+    timezone: str = Field(min_length=1, max_length=64)
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 
@@ -43,4 +49,5 @@ class UserRead(BaseModel):
     id: uuid.UUID
     email: EmailStr
     username: str | None
+    timezone: str
     created_at: datetime

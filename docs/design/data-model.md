@@ -34,6 +34,7 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 | `username` | `citext` | UNIQUE, NULL until the user picks one (public display name) |
 | `password_hash` | text | NULL — null for Google-only accounts |
 | `google_sub` | text | UNIQUE, NULL — Google's subject id, set when linked to Google |
+| `timezone` | text | NOT NULL, default `UTC` — IANA zone for local-day streaks/quests |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
 

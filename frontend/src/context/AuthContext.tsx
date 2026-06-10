@@ -18,7 +18,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function refresh() {
     try {
-      setUser(await authService.me())
+      let me = await authService.me()
+      // Keep the user's timezone in sync with their browser so streaks/quests
+      // bucket on their local day. Only writes when it actually changed.
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (browserTz && me.timezone !== browserTz) {
+        try {
+          me = await authService.setTimezone(browserTz)
+        } catch {
+          // non-fatal — keep the stored timezone
+        }
+      }
+      setUser(me)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setUser(null)

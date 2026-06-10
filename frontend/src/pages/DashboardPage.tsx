@@ -17,11 +17,12 @@ const dayLabel = (iso: string) => {
   return new Date(y, mo - 1, d).toLocaleDateString(undefined, { weekday: 'short' })
 }
 
-// Quests reset at 00:00 UTC (the backend keys them on the UTC date).
-const msUntilUtcMidnight = () => {
+// Quests reset at the user's local midnight (the backend keys them on the user's
+// timezone, which we sync to the browser's).
+const msUntilLocalMidnight = () => {
   const now = new Date()
-  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-  return next - now.getTime()
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  return next.getTime() - now.getTime()
 }
 const formatReset = (ms: number) => {
   const h = Math.floor(ms / 3_600_000)
@@ -32,7 +33,7 @@ const formatReset = (ms: number) => {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [resetIn, setResetIn] = useState(msUntilUtcMidnight())
+  const [resetIn, setResetIn] = useState(msUntilLocalMidnight())
 
   useEffect(() => {
     dashboardService
@@ -43,7 +44,7 @@ export default function DashboardPage() {
 
   // Live countdown to the daily quest reset.
   useEffect(() => {
-    const id = setInterval(() => setResetIn(msUntilUtcMidnight()), 30_000)
+    const id = setInterval(() => setResetIn(msUntilLocalMidnight()), 30_000)
     return () => clearInterval(id)
   }, [])
 

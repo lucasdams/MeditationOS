@@ -46,6 +46,7 @@ Errors return FastAPI's default shape:
 | POST | `/auth/logout` | ✓ | — | `204` |
 | GET | `/auth/me` | ✓ | — | `200` current user |
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
+| POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
 
 ```
 POST /api/v1/auth/register
@@ -172,8 +173,10 @@ GET /api/v1/dashboard/stats
 `daily_quests` lists today's three quests (write a gratitude · breathe a minute ·
 log a session) with `done` status — each completed day awards **+15 XP**, counted
 across all history so that part only grows. `streak_bonus_xp` is **10 × your current
-streak** (grows as you keep the streak, falls back if it lapses). Quests reset at
-**00:00 UTC**. Streaks are computed from
+streak** (grows as you keep the streak, falls back if it lapses). Streaks, quests,
+the heatmap, and the weekly view all bucket dates in the **user's timezone**
+(`users.timezone`, auto-synced from the browser via `POST /auth/timezone`), so the
+day rolls over at the user's **local midnight**. Streaks are computed from
 `sessions` (see [data-model](data-model.md#design-notes)), not stored:
 **current** = consecutive days ending today *or yesterday* (grace through end of
 today); **longest** = the longest run ever.
