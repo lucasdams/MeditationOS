@@ -10,7 +10,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Multiple meditation types (mindfulness, body scan, walking, etc.)
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
-- [ ] Timer-only mode for unguided practice
+- [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
 - [ ] Export session history (CSV / JSON)
 - [ ] Session visibility — public/private per session (default private); public sessions are shareable to friends (needs the social layer). Planned `sessions.visibility` column.
 

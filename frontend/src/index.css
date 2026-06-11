@@ -56,6 +56,11 @@ body {
   color: #4338ca;
 }
 
+.app-nav a.nav-meditate {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
 .app-nav a.nav-breathe {
   background: #e0f2fe;
   color: #0369a1;
@@ -806,6 +811,49 @@ button:disabled {
 
 .breathe-circle.idle {
   opacity: 0.5;
+}
+
+/* Meditation timer: a calm orb with the time at its centre. */
+.meditate-orb {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #5eead4, #0d9488);
+}
+
+.meditate-orb.running {
+  animation: meditate-pulse 6s ease-in-out infinite;
+}
+
+.meditate-orb.idle {
+  opacity: 0.6;
+}
+
+@keyframes meditate-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+.meditate-time {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.meditate-reset {
+  margin: 0.75rem 0 0;
+  background: transparent;
+  color: #6b6b70;
+  border: 1px solid #e5e5ea;
 }
 
 .breathe-phase {

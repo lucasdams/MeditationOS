@@ -4,7 +4,7 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, guided HRV breathing, an AI gratitude tool, and daily quests/XP working locally · 97 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete — auth, session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, and daily quests/XP working locally · 97 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
@@ -13,6 +13,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap (bucketed on the user's **local day**, per-user timezone)
 - ✅ Levels & XP + **daily quests** — earn XP from practice (breathing counts 3×), level up, grow an ASCII tree; three daily quests + a streak bonus, with a live reset countdown
 - ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, an ocean-breath audio guide + transition bell, optional duration timer; saves as a session
+- ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells; background-tab-safe timer; saves as a session and earns XP
 - 🌱 Sanctuary (in progress) — a garden you grow by practicing; design + ADR done, Phase 1 (the starter plant growing on the dashboard) built. See [Sanctuary design](docs/design/sanctuary.md)
 - ✅ Gratitude tool — pick from 36 themes, get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
