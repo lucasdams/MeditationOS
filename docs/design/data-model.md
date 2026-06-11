@@ -7,18 +7,18 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
 ## Entity-relationship overview
 
 ```
-                     ┌──────────────┐
-                     │    users     │
-                     └──────┬───────┘
-                            │ 1
-     ┌──────────┬───────────┼───────────┬───────────┬──────────┐
-     │ N        │ N         │ N         │ N         │ N        │ N
-┌────▼────┐ ┌───▼──────┐ ┌──▼────────┐ ┌▼─────────┐ ┌▼───────┐ ┌▼──────┐
-│sessions │ │breathing_│ │gratitude_ │ │ journals │ │ goals  │ │  …    │
-│         │ │patterns  │ │entries    │ │  (V2)    │ │ (V2)   │ │       │
-└────┬────┘ └──────────┘ └───────────┘ └──────────┘ └────────┘ └───────┘
-     │ 0..1 (a session may reference the pattern it used)
-     └────────────► breathing_patterns
+                          ┌──────────────┐
+                          │    users     │
+                          └──────┬───────┘
+                                 │ 1
+   ┌──────────┬───────────┬──────┴──────┬───────────┬──────────┐
+   │ N        │ N         │ N           │ N         │ N        │ N
+┌──▼───────┐ ┌▼─────────┐ ┌▼──────────┐ ┌▼─────────┐ ┌▼───────┐ ┌▼───────┐
+│ sessions │ │breathing_│ │gratitude_ │ │sanctuary_│ │journals│ │ goals  │
+│          │ │patterns  │ │entries    │ │plantings │ │  (V2)  │ │  (V2)  │
+└──┬───────┘ └──────────┘ └───────────┘ └──────────┘ └────────┘ └────────┘
+   │ 0..1 (a session may reference the pattern it used)
+   └────────────► breathing_patterns
 ```
 
 All child tables carry `user_id` and are always queried scoped to the authenticated user.
@@ -90,7 +90,7 @@ accepts an AI-suggested) prompt as free `text`.
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
-| `category` | text | NOT NULL, CHECK in 36 fixed values (`people`, `health`, `nature`, … `community`, `beauty` — see `app/models/gratitude.py` `CATEGORIES`) |
+| `category` | text | NOT NULL, CHECK in 37 fixed values (`people`, `health`, `nature`, … `community`, `beauty`, plus `custom` for free-form moments — see `app/models/gratitude.py` `CATEGORIES`) |
 | `text` | text | NOT NULL |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
@@ -98,6 +98,23 @@ accepts an AI-suggested) prompt as free `text`.
 
 - The **category taxonomy is fixed** (constrained by the CHECK) so entries stay filterable; the precise prompt is free text. The AI only generates *suggested* prompts within a category (never stored as the category).
 - Each entry awards **+5 XP** (computed in `dashboard_service`, like practice minutes); gratitude does **not** affect the practice streak.
+
+### `sanctuary_plantings`
+
+The user's garden, stored as an **append-only ordered list of what they chose to grow**. Everything else — growth, completion, unlocks, vitality — is computed on read from practice activity (see [ADR-0010](../decisions/0010-sanctuary-cultivation.md) and the [Sanctuary design](sanctuary.md)).
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
+| `item_key` | text | NOT NULL — references the in-code `SANCTUARY_CATALOG` (`tree`, `flower`, `pond`, `hut`, `barn`, `bird`, `fox`); not a DB enum so the catalog can evolve without a migration |
+| `position` | int | NOT NULL — order in the growth sequence (0, 1, 2, …) |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Constraint:** `UNIQUE(user_id, position)` — backstops a double-plant race. **Index:** `user_id`.
+
+- **No wallet, no spend ledger, no balance** — just the sequence of choices. Grow cost, stage, completion, the next-unlocked options, and vitality are all derived in `sanctuary_service` from cumulative practice points (the same XP unit the dashboard computes) and the current streak.
+- A new user's garden is seeded with a `tree` at `position = 0` on first read (no write until they plant their next item).
 
 ### `journals` (V2)
 

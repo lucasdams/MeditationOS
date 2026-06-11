@@ -54,23 +54,24 @@ A persistent space the user grows by practicing — a calm **sanctuary** (garden
 farm / home / retreat) that becomes a long-term reason to keep the streak alive.
 The strongest retention loop in the product.
 
-> **Designed** — see **[Sanctuary design](design/sanctuary.md)** and
-> **[ADR-0010](decisions/0010-sanctuary-cultivation.md)**. The model landed on a
+> **Shipped in V1** — see **[Sanctuary design](design/sanctuary.md)** and
+> **[ADR-0010](decisions/0010-sanctuary-cultivation.md)**. Built as a
 > **cultivation sequence** (grow one thing at a time, choose what's next on
 > completion) rather than a spend economy — no currency, one append-only table,
-> everything else computed. A **first step already shipped in V1**: XP drives a level
-> and a `<pre>` ASCII tree on the dashboard grows through tiers; that tree becomes the
-> first plant in the larger scene.
+> everything else computed. Plants render as **procedural SVG** that grow from your
+> practice; the nature, structures, and companion tracks are live with point/streak
+> milestone unlocks and streak-driven vitality. *(Remaining: the ambiance track, the
+> per-user L-system "unique tree", and Stripe cosmetic packs.)*
 
-- [ ] **Cultivation loop** — `practice → current item grows → it completes → choose what to grow next → it joins the scene`. One item grows at a time; practice carries over so nothing's wasted.
-- [ ] **A few tracks**, so there's always a next thing to work toward:
-  - *Nature* — trees, flowers, a pond, wildlife
-  - *Structures* — meditation hut → cabin → barn → temple
-  - *Ambiance* — time-of-day, weather, soundscape, lighting
-  - *Companions* — animals/creatures ("a friend") that appear in the space
-- [ ] **Streak drives vitality.** An active streak keeps the space thriving; a long gap lets it go gently dormant — **never punishing** (no destroyed progress; it recovers when you return). Wellness app: nudge, not shame.
-- [ ] **Milestone unlocks** — streak/hour/level milestones unlock new items to grow (barn, companions) and one-off cosmetics (pairs with achievement badges and avatars).
-- [ ] **A tree unique to each person** *(later flavour)* — *generate* each plant from the user's data (dominant meditation type → character, streak → fullness, level → size, per-user seed), likely via an **L-system**; **procedural ASCII** first, **procedural SVG** as the bigger swing. The render is decoupled from the data model.
+- [x] **Cultivation loop** — `practice → current item grows → it completes → choose what to grow next → it joins the scene`. One item grows at a time; practice carries over so nothing's wasted.
+- [x] **A few tracks**, so there's always a next thing to work toward *(ambiance still pending)*:
+  - *Nature* ✅ — trees, flowers, a pond
+  - *Structures* ✅ — meditation hut, barn
+  - *Ambiance* — time-of-day, weather, soundscape, lighting *(not yet)*
+  - *Companions* ✅ — animals/creatures ("a friend"): a bird, a fox
+- [x] **Streak drives vitality.** An active streak keeps the space thriving; a long gap lets it go gently dormant — **never punishing** (no destroyed progress; it recovers when you return). Wellness app: nudge, not shame.
+- [x] **Milestone unlocks** — streak/point milestones unlock new items to grow (pond, barn, companions). One-off cosmetics still pair with future achievement badges and avatars.
+- [ ] **A tree unique to each person** *(later flavour)* — *generate* each plant from the user's data (dominant meditation type → character, streak → fullness, level → size, per-user seed), likely via an **L-system**. Procedural **SVG** rendering shipped; the per-user generative variation is still ahead. The render is decoupled from the data model.
 
 **Monetization tie-in:** premium cosmetic packs via Stripe — purely cosmetic, never
 pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
