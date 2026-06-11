@@ -1,7 +1,7 @@
 // ASCII art per Sanctuary item, indexed by growth stage. The backend owns *growth*
 // (which stage you're at); the frontend owns *rendering* (this art) — mirroring how
-// the level tree's art lives in lib/tree.ts. Stage counts here must match the
-// catalog's `stage_count` in backend sanctuary_service.
+// the level tree's art lives in lib/tree.ts. Stage counts here must match each item's
+// `stage_count` in the backend SANCTUARY_CATALOG.
 
 type StageArt = string[]
 
@@ -18,8 +18,30 @@ const TREE_STAGES: StageArt[] = [
   ['    /\\', '   /  \\', '  /    \\', ' /______\\', '    ||', ' ~~~||~~~'],
 ]
 
+const FLOWER_STAGES: StageArt[] = [
+  // 0 — seed
+  ['', '', '   .', ' ~~~~~'],
+  // 1 — shoot
+  ['', '   |', '   |', ' ~~|~~'],
+  // 2 — bud
+  ['   o', '   |', '   |', ' ~~|~~'],
+  // 3 — bloom
+  ['  \\o/', '   |', '   |', ' ~~|~~'],
+]
+
+const POND_STAGES: StageArt[] = [
+  // 0 — dug
+  ['', '  _____', ' (     )', ' (_____)'],
+  // 1 — filling
+  ['', '  _____', ' (~~~~~)', ' (_____)'],
+  // 2 — full, with ripples
+  ['   ~  ~', ' (~~~~~)', ' (~~~~~)', ' (_____)'],
+]
+
 const ART: Record<string, StageArt[]> = {
   tree: TREE_STAGES,
+  flower: FLOWER_STAGES,
+  pond: POND_STAGES,
 }
 
 const FALLBACK: StageArt = ['', '   ?', '  ( )']
@@ -32,9 +54,12 @@ export function plantArt(itemKey: string, stage: number): StageArt {
   return stages[i]
 }
 
-const STAGE_NAMES = ['Seed', 'Sprout', 'Sapling', 'Young tree', 'Elder tree']
+const ITEM_LABELS: Record<string, string> = {
+  tree: 'Tree',
+  flower: 'Flower',
+  pond: 'Pond',
+}
 
-export function stageName(itemKey: string, stage: number): string {
-  if (itemKey === 'tree') return STAGE_NAMES[Math.max(0, Math.min(STAGE_NAMES.length - 1, stage))]
-  return `Stage ${stage + 1}`
+export function itemLabel(itemKey: string): string {
+  return ITEM_LABELS[itemKey] ?? itemKey
 }

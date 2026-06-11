@@ -135,14 +135,22 @@ export interface GratitudeSuggestions {
 export interface PlantState {
   item_key: string
   track: string
+  position: number
   stage: number // 0 .. stage_count - 1
   stage_count: number
   progress: number // 0.0 .. 1.0
+  complete: boolean
+}
+
+export interface CatalogOption {
+  item_key: string
+  track: string
 }
 
 export interface SanctuaryScene {
-  current: PlantState
-  completed: PlantState[]
+  plantings: PlantState[]
+  current_position: number | null // the actively growing planting; null if all complete
+  next_options: CatalogOption[]
 }
 
 export interface BreathingPattern {

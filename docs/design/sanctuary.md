@@ -131,11 +131,12 @@ the auto-seeded starter. No balance check exists — there is no balance.
 
 Each step is independently shippable.
 
-1. **Grow + scene, read-only** — `sanctuary_service` computes the starter plant's
+1. ✅ **Grow + scene, read-only** — `sanctuary_service` computes the starter plant's
    progress from practice; render it on the dashboard. No table yet (pure computed).
-2. **Plant next** — add `sanctuary_plantings` + migration, the `POST` write path, and a
-   one-track catalog (nature: tree, flower). The full loop end to end.
-3. **Builder UI** — the completion beat, the choose-next options, the composed scene.
+2. ✅ **Plant next** — `sanctuary_plantings` + migration, the `POST` write path, and a
+   nature catalog (tree, flower, pond) with milestone unlocks. The full loop end to end,
+   with a "choose what to grow next" beat and the assortment rendered on the dashboard.
+3. **Builder UI** — a richer scene/dedicated page, animated completion celebration.
 4. **Depth** — the remaining tracks, milestone-unlocked items (barn, companion),
    vitality/dormancy visuals, and later the SVG render.
 
