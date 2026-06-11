@@ -21,7 +21,8 @@ body {
 .app-header {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
   padding: 0.75rem 1.25rem;
   background: #fff;
   border-bottom: 1px solid #e5e5ea;
@@ -38,6 +39,7 @@ body {
 
 .app-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   flex: 1;
 }
@@ -1129,5 +1131,19 @@ button:disabled {
   .auth-card {
     margin: 2rem 1rem;
     padding: 1.5rem;
+  }
+}
+
+/* On narrow screens the 7-item nav drops to its own full-width row below the brand
+   and user controls, wrapping there instead of overflowing. */
+@media (max-width: 640px) {
+  .app-nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+  .app-nav a {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.85rem;
   }
 }

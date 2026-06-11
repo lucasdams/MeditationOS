@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { itemLabel } from '../lib/sanctuaryArt'
+import { itemLabel, VITALITY } from '../lib/sanctuaryArt'
 import SanctuaryPlant from '../components/SanctuaryPlant'
-import type { SanctuaryScene, Vitality } from '../types'
-
-const VITALITY: Record<Vitality, { emoji: string; label: string }> = {
-  dormant: { emoji: '🍂', label: 'Dormant — practice to bring it back to life' },
-  thriving: { emoji: '🌿', label: 'Thriving' },
-  flourishing: { emoji: '🌸', label: 'Flourishing' },
-}
+import type { SanctuaryScene } from '../types'
 
 /**
  * Sanctuary (Phase 3): the dedicated builder page. Shows the full garden, the plant
