@@ -638,19 +638,11 @@ button:disabled {
 }
 
 .heatmap-cell.lvl-1 {
-  background: #c7d2fe;
+  background: #818cf8; /* active — practiced that day */
 }
 
 .heatmap-cell.lvl-2 {
-  background: #818cf8;
-}
-
-.heatmap-cell.lvl-3 {
-  background: #4f46e5;
-}
-
-.heatmap-cell.lvl-4 {
-  background: #3730a3;
+  background: #059669; /* completed all daily quests */
 }
 
 .heatmap-cell.out {

@@ -13,7 +13,13 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
 from app.models.session import Session
-from app.schemas.dashboard import ActivityCalendar, DailyTotal, DashboardStats, QuestStatus
+from app.schemas.dashboard import (
+    ActivityCalendar,
+    ActivityDay,
+    DailyTotal,
+    DashboardStats,
+    QuestStatus,
+)
 from app.services.gratitude_service import GRATITUDE_XP
 
 # Resonance breathing earns this multiple of the usual 1 XP/minute.
@@ -203,7 +209,12 @@ def get_stats(
 def get_activity(
     db: DBSession, user_id: uuid.UUID, *, today: date, days: int = 365, tz: str = "UTC"
 ) -> ActivityCalendar:
-    """Daily practice totals over the last `days`, sparse (active days only)."""
+    """Daily practice totals over the last `days`, sparse (active days only).
+
+    Each active day also carries `all_quests` — whether all three daily quests
+    (gratitude, ≥60s breathing, a session) were completed that local day — so the
+    heatmap can colour days as inactive / active / all-quests-complete.
+    """
     start = today - timedelta(days=days - 1)
     local_day = _local_date(tz, Session.occurred_at)
     rows = db.execute(
@@ -219,5 +230,39 @@ def get_activity(
         .group_by(local_day)
         .order_by(local_day)
     ).all()
-    active_days = [DailyTotal(date=row[0], seconds=int(row[1])) for row in rows]
+
+    # Days (in-window) with a gratitude entry, and with ≥60s of resonance breathing.
+    # A session is implied for every active day, so all_quests = gratitude ∧ breathing.
+    grat_day = _local_date(tz, GratitudeEntry.created_at)
+    gratitude_days = {
+        r[0]
+        for r in db.execute(
+            select(grat_day)
+            .where(GratitudeEntry.user_id == user_id, grat_day >= start, grat_day <= today)
+            .distinct()
+        ).all()
+    }
+    breathing_days = {
+        r[0]
+        for r in db.execute(
+            select(local_day)
+            .where(
+                Session.user_id == user_id,
+                Session.type == "resonance_breathing",
+                local_day >= start,
+                local_day <= today,
+            )
+            .group_by(local_day)
+            .having(func.sum(Session.duration_seconds) >= BREATHE_QUEST_SECONDS)
+        ).all()
+    }
+
+    active_days = [
+        ActivityDay(
+            date=row[0],
+            seconds=int(row[1]),
+            all_quests=row[0] in gratitude_days and row[0] in breathing_days,
+        )
+        for row in rows
+    ]
     return ActivityCalendar(start=start, end=today, days=active_days)

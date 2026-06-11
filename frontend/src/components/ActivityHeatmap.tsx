@@ -13,17 +13,16 @@ const parse = (iso: string) => {
 const fmt = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-// 0–4 intensity by minutes practiced, GitHub-style.
-const intensity = (seconds: number) => {
-  const min = seconds / 60
-  if (min <= 0) return 0
-  if (min < 10) return 1
-  if (min < 20) return 2
-  if (min < 40) return 3
-  return 4
+// Three states: 0 inactive · 1 active (practiced) · 2 all daily quests completed.
+type DayInfo = { seconds: number; allQuests: boolean }
+type Cell = {
+  iso: string
+  date: Date
+  level: 0 | 1 | 2
+  minutes: number
+  allQuests: boolean
+  inRange: boolean
 }
-
-type Cell = { iso: string; date: Date; seconds: number; inRange: boolean }
 
 export default function ActivityHeatmap() {
   const [cal, setCal] = useState<ActivityCalendar | null>(null)
@@ -39,7 +38,9 @@ export default function ActivityHeatmap() {
   if (failed) return null
   if (!cal) return <p className="muted">Loading activity…</p>
 
-  const byDate = new Map(cal.days.map((d) => [d.date, d.seconds]))
+  const byDate = new Map<string, DayInfo>(
+    cal.days.map((d) => [d.date, { seconds: d.seconds, allQuests: d.all_quests }]),
+  )
   const rangeStart = parse(cal.start)
   const end = parse(cal.end)
 
@@ -53,13 +54,25 @@ export default function ActivityHeatmap() {
     for (let i = 0; i < 7; i++) {
       const iso = fmt(cursor)
       const inRange = cursor >= rangeStart && cursor <= end
-      week.push({ iso, date: new Date(cursor), seconds: byDate.get(iso) ?? 0, inRange })
+      const info = byDate.get(iso)
+      const allQuests = info?.allQuests ?? false
+      const seconds = info?.seconds ?? 0
+      const level: 0 | 1 | 2 = !inRange ? 0 : allQuests ? 2 : seconds > 0 ? 1 : 0
+      week.push({
+        iso,
+        date: new Date(cursor),
+        level,
+        minutes: Math.round(seconds / 60),
+        allQuests,
+        inRange,
+      })
       cursor = new Date(cursor.getTime() + DAY_MS)
     }
     weeks.push(week)
   }
 
   const totalMin = Math.round(cal.days.reduce((s, d) => s + d.seconds, 0) / 60)
+  const perfectDays = cal.days.filter((d) => d.all_quests).length
 
   return (
     <section className="calendar">
@@ -83,12 +96,10 @@ export default function ActivityHeatmap() {
                 {week.map((cell) => (
                   <div
                     key={cell.iso}
-                    className={`heatmap-cell lvl-${cell.inRange ? intensity(cell.seconds) : 0}${
-                      cell.inRange ? '' : ' out'
-                    }`}
+                    className={`heatmap-cell lvl-${cell.level}${cell.inRange ? '' : ' out'}`}
                     title={
                       cell.inRange
-                        ? `${Math.round(cell.seconds / 60)} min · ${cell.iso}`
+                        ? `${cell.minutes} min${cell.allQuests ? ' · all quests ✓' : ''} · ${cell.iso}`
                         : undefined
                     }
                   />
@@ -99,15 +110,14 @@ export default function ActivityHeatmap() {
         </div>
       </div>
       <div className="heatmap-legend">
-        <span className="muted">{totalMin} min in the last year</span>
+        <span className="muted">
+          {totalMin} min in the last year · {perfectDays} all-quest{' '}
+          {perfectDays === 1 ? 'day' : 'days'}
+        </span>
         <span className="heatmap-key">
-          Less
-          <i className="heatmap-cell lvl-0" />
-          <i className="heatmap-cell lvl-1" />
-          <i className="heatmap-cell lvl-2" />
-          <i className="heatmap-cell lvl-3" />
-          <i className="heatmap-cell lvl-4" />
-          More
+          <i className="heatmap-cell lvl-0" /> None
+          <i className="heatmap-cell lvl-1" /> Active
+          <i className="heatmap-cell lvl-2" /> All quests
         </span>
       </div>
     </section>
