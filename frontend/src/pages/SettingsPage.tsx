@@ -13,6 +13,13 @@ function formatJoined(iso: string): string {
     : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+const HOURS = Array.from({ length: 24 }, (_, h) => h)
+function formatHour(h: number): string {
+  const period = h < 12 ? 'AM' : 'PM'
+  const display = h % 12 === 0 ? 12 : h % 12
+  return `${display}:00 ${period}`
+}
+
 export default function SettingsPage() {
   const { user, refresh } = useAuth()
 
@@ -30,6 +37,13 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordOk, setPasswordOk] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
+
+  // Reminders section.
+  const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
+  const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
+  const [reminderError, setReminderError] = useState<string | null>(null)
+  const [reminderOk, setReminderOk] = useState(false)
+  const [savingReminder, setSavingReminder] = useState(false)
 
   // The page only renders inside ProtectedRoute, so `user` is always present here,
   // but guard for type-safety.
@@ -95,6 +109,22 @@ export default function SettingsPage() {
       )
     } finally {
       setSavingPassword(false)
+    }
+  }
+
+  async function handleReminders(e: FormEvent) {
+    e.preventDefault()
+    setReminderError(null)
+    setReminderOk(false)
+    setSavingReminder(true)
+    try {
+      await authService.setReminders(remindersEnabled, remindersEnabled ? reminderHour : null)
+      await refresh()
+      setReminderOk(true)
+    } catch {
+      setReminderError('Something went wrong. Please try again.')
+    } finally {
+      setSavingReminder(false)
     }
   }
 
@@ -185,6 +215,55 @@ export default function SettingsPage() {
           )}
           <button type="submit" disabled={savingPassword}>
             {savingPassword ? 'Saving…' : hasPassword ? 'Change password' : 'Set password'}
+          </button>
+        </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>Practice reminders</h2>
+        <p className="muted">
+          A daily email nudge to keep your practice — and your sanctuary — alive. Sent at
+          your local time; skipped on days you’ve already practiced.
+        </p>
+        <form onSubmit={handleReminders} noValidate>
+          <label className="settings-check">
+            <input
+              type="checkbox"
+              checked={remindersEnabled}
+              onChange={(e) => {
+                setRemindersEnabled(e.target.checked)
+                setReminderOk(false)
+              }}
+            />
+            Email me a daily reminder to practice
+          </label>
+          {remindersEnabled && (
+            <>
+              <label htmlFor="reminder-hour">Time of day</label>
+              <select
+                id="reminder-hour"
+                value={reminderHour}
+                onChange={(e) => {
+                  setReminderHour(Number(e.target.value))
+                  setReminderOk(false)
+                }}
+              >
+                {HOURS.map((h) => (
+                  <option key={h} value={h}>
+                    {formatHour(h)}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {reminderError && (
+            <p role="alert" className="error">
+              {reminderError}
+            </p>
+          )}
+          {reminderOk && <p className="success">Reminder preferences saved.</p>}
+          <button type="submit" disabled={savingReminder}>
+            {savingReminder ? 'Saving…' : 'Save reminders'}
           </button>
         </form>
       </section>

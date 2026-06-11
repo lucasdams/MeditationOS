@@ -19,13 +19,14 @@ from app.models.user import User
 from app.schemas.user import (
     GoogleLogin,
     PasswordUpdate,
+    ReminderUpdate,
     TimezoneUpdate,
     UserCreate,
     UserLogin,
     UsernameUpdate,
     UserRead,
 )
-from app.services import user_service
+from app.services import reminder_service, user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -147,3 +148,14 @@ def change_password(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
         ) from None
+
+
+@router.post("/reminders", response_model=UserRead)
+def set_reminders(
+    data: ReminderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    return reminder_service.update_settings(
+        db, current_user, enabled=data.enabled, hour=data.hour
+    )

@@ -48,6 +48,7 @@ Errors return FastAPI's default shape:
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 | POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
 | POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
+| POST | `/auth/reminders` | ✓ | `{ enabled, hour? }` | `200` user · `422` if `enabled` without `hour` / `hour` out of 0–23 |
 
 ```
 POST /api/v1/auth/register
@@ -62,6 +63,15 @@ For a Google-only account (no password yet) `current_password` is omitted and th
 call *sets* a first password, so the account can then also log in with email. The
 `UserRead` response carries a `has_password` boolean (never the hash itself) so the
 client knows whether to ask for the current password.
+
+**Daily reminders.** `POST /auth/reminders` opts into (or out of) a daily practice
+reminder email. `hour` is the **local** hour (0–23) to send at; it's required when
+`enabled` is true and dropped when disabling. The `UserRead` response carries
+`reminder_enabled` and `reminder_hour`. Delivery happens out-of-band: a scheduler
+runs `python -m app.jobs.send_reminders`, which emails every opted-in user once per
+local day, at/after their hour, **skipping anyone who already practiced that day**.
+With no SMTP provider configured the email is logged rather than sent, so the loop
+works locally. See the [notifications design](notifications.md).
 
 **Sign in with Google.** `POST /auth/google` takes the ID token (`credential`)
 from Google Identity Services. The backend verifies it against Google's keys

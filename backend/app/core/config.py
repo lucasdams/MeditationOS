@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.
     anthropic_api_key: str = ""
+    # Outbound email (practice reminders, future password reset). With no SMTP host
+    # configured the sender logs the message instead of delivering it — so the app
+    # works locally with no provider, mirroring the AI curated-fallback pattern.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    email_from: str = "MeditationOS <noreply@meditationos.app>"
+    # Base URL the frontend is served from, used to build links in emails.
+    app_base_url: str = "http://localhost:5173"
 
     @property
     def cors_origins_list(self) -> list[str]:
