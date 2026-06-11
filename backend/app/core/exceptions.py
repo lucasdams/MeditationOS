@@ -19,3 +19,7 @@ class GoogleAuthError(Exception):
 
 class InvalidTimezoneError(Exception):
     """Raised when setting a timezone that isn't a valid IANA zone."""
+
+
+class InvalidPasswordError(Exception):
+    """Raised when a password change supplies a wrong/missing current password."""

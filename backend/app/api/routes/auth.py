@@ -9,6 +9,7 @@ from app.core.db import get_db
 from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
+    InvalidPasswordError,
     InvalidTimezoneError,
     UsernameTakenError,
 )
@@ -17,6 +18,7 @@ from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.user import (
     GoogleLogin,
+    PasswordUpdate,
     TimezoneUpdate,
     UserCreate,
     UserLogin,
@@ -124,4 +126,24 @@ def set_username(
     except UsernameTakenError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Username taken"
+        ) from None
+
+
+@router.post("/password", response_model=UserRead)
+def change_password(
+    data: PasswordUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    try:
+        return user_service.set_password(
+            db,
+            current_user,
+            current_password=data.current_password,
+            new_password=data.new_password,
+        )
+    except InvalidPasswordError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
         ) from None

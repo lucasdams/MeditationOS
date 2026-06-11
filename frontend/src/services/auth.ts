@@ -17,4 +17,11 @@ export const authService = {
   setUsername: (username: string) => api.post<User>('/auth/username', { username }),
 
   setTimezone: (timezone: string) => api.post<User>('/auth/timezone', { timezone }),
+
+  // current_password is omitted when a Google-only account sets its first password.
+  setPassword: (newPassword: string, currentPassword?: string) =>
+    api.post<User>('/auth/password', {
+      new_password: newPassword,
+      current_password: currentPassword ?? null,
+    }),
 }

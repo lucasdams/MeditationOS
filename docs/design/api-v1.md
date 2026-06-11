@@ -47,6 +47,7 @@ Errors return FastAPI's default shape:
 | GET | `/auth/me` | ✓ | — | `200` current user |
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 | POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
+| POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
 
 ```
 POST /api/v1/auth/register
@@ -54,6 +55,13 @@ POST /api/v1/auth/register
 → 201
 { "id": "…", "email": "user@example.com", "username": null, "created_at": "2026-06-09T14:00:00Z" }
 ```
+
+**Change password.** `POST /auth/password` changes the password for an
+email/password account — `current_password` is verified first (`401` if wrong).
+For a Google-only account (no password yet) `current_password` is omitted and the
+call *sets* a first password, so the account can then also log in with email. The
+`UserRead` response carries a `has_password` boolean (never the hash itself) so the
+client knows whether to ask for the current password.
 
 **Sign in with Google.** `POST /auth/google` takes the ID token (`credential`)
 from Google Identity Services. The backend verifies it against Google's keys

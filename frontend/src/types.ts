@@ -3,6 +3,7 @@ export interface User {
   email: string
   username: string | null
   timezone: string
+  has_password: boolean
   created_at: string
 }
 
