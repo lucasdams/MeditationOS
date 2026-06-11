@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
+    InvalidPasswordError,
     InvalidTimezoneError,
     UsernameTakenError,
 )
@@ -44,6 +45,26 @@ def set_timezone(db: Session, user: User, timezone: str) -> User:
     except (ZoneInfoNotFoundError, ValueError) as err:
         raise InvalidTimezoneError(timezone) from err
     user.timezone = timezone
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_password(
+    db: Session, user: User, *, current_password: str | None, new_password: str
+) -> User:
+    """Change (or, for Google-only accounts, set) the user's password.
+
+    An account that already has a password must confirm it; a passwordless
+    (Google-only) account sets one for the first time. Raises InvalidPasswordError
+    if the current password is wrong or missing where required.
+    """
+    if user.password_hash is not None:
+        if current_password is None or not verify_password(
+            current_password, user.password_hash
+        ):
+            raise InvalidPasswordError()
+    user.password_hash = hash_password(new_password)
     db.commit()
     db.refresh(user)
     return user

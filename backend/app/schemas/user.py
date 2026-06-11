@@ -41,6 +41,17 @@ class TimezoneUpdate(BaseModel):
     timezone: str = Field(min_length=1, max_length=64)
 
 
+class PasswordUpdate(BaseModel):
+    """Change or set the account password.
+
+    `current_password` is required for accounts that already have one; it is
+    omitted when a Google-only account is setting a password for the first time.
+    """
+
+    current_password: str | None = None
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 
@@ -50,4 +61,5 @@ class UserRead(BaseModel):
     email: EmailStr
     username: str | None
     timezone: str
+    has_password: bool
     created_at: datetime

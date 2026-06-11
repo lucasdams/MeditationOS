@@ -37,3 +37,12 @@ class User(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    @property
+    def has_password(self) -> bool:
+        """Whether this account can sign in with a password (vs. Google-only).
+
+        Surfaced to clients (never the hash itself) so the UI shows "change
+        password" for password accounts and "set a password" for Google-only ones.
+        """
+        return self.password_hash is not None

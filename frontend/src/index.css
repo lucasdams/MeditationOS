@@ -100,12 +100,72 @@ body {
   color: #6b6b70;
 }
 
+.app-user a.nav-settings {
+  color: #6b6b70;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.app-user a.nav-settings:hover {
+  color: #1c1c1e;
+}
+
 .app-user button {
   margin: 0;
   width: auto;
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
   background: #1c1c1e;
+}
+
+.settings {
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.settings h1 {
+  margin: 0.5rem 0 1.5rem;
+}
+
+.settings-section {
+  padding: 1.25rem 0;
+  border-top: 1px solid #ececf0;
+}
+
+.settings-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.settings-section form {
+  max-width: 22rem;
+}
+
+.settings-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.settings-info dt {
+  font-weight: 600;
+  color: #6b6b70;
+}
+
+.settings-info dd {
+  margin: 0;
+}
+
+.settings-tz {
+  font-weight: 600;
+  margin: 0.25rem 0 0;
+}
+
+.success {
+  color: #1a7f44;
+  font-size: 0.9rem;
 }
 
 .auth-card {
