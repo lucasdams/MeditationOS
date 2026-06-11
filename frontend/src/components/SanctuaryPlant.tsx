@@ -41,14 +41,14 @@ function Flower({ p }: { p: number }) {
             return (
               <circle
                 key={deg}
-                cx={40 + Math.cos(a) * 5 * b}
-                cy={top + Math.sin(a) * 5 * b}
-                r={4 * b}
+                cx={40 + Math.cos(a) * 6.5 * b}
+                cy={top + Math.sin(a) * 6.5 * b}
+                r={5.5 * b}
                 fill="#f472b6"
               />
             )
           })}
-          <circle cx={40} cy={top} r={3 * b} fill="#fbbf24" />
+          <circle cx={40} cy={top} r={4 * b} fill="#fbbf24" />
         </g>
       )}
     </g>
@@ -59,7 +59,7 @@ function Pond({ p }: { p: number }) {
   return (
     <g>
       <ellipse cx={40} cy={66} rx={22} ry={8} fill="none" stroke="#94a3b8" strokeWidth={2} />
-      <ellipse cx={40} cy={66} rx={4 + 16 * p} ry={2 + 6 * p} fill="#38bdf8" />
+      <ellipse cx={40} cy={66} rx={9 + 11 * p} ry={3.5 + 4 * p} fill="#38bdf8" />
       {p > 0.7 && (
         <g stroke="#bae6fd" strokeWidth={1.2} fill="none" opacity={reveal(p, 0.7)}>
           <path d="M30 64 q4 -3 8 0" />
