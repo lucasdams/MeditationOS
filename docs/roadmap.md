@@ -91,7 +91,7 @@ All **computed from activity**, nothing stored — see
 
 ### Gratitude tool (an early taste of V3 AI)
 
-Pick from 36 themes and get **AI-suggested prompts** (Claude Haiku) or write your own;
+Pick from 37 themes (including a free-form **custom** option) and get **AI-suggested prompts** (Claude Haiku) or write your own;
 each moment earns XP. Ships with a deep curated fallback so it works with no API key —
 see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md). A first, safe step
 toward the V3 AI features below.
