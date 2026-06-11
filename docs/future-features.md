@@ -79,7 +79,7 @@ pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
 Build order (per the design): ✅ grow + scene read-only → ✅ plant-next write path +
 `sanctuary_plantings` → ✅ builder UI (dedicated page + completion celebration) →
 ✅ depth (structures + companions tracks, point/streak unlocks, vitality) →
-procedural **SVG** render (still to come).
+✅ procedural **SVG** render. *(Remaining: ambiance track, Stripe cosmetic packs.)*
 
 ## AI (Post-V3)
 

@@ -123,10 +123,11 @@ the auto-seeded starter. No balance check exists — there is no balance.
 - **Where:** a compact scene renders on the **dashboard** (the home you land on), so
   the garden is the first thing you see; a dedicated **`/sanctuary` page** (nav button,
   shipped in Phase 3) gives the full view with the completion celebration.
-- **Render:** **ASCII first**, consistent with `lib/tree.ts`. Each catalog item has
-  per-stage art; the current item animates through stages as its progress bar fills;
-  completed items render full and are arranged into the background scene. Procedural
-  **SVG** is a later, separable upgrade — the data model is render-agnostic.
+- **Render:** **procedural SVG** (`components/SanctuaryPlant.tsx`) — each catalog item
+  is drawn parametrically from its `progress` (0..1), so a plant grows smoothly as you
+  practice (vector, scalable). It shipped after an initial ASCII pass; because the data
+  model is **render-agnostic** (the backend only sends `item_key` + `progress`), the
+  swap was frontend-only with no API change.
 - **Completion moment:** when the current item finishes, surface a "choose what to grow
   next" beat (reusing the `RewardOverlay` feel) listing unlocked options; locked ones
   show their unlock hint ("Barn — reach a 30-day streak").
@@ -147,7 +148,9 @@ Each step is independently shippable.
 4. ✅ **Depth** — structures (hut, barn) and companions (bird, fox) tracks beyond
    nature; milestone unlocks by lifetime points **and** current streak (locked options
    shown with their hint); a streak-driven **vitality** (dormant / thriving /
-   flourishing, visual-only). *Still to come:* procedural **SVG** render.
+   flourishing, visual-only).
+5. ✅ **Procedural SVG render** — vector plants drawn from `progress`, replacing the
+   ASCII (frontend-only, no API change).
 
 ## Out of scope (here)
 

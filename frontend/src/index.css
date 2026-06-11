@@ -391,17 +391,11 @@ button:disabled {
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.08);
 }
 
-.sanctuary-plant {
+.sanctuary-svg {
+  display: block;
   margin: 0 auto 0.35rem;
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  line-height: 1.05;
-  font-size: 0.95rem;
-  color: #15803d;
-  white-space: pre;
-  min-height: 6em;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  width: 60px;
+  height: 60px;
 }
 
 .sanctuary-caption {
@@ -479,8 +473,9 @@ button:disabled {
   margin: 1rem 0;
 }
 
-.sanctuary-garden.big .sanctuary-plant {
-  font-size: 1.05rem;
+.sanctuary-garden.big .sanctuary-svg {
+  width: 80px;
+  height: 80px;
 }
 
 /* A finished plant gets a soft glow; a just-planted one pops in. */
