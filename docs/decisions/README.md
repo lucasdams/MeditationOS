@@ -15,3 +15,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0007](0007-google-oauth-id-token.md) | Sign in with Google via ID-token verification | Accepted |
 | [0008](0008-ai-suggestions-curated-fallback.md) | AI suggestions with a curated fallback | Accepted |
 | [0009](0009-gamification-computed-from-activity.md) | Gamification computed from activity, not stored | Accepted |
+| [0010](0010-sanctuary-cultivation.md) | Sanctuary — cultivation sequence, not a spend economy | Accepted |

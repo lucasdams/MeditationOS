@@ -54,33 +54,30 @@ A persistent space the user grows by practicing — a calm **sanctuary** (garden
 farm / home / retreat) that becomes a long-term reason to keep the streak alive.
 The strongest retention loop in the product.
 
-> A **first step shipped in V1**: XP (= minutes practiced) drives a level, and a `<pre>` ASCII tree on the dashboard grows through tiers as you level up. The Sanctuary below is the fuller version (currency you *spend*, multiple upgrade tracks).
+> **Designed** — see **[Sanctuary design](design/sanctuary.md)** and
+> **[ADR-0010](decisions/0010-sanctuary-cultivation.md)**. The model landed on a
+> **cultivation sequence** (grow one thing at a time, choose what's next on
+> completion) rather than a spend economy — no currency, one append-only table,
+> everything else computed. A **first step already shipped in V1**: XP drives a level
+> and a `<pre>` ASCII tree on the dashboard grows through tiers; that tree becomes the
+> first plant in the larger scene.
 
-- [ ] **A tree unique to each person** — instead of fixed tiers, *generate* the tree from the user's data so it reflects how they practice: dominant meditation type → the tree's character (e.g. resonance breathing → tall/slender, body scan → bushy, loving-kindness → blossoms), streak → fullness (leafy vs sparse), level → size, plus a per-user seed for a distinct base shape. Deterministic (same data → same tree). Likely via an **L-system**. Two flavours to choose from: **procedural ASCII** (keeps the retro look, low-risk) or **procedural SVG** (vector, more beautiful, bigger swing).
-
-**Core loop:** `practice → earn currency → spend → upgrade → see your space change`
-
-- [ ] **Earn currency** ("calm points" / seeds) from each session, with **bonuses for streak milestones** — a longer daily streak earns faster, so consistency is rewarded over bingeing.
-- [ ] **Spend on upgrades** across a few tracks, so there's always a next thing to work toward:
-  - *Nature* — garden beds, trees, a pond, wildlife
-  - *Structures* — meditation hut → cabin → temple
+- [ ] **Cultivation loop** — `practice → current item grows → it completes → choose what to grow next → it joins the scene`. One item grows at a time; practice carries over so nothing's wasted.
+- [ ] **A few tracks**, so there's always a next thing to work toward:
+  - *Nature* — trees, flowers, a pond, wildlife
+  - *Structures* — meditation hut → cabin → barn → temple
   - *Ambiance* — time-of-day, weather, soundscape, lighting
-  - *Companions* — animals/creatures that appear in the space
-- [ ] **Streak drives growth.** An active streak keeps the space thriving; a long gap lets it go gently dormant — **never punishing** (no destroyed progress; it recovers when you return). Wellness app: nudge, not shame.
-- [ ] **Milestone unlocks** — streak/hour milestones unlock new upgrade tiers and one-off cosmetics (pairs with achievement badges and avatars).
+  - *Companions* — animals/creatures ("a friend") that appear in the space
+- [ ] **Streak drives vitality.** An active streak keeps the space thriving; a long gap lets it go gently dormant — **never punishing** (no destroyed progress; it recovers when you return). Wellness app: nudge, not shame.
+- [ ] **Milestone unlocks** — streak/hour/level milestones unlock new items to grow (barn, companions) and one-off cosmetics (pairs with achievement badges and avatars).
+- [ ] **A tree unique to each person** *(later flavour)* — *generate* each plant from the user's data (dominant meditation type → character, streak → fullness, level → size, per-user seed), likely via an **L-system**; **procedural ASCII** first, **procedural SVG** as the bigger swing. The render is decoupled from the data model.
 
-**Monetization tie-in:** premium cosmetic upgrade packs or a currency boost via
-Stripe — purely cosmetic, never pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
+**Monetization tie-in:** premium cosmetic packs via Stripe — purely cosmetic, never
+pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
 
-**Data model sketch (when built):**
-- `user_wallet` — `balance`, `lifetime_earned`
-- `upgrades` — catalog: `key`, `category`, `tier`, `cost`
-- `user_upgrades` — which upgrades a user owns + level
-- earning rules derive from `sessions` + the streak engine
-
-**Depends on:** the **streak engine (Cycle 3)** for "current streak", and a
-small **rewards/economy** service to grant + spend currency. Build order:
-streaks → earn/spend wallet → upgrade catalog → the builder UI.
+**Depends on:** the **streak engine (Cycle 3)** for vitality + milestone unlocks.
+Build order (per the design): grow + scene read-only → plant-next write path +
+`sanctuary_plantings` → builder UI → more tracks + SVG.
 
 ## AI (Post-V3)
 
