@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { itemLabel } from '../lib/sanctuaryArt'
+import { itemLabel, VITALITY } from '../lib/sanctuaryArt'
 import SanctuaryPlant from './SanctuaryPlant'
 import type { SanctuaryScene as Scene } from '../types'
 
@@ -24,7 +24,7 @@ export default function SanctuaryScene() {
 
   if (error || !scene) return null // non-critical to the dashboard; fail/await quietly
 
-  const { plantings, current_position, next_options } = scene
+  const { plantings, current_position, next_options, vitality } = scene
   const current = plantings.find((p) => p.position === current_position) ?? null
   // The dashboard mini-scene keeps it simple: only unlocked options (the full
   // /sanctuary page shows locked ones with their unlock hints).
@@ -51,7 +51,7 @@ export default function SanctuaryScene() {
         </Link>
       </div>
 
-      <div className="sanctuary-garden">
+      <div className={`sanctuary-garden vit-${vitality}`}>
         {plantings.map((p) => (
           <div
             key={p.position}
@@ -61,6 +61,9 @@ export default function SanctuaryScene() {
             <div className="sanctuary-caption">{itemLabel(p.item_key)}</div>
           </div>
         ))}
+      </div>
+      <div className={`sanctuary-vitality vit-${vitality}`}>
+        {VITALITY[vitality].emoji} {VITALITY[vitality].label}
       </div>
 
       {current && (
