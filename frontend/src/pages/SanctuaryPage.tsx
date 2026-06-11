@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { plantArt, itemLabel } from '../lib/sanctuaryArt'
+import { itemLabel } from '../lib/sanctuaryArt'
+import SanctuaryPlant from '../components/SanctuaryPlant'
 import type { SanctuaryScene, Vitality } from '../types'
 
 const VITALITY: Record<Vitality, { emoji: string; label: string }> = {
@@ -83,9 +84,7 @@ export default function SanctuaryPage() {
                   .filter(Boolean)
                   .join(' ')}
               >
-                <pre className="sanctuary-plant" aria-hidden="true">
-                  {plantArt(p.item_key, p.stage).join('\n')}
-                </pre>
+                <SanctuaryPlant itemKey={p.item_key} progress={p.progress} />
                 <div className="sanctuary-caption">{itemLabel(p.item_key)}</div>
               </div>
             ))}

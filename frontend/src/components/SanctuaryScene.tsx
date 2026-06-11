@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { plantArt, itemLabel } from '../lib/sanctuaryArt'
+import { itemLabel } from '../lib/sanctuaryArt'
+import SanctuaryPlant from './SanctuaryPlant'
 import type { SanctuaryScene as Scene } from '../types'
 
 /**
@@ -56,9 +57,7 @@ export default function SanctuaryScene() {
             key={p.position}
             className={`sanctuary-plot${p.position === current_position ? ' growing' : ''}`}
           >
-            <pre className="sanctuary-plant" aria-hidden="true">
-              {plantArt(p.item_key, p.stage).join('\n')}
-            </pre>
+            <SanctuaryPlant itemKey={p.item_key} progress={p.progress} />
             <div className="sanctuary-caption">{itemLabel(p.item_key)}</div>
           </div>
         ))}
