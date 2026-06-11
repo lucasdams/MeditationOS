@@ -31,6 +31,9 @@ export default function AppHeader() {
         <Link to="/" className="nav-home">
           Home
         </Link>
+        <Link to="/meditate" className="nav-meditate">
+          🧘 Meditate
+        </Link>
         <Link to="/breathe" className="nav-breathe">
           🫁 Breathe
         </Link>

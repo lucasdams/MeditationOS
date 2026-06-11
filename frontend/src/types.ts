@@ -131,6 +131,19 @@ export interface GratitudeSuggestions {
   options: string[]
 }
 
+export interface PlantState {
+  item_key: string
+  track: string
+  stage: number // 0 .. stage_count - 1
+  stage_count: number
+  progress: number // 0.0 .. 1.0
+}
+
+export interface SanctuaryScene {
+  current: PlantState
+  completed: PlantState[]
+}
+
 export interface BreathingPattern {
   id: string
   name: string
