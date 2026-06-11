@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
 import { plantArt, itemLabel } from '../lib/sanctuaryArt'
-import type { SanctuaryScene } from '../types'
+import type { SanctuaryScene, Vitality } from '../types'
+
+const VITALITY: Record<Vitality, { emoji: string; label: string }> = {
+  dormant: { emoji: '🍂', label: 'Dormant — practice to bring it back to life' },
+  thriving: { emoji: '🌿', label: 'Thriving' },
+  flourishing: { emoji: '🌸', label: 'Flourishing' },
+}
 
 /**
  * Sanctuary (Phase 3): the dedicated builder page. Shows the full garden, the plant
@@ -64,7 +70,7 @@ export default function SanctuaryPage() {
 
       {scene && (
         <>
-          <div className="sanctuary-garden big">
+          <div className={`sanctuary-garden big vit-${scene.vitality}`}>
             {plantings.map((p) => (
               <div
                 key={p.position}
@@ -83,6 +89,11 @@ export default function SanctuaryPage() {
                 <div className="sanctuary-caption">{itemLabel(p.item_key)}</div>
               </div>
             ))}
+          </div>
+
+          <div className={`sanctuary-vitality vit-${scene.vitality}`}>
+            {VITALITY[scene.vitality].emoji} {VITALITY[scene.vitality].label}
+            {scene.current_streak > 0 && ` · ${scene.current_streak}-day streak`}
           </div>
 
           {current && (
@@ -110,11 +121,14 @@ export default function SanctuaryPage() {
                   <button
                     key={o.item_key}
                     type="button"
-                    className="chip"
-                    disabled={planting}
-                    onClick={() => plant(o.item_key)}
+                    className={`chip${o.unlocked ? '' : ' chip-locked'}`}
+                    disabled={planting || !o.unlocked}
+                    title={o.hint ?? undefined}
+                    onClick={() => o.unlocked && plant(o.item_key)}
                   >
+                    {o.unlocked ? '' : '🔒 '}
                     {itemLabel(o.item_key)}
+                    {!o.unlocked && o.hint && <span className="chip-hint"> · {o.hint}</span>}
                   </button>
                 ))}
               </div>

@@ -1,9 +1,9 @@
 """Sanctuary response schemas. See docs/design/sanctuary.md.
 
-Phase 2: the scene is the user's ordered cultivation sequence. Each planting's stage,
-progress, and completion are computed from cumulative practice; the ASCII art for each
-(item_key, stage) lives on the frontend (`lib/sanctuaryArt.ts`) — the backend owns
-*growth*, the frontend owns *rendering*.
+The scene is the user's ordered cultivation sequence. Each planting's stage, progress,
+and completion — plus the garden's vitality and which items are unlocked — are computed
+on read; the ASCII art for each (item_key, stage) lives on the frontend
+(`lib/sanctuaryArt.ts`). The backend owns *growth*, the frontend owns *rendering*.
 """
 
 from pydantic import BaseModel
@@ -20,16 +20,21 @@ class PlantState(BaseModel):
 
 
 class CatalogOption(BaseModel):
-    """An item the user may choose to grow next (already unlocked)."""
+    """An item the user may choose to grow next. Locked items are still listed (so the
+    UI can show them with their requirement), but only `unlocked` ones can be planted."""
 
     item_key: str
     track: str
+    unlocked: bool
+    hint: str | None  # what's needed to unlock it (None when already unlocked)
 
 
 class SanctuaryScene(BaseModel):
     plantings: list[PlantState]  # the whole garden, ordered
     current_position: int | None  # the actively growing planting; None if all complete
     next_options: list[CatalogOption]  # offered only when ready to plant next
+    vitality: str  # "dormant" | "thriving" | "flourishing" — from the current streak
+    current_streak: int
 
 
 class PlantRequest(BaseModel):
