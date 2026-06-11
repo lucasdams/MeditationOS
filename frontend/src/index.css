@@ -548,6 +548,46 @@ button:disabled {
   text-align: center;
 }
 
+/* Vitality — a visual-only state from the current streak (never destructive). */
+.sanctuary-vitality {
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.sanctuary-vitality.vit-dormant {
+  color: #92866b;
+}
+.sanctuary-vitality.vit-thriving {
+  color: #047857;
+}
+.sanctuary-vitality.vit-flourishing {
+  color: #be185d;
+}
+
+/* A dormant garden gently dims; a flourishing one warms. */
+.sanctuary-garden.vit-dormant {
+  filter: grayscale(0.55) opacity(0.8);
+}
+.sanctuary-garden.vit-flourishing {
+  background: linear-gradient(135deg, #fdf2f8, #f0fdf4);
+}
+
+/* Locked next-options on the full page. */
+.chip-locked {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  font-weight: 500;
+}
+
+.chip-hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+}
+
 .reward-overlay {
   position: fixed;
   inset: 0;

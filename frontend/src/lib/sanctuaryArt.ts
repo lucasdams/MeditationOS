@@ -38,10 +38,50 @@ const POND_STAGES: StageArt[] = [
   ['   ~  ~', ' (~~~~~)', ' (~~~~~)', ' (_____)'],
 ]
 
+const HUT_STAGES: StageArt[] = [
+  // 0 — foundation
+  ['', '', ' [_____]', ' ~~~~~~~'],
+  // 1 — walls
+  ['', ' |     |', ' |     |', ' ~~~~~~~'],
+  // 2 — roofed hut
+  ['   /^\\', '  /___\\', ' |  []|', ' ~~~~~~~'],
+]
+
+const BARN_STAGES: StageArt[] = [
+  // 0 — footprint
+  ['', '', ' [_______]', ' ~~~~~~~~~'],
+  // 1 — walls
+  ['', ' |       |', ' |       |', ' ~~~~~~~~~'],
+  // 2 — barn with roof
+  ['  /^^^^^\\', ' /_______\\', ' | [] [] |', ' ~~~~~~~~~'],
+]
+
+const BIRD_STAGES: StageArt[] = [
+  // 0 — egg
+  ['', '', '   o', '  (_)'],
+  // 1 — chick
+  ['', '   ,', '  (o>', '  /)'],
+  // 2 — bird
+  ['   _', '  (o>', '  /)', ' ~~~'],
+]
+
+const FOX_STAGES: StageArt[] = [
+  // 0 — paw prints
+  ['', '', '  .  .', '  ` `'],
+  // 1 — kit
+  ['  /\\_/\\', ' ( o.o )', '  > ^ <', ''],
+  // 2 — fox (a friend)
+  ['  /\\_/\\', ' ( o.o )', '  >fox<', '  ~~~~'],
+]
+
 const ART: Record<string, StageArt[]> = {
   tree: TREE_STAGES,
   flower: FLOWER_STAGES,
   pond: POND_STAGES,
+  hut: HUT_STAGES,
+  barn: BARN_STAGES,
+  bird: BIRD_STAGES,
+  fox: FOX_STAGES,
 }
 
 const FALLBACK: StageArt = ['', '   ?', '  ( )']
@@ -58,6 +98,10 @@ const ITEM_LABELS: Record<string, string> = {
   tree: 'Tree',
   flower: 'Flower',
   pond: 'Pond',
+  hut: 'Hut',
+  barn: 'Barn',
+  bird: 'Bird',
+  fox: 'Fox',
 }
 
 export function itemLabel(itemKey: string): string {

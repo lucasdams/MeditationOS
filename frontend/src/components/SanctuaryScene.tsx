@@ -25,7 +25,10 @@ export default function SanctuaryScene() {
 
   const { plantings, current_position, next_options } = scene
   const current = plantings.find((p) => p.position === current_position) ?? null
-  const readyToPlant = current_position === null && next_options.length > 0
+  // The dashboard mini-scene keeps it simple: only unlocked options (the full
+  // /sanctuary page shows locked ones with their unlock hints).
+  const unlockedOptions = next_options.filter((o) => o.unlocked)
+  const readyToPlant = current_position === null && unlockedOptions.length > 0
 
   async function plant(itemKey: string) {
     setPlanting(true)
@@ -80,7 +83,7 @@ export default function SanctuaryScene() {
         <div className="sanctuary-next">
           <div className="sanctuary-hint">🌱 Choose what to grow next:</div>
           <div className="sanctuary-options">
-            {next_options.map((o) => (
+            {unlockedOptions.map((o) => (
               <button
                 key={o.item_key}
                 type="button"

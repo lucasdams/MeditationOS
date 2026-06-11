@@ -145,12 +145,18 @@ export interface PlantState {
 export interface CatalogOption {
   item_key: string
   track: string
+  unlocked: boolean
+  hint: string | null // what's needed to unlock it (null when unlocked)
 }
+
+export type Vitality = 'dormant' | 'thriving' | 'flourishing'
 
 export interface SanctuaryScene {
   plantings: PlantState[]
   current_position: number | null // the actively growing planting; null if all complete
   next_options: CatalogOption[]
+  vitality: Vitality
+  current_streak: number
 }
 
 export interface BreathingPattern {

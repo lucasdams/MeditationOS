@@ -73,13 +73,18 @@ No `user_wallet`, no spend ledger, no `upgrades` table — see
 
 Sketch:
 
+The shipped catalog (`grow_cost` in practice points; unlocks by lifetime points and/or
+current streak):
+
 | key | track | grow cost | unlock |
 |-----|-------|-----------|--------|
-| `tree` | nature | small | always (starter) |
-| `flower` | nature | small | always |
-| `pond` | nature | medium | level ≥ 5 |
-| `barn` | structure | large | 30-day streak |
-| `companion_fox` | companion | medium | 100 practice-minutes |
+| `tree` | nature | 60 | always (starter) |
+| `flower` | nature | 30 | always |
+| `pond` | nature | 120 | ≥ 100 points |
+| `hut` | structure | 90 | ≥ 60 points |
+| `barn` | structure | 150 | ≥ 150 points |
+| `bird` | companion | 40 | ≥ 50 points |
+| `fox` | companion | 80 | a 3-day streak |
 
 `grow_cost` and `unlock` are tunable constants — changing them recomputes everything
 with no migration (the property valued in XP). Prefer lowering or holding costs; see
@@ -139,8 +144,10 @@ Each step is independently shippable.
 3. ✅ **Builder UI** — a dedicated `/sanctuary` page (nav button) showing the full
    assortment, the growing plant's bar, a "choose what to grow next" beat with a
    completion celebration, and a just-planted pop animation; linked from the dashboard.
-4. **Depth** — the remaining tracks, milestone-unlocked items (barn, companion),
-   vitality/dormancy visuals, and later the SVG render.
+4. ✅ **Depth** — structures (hut, barn) and companions (bird, fox) tracks beyond
+   nature; milestone unlocks by lifetime points **and** current streak (locked options
+   shown with their hint); a streak-driven **vitality** (dormant / thriving /
+   flourishing, visual-only). *Still to come:* procedural **SVG** render.
 
 ## Out of scope (here)
 
