@@ -56,6 +56,11 @@ body {
   color: #4338ca;
 }
 
+.app-nav a.nav-meditate {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
 .app-nav a.nav-breathe {
   background: #e0f2fe;
   color: #0369a1;
@@ -341,6 +346,50 @@ button:disabled {
   font-size: 0.8rem;
   color: #6b6b70;
   margin-top: 0.35rem;
+}
+
+/* Sanctuary — the starter plant growing on the dashboard (Phase 1). */
+.sanctuary {
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.sanctuary h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.sanctuary-plant {
+  margin: 0 auto 0.5rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  line-height: 1.05;
+  font-size: 0.95rem;
+  color: #15803d;
+  white-space: pre;
+  min-height: 6em;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sanctuary-caption {
+  font-weight: 600;
+  color: #15803d;
+  margin-bottom: 0.5rem;
+}
+
+.sanctuary .xp-bar {
+  max-width: 18rem;
+  margin: 0 auto;
+}
+
+.sanctuary-hint {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
 }
 
 .reward-overlay {
@@ -764,6 +813,49 @@ button:disabled {
 
 .breathe-circle.idle {
   opacity: 0.5;
+}
+
+/* Meditation timer: a calm orb with the time at its centre. */
+.meditate-orb {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #5eead4, #0d9488);
+}
+
+.meditate-orb.running {
+  animation: meditate-pulse 6s ease-in-out infinite;
+}
+
+.meditate-orb.idle {
+  opacity: 0.6;
+}
+
+@keyframes meditate-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+.meditate-time {
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.meditate-reset {
+  margin: 0.75rem 0 0;
+  background: transparent;
+  color: #6b6b70;
+  border: 1px solid #e5e5ea;
 }
 
 .breathe-phase {

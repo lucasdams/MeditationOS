@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
+import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import type { DashboardStats } from '../types'
 
@@ -63,6 +64,8 @@ export default function DashboardPage() {
       {!stats && !error && <p>Loading…</p>}
 
       {stats && <LevelCard stats={stats} />}
+
+      <SanctuaryScene />
 
       {stats && (
         <section className="quests">

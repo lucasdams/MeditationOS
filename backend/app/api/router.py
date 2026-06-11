@@ -8,6 +8,7 @@ from app.api.routes import (
     dashboard,
     gratitude,
     health,
+    sanctuary,
     sessions,
 )
 
@@ -18,3 +19,4 @@ api_router.include_router(sessions.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(breathing_patterns.router)
 api_router.include_router(gratitude.router)
+api_router.include_router(sanctuary.router)

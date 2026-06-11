@@ -60,6 +60,17 @@ Guided **slow** breathing that paces the user at a target resonance rate (~1–6
 
 **Demonstrates:** real-time UI state, timer logic, user preferences, session metadata storage
 
+### Meditation Timer (added during V1)
+
+An unguided "sit now" page (`/meditate`): pick a meditation **style** (mindfulness,
+body scan, walking, loving-kindness, other) and a **length** (5/10/20/45 min or
+open-ended), with optional **start / interval / end bells**. Saves as a session
+(reusing the existing `mindfulness` type — no new schema), so it earns XP, completes
+the "log a session" daily quest, and feeds streaks and the heatmap like any session.
+The in-session clock uses the same background-tab-safe timing as the breathing pacer.
+
+**Demonstrates:** real-time UI state, timer logic, Web Audio cues, reuse over new schema
+
 ### Dashboard
 
 Display total meditation time, current streak, longest streak, and weekly statistics,
