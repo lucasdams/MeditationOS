@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
 import { plantArt, itemLabel } from '../lib/sanctuaryArt'
 import type { SanctuaryScene as Scene } from '../types'
@@ -39,7 +40,12 @@ export default function SanctuaryScene() {
 
   return (
     <section className="sanctuary" aria-label="Your sanctuary">
-      <h2>Your sanctuary</h2>
+      <div className="sanctuary-head">
+        <h2>Your sanctuary</h2>
+        <Link to="/sanctuary" className="sanctuary-link">
+          View sanctuary →
+        </Link>
+      </div>
 
       <div className="sanctuary-garden">
         {plantings.map((p) => (

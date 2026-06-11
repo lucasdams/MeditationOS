@@ -14,7 +14,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Levels & XP + **daily quests** — earn XP from practice (breathing counts 3×), level up, grow an ASCII tree; three daily quests + a streak bonus, with a live reset countdown
 - ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, an ocean-breath audio guide + transition bell, optional duration timer; saves as a session
 - ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells; background-tab-safe timer; saves as a session and earns XP
-- 🌱 Sanctuary (in progress) — a garden you grow by practicing: plants grow from your practice and you **choose what to grow next** (tree · flower · pond, milestone-unlocked); Phases 1–2 built. See [Sanctuary design](docs/design/sanctuary.md)
+- 🌱 Sanctuary (in progress) — a garden you grow by practicing: plants grow from your practice and you **choose what to grow next** (tree · flower · pond, milestone-unlocked), on a dedicated page with a completion celebration; Phases 1–3 built. See [Sanctuary design](docs/design/sanctuary.md)
 - ✅ Gratitude tool — pick from 36 themes, get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states

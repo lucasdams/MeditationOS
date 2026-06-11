@@ -7,6 +7,7 @@ import HistoryPage from './pages/HistoryPage'
 import BreathePage from './pages/BreathePage'
 import MeditatePage from './pages/MeditatePage'
 import GratitudePage from './pages/GratitudePage'
+import SanctuaryPage from './pages/SanctuaryPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/breathe" element={<BreathePage />} />
         <Route path="/meditate" element={<MeditatePage />} />
         <Route path="/gratitude" element={<GratitudePage />} />
+        <Route path="/sanctuary" element={<SanctuaryPage />} />
         <Route path="/sessions" element={<HistoryPage />} />
         <Route path="/sessions/new" element={<LogSessionPage />} />
       </Route>

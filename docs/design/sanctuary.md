@@ -115,9 +115,9 @@ the auto-seeded starter. No balance check exists — there is no balance.
 
 ## Frontend
 
-- **Where:** the scene renders as the **dashboard background** — the home you land on —
-  so the garden is the first thing you see, with one item growing. A dedicated
-  `/sanctuary` page for a larger view can follow.
+- **Where:** a compact scene renders on the **dashboard** (the home you land on), so
+  the garden is the first thing you see; a dedicated **`/sanctuary` page** (nav button,
+  shipped in Phase 3) gives the full view with the completion celebration.
 - **Render:** **ASCII first**, consistent with `lib/tree.ts`. Each catalog item has
   per-stage art; the current item animates through stages as its progress bar fills;
   completed items render full and are arranged into the background scene. Procedural
@@ -136,7 +136,9 @@ Each step is independently shippable.
 2. ✅ **Plant next** — `sanctuary_plantings` + migration, the `POST` write path, and a
    nature catalog (tree, flower, pond) with milestone unlocks. The full loop end to end,
    with a "choose what to grow next" beat and the assortment rendered on the dashboard.
-3. **Builder UI** — a richer scene/dedicated page, animated completion celebration.
+3. ✅ **Builder UI** — a dedicated `/sanctuary` page (nav button) showing the full
+   assortment, the growing plant's bar, a "choose what to grow next" beat with a
+   completion celebration, and a just-planted pop animation; linked from the dashboard.
 4. **Depth** — the remaining tracks, milestone-unlocked items (barn, companion),
    vitality/dormancy visuals, and later the SVG render.
 

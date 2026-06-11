@@ -76,8 +76,9 @@ The strongest retention loop in the product.
 pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
 
 **Depends on:** the **streak engine (Cycle 3)** for vitality + milestone unlocks.
-Build order (per the design): grow + scene read-only → plant-next write path +
-`sanctuary_plantings` → builder UI → more tracks + SVG.
+Build order (per the design): ✅ grow + scene read-only → ✅ plant-next write path +
+`sanctuary_plantings` → ✅ builder UI (dedicated page + completion celebration) →
+more tracks + vitality/dormancy + SVG.
 
 ## AI (Post-V3)
 
