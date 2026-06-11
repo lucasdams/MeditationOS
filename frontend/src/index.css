@@ -71,6 +71,11 @@ body {
   color: #b45309;
 }
 
+.app-nav a.nav-sanctuary {
+  background: #d1fae5;
+  color: #047857;
+}
+
 .app-nav a.nav-log {
   background: #dcfce7;
   color: #15803d;
@@ -430,6 +435,117 @@ button:disabled {
 .sanctuary-hint {
   margin-top: 0.4rem;
   font-size: 0.82rem;
+}
+
+/* Dashboard mini-scene header with a link to the full page. */
+.sanctuary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sanctuary-head h2 {
+  margin: 0;
+}
+
+.sanctuary-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #047857;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* The dedicated Sanctuary page (Phase 3). */
+.sanctuary-page {
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.sanctuary-page header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sanctuary-garden.big {
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+  border-radius: 12px;
+  padding: 1.25rem 1rem;
+  margin: 1rem 0;
+}
+
+.sanctuary-garden.big .sanctuary-plant {
+  font-size: 1.05rem;
+}
+
+/* A finished plant gets a soft glow; a just-planted one pops in. */
+.sanctuary-plot.grown {
+  background: #fff;
+  border-color: #bbf7d0;
+}
+
+.sanctuary-plot.just-planted {
+  animation: sanctuary-pop 0.5s ease;
+}
+
+@keyframes sanctuary-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sanctuary-current {
+  max-width: 22rem;
+  margin: 0 auto 1rem;
+  text-align: center;
+}
+
+.sanctuary-current .xp-bar {
+  max-width: none;
+}
+
+/* The completion celebration. */
+.sanctuary-celebrate {
+  text-align: center;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  animation: sanctuary-glow 2.4s ease-in-out infinite;
+}
+
+.sanctuary-celebrate-title {
+  font-weight: 700;
+  color: #047857;
+  margin-bottom: 0.6rem;
+}
+
+@keyframes sanctuary-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.12);
+  }
+}
+
+.sanctuary-summary {
+  text-align: center;
 }
 
 .reward-overlay {
