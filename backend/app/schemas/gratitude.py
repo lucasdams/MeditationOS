@@ -43,6 +43,7 @@ GratitudeCategory = Literal[
     "abundance",
     "community",
     "beauty",
+    "custom",
 ]
 
 

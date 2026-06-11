@@ -6,6 +6,7 @@ import RewardOverlay from '../components/RewardOverlay'
 import type { Gratitude, GratitudeCategory } from '../types'
 
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
+  { key: 'custom', label: 'Custom', emoji: '✏️' },
   { key: 'people', label: 'People', emoji: '🧡' },
   { key: 'health', label: 'Health', emoji: '🌿' },
   { key: 'nature', label: 'Nature', emoji: '🌅' },
@@ -87,7 +88,9 @@ export default function GratitudePage() {
   function pickCategory(cat: GratitudeCategory) {
     setCategory(cat)
     setText('')
-    void fetchOptions(cat)
+    setOptions([])
+    // "Custom" is write-your-own — no AI prompt suggestions.
+    if (cat !== 'custom') void fetchOptions(cat)
   }
 
   async function save() {
@@ -147,37 +150,41 @@ export default function GratitudePage() {
 
       {category && (
         <section className="grat-compose">
-          <div className="grat-options-head">
-            <span className="muted">
-              {loadingOptions ? 'Finding ideas…' : 'Tap an idea, or write your own'}
-            </span>
-            <button
-              type="button"
-              className="grat-reload"
-              onClick={() => void fetchOptions(category)}
-              disabled={loadingOptions}
-            >
-              ↻ New ideas
-            </button>
-          </div>
-          {!loadingOptions && options.length > 0 && (
-            <div className="grat-options">
-              {options.map((opt) => (
+          {category !== 'custom' && (
+            <>
+              <div className="grat-options-head">
+                <span className="muted">
+                  {loadingOptions ? 'Finding ideas…' : 'Tap an idea, or write your own'}
+                </span>
                 <button
-                  key={opt}
                   type="button"
-                  className="chip chip-soft"
-                  onClick={() => setText(opt)}
+                  className="grat-reload"
+                  onClick={() => void fetchOptions(category)}
+                  disabled={loadingOptions}
                 >
-                  {opt}
+                  ↻ New ideas
                 </button>
-              ))}
-            </div>
+              </div>
+              {!loadingOptions && options.length > 0 && (
+                <div className="grat-options">
+                  {options.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="chip chip-soft"
+                      onClick={() => setText(opt)}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
           <textarea
             rows={3}
             value={text}
-            placeholder="I'm grateful for…"
+            placeholder={category === 'custom' ? 'Write your own…' : "I'm grateful for…"}
             onChange={(e) => setText(e.target.value)}
           />
           <button type="button" onClick={save} disabled={saving || !text.trim()}>

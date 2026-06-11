@@ -37,6 +37,13 @@ def test_create_rejects_bad_category(client):
     assert res.status_code == 422
 
 
+def test_create_custom_category(client):
+    _auth(client, "gcustom@example.com")
+    res = _entry(client, "custom", "A thought entirely my own")
+    assert res.status_code == 201
+    assert res.json()["category"] == "custom"
+
+
 def test_list_returns_only_callers_entries(client):
     _auth(client, "owner@example.com")
     _entry(client)
