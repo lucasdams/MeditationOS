@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
 from app.core.db import get_db
-from app.core.exceptions import LinkedSessionNotFoundError
+from app.core.exceptions import DailyLimitError, LinkedSessionNotFoundError
 from app.models.user import User
 from app.schemas.journal import JournalCreate, JournalRead, JournalUpdate
 from app.services import journal_service
@@ -17,6 +17,10 @@ from app.services import journal_service
 router = APIRouter(prefix="/journals", tags=["journals"])
 
 _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found")
+_DAILY_LIMIT = HTTPException(
+    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    detail="Daily limit reached. Please try again tomorrow.",
+)
 
 
 @router.post("", response_model=JournalRead, status_code=status.HTTP_201_CREATED)
@@ -27,6 +31,8 @@ def create_journal(
 ) -> JournalRead:
     try:
         return journal_service.create_entry(db, current_user.id, data)
+    except DailyLimitError:
+        raise _DAILY_LIMIT from None
     except LinkedSessionNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Linked session not found"

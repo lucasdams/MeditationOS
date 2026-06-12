@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.exceptions import LinkedSessionNotFoundError
+from app.core.limits import enforce_daily_create_cap
 from app.models.journal import Journal
 from app.models.session import Session as PracticeSession
 from app.schemas.journal import JournalCreate, JournalUpdate
@@ -21,6 +22,7 @@ def _owns_session(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> b
 
 def create_entry(db: DBSession, user_id: uuid.UUID, data: JournalCreate) -> Journal:
     """Create a reflection. If a session is linked, it must be the caller's own."""
+    enforce_daily_create_cap(db, Journal, user_id)
     if data.session_id is not None and not _owns_session(db, user_id, data.session_id):
         raise LinkedSessionNotFoundError()
     entry = Journal(user_id=user_id, **data.model_dump())

@@ -9,6 +9,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
+from app.core.limits import enforce_daily_create_cap
 from app.models.goal import Goal
 from app.schemas.dashboard import DashboardStats
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
@@ -54,6 +55,7 @@ def _get(db: DBSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> Goal | None:
 def create_goal(
     db: DBSession, user_id: uuid.UUID, data: GoalCreate, *, today: date, tz: str
 ) -> GoalRead:
+    enforce_daily_create_cap(db, Goal, user_id)
     goal = Goal(user_id=user_id, type=data.type, target=data.target)
     db.add(goal)
     db.commit()

@@ -6,6 +6,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
+from app.core.limits import enforce_daily_create_cap
 from app.models.gratitude import GratitudeEntry
 from app.schemas.gratitude import GratitudeCreate
 
@@ -14,6 +15,7 @@ GRATITUDE_XP = 5
 
 
 def create_entry(db: DBSession, user_id: uuid.UUID, data: GratitudeCreate) -> GratitudeEntry:
+    enforce_daily_create_cap(db, GratitudeEntry, user_id)
     entry = GratitudeEntry(user_id=user_id, **data.model_dump())
     db.add(entry)
     db.commit()

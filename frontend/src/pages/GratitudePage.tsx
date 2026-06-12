@@ -51,6 +51,8 @@ const LABELS: Record<string, string> = Object.fromEntries(
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
+const GRAT_PAGE = 50
+
 export default function GratitudePage() {
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
   const [options, setOptions] = useState<string[]>([])
@@ -59,6 +61,8 @@ export default function GratitudePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [entries, setEntries] = useState<Gratitude[] | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
@@ -67,10 +71,31 @@ export default function GratitudePage() {
 
   useEffect(() => {
     gratitudeService
-      .list()
-      .then(setEntries)
+      .list({ limit: GRAT_PAGE, offset: 0 })
+      .then((rows) => {
+        setEntries(rows)
+        setHasMore(rows.length === GRAT_PAGE)
+      })
       .catch(() => setError('Could not load your gratitude journal.'))
   }, [])
+
+  async function loadMore() {
+    if (!entries) return
+    setError(null)
+    setLoadingMore(true)
+    try {
+      const rows = await gratitudeService.list({ limit: GRAT_PAGE, offset: entries.length })
+      setEntries((prev) => {
+        const seen = new Set((prev ?? []).map((e) => e.id))
+        return [...(prev ?? []), ...rows.filter((r) => !seen.has(r.id))]
+      })
+      setHasMore(rows.length === GRAT_PAGE)
+    } catch {
+      setError('Could not load more entries.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   async function fetchOptions(cat: GratitudeCategory) {
     setOptions([])
@@ -225,6 +250,11 @@ export default function GratitudePage() {
               </li>
             ))}
           </ul>
+        )}
+        {hasMore && (
+          <button type="button" className="load-more" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
         )}
       </section>
 

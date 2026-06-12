@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
 from app.core.db import get_db
+from app.core.exceptions import DailyLimitError
 from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.gratitude import (
@@ -20,6 +21,11 @@ from app.services.ai import gratitude_suggester
 
 router = APIRouter(prefix="/gratitude", tags=["gratitude"])
 
+_DAILY_LIMIT = HTTPException(
+    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    detail="Daily limit reached. Please try again tomorrow.",
+)
+
 
 @router.post("", response_model=GratitudeRead, status_code=status.HTTP_201_CREATED)
 def create_entry(
@@ -27,7 +33,10 @@ def create_entry(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> GratitudeRead:
-    return gratitude_service.create_entry(db, current_user.id, data)
+    try:
+        return gratitude_service.create_entry(db, current_user.id, data)
+    except DailyLimitError:
+        raise _DAILY_LIMIT from None
 
 
 @router.get("", response_model=list[GratitudeRead])

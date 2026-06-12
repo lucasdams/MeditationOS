@@ -30,10 +30,14 @@ const TYPE_LABELS: Record<MeditationType, string> = {
 const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+const PAGE = 50
+
 export default function JournalPage() {
   const [entries, setEntries] = useState<Journal[] | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [body, setBody] = useState('')
   const [mood, setMood] = useState<Mood | ''>('')
@@ -42,16 +46,38 @@ export default function JournalPage() {
 
   useEffect(() => {
     journalService
-      .list()
-      .then(setEntries)
+      .list({ limit: PAGE, offset: 0 })
+      .then((rows) => {
+        setEntries(rows)
+        setHasMore(rows.length === PAGE)
+      })
       .catch(() => setError('Could not load your journal.'))
     // The user's sessions — used both to pick one to reflect on and to show the
-    // linked session on each entry. Non-critical — fail quietly.
+    // linked session on each entry. Fetch a generous page so older links resolve.
+    // Non-critical — fail quietly.
     sessionService
-      .list()
+      .list({ limit: 200 })
       .then(setSessions)
       .catch(() => {})
   }, [])
+
+  async function loadMore() {
+    if (!entries) return
+    setError(null)
+    setLoadingMore(true)
+    try {
+      const rows = await journalService.list({ limit: PAGE, offset: entries.length })
+      setEntries((prev) => {
+        const seen = new Set((prev ?? []).map((j) => j.id))
+        return [...(prev ?? []), ...rows.filter((r) => !seen.has(r.id))]
+      })
+      setHasMore(rows.length === PAGE)
+    } catch {
+      setError('Could not load more reflections.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // A non-null session_id always resolves: deleting a session sets it to NULL.
   const sessionById = new Map(sessions.map((s) => [s.id, s]))
@@ -172,6 +198,11 @@ export default function JournalPage() {
             </article>
           )
         })}
+        {hasMore && (
+          <button type="button" className="load-more" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        )}
       </section>
     </main>
   )
