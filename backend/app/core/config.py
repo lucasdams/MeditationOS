@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     email_verification_expire_minutes: int = 1440  # 24h
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
     login_rate_limit: str = "5/minute"
+    # Max rows a user may create per type (sessions / gratitude / journals / goals)
+    # per UTC day — an anti-spam ceiling, set well above real use.
+    daily_create_limit: int = 200
     # OAuth client ID for "Sign in with Google" (public value). Empty = disabled.
     google_client_id: str = ""
     # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.

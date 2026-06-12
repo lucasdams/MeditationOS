@@ -39,3 +39,7 @@ class LinkedSessionNotFoundError(Exception):
 
 class NotAGuestError(Exception):
     """Raised when a non-guest account tries to be claimed."""
+
+
+class DailyLimitError(Exception):
+    """Raised when a user hits the per-day creation cap for a resource (anti-spam)."""

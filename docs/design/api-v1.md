@@ -14,6 +14,11 @@ REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentica
 - **Timestamps:** ISO-8601 UTC (`2026-06-09T14:00:00Z`).
 - **Validation:** Pydantic; unexpected fields rejected with `422`.
 - **Ownership:** other users' resource IDs return `404` (not `403`) to avoid enumeration.
+- **Pagination:** list endpoints (`/sessions`, `/gratitude`, `/journals`) take `limit`
+  (default `50`, max `200`) + `offset`; the UI loads pages with a "Load more" control.
+- **Abuse limits:** sensitive auth endpoints are IP rate-limited (`429`); creating a
+  resource (session / gratitude / journal / goal) is capped per user per UTC day
+  (`DAILY_CREATE_LIMIT`, default `200`) → `429` when exceeded.
 
 ### Error envelope
 

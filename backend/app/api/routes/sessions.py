@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
 from app.core.db import get_db
+from app.core.exceptions import DailyLimitError
 from app.models.user import User
 from app.schemas.session import SessionCreate, SessionRead, SessionUpdate
 from app.services import session_service
@@ -17,6 +18,10 @@ from app.services import session_service
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+_DAILY_LIMIT = HTTPException(
+    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    detail="Daily limit reached. Please try again tomorrow.",
+)
 
 
 @router.post("", response_model=SessionRead, status_code=status.HTTP_201_CREATED)
@@ -25,7 +30,10 @@ def create_session(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SessionRead:
-    return session_service.create_session(db, current_user.id, data)
+    try:
+        return session_service.create_session(db, current_user.id, data)
+    except DailyLimitError:
+        raise _DAILY_LIMIT from None
 
 
 @router.get("", response_model=list[SessionRead])

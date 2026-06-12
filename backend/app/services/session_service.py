@@ -10,11 +10,13 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
+from app.core.limits import enforce_daily_create_cap
 from app.models.session import Session
 from app.schemas.session import SessionCreate, SessionUpdate
 
 
 def create_session(db: DBSession, user_id: uuid.UUID, data: SessionCreate) -> Session:
+    enforce_daily_create_cap(db, Session, user_id)
     session = Session(user_id=user_id, **data.model_dump())
     db.add(session)
     db.commit()

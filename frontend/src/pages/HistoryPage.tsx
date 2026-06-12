@@ -17,16 +17,41 @@ const formatDuration = (seconds: number) => `${Math.round(seconds / 60)} min`
 // ISO timestamp -> "2026-06-09 07:30"
 const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
 
+const PAGE = 50
+
 export default function HistoryPage() {
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     sessionService
-      .list()
-      .then(setSessions)
+      .list({ limit: PAGE, offset: 0 })
+      .then((rows) => {
+        setSessions(rows)
+        setHasMore(rows.length === PAGE)
+      })
       .catch(() => setError('Could not load your sessions.'))
   }, [])
+
+  async function loadMore() {
+    if (!sessions) return
+    setError(null)
+    setLoadingMore(true)
+    try {
+      const rows = await sessionService.list({ limit: PAGE, offset: sessions.length })
+      setSessions((prev) => {
+        const seen = new Set((prev ?? []).map((s) => s.id))
+        return [...(prev ?? []), ...rows.filter((r) => !seen.has(r.id))]
+      })
+      setHasMore(rows.length === PAGE)
+    } catch {
+      setError('Could not load more sessions.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   async function handleDelete(id: string) {
     setError(null)
@@ -87,6 +112,12 @@ export default function HistoryPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {hasMore && (
+        <button type="button" className="load-more" onClick={loadMore} disabled={loadingMore}>
+          {loadingMore ? 'Loading…' : 'Load more'}
+        </button>
       )}
     </main>
   )
