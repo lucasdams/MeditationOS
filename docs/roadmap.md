@@ -129,11 +129,13 @@ a fixed palette. Full CRUD, user-scoped. See [journaling design](design/journali
 
 **Demonstrates:** rich data models, text storage, cross-entity links (journal ↔ session)
 
-### Analytics
+### Analytics ✅ shipped (early)
 
-Visualizations for practice consistency, time trends, mood trends, and goal progress.
+A dedicated page of insights computed by SQL: minutes-per-week trend, practice by
+type, by day of week, by time of day, and journal-mood distribution — all bucketed in
+the user's timezone, read-only (no analytics tables). See [analytics design](design/analytics.md).
 
-**Demonstrates:** SQL queries, reporting, data processing
+**Demonstrates:** SQL aggregation, reporting, data processing
 
 ### Goal System ✅ shipped (early)
 

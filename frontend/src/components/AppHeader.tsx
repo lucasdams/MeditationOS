@@ -49,6 +49,9 @@ export default function AppHeader() {
         <Link to="/sanctuary" className="nav-sanctuary">
           🌱 Sanctuary
         </Link>
+        <Link to="/analytics" className="nav-analytics">
+          📈 Analytics
+        </Link>
         <Link to="/sessions/new" className="nav-log">
           + Log
         </Link>

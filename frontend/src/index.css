@@ -88,6 +88,102 @@ body {
   color: #b91c1c;
 }
 
+.app-nav a.nav-analytics {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+/* Analytics page */
+.analytics-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.analytics-stats .stat {
+  text-align: center;
+}
+
+.analytics-stats .stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.analytics-stats .stat-label {
+  font-size: 0.8rem;
+  color: #6b6b70;
+}
+
+.analytics-section {
+  margin: 1.5rem 0;
+}
+
+.analytics-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.6rem;
+}
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.bar-track {
+  background: #eef2ff;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: #6366f1;
+  border-radius: 999px;
+}
+
+.bar-value {
+  text-align: right;
+  color: #6b6b70;
+}
+
+.weeks {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+}
+
+.week-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.week-bar {
+  width: 100%;
+  min-height: 2px;
+  background: #6366f1;
+  border-radius: 3px 3px 0 0;
+}
+
+.analytics-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+}
+
 .app-nav a.nav-log {
   background: #dcfce7;
   color: #15803d;

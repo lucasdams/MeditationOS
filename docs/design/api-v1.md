@@ -320,6 +320,31 @@ GET /api/v1/dashboard/activity
 the payload stays small; the frontend fills the `start`..`end` grid (GitHub-style
 heatmap). Kept separate from `/stats` so the per-navigation stats call stays light.
 
+## Analytics ✅ implemented
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/analytics` | ✓ | Aggregated practice + journal insights for the caller |
+
+```
+GET /api/v1/analytics
+→ 200
+{
+  "total_sessions": 42, "total_minutes": 540, "days_practiced": 30,
+  "by_type": [{ "type": "mindfulness", "count": 30, "minutes": 360 }, …],
+  "by_weekday": [{ "weekday": 0, "count": 4 }, …],          // 7, Sun→Sat, zero-filled
+  "by_time_of_day": [{ "bucket": "morning", "count": 18 }, …], // 4, ordered
+  "minutes_by_week": [{ "week_start": "2026-03-30", "minutes": 60 }, …], // last 12, oldest→newest
+  "moods": [{ "mood": "calm", "count": 9 }, …]              // journal moods
+}
+```
+
+All aggregates are computed by SQL, bucketed in the user's timezone (like the
+dashboard), and read-only — no analytics tables. `by_type` covers every meditation
+type; `by_weekday`/`by_time_of_day` bucket sessions by their local weekday/hour;
+`minutes_by_week` is the last 12 Monday-aligned weeks; `moods` is the journal mood
+distribution.
+
 ## Sanctuary ✅ implemented
 
 | Method | Path | Auth | Notes |
