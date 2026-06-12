@@ -17,6 +17,7 @@ from app.core.exceptions import (
     InvalidResetTokenError,
     InvalidTimezoneError,
     InvalidVerificationTokenError,
+    NotAGuestError,
     UsernameTakenError,
 )
 from app.core.google import verify_id_token
@@ -249,6 +250,43 @@ def create_user(db: Session, data: UserCreate) -> User:
 
     user = User(email=data.email, password_hash=hash_password(data.password))
     db.add(user)
+    db.commit()
+    db.refresh(user)
+    send_verification_email(db, user)
+    return user
+
+
+def create_guest(db: Session) -> User:
+    """Create an anonymous "try it" account: a synthetic email + auto username, no
+    password. email_verified is true so the (fake) address never prompts a verify
+    banner. The user can later claim_account() to make it real."""
+    handle = uuid.uuid4().hex[:12]
+    user = User(
+        email=f"guest_{handle}@guest.meditationos.app",
+        username=f"guest_{handle}",
+        password_hash=None,
+        email_verified=True,
+        is_guest=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def claim_account(db: Session, user: User, email: str, password: str) -> User:
+    """Convert a guest into a real account: set a real email + password, keeping all
+    their data. Raises NotAGuestError if the account isn't a guest, or
+    EmailAlreadyExistsError if the email is taken. Sends an email verification."""
+    if not user.is_guest:
+        raise NotAGuestError()
+    existing = get_user_by_email(db, email)
+    if existing is not None and existing.id != user.id:
+        raise EmailAlreadyExistsError(email)
+    user.email = email
+    user.password_hash = hash_password(password)
+    user.is_guest = False
+    user.email_verified = False
     db.commit()
     db.refresh(user)
     send_verification_email(db, user)

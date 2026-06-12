@@ -16,6 +16,13 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class ClaimAccount(BaseModel):
+    """Convert a guest account into a real one — give it an email + password."""
+
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
 class UserLogin(BaseModel):
     """Login input."""
 
@@ -95,6 +102,7 @@ class UserRead(BaseModel):
     timezone: str
     has_password: bool
     email_verified: bool
+    is_guest: bool
     reminder_enabled: bool
     reminder_hour: int | None
     created_at: datetime

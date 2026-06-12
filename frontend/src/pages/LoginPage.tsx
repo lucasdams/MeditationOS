@@ -4,6 +4,7 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
+import GuestButton from '../components/GuestButton'
 
 export default function LoginPage() {
   const { refresh } = useAuth()
@@ -81,6 +82,7 @@ export default function LoginPage() {
         <span>or</span>
       </div>
       <GoogleSignInButton onError={setError} />
+      <GuestButton onError={setError} />
 
       <p>
         No account? <Link to="/register">Register</Link>

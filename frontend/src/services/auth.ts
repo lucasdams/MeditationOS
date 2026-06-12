@@ -10,6 +10,13 @@ export const authService = {
 
   googleLogin: (credential: string) => api.post<User>('/auth/google', { credential }),
 
+  // Create an anonymous account and sign in — "use without signing up".
+  guest: () => api.post<User>('/auth/guest'),
+
+  // Convert the current guest account into a real one.
+  claim: (email: string, password: string) =>
+    api.post<User>('/auth/claim', { email, password }),
+
   logout: () => api.post<void>('/auth/logout'),
 
   me: () => api.get<User>('/auth/me'),

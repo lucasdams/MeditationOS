@@ -35,3 +35,7 @@ class InvalidVerificationTokenError(Exception):
 
 class LinkedSessionNotFoundError(Exception):
     """Raised when a journal links a session that isn't the caller's (or doesn't exist)."""
+
+
+class NotAGuestError(Exception):
+    """Raised when a non-guest account tries to be claimed."""

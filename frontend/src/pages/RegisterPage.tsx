@@ -4,6 +4,7 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
+import GuestButton from '../components/GuestButton'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -84,6 +85,7 @@ export default function RegisterPage() {
         <span>or</span>
       </div>
       <GoogleSignInButton onError={setError} />
+      <GuestButton onError={setError} />
 
       <p>
         Already have an account? <Link to="/login">Log in</Link>

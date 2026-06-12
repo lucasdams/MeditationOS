@@ -13,12 +13,14 @@ from app.core.exceptions import (
     InvalidResetTokenError,
     InvalidTimezoneError,
     InvalidVerificationTokenError,
+    NotAGuestError,
     UsernameTakenError,
 )
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.user import (
+    ClaimAccount,
     EmailVerify,
     GoogleLogin,
     PasswordResetConfirm,
@@ -58,6 +60,19 @@ def register(data: UserCreate, db: Session = Depends(get_db)) -> UserRead:
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         ) from None
+
+
+@router.post("/guest", response_model=UserRead)
+@limiter.limit(settings.login_rate_limit)
+def guest(
+    request: Request,  # required by the rate limiter
+    response: Response,
+    db: Session = Depends(get_db),
+) -> UserRead:
+    """Create an anonymous account and sign it in — "use without signing up"."""
+    user = user_service.create_guest(db)
+    _set_auth_cookie(response, create_access_token(str(user.id)))
+    return user
 
 
 @router.post("/login", response_model=UserRead)
@@ -152,6 +167,26 @@ def change_password(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
+        ) from None
+
+
+@router.post("/claim", response_model=UserRead)
+def claim_account(
+    data: ClaimAccount,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    """Turn the current guest account into a real one (email + password)."""
+    try:
+        return user_service.claim_account(db, current_user, data.email, data.password)
+    except NotAGuestError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account is already a full account.",
+        ) from None
+    except EmailAlreadyExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
         ) from None
 
 

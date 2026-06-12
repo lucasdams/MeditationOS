@@ -5,6 +5,7 @@ export interface User {
   timezone: string
   has_password: boolean
   email_verified: boolean
+  is_guest: boolean
   reminder_enabled: boolean
   reminder_hour: number | null
   created_at: string

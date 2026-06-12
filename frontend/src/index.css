@@ -246,6 +246,35 @@ body {
   font-weight: 600;
 }
 
+.guest-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem;
+  background: #eef2ff;
+  border-bottom: 1px solid #c7d2fe;
+  color: #3730a3;
+  font-size: 0.9rem;
+}
+
+.guest-banner a {
+  font-weight: 600;
+  color: #4338ca;
+}
+
+.guest-btn {
+  width: 100%;
+  background: #fff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+  margin-top: 0.75rem;
+}
+
+.guest-btn:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
 .journal-compose {
   margin-bottom: 1.5rem;
 }

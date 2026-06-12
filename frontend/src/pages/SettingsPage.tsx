@@ -45,6 +45,13 @@ export default function SettingsPage() {
   const [reminderOk, setReminderOk] = useState(false)
   const [savingReminder, setSavingReminder] = useState(false)
 
+  // Claim section (guest accounts only).
+  const [claimEmail, setClaimEmail] = useState('')
+  const [claimPassword, setClaimPassword] = useState('')
+  const [claimConfirm, setClaimConfirm] = useState('')
+  const [claimError, setClaimError] = useState<string | null>(null)
+  const [savingClaim, setSavingClaim] = useState(false)
+
   // The page only renders inside ProtectedRoute, so `user` is always present here,
   // but guard for type-safety.
   if (!user) return null
@@ -112,6 +119,35 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleClaim(e: FormEvent) {
+    e.preventDefault()
+    setClaimError(null)
+    if (!claimEmail) {
+      setClaimError('Enter an email.')
+      return
+    }
+    if (claimPassword.length < 8) {
+      setClaimError('Password must be at least 8 characters.')
+      return
+    }
+    if (claimPassword !== claimConfirm) {
+      setClaimError('The passwords don’t match.')
+      return
+    }
+    setSavingClaim(true)
+    try {
+      await authService.claim(claimEmail, claimPassword)
+      await refresh() // is_guest flips to false — this section + the guest banner disappear
+    } catch (err) {
+      setClaimError(
+        err instanceof ApiError && err.status === 409
+          ? 'That email already has an account.'
+          : 'Something went wrong. Please try again.',
+      )
+      setSavingClaim(false)
+    }
+  }
+
   async function handleReminders(e: FormEvent) {
     e.preventDefault()
     setReminderError(null)
@@ -133,11 +169,55 @@ export default function SettingsPage() {
       <Link to="/">← Dashboard</Link>
       <h1>Settings</h1>
 
+      {user.is_guest && (
+        <section className="settings-section">
+          <h2>Save your account</h2>
+          <p className="muted">
+            You’re using a guest account. Add an email and password so you can log back
+            in and keep your progress.
+          </p>
+          <form onSubmit={handleClaim} noValidate>
+            <label htmlFor="claim-email">Email</label>
+            <input
+              id="claim-email"
+              type="email"
+              autoComplete="email"
+              value={claimEmail}
+              onChange={(e) => setClaimEmail(e.target.value)}
+            />
+            <label htmlFor="claim-password">Password</label>
+            <input
+              id="claim-password"
+              type="password"
+              autoComplete="new-password"
+              value={claimPassword}
+              onChange={(e) => setClaimPassword(e.target.value)}
+            />
+            <label htmlFor="claim-confirm">Confirm password</label>
+            <input
+              id="claim-confirm"
+              type="password"
+              autoComplete="new-password"
+              value={claimConfirm}
+              onChange={(e) => setClaimConfirm(e.target.value)}
+            />
+            {claimError && (
+              <p role="alert" className="error">
+                {claimError}
+              </p>
+            )}
+            <button type="submit" disabled={savingClaim}>
+              {savingClaim ? 'Saving…' : 'Save account'}
+            </button>
+          </form>
+        </section>
+      )}
+
       <section className="settings-section">
         <h2>Account</h2>
         <dl className="settings-info">
           <dt>Email</dt>
-          <dd>{user.email}</dd>
+          <dd>{user.is_guest ? 'Guest account (not saved)' : user.email}</dd>
           <dt>Member since</dt>
           <dd>{formatJoined(user.created_at)}</dd>
         </dl>
@@ -168,6 +248,7 @@ export default function SettingsPage() {
         </form>
       </section>
 
+      {!user.is_guest && (
       <section className="settings-section">
         <h2>{hasPassword ? 'Change password' : 'Set a password'}</h2>
         {!hasPassword && (
@@ -218,6 +299,7 @@ export default function SettingsPage() {
           </button>
         </form>
       </section>
+      )}
 
       <section className="settings-section">
         <h2>Practice reminders</h2>

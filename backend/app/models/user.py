@@ -27,6 +27,12 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false", default=False
     )
+    # An anonymous "try it without signing up" account: a synthetic email, no
+    # password. The user can later *claim* it (set a real email + password), which
+    # flips this to false. Surfaced so the UI can nudge guests to save their data.
+    is_guest: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
     # Google's stable subject id ("sub"), set when the account is linked to Google.
     google_sub: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     # IANA timezone (e.g. "Asia/Tokyo") for local-day streaks/quests. Default UTC.
