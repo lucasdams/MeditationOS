@@ -49,6 +49,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refresh().finally(() => setLoading(false))
   }, [])
 
+  // If any API call returns 401, the session has expired/gone — drop to login.
+  // Only act when we currently think we're logged in, and leave a breadcrumb so the
+  // login page can explain why.
+  useEffect(() => {
+    function onUnauthorized() {
+      setUser((current) => {
+        if (current) sessionStorage.setItem('sessionExpired', '1')
+        return null
+      })
+    }
+    window.addEventListener('auth:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', onUnauthorized)
+  }, [])
+
   return (
     <AuthContext.Provider value={{ user, loading, refresh, logout }}>
       {children}

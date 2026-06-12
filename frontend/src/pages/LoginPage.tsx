@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
@@ -12,7 +12,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Set when an expired session bounced the user here (see AuthContext).
+  useEffect(() => {
+    if (sessionStorage.getItem('sessionExpired')) {
+      sessionStorage.removeItem('sessionExpired')
+      setNotice('Your session expired. Please log in again.')
+    }
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -44,6 +53,7 @@ export default function LoginPage() {
   return (
     <main className="auth-card">
       <h1>Log in</h1>
+      {notice && <p className="auth-notice">{notice}</p>}
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="email">Email</label>
         <input
