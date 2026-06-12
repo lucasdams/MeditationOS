@@ -1,47 +1,74 @@
-"""Goal business logic. Goals store only intent (type + target + status);
-**progress is computed on read** from the same activity the dashboard aggregates
-(ADR-0009). All queries scoped to the user.
+"""Goal business logic. Goals store only intent (activity + cadence + status);
+**progress in the current period is computed on read** from the same activity the
+rest of the app records (ADR-0009). All queries scoped to the user.
 """
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.limits import enforce_daily_create_cap
 from app.models.goal import Goal
-from app.schemas.dashboard import DashboardStats
+from app.models.gratitude import GratitudeEntry
+from app.models.journal import Journal
+from app.models.session import Session as PracticeSession
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
-from app.services import dashboard_service
 
 
-def _raw_and_threshold(goal: Goal, stats: DashboardStats) -> tuple[int, int, int]:
-    """Return (raw_value, unit_for_current, threshold) in comparable units.
-
-    raw_value and threshold are compared directly for achievement; `current` is
-    raw_value // unit, expressed in the goal's display unit (min / days / hours).
-    """
-    if goal.type == "daily_minutes":
-        today_seconds = stats.this_week[-1].seconds if stats.this_week else 0
-        return today_seconds, 60, goal.target * 60  # seconds
-    if goal.type == "streak_days":
-        return stats.current_streak_days, 1, goal.target  # days
-    # total_hours
-    return int(stats.total_seconds), 3600, goal.target * 3600  # seconds
+def _period_start(period: str, today: date) -> date:
+    """First local day of the current period — today for daily, a rolling 7-day
+    window (today and the previous 6) for weekly."""
+    return today - timedelta(days=6) if period == "week" else today
 
 
-def _to_read(goal: Goal, stats: DashboardStats) -> GoalRead:
-    raw, unit, threshold = _raw_and_threshold(goal, stats)
-    ratio = raw / threshold if threshold > 0 else 0.0
+def _local_date(tz: str, column):
+    return func.date(func.timezone(tz, column))
+
+
+def _done_count(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, tz: str) -> int:
+    """How many times the goal's activity happened in the current period."""
+    start = _period_start(goal.period, today)
+
+    if goal.activity in ("meditate", "breathe"):
+        local = _local_date(tz, PracticeSession.occurred_at)
+        stmt = (
+            select(func.count())
+            .select_from(PracticeSession)
+            .where(PracticeSession.user_id == user_id, local >= start, local <= today)
+        )
+        if goal.activity == "breathe":
+            stmt = stmt.where(PracticeSession.type == "resonance_breathing")
+    elif goal.activity == "gratitude":
+        local = _local_date(tz, GratitudeEntry.created_at)
+        stmt = (
+            select(func.count())
+            .select_from(GratitudeEntry)
+            .where(GratitudeEntry.user_id == user_id, local >= start, local <= today)
+        )
+    else:  # journal
+        local = _local_date(tz, Journal.created_at)
+        stmt = (
+            select(func.count())
+            .select_from(Journal)
+            .where(Journal.user_id == user_id, local >= start, local <= today)
+        )
+    return db.execute(stmt).scalar_one()
+
+
+def _to_read(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, tz: str) -> GoalRead:
+    done = _done_count(db, user_id, goal, today=today, tz=tz)
+    ratio = done / goal.count if goal.count > 0 else 0.0
     return GoalRead(
         id=goal.id,
-        type=goal.type,
-        target=goal.target,
+        activity=goal.activity,
+        period=goal.period,
+        count=goal.count,
         status=goal.status,
-        current=raw // unit,
+        done=done,
         progress=round(min(1.0, ratio), 4),
-        achieved=ratio >= 1.0,
+        achieved=done >= goal.count,
         created_at=goal.created_at,
     )
 
@@ -56,12 +83,11 @@ def create_goal(
     db: DBSession, user_id: uuid.UUID, data: GoalCreate, *, today: date, tz: str
 ) -> GoalRead:
     enforce_daily_create_cap(db, Goal, user_id)
-    goal = Goal(user_id=user_id, type=data.type, target=data.target)
+    goal = Goal(user_id=user_id, activity=data.activity, period=data.period, count=data.count)
     db.add(goal)
     db.commit()
     db.refresh(goal)
-    stats = dashboard_service.get_stats(db, user_id, today=today, tz=tz)
-    return _to_read(goal, stats)
+    return _to_read(db, user_id, goal, today=today, tz=tz)
 
 
 def list_goals(
@@ -76,10 +102,7 @@ def list_goals(
     if status is not None:
         stmt = stmt.where(Goal.status == status)
     goals = list(db.execute(stmt.order_by(Goal.created_at.desc())).scalars().all())
-    if not goals:
-        return []
-    stats = dashboard_service.get_stats(db, user_id, today=today, tz=tz)
-    return [_to_read(g, stats) for g in goals]
+    return [_to_read(db, user_id, g, today=today, tz=tz) for g in goals]
 
 
 def get_goal(
@@ -88,8 +111,7 @@ def get_goal(
     goal = _get(db, user_id, goal_id)
     if goal is None:
         return None
-    stats = dashboard_service.get_stats(db, user_id, today=today, tz=tz)
-    return _to_read(goal, stats)
+    return _to_read(db, user_id, goal, today=today, tz=tz)
 
 
 def update_goal(
@@ -108,8 +130,7 @@ def update_goal(
         setattr(goal, field, value)
     db.commit()
     db.refresh(goal)
-    stats = dashboard_service.get_stats(db, user_id, today=today, tz=tz)
-    return _to_read(goal, stats)
+    return _to_read(db, user_id, goal, today=today, tz=tz)
 
 
 def delete_goal(db: DBSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> bool:

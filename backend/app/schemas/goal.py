@@ -6,34 +6,38 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-GoalType = Literal["daily_minutes", "streak_days", "total_hours"]
+GoalActivity = Literal["meditate", "breathe", "gratitude", "journal"]
+GoalPeriod = Literal["day", "week"]
 GoalStatus = Literal["active", "archived"]
 
 
 class GoalCreate(BaseModel):
-    """A new practice target."""
+    """A new habit goal: do `activity` `count` times per `period`."""
 
-    type: GoalType
-    target: int = Field(gt=0)
+    activity: GoalActivity
+    period: GoalPeriod
+    count: int = Field(gt=0, le=50)
 
 
 class GoalUpdate(BaseModel):
-    """Edit a goal's target or archive/reactivate it."""
+    """Edit a goal's cadence or archive/reactivate it."""
 
-    target: int | None = Field(default=None, gt=0)
+    count: int | None = Field(default=None, gt=0, le=50)
+    period: GoalPeriod | None = None
     status: GoalStatus | None = None
 
 
 class GoalRead(BaseModel):
-    """A goal with its computed progress (current value, fraction, achieved)."""
+    """A goal with its progress in the current period."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    type: str
-    target: int
+    activity: str
+    period: str  # "day" | "week"
+    count: int  # target times per period
     status: str
-    current: int  # current value in the goal's unit (minutes / days / hours)
+    done: int  # times the activity was done this period
     progress: float  # 0.0 .. 1.0, capped
-    achieved: bool  # current value has reached the target right now
+    achieved: bool  # done >= count this period
     created_at: datetime
