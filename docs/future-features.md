@@ -135,8 +135,8 @@ sessions stay private unless a member chooses otherwise.
 
 - [x] **Sign in with Google** (OIDC ID-token verification); links by verified email — see [auth design](design/authentication.md#sign-in-with-google--implemented)
 - [x] **Forgot-password reset** via an emailed single-use link — see [auth design](design/authentication.md#password-reset--implemented)
+- [x] **Email verification** (emailed link; Google sign-in arrives verified) — see [auth design](design/authentication.md#email-verification--implemented)
 - [ ] Other social providers (Apple, GitHub)
-- [ ] Email verification
 - [ ] Multi-factor authentication (TOTP)
 
 ## Payments & Monetization

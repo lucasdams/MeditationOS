@@ -3,9 +3,8 @@
 [← Back to README](../../README.md) · Related: [API contract](api-v1.md) · [Data model](data-model.md)
 
 How the app reaches the user. The first and only channel is **email**; it carries
-the **daily practice reminder** and the **password-reset** link (see
-[authentication](authentication.md)), and is the foundation for email verification
-later.
+the **daily practice reminder**, the **password-reset** link, and the
+**email-verification** link (see [authentication](authentication.md)).
 
 ## The channel
 

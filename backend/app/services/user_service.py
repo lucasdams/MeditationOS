@@ -16,11 +16,14 @@ from app.core.exceptions import (
     InvalidPasswordError,
     InvalidResetTokenError,
     InvalidTimezoneError,
+    InvalidVerificationTokenError,
     UsernameTakenError,
 )
 from app.core.google import verify_id_token
 from app.core.security import (
+    create_email_verification_token,
     create_password_reset_token,
+    decode_email_verification_token,
     decode_password_reset_token,
     hash_password,
     verify_password,
@@ -132,6 +135,45 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
     db.commit()
 
 
+def _verification_email_body(user: User, link: str) -> str:
+    name = user.username or "there"
+    return (
+        f"Hi {name},\n\n"
+        "Welcome to MeditationOS! Please confirm your email address by clicking the "
+        f"link below:\n\n{link}\n\n"
+        "If you didn't create this account, you can ignore this email.\n\n"
+        "— MeditationOS"
+    )
+
+
+def send_verification_email(db: Session, user: User) -> None:
+    """Email a confirmation link, unless the address is already verified. Used at
+    registration and on resend. Silent for already-verified accounts."""
+    if user.email_verified:
+        return
+    token = create_email_verification_token(str(user.id), user.email)
+    link = f"{settings.app_base_url}/verify-email?token={token}"
+    email_channel.send_email(
+        user.email, "Confirm your MeditationOS email", _verification_email_body(user, link)
+    )
+
+
+def verify_email(db: Session, token: str) -> None:
+    """Mark the user's email verified from a valid token. Idempotent. Raises
+    InvalidVerificationTokenError if the token is malformed, expired, or no longer
+    matches the account's current email."""
+    decoded = decode_email_verification_token(token)
+    if decoded is None:
+        raise InvalidVerificationTokenError()
+    sub, token_email = decoded
+    user = get_user_by_id(db, sub)
+    if user is None or user.email.lower() != token_email.lower():
+        raise InvalidVerificationTokenError()
+    if not user.email_verified:
+        user.email_verified = True
+        db.commit()
+
+
 def get_user_by_id(db: Session, user_id: str) -> User | None:
     try:
         pk = uuid.UUID(user_id)
@@ -171,20 +213,28 @@ def login_with_google(db: Session, credential: str) -> User:
     google_sub = claims["sub"]
     email = claims["email"]
 
+    # Google has verified the email, so any account it resolves to is verified.
     user = db.execute(
         select(User).where(User.google_sub == google_sub)
     ).scalar_one_or_none()
     if user is not None:
+        if not user.email_verified:
+            user.email_verified = True
+            db.commit()
+            db.refresh(user)
         return user
 
     user = get_user_by_email(db, email)
     if user is not None:
         user.google_sub = google_sub  # link the verified Google identity
+        user.email_verified = True
         db.commit()
         db.refresh(user)
         return user
 
-    user = User(email=email, google_sub=google_sub, password_hash=None)
+    user = User(
+        email=email, google_sub=google_sub, password_hash=None, email_verified=True
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -192,7 +242,8 @@ def login_with_google(db: Session, credential: str) -> User:
 
 
 def create_user(db: Session, data: UserCreate) -> User:
-    """Create a user, hashing the password. Raises if the email is taken."""
+    """Create a user, hashing the password, and email a verification link. Raises
+    if the email is taken."""
     if get_user_by_email(db, data.email) is not None:
         raise EmailAlreadyExistsError(data.email)
 
@@ -200,4 +251,5 @@ def create_user(db: Session, data: UserCreate) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+    send_verification_email(db, user)
     return user

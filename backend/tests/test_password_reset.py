@@ -29,8 +29,8 @@ def _token_from(body: str) -> str:
 
 
 def test_request_emails_a_link_to_a_real_user(client, monkeypatch):
-    sent = _capture(monkeypatch)
     _register(client, "reset1@example.com")
+    sent = _capture(monkeypatch)  # capture only the reset email, not the signup one
     res = client.post(REQUEST, json={"email": "reset1@example.com"})
     assert res.status_code == 202
     assert len(sent) == 1 and sent[0][0] == "reset1@example.com"
@@ -54,8 +54,8 @@ def test_request_google_only_account_sends_nothing(client, monkeypatch, db_sessi
 
 
 def test_reset_with_valid_token_changes_password(client, monkeypatch):
-    sent = _capture(monkeypatch)
     _register(client, "reset2@example.com")
+    sent = _capture(monkeypatch)
     client.post(REQUEST, json={"email": "reset2@example.com"})
     token = _token_from(sent[0][2])
 
@@ -79,8 +79,8 @@ def test_reset_with_valid_token_changes_password(client, monkeypatch):
 
 
 def test_reset_token_is_single_use(client, monkeypatch):
-    sent = _capture(monkeypatch)
     _register(client, "reset3@example.com")
+    sent = _capture(monkeypatch)
     client.post(REQUEST, json={"email": "reset3@example.com"})
     token = _token_from(sent[0][2])
 
@@ -113,8 +113,8 @@ def test_reset_rejects_token_of_wrong_type(client):
 
 
 def test_reset_short_password_rejected(client, monkeypatch):
-    sent = _capture(monkeypatch)
     _register(client, "reset5@example.com")
+    sent = _capture(monkeypatch)
     client.post(REQUEST, json={"email": "reset5@example.com"})
     token = _token_from(sent[0][2])
     assert client.post(RESET, json={"token": token, "new_password": "short"}).status_code == 422

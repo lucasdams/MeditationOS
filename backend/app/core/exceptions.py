@@ -27,3 +27,7 @@ class InvalidPasswordError(Exception):
 
 class InvalidResetTokenError(Exception):
     """Raised when a password-reset token is invalid, expired, or already used."""
+
+
+class InvalidVerificationTokenError(Exception):
+    """Raised when an email-verification token is invalid or expired."""

@@ -22,6 +22,11 @@ class User(Base):
     username: Mapped[str | None] = mapped_column(CITEXT, unique=True, nullable=True)
     # Nullable: Google-only accounts have no password. Email/password users do.
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Whether the email address is confirmed. Google sign-in arrives verified;
+    # email/password accounts confirm via an emailed link.
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
     # Google's stable subject id ("sub"), set when the account is linked to Google.
     google_sub: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     # IANA timezone (e.g. "Asia/Tokyo") for local-day streaks/quests. Default UTC.

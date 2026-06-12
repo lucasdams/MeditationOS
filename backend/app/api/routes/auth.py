@@ -12,12 +12,14 @@ from app.core.exceptions import (
     InvalidPasswordError,
     InvalidResetTokenError,
     InvalidTimezoneError,
+    InvalidVerificationTokenError,
     UsernameTakenError,
 )
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.user import (
+    EmailVerify,
     GoogleLogin,
     PasswordResetConfirm,
     PasswordResetRequest,
@@ -174,6 +176,28 @@ def reset_password(data: PasswordResetConfirm, db: Session = Depends(get_db)) ->
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This reset link is invalid or has expired.",
         ) from None
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+def verify_email(data: EmailVerify, db: Session = Depends(get_db)) -> None:
+    try:
+        user_service.verify_email(db, data.token)
+    except InvalidVerificationTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has expired.",
+        ) from None
+
+
+@router.post("/verify-email/resend", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(settings.login_rate_limit)
+def resend_verification(
+    request: Request,  # required by the rate limiter
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    user_service.send_verification_email(db, current_user)
+    return {"detail": "If your email isn't verified yet, a new link is on its way."}
 
 
 @router.post("/reminders", response_model=UserRead)
