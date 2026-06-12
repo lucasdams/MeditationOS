@@ -45,12 +45,16 @@ export default function JournalPage() {
       .list()
       .then(setEntries)
       .catch(() => setError('Could not load your journal.'))
-    // Recent sessions to optionally reflect on. Non-critical — fail quietly.
+    // The user's sessions — used both to pick one to reflect on and to show the
+    // linked session on each entry. Non-critical — fail quietly.
     sessionService
       .list()
-      .then((s) => setSessions(s.slice(0, 20)))
+      .then(setSessions)
       .catch(() => {})
   }, [])
+
+  // A non-null session_id always resolves: deleting a session sets it to NULL.
+  const sessionById = new Map(sessions.map((s) => [s.id, s]))
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -125,7 +129,7 @@ export default function JournalPage() {
                 onChange={(e) => setSessionId(e.target.value)}
               >
                 <option value="">Not linked</option>
-                {sessions.map((s) => (
+                {sessions.slice(0, 20).map((s) => (
                   <option key={s.id} value={s.id}>
                     {sessionLabel(s)}
                   </option>
@@ -150,18 +154,24 @@ export default function JournalPage() {
         {entries && entries.length === 0 && (
           <p className="muted">No reflections yet. Write your first one above.</p>
         )}
-        {entries?.map((j) => (
-          <article key={j.id} className="journal-entry">
-            <div className="journal-entry-head">
-              <span className="muted">{formatWhen(j.created_at)}</span>
-              {j.mood && <span className="journal-mood">{cap(j.mood)}</span>}
-              <button type="button" className="link-danger" onClick={() => handleDelete(j.id)}>
-                Delete
-              </button>
-            </div>
-            <p className="journal-body">{j.body}</p>
-          </article>
-        ))}
+        {entries?.map((j) => {
+          const linked = j.session_id ? sessionById.get(j.session_id) : undefined
+          return (
+            <article key={j.id} className="journal-entry">
+              <div className="journal-entry-head">
+                <span className="muted">{formatWhen(j.created_at)}</span>
+                {j.mood && <span className="journal-mood">{cap(j.mood)}</span>}
+                <button type="button" className="link-danger" onClick={() => handleDelete(j.id)}>
+                  Delete
+                </button>
+              </div>
+              <p className="journal-body">{j.body}</p>
+              {linked && (
+                <p className="journal-session">🧘 On {sessionLabel(linked)}</p>
+              )}
+            </article>
+          )
+        })}
       </section>
     </main>
   )

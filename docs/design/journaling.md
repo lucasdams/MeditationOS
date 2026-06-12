@@ -27,8 +27,10 @@ including a linked session that isn't yours — return `404`, never `403`.
 ## Frontend
 
 `/journal` page: a compose box (reflection + optional mood + optional "reflecting on"
-a recent session) and a reverse-chronological list with delete. Loading / error /
-empty states per the frontend rules.
+a recent session) and a reverse-chronological list with delete. Each entry shows its
+**linked session** (type + when) underneath when one is set — resolved client-side
+from the user's session list (a non-null `session_id` always exists, since deleting a
+session sets it NULL). Loading / error / empty states per the frontend rules.
 
 ## Deliberately deferred
 
