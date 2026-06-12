@@ -53,6 +53,8 @@ Errors return FastAPI's default shape:
 | POST | `/auth/google` | — | `{ credential }` | `200` user + sets cookie · `401` if invalid |
 | POST | `/auth/logout` | ✓ | — | `204` |
 | GET | `/auth/me` | ✓ | — | `200` current user |
+| GET | `/auth/export` | ✓ | — | `200` — full JSON of the account's data (portability) |
+| DELETE | `/auth/me` | ✓ | — | `204` — permanently deletes the account + all data, clears the cookie |
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 | POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
 | POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
@@ -68,6 +70,12 @@ POST /api/v1/auth/register
 → 201
 { "id": "…", "email": "user@example.com", "username": null, "created_at": "2026-06-09T14:00:00Z" }
 ```
+
+**Your data.** `GET /auth/export` returns a portable JSON snapshot of everything the
+account owns (profile minus the password hash, plus sessions, gratitude, journals,
+goals, sanctuary). `DELETE /auth/me` permanently deletes the account; all user-owned
+rows cascade via their foreign keys (global breathing presets are untouched), and the
+session cookie is cleared. Both require auth.
 
 **Use without signing up.** `POST /auth/guest` creates an **anonymous account**
 (a synthetic email, an auto-assigned username, no password, `is_guest: true`,
