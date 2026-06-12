@@ -268,6 +268,14 @@ GET /api/v1/sanctuary
 }
 ```
 
+```
+POST /api/v1/sanctuary/plantings
+{ "item_key": "flower" }
+→ 201   (the updated scene, same shape as GET /sanctuary)
+   · 404 if item_key is unknown
+   · 409 if it isn't unlocked yet, or the current item is still growing
+```
+
 The garden is stored only as the **ordered sequence of plantings** (`sanctuary_plantings`,
 see [data-model](data-model.md)); growth, completion, the offered next-options, and
 `vitality` (`dormant` / `thriving` / `flourishing`) are all **computed on read** from

@@ -6,8 +6,8 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 
 ## Practice & Sessions
 
-- [ ] Session reminders and practice notifications
-- [ ] Multiple meditation types (mindfulness, body scan, walking, etc.)
+- [x] **Daily practice reminders** — opt-in email nudge at the user's local hour (timezone-aware, idempotent, skipped on days already practiced) — see [notifications design](design/notifications.md)
+- [x] **Multiple meditation types** (mindfulness, body scan, walking, loving-kindness, resonance breathing, other)
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
 - [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
