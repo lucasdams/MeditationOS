@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Goals, Dashboard (stats + activity), Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
+**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Goals, Dashboard (stats + activity), Analytics, Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
 
 ## Conventions
 
