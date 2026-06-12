@@ -5,12 +5,14 @@ always scoped to the authenticated user.
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.session import SessionCreate, SessionRead, SessionUpdate
 from app.services import session_service
@@ -25,7 +27,9 @@ _DAILY_LIMIT = HTTPException(
 
 
 @router.post("", response_model=SessionRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.write_rate_limit)
 def create_session(
+    request: Request,  # required by the rate limiter
     data: SessionCreate,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

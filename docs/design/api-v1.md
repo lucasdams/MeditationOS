@@ -16,9 +16,10 @@ REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentica
 - **Ownership:** other users' resource IDs return `404` (not `403`) to avoid enumeration.
 - **Pagination:** list endpoints (`/sessions`, `/gratitude`, `/journals`) take `limit`
   (default `50`, max `200`) + `offset`; the UI loads pages with a "Load more" control.
-- **Abuse limits:** sensitive auth endpoints are IP rate-limited (`429`); creating a
-  resource (session / gratitude / journal / goal) is capped per user per UTC day
-  (`DAILY_CREATE_LIMIT`, default `200`) → `429` when exceeded.
+- **Abuse limits:** auth endpoints are IP rate-limited, with a per-email login
+  throttle on top; creating a resource (session / gratitude / journal / goal) is
+  capped per user per UTC day (`DAILY_CREATE_LIMIT`, default `200`) and per-IP per
+  minute (`WRITE_RATE_LIMIT`). All over-limit cases return `429`.
 
 ### Error envelope
 

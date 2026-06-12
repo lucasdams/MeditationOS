@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core import login_guard
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import (
@@ -88,12 +89,20 @@ def login(
     data: UserLogin,
     db: Session = Depends(get_db),
 ) -> UserRead:
+    # Per-email throttle (on top of the per-IP limiter) to resist distributed brute force.
+    if login_guard.is_locked(data.email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed attempts for this account. Try again later.",
+        )
     user = user_service.authenticate(db, data.email, data.password)
     if user is None:
+        login_guard.record_failure(data.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+    login_guard.clear(data.email)
     _set_auth_cookie(response, create_access_token(str(user.id)))
     return user
 

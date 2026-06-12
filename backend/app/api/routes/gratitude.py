@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError
 from app.core.rate_limit import limiter
@@ -28,7 +29,9 @@ _DAILY_LIMIT = HTTPException(
 
 
 @router.post("", response_model=GratitudeRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.write_rate_limit)
 def create_entry(
+    request: Request,  # required by the rate limiter
     data: GratitudeCreate,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -17,9 +17,12 @@ Read when adding routes, auth, middleware, or anything that reads or writes user
 
 - Validate with Pydantic; reject unexpected fields.
 - Rate-limit auth endpoints — login, register, Google, guest, password-reset,
-  verification-resend (per-IP via `slowapi`).
+  verification-resend (per-IP via `slowapi`). Plus a per-email login throttle
+  (`app/core/login_guard.py`) against distributed brute force.
 - Cap per-user, per-day creation of user data (sessions/gratitude/journals/goals) to
-  resist spam — see `app/core/limits.py` (`DAILY_CREATE_LIMIT`) → `429`.
+  resist spam — see `app/core/limits.py` (`DAILY_CREATE_LIMIT`) → `429` — and a per-IP
+  write burst limit (`WRITE_RATE_LIMIT`).
+- Only trust `X-Forwarded-For` for client IP behind a real proxy (`TRUST_PROXY`).
 - Send standard security response headers on every response — see
   `app/core/security_headers.py` (nosniff, frame-deny, referrer/permissions policy,
   HSTS in production).
