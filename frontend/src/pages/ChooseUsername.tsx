@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import AuthBrand from '../components/AuthBrand'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
@@ -34,6 +35,7 @@ export default function ChooseUsername() {
 
   return (
     <main className="auth-card">
+      <AuthBrand />
       <h1>Choose a username</h1>
       <p className="muted">Your public name — shown instead of your email.</p>
       <form onSubmit={handleSubmit} noValidate>

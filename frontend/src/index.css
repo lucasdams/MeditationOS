@@ -450,6 +450,24 @@ body {
   font-size: 1.4rem;
 }
 
+.auth-brand {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.auth-brand-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.auth-brand-tagline {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: #6b6b70;
+}
+
 .auth-aux {
   font-size: 0.9rem;
   margin: 0.75rem 0 0;

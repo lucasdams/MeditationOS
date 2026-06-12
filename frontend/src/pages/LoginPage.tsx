@@ -5,6 +5,7 @@ import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import GuestButton from '../components/GuestButton'
+import AuthBrand from '../components/AuthBrand'
 
 export default function LoginPage() {
   const { refresh } = useAuth()
@@ -52,6 +53,7 @@ export default function LoginPage() {
 
   return (
     <main className="auth-card">
+      <AuthBrand />
       <h1>Log in</h1>
       {notice && <p className="auth-notice">{notice}</p>}
       <form onSubmit={handleSubmit} noValidate>
