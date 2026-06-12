@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Dashboard (stats + activity), Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
+**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Dashboard (stats + activity), Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
 
 ## Conventions
 
@@ -184,6 +184,31 @@ fresh either way; see
 [ADR-0008](../decisions/0008-ai-suggestions-curated-fallback.md). Each saved entry
 awards **+5 XP** (reflected in `/dashboard/stats`).
 
+## Journals ✅ implemented
+
+A written reflection, optionally tied to a session, with an optional mood tag.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/journals` | ✓ | Create `{ body, mood?, session_id? }` → `201`; `404` if a linked session isn't the caller's |
+| GET | `/journals` | ✓ | Caller's reflections, newest first; `?mood=` filter, paginated |
+| GET | `/journals/{id}` | ✓ | `404` if not owned |
+| PATCH | `/journals/{id}` | ✓ | Edit `body` / `mood` |
+| DELETE | `/journals/{id}` | ✓ | `204`; `404` if not owned |
+
+```
+POST /api/v1/journals
+{ "body": "Felt calmer after sitting.", "mood": "calm", "session_id": "…" }
+→ 201
+{ "id": "…", "body": "Felt calmer after sitting.", "mood": "calm",
+  "session_id": "…", "created_at": "…" }
+```
+
+`mood` is an optional value from a fixed palette (`calm`, `content`, `focused`,
+`energized`, `grateful`, `neutral`, `restless`, `anxious`, `tired`, `low`); `body` is
+free text. A linked session must belong to the caller (`404` otherwise), and uses
+`ON DELETE SET NULL` so deleting the session keeps the reflection.
+
 ## Dashboard ✅ implemented
 
 | Method | Path | Auth | Notes |
@@ -293,4 +318,4 @@ a `hint` describing the unlock requirement. See
 
 ## Out of scope for V1
 
-Journals, analytics, goals (V2), and all AI endpoints (V3). The contract above is the surface the V1 frontend codes against.
+Analytics and goals (V2), and all AI endpoints (V3). The contract above is the surface the V1 frontend codes against. (Journaling — a V2 headline — shipped early; see the Journals section above.)

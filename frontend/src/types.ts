@@ -171,3 +171,29 @@ export interface BreathingPattern {
   is_preset: boolean
   breaths_per_minute: number
 }
+
+export type Mood =
+  | 'calm'
+  | 'content'
+  | 'focused'
+  | 'energized'
+  | 'grateful'
+  | 'neutral'
+  | 'restless'
+  | 'anxious'
+  | 'tired'
+  | 'low'
+
+export interface Journal {
+  id: string
+  body: string
+  mood: Mood | null
+  session_id: string | null
+  created_at: string
+}
+
+export interface JournalCreate {
+  body: string
+  mood?: Mood | null
+  session_id?: string | null
+}
