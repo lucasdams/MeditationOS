@@ -14,6 +14,7 @@ import JournalPage from './pages/JournalPage'
 import GoalsPage from './pages/GoalsPage'
 import SanctuaryPage from './pages/SanctuaryPage'
 import SettingsPage from './pages/SettingsPage'
+import NotFoundPage from './pages/NotFoundPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/sessions/new" element={<LogSessionPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }

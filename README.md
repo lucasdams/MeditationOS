@@ -22,7 +22,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Goals — set targets (**daily minutes**, **streak days**, or **total hours**); progress and "achieved" are **computed from activity**, never stored, with an active/archived lifecycle. See [Goals design](docs/design/goals.md)
 - ✅ Daily practice reminders — opt-in email nudge at your local hour, **timezone-aware** and **idempotent**, skipped on days you've already practiced; runs with no email provider in dev (logs instead of sends). See [Notifications design](docs/design/notifications.md)
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
-- ✅ React + TypeScript frontend — protected routes, loading/empty/error states
+- ✅ React + TypeScript frontend — a public landing page, protected routes, loading/empty/error states, a 404 page, and an app-wide error boundary
 - ✅ 175 backend tests (pytest against Postgres), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
