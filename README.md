@@ -17,6 +17,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Sanctuary — a garden you grow by practicing: smoothly-growing **vector (SVG)** plants across **nature, structures & companions** grow from your practice and you **choose what to grow next** (milestone-unlocked by points or a streak), with a streak-driven **vitality**, on a dedicated page with a completion celebration. See [Sanctuary design](docs/design/sanctuary.md)
 - ✅ Gratitude tool — pick from 37 themes (including a free-form **custom** option), get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
 - ✅ Meditation journal — write reflections, optionally **tied to a session**, with an optional **mood** tag from a fixed palette; full CRUD, filterable. See [Journaling design](docs/design/journaling.md)
+- ✅ Goals — set targets (**daily minutes**, **streak days**, or **total hours**); progress and "achieved" are **computed from activity**, never stored, with an active/archived lifecycle. See [Goals design](docs/design/goals.md)
 - ✅ Daily practice reminders — opt-in email nudge at your local hour, **timezone-aware** and **idempotent**, skipped on days you've already practiced; runs with no email provider in dev (logs instead of sends). See [Notifications design](docs/design/notifications.md)
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
@@ -276,6 +277,7 @@ The engineering reasoning behind the build — written up as it's decided, so th
 | [Gamification](docs/design/gamification.md) | XP, levels, daily quests, streaks — all computed from activity (per-user local day) |
 | [Sanctuary](docs/design/sanctuary.md) | A garden grown by practicing — one item at a time, choose the next; one append-only table, everything else computed |
 | [Journaling](docs/design/journaling.md) | Written reflections, optionally linked to a session, with a fixed mood palette — full CRUD, user-scoped |
+| [Goals](docs/design/goals.md) | User-set targets (daily minutes / streak / total hours); intent stored, progress computed on read |
 | [Notifications & Email](docs/design/notifications.md) | The outbound email channel (logs with no provider) and the daily practice reminder — timezone-aware, idempotent, skips days you practiced |
 
 ### Architecture Decision Records

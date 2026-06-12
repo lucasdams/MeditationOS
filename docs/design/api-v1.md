@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Dashboard (stats + activity), Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
+**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Goals, Dashboard (stats + activity), Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
 
 ## Conventions
 
@@ -209,6 +209,33 @@ POST /api/v1/journals
 free text. A linked session must belong to the caller (`404` otherwise), and uses
 `ON DELETE SET NULL` so deleting the session keeps the reflection.
 
+## Goals ✅ implemented
+
+A user-set practice target. Only intent is stored; **progress is computed on read**.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/goals` | ✓ | Create `{ type, target }` → `201` |
+| GET | `/goals` | ✓ | Caller's goals with computed progress; `?status=active\|archived` filter |
+| GET | `/goals/{id}` | ✓ | `404` if not owned |
+| PATCH | `/goals/{id}` | ✓ | Edit `target`, or archive/reactivate via `status` |
+| DELETE | `/goals/{id}` | ✓ | `204`; `404` if not owned |
+
+```
+POST /api/v1/goals
+{ "type": "daily_minutes", "target": 10 }
+→ 201
+{ "id": "…", "type": "daily_minutes", "target": 10, "status": "active",
+  "current": 0, "progress": 0.0, "achieved": false, "created_at": "…" }
+```
+
+`type` is one of `daily_minutes` (minutes practiced today), `streak_days` (current
+streak), or `total_hours` (lifetime hours). `target` is a positive integer in that
+unit. `status` is `active` or `archived` (the user's lifecycle). The response adds
+three **computed** fields — `current` (value in the goal's unit), `progress` (0–1,
+capped), and `achieved` (`current` has reached `target` right now) — derived from the
+same activity the dashboard aggregates; nothing about progress is stored.
+
 ## Dashboard ✅ implemented
 
 | Method | Path | Auth | Notes |
@@ -318,4 +345,4 @@ a `hint` describing the unlock requirement. See
 
 ## Out of scope for V1
 
-Analytics and goals (V2), and all AI endpoints (V3). The contract above is the surface the V1 frontend codes against. (Journaling — a V2 headline — shipped early; see the Journals section above.)
+Analytics (V2) and all AI endpoints (V3). The contract above is the surface the V1 frontend codes against. (Journaling and goals — both V2 headlines — shipped early; see the Journals and Goals sections above.)

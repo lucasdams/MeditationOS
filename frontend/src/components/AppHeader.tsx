@@ -43,6 +43,9 @@ export default function AppHeader() {
         <Link to="/journal" className="nav-journal">
           📓 Journal
         </Link>
+        <Link to="/goals" className="nav-goals">
+          🎯 Goals
+        </Link>
         <Link to="/sanctuary" className="nav-sanctuary">
           🌱 Sanctuary
         </Link>
