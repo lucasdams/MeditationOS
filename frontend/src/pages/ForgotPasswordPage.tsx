@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { authService } from '../services/auth'
+import AuthBrand from '../components/AuthBrand'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -31,6 +32,7 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <main className="auth-card">
+        <AuthBrand />
         <h1>Check your email</h1>
         <p>
           If an account exists for <strong>{email}</strong>, a link to reset your password
@@ -45,6 +47,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <main className="auth-card">
+      <AuthBrand />
       <h1>Reset your password</h1>
       <p className="muted">Enter your email and we’ll send you a reset link.</p>
       <form onSubmit={handleSubmit} noValidate>

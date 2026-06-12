@@ -4,6 +4,7 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
+import AuthBrand from '../components/AuthBrand'
 import GuestButton from '../components/GuestButton'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -49,6 +50,7 @@ export default function RegisterPage() {
 
   return (
     <main className="auth-card">
+      <AuthBrand />
       <h1>Create your account</h1>
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="email">Email</label>
