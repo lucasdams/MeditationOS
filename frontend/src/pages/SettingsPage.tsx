@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -21,7 +21,8 @@ function formatHour(h: number): string {
 }
 
 export default function SettingsPage() {
-  const { user, refresh } = useAuth()
+  const { user, refresh, logout } = useAuth()
+  const navigate = useNavigate()
 
   // Username section.
   const [username, setUsername] = useState(user?.username ?? '')
@@ -51,6 +52,12 @@ export default function SettingsPage() {
   const [claimConfirm, setClaimConfirm] = useState('')
   const [claimError, setClaimError] = useState<string | null>(null)
   const [savingClaim, setSavingClaim] = useState(false)
+
+  // Data section (export / delete).
+  const [dataError, setDataError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // The page only renders inside ProtectedRoute, so `user` is always present here,
   // but guard for type-safety.
@@ -145,6 +152,38 @@ export default function SettingsPage() {
           : 'Something went wrong. Please try again.',
       )
       setSavingClaim(false)
+    }
+  }
+
+  async function handleExport() {
+    setDataError(null)
+    setExporting(true)
+    try {
+      const data = await authService.exportData()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'meditationos-data.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setDataError('Could not export your data. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDataError(null)
+    setDeleting(true)
+    try {
+      await authService.deleteAccount()
+      await logout() // clears the (already-cleared) session + local user state
+      navigate('/login')
+    } catch {
+      setDataError('Could not delete your account. Please try again.')
+      setDeleting(false)
     }
   }
 
@@ -357,6 +396,61 @@ export default function SettingsPage() {
           your local midnight.
         </p>
         <p className="settings-tz">{user.timezone}</p>
+      </section>
+
+      <section className="settings-section">
+        <h2>Your data</h2>
+        <p className="muted">
+          Download everything in your account as JSON, or permanently delete your
+          account and all of its data.
+        </p>
+        {dataError && (
+          <p role="alert" className="error">
+            {dataError}
+          </p>
+        )}
+        <div className="settings-data-actions">
+          <button
+            type="button"
+            className="settings-secondary"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? 'Preparing…' : 'Export my data'}
+          </button>
+
+          {!confirmingDelete ? (
+            <button
+              type="button"
+              className="settings-danger"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete account
+            </button>
+          ) : (
+            <div className="settings-confirm">
+              <p>This permanently deletes your account and all your data. This can’t be undone.</p>
+              <div className="settings-data-actions">
+                <button
+                  type="button"
+                  className="settings-secondary"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="settings-danger"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting…' : 'Delete permanently'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
     </main>
   )

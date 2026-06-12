@@ -136,6 +136,26 @@ def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+@router.get("/export")
+def export_my_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Download everything this account owns (data portability)."""
+    return user_service.export_user_data(db, current_user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Permanently delete the account and all its data, then clear the session."""
+    user_service.delete_user(db, current_user)
+    response.delete_cookie(COOKIE_NAME)
+
+
 @router.post("/timezone", response_model=UserRead)
 def set_timezone(
     data: TimezoneUpdate,

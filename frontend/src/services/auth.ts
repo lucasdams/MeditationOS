@@ -46,4 +46,8 @@ export const authService = {
   verifyEmail: (token: string) => api.post<void>('/auth/verify-email', { token }),
 
   resendVerification: () => api.post<void>('/auth/verify-email/resend'),
+
+  exportData: () => api.get<Record<string, unknown>>('/auth/export'),
+
+  deleteAccount: () => api.del<void>('/auth/me'),
 }

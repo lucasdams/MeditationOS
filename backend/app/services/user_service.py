@@ -29,6 +29,11 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.goal import Goal
+from app.models.gratitude import GratitudeEntry
+from app.models.journal import Journal
+from app.models.sanctuary import SanctuaryPlanting
+from app.models.session import Session as PracticeSession
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.notifications import email as email_channel
@@ -291,3 +296,39 @@ def claim_account(db: Session, user: User, email: str, password: str) -> User:
     db.refresh(user)
     send_verification_email(db, user)
     return user
+
+
+def _dump(rows: list) -> list[dict]:
+    """Serialize ORM rows to plain dicts of their columns (for data export)."""
+    return [{c.name: getattr(r, c.name) for c in r.__table__.columns} for r in rows]
+
+
+def export_user_data(db: Session, user: User) -> dict:
+    """A full, portable snapshot of everything the user owns (minus the password
+    hash). FastAPI's encoder handles the UUID/datetime values."""
+
+    def owned(model):
+        return _dump(
+            db.execute(select(model).where(model.user_id == user.id)).scalars().all()
+        )
+
+    account = {
+        c.name: getattr(user, c.name)
+        for c in User.__table__.columns
+        if c.name != "password_hash"
+    }
+    return {
+        "account": account,
+        "sessions": owned(PracticeSession),
+        "gratitude": owned(GratitudeEntry),
+        "journals": owned(Journal),
+        "goals": owned(Goal),
+        "sanctuary": owned(SanctuaryPlanting),
+    }
+
+
+def delete_user(db: Session, user: User) -> None:
+    """Permanently delete the account. All user-owned rows cascade via their FKs
+    (global breathing presets, with no user_id, are untouched)."""
+    db.delete(user)
+    db.commit()

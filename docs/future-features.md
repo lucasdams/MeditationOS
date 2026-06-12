@@ -156,4 +156,4 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 - [ ] Dark mode and accessibility improvements
 - [ ] **Internationalization (i18n)** — start with a **Japanese (JP) version** of the site (UI strings + AI prompts/suggestions in Japanese)
 - [ ] Staging environment separate from production
-- [ ] User data export and account deletion (privacy compliance)
+- [x] **User data export and account deletion** (privacy) — `GET /auth/export` (full JSON) and `DELETE /auth/me` (cascade delete), surfaced in Settings
