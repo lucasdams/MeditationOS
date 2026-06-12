@@ -137,6 +137,7 @@ sessions stay private unless a member chooses otherwise.
 - [x] **Sign in with Google** (OIDC ID-token verification); links by verified email — see [auth design](design/authentication.md#sign-in-with-google--implemented)
 - [x] **Forgot-password reset** via an emailed single-use link — see [auth design](design/authentication.md#password-reset--implemented)
 - [x] **Email verification** (emailed link; Google sign-in arrives verified) — see [auth design](design/authentication.md#email-verification--implemented)
+- [x] **Guest accounts** — "use without signing up"; an anonymous account you can later **claim** (add email + password) without losing data — see [auth design](design/authentication.md#guest-accounts--implemented)
 - [ ] Other social providers (Apple, GitHub)
 - [ ] Multi-factor authentication (TOTP)
 
