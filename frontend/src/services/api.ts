@@ -29,6 +29,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       // no JSON body
     }
+    // A 401 means the session is gone (e.g. the short-lived token expired). Tell the
+    // app so it can drop to the login screen, rather than every page showing its own
+    // "could not load/save" error.
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth:unauthorized'))
+    }
     throw new ApiError(res.status, detail)
   }
 
