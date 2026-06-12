@@ -104,9 +104,9 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 
 - **Registration is enumerable.** `POST /auth/register` returns `409` for an
   already-registered email, which reveals that the address has an account —
-  unlike login, which returns a generic `401`. This is accepted for V1; the real
-  mitigation is email verification (deferred below), where registration succeeds
-  silently and confirmation is gated on the email.
+  unlike login, which returns a generic `401`. Accepted for V1. Email verification
+  now exists (below); a future hardening step can make registration respond
+  generically and gate the account on the emailed confirmation instead of `409`.
 
 ## Deploy-time hardening (before AWS, Cycle 5)
 
@@ -130,8 +130,18 @@ current password hash — so it's **single-use** (the reset itself changes the h
 invalidating the link) with **no reset-token table**. Rate-limited like login. See
 [api-v1](api-v1.md).
 
+## Email verification ✅ implemented
+
+Registration emails a confirmation link over the [email channel](notifications.md);
+`POST /auth/verify-email` confirms it and `POST /auth/verify-email/resend`
+(authenticated, rate-limited) re-sends. The token is a **signed, 24-hour JWT**
+carrying the user id and the issued-for address. **Sign in with Google** accounts
+arrive verified (`email_verified` claim). Verification is **not enforced** in V1 —
+unverified users see a reminder banner but keep full access (`users.email_verified`
+tracks state). Enforcement (gating sensitive actions) can come later.
+
 ## Deliberately deferred (post-V1)
 
 - Refresh-token rotation + reuse detection
-- Email verification
+- Enforcing verification (gate actions on `email_verified`)
 - Other social providers / MFA (TOTP)

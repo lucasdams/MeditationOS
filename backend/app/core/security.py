@@ -69,3 +69,33 @@ def decode_password_reset_token(token: str) -> tuple[str, str] | None:
     if not sub or not pwv:
         return None
     return sub, pwv
+
+
+EMAIL_VERIFY_TYPE = "emailverify"
+
+
+def create_email_verification_token(subject: str, email: str) -> str:
+    """Sign an email-verification JWT. The `email` claim ties the token to the
+    address it was issued for, so it can't confirm a different one."""
+    expire = datetime.now(UTC) + timedelta(
+        minutes=settings.email_verification_expire_minutes
+    )
+    return jwt.encode(
+        {"sub": subject, "email": email, "type": EMAIL_VERIFY_TYPE, "exp": expire},
+        settings.secret_key,
+        algorithm=ALGORITHM,
+    )
+
+
+def decode_email_verification_token(token: str) -> tuple[str, str] | None:
+    """Return `(subject, email)` for a valid, unexpired verification token, else None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    if payload.get("type") != EMAIL_VERIFY_TYPE:
+        return None
+    sub, email = payload.get("sub"), payload.get("email")
+    if not sub or not email:
+        return None
+    return sub, email

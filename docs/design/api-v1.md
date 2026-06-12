@@ -50,6 +50,8 @@ Errors return FastAPI's default shape:
 | POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
 | POST | `/auth/password/reset-request` | — | `{ email }` | `202` always (no enumeration); rate-limited |
 | POST | `/auth/password/reset` | — | `{ token, new_password }` | `204` · `400` if token invalid/expired/used |
+| POST | `/auth/verify-email` | — | `{ token }` | `204` · `400` if token invalid/expired |
+| POST | `/auth/verify-email/resend` | ✓ | — | `202`; rate-limited |
 | POST | `/auth/reminders` | ✓ | `{ enabled, hour? }` | `200` user · `422` if `enabled` without `hour` / `hour` out of 0–23 |
 
 ```
@@ -65,6 +67,15 @@ For a Google-only account (no password yet) `current_password` is omitted and th
 call *sets* a first password, so the account can then also log in with email. The
 `UserRead` response carries a `has_password` boolean (never the hash itself) so the
 client knows whether to ask for the current password.
+
+**Email verification.** Registration emails a confirmation link to
+`{APP_BASE_URL}/verify-email?token=…`; `POST /auth/verify-email { token }` confirms it
+(`204`, idempotent; `400` if invalid/expired). The token is a signed 24-hour JWT
+carrying the user id and the address it was issued for. `UserRead.email_verified`
+reflects the state, and `POST /auth/verify-email/resend` (authenticated, rate-limited)
+sends a fresh link. Accounts created or linked through **Sign in with Google** arrive
+already verified. Verification is **not enforced** for V1 — the app shows a reminder
+banner rather than blocking unverified users.
 
 **Forgot password.** `POST /auth/password/reset-request` always returns `202` — it
 never reveals whether the email exists — and, only if the address belongs to a

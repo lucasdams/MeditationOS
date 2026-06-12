@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import AppHeader from './AppHeader'
+import VerifyEmailBanner from './VerifyEmailBanner'
 import ChooseUsername from '../pages/ChooseUsername'
 
 export default function ProtectedRoute() {
@@ -13,6 +14,7 @@ export default function ProtectedRoute() {
   return (
     <>
       <AppHeader />
+      <VerifyEmailBanner />
       <Outlet />
     </>
   )

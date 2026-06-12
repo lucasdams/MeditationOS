@@ -33,6 +33,7 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 | `email` | `citext` | UNIQUE, NOT NULL |
 | `username` | `citext` | UNIQUE, NULL until the user picks one (public display name) |
 | `password_hash` | text | NULL — null for Google-only accounts |
+| `email_verified` | bool | NOT NULL, default `false` — confirmed via emailed link; Google sign-in arrives verified |
 | `google_sub` | text | UNIQUE, NULL — Google's subject id, set when linked to Google |
 | `timezone` | text | NOT NULL, default `UTC` — IANA zone for local-day streaks/quests |
 | `reminder_enabled` | bool | NOT NULL, default `false` — opt-in daily practice reminder |

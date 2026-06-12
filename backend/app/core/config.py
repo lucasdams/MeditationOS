@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     access_token_expire_minutes: int = 60
     password_reset_expire_minutes: int = 30
+    email_verification_expire_minutes: int = 1440  # 24h
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
     login_rate_limit: str = "5/minute"
     # OAuth client ID for "Sign in with Google" (public value). Empty = disabled.

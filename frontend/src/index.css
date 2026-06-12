@@ -201,6 +201,30 @@ body {
   margin: 0.75rem 0 0;
 }
 
+.verify-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem;
+  background: #fef3c7;
+  border-bottom: 1px solid #fde68a;
+  color: #713f12;
+  font-size: 0.9rem;
+}
+
+.verify-banner button {
+  margin: 0;
+  width: auto;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  background: #713f12;
+}
+
+.verify-banner-note {
+  font-weight: 600;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;

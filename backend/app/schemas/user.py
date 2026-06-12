@@ -65,6 +65,12 @@ class PasswordResetConfirm(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class EmailVerify(BaseModel):
+    """Confirm an email address using the emailed token."""
+
+    token: str = Field(min_length=1)
+
+
 class ReminderUpdate(BaseModel):
     """Enable/disable the daily practice reminder and set its local hour (0–23)."""
 
@@ -88,6 +94,7 @@ class UserRead(BaseModel):
     username: str | None
     timezone: str
     has_password: bool
+    email_verified: bool
     reminder_enabled: bool
     reminder_hour: int | None
     created_at: datetime
