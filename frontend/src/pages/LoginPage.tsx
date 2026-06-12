@@ -73,6 +73,10 @@ export default function LoginPage() {
         </button>
       </form>
 
+      <p className="auth-aux">
+        <Link to="/forgot-password">Forgot password?</Link>
+      </p>
+
       <div className="auth-divider">
         <span>or</span>
       </div>

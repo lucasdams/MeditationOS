@@ -2,23 +2,32 @@
 touch the database directly (see docs/decisions/0006-layered-architecture.md).
 """
 
+import hashlib
 import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
     InvalidPasswordError,
+    InvalidResetTokenError,
     InvalidTimezoneError,
     UsernameTakenError,
 )
 from app.core.google import verify_id_token
-from app.core.security import hash_password, verify_password
+from app.core.security import (
+    create_password_reset_token,
+    decode_password_reset_token,
+    hash_password,
+    verify_password,
+)
 from app.models.user import User
 from app.schemas.user import UserCreate
+from app.services.notifications import email as email_channel
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -68,6 +77,59 @@ def set_password(
     db.commit()
     db.refresh(user)
     return user
+
+
+def _password_version(password_hash: str) -> str:
+    """A short fingerprint of the password hash, embedded in reset tokens so a
+    token stops working once the password changes (single-use)."""
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+def _reset_email_body(user: User, link: str) -> str:
+    name = user.username or "there"
+    return (
+        f"Hi {name},\n\n"
+        "We received a request to reset your MeditationOS password. Choose a new "
+        f"one here — the link expires in {settings.password_reset_expire_minutes} "
+        f"minutes:\n\n{link}\n\n"
+        "If you didn't request this, you can safely ignore this email; your "
+        "password won't change.\n\n"
+        "— MeditationOS"
+    )
+
+
+def request_password_reset(db: Session, email: str) -> None:
+    """Email a reset link if `email` belongs to a password account. Silent by
+    design — the caller responds identically whether or not a user matched, so the
+    endpoint can't be used to enumerate accounts. Google-only accounts (no
+    password) get nothing: they sign in with Google."""
+    user = get_user_by_email(db, email)
+    if user is None or user.password_hash is None:
+        return
+    token = create_password_reset_token(str(user.id), _password_version(user.password_hash))
+    link = f"{settings.app_base_url}/reset-password?token={token}"
+    email_channel.send_email(
+        user.email, "Reset your MeditationOS password", _reset_email_body(user, link)
+    )
+
+
+def reset_password(db: Session, token: str, new_password: str) -> None:
+    """Set a new password from a valid reset token. Raises InvalidResetTokenError
+    if the token is malformed, expired, or already used (the embedded password
+    fingerprint no longer matches)."""
+    decoded = decode_password_reset_token(token)
+    if decoded is None:
+        raise InvalidResetTokenError()
+    sub, pwv = decoded
+    user = get_user_by_id(db, sub)
+    if (
+        user is None
+        or user.password_hash is None
+        or _password_version(user.password_hash) != pwv
+    ):
+        raise InvalidResetTokenError()
+    user.password_hash = hash_password(new_password)
+    db.commit()
 
 
 def get_user_by_id(db: Session, user_id: str) -> User | None:

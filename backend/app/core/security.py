@@ -38,3 +38,34 @@ def decode_access_token(token: str) -> str | None:
     except jwt.PyJWTError:
         return None
     return payload.get("sub")
+
+
+PASSWORD_RESET_TYPE = "pwreset"
+
+
+def create_password_reset_token(subject: str, pwv: str) -> str:
+    """Sign a short-lived password-reset JWT. `pwv` is a fingerprint of the user's
+    current password hash; checking it on use makes the token single-use (any
+    password change — including the reset itself — invalidates outstanding links)."""
+    expire = datetime.now(UTC) + timedelta(
+        minutes=settings.password_reset_expire_minutes
+    )
+    return jwt.encode(
+        {"sub": subject, "pwv": pwv, "type": PASSWORD_RESET_TYPE, "exp": expire},
+        settings.secret_key,
+        algorithm=ALGORITHM,
+    )
+
+
+def decode_password_reset_token(token: str) -> tuple[str, str] | None:
+    """Return `(subject, pwv)` for a valid, unexpired reset token, else None."""
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    if payload.get("type") != PASSWORD_RESET_TYPE:
+        return None
+    sub, pwv = payload.get("sub"), payload.get("pwv")
+    if not sub or not pwv:
+        return None
+    return sub, pwv

@@ -48,6 +48,8 @@ Errors return FastAPI's default shape:
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 | POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
 | POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
+| POST | `/auth/password/reset-request` | — | `{ email }` | `202` always (no enumeration); rate-limited |
+| POST | `/auth/password/reset` | — | `{ token, new_password }` | `204` · `400` if token invalid/expired/used |
 | POST | `/auth/reminders` | ✓ | `{ enabled, hour? }` | `200` user · `422` if `enabled` without `hour` / `hour` out of 0–23 |
 
 ```
@@ -63,6 +65,17 @@ For a Google-only account (no password yet) `current_password` is omitted and th
 call *sets* a first password, so the account can then also log in with email. The
 `UserRead` response carries a `has_password` boolean (never the hash itself) so the
 client knows whether to ask for the current password.
+
+**Forgot password.** `POST /auth/password/reset-request` always returns `202` — it
+never reveals whether the email exists — and, only if the address belongs to a
+password account, emails a link to `{APP_BASE_URL}/reset-password?token=…`. It's
+rate-limited like login. The token is a **signed, short-lived (30 min) JWT** that
+embeds a fingerprint of the user's current password hash, which makes it
+**single-use**: completing the reset (or any password change) changes the hash, so
+outstanding links stop working. `POST /auth/password/reset { token, new_password }`
+verifies the token and sets the new password (`400` if invalid/expired/used). No new
+table — the token carries its own state. Google-only accounts have no password to
+reset and are silently skipped. See the [notifications design](notifications.md).
 
 **Daily reminders.** `POST /auth/reminders` opts into (or out of) a daily practice
 reminder email. `hour` is the **local** hour (0–23) to send at; it's required when

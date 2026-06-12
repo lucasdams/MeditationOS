@@ -52,6 +52,19 @@ class PasswordUpdate(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class PasswordResetRequest(BaseModel):
+    """Ask for a reset link to be emailed."""
+
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Complete a reset using the emailed token."""
+
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class ReminderUpdate(BaseModel):
     """Enable/disable the daily practice reminder and set its local hour (0–23)."""
 

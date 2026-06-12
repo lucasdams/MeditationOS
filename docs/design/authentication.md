@@ -120,9 +120,18 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
   `VITE_GOOGLE_CLIENT_ID` in the production environment. With `ENVIRONMENT=production`
   the session cookie is already issued `Secure` (HTTPS-only).
 
+## Password reset ✅ implemented
+
+Forgot-password runs over the [email channel](notifications.md). `POST
+/auth/password/reset-request` always returns `202` (no enumeration) and emails a
+link only to password accounts; `POST /auth/password/reset` completes it. The reset
+token is a **signed, 30-minute JWT** carrying the user id plus a fingerprint of the
+current password hash — so it's **single-use** (the reset itself changes the hash,
+invalidating the link) with **no reset-token table**. Rate-limited like login. See
+[api-v1](api-v1.md).
+
 ## Deliberately deferred (post-V1)
 
 - Refresh-token rotation + reuse detection
-- Password reset via email token
 - Email verification
 - Other social providers / MFA (TOTP)
