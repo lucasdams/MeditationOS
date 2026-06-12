@@ -41,7 +41,9 @@ Errors return FastAPI's default shape:
 | Method | Path | Auth | Body | Success |
 |--------|------|------|------|---------|
 | POST | `/auth/register` | — | `{ email, password }` | `201` user |
+| POST | `/auth/guest` | — | — | `200` anonymous user + sets cookie; rate-limited |
 | POST | `/auth/login` | — | `{ email, password }` | `200` user + sets cookie |
+| POST | `/auth/claim` | ✓ | `{ email, password }` | `200` user · `400` if not a guest · `409` if email taken |
 | POST | `/auth/google` | — | `{ credential }` | `200` user + sets cookie · `401` if invalid |
 | POST | `/auth/logout` | ✓ | — | `204` |
 | GET | `/auth/me` | ✓ | — | `200` current user |
@@ -60,6 +62,16 @@ POST /api/v1/auth/register
 → 201
 { "id": "…", "email": "user@example.com", "username": null, "created_at": "2026-06-09T14:00:00Z" }
 ```
+
+**Use without signing up.** `POST /auth/guest` creates an **anonymous account**
+(a synthetic email, an auto-assigned username, no password, `is_guest: true`,
+`email_verified: true` so the fake address never prompts a verify banner) and signs
+it in with the same cookie as login — so the whole app works immediately. Later,
+`POST /auth/claim { email, password }` converts that guest **in place** (keeping all
+its data) into a real account: it sets the email + password, flips `is_guest` to
+false, and sends an email verification. `UserRead.is_guest` lets the client nudge
+guests to claim. `/auth/guest` is rate-limited; `/auth/claim` requires the guest to
+be logged in and `409`s on a taken email.
 
 **Change password.** `POST /auth/password` changes the password for an
 email/password account — `current_password` is verified first (`401` if wrong).

@@ -130,6 +130,18 @@ current password hash — so it's **single-use** (the reset itself changes the h
 invalidating the link) with **no reset-token table**. Rate-limited like login. See
 [api-v1](api-v1.md).
 
+## Guest accounts ✅ implemented
+
+"Use without signing up." `POST /auth/guest` creates an **anonymous** account — a
+synthetic email (`guest_<hex>@guest.meditationos.app`), an auto-assigned username (so
+the guest skips the username gate), no password, `is_guest = true`,
+`email_verified = true` — and signs it in with the normal session cookie. The whole
+app then works because every feature is already scoped to a `user_id`; the guest just
+*is* a user. `POST /auth/claim { email, password }` converts the guest **in place**,
+preserving all its data: it sets a real email + password, flips `is_guest` to false,
+and triggers email verification. This reuses the existing model rather than a separate
+local-only data path. `/auth/guest` is rate-limited like login.
+
 ## Email verification ✅ implemented
 
 Registration emails a confirmation link over the [email channel](notifications.md);
