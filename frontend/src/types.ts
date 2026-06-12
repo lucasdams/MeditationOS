@@ -4,6 +4,8 @@ export interface User {
   username: string | null
   timezone: string
   has_password: boolean
+  reminder_enabled: boolean
+  reminder_hour: number | null
   created_at: string
 }
 

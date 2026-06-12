@@ -35,6 +35,9 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 | `password_hash` | text | NULL — null for Google-only accounts |
 | `google_sub` | text | UNIQUE, NULL — Google's subject id, set when linked to Google |
 | `timezone` | text | NOT NULL, default `UTC` — IANA zone for local-day streaks/quests |
+| `reminder_enabled` | bool | NOT NULL, default `false` — opt-in daily practice reminder |
+| `reminder_hour` | int | NULL — local hour (0–23) to send the reminder; NULL when disabled |
+| `reminder_last_sent_at` | timestamptz | NULL — guards against sending more than once per local day |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
 

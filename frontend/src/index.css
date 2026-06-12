@@ -163,6 +163,20 @@ body {
   margin: 0.25rem 0 0;
 }
 
+.settings-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+  margin-top: 0.5rem;
+}
+
+.settings-check input {
+  width: auto;
+  padding: 0;
+}
+
 .success {
   color: #1a7f44;
   font-size: 0.9rem;

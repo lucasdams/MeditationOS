@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import Boolean, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import CITEXT, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,15 @@ class User(Base):
     # IANA timezone (e.g. "Asia/Tokyo") for local-day streaks/quests. Default UTC.
     timezone: Mapped[str] = mapped_column(
         String, nullable=False, server_default="UTC", default="UTC"
+    )
+    # Daily practice reminder (opt-in). Fires at `reminder_hour` (0–23) in the
+    # user's local timezone; `reminder_last_sent_at` guards against double-sends.
+    reminder_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
+    reminder_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reminder_last_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
