@@ -23,8 +23,27 @@ export function getAudioContext(): AudioContext {
   return ctx
 }
 
+// A silent, looping keep-alive source. Once started (from a gesture) it keeps the
+// context "running" for good, so sounds scheduled later from timers/async — interval
+// bells, the breathing wash, chimes, the level-up fanfare, the XP reward — aren't
+// dropped because the context quietly idled back to suspended (the Safari failure
+// mode where click-triggered sounds work but scheduled ones don't).
+let keepAlive: AudioBufferSourceNode | null = null
+function startKeepAlive(c: AudioContext): void {
+  if (keepAlive) return
+  const buffer = c.createBuffer(1, c.sampleRate, c.sampleRate) // 1s of silence
+  const source = c.createBufferSource()
+  source.buffer = buffer
+  source.loop = true
+  const gain = c.createGain()
+  gain.gain.value = 0.0001 // inaudible, but keeps the graph (and the context) active
+  source.connect(gain).connect(c.destination)
+  source.start(0)
+  keepAlive = source
+}
+
 // The documented Safari/iOS unlock: on a user gesture, resume + play a 1-sample
-// buffer at the context's own sample rate.
+// buffer at the context's own sample rate, then keep the context warm.
 function unlock(): void {
   try {
     const c = getAudioContext()
@@ -33,6 +52,7 @@ function unlock(): void {
     source.buffer = c.createBuffer(1, 1, c.sampleRate)
     source.connect(c.destination)
     source.start(0)
+    startKeepAlive(c)
   } catch {
     // audio unavailable — ignore
   }
