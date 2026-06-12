@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { levelProgress } from '../lib/level'
 import { tierFor } from '../lib/tree'
-import { playLevelUp } from '../lib/sfx'
+import { playLevelUp, playReward } from '../lib/sfx'
 
 /**
  * Post-session reward: animates the XP bar from (afterXp − xpGained) up to afterXp,
@@ -22,6 +22,12 @@ export default function RewardOverlay({
   const [shownXp, setShownXp] = useState(startXp)
   const lastLevelRef = useRef(levelProgress(startXp).level)
   const leveledUp = levelProgress(afterXp).level > levelProgress(startXp).level
+
+  // A chime when the reward appears (earned XP / completed a quest). A level
+  // crossing gets the bigger fanfare below instead, so we don't stack them.
+  useEffect(() => {
+    if (xpGained > 0 && !leveledUp) playReward()
+  }, [xpGained, leveledUp])
 
   useEffect(() => {
     const duration = 1400

@@ -83,6 +83,11 @@ body {
   color: #6d28d9;
 }
 
+.app-nav a.nav-goals {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .app-nav a.nav-log {
   background: #dcfce7;
   color: #15803d;
@@ -105,14 +110,25 @@ body {
   color: #6b6b70;
 }
 
+/* The name · level chip is a button to account settings — make that obvious. */
 .app-user a.nav-settings {
-  color: #6b6b70;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #d0d0d5;
+  border-radius: 999px;
+  background: #f8f8fb;
+  color: #1c1c1e;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .app-user a.nav-settings:hover {
-  color: #1c1c1e;
+  background: #eef2ff;
+  border-color: #a5b4fc;
+  color: #3730a3;
 }
 
 .app-user button {
@@ -267,6 +283,75 @@ body {
   margin: 0.4rem 0 0;
   font-size: 0.8rem;
   color: #6d28d9;
+}
+
+.goal-compose {
+  margin-bottom: 1.25rem;
+}
+
+.goal-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.goal-tab {
+  margin: 0;
+  width: auto;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.goal-tab.active {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.goal-card {
+  padding: 0.85rem 0;
+  border-top: 1px solid #ececf0;
+}
+
+.goal-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.goal-achieved {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.goal-bar {
+  height: 8px;
+  background: #eef2ff;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.goal-bar-fill {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 999px;
+}
+
+.goal-bar-fill.done {
+  background: #22c55e;
+}
+
+.goal-card-actions {
+  display: flex;
+  gap: 1rem;
 }
 
 .auth-divider {
