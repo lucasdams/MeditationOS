@@ -137,10 +137,10 @@ Visualizations for practice consistency, time trends, mood trends, and goal prog
 
 ### Goal System ✅ shipped (early)
 
-User-set targets — daily minutes, a streak length, or total hours (e.g. 10 min daily,
-a 30-day streak, 100 hours). Only the intent is stored; **progress and achievement are
-computed on read** from activity. Full CRUD with active/archived lifecycle. See
-[goals design](design/goals.md).
+Recurring habits — an activity (meditate / breathe / gratitude / journal) done a
+**count** of times per **period** (e.g. "journal once a day", "breathe 3× a week").
+Only the intent is stored; **this-period progress is computed on read** from activity.
+Full CRUD with active/archived lifecycle. See [goals design](design/goals.md).
 
 **Demonstrates:** business logic, progress tracking without write-path drift
 

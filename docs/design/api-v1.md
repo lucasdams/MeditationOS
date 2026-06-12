@@ -237,30 +237,31 @@ free text. A linked session must belong to the caller (`404` otherwise), and use
 
 ## Goals ✅ implemented
 
-A user-set practice target. Only intent is stored; **progress is computed on read**.
+A recurring habit: do an **activity** a **count** of times per **period**. Only intent
+is stored; **progress in the current period is computed on read**.
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| POST | `/goals` | ✓ | Create `{ type, target }` → `201` |
-| GET | `/goals` | ✓ | Caller's goals with computed progress; `?status=active\|archived` filter |
+| POST | `/goals` | ✓ | Create `{ activity, period, count }` → `201` |
+| GET | `/goals` | ✓ | Caller's goals with this-period progress; `?status=active\|archived` filter |
 | GET | `/goals/{id}` | ✓ | `404` if not owned |
-| PATCH | `/goals/{id}` | ✓ | Edit `target`, or archive/reactivate via `status` |
+| PATCH | `/goals/{id}` | ✓ | Edit `count` / `period`, or archive/reactivate via `status` |
 | DELETE | `/goals/{id}` | ✓ | `204`; `404` if not owned |
 
 ```
 POST /api/v1/goals
-{ "type": "daily_minutes", "target": 10 }
+{ "activity": "journal", "period": "day", "count": 1 }
 → 201
-{ "id": "…", "type": "daily_minutes", "target": 10, "status": "active",
-  "current": 0, "progress": 0.0, "achieved": false, "created_at": "…" }
+{ "id": "…", "activity": "journal", "period": "day", "count": 1, "status": "active",
+  "done": 0, "progress": 0.0, "achieved": false, "created_at": "…" }
 ```
 
-`type` is one of `daily_minutes` (minutes practiced today), `streak_days` (current
-streak), or `total_hours` (lifetime hours). `target` is a positive integer in that
-unit. `status` is `active` or `archived` (the user's lifecycle). The response adds
-three **computed** fields — `current` (value in the goal's unit), `progress` (0–1,
-capped), and `achieved` (`current` has reached `target` right now) — derived from the
-same activity the dashboard aggregates; nothing about progress is stored.
+`activity` ∈ `meditate` (any session) · `breathe` (resonance-breathing sessions) ·
+`gratitude` · `journal`. `period` ∈ `day` (today) · `week` (a rolling 7-day window).
+`count` is the target times per period (positive int). `status` is `active` or
+`archived`. The response adds **computed** fields — `done` (times the activity
+happened this period), `progress` (0–1, capped), and `achieved` (`done >= count`) —
+counted from the user's own activity; nothing about progress is stored.
 
 ## Dashboard ✅ implemented
 

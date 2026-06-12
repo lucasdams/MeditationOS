@@ -1,23 +1,40 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { goalService } from '../services/goals'
-import type { Goal, GoalStatus, GoalType } from '../types'
+import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
-const GOAL_META: Record<GoalType, { label: string; unit: string; hint: string }> = {
-  daily_minutes: { label: 'Daily minutes', unit: 'min today', hint: 'Minutes of practice today' },
-  streak_days: { label: 'Streak', unit: 'days', hint: 'Consecutive days practiced' },
-  total_hours: { label: 'Total hours', unit: 'hours', hint: 'Lifetime hours of practice' },
+const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = [
+  { key: 'meditate', label: 'Meditate', emoji: '🧘' },
+  { key: 'breathe', label: 'Breathe', emoji: '🫁' },
+  { key: 'gratitude', label: 'Write gratitude', emoji: '🙏' },
+  { key: 'journal', label: 'Journal', emoji: '📓' },
+]
+const ACTIVITY_META: Record<GoalActivity, { label: string; emoji: string }> = Object.fromEntries(
+  ACTIVITIES.map((a) => [a.key, { label: a.label, emoji: a.emoji }]),
+) as Record<GoalActivity, { label: string; emoji: string }>
+
+// Cadence presets — the only "target" is how often, not a number to type.
+const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
+  { label: 'Once a day', count: 1, period: 'day' },
+  { label: 'Twice a day', count: 2, period: 'day' },
+  { label: '3× a day', count: 3, period: 'day' },
+  { label: 'Once a week', count: 1, period: 'week' },
+  { label: '3× a week', count: 3, period: 'week' },
+  { label: '5× a week', count: 5, period: 'week' },
+]
+
+function cadenceLabel(count: number, period: GoalPeriod): string {
+  const times = count === 1 ? 'Once' : count === 2 ? 'Twice' : `${count}×`
+  return `${times} a ${period}`
 }
-
-const GOAL_TYPES: GoalType[] = ['daily_minutes', 'streak_days', 'total_hours']
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<GoalStatus>('active')
 
-  const [type, setType] = useState<GoalType>('daily_minutes')
-  const [target, setTarget] = useState('10')
+  const [activity, setActivity] = useState<GoalActivity>('meditate')
+  const [cadenceIdx, setCadenceIdx] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
   function load(status: GoalStatus) {
@@ -36,16 +53,15 @@ export default function GoalsPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    const n = Number(target)
-    if (!Number.isInteger(n) || n <= 0) {
-      setError('Target must be a whole number greater than 0.')
-      return
-    }
+    const cadence = CADENCES[cadenceIdx]
     setSubmitting(true)
     try {
-      const created = await goalService.create({ type, target: n })
+      const created = await goalService.create({
+        activity,
+        period: cadence.period,
+        count: cadence.count,
+      })
       if (view === 'active') setGoals((prev) => [created, ...(prev ?? [])])
-      setTarget('10')
     } catch {
       setError('Could not create that goal.')
     } finally {
@@ -85,23 +101,32 @@ export default function GoalsPage() {
       {view === 'active' && (
         <section className="goal-compose">
           <form onSubmit={handleSubmit} noValidate>
-            <label htmlFor="type">Goal</label>
-            <select id="type" value={type} onChange={(e) => setType(e.target.value as GoalType)}>
-              {GOAL_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {GOAL_META[t].label}
+            <label htmlFor="activity">I want to…</label>
+            <select
+              id="activity"
+              value={activity}
+              onChange={(e) => setActivity(e.target.value as GoalActivity)}
+            >
+              {ACTIVITIES.map((a) => (
+                <option key={a.key} value={a.key}>
+                  {a.emoji} {a.label}
                 </option>
               ))}
             </select>
-            <label htmlFor="target">Target ({GOAL_META[type].unit})</label>
-            <input
-              id="target"
-              type="number"
-              min={1}
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-            />
-            <small>{GOAL_META[type].hint}</small>
+
+            <label htmlFor="cadence">How often?</label>
+            <select
+              id="cadence"
+              value={cadenceIdx}
+              onChange={(e) => setCadenceIdx(Number(e.target.value))}
+            >
+              {CADENCES.map((c, i) => (
+                <option key={c.label} value={i}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+
             {error && (
               <p role="alert" className="error">
                 {error}
@@ -136,26 +161,30 @@ export default function GoalsPage() {
         {goals && goals.length === 0 && (
           <p className="muted">
             {view === 'active'
-              ? 'No active goals yet. Set one above to give yourself something to aim at.'
+              ? 'No active goals yet. Pick an activity and how often to build a habit.'
               : 'No archived goals.'}
           </p>
         )}
         {goals?.map((g) => {
-          const meta = GOAL_META[g.type]
+          const meta = ACTIVITY_META[g.activity]
+          const when = g.period === 'day' ? 'today' : 'this week'
           return (
             <article key={g.id} className="goal-card">
               <div className="goal-card-head">
-                <strong>{meta.label}</strong>
-                <span className="muted">
-                  {g.current} / {g.target} {meta.unit}
-                </span>
-                {g.achieved && <span className="goal-achieved">✓ Achieved</span>}
+                <strong>
+                  {meta.emoji} {meta.label}
+                </strong>
+                <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
+                {g.achieved && <span className="goal-achieved">✓ Done</span>}
               </div>
               <div className="goal-bar">
                 <div
                   className={g.achieved ? 'goal-bar-fill done' : 'goal-bar-fill'}
                   style={{ width: `${Math.round(g.progress * 100)}%` }}
                 />
+              </div>
+              <div className="goal-card-meta muted">
+                {g.done} / {g.count} {when}
               </div>
               <div className="goal-card-actions">
                 {g.status === 'active' ? (

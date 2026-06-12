@@ -199,21 +199,24 @@ export interface JournalCreate {
   session_id?: string | null
 }
 
-export type GoalType = 'daily_minutes' | 'streak_days' | 'total_hours'
+export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal'
+export type GoalPeriod = 'day' | 'week'
 export type GoalStatus = 'active' | 'archived'
 
 export interface Goal {
   id: string
-  type: GoalType
-  target: number
+  activity: GoalActivity
+  period: GoalPeriod
+  count: number // target times per period
   status: GoalStatus
-  current: number // current value in the goal's unit
+  done: number // times done this period
   progress: number // 0.0 .. 1.0
   achieved: boolean
   created_at: string
 }
 
 export interface GoalCreate {
-  type: GoalType
-  target: number
+  activity: GoalActivity
+  period: GoalPeriod
+  count: number
 }

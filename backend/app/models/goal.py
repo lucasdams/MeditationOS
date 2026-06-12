@@ -1,9 +1,10 @@
-"""Goal model — a user-set practice target. See docs/design/data-model.md.
+"""Goal model — a recurring practice habit: do an *activity* a *count* of times per
+*period* (e.g. "journal once a day", "breathe 3 times a week"). See data-model.md.
 
-Only the *intent* is stored (type + target + lifecycle status); **progress and
-achievement are computed on read** from activity, like streaks/XP (ADR-0009). So
-there's no stored "completed" — a goal is `active` or `archived`, and whether it's
-currently met is derived.
+Only the intent is stored (activity + cadence + lifecycle status); **progress in the
+current period is computed on read** from activity, like streaks/XP (ADR-0009). No
+stored "completed" — a goal is `active` or `archived`, and whether it's met this
+period is derived.
 """
 
 import uuid
@@ -15,10 +16,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
 
-# What a goal measures (single source of truth: schema + the DB CHECK reference this).
-GOAL_TYPES = ("daily_minutes", "streak_days", "total_hours")
+# Single source of truth (schema + the DB CHECKs reference these).
+GOAL_ACTIVITIES = ("meditate", "breathe", "gratitude", "journal")
+GOAL_PERIODS = ("day", "week")
 GOAL_STATUSES = ("active", "archived")
-_TYPE_LIST = ", ".join(f"'{t}'" for t in GOAL_TYPES)
+_ACTIVITY_LIST = ", ".join(f"'{a}'" for a in GOAL_ACTIVITIES)
+_PERIOD_LIST = ", ".join(f"'{p}'" for p in GOAL_PERIODS)
 _STATUS_LIST = ", ".join(f"'{s}'" for s in GOAL_STATUSES)
 
 
@@ -33,8 +36,9 @@ class Goal(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    type: Mapped[str] = mapped_column(String, nullable=False)
-    target: Mapped[int] = mapped_column(Integer, nullable=False)
+    activity: Mapped[str] = mapped_column(String, nullable=False)  # what to do
+    period: Mapped[str] = mapped_column(String, nullable=False)  # "day" | "week"
+    count: Mapped[int] = mapped_column(Integer, nullable=False)  # times per period
     status: Mapped[str] = mapped_column(
         String, nullable=False, server_default="active", default="active"
     )
@@ -43,8 +47,9 @@ class Goal(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(f"type IN ({_TYPE_LIST})", name="ck_goal_type"),
+        CheckConstraint(f"activity IN ({_ACTIVITY_LIST})", name="ck_goal_activity"),
+        CheckConstraint(f"period IN ({_PERIOD_LIST})", name="ck_goal_period"),
         CheckConstraint(f"status IN ({_STATUS_LIST})", name="ck_goal_status"),
-        CheckConstraint("target > 0", name="ck_goal_target_positive"),
+        CheckConstraint("count > 0", name="ck_goal_count_positive"),
         Index("ix_goals_user_id_created_at", "user_id", "created_at"),
     )

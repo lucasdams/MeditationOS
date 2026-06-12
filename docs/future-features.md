@@ -44,10 +44,10 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 
 - [x] **Daily quests** (write a gratitude · breathe a minute · log a session) with bonus XP, reset daily
 - [x] **Streak bonus XP** (scaled to your longest streak)
-- [x] **Goals** — user-set targets (daily minutes / streak days / total hours) with progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
-- [ ] More goal types (weekly session count, breathing milestones, two-week sprints, custom date windows)
+- [x] **Goals** — recurring habits: an activity (meditate / breathe / gratitude / journal) done a count of times per day/week, with this-period progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
+- [ ] More cadences (custom counts, calendar-aligned weeks, monthly)
 - [ ] Achievement badges for streaks and hour milestones
-- [x] **Progress toward long-term targets** (e.g. 100-hour practice) — the `total_hours` goal type
+- [ ] Long-term cumulative targets (e.g. 100 total hours) — distinct from the recurring-habit goals
 
 ### Sanctuary — build & upgrade your space (streak rewards)
 

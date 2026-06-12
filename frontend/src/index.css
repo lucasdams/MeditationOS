@@ -477,6 +477,15 @@ body {
   font-size: 0.9rem;
 }
 
+.goal-cadence {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
 .goal-achieved {
   margin-left: auto;
   padding: 0.1rem 0.5rem;
@@ -485,6 +494,10 @@ body {
   color: #15803d;
   font-weight: 600;
   font-size: 0.8rem;
+}
+
+.goal-card-meta {
+  margin: 0.35rem 0 0;
 }
 
 .goal-bar {

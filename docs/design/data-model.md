@@ -140,17 +140,19 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 
 ### `goals`
 
-A user-set practice target. Only the *intent* is stored; **progress and achievement
-are computed on read** from activity (see Design notes / ADR-0009), so there is no
-stored "completed" — a goal is `active` or `archived`, and whether it's currently met
-is derived.
+A recurring practice habit: do an **activity** a **count** of times per **period**
+(e.g. "journal once a day", "breathe 3 times a week"). Only the intent is stored;
+**progress in the current period is computed on read** from activity (see Design notes
+/ ADR-0009), so there is no stored "completed" — a goal is `active` or `archived`, and
+whether it's met this period is derived.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
-| `type` | text | NOT NULL, CHECK in (`daily_minutes`,`streak_days`,`total_hours`) |
-| `target` | int | NOT NULL, CHECK > 0 |
+| `activity` | text | NOT NULL, CHECK in (`meditate`,`breathe`,`gratitude`,`journal`) |
+| `period` | text | NOT NULL, CHECK in (`day`,`week`) |
+| `count` | int | NOT NULL, CHECK > 0 — times per period |
 | `status` | text | NOT NULL, default `active`, CHECK in (`active`,`archived`) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
