@@ -13,12 +13,16 @@ from slowapi.errors import RateLimitExceeded
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.core.security_headers import SecurityHeadersMiddleware
 
 app = FastAPI(title="MeditationOS API")
 
 # Rate limiting (slowapi): expose the limiter and map breaches to HTTP 429.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Standard security response headers on every response (see security_headers.py).
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
