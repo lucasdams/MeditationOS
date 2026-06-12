@@ -93,9 +93,11 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 ## Hardening checklist (tracked against `.claude/rules/security.md`)
 
 - [x] `argon2` hashing; plaintext never stored or logged
-- [x] Login + register + Google + guest + password-reset + verification-resend rate-limited (per-IP); _per-email still to do_
-- [x] Per-user **daily creation cap** on sessions / gratitude / journals / goals (`DAILY_CREATE_LIMIT`, default 200/UTC-day) → `429` (anti-spam on data writes); _per-IP burst limit on writes still to do_
+- [x] Login + register + Google + guest + password-reset + verification-resend rate-limited (per-IP)
+- [x] **Per-email login throttle** — lock an account's login after `LOGIN_MAX_FAILURES` failures within `LOGIN_FAILURE_WINDOW_MINUTES` → `429` (resists distributed brute force; see `app/core/login_guard.py`). _In-memory; move to a shared store (Redis) for multi-worker deploys._
+- [x] Per-user **daily creation cap** on sessions / gratitude / journals / goals (`DAILY_CREATE_LIMIT`, default 200/UTC-day) → `429`, plus a per-IP burst limit on writes (`WRITE_RATE_LIMIT`, default 60/min)
 - [x] **Security response headers** on every response — `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, and `Strict-Transport-Security` in production (see `app/core/security_headers.py`)
+- [x] Rate limiting keys on the real client IP — socket peer by default, or the left-most `X-Forwarded-For` entry when `TRUST_PROXY=true` (only behind a trusted proxy)
 - [x] Generic `401` on **login** failure; _registration still returns `409` (enumerable) — see tradeoffs below_
 - [x] `Secure` cookie flag enforced outside local dev (`ENVIRONMENT=production`)
 - [x] CORS restricted to configured origins; credentials allowed only for those
@@ -112,9 +114,10 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 
 ## Deploy-time hardening (before AWS, Cycle 5)
 
-- **Rate limiter client IP.** `slowapi` keys on the socket peer. Behind a reverse
-  proxy / load balancer this is the proxy's IP — switch to a trusted
-  `X-Forwarded-For` source so limits are per-user, not per-proxy.
+- **Rate limiter client IP.** `slowapi` keys on the socket peer by default. Behind a
+  reverse proxy / load balancer, set `TRUST_PROXY=true` so it keys on the left-most
+  `X-Forwarded-For` entry instead of the proxy's IP. Only enable it when a trusted
+  proxy actually sets that header (otherwise clients can spoof it).
 - **Postgres driver.** `psycopg2-binary` is convenient for dev but discouraged
   for production; use the source build or psycopg3.
 - **Google OAuth origins.** Add the production domain as an *Authorized JavaScript

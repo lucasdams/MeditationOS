@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     email_verification_expire_minutes: int = 1440  # 24h
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
     login_rate_limit: str = "5/minute"
+    # Per-IP burst limit on data-creation endpoints (complements the daily cap).
+    write_rate_limit: str = "60/minute"
+    # Per-email login throttle: lock an account's login after N failures within the
+    # window (resists distributed brute force, which per-IP limiting misses).
+    login_max_failures: int = 10
+    login_failure_window_minutes: int = 15
+    # Trust X-Forwarded-For for client IP (rate limiting). Only enable behind a
+    # trusted reverse proxy — otherwise clients can spoof it to dodge limits.
+    trust_proxy: bool = False
     # Max rows a user may create per type (sessions / gratitude / journals / goals)
     # per UTC day — an anti-spam ceiling, set well above real use.
     daily_create_limit: int = 200

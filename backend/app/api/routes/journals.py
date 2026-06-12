@@ -4,12 +4,14 @@ always scoped to the authenticated user.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError, LinkedSessionNotFoundError
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.journal import JournalCreate, JournalRead, JournalUpdate
 from app.services import journal_service
@@ -24,7 +26,9 @@ _DAILY_LIMIT = HTTPException(
 
 
 @router.post("", response_model=JournalRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.write_rate_limit)
 def create_journal(
+    request: Request,  # required by the rate limiter
     data: JournalCreate,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

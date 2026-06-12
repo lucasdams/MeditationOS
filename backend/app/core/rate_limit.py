@@ -4,10 +4,23 @@ enforced in dev/prod. Applied to sensitive routes like login.
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from starlette.requests import Request
 
 from app.core.config import settings
 
+
+def client_ip(request: Request) -> str:
+    """The client IP to rate-limit on. Behind a trusted reverse proxy (TRUST_PROXY),
+    use the left-most X-Forwarded-For entry; otherwise the socket peer. We never trust
+    XFF by default — it's client-supplied and trivially spoofed to dodge limits."""
+    if settings.trust_proxy:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=client_ip,
     enabled=settings.environment != "test",
 )
