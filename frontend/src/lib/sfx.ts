@@ -40,6 +40,36 @@ export function playBell(volume = 0.6): void {
   }
 }
 
+/**
+ * A short, bright two-note chime for earning XP / completing a task — lighter than
+ * the level-up fanfare, which still plays on a level crossing.
+ */
+export function playReward(): void {
+  try {
+    const ctx = getAudioContext()
+    if (ctx.state !== 'running') {
+      void ctx.resume().then(playReward).catch(() => {})
+      return
+    }
+    const notes = [659.25, 987.77] // E5 · B5 — a gentle rising "ding"
+    notes.forEach((freq, i) => {
+      const t = ctx.currentTime + i * 0.11
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.22, t + 0.02)
+      gain.gain.linearRampToValueAtTime(0, t + 0.45)
+      osc.connect(gain).connect(ctx.destination)
+      osc.start(t)
+      osc.stop(t + 0.5)
+    })
+  } catch {
+    // audio unavailable — skip silently
+  }
+}
+
 export function playLevelUp(): void {
   try {
     const ctx = getAudioContext()
