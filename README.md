@@ -8,7 +8,7 @@ A production-style **business application** for meditation and wellness. Portfol
 
 **What's working now (Cycles 1–4):**
 
-- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing, **Sign in with Google** (OIDC); public usernames + a top banner (name · level)
+- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing, **Sign in with Google** (OIDC), **forgot-password reset** via an emailed single-use link, plus change-password & profile settings; public usernames + a top banner (name · level)
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap (bucketed on the user's **local day**, per-user timezone)
 - ✅ Levels & XP + **daily quests** — earn XP from practice (breathing counts 3×), level up, grow an ASCII tree; three daily quests + a streak bonus, with a live reset countdown

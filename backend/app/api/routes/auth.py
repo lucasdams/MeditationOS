@@ -10,6 +10,7 @@ from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
     InvalidPasswordError,
+    InvalidResetTokenError,
     InvalidTimezoneError,
     UsernameTakenError,
 )
@@ -18,6 +19,8 @@ from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.user import (
     GoogleLogin,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     PasswordUpdate,
     ReminderUpdate,
     TimezoneUpdate,
@@ -147,6 +150,29 @@ def change_password(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
+        ) from None
+
+
+@router.post("/password/reset-request", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(settings.login_rate_limit)
+def request_password_reset(
+    request: Request,  # required by the rate limiter
+    data: PasswordResetRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    # Always the same response, sent or not — no account enumeration.
+    user_service.request_password_reset(db, data.email)
+    return {"detail": "If that email has an account, a reset link is on its way."}
+
+
+@router.post("/password/reset", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(data: PasswordResetConfirm, db: Session = Depends(get_db)) -> None:
+    try:
+        user_service.reset_password(db, data.token, data.new_password)
+    except InvalidResetTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired.",
         ) from None
 
 

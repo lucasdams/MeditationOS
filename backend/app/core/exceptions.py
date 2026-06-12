@@ -23,3 +23,7 @@ class InvalidTimezoneError(Exception):
 
 class InvalidPasswordError(Exception):
     """Raised when a password change supplies a wrong/missing current password."""
+
+
+class InvalidResetTokenError(Exception):
+    """Raised when a password-reset token is invalid, expired, or already used."""

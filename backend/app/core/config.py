@@ -17,13 +17,14 @@ class Settings(BaseSettings):
     secret_key: str = DEFAULT_SECRET_KEY
     cors_origins: str = "http://localhost:5173"
     access_token_expire_minutes: int = 60
+    password_reset_expire_minutes: int = 30
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
     login_rate_limit: str = "5/minute"
     # OAuth client ID for "Sign in with Google" (public value). Empty = disabled.
     google_client_id: str = ""
     # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.
     anthropic_api_key: str = ""
-    # Outbound email (practice reminders, future password reset). With no SMTP host
+    # Outbound email (practice reminders, password reset). With no SMTP host
     # configured the sender logs the message instead of delivering it — so the app
     # works locally with no provider, mirroring the AI curated-fallback pattern.
     smtp_host: str = ""

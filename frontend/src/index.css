@@ -196,6 +196,11 @@ body {
   font-size: 1.4rem;
 }
 
+.auth-aux {
+  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
