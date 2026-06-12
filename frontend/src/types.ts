@@ -75,6 +75,43 @@ export interface ActivityDay {
   all_quests: boolean // all three daily quests completed that day
 }
 
+export interface TypeBreakdown {
+  type: string
+  count: number
+  minutes: number
+}
+
+export interface WeekdayCount {
+  weekday: number // 0 = Sunday … 6 = Saturday
+  count: number
+}
+
+export interface TimeBucketCount {
+  bucket: string // morning | afternoon | evening | night
+  count: number
+}
+
+export interface WeekMinutes {
+  week_start: string
+  minutes: number
+}
+
+export interface MoodCount {
+  mood: string
+  count: number
+}
+
+export interface AnalyticsSummary {
+  total_sessions: number
+  total_minutes: number
+  days_practiced: number
+  by_type: TypeBreakdown[]
+  by_weekday: WeekdayCount[]
+  by_time_of_day: TimeBucketCount[]
+  minutes_by_week: WeekMinutes[]
+  moods: MoodCount[]
+}
+
 export interface ActivityCalendar {
   start: string
   end: string

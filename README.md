@@ -13,6 +13,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ **Your data, your call** — **export** everything as JSON and **delete your account** (cascades all data) from Settings — privacy table-stakes for a B2C app
 - ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style year-long activity heatmap (bucketed on the user's **local day**, per-user timezone)
+- ✅ Analytics — a dedicated insights page computed by **SQL**: minutes-per-week trend, practice by type, by day of week, by time of day, and journal-mood distribution (timezone-aware, nothing stored). See [Analytics design](docs/design/analytics.md)
 - ✅ Levels & XP + **daily quests** — earn XP from practice (breathing counts 3×), level up, grow an ASCII tree; three daily quests + a streak bonus, with a live reset countdown
 - ✅ HRV resonance breathing — animated pacer (2:3 difficulty presets) with a 1s hold at each turn, an ocean-breath audio guide + transition bell, optional duration timer; saves as a session
 - ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells; background-tab-safe timer; saves as a session and earns XP
@@ -279,7 +280,8 @@ The engineering reasoning behind the build — written up as it's decided, so th
 | [Gamification](docs/design/gamification.md) | XP, levels, daily quests, streaks — all computed from activity (per-user local day) |
 | [Sanctuary](docs/design/sanctuary.md) | A garden grown by practicing — one item at a time, choose the next; one append-only table, everything else computed |
 | [Journaling](docs/design/journaling.md) | Written reflections, optionally linked to a session, with a fixed mood palette — full CRUD, user-scoped |
-| [Goals](docs/design/goals.md) | User-set targets (daily minutes / streak / total hours); intent stored, progress computed on read |
+| [Goals](docs/design/goals.md) | Recurring habit goals (activity × cadence); intent stored, this-period progress computed on read |
+| [Analytics](docs/design/analytics.md) | SQL-aggregated insights — minutes-per-week, by type / weekday / time-of-day, journal moods; timezone-aware, read-only |
 | [Notifications & Email](docs/design/notifications.md) | The outbound email channel (logs with no provider) and the daily practice reminder — timezone-aware, idempotent, skips days you practiced |
 
 ### Architecture Decision Records

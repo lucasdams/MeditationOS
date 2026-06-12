@@ -12,6 +12,7 @@ import MeditatePage from './pages/MeditatePage'
 import GratitudePage from './pages/GratitudePage'
 import JournalPage from './pages/JournalPage'
 import GoalsPage from './pages/GoalsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 import SanctuaryPage from './pages/SanctuaryPage'
 import SettingsPage from './pages/SettingsPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/gratitude" element={<GratitudePage />} />
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/sanctuary" element={<SanctuaryPage />} />
         <Route path="/sessions" element={<HistoryPage />} />
         <Route path="/sessions/new" element={<LogSessionPage />} />
