@@ -197,3 +197,22 @@ export interface JournalCreate {
   mood?: Mood | null
   session_id?: string | null
 }
+
+export type GoalType = 'daily_minutes' | 'streak_days' | 'total_hours'
+export type GoalStatus = 'active' | 'archived'
+
+export interface Goal {
+  id: string
+  type: GoalType
+  target: number
+  status: GoalStatus
+  current: number // current value in the goal's unit
+  progress: number // 0.0 .. 1.0
+  achieved: boolean
+  created_at: string
+}
+
+export interface GoalCreate {
+  type: GoalType
+  target: number
+}

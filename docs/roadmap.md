@@ -135,11 +135,14 @@ Visualizations for practice consistency, time trends, mood trends, and goal prog
 
 **Demonstrates:** SQL queries, reporting, data processing
 
-### Goal System
+### Goal System ✅ shipped (early)
 
-Examples: 10 minutes daily, 30-day streak, 100-hour milestone.
+User-set targets — daily minutes, a streak length, or total hours (e.g. 10 min daily,
+a 30-day streak, 100 hours). Only the intent is stored; **progress and achievement are
+computed on read** from activity. Full CRUD with active/archived lifecycle. See
+[goals design](design/goals.md).
 
-**Demonstrates:** business logic, progress tracking
+**Demonstrates:** business logic, progress tracking without write-path drift
 
 ---
 

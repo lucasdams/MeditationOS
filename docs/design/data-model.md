@@ -15,7 +15,7 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
    │ N        │ N         │ N           │ N         │ N        │ N
 ┌──▼───────┐ ┌▼─────────┐ ┌▼──────────┐ ┌▼─────────┐ ┌▼───────┐ ┌▼───────┐
 │ sessions │ │breathing_│ │gratitude_ │ │sanctuary_│ │journals│ │ goals  │
-│          │ │patterns  │ │entries    │ │plantings │ │        │ │  (V2)  │
+│          │ │patterns  │ │entries    │ │plantings │ │        │ │        │
 └──┬───────┘ └──────────┘ └───────────┘ └──────────┘ └───▲────┘ └────────┘
    │ 0..1 (a session may reference the pattern it used)   │ 0..1
    └────────────► breathing_patterns                      └─ a journal may reference its session
@@ -137,7 +137,12 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 
 - Like gratitude categories, `mood` is a **fixed palette** (constrained by a CHECK) so entries stay filterable; the reflection itself is free text. A linked session is validated to belong to the caller on write.
 
-### `goals` (V2)
+### `goals`
+
+A user-set practice target. Only the *intent* is stored; **progress and achievement
+are computed on read** from activity (see Design notes / ADR-0009), so there is no
+stored "completed" — a goal is `active` or `archived`, and whether it's currently met
+is derived.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
@@ -145,14 +150,18 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
 | `type` | text | NOT NULL, CHECK in (`daily_minutes`,`streak_days`,`total_hours`) |
 | `target` | int | NOT NULL, CHECK > 0 |
-| `status` | text | NOT NULL, default `active`, CHECK in (`active`,`completed`,`archived`) |
+| `status` | text | NOT NULL, default `active`, CHECK in (`active`,`archived`) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Index:** `(user_id, created_at)`.
 
 ## Design notes
 
 **Streaks are computed, not stored.** The README sketches a `streaks` table, but a stored streak is a denormalization that can drift and needs careful invalidation. For V1 the current and longest streak are **derived from `sessions` by SQL** (group by the calendar date of `occurred_at` per user, find consecutive runs). If profiling later shows the dashboard query is hot, add a `user_streak_cache` row updated on session write — but only with a documented recompute path. Starting computed keeps correctness simple.
 
 **Breathing data lives on `sessions`, not a separate table.** A resonance-breathing session *is* a meditation session with extra columns, so it shares streak/duration/aggregation logic for free rather than forcing a UNION across two tables.
+
+**Goals store intent, not progress.** A `goal` row is just a target (`type` + `target`) plus a lifecycle `status`. Current value, fraction, and whether it's met are **computed on read** from the same activity the dashboard aggregates — so a goal can never drift out of sync, and re-tuning what "counts" is a one-line change (same rationale as [ADR-0009](../decisions/0009-gamification-computed-from-activity.md)).
 
 **`ON DELETE` is explicit per relationship.** Child practice data cascades on user deletion (privacy: account deletion removes the user's data). `breathing_pattern_id` on a session uses `SET NULL` so deleting a saved pattern doesn't erase the history of sessions that used it.
 
