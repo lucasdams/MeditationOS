@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dashboardService } from '../services/dashboard'
 import type { ActivityCalendar } from '../types'
 
@@ -27,6 +27,7 @@ type Cell = {
 export default function ActivityHeatmap() {
   const [cal, setCal] = useState<ActivityCalendar | null>(null)
   const [failed, setFailed] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     dashboardService
@@ -34,6 +35,13 @@ export default function ActivityHeatmap() {
       .then(setCal)
       .catch(() => setFailed(true))
   }, [])
+
+  // The grid runs oldest → today, so the most recent weeks sit at the right edge.
+  // Scroll there on load so current activity is visible without scrolling.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [cal])
 
   if (failed) return null
   if (!cal) return <p className="muted">Loading activity…</p>
@@ -77,7 +85,7 @@ export default function ActivityHeatmap() {
   return (
     <section className="calendar">
       <h2>Activity</h2>
-      <div className="heatmap-scroll">
+      <div className="heatmap-scroll" ref={scrollRef}>
         <div className="heatmap">
           <div className="heatmap-months">
             {weeks.map((week, i) => {
