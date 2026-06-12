@@ -92,13 +92,13 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 
 ## Hardening checklist (tracked against `.claude/rules/security.md`)
 
-- [ ] `argon2` hashing; plaintext never stored or logged
-- [ ] Login + register rate-limited (per-IP and per-email)
-- [ ] Generic auth-failure messages (no account enumeration)
-- [ ] `Secure` cookie flag enforced outside local dev
-- [ ] CORS restricted to known origins; credentials allowed only for those
+- [x] `argon2` hashing; plaintext never stored or logged
+- [x] Login + Google + password-reset + verification-resend rate-limited (per-IP); _register not yet; per-email still to do_
+- [x] Generic `401` on **login** failure; _registration still returns `409` (enumerable) — see tradeoffs below_
+- [x] `Secure` cookie flag enforced outside local dev (`ENVIRONMENT=production`)
+- [x] CORS restricted to configured origins; credentials allowed only for those
 - [x] `SECRET_KEY` from env; the app **refuses to boot** in production with the default key
-- [ ] All user-data routes go through `get_current_user` and filter by `user_id`
+- [x] All user-data routes go through `get_current_user` and filter by `user_id`
 
 ## Known tradeoffs
 

@@ -6,7 +6,9 @@
 
 ### Authentication
 
-Users can register, log in, log out, and reset their password.
+Users can register, log in, log out, and manage their account: **Sign in with
+Google** (OIDC), **email verification**, **forgot-password reset** via an emailed
+single-use link, change password, and a profile/settings page.
 
 **Demonstrates:** security, authentication, user management
 
@@ -97,6 +99,24 @@ see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md). A first, safe
 toward the V3 AI features below.
 
 **Demonstrates:** LLM integration with untrusted-output validation + graceful fallback
+
+### Sanctuary (added during V1)
+
+A garden you grow by practicing: procedural **SVG** plants across nature, structures
+& companions tracks, grown one at a time, with milestone unlocks and streak-driven
+vitality. Stored as a single append-only list of choices; growth/unlocks/vitality are
+**computed from activity**. See [sanctuary design](design/sanctuary.md) and
+[ADR-0010](decisions/0010-sanctuary-cultivation.md).
+
+**Demonstrates:** the product's strongest retention loop with a minimal data footprint
+
+### Daily practice reminders (added during V1)
+
+Opt-in email nudge at the user's local hour — timezone-aware, idempotent, and skipped
+on days they've already practiced. Runs over an email channel that logs instead of
+sending when no provider is configured. See [notifications design](design/notifications.md).
+
+**Demonstrates:** an outbound channel + scheduled, timezone-correct delivery
 
 ---
 
