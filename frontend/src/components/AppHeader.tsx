@@ -1,13 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
+
+// Secondary destinations, tucked into the "More" menu.
+const MORE_LINKS = [
+  { to: '/gratitude', label: '🙏 Gratitude' },
+  { to: '/journal', label: '📓 Journal' },
+  { to: '/goals', label: '🎯 Goals' },
+  { to: '/sanctuary', label: '🌱 Sanctuary' },
+  { to: '/analytics', label: '📈 Analytics' },
+  { to: '/sessions', label: '📜 History' },
+]
 
 export default function AppHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [level, setLevel] = useState<number | null>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
 
   // Refetch on every navigation so the level stays live after earning XP.
   useEffect(() => {
@@ -16,6 +28,26 @@ export default function AppHeader() {
       .then((s) => setLevel(s.level))
       .catch(() => {})
   }, [location.pathname])
+
+  // Close the "More" menu on navigation.
+  useEffect(() => setMoreOpen(false), [location.pathname])
+
+  // Close it on an outside click or Escape.
+  useEffect(() => {
+    if (!moreOpen) return
+    function onDown(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [moreOpen])
 
   async function handleLogout() {
     await logout()
@@ -37,27 +69,30 @@ export default function AppHeader() {
         <Link to="/breathe" className="nav-breathe">
           🫁 Breathe
         </Link>
-        <Link to="/gratitude" className="nav-gratitude">
-          🙏 Gratitude
-        </Link>
-        <Link to="/journal" className="nav-journal">
-          📓 Journal
-        </Link>
-        <Link to="/goals" className="nav-goals">
-          🎯 Goals
-        </Link>
-        <Link to="/sanctuary" className="nav-sanctuary">
-          🌱 Sanctuary
-        </Link>
-        <Link to="/analytics" className="nav-analytics">
-          📈 Analytics
-        </Link>
         <Link to="/sessions/new" className="nav-log">
           + Log
         </Link>
-        <Link to="/sessions" className="nav-history">
-          History
-        </Link>
+
+        <div className="nav-more" ref={moreRef}>
+          <button
+            type="button"
+            className="nav-more-btn"
+            aria-haspopup="true"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((o) => !o)}
+          >
+            More ▾
+          </button>
+          {moreOpen && (
+            <div className="nav-more-menu" role="menu">
+              {MORE_LINKS.map((l) => (
+                <Link key={l.to} to={l.to} role="menuitem">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
       <div className="app-user">
         <Link to="/settings" className="nav-settings" title="Account settings">
