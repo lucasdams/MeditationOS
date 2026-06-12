@@ -16,6 +16,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells; background-tab-safe timer; saves as a session and earns XP
 - ✅ Sanctuary — a garden you grow by practicing: smoothly-growing **vector (SVG)** plants across **nature, structures & companions** grow from your practice and you **choose what to grow next** (milestone-unlocked by points or a streak), with a streak-driven **vitality**, on a dedicated page with a completion celebration. See [Sanctuary design](docs/design/sanctuary.md)
 - ✅ Gratitude tool — pick from 37 themes (including a free-form **custom** option), get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
+- ✅ Meditation journal — write reflections, optionally **tied to a session**, with an optional **mood** tag from a fixed palette; full CRUD, filterable. See [Journaling design](docs/design/journaling.md)
 - ✅ Daily practice reminders — opt-in email nudge at your local hour, **timezone-aware** and **idempotent**, skipped on days you've already practiced; runs with no email provider in dev (logs instead of sends). See [Notifications design](docs/design/notifications.md)
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — protected routes, loading/empty/error states
@@ -274,6 +275,7 @@ The engineering reasoning behind the build — written up as it's decided, so th
 | [API Contract (V1)](docs/design/api-v1.md) | Endpoints, request/response shapes, status codes, and the error envelope |
 | [Gamification](docs/design/gamification.md) | XP, levels, daily quests, streaks — all computed from activity (per-user local day) |
 | [Sanctuary](docs/design/sanctuary.md) | A garden grown by practicing — one item at a time, choose the next; one append-only table, everything else computed |
+| [Journaling](docs/design/journaling.md) | Written reflections, optionally linked to a session, with a fixed mood palette — full CRUD, user-scoped |
 | [Notifications & Email](docs/design/notifications.md) | The outbound email channel (logs with no provider) and the daily practice reminder — timezone-aware, idempotent, skips days you practiced |
 
 ### Architecture Decision Records

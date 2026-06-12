@@ -122,11 +122,12 @@ sending when no provider is configured. See [notifications design](design/notifi
 
 ## Version 2: Journaling & Analytics
 
-### Meditation Journal
+### Meditation Journal ✅ shipped (early)
 
-Users write reflections after sessions: challenges, insights, emotional state.
+Users write reflections, optionally tied to a session, with an optional mood tag from
+a fixed palette. Full CRUD, user-scoped. See [journaling design](design/journaling.md).
 
-**Demonstrates:** rich data models, text storage
+**Demonstrates:** rich data models, text storage, cross-entity links (journal ↔ session)
 
 ### Analytics
 

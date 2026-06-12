@@ -34,9 +34,10 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 ## Journaling & Insights
 
 - [x] **Gratitude tool** — category → AI-suggested prompts (Claude Haiku, curated fallback) or free text; earns XP — see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md)
+- [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD, filterable — see [journaling design](design/journaling.md)
 - [ ] Journal prompts tied to session type or streak milestones
-- [ ] Mood tagging and trend charts over time
-- [ ] Search and filter past journal entries
+- [ ] Mood **trend charts** over time (mood tagging shipped; charts are V2 analytics)
+- [ ] Search and filter past journal entries (by text; mood filter shipped)
 - [ ] Weekly/monthly practice summary emails or in-app reports
 
 ## Goals & Gamification

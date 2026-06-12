@@ -40,6 +40,9 @@ export default function AppHeader() {
         <Link to="/gratitude" className="nav-gratitude">
           🙏 Gratitude
         </Link>
+        <Link to="/journal" className="nav-journal">
+          📓 Journal
+        </Link>
         <Link to="/sanctuary" className="nav-sanctuary">
           🌱 Sanctuary
         </Link>

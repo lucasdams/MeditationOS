@@ -15,10 +15,10 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
    │ N        │ N         │ N           │ N         │ N        │ N
 ┌──▼───────┐ ┌▼─────────┐ ┌▼──────────┐ ┌▼─────────┐ ┌▼───────┐ ┌▼───────┐
 │ sessions │ │breathing_│ │gratitude_ │ │sanctuary_│ │journals│ │ goals  │
-│          │ │patterns  │ │entries    │ │plantings │ │  (V2)  │ │  (V2)  │
-└──┬───────┘ └──────────┘ └───────────┘ └──────────┘ └────────┘ └────────┘
-   │ 0..1 (a session may reference the pattern it used)
-   └────────────► breathing_patterns
+│          │ │patterns  │ │entries    │ │plantings │ │        │ │  (V2)  │
+└──┬───────┘ └──────────┘ └───────────┘ └──────────┘ └───▲────┘ └────────┘
+   │ 0..1 (a session may reference the pattern it used)   │ 0..1
+   └────────────► breathing_patterns                      └─ a journal may reference its session
 ```
 
 All child tables carry `user_id` and are always queried scoped to the authenticated user.
@@ -120,18 +120,22 @@ The user's garden, stored as an **append-only ordered list of what they chose to
 - **No wallet, no spend ledger, no balance** — just the sequence of choices. Grow cost, stage, completion, the next-unlocked options, and vitality are all derived in `sanctuary_service` from cumulative practice points (the same XP unit the dashboard computes) and the current streak.
 - A new user's garden is seeded with a `tree` at `position = 0` on first read (no write until they plant their next item).
 
-### `journals` (V2)
+### `journals`
+
+A written reflection, optionally tied to a session, with an optional mood tag.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
-| `session_id` | UUID | FK → `sessions.id`, `ON DELETE SET NULL`, NULL |
+| `session_id` | UUID | FK → `sessions.id`, `ON DELETE SET NULL`, NULL — deleting the session keeps the reflection |
 | `body` | text | NOT NULL |
-| `mood` | text | NULL (tag) |
+| `mood` | text | NULL, CHECK in a fixed palette (`calm`, `content`, `focused`, `energized`, `grateful`, `neutral`, `restless`, `anxious`, `tired`, `low`) — see `app/models/journal.py` `MOODS` |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Index:** `(user_id, created_at)`.
+
+- Like gratitude categories, `mood` is a **fixed palette** (constrained by a CHECK) so entries stay filterable; the reflection itself is free text. A linked session is validated to belong to the caller on write.
 
 ### `goals` (V2)
 

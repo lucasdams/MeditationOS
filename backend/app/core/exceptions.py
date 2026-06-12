@@ -31,3 +31,7 @@ class InvalidResetTokenError(Exception):
 
 class InvalidVerificationTokenError(Exception):
     """Raised when an email-verification token is invalid or expired."""
+
+
+class LinkedSessionNotFoundError(Exception):
+    """Raised when a journal links a session that isn't the caller's (or doesn't exist)."""

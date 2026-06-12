@@ -10,6 +10,7 @@ import HistoryPage from './pages/HistoryPage'
 import BreathePage from './pages/BreathePage'
 import MeditatePage from './pages/MeditatePage'
 import GratitudePage from './pages/GratitudePage'
+import JournalPage from './pages/JournalPage'
 import SanctuaryPage from './pages/SanctuaryPage'
 import SettingsPage from './pages/SettingsPage'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/breathe" element={<BreathePage />} />
         <Route path="/meditate" element={<MeditatePage />} />
         <Route path="/gratitude" element={<GratitudePage />} />
+        <Route path="/journal" element={<JournalPage />} />
         <Route path="/sanctuary" element={<SanctuaryPage />} />
         <Route path="/sessions" element={<HistoryPage />} />
         <Route path="/sessions/new" element={<LogSessionPage />} />
