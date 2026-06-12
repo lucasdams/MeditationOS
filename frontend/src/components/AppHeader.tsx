@@ -54,9 +54,12 @@ export default function AppHeader() {
         </Link>
       </nav>
       <div className="app-user">
-        <Link to="/settings" className="nav-settings" title="Settings">
-          {user?.username}
-          {level !== null && ` · Lv ${level}`}
+        <Link to="/settings" className="nav-settings" title="Account settings">
+          <span aria-hidden="true">⚙️</span>
+          <span>
+            {user?.username}
+            {level !== null && ` · Lv ${level}`}
+          </span>
         </Link>
         <button type="button" onClick={handleLogout}>
           Log out
