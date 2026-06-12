@@ -16,7 +16,9 @@ Read when adding routes, auth, middleware, or anything that reads or writes user
 ## Input & API
 
 - Validate with Pydantic; reject unexpected fields.
-- Rate-limit login and password-reset endpoints.
+- Rate-limit login and password-reset endpoints (per-IP via `slowapi`).
+- Cap per-user, per-day creation of user data (sessions/gratitude/journals/goals) to
+  resist spam — see `app/core/limits.py` (`DAILY_CREATE_LIMIT`) → `429`.
 - CORS: known frontend origins only in production.
 
 ## Secrets
