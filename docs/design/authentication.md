@@ -93,8 +93,9 @@ Because V1 uses stateless JWTs, logout clears the cookie but the token stays val
 ## Hardening checklist (tracked against `.claude/rules/security.md`)
 
 - [x] `argon2` hashing; plaintext never stored or logged
-- [x] Login + Google + guest + password-reset + verification-resend rate-limited (per-IP); _register not yet; per-email still to do_
+- [x] Login + register + Google + guest + password-reset + verification-resend rate-limited (per-IP); _per-email still to do_
 - [x] Per-user **daily creation cap** on sessions / gratitude / journals / goals (`DAILY_CREATE_LIMIT`, default 200/UTC-day) → `429` (anti-spam on data writes); _per-IP burst limit on writes still to do_
+- [x] **Security response headers** on every response — `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, and `Strict-Transport-Security` in production (see `app/core/security_headers.py`)
 - [x] Generic `401` on **login** failure; _registration still returns `409` (enumerable) — see tradeoffs below_
 - [x] `Secure` cookie flag enforced outside local dev (`ENVIRONMENT=production`)
 - [x] CORS restricted to configured origins; credentials allowed only for those

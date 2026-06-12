@@ -52,7 +52,12 @@ def _set_auth_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def register(data: UserCreate, db: Session = Depends(get_db)) -> UserRead:
+@limiter.limit(settings.login_rate_limit)
+def register(
+    request: Request,  # required by the rate limiter
+    data: UserCreate,
+    db: Session = Depends(get_db),
+) -> UserRead:
     try:
         return user_service.create_user(db, data)
     except EmailAlreadyExistsError:
