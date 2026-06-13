@@ -13,6 +13,8 @@ def _make(**overrides) -> SessionRead:
         "duration_seconds": 600,
         "occurred_at": datetime(2026, 1, 1, 8, 0, tzinfo=UTC),
         "notes": None,
+        "focus": None,
+        "calm": None,
         "inhale_seconds": None,
         "exhale_seconds": None,
         "cycles_completed": None,

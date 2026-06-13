@@ -7,6 +7,7 @@ import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -108,6 +109,33 @@ def set_password(
     user.password_hash = hash_password(new_password)
     db.commit()
     db.refresh(user)
+    return user
+
+
+def change_email(db: Session, user: User, *, new_email: str, current_password: str) -> User:
+    """Change the account email after re-authenticating with the current password.
+    Resets verification and emails a confirmation link to the new address.
+
+    Raises InvalidPasswordError if the password is wrong (or the account has none,
+    e.g. Google-only — it must set a password first), or EmailAlreadyExistsError if
+    another account already uses the new email. A no-op if the email is unchanged.
+    """
+    if user.password_hash is None or not verify_password(current_password, user.password_hash):
+        raise InvalidPasswordError()
+    if user.email.lower() == new_email.lower():
+        return user  # unchanged — don't reset verification or re-send
+    existing = get_user_by_email(db, new_email)
+    if existing is not None and existing.id != user.id:
+        raise EmailAlreadyExistsError(new_email)
+    user.email = new_email
+    user.email_verified = False
+    try:
+        db.commit()
+    except IntegrityError:  # lost a race to the unique email constraint
+        db.rollback()
+        raise EmailAlreadyExistsError(new_email) from None
+    db.refresh(user)
+    send_verification_email(db, user)
     return user
 
 

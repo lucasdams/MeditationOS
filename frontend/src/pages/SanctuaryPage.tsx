@@ -154,7 +154,7 @@ export default function SanctuaryPage() {
           )}
 
           <p className="muted sanctuary-summary">
-            {plantings.length} {plantings.length === 1 ? 'thing' : 'things'} growing in your garden
+            {plantings.length} {plantings.length === 1 ? 'planting' : 'plantings'} in your sanctuary
           </p>
         </>
       )}

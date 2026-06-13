@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { goalService } from '../services/goals'
+import { ACTIVITY_COLORS } from '../lib/colors'
+import { useToast } from '../context/ToastContext'
 import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
 const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = [
@@ -8,6 +10,7 @@ const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = [
   { key: 'breathe', label: 'Breathe', emoji: '🫁' },
   { key: 'gratitude', label: 'Write gratitude', emoji: '🙏' },
   { key: 'journal', label: 'Journal', emoji: '📓' },
+  { key: 'custom', label: 'Custom habit…', emoji: '⭐' },
 ]
 const ACTIVITY_META: Record<GoalActivity, { label: string; emoji: string }> = Object.fromEntries(
   ACTIVITIES.map((a) => [a.key, { label: a.label, emoji: a.emoji }]),
@@ -21,19 +24,25 @@ const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
   { label: 'Once a week', count: 1, period: 'week' },
   { label: '3× a week', count: 3, period: 'week' },
   { label: '5× a week', count: 5, period: 'week' },
+  { label: '25 times total', count: 25, period: 'total' },
+  { label: '50 times total', count: 50, period: 'total' },
+  { label: '100 times total', count: 100, period: 'total' },
 ]
 
 function cadenceLabel(count: number, period: GoalPeriod): string {
+  if (period === 'total') return `${count} times total`
   const times = count === 1 ? 'Once' : count === 2 ? 'Twice' : `${count}×`
   return `${times} a ${period}`
 }
 
 export default function GoalsPage() {
+  const { showToast } = useToast()
   const [goals, setGoals] = useState<Goal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<GoalStatus>('active')
 
   const [activity, setActivity] = useState<GoalActivity>('meditate')
+  const [label, setLabel] = useState('') // the habit name, for custom goals
   const [cadenceIdx, setCadenceIdx] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
@@ -50,9 +59,16 @@ export default function GoalsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view])
 
+  const isCustom = activity === 'custom'
+  const trimmedLabel = label.trim()
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (isCustom && !trimmedLabel) {
+      setError('Give your custom habit a name.')
+      return
+    }
     const cadence = CADENCES[cadenceIdx]
     setSubmitting(true)
     try {
@@ -60,12 +76,28 @@ export default function GoalsPage() {
         activity,
         period: cadence.period,
         count: cadence.count,
+        ...(isCustom ? { label: trimmedLabel } : {}),
       })
       if (view === 'active') setGoals((prev) => [created, ...(prev ?? [])])
+      showToast('Goal created.')
+      if (isCustom) setLabel('')
     } catch {
       setError('Could not create that goal.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function toggleCheckin(goal: Goal) {
+    setError(null)
+    try {
+      const updated = goal.checked_in_today
+        ? await goalService.undoCheckIn(goal.id)
+        : await goalService.checkIn(goal.id)
+      setGoals((prev) => prev?.map((g) => (g.id === updated.id ? updated : g)) ?? null)
+      showToast(updated.checked_in_today ? 'Marked done today.' : 'Check-in undone.')
+    } catch {
+      setError('Could not update that check-in.')
     }
   }
 
@@ -74,6 +106,7 @@ export default function GoalsPage() {
     try {
       await goalService.setStatus(id, status)
       setGoals((prev) => prev?.filter((g) => g.id !== id) ?? null)
+      showToast(status === 'archived' ? 'Goal archived.' : 'Goal reactivated.')
     } catch {
       setError('Could not update that goal.')
     }
@@ -84,6 +117,7 @@ export default function GoalsPage() {
     try {
       await goalService.remove(id)
       setGoals((prev) => prev?.filter((g) => g.id !== id) ?? null)
+      showToast('Goal deleted.')
     } catch {
       setError('Could not delete that goal.')
     }
@@ -113,6 +147,20 @@ export default function GoalsPage() {
                 </option>
               ))}
             </select>
+
+            {isCustom && (
+              <>
+                <label htmlFor="habit-name">Habit name</label>
+                <input
+                  id="habit-name"
+                  type="text"
+                  value={label}
+                  maxLength={40}
+                  placeholder="e.g. Gym, Read, Stretch"
+                  onChange={(e) => setLabel(e.target.value)}
+                />
+              </>
+            )}
 
             <label htmlFor="cadence">How often?</label>
             <select
@@ -167,12 +215,17 @@ export default function GoalsPage() {
         )}
         {goals?.map((g) => {
           const meta = ACTIVITY_META[g.activity]
-          const when = g.period === 'day' ? 'today' : 'this week'
+          const when = g.period === 'day' ? 'today' : g.period === 'week' ? 'this week' : 'all-time'
+          const isCustomGoal = g.activity === 'custom'
           return (
-            <article key={g.id} className="goal-card">
+            <article
+              key={g.id}
+              className="goal-card"
+              style={{ ['--activity-accent' as string]: ACTIVITY_COLORS[g.activity] }}
+            >
               <div className="goal-card-head">
                 <strong>
-                  {meta.emoji} {meta.label}
+                  {meta.emoji} {isCustomGoal ? g.label : meta.label}
                 </strong>
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
                 {g.achieved && <span className="goal-achieved">✓ Done</span>}
@@ -186,13 +239,22 @@ export default function GoalsPage() {
               <div className="goal-card-meta muted">
                 {g.done} / {g.count} {when}
               </div>
+              {isCustomGoal && g.status === 'active' && (
+                <button
+                  type="button"
+                  className={g.checked_in_today ? 'goal-checkin done' : 'goal-checkin'}
+                  onClick={() => toggleCheckin(g)}
+                >
+                  {g.checked_in_today ? '✓ Done today (tap to undo)' : 'Mark done today'}
+                </button>
+              )}
               <div className="goal-card-actions">
                 {g.status === 'active' ? (
-                  <button type="button" className="link-danger" onClick={() => archive(g.id, 'archived')}>
+                  <button type="button" className="link-neutral" onClick={() => archive(g.id, 'archived')}>
                     Archive
                   </button>
                 ) : (
-                  <button type="button" className="link-danger" onClick={() => archive(g.id, 'active')}>
+                  <button type="button" className="link-neutral" onClick={() => archive(g.id, 'active')}>
                     Reactivate
                   </button>
                 )}

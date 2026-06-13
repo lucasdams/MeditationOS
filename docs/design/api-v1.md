@@ -151,14 +151,17 @@ POST /api/v1/sessions
   "inhale_seconds": 5,
   "exhale_seconds": 5,
   "cycles_completed": 60,
-  "notes": "calm"
+  "notes": "calm",
+  "focus": 4,
+  "calm": 5
 }
 → 201
 { "id": "…", "type": "resonance_breathing", "duration_seconds": 600,
   "breaths_per_minute": 6, "occurred_at": "2026-06-09T07:30:00", "created_at": "…" }
 ```
 
-`breaths_per_minute` is computed in the response, never stored.
+`breaths_per_minute` is computed in the response, never stored. `focus` and `calm`
+are an optional post-session self-rating (1–5 each); both nullable.
 
 ## Breathing patterns ✅ implemented
 
@@ -218,7 +221,7 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | POST | `/journals` | ✓ | Create `{ body, mood?, session_id? }` → `201`; `404` if a linked session isn't the caller's |
-| GET | `/journals` | ✓ | Caller's reflections, newest first; `?mood=` filter, paginated |
+| GET | `/journals` | ✓ | Caller's reflections, newest first; `?mood=` and `?q=` (text search) filters, paginated |
 | GET | `/journals/{id}` | ✓ | `404` if not owned |
 | PATCH | `/journals/{id}` | ✓ | Edit `body` / `mood` |
 | DELETE | `/journals/{id}` | ✓ | `204`; `404` if not owned |
@@ -243,26 +246,32 @@ is stored; **progress in the current period is computed on read**.
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| POST | `/goals` | ✓ | Create `{ activity, period, count }` → `201` |
+| POST | `/goals` | ✓ | Create `{ activity, period, count, label? }` → `201` |
 | GET | `/goals` | ✓ | Caller's goals with this-period progress; `?status=active\|archived` filter |
 | GET | `/goals/{id}` | ✓ | `404` if not owned |
 | PATCH | `/goals/{id}` | ✓ | Edit `count` / `period`, or archive/reactivate via `status` |
 | DELETE | `/goals/{id}` | ✓ | `204`; `404` if not owned |
+| POST | `/goals/{id}/checkins` | ✓ | Custom goals only — mark today done (idempotent); `400` if not custom, `404` if not owned |
+| DELETE | `/goals/{id}/checkins/today` | ✓ | Custom goals only — undo today's check-in; `400` if not custom |
 
 ```
 POST /api/v1/goals
 { "activity": "journal", "period": "day", "count": 1 }
 → 201
-{ "id": "…", "activity": "journal", "period": "day", "count": 1, "status": "active",
-  "done": 0, "progress": 0.0, "achieved": false, "created_at": "…" }
+{ "id": "…", "activity": "journal", "label": null, "period": "day", "count": 1,
+  "status": "active", "done": 0, "progress": 0.0, "achieved": false,
+  "checked_in_today": false, "created_at": "…" }
 ```
 
 `activity` ∈ `meditate` (any session) · `breathe` (resonance-breathing sessions) ·
-`gratitude` · `journal`. `period` ∈ `day` (today) · `week` (a rolling 7-day window).
-`count` is the target times per period (positive int). `status` is `active` or
-`archived`. The response adds **computed** fields — `done` (times the activity
-happened this period), `progress` (0–1, capped), and `achieved` (`done >= count`) —
-counted from the user's own activity; nothing about progress is stored.
+`gratitude` · `journal` · `custom` (a self-tracked habit). `period` ∈ `day` (today) ·
+`week` (a rolling 7-day window). `count` is the target times per period (positive int).
+`status` is `active` or `archived`. A `custom` goal **requires** a `label` (its name,
+≤40 chars) and is advanced via the check-in endpoints rather than derived activity;
+built-in activities **reject** `label`. The response adds **computed** fields — `done`,
+`progress` (0–1, capped), `achieved` (`done >= count`), and `checked_in_today` (custom
+only). For built-in activities `done` is counted from the user's own activity (nothing
+stored); for custom goals it's the count of stored daily check-ins.
 
 ## Dashboard ✅ implemented
 

@@ -47,3 +47,8 @@ class NotAGuestError(Exception):
 
 class DailyLimitError(Exception):
     """Raised when a user hits the per-day creation cap for a resource (anti-spam)."""
+
+
+class GoalNotCheckableError(Exception):
+    """Raised when checking in on a non-custom goal — built-in activities derive
+    their progress and can't be manually marked done."""

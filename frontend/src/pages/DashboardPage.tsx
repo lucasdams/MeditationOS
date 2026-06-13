@@ -4,6 +4,8 @@ import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import Achievements from '../components/Achievements'
+import { ACTIVITY_COLORS, type Activity } from '../lib/colors'
 import type { DashboardStats } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
@@ -84,8 +86,13 @@ export default function DashboardPage() {
           <ul className="quest-list">
             {stats.daily_quests.map((q) => {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
+              const accent = ACTIVITY_COLORS[q.key as Activity]
               return (
-                <li key={q.key} className={q.done ? 'quest done' : 'quest'}>
+                <li
+                  key={q.key}
+                  className={q.done ? 'quest done' : 'quest'}
+                  style={accent ? { ['--activity-accent' as string]: accent } : undefined}
+                >
                   <span className="quest-check" aria-hidden="true">
                     {q.done ? '✓' : '○'}
                   </span>
@@ -152,6 +159,8 @@ export default function DashboardPage() {
           </section>
 
           <ActivityHeatmap />
+
+          <Achievements stats={stats} />
         </>
       )}
     </main>

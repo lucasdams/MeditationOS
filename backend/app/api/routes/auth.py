@@ -23,6 +23,7 @@ from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.user import (
     ClaimAccount,
+    EmailUpdate,
     EmailVerify,
     GoogleLogin,
     PasswordResetConfirm,
@@ -217,6 +218,32 @@ def change_password(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
+        ) from None
+
+
+@router.post("/email", response_model=UserRead)
+@limiter.limit(settings.login_rate_limit)  # sends an email — guard against abuse
+def change_email(
+    request: Request,  # required by the rate limiter
+    data: EmailUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    """Change the account email (re-auth with the current password). The new
+    address is unverified until the emailed link is confirmed."""
+    try:
+        return user_service.change_email(
+            db, current_user, new_email=data.new_email, current_password=data.current_password
+        )
+    except InvalidPasswordError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        ) from None
+    except EmailAlreadyExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That email already has an account",
         ) from None
 
 

@@ -11,13 +11,14 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
 - [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
-- [ ] Export session history (CSV / JSON)
+- [x] **Edit & delete logged sessions** — inline edit (type, duration, time, notes) and delete from the history list
+- [x] **Export session history** — one-click CSV download from the history page (JSON is also available via the full account export in Settings)
 - [ ] Session visibility — public/private per session (default private); public sessions are shareable to friends (needs the social layer). Planned `sessions.visibility` column.
 
 ## HRV & Breathing
 
 - [x] **Breaths-per-minute selector** (1–10, stepped) with the last pace remembered locally; inhale/exhale derived from the rate
-- [x] **Selectable ambient soundscape** (synthesized ocean / rain / stream) + a transition chime, and selectable meditation **bell timbres** (singing bowl / chime / gong / soft)
+- [x] **Selectable ambient soundscape** (synthesized ocean / rain / stream) + a transition chime on the breathing pacer; the meditation timer rings a soft singing-bowl bell at start / interval / end
 - [ ] Breathing pattern library shared across devices
 - [ ] Session stats per pattern (which rates users practice most, time of day)
 - [ ] Optional breath holds between inhale and exhale
@@ -36,11 +37,11 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 ## Journaling & Insights
 
 - [x] **Gratitude tool** — category → AI-suggested prompts (Claude Haiku, curated fallback) or free text; earns XP — see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md)
-- [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD, filterable — see [journaling design](design/journaling.md)
+- [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD (incl. **inline edit** of body + mood), filterable; **earns XP** (parity with gratitude) — see [journaling design](design/journaling.md)
 - [ ] Journal prompts tied to session type or streak milestones
 - [x] **Analytics page** — SQL-aggregated insights: minutes-per-week, by type / weekday / time-of-day, and a **journal-mood distribution** — see [analytics design](design/analytics.md)
 - [ ] Mood **over time** (moods plotted across weeks) and month-vs-month comparisons — beyond the current distribution
-- [ ] Search and filter past journal entries (by text; mood filter shipped)
+- [x] **Search past journal entries by text** (case-insensitive substring; mood filter also available) — ranked full-text search is the open item
 - [ ] Weekly/monthly practice summary emails or in-app reports
 
 ## Goals & Gamification
@@ -49,8 +50,10 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [x] **Streak bonus XP** (scaled to your longest streak)
 - [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, +15 per daily-activity day
 - [x] **Goals** — recurring habits: an activity (meditate / breathe / gratitude / journal) done a count of times per day/week, with this-period progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
+- [x] **Custom-habit goals** — track anything the app doesn't record ("Gym", "Read") with a daily **check-in**; the one stored-progress path (a deliberate exception to ADR-0009)
 - [ ] More cadences (custom counts, calendar-aligned weeks, monthly)
-- [ ] Achievement badges for streaks and hour milestones
+- [ ] Multiple check-ins per day for a custom habit (today: one per day)
+- [x] **Achievement badges** for session, hour, and streak milestones — derived from stats (no stored state), shown on the dashboard with earned/locked states
 - [ ] Long-term cumulative targets (e.g. 100 total hours) — distinct from the recurring-habit goals
 
 ### Sanctuary — build & upgrade your space (streak rewards)
@@ -142,6 +145,7 @@ sessions stay private unless a member chooses otherwise.
 - [x] **Forgot-password reset** via an emailed single-use link — see [auth design](design/authentication.md#password-reset--implemented)
 - [x] **Email verification** (emailed link; Google sign-in arrives verified) — see [auth design](design/authentication.md#email-verification--implemented)
 - [x] **Guest accounts** — "use without signing up"; an anonymous account you can later **claim** (add email + password) without losing data — see [auth design](design/authentication.md#guest-accounts--implemented)
+- [x] **Change account email** — from Settings, re-authenticated with the current password; the new address is reset to unverified and a confirmation link is emailed
 - [ ] Other social providers (Apple, GitHub)
 - [ ] Multi-factor authentication (TOTP)
 

@@ -120,6 +120,16 @@ body {
   color: #0369a1;
 }
 
+.app-nav a.nav-gratitude {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.app-nav a.nav-journal {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
 /* Analytics page */
 .analytics-stats {
   display: flex;
@@ -158,7 +168,7 @@ body {
 
 .bar-row {
   display: grid;
-  grid-template-columns: 7rem 1fr 3.5rem;
+  grid-template-columns: 7rem max-content 1fr;
   align-items: center;
   gap: 0.6rem;
   font-size: 0.85rem;
@@ -179,8 +189,10 @@ body {
 }
 
 .bar-value {
-  text-align: right;
+  text-align: left;
   color: #6b6b70;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .weeks {
@@ -195,6 +207,44 @@ body {
   height: 100%;
   display: flex;
   align-items: flex-end;
+}
+
+.mood-stack {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse; /* segments pile from the bottom */
+}
+
+.mood-seg {
+  width: 100%;
+  min-height: 2px;
+}
+
+.mood-seg:last-child {
+  border-radius: 3px 3px 0 0; /* round the top of the stack */
+}
+
+.mood-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: #6b6b70;
+}
+
+.mood-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mood-legend-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .week-bar {
@@ -725,13 +775,41 @@ body {
   font-weight: 600;
 }
 
-.journal-entry-head .link-danger {
+.journal-entry-actions {
   margin-left: auto;
+  display: flex;
+  gap: 0.75rem;
 }
 
 .journal-body {
   margin: 0.4rem 0 0;
   white-space: pre-wrap;
+}
+
+.journal-search {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.journal-edit {
+  margin-top: 0.5rem;
+}
+
+.journal-edit textarea,
+.journal-edit select {
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.journal-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.journal-edit-actions button:first-child {
+  width: auto;
+  padding: 0.4rem 1rem;
 }
 
 .journal-session {
@@ -765,8 +843,10 @@ body {
 }
 
 .goal-card {
-  padding: 0.85rem 0;
+  --activity-accent: #6366f1;
+  padding: 0.85rem 0 0.85rem 0.75rem;
   border-top: 1px solid #ececf0;
+  border-left: 3px solid var(--activity-accent);
 }
 
 .goal-card-head {
@@ -809,12 +889,31 @@ body {
 
 .goal-bar-fill {
   height: 100%;
-  background: #6366f1;
+  background: var(--activity-accent);
   border-radius: 999px;
 }
 
 .goal-bar-fill.done {
   background: #22c55e;
+}
+
+/* Custom-habit "Mark done today" toggle. */
+.goal-checkin {
+  margin: 0.5rem 0 0;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--activity-accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.goal-checkin.done {
+  color: #15803d;
+  background: #dcfce7;
 }
 
 .goal-card-actions {
@@ -894,6 +993,18 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* A clear, consistent keyboard-focus ring across all interactive elements. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .error {
   color: #b00020;
   font-size: 0.9rem;
@@ -950,19 +1061,118 @@ button:disabled {
 }
 
 .session-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  --session-accent: #9ca3af;
   background: #fff;
   border: 1px solid #e5e5ea;
+  border-left: 4px solid var(--session-accent);
   border-radius: 12px;
-  padding: 0.9rem 1.1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+/* The whole collapsed row is the toggle: type + a compact summary + chevron. */
+.session-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0.9rem 1.1rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-card-summary {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #6b6b70;
+  white-space: nowrap;
+}
+
+.session-card-chevron {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.session-card-details {
+  padding: 0 1.1rem 0.9rem;
+  border-top: 1px solid #f0f0f2;
+  padding-top: 0.75rem;
+}
+
+.session-card-actions {
+  display: flex;
+  gap: 0.9rem;
+  margin-top: 0.6rem;
+}
+
+/* Inline session edit form */
+.session-edit label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b6b70;
+  margin-top: 0.5rem;
+}
+
+.session-edit label select,
+.session-edit label input,
+.session-edit label textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.2rem;
+  font-weight: 400;
+  color: #1c1c1e;
+}
+
+.session-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.7rem;
+}
+
+.session-edit-actions button:first-child {
+  width: auto;
+  margin: 0;
+  padding: 0.4rem 1rem;
+}
+
+/* One calm accent colour per meditation type, so the list reads at a glance. */
+.session-card--mindfulness {
+  --session-accent: #14b8a6;
+}
+.session-card--body_scan {
+  --session-accent: #8b5cf6;
+}
+.session-card--walking {
+  --session-accent: #f59e0b;
+}
+.session-card--loving_kindness {
+  --session-accent: #ec4899;
+}
+.session-card--resonance_breathing {
+  --session-accent: #3b82f6;
+}
+.session-card--other {
+  --session-accent: #9ca3af;
+}
+
 .session-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 700;
+}
+
+.session-card-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--session-accent);
+  flex-shrink: 0;
 }
 
 .session-card-meta {
@@ -1019,6 +1229,27 @@ button:disabled {
   border: none;
   font-size: 0.9rem;
   cursor: pointer;
+}
+
+.link-danger:hover {
+  text-decoration: underline;
+}
+
+/* Neutral, non-destructive inline action (Archive, Reactivate) — visually
+   distinct from the red Delete so they're not mistaken for each other. */
+.link-neutral {
+  margin: 0;
+  width: auto;
+  padding: 0;
+  background: none;
+  color: #4f46e5;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.link-neutral:hover {
+  text-decoration: underline;
 }
 
 .level-card {
@@ -1385,11 +1616,13 @@ button:disabled {
 }
 
 .quest {
+  --activity-accent: #c4c4c9;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0 0.5rem 0.75rem;
   border-bottom: 1px solid #f0f0f3;
+  border-left: 3px solid var(--activity-accent);
 }
 
 .quest:last-child {
@@ -1398,7 +1631,7 @@ button:disabled {
 
 .quest-check {
   font-weight: 700;
-  color: #c4c4c9;
+  color: var(--activity-accent);
   width: 1.2rem;
   text-align: center;
 }
@@ -1877,7 +2110,8 @@ button:disabled {
 .breathe-info summary {
   cursor: pointer;
   font-weight: 600;
-  color: #4f46e5;
+  font-size: 0.9rem;
+  color: #1c1c1e;
 }
 
 .breathe-info h3 {
@@ -2025,4 +2259,111 @@ button:disabled {
 :root[data-dayphase='night'] .sanctuary-sky-label,
 :root[data-dayphase='dusk'] .sanctuary-sky-label {
   color: rgba(255, 255, 255, 0.75);
+}
+
+/* Achievements — milestone badges on the dashboard. */
+.achievements {
+  margin: 1.5rem 0;
+}
+
+.achievements-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.achievements-head h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.badge-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.3rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.badge-emoji {
+  font-size: 1.5rem;
+}
+
+.badge-label {
+  font-size: 0.7rem;
+  color: #6b6b70;
+  line-height: 1.2;
+}
+
+/* Locked badges are greyed and faded until earned. */
+.badge:not(.earned) {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.badge.earned {
+  border-color: #c7d2fe;
+  background: #f5f3ff;
+}
+
+/* Toasts — transient, bottom-centred confirmations. */
+.toast-stack {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast--success {
+  background: #059669;
+}
+
+.toast--error {
+  background: #b00020;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }

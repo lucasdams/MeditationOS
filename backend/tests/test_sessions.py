@@ -17,7 +17,22 @@ def test_create_session(client):
     assert body["type"] == "mindfulness"
     assert body["duration_seconds"] == 600
     assert body["breaths_per_minute"] is None
+    assert body["focus"] is None and body["calm"] is None
     assert "id" in body
+
+
+def test_create_with_focus_calm_rating(client):
+    _auth(client, "rate@example.com")
+    resp = client.post("/api/v1/sessions", json={**MINDFUL, "focus": 4, "calm": 5})
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["focus"] == 4 and body["calm"] == 5
+
+
+def test_rating_out_of_range_rejected(client):
+    _auth(client, "rate2@example.com")
+    assert client.post("/api/v1/sessions", json={**MINDFUL, "focus": 6}).status_code == 422
+    assert client.post("/api/v1/sessions", json={**MINDFUL, "calm": 0}).status_code == 422
 
 
 def test_create_resonance_session_reports_bpm(client):

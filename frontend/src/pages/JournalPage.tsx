@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { sessionService } from '../services/sessions'
+import { MOOD_COLORS, tint } from '../lib/colors'
+import { useToast } from '../context/ToastContext'
 import type { Journal, MeditationType, Mood, Session } from '../types'
 
 const MOODS: Mood[] = [
@@ -33,6 +35,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const PAGE = 50
 
 export default function JournalPage() {
+  const { showToast } = useToast()
   const [entries, setEntries] = useState<Journal[] | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -43,30 +46,53 @@ export default function JournalPage() {
   const [mood, setMood] = useState<Mood | ''>('')
   const [sessionId, setSessionId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [query, setQuery] = useState('') // text search over reflections
 
+  // Inline editing of an existing entry (body + mood).
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editBody, setEditBody] = useState('')
+  const [editMood, setEditMood] = useState<Mood | ''>('')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  // The user's sessions — used both to pick one to reflect on and to show the
+  // linked session on each entry. Fetch a generous page so older links resolve.
+  // Non-critical — fail quietly.
   useEffect(() => {
-    journalService
-      .list({ limit: PAGE, offset: 0 })
-      .then((rows) => {
-        setEntries(rows)
-        setHasMore(rows.length === PAGE)
-      })
-      .catch(() => setError('Could not load your journal.'))
-    // The user's sessions — used both to pick one to reflect on and to show the
-    // linked session on each entry. Fetch a generous page so older links resolve.
-    // Non-critical — fail quietly.
     sessionService
       .list({ limit: 200 })
       .then(setSessions)
       .catch(() => {})
   }, [])
 
+  // Entries — refetched (debounced) whenever the text search changes. Drop any
+  // in-progress edit, since the edited entry may fall out of the new results.
+  useEffect(() => {
+    setEditingId(null)
+    const t = setTimeout(
+      () => {
+        journalService
+          .list({ q: query || undefined, limit: PAGE, offset: 0 })
+          .then((rows) => {
+            setEntries(rows)
+            setHasMore(rows.length === PAGE)
+          })
+          .catch(() => setError('Could not load your journal.'))
+      },
+      query ? 300 : 0, // debounce typing; load immediately on mount/clear
+    )
+    return () => clearTimeout(t)
+  }, [query])
+
   async function loadMore() {
     if (!entries) return
     setError(null)
     setLoadingMore(true)
     try {
-      const rows = await journalService.list({ limit: PAGE, offset: entries.length })
+      const rows = await journalService.list({
+        q: query || undefined,
+        limit: PAGE,
+        offset: entries.length,
+      })
       setEntries((prev) => {
         const seen = new Set((prev ?? []).map((j) => j.id))
         return [...(prev ?? []), ...rows.filter((r) => !seen.has(r.id))]
@@ -97,10 +123,43 @@ export default function JournalPage() {
       setBody('')
       setMood('')
       setSessionId('')
+      showToast('Reflection saved.')
     } catch {
       setError('Could not save your reflection.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  function startEdit(j: Journal) {
+    setEditingId(j.id)
+    setEditBody(j.body)
+    setEditMood((j.mood as Mood | null) ?? '')
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditBody('')
+    setEditMood('')
+  }
+
+  async function saveEdit(id: string) {
+    if (!editBody.trim()) return
+    setSavingEdit(true)
+    setError(null)
+    try {
+      const updated = await journalService.update(id, {
+        body: editBody.trim(),
+        mood: editMood || null,
+      })
+      setEntries((prev) => prev?.map((j) => (j.id === id ? updated : j)) ?? null)
+      cancelEdit()
+      showToast('Reflection updated.')
+    } catch {
+      setError('Could not update that reflection.')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -109,6 +168,7 @@ export default function JournalPage() {
     try {
       await journalService.remove(id)
       setEntries((prev) => prev?.filter((j) => j.id !== id) ?? null)
+      showToast('Reflection deleted.')
     } catch {
       setError('Could not delete that reflection.')
     }
@@ -176,23 +236,87 @@ export default function JournalPage() {
       </section>
 
       <section className="journal-list">
+        <input
+          type="search"
+          className="journal-search"
+          value={query}
+          placeholder="Search your reflections…"
+          aria-label="Search reflections"
+          onChange={(e) => setQuery(e.target.value)}
+        />
         {entries === null && !error && <p>Loading…</p>}
         {entries && entries.length === 0 && (
-          <p className="muted">No reflections yet. Write your first one above.</p>
+          <p className="muted">
+            {query ? `No reflections match “${query}”.` : 'No reflections yet. Write your first one above.'}
+          </p>
         )}
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined
+          const editing = editingId === j.id
           return (
             <article key={j.id} className="journal-entry">
               <div className="journal-entry-head">
                 <span className="muted">{formatWhen(j.created_at)}</span>
-                {j.mood && <span className="journal-mood">{cap(j.mood)}</span>}
-                <button type="button" className="link-danger" onClick={() => handleDelete(j.id)}>
-                  Delete
-                </button>
+                {!editing && j.mood && (
+                  <span
+                    className="journal-mood"
+                    style={{ background: tint(MOOD_COLORS[j.mood]), color: MOOD_COLORS[j.mood] }}
+                  >
+                    {cap(j.mood)}
+                  </span>
+                )}
+                {!editing && (
+                  <span className="journal-entry-actions">
+                    <button type="button" className="link-neutral" onClick={() => startEdit(j)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="link-danger"
+                      onClick={() => handleDelete(j.id)}
+                    >
+                      Delete
+                    </button>
+                  </span>
+                )}
               </div>
-              <p className="journal-body">{j.body}</p>
-              {linked && (
+              {editing ? (
+                <div className="journal-edit">
+                  <textarea
+                    rows={4}
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    aria-label="Edit reflection"
+                  />
+                  <select
+                    value={editMood}
+                    onChange={(e) => setEditMood(e.target.value as Mood | '')}
+                    aria-label="Edit mood"
+                  >
+                    <option value="">No mood</option>
+                    {MOODS.map((m) => (
+                      <option key={m} value={m}>
+                        {cap(m)}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="journal-edit-actions">
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(j.id)}
+                      disabled={savingEdit || !editBody.trim()}
+                    >
+                      {savingEdit ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" className="link-neutral" onClick={cancelEdit}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="journal-body">{j.body}</p>
+              )}
+              {linked && !editing && (
                 <p className="journal-session">🧘 On {sessionLabel(linked)}</p>
               )}
             </article>

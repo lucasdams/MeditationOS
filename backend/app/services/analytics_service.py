@@ -19,6 +19,7 @@ from app.schemas.analytics import (
     TypeBreakdown,
     WeekdayCount,
     WeekMinutes,
+    WeekMoods,
 )
 
 _BUCKETS = ("morning", "afternoon", "evening", "night")
@@ -106,6 +107,25 @@ def get_analytics(
         )
     ]
 
+    # Mood over time — per-week journal mood counts, over the same weeks window.
+    j_local_ts = func.timezone(tz, Journal.created_at)
+    j_week = func.date(func.date_trunc("week", j_local_ts))
+    j_day = func.date(j_local_ts)
+    week_mood_counts: dict[date, dict[str, int]] = {}
+    for w, m, c in db.execute(
+        select(j_week, Journal.mood, func.count())
+        .where(
+            Journal.user_id == user_id,
+            Journal.mood.is_not(None),
+            j_day >= week_starts[0],
+        )
+        .group_by(j_week, Journal.mood)
+    ):
+        week_mood_counts.setdefault(w, {})[m] = c
+    mood_by_week = [
+        WeekMoods(week_start=w, counts=week_mood_counts.get(w, {})) for w in week_starts
+    ]
+
     return AnalyticsSummary(
         total_sessions=total_sessions,
         total_minutes=int(total_seconds) // 60,
@@ -115,4 +135,5 @@ def get_analytics(
         by_time_of_day=by_time_of_day,
         minutes_by_week=minutes_by_week,
         moods=moods,
+        mood_by_week=mood_by_week,
     )

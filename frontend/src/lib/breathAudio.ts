@@ -155,7 +155,7 @@ export class BreathAudio {
     }
     const now = ctx.currentTime
     const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
-    const peak = Math.max(0.14, this.volume * 0.4) // audible bell, still soft
+    const peak = Math.max(0.06, this.volume * 0.18) // gentle bell, sits under the ambient wash
 
     const out = ctx.createGain()
     out.gain.setValueAtTime(0.0001, now)

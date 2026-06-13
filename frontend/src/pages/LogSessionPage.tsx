@@ -29,6 +29,8 @@ export default function LogSessionPage() {
   const [minutes, setMinutes] = useState('10')
   const [occurredAt, setOccurredAt] = useState(nowLocal())
   const [notes, setNotes] = useState('')
+  const [focus, setFocus] = useState('') // '' = not rated
+  const [calm, setCalm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [reward, setReward] = useState<{
@@ -59,6 +61,8 @@ export default function LogSessionPage() {
         duration_seconds: Math.round(mins * 60),
         occurred_at: occurredAt,
         notes: notes.trim() || null,
+        focus: focus ? Number(focus) : null,
+        calm: calm ? Number(calm) : null,
       })
       const after = await dashboardService.getStats()
       // True gain from the server (XP weighting + any daily-quest/streak bonus).
@@ -107,6 +111,26 @@ export default function LogSessionPage() {
           value={occurredAt}
           onChange={(e) => setOccurredAt(e.target.value)}
         />
+
+        <label htmlFor="focus">Focus (optional)</label>
+        <select id="focus" value={focus} onChange={(e) => setFocus(e.target.value)}>
+          <option value="">Not rated</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>
+              {n} / 5
+            </option>
+          ))}
+        </select>
+
+        <label htmlFor="calm">Calm (optional)</label>
+        <select id="calm" value={calm} onChange={(e) => setCalm(e.target.value)}>
+          <option value="">Not rated</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>
+              {n} / 5
+            </option>
+          ))}
+        </select>
 
         <label htmlFor="notes">Notes (optional)</label>
         <textarea

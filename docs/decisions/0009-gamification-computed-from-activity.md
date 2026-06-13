@@ -10,6 +10,14 @@
 > — exactly the "cheap to re-tune, no migration" benefit this ADR predicted; (2) the
 > one new stored field is the user's quest **selection** (`users.quest_features`), a
 > preference, not progress. See [gamification](../design/gamification.md) for current rules.
+>
+> **Update (2026-06):** **Custom-habit goals** ("Gym", "Read") are the one place
+> progress is *stored* (`goal_checkins`, one row per local day). This is consistent
+> with the principle [ADR-0010](0010-sanctuary-cultivation.md) drew out — *store only
+> the irreducible* — because a custom habit tracks activity the app doesn't otherwise
+> record, so the check-in **is** the activity log, not a denormalization of one. The
+> built-in activities (meditate/breathe/gratitude/journal) stay fully computed; see
+> [goals design](../design/goals.md#custom-habits-stored-check-ins).
 
 ## Context
 

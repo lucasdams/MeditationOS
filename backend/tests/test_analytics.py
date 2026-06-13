@@ -43,6 +43,7 @@ def test_empty_user(client):
     ]
     assert len(body["minutes_by_week"]) == 12
     assert body["moods"] == []
+    assert len(body["mood_by_week"]) == 12 and all(w["counts"] == {} for w in body["mood_by_week"])
 
 
 def test_aggregates(client):
@@ -72,6 +73,10 @@ def test_aggregates(client):
 
     moods = {m["mood"]: m["count"] for m in body["moods"]}
     assert moods["calm"] == 1
+
+    # Mood over time — this week's bucket records the calm entry.
+    assert len(body["mood_by_week"]) == 12
+    assert body["mood_by_week"][-1]["counts"].get("calm") == 1
 
 
 def test_user_scoped(client):

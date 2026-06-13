@@ -36,6 +36,12 @@ export const authService = {
       current_password: currentPassword ?? null,
     }),
 
+  setEmail: (newEmail: string, currentPassword: string) =>
+    api.post<User>('/auth/email', {
+      new_email: newEmail,
+      current_password: currentPassword,
+    }),
+
   // hour (0–23, local) is required when enabled; omitted/null when disabling.
   setReminders: (enabled: boolean, hour: number | null) =>
     api.post<User>('/auth/reminders', { enabled, hour: enabled ? hour : null }),

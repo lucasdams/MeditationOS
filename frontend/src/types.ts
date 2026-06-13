@@ -40,6 +40,8 @@ export interface Session {
   duration_seconds: number
   occurred_at: string
   notes: string | null
+  focus: number | null // 1–5 self-rating
+  calm: number | null // 1–5 self-rating
   inhale_seconds: number | null
   exhale_seconds: number | null
   cycles_completed: number | null
@@ -52,6 +54,8 @@ export interface SessionCreate {
   duration_seconds: number
   occurred_at: string
   notes?: string | null
+  focus?: number | null
+  calm?: number | null
   inhale_seconds?: number | null
   exhale_seconds?: number | null
   cycles_completed?: number | null
@@ -116,6 +120,11 @@ export interface MoodCount {
   count: number
 }
 
+export interface WeekMoods {
+  week_start: string
+  counts: Record<string, number> // mood -> count that week
+}
+
 export interface AnalyticsSummary {
   total_sessions: number
   total_minutes: number
@@ -125,6 +134,7 @@ export interface AnalyticsSummary {
   by_time_of_day: TimeBucketCount[]
   minutes_by_week: WeekMinutes[]
   moods: MoodCount[]
+  mood_by_week: WeekMoods[]
 }
 
 export interface ActivityCalendar {
@@ -251,19 +261,21 @@ export interface JournalCreate {
   session_id?: string | null
 }
 
-export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal'
-export type GoalPeriod = 'day' | 'week'
+export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
+export type GoalPeriod = 'day' | 'week' | 'total'
 export type GoalStatus = 'active' | 'archived'
 
 export interface Goal {
   id: string
   activity: GoalActivity
+  label: string | null // habit name for custom goals; null for built-in activities
   period: GoalPeriod
   count: number // target times per period
   status: GoalStatus
   done: number // times done this period
   progress: number // 0.0 .. 1.0
   achieved: boolean
+  checked_in_today: boolean // custom goals only — is today already marked done?
   created_at: string
 }
 
@@ -271,4 +283,5 @@ export interface GoalCreate {
   activity: GoalActivity
   period: GoalPeriod
   count: number
+  label?: string // required for custom goals only
 }

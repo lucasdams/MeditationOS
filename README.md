@@ -4,28 +4,28 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete, plus early V2 (journaling & goals) — full account flows (email/password, Sign in with Google, email verification, password reset, **guest mode**), session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, a meditation journal, practice goals, an analytics page, a practice-grown Sanctuary garden, daily email reminders, and personalized daily quests/XP working locally · 206 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete, plus early V2 (journaling & goals) — full account flows (email/password, Sign in with Google, email verification, password reset, **guest mode**), session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, a meditation journal, practice goals, an analytics page, a practice-grown Sanctuary garden, daily email reminders, and personalized daily quests/XP working locally · 220 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
-- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing, **Sign in with Google** (OIDC), **email verification** (emailed link; Google arrives verified), **forgot-password reset** via an emailed single-use link, plus change-password & profile settings; public usernames + a top banner (name · level)
+- ✅ Register / log in / log out — httpOnly-cookie JWT auth, argon2 password hashing, **Sign in with Google** (OIDC), **email verification** (emailed link; Google arrives verified), **forgot-password reset** via an emailed single-use link, plus change-email, change-password & profile settings; public usernames + a top banner (name · level)
 - ✅ **Use without signing up** — a one-click **guest account** lets you try the whole app immediately, then **claim it** later (add an email + password) to keep your progress — no separate demo data path, the guest just *is* a user
 - ✅ **Your data, your call** — **export** everything as JSON and **delete your account** (cascades all data) from Settings — privacy table-stakes for a B2C app
-- ✅ Meditation sessions — full CRUD API (user-scoped), log-session form, and history list in the browser
+- ✅ Meditation sessions — full CRUD API (user-scoped), a log-session form, and a history list with **inline edit & delete** in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style activity heatmap (showing the **last ~month**, bucketed on the user's **local day**, per-user timezone)
 - ✅ Analytics — a dedicated insights page computed by **SQL**: minutes-per-week trend, practice by type, by day of week, by time of day, and journal-mood distribution (timezone-aware, nothing stored). See [Analytics design](docs/design/analytics.md)
 - ✅ Levels & XP + **personalized daily quests** — earn XP from practice (meditation **2×**/min, breathing **3×**, plus gratitude & journal entries), level up, grow an ASCII tree; each user picks **≥3** of meditate/breathe/gratitude/journal as their daily quests, with a streak bonus and a live reset countdown
 - ✅ HRV resonance breathing — animated pacer with a **1–10 breaths/min selector** (whole-second inhale/exhale at a **2:3 longer-exhale** ratio, last pace remembered) and a 1s hold at each turn, a **selectable ambient soundscape** (ocean / rain / stream) + transition chime, optional duration timer; saves as a session
-- ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells with a **selectable timbre** (bowl / chime / gong / soft); background-tab-safe timer; saves as a session and earns XP
+- ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells (a soft singing bowl) at a chosen interval and volume; background-tab-safe timer; saves as a session and earns XP
 - ✅ Seasonal + day/night theme — a subtle ambient background that shifts by **season** (auto by date, or pick one in **Settings → Appearance**) and **day phase** (dawn / day / dusk / night, from your local clock); the Sanctuary gains a sun/moon sky band
 - ✅ Sanctuary — a garden you grow by practicing: smoothly-growing **vector (SVG)** plants across **nature, structures & companions** grow from your practice and you **choose what to grow next** (milestone-unlocked by points or a streak), with a streak-driven **vitality**, on a dedicated page with a completion celebration. See [Sanctuary design](docs/design/sanctuary.md)
 - ✅ Gratitude tool — pick from 37 themes (including a free-form **custom** option), get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
 - ✅ Meditation journal — write reflections, optionally **tied to a session**, with an optional **mood** tag from a fixed palette; full CRUD, filterable. See [Journaling design](docs/design/journaling.md)
-- ✅ Goals — build **habits**: pick an activity (meditate / breathe / gratitude / journal) and a cadence (e.g. once a day, 3× a week); this-period progress is **computed from activity**, never stored, with an active/archived lifecycle. See [Goals design](docs/design/goals.md)
+- ✅ Goals — build **habits**: pick an activity (meditate / breathe / gratitude / journal) and a cadence (e.g. once a day, 3× a week); this-period progress is **computed from activity**, never stored, with an active/archived lifecycle. Plus **custom habits** ("Gym", "Read") you mark done with a daily check-in — the one stored-progress path, for things the app doesn't otherwise track. See [Goals design](docs/design/goals.md)
 - ✅ Daily practice reminders — opt-in email nudge at your local hour, **timezone-aware** and **idempotent**, skipped on days you've already practiced; runs with no email provider in dev (logs instead of sends). See [Notifications design](docs/design/notifications.md)
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — a public landing page, protected routes, loading/empty/error states, a 404 page, and an app-wide error boundary
-- ✅ 206 backend tests (pytest against Postgres) + frontend tests (Vitest + Testing Library), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 220 backend tests (pytest against Postgres) + frontend tests (Vitest + Testing Library), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 

@@ -89,6 +89,17 @@ def test_list_filters_by_mood(client):
     assert len(calm) == 1 and calm[0]["mood"] == "calm"
 
 
+def test_list_searches_body_text(client):
+    _auth(client, "j6b@example.com")
+    client.post("/api/v1/journals", json={"body": "Felt grateful and calm today"})
+    client.post("/api/v1/journals", json={"body": "Restless, hard to settle"})
+    # Case-insensitive substring match.
+    res = client.get("/api/v1/journals?q=GRATEFUL").json()
+    assert len(res) == 1 and "grateful" in res[0]["body"].lower()
+    # A literal % is treated as text, not a wildcard.
+    assert client.get("/api/v1/journals?q=%25").json() == []
+
+
 def test_update_entry(client):
     _auth(client, "j7@example.com")
     entry_id = client.post("/api/v1/journals", json=ENTRY).json()["id"]
