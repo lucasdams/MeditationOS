@@ -367,13 +367,13 @@ export default function BreathePage() {
         ariaLabel="Breaths per minute"
         prevLabel="Gentler"
         nextLabel="Harder"
+        valueSuffix={
+          <span className={`pace-difficulty d-${DIFFICULTY(bpm).key}`}>
+            {DIFFICULTY(bpm).label}
+          </span>
+        }
         onChange={selectBpm}
       />
-      <p className="pace-hint">
-        <span className={`pace-difficulty d-${DIFFICULTY(bpm).key}`}>
-          {DIFFICULTY(bpm).label}
-        </span>
-      </p>
 
       <label>Duration</label>
       <Stepper
