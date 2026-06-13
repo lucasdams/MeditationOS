@@ -3,7 +3,30 @@ import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
 import { itemLabel, VITALITY } from '../lib/sanctuaryArt'
 import SanctuaryPlant from '../components/SanctuaryPlant'
+import { useTheme } from '../context/ThemeContext'
+import { celestialFraction, SEASONS } from '../lib/theme'
 import type { SanctuaryScene } from '../types'
+
+// A small day/night band above the garden: a sun or moon that arcs across the sky
+// by the local time, over a season-tinted gradient. Purely ambient.
+function SanctuarySky() {
+  const { season, dayPhase, now } = useTheme()
+  const frac = celestialFraction(now)
+  const left = frac * 100
+  // Arc: low near midnight, highest at midday.
+  const top = 64 - 46 * Math.sin(frac * Math.PI)
+  const isNight = dayPhase === 'night'
+  const seasonMeta = SEASONS.find((s) => s.value === season)
+
+  return (
+    <div className="sanctuary-sky" data-night={isNight}>
+      <div className="sanctuary-celestial" style={{ left: `${left}%`, top: `${top}%` }} />
+      <div className="sanctuary-sky-label">
+        {seasonMeta?.emoji} {seasonMeta?.label} · {dayPhase}
+      </div>
+    </div>
+  )
+}
 
 /**
  * Sanctuary (Phase 3): the dedicated builder page. Shows the full garden, the plant
@@ -55,6 +78,8 @@ export default function SanctuaryPage() {
         <Link to="/">← Dashboard</Link>
       </header>
       <p className="muted">A garden you grow by practicing. Finish one, then choose the next.</p>
+
+      <SanctuarySky />
 
       {error && (
         <p role="alert" className="error">
