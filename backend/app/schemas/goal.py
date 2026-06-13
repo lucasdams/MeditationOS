@@ -17,7 +17,9 @@ class GoalCreate(BaseModel):
 
     activity: GoalActivity
     period: GoalPeriod
-    count: int = Field(gt=0, le=50)
+    # Up to 1000 to accommodate cumulative "total" targets (e.g. 100 times); the
+    # recurring day/week cadences use small values via the UI presets.
+    count: int = Field(gt=0, le=1000)
     # Required for custom goals (the habit name); rejected for built-in activities.
     label: str | None = Field(default=None, max_length=40)
 
@@ -38,7 +40,7 @@ class GoalCreate(BaseModel):
 class GoalUpdate(BaseModel):
     """Edit a goal's cadence or archive/reactivate it."""
 
-    count: int | None = Field(default=None, gt=0, le=50)
+    count: int | None = Field(default=None, gt=0, le=1000)
     period: GoalPeriod | None = None
     status: GoalStatus | None = None
 

@@ -201,6 +201,13 @@ def test_total_goal_counts_all_time(client):
     assert goal["done"] == 3 and goal["achieved"] is True
 
 
+def test_total_goal_allows_large_count(client):
+    _auth(client, "c10@example.com")
+    # A cumulative target like "100 times total" exceeds the per-cadence range but
+    # must be accepted (the count cap is 1000).
+    assert _goal(client, "meditate", "total", 100).status_code == 201
+
+
 def test_checkin_other_users_goal_404(client):
     _auth(client, "c7@example.com")
     gid = _goal(client, "custom", "day", 1, label="Gym").json()["id"]
