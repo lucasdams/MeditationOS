@@ -406,26 +406,27 @@ export default function BreathePage() {
         ))}
       </select>
 
-      <div className="breathe-audio">
-        <label>
-          <input
-            type="checkbox"
-            checked={chimeOn}
-            onChange={(e) => toggleChime(e.target.checked)}
-          />{' '}
-          Chime
-        </label>
+      <label className="breathe-check">
         <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={volume}
-          disabled={!audioOn && !chimeOn}
-          aria-label="Volume"
-          onChange={(e) => setVolume(Number(e.target.value))}
+          type="checkbox"
+          checked={chimeOn}
+          onChange={(e) => toggleChime(e.target.checked)}
         />
-      </div>
+        Chime (a soft bell at each turn of the breath)
+      </label>
+
+      <label htmlFor="volume">Volume</label>
+      <input
+        id="volume"
+        className="breathe-volume"
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={volume}
+        disabled={!audioOn && !chimeOn}
+        onChange={(e) => setVolume(Number(e.target.value))}
+      />
 
       {error && (
         <p role="alert" className="error">

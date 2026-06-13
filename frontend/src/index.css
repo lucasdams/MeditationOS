@@ -1901,6 +1901,29 @@ button:disabled {
   color: #6b6b70;
 }
 
+/* A standalone toggle row (e.g. the breathing Chime) — kept off the volume line. */
+.breathe-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #6b6b70;
+}
+
+.breathe-check input {
+  width: auto;
+  padding: 0;
+}
+
+/* The overall volume gets its own labelled control, like Sound above it. */
+.breathe-volume {
+  display: block;
+  width: 100%;
+  margin: 0.35rem 0 1rem;
+  padding: 0;
+}
+
 .breathe-audio input[type='range'] {
   flex: 1;
   padding: 0;
