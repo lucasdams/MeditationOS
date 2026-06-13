@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 GoalActivity = Literal["meditate", "breathe", "gratitude", "journal", "custom"]
-GoalPeriod = Literal["day", "week"]
+GoalPeriod = Literal["day", "week", "total"]
 GoalStatus = Literal["active", "archived"]
 
 

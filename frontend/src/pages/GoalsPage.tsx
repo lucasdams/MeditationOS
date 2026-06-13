@@ -24,9 +24,13 @@ const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
   { label: 'Once a week', count: 1, period: 'week' },
   { label: '3× a week', count: 3, period: 'week' },
   { label: '5× a week', count: 5, period: 'week' },
+  { label: '25 times total', count: 25, period: 'total' },
+  { label: '50 times total', count: 50, period: 'total' },
+  { label: '100 times total', count: 100, period: 'total' },
 ]
 
 function cadenceLabel(count: number, period: GoalPeriod): string {
+  if (period === 'total') return `${count} times total`
   const times = count === 1 ? 'Once' : count === 2 ? 'Twice' : `${count}×`
   return `${times} a ${period}`
 }
@@ -211,7 +215,7 @@ export default function GoalsPage() {
         )}
         {goals?.map((g) => {
           const meta = ACTIVITY_META[g.activity]
-          const when = g.period === 'day' ? 'today' : 'this week'
+          const when = g.period === 'day' ? 'today' : g.period === 'week' ? 'this week' : 'all-time'
           const isCustomGoal = g.activity === 'custom'
           return (
             <article

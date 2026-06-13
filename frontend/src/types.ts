@@ -258,7 +258,7 @@ export interface JournalCreate {
 }
 
 export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
-export type GoalPeriod = 'day' | 'week'
+export type GoalPeriod = 'day' | 'week' | 'total'
 export type GoalStatus = 'active' | 'archived'
 
 export interface Goal {

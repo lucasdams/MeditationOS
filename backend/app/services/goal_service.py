@@ -20,8 +20,12 @@ from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
 
 def _period_start(period: str, today: date) -> date:
     """First local day of the current period — today for daily, a rolling 7-day
-    window (today and the previous 6) for weekly."""
-    return today - timedelta(days=6) if period == "week" else today
+    window (today and the previous 6) for weekly, and all-time for total."""
+    if period == "total":
+        return date.min  # count everything up to today
+    if period == "week":
+        return today - timedelta(days=6)
+    return today
 
 
 def _local_date(tz: str, column):

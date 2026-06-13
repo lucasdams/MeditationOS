@@ -31,7 +31,9 @@ from app.core.db import Base
 
 # Single source of truth (schema + the DB CHECKs reference these).
 GOAL_ACTIVITIES = ("meditate", "breathe", "gratitude", "journal", "custom")
-GOAL_PERIODS = ("day", "week")
+# "total" is an all-time cumulative target (e.g. "meditate 100 times total"),
+# as opposed to the recurring day/week cadences.
+GOAL_PERIODS = ("day", "week", "total")
 GOAL_STATUSES = ("active", "archived")
 _ACTIVITY_LIST = ", ".join(f"'{a}'" for a in GOAL_ACTIVITIES)
 _PERIOD_LIST = ", ".join(f"'{p}'" for p in GOAL_PERIODS)

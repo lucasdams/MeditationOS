@@ -187,6 +187,20 @@ def test_checkin_requires_auth(client):
     assert client.post(f"/api/v1/goals/{uuid.uuid4()}/checkins").status_code == 401
 
 
+def test_total_goal_counts_all_time(client):
+    _auth(client, "c9@example.com")
+    for _ in range(2):
+        client.post("/api/v1/journals", json={"body": "reflection"})
+    res = _goal(client, "journal", "total", 3)
+    assert res.status_code == 201
+    goal = client.get("/api/v1/goals").json()[0]
+    assert goal["period"] == "total"
+    assert goal["done"] == 2 and goal["achieved"] is False
+    client.post("/api/v1/journals", json={"body": "third"})
+    goal = client.get("/api/v1/goals").json()[0]
+    assert goal["done"] == 3 and goal["achieved"] is True
+
+
 def test_checkin_other_users_goal_404(client):
     _auth(client, "c7@example.com")
     gid = _goal(client, "custom", "day", 1, label="Gym").json()["id"]
