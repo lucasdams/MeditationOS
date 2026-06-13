@@ -54,7 +54,7 @@ class Goal(Base):
     activity: Mapped[str] = mapped_column(String, nullable=False)  # what to do
     # Free-text name for a `custom` goal ("Gym"); NULL for built-in activities.
     label: Mapped[str | None] = mapped_column(String, nullable=True)
-    period: Mapped[str] = mapped_column(String, nullable=False)  # "day" | "week"
+    period: Mapped[str] = mapped_column(String, nullable=False)  # "day" | "week" | "total"
     count: Mapped[int] = mapped_column(Integer, nullable=False)  # times per period
     status: Mapped[str] = mapped_column(
         String, nullable=False, server_default="active", default="active"

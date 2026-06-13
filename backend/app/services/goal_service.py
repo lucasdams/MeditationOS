@@ -7,6 +7,7 @@ import uuid
 from datetime import date, timedelta
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.exceptions import GoalNotCheckableError
@@ -190,10 +191,15 @@ def add_checkin(
         return None
     if goal.activity != "custom":
         raise GoalNotCheckableError
+    # No daily-create cap here: a check-in is a habit mark, naturally bounded to one
+    # per goal per day by uq_goal_checkin_day (and goal creation is already capped),
+    # so toggling done/undo can't be used to spam or to lock yourself out.
     if not _checked_in_today(db, goal, today=today):
-        enforce_daily_create_cap(db, GoalCheckin, user_id)
         db.add(GoalCheckin(goal_id=goal.id, user_id=user_id, checkin_date=today))
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()  # a concurrent request already checked in today — idempotent
     return _to_read(db, user_id, goal, today=today, tz=tz)
 
 

@@ -64,8 +64,10 @@ export default function JournalPage() {
       .catch(() => {})
   }, [])
 
-  // Entries — refetched (debounced) whenever the text search changes.
+  // Entries — refetched (debounced) whenever the text search changes. Drop any
+  // in-progress edit, since the edited entry may fall out of the new results.
   useEffect(() => {
+    setEditingId(null)
     const t = setTimeout(
       () => {
         journalService

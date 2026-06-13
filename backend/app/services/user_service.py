@@ -7,6 +7,7 @@ import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -128,7 +129,11 @@ def change_email(db: Session, user: User, *, new_email: str, current_password: s
         raise EmailAlreadyExistsError(new_email)
     user.email = new_email
     user.email_verified = False
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:  # lost a race to the unique email constraint
+        db.rollback()
+        raise EmailAlreadyExistsError(new_email) from None
     db.refresh(user)
     send_verification_email(db, user)
     return user

@@ -53,7 +53,7 @@ class GoalRead(BaseModel):
     id: uuid.UUID
     activity: str
     label: str | None  # the habit name for custom goals; None for built-in activities
-    period: str  # "day" | "week"
+    period: str  # "day" | "week" | "total"
     count: int  # target times per period
     status: str
     done: int  # times the activity was done this period

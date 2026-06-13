@@ -128,7 +128,9 @@ def check_in(
 
 
 @router.delete("/{goal_id}/checkins/today", response_model=GoalRead)
+@limiter.limit(settings.write_rate_limit)
 def undo_check_in(
+    request: Request,  # required by the rate limiter
     goal_id: uuid.UUID,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
