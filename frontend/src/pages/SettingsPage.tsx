@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
+import { SEASON_PREFS, SEASONS } from '../lib/theme'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
@@ -23,6 +25,7 @@ function formatHour(h: number): string {
 
 export default function SettingsPage() {
   const { user, refresh, logout } = useAuth()
+  const { pref: seasonPref, setPref: setSeasonPref, season, dayPhase } = useTheme()
   const navigate = useNavigate()
 
   // Username section.
@@ -460,6 +463,31 @@ export default function SettingsPage() {
           your local midnight.
         </p>
         <p className="settings-tz">{user.timezone}</p>
+      </section>
+
+      <section className="settings-section">
+        <h2>Appearance</h2>
+        <p className="muted">
+          A seasonal tint colors the app, and the light shifts with your local time of
+          day. Pick a season, or let it follow the calendar.
+        </p>
+        <label htmlFor="season">Season</label>
+        <select
+          id="season"
+          value={seasonPref}
+          onChange={(e) => setSeasonPref(e.target.value as typeof seasonPref)}
+        >
+          {SEASON_PREFS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        <p className="muted settings-theme-now">
+          Now showing: {SEASONS.find((s) => s.value === season)?.emoji}{' '}
+          {SEASONS.find((s) => s.value === season)?.label}
+          {seasonPref === 'auto' && ' (auto)'} · {dayPhase}
+        </p>
       </section>
 
       <section className="settings-section">

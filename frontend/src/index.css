@@ -3,6 +3,50 @@
   line-height: 1.5;
   color: #1c1c1e;
   background: #f5f5f7;
+
+  /* Seasonal + time-of-day ambient theme. The season sets the hue/saturation,
+     the day phase nudges the lightness; both come from data attributes on <html>
+     (see context/ThemeContext.tsx). Kept light and gentle so text stays readable. */
+  --season-hue: 210;
+  --season-sat: 28%;
+  --sky-top: 97%;
+  --sky-bottom: 93%;
+}
+
+/* Season → hue + saturation */
+:root[data-season='winter'] {
+  --season-hue: 205;
+  --season-sat: 26%;
+}
+:root[data-season='spring'] {
+  --season-hue: 135;
+  --season-sat: 32%;
+}
+:root[data-season='summer'] {
+  --season-hue: 45;
+  --season-sat: 50%;
+}
+:root[data-season='autumn'] {
+  --season-hue: 26;
+  --season-sat: 42%;
+}
+
+/* Day phase → overall lightness (a subtle dawn→day→dusk→night shift) */
+:root[data-dayphase='dawn'] {
+  --sky-top: 96%;
+  --sky-bottom: 91%;
+}
+:root[data-dayphase='day'] {
+  --sky-top: 98%;
+  --sky-bottom: 94%;
+}
+:root[data-dayphase='dusk'] {
+  --sky-top: 94%;
+  --sky-bottom: 89%;
+}
+:root[data-dayphase='night'] {
+  --sky-top: 91%;
+  --sky-bottom: 86%;
 }
 
 * {
@@ -11,6 +55,14 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--season-hue) var(--season-sat) var(--sky-top)),
+    hsl(var(--season-hue) var(--season-sat) var(--sky-bottom))
+  );
+  background-attachment: fixed;
+  transition: background 1.5s ease;
 }
 
 .centered {
@@ -1734,4 +1786,80 @@ button:disabled {
     padding: 0.35rem 0.7rem;
     font-size: 0.85rem;
   }
+}
+
+/* ── Sanctuary sky: a day/night band with a sun or moon, tinted by season ── */
+:root[data-dayphase='dawn'] {
+  --sky-band-1: hsl(28 72% 80%);
+  --sky-band-2: hsl(var(--season-hue) 50% 74%);
+  --celestial: #ffd27a;
+  --celestial-glow: rgba(255, 210, 122, 0.7);
+}
+:root[data-dayphase='day'] {
+  --sky-band-1: hsl(var(--season-hue) 55% 82%);
+  --sky-band-2: hsl(var(--season-hue) 60% 70%);
+  --celestial: #fff0b0;
+  --celestial-glow: rgba(255, 240, 176, 0.85);
+}
+:root[data-dayphase='dusk'] {
+  --sky-band-1: hsl(22 68% 66%);
+  --sky-band-2: hsl(280 32% 52%);
+  --celestial: #ff9e6d;
+  --celestial-glow: rgba(255, 158, 109, 0.7);
+}
+:root[data-dayphase='night'] {
+  --sky-band-1: hsl(235 38% 30%);
+  --sky-band-2: hsl(245 42% 18%);
+  --celestial: #d6ddff;
+  --celestial-glow: rgba(214, 221, 255, 0.55);
+}
+
+.sanctuary-sky {
+  position: relative;
+  height: 88px;
+  margin: 0 0 1rem;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--sky-band-2, #9bc), var(--sky-band-1, #cde));
+  transition: background 1.5s ease;
+}
+
+.sanctuary-celestial {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--celestial, #ffe08a);
+  box-shadow: 0 0 24px 8px var(--celestial-glow, rgba(255, 224, 138, 0.7));
+  transform: translate(-50%, -50%);
+  transition: background 1.5s ease;
+}
+
+/* Carve a crescent out of the disc at night to read as a moon. */
+.sanctuary-sky[data-night='true'] .sanctuary-celestial::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--sky-band-2, #245);
+  transform: translate(28%, -22%);
+}
+
+.settings-theme-now {
+  margin-top: 0.6rem;
+  text-transform: capitalize;
+}
+
+.sanctuary-sky-label {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+  text-transform: capitalize;
+}
+:root[data-dayphase='night'] .sanctuary-sky-label,
+:root[data-dayphase='dusk'] .sanctuary-sky-label {
+  color: rgba(255, 255, 255, 0.75);
 }
