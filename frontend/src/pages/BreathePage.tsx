@@ -16,8 +16,9 @@ const HOLD = 1 // 1s pause at the top (full) and bottom (empty) of each breath
 // Breaths-per-minute is the user's primary control: stepped from the fast end (10)
 // down to the deep end (1). Following the app's convention that bpm = 60/(inhale +
 // exhale) with the two 1-second holds counted as extra, a pace of N gives a total
-// in/out time of round(60/N) seconds, split as evenly as possible into whole-second
-// inhale/exhale (sessions store integer seconds).
+// in/out time of round(60/N) seconds, split ~2:3 inhale:exhale — the longer exhale
+// is what makes resonance breathing parasympathetic (vagal activation). Sessions
+// store integer seconds, so the split rounds to whole seconds.
 const BPM_OPTIONS: StepperOption<number>[] = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => ({
   value: n,
   label: `${n} breaths/min`,
@@ -36,11 +37,13 @@ const loadBpm = (): number => {
   return DEFAULT_BPM
 }
 
-// Whole-second inhale/exhale for a target pace. round(60/bpm) is strictly
-// decreasing over 1–10, so every step is a distinct, slightly different breath.
+// Whole-second inhale/exhale for a target pace, at a ~2:3 in:out ratio (longer
+// exhale). total = round(60/bpm) is strictly decreasing over 1–10, so every step is
+// a distinct breath; inhale takes ~2/5 of it (≥1s) and the exhale gets the rest, so
+// inhale+exhale still equals total and the chosen rate is preserved.
 const phasesForBpm = (bpm: number): { inhale: number; exhale: number } => {
   const total = Math.round(60 / bpm)
-  const inhale = Math.floor(total / 2)
+  const inhale = Math.max(1, Math.round((total * 2) / 5))
   return { inhale, exhale: total - inhale }
 }
 
