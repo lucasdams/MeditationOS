@@ -147,7 +147,7 @@ export default function MeditatePage() {
       const before = await dashboardService.getStats()
       await sessionService.create({
         type,
-        duration_seconds: Math.round(durationSec),
+        duration_seconds: Math.floor(durationSec), // floor — never inflate the logged time
         occurred_at: new Date().toISOString(),
       })
       const after = await dashboardService.getStats()

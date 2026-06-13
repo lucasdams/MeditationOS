@@ -136,6 +136,13 @@ def test_breathe_quest_needs_a_full_minute(client):
     quests = {q["key"]: q["done"] for q in body["daily_quests"]}
     assert quests["breathe"] is False  # only 30s < 60s threshold
     assert quests["session"] is True
+    # Cross the 60s threshold (30 + 30) → the breathe quest completes.
+    _session(
+        client, f"{today.isoformat()}T08:05:00", seconds=30, type="resonance_breathing"
+    )
+    after = client.get("/api/v1/dashboard/stats").json()
+    after_quests = {q["key"]: q["done"] for q in after["daily_quests"]}
+    assert after_quests["breathe"] is True
 
 
 def test_activity_all_quests_flag(client):

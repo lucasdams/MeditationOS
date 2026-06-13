@@ -250,7 +250,9 @@ export default function BreathePage() {
       const before = await dashboardService.getStats()
       await sessionService.create({
         type: 'resonance_breathing',
-        duration_seconds: Math.round(durationSec),
+        // Floor, never round up — a sub-minute breath must not count as the
+        // "breathe a minute" quest (which needs a true ≥60s).
+        duration_seconds: Math.floor(durationSec),
         occurred_at: new Date().toISOString(),
         inhale_seconds: inhale,
         exhale_seconds: exhale,
