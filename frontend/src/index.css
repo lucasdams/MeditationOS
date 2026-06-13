@@ -1666,13 +1666,19 @@ button:disabled {
   padding: 0;
 }
 
-.test-sound {
-  margin: 0;
-  width: auto;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.8rem;
-  background: #1c1c1e;
-  white-space: nowrap;
+/* Breaths-per-minute pace slider with notches */
+.breathe-pace {
+  width: 100%;
+  margin: 0.25rem 0 0;
+  padding: 0;
+}
+
+.breathe-pace-hints {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  color: #8a8a90;
 }
 
 

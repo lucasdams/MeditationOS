@@ -1,37 +1,55 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
-import { breathingPatternService } from '../services/breathingPatterns'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio } from '../lib/breathAudio'
-import { audioDiagnostics } from '../lib/audioContext'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
-import type { BreathingPattern } from '../types'
 
 const MIN_SCALE = 0.35
 const MAX_SCALE = 1
-const HOLD = 1 // 1s pause at the top (full) and bottom (empty) of each breath
+// A longer pause at the top of the breath (held full, after the inhale) and none at
+// the bottom — so the exhale flows straight back into the next inhale.
+const HOLD_TOP = 2
+const HOLD_BOTTOM = 0
+
+// Breathing pace, in breaths per minute. Higher = shorter breaths = easier.
+const MIN_BPM = 1
+const MAX_BPM = 6
+const BPM_STEP = 0.5
+const DEFAULT_BPM = 6
+// Resonance breathing keeps the exhale a little longer than the inhale (calming):
+// 40% in / 60% out — which gives the classic 4s-in / 6s-out at 6 breaths a minute.
+const breathSeconds = (bpm: number) => {
+  const period = 60 / bpm
+  return { inhale: period * 0.4, exhale: period * 0.6 }
+}
+
+const BPM_NOTCHES = Array.from(
+  { length: Math.round((MAX_BPM - MIN_BPM) / BPM_STEP) + 1 },
+  (_, i) => MIN_BPM + i * BPM_STEP,
+)
 
 // A cycle is inhale → hold-full → exhale → hold-empty.
 type Segment = 'inhale' | 'hold-full' | 'exhale' | 'hold-empty'
 
-const cycleLength = (inhale: number, exhale: number) => inhale + exhale + 2 * HOLD
+const cycleLength = (inhale: number, exhale: number) =>
+  inhale + HOLD_TOP + exhale + HOLD_BOTTOM
 
 const segmentAt = (pos: number, inhale: number, exhale: number): Segment => {
   if (pos < inhale) return 'inhale'
-  if (pos < inhale + HOLD) return 'hold-full'
-  if (pos < inhale + HOLD + exhale) return 'exhale'
+  if (pos < inhale + HOLD_TOP) return 'hold-full'
+  if (pos < inhale + HOLD_TOP + exhale) return 'exhale'
   return 'hold-empty'
 }
 
 const scaleAt = (pos: number, inhale: number, exhale: number): number => {
   if (pos < inhale) return MIN_SCALE + (MAX_SCALE - MIN_SCALE) * (pos / inhale)
-  if (pos < inhale + HOLD) return MAX_SCALE
-  if (pos < inhale + HOLD + exhale) {
-    return MAX_SCALE - (MAX_SCALE - MIN_SCALE) * ((pos - inhale - HOLD) / exhale)
+  if (pos < inhale + HOLD_TOP) return MAX_SCALE
+  if (pos < inhale + HOLD_TOP + exhale) {
+    return MAX_SCALE - (MAX_SCALE - MIN_SCALE) * ((pos - inhale - HOLD_TOP) / exhale)
   }
   return MIN_SCALE
 }
@@ -57,12 +75,20 @@ const mmss = (totalSec: number) => {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
+// Soundscape options — each toggles the ocean wash and/or the transition chime.
+type SoundId = 'ocean-chime' | 'ocean' | 'chime' | 'none'
+const SOUND_OPTIONS: { value: SoundId; label: string; ocean: boolean; chime: boolean }[] = [
+  { value: 'ocean-chime', label: 'Ocean + chime', ocean: true, chime: true },
+  { value: 'ocean', label: 'Ocean only', ocean: true, chime: false },
+  { value: 'chime', label: 'Chime only', ocean: false, chime: true },
+  { value: 'none', label: 'Silent', ocean: false, chime: false },
+]
+
 type Phase = 'inhale' | 'exhale'
 
 export default function BreathePage() {
   const navigate = useNavigate()
-  const [patterns, setPatterns] = useState<BreathingPattern[] | null>(null)
-  const [selectedId, setSelectedId] = useState('')
+  const [bpm, setBpm] = useState(DEFAULT_BPM)
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
   const [scale, setScale] = useState(MIN_SCALE)
@@ -75,27 +101,14 @@ export default function BreathePage() {
     xpGained: number
     quests: string[]
   } | null>(null)
-  const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
-  const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
+  const [sound, setSound] = useState<SoundId>('ocean-chime')
   const [volume, setVolume] = useState(0.6)
-  const [audioStatus, setAudioStatus] = useState('')
   const [targetMin, setTargetMin] = useState(0)
 
-  const selected = patterns?.find((p) => p.id === selectedId) ?? null
-  const inhale = selected?.inhale_seconds ?? 4
-  const exhale = selected?.exhale_seconds ?? 6
-
-  // Load patterns; default to the first preset.
-  useEffect(() => {
-    breathingPatternService
-      .list()
-      .then((list) => {
-        setPatterns(list)
-        const def = list.find((p) => p.is_preset) ?? list[0]
-        if (def) setSelectedId(def.id)
-      })
-      .catch(() => setError('Could not load breathing patterns.'))
-  }, [])
+  const soundOption = SOUND_OPTIONS.find((o) => o.value === sound) ?? SOUND_OPTIONS[0]
+  const audioOn = soundOption.ocean
+  const chimeOn = soundOption.chime
+  const { inhale, exhale } = breathSeconds(bpm)
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
@@ -191,8 +204,12 @@ export default function BreathePage() {
 
       const seg = segmentAt(runSec % cycle, inh, exh)
       if (seg !== phaseRef.current) {
-        // A full breath completes when we roll from the empty-hold back into an inhale.
-        if (seg === 'inhale' && phaseRef.current === 'hold-empty') {
+        // A full breath completes when we roll back into an inhale — from the
+        // empty-hold, or straight from the exhale when there's no bottom hold.
+        if (
+          seg === 'inhale' &&
+          (phaseRef.current === 'hold-empty' || phaseRef.current === 'exhale')
+        ) {
           cyclesRef.current += 1
           setCycles(cyclesRef.current)
         }
@@ -222,15 +239,11 @@ export default function BreathePage() {
     audioRef.current?.stop()
   }
 
-  function toggleAudio(on: boolean) {
-    setAudioOn(on)
-    if (on) audio().resume()
-    else audioRef.current?.stop()
-  }
-
-  function toggleChime(on: boolean) {
-    setChimeOn(on)
-    if (on) audio().resume()
+  function selectSound(value: SoundId) {
+    setSound(value)
+    const next = SOUND_OPTIONS.find((o) => o.value === value) ?? SOUND_OPTIONS[0]
+    if (next.ocean || next.chime) audio().resume()
+    if (!next.ocean) audioRef.current?.stop() // silence the wash if ocean is off
   }
 
   function reset() {
@@ -252,8 +265,9 @@ export default function BreathePage() {
         type: 'resonance_breathing',
         duration_seconds: Math.round(durationSec),
         occurred_at: new Date().toISOString(),
-        inhale_seconds: inhale,
-        exhale_seconds: exhale,
+        // The pacer runs on fractional seconds; the API stores whole seconds.
+        inhale_seconds: Math.max(1, Math.round(inhale)),
+        exhale_seconds: Math.max(1, Math.round(exhale)),
         cycles_completed: cyclesRef.current,
       })
       const after = await dashboardService.getStats()
@@ -280,13 +294,11 @@ export default function BreathePage() {
     void saveSession(elapsed)
   }
 
-  // Switching pattern starts a fresh session — a saved session is one pattern.
-  function selectPattern(id: string) {
-    setSelectedId(id)
+  // Changing the pace starts a fresh session — a saved session is one pace.
+  function selectBpm(value: number) {
+    setBpm(value)
     reset()
   }
-
-  const bpm = selected?.breaths_per_minute ?? 0
 
   return (
     <main className="breathe">
@@ -312,19 +324,29 @@ export default function BreathePage() {
         <span>{bpm} breaths per minute</span>
       </div>
 
-      <label htmlFor="pattern">Pattern</label>
-      <select
-        id="pattern"
-        value={selectedId}
-        disabled={running || !patterns}
-        onChange={(e) => selectPattern(e.target.value)}
-      >
-        {(patterns ?? []).map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} · {p.breaths_per_minute} breaths per minute
-          </option>
+      <label htmlFor="bpm">Pace · {bpm} breaths per minute</label>
+      <input
+        id="bpm"
+        className="breathe-pace"
+        type="range"
+        min={MIN_BPM}
+        max={MAX_BPM}
+        step={BPM_STEP}
+        value={bpm}
+        list="bpm-notches"
+        disabled={running}
+        aria-label="Breaths per minute"
+        onChange={(e) => selectBpm(Number(e.target.value))}
+      />
+      <datalist id="bpm-notches">
+        {BPM_NOTCHES.map((n) => (
+          <option key={n} value={n} />
         ))}
-      </select>
+      </datalist>
+      <div className="breathe-pace-hints">
+        <span>← slower · deeper (harder)</span>
+        <span>faster · easier →</span>
+      </div>
 
       <label htmlFor="duration">Duration</label>
       <select
@@ -340,49 +362,31 @@ export default function BreathePage() {
         ))}
       </select>
 
+      <label htmlFor="sound">Sound</label>
+      <select
+        id="sound"
+        value={sound}
+        onChange={(e) => selectSound(e.target.value as SoundId)}
+      >
+        {SOUND_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+
       <div className="breathe-audio">
-        <label>
-          <input
-            type="checkbox"
-            checked={audioOn}
-            onChange={(e) => toggleAudio(e.target.checked)}
-          />{' '}
-          Ocean sound
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={chimeOn}
-            onChange={(e) => toggleChime(e.target.checked)}
-          />{' '}
-          Chime
-        </label>
         <input
           type="range"
           min="0"
           max="1"
           step="0.05"
           value={volume}
-          disabled={!audioOn && !chimeOn}
+          disabled={sound === 'none'}
           aria-label="Volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />
-        <button
-          type="button"
-          className="test-sound"
-          onClick={() => {
-            audio().testBeep()
-            setAudioStatus(audioDiagnostics())
-          }}
-        >
-          🔊 Test sound
-        </button>
       </div>
-      {audioStatus && (
-        <p className="muted" style={{ textAlign: 'center', fontSize: '0.75rem' }}>
-          audio: {audioStatus}
-        </p>
-      )}
 
       {error && (
         <p role="alert" className="error">
@@ -392,7 +396,7 @@ export default function BreathePage() {
 
       <div className="breathe-controls">
         {!running ? (
-          <button type="button" onClick={start} disabled={saving || !selected}>
+          <button type="button" onClick={start} disabled={saving}>
             {elapsed > 0 ? 'Resume' : 'Start'}
           </button>
         ) : (
