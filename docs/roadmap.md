@@ -76,8 +76,9 @@ The in-session clock uses the same background-tab-safe timing as the breathing p
 ### Dashboard
 
 Display total meditation time, current streak, longest streak, and weekly statistics,
-plus a GitHub-style year activity heatmap. All date bucketing is on the user's **local
-day** (per-user timezone).
+plus a GitHub-style activity heatmap (the web UI shows the **last ~month**; the API
+windows it via `?days=`). All date bucketing is on the user's **local day** (per-user
+timezone).
 
 **Demonstrates:** data aggregation, backend calculations, timezone-aware SQL
 
@@ -118,6 +119,20 @@ on days they've already practiced. Runs over an email channel that logs instead 
 sending when no provider is configured. See [notifications design](design/notifications.md).
 
 **Demonstrates:** an outbound channel + scheduled, timezone-correct delivery
+
+### Seasonal & day/night theme (added during V1)
+
+A gentle ambient theme that ties the app to the passage of time. A subtle background
+gradient shifts by **season** — `auto` follows the calendar month (northern-hemisphere
+meteorological seasons) or the user can pick one in **Settings → Appearance** — and by
+**day phase** (dawn / day / dusk / night), always derived from the local clock and
+re-checked each minute and on tab focus. The Sanctuary additionally shows a day/night
+sky band with a sun or moon that arcs across by local time. Season/day-phase are pure
+functions of a `Date` (`lib/theme.ts`, unit-tested); a small context applies them to
+`<html>` via `data-season` / `data-dayphase`; the chosen season persists locally.
+
+**Demonstrates:** pure, testable time logic + a small context layer; ambient polish
+with no backend or data-model footprint
 
 ---
 

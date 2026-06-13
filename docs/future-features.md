@@ -157,7 +157,8 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 ## Platform & Product
 
 - [ ] Mobile-responsive layout and PWA support
-- [ ] Dark mode and accessibility improvements
+- [x] **Seasonal + day/night ambient theme** — a subtle background that shifts by season (auto by date, or picked in Settings → Appearance) and by day phase (dawn/day/dusk/night from the local clock); the Sanctuary gains a sun/moon sky band
+- [ ] Full dark mode and broader accessibility improvements
 - [ ] **Internationalization (i18n)** — start with a **Japanese (JP) version** of the site (UI strings + AI prompts/suggestions in Japanese)
 - [ ] Staging environment separate from production
 - [x] **User data export and account deletion** (privacy) — `GET /auth/export` (full JSON) and `DELETE /auth/me` (cascade delete), surfaced in Settings
