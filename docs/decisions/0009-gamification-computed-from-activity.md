@@ -2,6 +2,15 @@
 
 **Status:** Accepted · 2026-06 · Detail: [gamification design](../design/gamification.md)
 
+> **Update (2026-06):** The decision still holds — *progress* (XP, levels, quest
+> done-status, streaks) remains computed, nothing stored. Two evolutions since: (1)
+> the XP/quest specifics below have been re-tuned and the quests are now
+> **personalized** (meditation 2 XP/min, breathing 3×, +5 gratitude, +5 journal,
+> +15 per daily-activity day; each user picks ≥3 of meditate/breathe/gratitude/journal)
+> — exactly the "cheap to re-tune, no migration" benefit this ADR predicted; (2) the
+> one new stored field is the user's quest **selection** (`users.quest_features`), a
+> preference, not progress. See [gamification](../design/gamification.md) for current rules.
+
 ## Context
 
 The product layers engagement mechanics on top of logged practice: **XP, levels, a
