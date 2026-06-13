@@ -31,6 +31,11 @@ class MoodCount(BaseModel):
     count: int
 
 
+class WeekMoods(BaseModel):
+    week_start: date  # Monday of the week (user's local week)
+    counts: dict[str, int]  # mood -> number of journal entries that week
+
+
 class AnalyticsSummary(BaseModel):
     total_sessions: int
     total_minutes: int
@@ -40,3 +45,4 @@ class AnalyticsSummary(BaseModel):
     by_time_of_day: list[TimeBucketCount]  # 4 entries, ordered
     minutes_by_week: list[WeekMinutes]  # last N weeks, zero-filled, oldest → newest
     moods: list[MoodCount]  # journal mood distribution
+    mood_by_week: list[WeekMoods]  # last N weeks of journal moods, oldest → newest

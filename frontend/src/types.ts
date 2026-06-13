@@ -116,6 +116,11 @@ export interface MoodCount {
   count: number
 }
 
+export interface WeekMoods {
+  week_start: string
+  counts: Record<string, number> // mood -> count that week
+}
+
 export interface AnalyticsSummary {
   total_sessions: number
   total_minutes: number
@@ -125,6 +130,7 @@ export interface AnalyticsSummary {
   by_time_of_day: TimeBucketCount[]
   minutes_by_week: WeekMinutes[]
   moods: MoodCount[]
+  mood_by_week: WeekMoods[]
 }
 
 export interface ActivityCalendar {

@@ -209,6 +209,44 @@ body {
   align-items: flex-end;
 }
 
+.mood-stack {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse; /* segments pile from the bottom */
+}
+
+.mood-seg {
+  width: 100%;
+  min-height: 2px;
+}
+
+.mood-seg:last-child {
+  border-radius: 3px 3px 0 0; /* round the top of the stack */
+}
+
+.mood-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: #6b6b70;
+}
+
+.mood-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mood-legend-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .week-bar {
   width: 100%;
   min-height: 2px;

@@ -197,6 +197,65 @@ export default function AnalyticsPage() {
               </div>
             </section>
           )}
+
+          {data.mood_by_week.some((w) => Object.keys(w.counts).length > 0) && (
+            <section className="analytics-section">
+              <h2>Mood over time</h2>
+              {(() => {
+                const totals = data.mood_by_week.map((w) =>
+                  Object.values(w.counts).reduce((a, b) => a + b, 0),
+                )
+                const maxTotal = Math.max(1, ...totals)
+                // Moods present, in overall-distribution order (most common first).
+                const present = data.moods
+                  .map((m) => m.mood)
+                  .filter((m) => data.mood_by_week.some((w) => w.counts[m]))
+                return (
+                  <>
+                    <div className="weeks">
+                      {data.mood_by_week.map((w, i) => (
+                        <div
+                          key={w.week_start}
+                          className="week-col"
+                          title={`${w.week_start}: ${totals[i]} ${totals[i] === 1 ? 'entry' : 'entries'}`}
+                        >
+                          <div className="mood-stack">
+                            {present.map((m) =>
+                              w.counts[m] ? (
+                                <div
+                                  key={m}
+                                  className="mood-seg"
+                                  style={{
+                                    height: `${(w.counts[m] / maxTotal) * 100}%`,
+                                    background: MOOD_COLORS[m as Mood] ?? '#9ca3af',
+                                  }}
+                                />
+                              ) : null,
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="muted analytics-axis">
+                      <span>{data.mood_by_week[0]?.week_start}</span>
+                      <span>this week</span>
+                    </div>
+                    <div className="mood-legend">
+                      {present.map((m) => (
+                        <span key={m} className="mood-legend-item">
+                          <span
+                            className="mood-legend-dot"
+                            style={{ background: MOOD_COLORS[m as Mood] ?? '#9ca3af' }}
+                          />
+                          {cap(m)}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )
+              })()}
+            </section>
+          )}
         </>
       )}
     </main>
