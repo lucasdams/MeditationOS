@@ -64,13 +64,3 @@ const UNLOCK_EVENTS = ['touchstart', 'touchend', 'mousedown', 'pointerdown', 'cl
 if (typeof document !== 'undefined') {
   UNLOCK_EVENTS.forEach((e) => document.addEventListener(e, unlock, true))
 }
-
-/** A short human-readable description of the audio context, for diagnostics. */
-export function audioDiagnostics(): string {
-  try {
-    const c = getAudioContext()
-    return `state=${c.state} · ${Math.round(c.sampleRate)}Hz`
-  } catch (err) {
-    return `unavailable (${err instanceof Error ? err.name : 'error'})`
-  }
-}
