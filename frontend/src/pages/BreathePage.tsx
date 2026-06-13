@@ -14,27 +14,38 @@ const MAX_SCALE = 1
 const HOLD = 1 // 1s pause at the top (full) and bottom (empty) of each breath
 
 // Breaths-per-minute is the user's primary control: stepped from the fast end (10)
-// down to the deep end (1). Following the app's convention that bpm = 60/(inhale +
-// exhale) with the two 1-second holds counted as extra, a pace of N gives a total
-// in/out time of round(60/N) seconds, split ~2:3 inhale:exhale — the longer exhale
-// is what makes resonance breathing parasympathetic (vagal activation). Sessions
-// store integer seconds, so the split rounds to whole seconds.
-const BPM_OPTIONS: StepperOption<number>[] = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => ({
-  value: n,
-  label: `${n} breaths/min`,
-}))
-const DEFAULT_BPM = 6 // classic resonance pace
+// down to the deep end (1) in 0.5 increments. Slower is harder (see DIFFICULTY).
+// Following the app's convention that bpm = 60/(inhale + exhale) with the two
+// 1-second holds counted as extra, a pace of N gives a total in/out time of
+// round(60/N) seconds, split ~2:3 inhale:exhale — the longer exhale is what makes
+// resonance breathing parasympathetic (vagal activation). Sessions store integer
+// seconds, so the split rounds to whole seconds.
+const BPM_OPTIONS: StepperOption<number>[] = Array.from({ length: 19 }, (_, i) => {
+  const n = 10 - i * 0.5 // 10, 9.5, … 1
+  return { value: n, label: `${n} breaths/min` }
+})
+const DEFAULT_BPM = 4.5 // a moderate resonance pace
 const BPM_STORAGE_KEY = 'breathe.bpm'
 
-// Last bpm the user chose (persisted locally), clamped to the offered range.
+// Last bpm the user chose (persisted locally), snapped to the 0.5 grid and clamped
+// to the offered range so a stale value still lands on a real option.
 const loadBpm = (): number => {
   try {
     const n = Number(localStorage.getItem(BPM_STORAGE_KEY))
-    if (Number.isFinite(n) && n >= 1 && n <= 10) return n
+    if (Number.isFinite(n) && n >= 1 && n <= 10) return Math.round(n * 2) / 2
   } catch {
     // localStorage unavailable (private mode, etc.) — fall back to the default.
   }
   return DEFAULT_BPM
+}
+
+// Slower breathing is harder, so a lower bpm is more advanced. Surfaced next to the
+// pace so people know what they're choosing — below 3 bpm is genuinely demanding.
+const DIFFICULTY = (bpm: number): { label: string; key: string } => {
+  if (bpm < 3) return { label: 'Very advanced', key: 'expert' }
+  if (bpm < 4) return { label: 'Advanced', key: 'advanced' }
+  if (bpm < 6) return { label: 'Moderate', key: 'moderate' }
+  return { label: 'Gentle', key: 'gentle' }
 }
 
 // Whole-second inhale/exhale for a target pace, at a ~2:3 in:out ratio (longer
@@ -356,6 +367,12 @@ export default function BreathePage() {
         ariaLabel="Breaths per minute"
         onChange={selectBpm}
       />
+      <p className="pace-hint muted">
+        Slower is harder ·{' '}
+        <span className={`pace-difficulty d-${DIFFICULTY(bpm).key}`}>
+          {DIFFICULTY(bpm).label}
+        </span>
+      </p>
 
       <label>Duration</label>
       <Stepper

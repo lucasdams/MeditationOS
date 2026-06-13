@@ -1810,6 +1810,33 @@ button:disabled {
   color: #1c1c1e;
 }
 
+/* Difficulty hint under the breathing-pace stepper (slower = harder). */
+.pace-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  margin: -0.5rem 0 1rem;
+}
+
+.pace-difficulty {
+  font-weight: 700;
+}
+
+.pace-difficulty.d-gentle {
+  color: #1a7f44;
+}
+
+.pace-difficulty.d-moderate {
+  color: #4f46e5;
+}
+
+.pace-difficulty.d-advanced {
+  color: #b45309;
+}
+
+.pace-difficulty.d-expert {
+  color: #b91c1c;
+}
+
 .breathe-controls {
   display: flex;
   gap: 0.75rem;
