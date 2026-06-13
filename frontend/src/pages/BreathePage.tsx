@@ -91,11 +91,35 @@ const SOUND_OPTIONS: { value: SoundId; label: string; ocean: boolean; chime: boo
   { value: 'none', label: 'Silent', ocean: false, chime: false },
 ]
 
+// Remember the last-used setup so the next session opens where you left off.
+interface BreathePrefs {
+  bpm: number
+  targetMin: number
+  sound: SoundId
+  volume: number
+}
+const PREFS_KEY = 'breathe:prefs'
+const DEFAULT_PREFS: BreathePrefs = {
+  bpm: DEFAULT_BPM,
+  targetMin: DEFAULT_TARGET_MIN,
+  sound: 'ocean-chime',
+  volume: 0.6,
+}
+function readPrefs(): BreathePrefs {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY)
+    if (raw) return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<BreathePrefs>) }
+  } catch {
+    // malformed or unavailable storage — fall back to defaults
+  }
+  return DEFAULT_PREFS
+}
+
 type Phase = 'inhale' | 'exhale'
 
 export default function BreathePage() {
   const navigate = useNavigate()
-  const [bpm, setBpm] = useState(DEFAULT_BPM)
+  const [bpm, setBpm] = useState(() => readPrefs().bpm)
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
   const [scale, setScale] = useState(MIN_SCALE)
@@ -108,14 +132,23 @@ export default function BreathePage() {
     xpGained: number
     quests: string[]
   } | null>(null)
-  const [sound, setSound] = useState<SoundId>('ocean-chime')
-  const [volume, setVolume] = useState(0.6)
-  const [targetMin, setTargetMin] = useState(DEFAULT_TARGET_MIN)
+  const [sound, setSound] = useState<SoundId>(() => readPrefs().sound)
+  const [volume, setVolume] = useState(() => readPrefs().volume)
+  const [targetMin, setTargetMin] = useState(() => readPrefs().targetMin)
 
   const soundOption = SOUND_OPTIONS.find((o) => o.value === sound) ?? SOUND_OPTIONS[0]
   const audioOn = soundOption.ocean
   const chimeOn = soundOption.chime
   const { inhale, exhale } = breathSeconds(bpm)
+
+  // Persist the setup so it becomes the default next time.
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ bpm, targetMin, sound, volume }))
+    } catch {
+      // storage unavailable — preferences just won't persist
+    }
+  }, [bpm, targetMin, sound, volume])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
