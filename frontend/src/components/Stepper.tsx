@@ -2,7 +2,9 @@
 // options. Used for session duration and breathing pace, where a slider/dropdown
 // felt heavier than a single tap to the next increment. Options can carry uneven
 // increments (e.g. 5, 10, 20, 45 min) — stepping just moves to the neighbouring
-// entry, so the gaps need not be regular.
+// entry, so the gaps need not be regular. Each step plays a soft tactile tick.
+
+import { playClick } from '../lib/sfx'
 
 export type StepperOption<T extends string | number> = { value: T; label: string }
 
@@ -28,7 +30,10 @@ export default function Stepper<T extends string | number>({
 
   const go = (delta: number) => {
     const next = options[index + delta]
-    if (next) onChange(next.value)
+    if (next) {
+      playClick() // soft tactile feedback on each step
+      onChange(next.value)
+    }
   }
 
   return (

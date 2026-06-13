@@ -3,6 +3,38 @@
 
 import { getAudioContext } from './audioContext'
 
+/**
+ * A soft, short UI "tick" for tactile feedback when pressing controls (the
+ * duration / breaths-per-minute steppers, etc.). Deliberately quiet and brief so
+ * rapid presses stay pleasant, not fatiguing. `volume` is 0–1. Always fired from a
+ * click handler, so the shared audio context is already gesture-unlocked.
+ */
+export function playClick(volume = 0.5): void {
+  try {
+    const ctx = getAudioContext()
+    if (ctx.state !== 'running') {
+      void ctx.resume().then(() => playClick(volume)).catch(() => {})
+      return
+    }
+    const t = ctx.currentTime
+    const vol = Math.max(0, Math.min(1, volume))
+    const osc = ctx.createOscillator()
+    const g = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.value = 1100
+    const peak = 0.12 * vol
+    // Linear ramps (Safari mishandles exponential ramps from near-zero values).
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(peak, t + 0.005) // quick attack
+    g.gain.linearRampToValueAtTime(0, t + 0.05) // short decay
+    osc.connect(g).connect(ctx.destination)
+    osc.start(t)
+    osc.stop(t + 0.06)
+  } catch {
+    // audio unavailable — skip silently
+  }
+}
+
 // The meditation cue can be one of several soft bells. Each is a set of sine
 // partials (freq in Hz, relative gain) plus a decay time. Pitched low and warm —
 // these read as "bell", not "alarm". `peak` scales the overall loudness down a
