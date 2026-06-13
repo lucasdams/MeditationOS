@@ -5,6 +5,7 @@ import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
+import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
@@ -41,6 +42,14 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordOk, setPasswordOk] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
+
+  // Daily quests section.
+  const [questFeatures, setQuestFeatures] = useState<string[]>(
+    user?.quest_features ?? QUEST_FEATURES.map((f) => f.key),
+  )
+  const [questError, setQuestError] = useState<string | null>(null)
+  const [questOk, setQuestOk] = useState(false)
+  const [savingQuests, setSavingQuests] = useState(false)
 
   // Reminders section.
   const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
@@ -187,6 +196,31 @@ export default function SettingsPage() {
     } catch {
       setDataError('Could not delete your account. Please try again.')
       setDeleting(false)
+    }
+  }
+
+  function toggleQuest(key: string, on: boolean) {
+    setQuestFeatures((cur) => (on ? [...cur, key] : cur.filter((k) => k !== key)))
+    setQuestOk(false)
+  }
+
+  async function handleQuests(e: FormEvent) {
+    e.preventDefault()
+    setQuestError(null)
+    setQuestOk(false)
+    if (questFeatures.length < MIN_QUEST_FEATURES) {
+      setQuestError(`Pick at least ${MIN_QUEST_FEATURES}.`)
+      return
+    }
+    setSavingQuests(true)
+    try {
+      await authService.setQuestFeatures(questFeatures)
+      await refresh()
+      setQuestOk(true)
+    } catch {
+      setQuestError('Something went wrong. Please try again.')
+    } finally {
+      setSavingQuests(false)
     }
   }
 
@@ -342,6 +376,36 @@ export default function SettingsPage() {
         </form>
       </section>
       )}
+
+      <section className="settings-section">
+        <h2>Daily quests</h2>
+        <p className="muted">
+          Choose which practices you get daily quests for — at least {MIN_QUEST_FEATURES}.
+        </p>
+        <form onSubmit={handleQuests} noValidate>
+          <fieldset className="quest-picker">
+            {QUEST_FEATURES.map((f) => (
+              <label key={f.key} className="settings-check">
+                <input
+                  type="checkbox"
+                  checked={questFeatures.includes(f.key)}
+                  onChange={(e) => toggleQuest(f.key, e.target.checked)}
+                />
+                {f.label}
+              </label>
+            ))}
+          </fieldset>
+          {questError && (
+            <p role="alert" className="error">
+              {questError}
+            </p>
+          )}
+          {questOk && <p className="success">Quest preferences saved.</p>}
+          <button type="submit" disabled={savingQuests}>
+            {savingQuests ? 'Saving…' : 'Save quests'}
+          </button>
+        </form>
+      </section>
 
       <section className="settings-section">
         <h2>Practice reminders</h2>

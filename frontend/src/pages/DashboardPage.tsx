@@ -6,6 +6,14 @@ import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import type { DashboardStats } from '../types'
 
+// Where each daily-quest card deep-links — keyed by the backend quest key.
+const QUEST_LINKS: Record<string, string> = {
+  meditate: '/meditate',
+  breathe: '/breathe',
+  gratitude: '/gratitude',
+  journal: '/journal',
+}
+
 const formatTotal = (seconds: number) => {
   const h = Math.floor(seconds / 3600)
   const m = Math.round((seconds % 3600) / 60)
@@ -75,12 +83,7 @@ export default function DashboardPage() {
           </div>
           <ul className="quest-list">
             {stats.daily_quests.map((q) => {
-              const to =
-                q.key === 'gratitude'
-                  ? '/gratitude'
-                  : q.key === 'breathe'
-                    ? '/breathe'
-                    : '/sessions/new'
+              const to = QUEST_LINKS[q.key] ?? '/sessions/new'
               return (
                 <li key={q.key} className={q.done ? 'quest done' : 'quest'}>
                   <span className="quest-check" aria-hidden="true">

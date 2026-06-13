@@ -8,8 +8,23 @@ export interface User {
   is_guest: boolean
   reminder_enabled: boolean
   reminder_hour: number | null
+  // Daily-activity quests the user opted into (≥3 of QUEST_FEATURES). null until
+  // they choose — the client shows a first-run picker while null.
+  quest_features: string[] | null
   created_at: string
 }
+
+// The daily activities a user can receive quests for. Mirrors the backend
+// QUEST_FEATURES / GOAL_ACTIVITIES vocabulary. Order is canonical (display order).
+export const QUEST_FEATURES: { key: string; label: string }[] = [
+  { key: 'meditate', label: 'Meditate' },
+  { key: 'breathe', label: 'Breathe' },
+  { key: 'gratitude', label: 'Gratitude' },
+  { key: 'journal', label: 'Journal' },
+]
+
+// A user must pick at least this many features (kept in sync with the backend).
+export const MIN_QUEST_FEATURES = 3
 
 export type MeditationType =
   | 'mindfulness'

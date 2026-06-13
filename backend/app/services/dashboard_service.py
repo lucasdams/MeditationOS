@@ -12,7 +12,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
+from app.models.journal import Journal
 from app.models.session import Session
+from app.models.user import QUEST_FEATURES
 from app.schemas.dashboard import (
     ActivityCalendar,
     ActivityDay,
@@ -21,8 +23,11 @@ from app.schemas.dashboard import (
     QuestStatus,
 )
 from app.services.gratitude_service import GRATITUDE_XP
+from app.services.journal_service import JOURNAL_XP
 
-# Resonance breathing earns this multiple of the usual 1 XP/minute.
+# XP per minute of meditation (non-breathing). Breathing — the harder, signature
+# practice — earns BREATHING_XP_MULTIPLIER× this.
+MEDITATION_XP_PER_MIN = 2
 BREATHING_XP_MULTIPLIER = 3
 # Each daily quest, completed on a given day, is worth this much (counts once per day).
 QUEST_XP = 15
@@ -80,7 +85,12 @@ def _local_date(tz: str, column):
 
 
 def get_stats(
-    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC"
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+    quest_features: list[str] | None = None,
 ) -> DashboardStats:
     total_seconds, session_count = db.execute(
         select(
@@ -151,43 +161,76 @@ def get_stats(
     ).all()
     breathing_days = {row[0] for row in breathing_day_rows}
 
+    # Days with a meditation (non-breathing) session — the "meditate" quest. Distinct
+    # from "breathe" so a user can opt into either or both.
+    meditation_day_rows = db.execute(
+        select(_local_date(tz, Session.occurred_at))
+        .where(Session.user_id == user_id, Session.type != "resonance_breathing")
+        .distinct()
+    ).all()
+    meditation_days = {row[0] for row in meditation_day_rows}
+
+    # Days with a journal entry — the "journal" quest.
+    journal_day_rows = db.execute(
+        select(_local_date(tz, Journal.created_at))
+        .where(Journal.user_id == user_id)
+        .distinct()
+    ).all()
+    journal_days = {row[0] for row in journal_day_rows}
+    journal_count = int(
+        db.execute(
+            select(func.count(Journal.id)).where(Journal.user_id == user_id)
+        ).scalar_one()
+    )
+
     # Daily quests reset each day; total XP counts every day they were ever completed,
     # so that part only ever grows. The streak bonus rides the *current* streak, so it
     # grows as you keep it up and falls back if the streak lapses.
-    quest_bonus_xp = (len(gratitude_days) + len(session_days) + len(breathing_days)) * QUEST_XP
+    # The daily-quest bonus rewards completing each activity on a day, keyed to the
+    # four real quest categories (so journal & meditate pay, and breathing no longer
+    # double-counts as a generic session). Independent of which quests the user
+    # surfaced — doing the activity earns the bonus.
+    quest_bonus_xp = (
+        len(meditation_days)
+        + len(breathing_days)
+        + len(gratitude_days)
+        + len(journal_days)
+    ) * QUEST_XP
     streak_bonus_xp = current_streak * STREAK_BONUS_PER_DAY
 
-    # 1 XP per minute practiced, but resonance breathing counts 3×; plus
-    # GRATITUDE_XP per gratitude moment, daily-quest bonuses, and the streak bonus.
+    # MEDITATION_XP_PER_MIN per minute of meditation; resonance breathing counts
+    # BREATHING_XP_MULTIPLIER×; plus GRATITUDE_XP/JOURNAL_XP per reflection, the
+    # daily-quest bonus, and the streak bonus.
     non_breathing_seconds = int(total_seconds) - int(breathing_seconds)
     xp = (
-        non_breathing_seconds // 60
+        non_breathing_seconds // 60 * MEDITATION_XP_PER_MIN
         + int(breathing_seconds) // 60 * BREATHING_XP_MULTIPLIER
         + gratitude_count * GRATITUDE_XP
+        + journal_count * JOURNAL_XP
         + quest_bonus_xp
         + streak_bonus_xp
     )
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
 
+    # Daily quests are personalized: the user opts into a subset of QUEST_FEATURES
+    # (≥3). NULL (not chosen yet) falls back to all four. XP and the heatmap's
+    # all-quests flag deliberately stay tied to the original categories above.
+    quest_meta = {
+        "meditate": ("Meditate today", meditation_days),
+        "breathe": ("Breathe for a minute", breathing_days),
+        "gratitude": ("Write a gratitude", gratitude_days),
+        "journal": ("Write a journal entry", journal_days),
+    }
+    selected = set(quest_features) if quest_features else set(QUEST_FEATURES)
     daily_quests = [
         QuestStatus(
-            key="gratitude",
-            label="Write a gratitude",
+            key=key,
+            label=quest_meta[key][0],
             xp=QUEST_XP,
-            done=today in gratitude_days,
-        ),
-        QuestStatus(
-            key="breathe",
-            label="Breathe for a minute",
-            xp=QUEST_XP,
-            done=today in breathing_days,
-        ),
-        QuestStatus(
-            key="session",
-            label="Log a session",
-            xp=QUEST_XP,
-            done=today in session_days,
-        ),
+            done=today in quest_meta[key][1],
+        )
+        for key in QUEST_FEATURES  # canonical order
+        if key in selected
     ]
 
     return DashboardStats(

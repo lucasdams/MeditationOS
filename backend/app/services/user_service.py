@@ -14,6 +14,7 @@ from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
     InvalidPasswordError,
+    InvalidQuestFeaturesError,
     InvalidResetTokenError,
     InvalidTimezoneError,
     InvalidVerificationTokenError,
@@ -34,7 +35,7 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.sanctuary import SanctuaryPlanting
 from app.models.session import Session as PracticeSession
-from app.models.user import User
+from app.models.user import QUEST_FEATURES, User
 from app.schemas.user import UserCreate
 from app.services.notifications import email as email_channel
 
@@ -63,6 +64,28 @@ def set_timezone(db: Session, user: User, timezone: str) -> User:
     except (ZoneInfoNotFoundError, ValueError) as err:
         raise InvalidTimezoneError(timezone) from err
     user.timezone = timezone
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+# A user must opt into at least this many daily-activity quests.
+MIN_QUEST_FEATURES = 3
+
+
+def set_quest_features(db: Session, user: User, features: list[str]) -> User:
+    """Set which daily-activity quests the user receives. Raises
+    InvalidQuestFeaturesError if any value is unknown or fewer than the minimum
+    (3) distinct ones are chosen. Stored in canonical order, de-duplicated."""
+    unknown = [f for f in features if f not in QUEST_FEATURES]
+    if unknown:
+        raise InvalidQuestFeaturesError(f"unknown quest features: {unknown}")
+    chosen = [f for f in QUEST_FEATURES if f in set(features)]  # canonical order, deduped
+    if len(chosen) < MIN_QUEST_FEATURES:
+        raise InvalidQuestFeaturesError(
+            f"choose at least {MIN_QUEST_FEATURES} quest features"
+        )
+    user.quest_features = chosen
     db.commit()
     db.refresh(user)
     return user
@@ -272,6 +295,8 @@ def create_guest(db: Session) -> User:
         password_hash=None,
         email_verified=True,
         is_guest=True,
+        # Seed the full quest set so "try without signup" skips the picker.
+        quest_features=list(QUEST_FEATURES),
     )
     db.add(user)
     db.commit()

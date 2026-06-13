@@ -21,6 +21,10 @@ class InvalidTimezoneError(Exception):
     """Raised when setting a timezone that isn't a valid IANA zone."""
 
 
+class InvalidQuestFeaturesError(Exception):
+    """Raised when quest-feature selection is unknown or fewer than the minimum (3)."""
+
+
 class InvalidPasswordError(Exception):
     """Raised when a password change supplies a wrong/missing current password."""
 

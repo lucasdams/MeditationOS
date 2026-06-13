@@ -4,10 +4,14 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Integer, String, func
-from sqlalchemy.dialects.postgresql import CITEXT, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+
+# The daily activities a user can opt into receiving quests for (they choose ≥3).
+# Mirrors GOAL_ACTIVITIES in app/models/goal.py — the same vocabulary of practices.
+QUEST_FEATURES = ("meditate", "breathe", "gratitude", "journal")
 
 
 class User(Base):
@@ -48,6 +52,11 @@ class User(Base):
     reminder_last_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Which daily-activity quests the user opted into (a subset of QUEST_FEATURES,
+    # ≥3). NULL until they choose: the client shows a first-run picker, and quest
+    # generation falls back to all four while NULL. Existing users were backfilled
+    # to all four; guests are seeded with all four at creation.
+    quest_features: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
