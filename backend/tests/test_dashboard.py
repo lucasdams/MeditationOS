@@ -1,6 +1,6 @@
 """Tests for the dashboard routes: /stats (totals + weekly) and /activity."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 
 def _auth(client, email):
@@ -78,6 +78,30 @@ def test_activity_user_scoped(client):
     _auth(client, "act_other@example.com")  # different user
     body = client.get("/api/v1/dashboard/activity").json()
     assert body["days"] == []
+
+
+def test_activity_days_param_narrows_window(client):
+    _auth(client, "act_days@example.com")
+    today = datetime.now(UTC).date()
+    old = today - timedelta(days=40)
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600)
+    _session(client, f"{old.isoformat()}T08:00:00", seconds=600)
+
+    # Default window (a year) spans both active days.
+    full = client.get("/api/v1/dashboard/activity").json()
+    assert {d["date"] for d in full["days"]} == {today.isoformat(), old.isoformat()}
+
+    # A 35-day window starts 34 days before today and excludes the 40-day-old day.
+    recent = client.get("/api/v1/dashboard/activity?days=35").json()
+    assert recent["start"] == (today - timedelta(days=34)).isoformat()
+    assert recent["end"] == today.isoformat()
+    assert [d["date"] for d in recent["days"]] == [today.isoformat()]
+
+
+def test_activity_days_param_out_of_range_rejected(client):
+    _auth(client, "act_days_bad@example.com")
+    assert client.get("/api/v1/dashboard/activity?days=0").status_code == 422
+    assert client.get("/api/v1/dashboard/activity?days=400").status_code == 422
 
 
 def test_stats_breathing_earns_triple_xp(client):

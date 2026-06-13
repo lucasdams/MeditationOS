@@ -1,19 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
-import { breathingPatternService } from '../services/breathingPatterns'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
-import { BreathAudio } from '../lib/breathAudio'
-import { audioDiagnostics } from '../lib/audioContext'
+import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAudio'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
-import type { BreathingPattern } from '../types'
+import Stepper, { type StepperOption } from '../components/Stepper'
 
 const MIN_SCALE = 0.35
 const MAX_SCALE = 1
 const HOLD = 1 // 1s pause at the top (full) and bottom (empty) of each breath
+
+// Breaths-per-minute is the user's primary control: stepped from the fast end (10)
+// down to the deep end (1). Following the app's convention that bpm = 60/(inhale +
+// exhale) with the two 1-second holds counted as extra, a pace of N gives a total
+// in/out time of round(60/N) seconds, split as evenly as possible into whole-second
+// inhale/exhale (sessions store integer seconds).
+const BPM_OPTIONS: StepperOption<number>[] = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => ({
+  value: n,
+  label: `${n} breaths/min`,
+}))
+const DEFAULT_BPM = 6 // classic resonance pace
+const BPM_STORAGE_KEY = 'breathe.bpm'
+
+// Last bpm the user chose (persisted locally), clamped to the offered range.
+const loadBpm = (): number => {
+  try {
+    const n = Number(localStorage.getItem(BPM_STORAGE_KEY))
+    if (Number.isFinite(n) && n >= 1 && n <= 10) return n
+  } catch {
+    // localStorage unavailable (private mode, etc.) — fall back to the default.
+  }
+  return DEFAULT_BPM
+}
+
+// Whole-second inhale/exhale for a target pace. round(60/bpm) is strictly
+// decreasing over 1–10, so every step is a distinct, slightly different breath.
+const phasesForBpm = (bpm: number): { inhale: number; exhale: number } => {
+  const total = Math.round(60 / bpm)
+  const inhale = Math.floor(total / 2)
+  return { inhale, exhale: total - inhale }
+}
 
 // A cycle is inhale → hold-full → exhale → hold-empty.
 type Segment = 'inhale' | 'hold-full' | 'exhale' | 'hold-empty'
@@ -43,13 +72,19 @@ const SEGMENT_LABEL: Record<Segment, string> = {
   'hold-empty': 'Hold',
 }
 
-// Optional session length; 0 = open-ended (finish manually).
-const DURATIONS = [
-  { label: 'Open', min: 0 },
-  { label: '5 min', min: 5 },
-  { label: '10 min', min: 10 },
-  { label: '20 min', min: 20 },
-  { label: '60 min', min: 60 },
+// Optional session length; 0 = open-ended (finish manually). Stepped left→right.
+const DURATIONS: StepperOption<number>[] = [
+  { value: 0, label: 'Open' },
+  { value: 2, label: '2 min' },
+  { value: 3, label: '3 min' },
+  { value: 5, label: '5 min' },
+  { value: 10, label: '10 min' },
+  { value: 15, label: '15 min' },
+  { value: 20, label: '20 min' },
+  { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
+  { value: 60, label: '60 min' },
+  { value: 90, label: '90 min' },
 ]
 
 const mmss = (totalSec: number) => {
@@ -61,8 +96,7 @@ type Phase = 'inhale' | 'exhale'
 
 export default function BreathePage() {
   const navigate = useNavigate()
-  const [patterns, setPatterns] = useState<BreathingPattern[] | null>(null)
-  const [selectedId, setSelectedId] = useState('')
+  const [bpm, setBpm] = useState<number>(loadBpm)
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
   const [scale, setScale] = useState(MIN_SCALE)
@@ -75,27 +109,23 @@ export default function BreathePage() {
     xpGained: number
     quests: string[]
   } | null>(null)
-  const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
+  const [audioOn, setAudioOn] = useState(true) // ambient wash on by default
+  const [ambient, setAmbient] = useState<AmbientSound>('ocean')
   const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
   const [volume, setVolume] = useState(0.6)
-  const [audioStatus, setAudioStatus] = useState('')
   const [targetMin, setTargetMin] = useState(0)
 
-  const selected = patterns?.find((p) => p.id === selectedId) ?? null
-  const inhale = selected?.inhale_seconds ?? 4
-  const exhale = selected?.exhale_seconds ?? 6
+  // Whole-second inhale/exhale derived from the chosen pace (see phasesForBpm).
+  const { inhale, exhale } = phasesForBpm(bpm)
 
-  // Load patterns; default to the first preset.
+  // Remember the chosen pace for next time.
   useEffect(() => {
-    breathingPatternService
-      .list()
-      .then((list) => {
-        setPatterns(list)
-        const def = list.find((p) => p.is_preset) ?? list[0]
-        if (def) setSelectedId(def.id)
-      })
-      .catch(() => setError('Could not load breathing patterns.'))
-  }, [])
+    try {
+      localStorage.setItem(BPM_STORAGE_KEY, String(bpm))
+    } catch {
+      // ignore — preference just won't persist
+    }
+  }, [bpm])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
@@ -116,11 +146,13 @@ export default function BreathePage() {
   const audioOnRef = useRef(audioOn)
   const chimeOnRef = useRef(chimeOn)
   const volumeRef = useRef(volume)
+  const ambientRef = useRef(ambient)
   useEffect(() => {
     audioOnRef.current = audioOn
     chimeOnRef.current = chimeOn
     volumeRef.current = volume
-  }, [audioOn, chimeOn, volume])
+    ambientRef.current = ambient
+  }, [audioOn, chimeOn, volume, ambient])
 
   const targetRef = useRef(targetMin)
   useEffect(() => {
@@ -130,6 +162,7 @@ export default function BreathePage() {
   function audio(): BreathAudio {
     if (!audioRef.current) audioRef.current = new BreathAudio()
     audioRef.current.volume = volumeRef.current
+    audioRef.current.ambient = ambientRef.current
     return audioRef.current
   }
 
@@ -280,13 +313,11 @@ export default function BreathePage() {
     void saveSession(elapsed)
   }
 
-  // Switching pattern starts a fresh session — a saved session is one pattern.
-  function selectPattern(id: string) {
-    setSelectedId(id)
+  // Changing the pace restarts the breath so the new rate begins cleanly.
+  function selectBpm(next: number) {
+    setBpm(next)
     reset()
   }
-
-  const bpm = selected?.breaths_per_minute ?? 0
 
   return (
     <main className="breathe">
@@ -312,43 +343,47 @@ export default function BreathePage() {
         <span>{bpm} breaths per minute</span>
       </div>
 
-      <label htmlFor="pattern">Pattern</label>
-      <select
-        id="pattern"
-        value={selectedId}
-        disabled={running || !patterns}
-        onChange={(e) => selectPattern(e.target.value)}
-      >
-        {(patterns ?? []).map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} · {p.breaths_per_minute} breaths per minute
-          </option>
-        ))}
-      </select>
+      <label>Pace</label>
+      <Stepper
+        options={BPM_OPTIONS}
+        value={bpm}
+        disabled={running}
+        ariaLabel="Breaths per minute"
+        onChange={selectBpm}
+      />
 
-      <label htmlFor="duration">Duration</label>
-      <select
-        id="duration"
+      <label>Duration</label>
+      <Stepper
+        options={DURATIONS}
         value={targetMin}
         disabled={running}
-        onChange={(e) => setTargetMin(Number(e.target.value))}
+        ariaLabel="Duration"
+        onChange={setTargetMin}
+      />
+
+      <label htmlFor="ambient">Sound</label>
+      <select
+        id="ambient"
+        value={audioOn ? ambient : 'off'}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === 'off') {
+            toggleAudio(false)
+          } else {
+            setAmbient(v as AmbientSound)
+            if (!audioOn) toggleAudio(true)
+          }
+        }}
       >
-        {DURATIONS.map((d) => (
-          <option key={d.min} value={d.min}>
-            {d.label}
+        <option value="off">Off</option>
+        {AMBIENT_SOUNDS.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
           </option>
         ))}
       </select>
 
       <div className="breathe-audio">
-        <label>
-          <input
-            type="checkbox"
-            checked={audioOn}
-            onChange={(e) => toggleAudio(e.target.checked)}
-          />{' '}
-          Ocean sound
-        </label>
         <label>
           <input
             type="checkbox"
@@ -367,22 +402,7 @@ export default function BreathePage() {
           aria-label="Volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />
-        <button
-          type="button"
-          className="test-sound"
-          onClick={() => {
-            audio().testBeep()
-            setAudioStatus(audioDiagnostics())
-          }}
-        >
-          🔊 Test sound
-        </button>
       </div>
-      {audioStatus && (
-        <p className="muted" style={{ textAlign: 'center', fontSize: '0.75rem' }}>
-          audio: {audioStatus}
-        </p>
-      )}
 
       {error && (
         <p role="alert" className="error">
@@ -392,7 +412,7 @@ export default function BreathePage() {
 
       <div className="breathe-controls">
         {!running ? (
-          <button type="button" onClick={start} disabled={saving || !selected}>
+          <button type="button" onClick={start} disabled={saving}>
             {elapsed > 0 ? 'Resume' : 'Start'}
           </button>
         ) : (

@@ -29,9 +29,10 @@ export default function ActivityHeatmap() {
   const [failed, setFailed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Show roughly the last month (5 full weeks) rather than the whole year.
   useEffect(() => {
     dashboardService
-      .getActivity()
+      .getActivity(35)
       .then(setCal)
       .catch(() => setFailed(true))
   }, [])
@@ -119,7 +120,7 @@ export default function ActivityHeatmap() {
       </div>
       <div className="heatmap-legend">
         <span className="muted">
-          {totalMin} min in the last year · {perfectDays} all-quest{' '}
+          {totalMin} min in the last month · {perfectDays} all-quest{' '}
           {perfectDays === 1 ? 'day' : 'days'}
         </span>
         <span className="heatmap-key">

@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
@@ -36,8 +36,9 @@ def get_stats(
 
 @router.get("/activity", response_model=ActivityCalendar)
 def get_activity(
+    days: int = Query(365, ge=1, le=366),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ActivityCalendar:
     today, tz = _today_for(current_user)
-    return dashboard_service.get_activity(db, current_user.id, today=today, tz=tz)
+    return dashboard_service.get_activity(db, current_user.id, today=today, days=days, tz=tz)
