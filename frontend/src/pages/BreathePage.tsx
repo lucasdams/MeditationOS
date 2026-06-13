@@ -20,6 +20,9 @@ const MIN_BPM = 1
 const MAX_BPM = 6
 const BPM_STEP = 0.5
 const DEFAULT_BPM = 6
+// The slider is mirrored so the easy end (high bpm) sits on the LEFT and the hard
+// end (low bpm) on the right. Slider position and bpm are mirror images about this sum.
+const PACE_SUM = MIN_BPM + MAX_BPM
 // Resonance breathing keeps the exhale a little longer than the inhale (calming):
 // 40% in / 60% out — which gives the classic 4s-in / 6s-out at 6 breaths a minute.
 const breathSeconds = (bpm: number) => {
@@ -67,8 +70,12 @@ const DURATIONS = [
   { label: '5 min', min: 5 },
   { label: '10 min', min: 10 },
   { label: '20 min', min: 20 },
-  { label: '60 min', min: 60 },
+  { label: '45 min', min: 45 },
+  { label: '1h', min: 60 },
+  { label: '1h 30m', min: 90 },
+  { label: '2h', min: 120 },
 ]
+const DEFAULT_TARGET_MIN = 20
 
 const mmss = (totalSec: number) => {
   const s = Math.max(0, Math.floor(totalSec))
@@ -103,7 +110,7 @@ export default function BreathePage() {
   } | null>(null)
   const [sound, setSound] = useState<SoundId>('ocean-chime')
   const [volume, setVolume] = useState(0.6)
-  const [targetMin, setTargetMin] = useState(0)
+  const [targetMin, setTargetMin] = useState(DEFAULT_TARGET_MIN)
 
   const soundOption = SOUND_OPTIONS.find((o) => o.value === sound) ?? SOUND_OPTIONS[0]
   const audioOn = soundOption.ocean
@@ -332,11 +339,11 @@ export default function BreathePage() {
         min={MIN_BPM}
         max={MAX_BPM}
         step={BPM_STEP}
-        value={bpm}
+        value={PACE_SUM - bpm}
         list="bpm-notches"
         disabled={running}
         aria-label="Breaths per minute"
-        onChange={(e) => selectBpm(Number(e.target.value))}
+        onChange={(e) => selectBpm(PACE_SUM - Number(e.target.value))}
       />
       <datalist id="bpm-notches">
         {BPM_NOTCHES.map((n) => (
@@ -344,8 +351,8 @@ export default function BreathePage() {
         ))}
       </datalist>
       <div className="breathe-pace-hints">
-        <span>← slower · deeper (harder)</span>
-        <span>faster · easier →</span>
+        <span>← faster · easier</span>
+        <span>deeper · harder →</span>
       </div>
 
       <label htmlFor="duration">Duration</label>
