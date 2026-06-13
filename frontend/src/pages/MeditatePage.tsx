@@ -261,26 +261,27 @@ export default function MeditatePage() {
         ))}
       </select>
 
-      <div className="breathe-audio">
-        <label>
-          <input
-            type="checkbox"
-            checked={bellsOn}
-            onChange={(e) => setBellsOn(e.target.checked)}
-          />{' '}
-          Bells
-        </label>
+      <label className="breathe-check">
         <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={volume}
-          disabled={!bellsOn}
-          aria-label="Bell volume"
-          onChange={(e) => setVolume(Number(e.target.value))}
+          type="checkbox"
+          checked={bellsOn}
+          onChange={(e) => setBellsOn(e.target.checked)}
         />
-      </div>
+        Bells (at the start, each interval, and the end)
+      </label>
+
+      <label htmlFor="bell-volume">Volume</label>
+      <input
+        id="bell-volume"
+        className="breathe-volume"
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={volume}
+        disabled={!bellsOn}
+        onChange={(e) => setVolume(Number(e.target.value))}
+      />
 
       {error && (
         <p role="alert" className="error">
