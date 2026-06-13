@@ -34,9 +34,9 @@ session sets it NULL). Loading / error / empty states per the frontend rules.
 
 ## Deliberately deferred
 
-- **XP for journaling.** Gratitude awards XP; journaling doesn't yet. Kept out to
-  avoid touching the gamification engine in the same change — easy to add later.
-- **Search / full-text** over reflections.
+- **Ranked full-text search.** A case-insensitive substring search over the body
+  ships today (`GET /journals?q=`); Postgres full-text + relevance ranking is the
+  open item.
 - **Mood trends** and journal-pattern analysis — V2 analytics / V3 AI.
 - **Prompted journaling** (suggested reflection questions), akin to gratitude
   suggestions.

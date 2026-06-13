@@ -46,6 +46,7 @@ export default function JournalPage() {
   const [mood, setMood] = useState<Mood | ''>('')
   const [sessionId, setSessionId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [query, setQuery] = useState('') // text search over reflections
 
   // Inline editing of an existing entry (body + mood).
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -53,29 +54,43 @@ export default function JournalPage() {
   const [editMood, setEditMood] = useState<Mood | ''>('')
   const [savingEdit, setSavingEdit] = useState(false)
 
+  // The user's sessions — used both to pick one to reflect on and to show the
+  // linked session on each entry. Fetch a generous page so older links resolve.
+  // Non-critical — fail quietly.
   useEffect(() => {
-    journalService
-      .list({ limit: PAGE, offset: 0 })
-      .then((rows) => {
-        setEntries(rows)
-        setHasMore(rows.length === PAGE)
-      })
-      .catch(() => setError('Could not load your journal.'))
-    // The user's sessions — used both to pick one to reflect on and to show the
-    // linked session on each entry. Fetch a generous page so older links resolve.
-    // Non-critical — fail quietly.
     sessionService
       .list({ limit: 200 })
       .then(setSessions)
       .catch(() => {})
   }, [])
 
+  // Entries — refetched (debounced) whenever the text search changes.
+  useEffect(() => {
+    const t = setTimeout(
+      () => {
+        journalService
+          .list({ q: query || undefined, limit: PAGE, offset: 0 })
+          .then((rows) => {
+            setEntries(rows)
+            setHasMore(rows.length === PAGE)
+          })
+          .catch(() => setError('Could not load your journal.'))
+      },
+      query ? 300 : 0, // debounce typing; load immediately on mount/clear
+    )
+    return () => clearTimeout(t)
+  }, [query])
+
   async function loadMore() {
     if (!entries) return
     setError(null)
     setLoadingMore(true)
     try {
-      const rows = await journalService.list({ limit: PAGE, offset: entries.length })
+      const rows = await journalService.list({
+        q: query || undefined,
+        limit: PAGE,
+        offset: entries.length,
+      })
       setEntries((prev) => {
         const seen = new Set((prev ?? []).map((j) => j.id))
         return [...(prev ?? []), ...rows.filter((r) => !seen.has(r.id))]
@@ -219,9 +234,19 @@ export default function JournalPage() {
       </section>
 
       <section className="journal-list">
+        <input
+          type="search"
+          className="journal-search"
+          value={query}
+          placeholder="Search your reflections…"
+          aria-label="Search reflections"
+          onChange={(e) => setQuery(e.target.value)}
+        />
         {entries === null && !error && <p>Loading…</p>}
         {entries && entries.length === 0 && (
-          <p className="muted">No reflections yet. Write your first one above.</p>
+          <p className="muted">
+            {query ? `No reflections match “${query}”.` : 'No reflections yet. Write your first one above.'}
+          </p>
         )}
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined

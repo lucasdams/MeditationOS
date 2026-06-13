@@ -40,12 +40,18 @@ def list_entries(
     user_id: uuid.UUID,
     *,
     mood: str | None = None,
+    q: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Journal]:
     stmt = select(Journal).where(Journal.user_id == user_id)
     if mood is not None:
         stmt = stmt.where(Journal.mood == mood)
+    if q:
+        # Case-insensitive substring match on the body. Escape LIKE wildcards so a
+        # user's literal % or _ doesn't act as a pattern.
+        term = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        stmt = stmt.where(Journal.body.ilike(f"%{term}%", escape="\\"))
     stmt = stmt.order_by(Journal.created_at.desc()).limit(limit).offset(offset)
     return list(db.execute(stmt).scalars().all())
 

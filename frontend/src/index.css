@@ -748,6 +748,11 @@ body {
   white-space: pre-wrap;
 }
 
+.journal-search {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
 .journal-edit {
   margin-top: 0.5rem;
 }

@@ -37,12 +37,11 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 ## Journaling & Insights
 
 - [x] **Gratitude tool** — category → AI-suggested prompts (Claude Haiku, curated fallback) or free text; earns XP — see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md)
-- [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD (incl. **inline edit** of body + mood), filterable — see [journaling design](design/journaling.md)
-- [ ] **XP for journaling** — gratitude awards XP; journaling doesn't yet (kept out to avoid touching the gamification engine in the same change)
+- [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD (incl. **inline edit** of body + mood), filterable; **earns XP** (parity with gratitude) — see [journaling design](design/journaling.md)
 - [ ] Journal prompts tied to session type or streak milestones
 - [x] **Analytics page** — SQL-aggregated insights: minutes-per-week, by type / weekday / time-of-day, and a **journal-mood distribution** — see [analytics design](design/analytics.md)
 - [ ] Mood **over time** (moods plotted across weeks) and month-vs-month comparisons — beyond the current distribution
-- [ ] Search and filter past journal entries (by text; mood filter shipped)
+- [x] **Search past journal entries by text** (case-insensitive substring; mood filter also available) — ranked full-text search is the open item
 - [ ] Weekly/monthly practice summary emails or in-app reports
 
 ## Goals & Gamification
