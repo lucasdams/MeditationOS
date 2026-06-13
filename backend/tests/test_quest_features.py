@@ -16,8 +16,14 @@ def _quest_keys(client):
     return [q["key"] for q in body["daily_quests"]]
 
 
+def _quest_done(client):
+    body = client.get("/api/v1/dashboard/stats").json()
+    return {q["key"]: q["done"] for q in body["daily_quests"]}
+
+
 def test_quest_features_requires_auth(client):
-    assert client.post(ENDPOINT, json={"features": ["meditate", "breathe", "gratitude"]}).status_code == 401
+    res = client.post(ENDPOINT, json={"features": ["meditate", "breathe", "gratitude"]})
+    assert res.status_code == 401
 
 
 def test_new_user_defaults_to_all_four(client):
@@ -49,7 +55,8 @@ def test_set_quest_features_dedupes(client):
 
 def test_fewer_than_three_rejected(client):
     _auth(client, "qf_few@example.com")
-    assert client.post(ENDPOINT, json={"features": ["meditate", "breathe"]}).status_code == 422
+    res = client.post(ENDPOINT, json={"features": ["meditate", "breathe"]})
+    assert res.status_code == 422
 
 
 def test_unknown_feature_rejected(client):
@@ -62,12 +69,10 @@ def test_journal_quest_completes_on_a_journal_entry(client):
     _auth(client, "qf_journal@example.com")
     client.post(ENDPOINT, json={"features": ["meditate", "gratitude", "journal"]})
 
-    done = {q["key"]: q["done"] for q in client.get("/api/v1/dashboard/stats").json()["daily_quests"]}
-    assert done["journal"] is False
+    assert _quest_done(client)["journal"] is False
 
     client.post("/api/v1/journals", json={"body": "A quiet, clear sit today."})
-    done = {q["key"]: q["done"] for q in client.get("/api/v1/dashboard/stats").json()["daily_quests"]}
-    assert done["journal"] is True
+    assert _quest_done(client)["journal"] is True
 
 
 def test_meditate_quest_ignores_breathing_sessions(client):
@@ -77,8 +82,12 @@ def test_meditate_quest_ignores_breathing_sessions(client):
     # A breathing session must not complete the (non-breathing) meditate quest.
     client.post(
         "/api/v1/sessions",
-        json={"type": "resonance_breathing", "duration_seconds": 600, "occurred_at": f"{today}T08:00:00"},
+        json={
+            "type": "resonance_breathing",
+            "duration_seconds": 600,
+            "occurred_at": f"{today}T08:00:00",
+        },
     )
-    done = {q["key"]: q["done"] for q in client.get("/api/v1/dashboard/stats").json()["daily_quests"]}
+    done = _quest_done(client)
     assert done["meditate"] is False
     assert done["breathe"] is True
