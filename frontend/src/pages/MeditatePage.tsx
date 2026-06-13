@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
-import { playBell } from '../lib/sfx'
+import { playBell, BELL_SOUNDS, type BellSound } from '../lib/sfx'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
+import Stepper, { type StepperOption } from '../components/Stepper'
 import type { MeditationType } from '../types'
 
 // Unguided meditation styles (existing session types). Resonance breathing has its
@@ -18,13 +19,18 @@ const TYPES: { value: MeditationType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-// Target length; 0 = open-ended (count up, finish manually).
-const DURATIONS = [
-  { label: '5 min', min: 5 },
-  { label: '10 min', min: 10 },
-  { label: '20 min', min: 20 },
-  { label: '45 min', min: 45 },
-  { label: 'Open', min: 0 },
+// Target length; 0 = open-ended (count up, finish manually). Stepped left→right,
+// so "Open" sits at the low end and the increments grow as you step right.
+const DURATIONS: StepperOption<number>[] = [
+  { value: 0, label: 'Open' },
+  { value: 5, label: '5 min' },
+  { value: 10, label: '10 min' },
+  { value: 15, label: '15 min' },
+  { value: 20, label: '20 min' },
+  { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
+  { value: 60, label: '60 min' },
+  { value: 90, label: '90 min' },
 ]
 
 // Interval bell cadence; 0 = off.
@@ -45,6 +51,7 @@ export default function MeditatePage() {
   const [targetMin, setTargetMin] = useState(10)
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
+  const [bellSound, setBellSound] = useState<BellSound>('bowl')
   const [volume, setVolume] = useState(0.6)
   const [running, setRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -68,17 +75,19 @@ export default function MeditatePage() {
   const intervalRef = useRef(intervalMin)
   const bellsOnRef = useRef(bellsOn)
   const volumeRef = useRef(volume)
+  const bellSoundRef = useRef(bellSound)
   useEffect(() => {
     targetRef.current = targetMin
     intervalRef.current = intervalMin
     bellsOnRef.current = bellsOn
     volumeRef.current = volume
-  }, [targetMin, intervalMin, bellsOn, volume])
+    bellSoundRef.current = bellSound
+  }, [targetMin, intervalMin, bellsOn, volume, bellSound])
 
   function bell() {
     if (bellsOnRef.current) {
       try {
-        playBell(volumeRef.current)
+        playBell(volumeRef.current, bellSoundRef.current)
       } catch (err) {
         console.warn('bell failed', err)
       }
@@ -211,19 +220,14 @@ export default function MeditatePage() {
         ))}
       </select>
 
-      <label htmlFor="duration">Duration</label>
-      <select
-        id="duration"
+      <label>Duration</label>
+      <Stepper
+        options={DURATIONS}
         value={targetMin}
         disabled={settingsDisabled}
-        onChange={(e) => setTargetMin(Number(e.target.value))}
-      >
-        {DURATIONS.map((d) => (
-          <option key={d.min} value={d.min}>
-            {d.label}
-          </option>
-        ))}
-      </select>
+        ariaLabel="Duration"
+        onChange={setTargetMin}
+      />
 
       <label htmlFor="interval">Interval bell</label>
       <select
@@ -235,6 +239,24 @@ export default function MeditatePage() {
         {INTERVALS.map((i) => (
           <option key={i.min} value={i.min}>
             {i.label}
+          </option>
+        ))}
+      </select>
+
+      <label htmlFor="bell-sound">Bell sound</label>
+      <select
+        id="bell-sound"
+        value={bellSound}
+        disabled={!bellsOn}
+        onChange={(e) => {
+          const next = e.target.value as BellSound
+          setBellSound(next)
+          playBell(volume, next) // preview the chosen bell
+        }}
+      >
+        {BELL_SOUNDS.map((b) => (
+          <option key={b.value} value={b.value}>
+            {b.label}
           </option>
         ))}
       </select>
@@ -258,9 +280,6 @@ export default function MeditatePage() {
           aria-label="Bell volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />
-        <button type="button" className="test-sound" onClick={() => playBell(volume)}>
-          🔔 Test bell
-        </button>
       </div>
 
       {error && (

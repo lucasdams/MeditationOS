@@ -4,6 +4,7 @@ import AppHeader from './AppHeader'
 import VerifyEmailBanner from './VerifyEmailBanner'
 import GuestBanner from './GuestBanner'
 import ChooseUsername from '../pages/ChooseUsername'
+import ChooseQuests from '../pages/ChooseQuests'
 import LandingPage from '../pages/LandingPage'
 
 export default function ProtectedRoute() {
@@ -17,6 +18,8 @@ export default function ProtectedRoute() {
     return location.pathname === '/' ? <LandingPage /> : <Navigate to="/login" replace />
   }
   if (!user.username) return <ChooseUsername />
+  // First-run quest picker: null means the user hasn't chosen yet.
+  if (user.quest_features == null) return <ChooseQuests />
 
   return (
     <>
