@@ -111,18 +111,31 @@ def test_daily_quests_track_today(client):
     today = datetime.now(UTC).date()
 
     before = client.get("/api/v1/dashboard/stats").json()
-    assert {q["key"] for q in before["daily_quests"]} == {"gratitude", "breathe", "session"}
+    # New accounts default to all four daily-activity quests.
+    assert {q["key"] for q in before["daily_quests"]} == {
+        "meditate",
+        "breathe",
+        "gratitude",
+        "journal",
+    }
     assert all(q["done"] is False for q in before["daily_quests"])
 
-    # A 10-minute breathing session completes the breathe + session quests.
+    # A 10-minute breathing session completes only the breathe quest — breathing is
+    # not a meditation session.
     _session(
         client, f"{today.isoformat()}T08:00:00", seconds=600, type="resonance_breathing"
     )
     after = client.get("/api/v1/dashboard/stats").json()
     done = {q["key"]: q["done"] for q in after["daily_quests"]}
-    assert done == {"breathe": True, "session": True, "gratitude": False}
+    assert done == {
+        "meditate": False,
+        "breathe": True,
+        "gratitude": False,
+        "journal": False,
+    }
     assert after["streak_bonus_xp"] == 10  # longest streak 1 day × 10
-    # 30 (breathing) + 30 (two quests) + 10 (streak) = 70.
+    # XP is unchanged by personalization: 30 (breathing) + 30 (session+breathe day
+    # bonuses) + 10 (streak) = 70.
     assert after["xp"] == 70
 
 
@@ -132,10 +145,11 @@ def test_breathe_quest_needs_a_full_minute(client):
     _session(
         client, f"{today.isoformat()}T08:00:00", seconds=30, type="resonance_breathing"
     )
+    _session(client, f"{today.isoformat()}T09:00:00", seconds=600, type="mindfulness")
     body = client.get("/api/v1/dashboard/stats").json()
     quests = {q["key"]: q["done"] for q in body["daily_quests"]}
     assert quests["breathe"] is False  # only 30s < 60s threshold
-    assert quests["session"] is True
+    assert quests["meditate"] is True  # the mindfulness session counts
 
 
 def test_activity_all_quests_flag(client):

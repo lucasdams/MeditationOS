@@ -31,7 +31,13 @@ def get_stats(
     current_user: User = Depends(get_current_user),
 ) -> DashboardStats:
     today, tz = _today_for(current_user)
-    return dashboard_service.get_stats(db, current_user.id, today=today, tz=tz)
+    return dashboard_service.get_stats(
+        db,
+        current_user.id,
+        today=today,
+        tz=tz,
+        quest_features=current_user.quest_features,
+    )
 
 
 @router.get("/activity", response_model=ActivityCalendar)

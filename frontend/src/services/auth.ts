@@ -25,6 +25,10 @@ export const authService = {
 
   setTimezone: (timezone: string) => api.post<User>('/auth/timezone', { timezone }),
 
+  // Choose which daily-activity quests to receive (≥3; validated server-side).
+  setQuestFeatures: (features: string[]) =>
+    api.post<User>('/auth/quest-features', { features }),
+
   // current_password is omitted when a Google-only account sets its first password.
   setPassword: (newPassword: string, currentPassword?: string) =>
     api.post<User>('/auth/password', {

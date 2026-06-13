@@ -12,7 +12,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
+from app.models.journal import Journal
 from app.models.session import Session
+from app.models.user import QUEST_FEATURES
 from app.schemas.dashboard import (
     ActivityCalendar,
     ActivityDay,
@@ -80,7 +82,12 @@ def _local_date(tz: str, column):
 
 
 def get_stats(
-    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC"
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+    quest_features: list[str] | None = None,
 ) -> DashboardStats:
     total_seconds, session_count = db.execute(
         select(
@@ -151,6 +158,23 @@ def get_stats(
     ).all()
     breathing_days = {row[0] for row in breathing_day_rows}
 
+    # Days with a meditation (non-breathing) session — the "meditate" quest. Distinct
+    # from "breathe" so a user can opt into either or both.
+    meditation_day_rows = db.execute(
+        select(_local_date(tz, Session.occurred_at))
+        .where(Session.user_id == user_id, Session.type != "resonance_breathing")
+        .distinct()
+    ).all()
+    meditation_days = {row[0] for row in meditation_day_rows}
+
+    # Days with a journal entry — the "journal" quest.
+    journal_day_rows = db.execute(
+        select(_local_date(tz, Journal.created_at))
+        .where(Journal.user_id == user_id)
+        .distinct()
+    ).all()
+    journal_days = {row[0] for row in journal_day_rows}
+
     # Daily quests reset each day; total XP counts every day they were ever completed,
     # so that part only ever grows. The streak bonus rides the *current* streak, so it
     # grows as you keep it up and falls back if the streak lapses.
@@ -169,25 +193,25 @@ def get_stats(
     )
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
 
+    # Daily quests are personalized: the user opts into a subset of QUEST_FEATURES
+    # (≥3). NULL (not chosen yet) falls back to all four. XP and the heatmap's
+    # all-quests flag deliberately stay tied to the original categories above.
+    quest_meta = {
+        "meditate": ("Meditate today", meditation_days),
+        "breathe": ("Breathe for a minute", breathing_days),
+        "gratitude": ("Write a gratitude", gratitude_days),
+        "journal": ("Write a journal entry", journal_days),
+    }
+    selected = set(quest_features) if quest_features else set(QUEST_FEATURES)
     daily_quests = [
         QuestStatus(
-            key="gratitude",
-            label="Write a gratitude",
+            key=key,
+            label=quest_meta[key][0],
             xp=QUEST_XP,
-            done=today in gratitude_days,
-        ),
-        QuestStatus(
-            key="breathe",
-            label="Breathe for a minute",
-            xp=QUEST_XP,
-            done=today in breathing_days,
-        ),
-        QuestStatus(
-            key="session",
-            label="Log a session",
-            xp=QUEST_XP,
-            done=today in session_days,
-        ),
+            done=today in quest_meta[key][1],
+        )
+        for key in QUEST_FEATURES  # canonical order
+        if key in selected
     ]
 
     return DashboardStats(

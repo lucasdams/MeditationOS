@@ -351,6 +351,22 @@ body {
   padding: 0;
 }
 
+/* Daily-quest feature picker (onboarding + settings). */
+.quest-picker {
+  border: none;
+  padding: 0;
+  margin: 0.25rem 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quest-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .success {
   color: #1a7f44;
   font-size: 0.9rem;

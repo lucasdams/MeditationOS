@@ -11,6 +11,7 @@ from app.core.exceptions import (
     EmailAlreadyExistsError,
     GoogleAuthError,
     InvalidPasswordError,
+    InvalidQuestFeaturesError,
     InvalidResetTokenError,
     InvalidTimezoneError,
     InvalidVerificationTokenError,
@@ -27,6 +28,7 @@ from app.schemas.user import (
     PasswordResetConfirm,
     PasswordResetRequest,
     PasswordUpdate,
+    QuestFeaturesUpdate,
     ReminderUpdate,
     TimezoneUpdate,
     UserCreate,
@@ -167,6 +169,20 @@ def set_timezone(
     except InvalidTimezoneError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid timezone"
+        ) from None
+
+
+@router.post("/quest-features", response_model=UserRead)
+def set_quest_features(
+    data: QuestFeaturesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    try:
+        return user_service.set_quest_features(db, current_user, data.features)
+    except InvalidQuestFeaturesError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err)
         ) from None
 
 
