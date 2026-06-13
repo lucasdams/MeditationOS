@@ -4,11 +4,11 @@ import { sessionService } from '../services/sessions'
 import { breathingPatternService } from '../services/breathingPatterns'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
-import { BreathAudio } from '../lib/breathAudio'
-import { audioDiagnostics } from '../lib/audioContext'
+import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAudio'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
+import Stepper, { type StepperOption } from '../components/Stepper'
 import type { BreathingPattern } from '../types'
 
 const MIN_SCALE = 0.35
@@ -43,13 +43,17 @@ const SEGMENT_LABEL: Record<Segment, string> = {
   'hold-empty': 'Hold',
 }
 
-// Optional session length; 0 = open-ended (finish manually).
-const DURATIONS = [
-  { label: 'Open', min: 0 },
-  { label: '5 min', min: 5 },
-  { label: '10 min', min: 10 },
-  { label: '20 min', min: 20 },
-  { label: '60 min', min: 60 },
+// Optional session length; 0 = open-ended (finish manually). Stepped left→right.
+const DURATIONS: StepperOption<number>[] = [
+  { value: 0, label: 'Open' },
+  { value: 3, label: '3 min' },
+  { value: 5, label: '5 min' },
+  { value: 10, label: '10 min' },
+  { value: 15, label: '15 min' },
+  { value: 20, label: '20 min' },
+  { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
+  { value: 60, label: '60 min' },
 ]
 
 const mmss = (totalSec: number) => {
@@ -75,10 +79,10 @@ export default function BreathePage() {
     xpGained: number
     quests: string[]
   } | null>(null)
-  const [audioOn, setAudioOn] = useState(true) // ocean sound on by default
+  const [audioOn, setAudioOn] = useState(true) // ambient wash on by default
+  const [ambient, setAmbient] = useState<AmbientSound>('ocean')
   const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
   const [volume, setVolume] = useState(0.6)
-  const [audioStatus, setAudioStatus] = useState('')
   const [targetMin, setTargetMin] = useState(0)
 
   const selected = patterns?.find((p) => p.id === selectedId) ?? null
@@ -116,11 +120,13 @@ export default function BreathePage() {
   const audioOnRef = useRef(audioOn)
   const chimeOnRef = useRef(chimeOn)
   const volumeRef = useRef(volume)
+  const ambientRef = useRef(ambient)
   useEffect(() => {
     audioOnRef.current = audioOn
     chimeOnRef.current = chimeOn
     volumeRef.current = volume
-  }, [audioOn, chimeOn, volume])
+    ambientRef.current = ambient
+  }, [audioOn, chimeOn, volume, ambient])
 
   const targetRef = useRef(targetMin)
   useEffect(() => {
@@ -130,6 +136,7 @@ export default function BreathePage() {
   function audio(): BreathAudio {
     if (!audioRef.current) audioRef.current = new BreathAudio()
     audioRef.current.volume = volumeRef.current
+    audioRef.current.ambient = ambientRef.current
     return audioRef.current
   }
 
@@ -288,6 +295,12 @@ export default function BreathePage() {
 
   const bpm = selected?.breaths_per_minute ?? 0
 
+  // Pace options for the BPM stepper: patterns ordered slow → fast, so stepping
+  // right speeds the breath up. Equal-BPM patterns keep their name to stay distinct.
+  const paceOptions: StepperOption<string>[] = [...(patterns ?? [])]
+    .sort((a, b) => a.breaths_per_minute - b.breaths_per_minute)
+    .map((p) => ({ value: p.id, label: `${p.breaths_per_minute} bpm · ${p.name}` }))
+
   return (
     <main className="breathe">
       <header>
@@ -312,43 +325,47 @@ export default function BreathePage() {
         <span>{bpm} breaths per minute</span>
       </div>
 
-      <label htmlFor="pattern">Pattern</label>
-      <select
-        id="pattern"
+      <label>Pace</label>
+      <Stepper
+        options={paceOptions}
         value={selectedId}
         disabled={running || !patterns}
-        onChange={(e) => selectPattern(e.target.value)}
-      >
-        {(patterns ?? []).map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} · {p.breaths_per_minute} breaths per minute
-          </option>
-        ))}
-      </select>
+        ariaLabel="Breaths per minute"
+        onChange={selectPattern}
+      />
 
-      <label htmlFor="duration">Duration</label>
-      <select
-        id="duration"
+      <label>Duration</label>
+      <Stepper
+        options={DURATIONS}
         value={targetMin}
         disabled={running}
-        onChange={(e) => setTargetMin(Number(e.target.value))}
+        ariaLabel="Duration"
+        onChange={setTargetMin}
+      />
+
+      <label htmlFor="ambient">Sound</label>
+      <select
+        id="ambient"
+        value={audioOn ? ambient : 'off'}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === 'off') {
+            toggleAudio(false)
+          } else {
+            setAmbient(v as AmbientSound)
+            if (!audioOn) toggleAudio(true)
+          }
+        }}
       >
-        {DURATIONS.map((d) => (
-          <option key={d.min} value={d.min}>
-            {d.label}
+        <option value="off">Off</option>
+        {AMBIENT_SOUNDS.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
           </option>
         ))}
       </select>
 
       <div className="breathe-audio">
-        <label>
-          <input
-            type="checkbox"
-            checked={audioOn}
-            onChange={(e) => toggleAudio(e.target.checked)}
-          />{' '}
-          Ocean sound
-        </label>
         <label>
           <input
             type="checkbox"
@@ -367,22 +384,7 @@ export default function BreathePage() {
           aria-label="Volume"
           onChange={(e) => setVolume(Number(e.target.value))}
         />
-        <button
-          type="button"
-          className="test-sound"
-          onClick={() => {
-            audio().testBeep()
-            setAudioStatus(audioDiagnostics())
-          }}
-        >
-          🔊 Test sound
-        </button>
       </div>
-      {audioStatus && (
-        <p className="muted" style={{ textAlign: 'center', fontSize: '0.75rem' }}>
-          audio: {audioStatus}
-        </p>
-      )}
 
       {error && (
         <p role="alert" className="error">
