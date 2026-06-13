@@ -125,10 +125,6 @@ export default function DashboardPage() {
               <div className="stat-label">Current streak (days)</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">{stats.longest_streak_days}</div>
-              <div className="stat-label">Longest streak (days)</div>
-            </div>
-            <div className="stat-card">
               <div className="stat-value">{stats.session_count}</div>
               <div className="stat-label">Sessions</div>
             </div>
