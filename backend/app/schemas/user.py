@@ -66,6 +66,14 @@ class PasswordUpdate(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class EmailUpdate(BaseModel):
+    """Change the account email. Re-authenticates with the current password; the
+    new address must be re-verified before it's trusted."""
+
+    new_email: EmailStr
+    current_password: str
+
+
 class PasswordResetRequest(BaseModel):
     """Ask for a reset link to be emailed."""
 

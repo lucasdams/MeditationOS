@@ -111,6 +111,29 @@ def set_password(
     return user
 
 
+def change_email(db: Session, user: User, *, new_email: str, current_password: str) -> User:
+    """Change the account email after re-authenticating with the current password.
+    Resets verification and emails a confirmation link to the new address.
+
+    Raises InvalidPasswordError if the password is wrong (or the account has none,
+    e.g. Google-only — it must set a password first), or EmailAlreadyExistsError if
+    another account already uses the new email. A no-op if the email is unchanged.
+    """
+    if user.password_hash is None or not verify_password(current_password, user.password_hash):
+        raise InvalidPasswordError()
+    if user.email.lower() == new_email.lower():
+        return user  # unchanged — don't reset verification or re-send
+    existing = get_user_by_email(db, new_email)
+    if existing is not None and existing.id != user.id:
+        raise EmailAlreadyExistsError(new_email)
+    user.email = new_email
+    user.email_verified = False
+    db.commit()
+    db.refresh(user)
+    send_verification_email(db, user)
+    return user
+
+
 def _password_version(password_hash: str) -> str:
     """A short fingerprint of the password hash, embedded in reset tokens so a
     token stops working once the password changes (single-use)."""

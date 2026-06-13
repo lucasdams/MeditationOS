@@ -145,7 +145,7 @@ sessions stay private unless a member chooses otherwise.
 - [x] **Forgot-password reset** via an emailed single-use link — see [auth design](design/authentication.md#password-reset--implemented)
 - [x] **Email verification** (emailed link; Google sign-in arrives verified) — see [auth design](design/authentication.md#email-verification--implemented)
 - [x] **Guest accounts** — "use without signing up"; an anonymous account you can later **claim** (add email + password) without losing data — see [auth design](design/authentication.md#guest-accounts--implemented)
-- [ ] **Change account email** (with re-verification) — Settings currently covers username, password, quests, reminders, theme, and guest-claim, but not changing the email
+- [x] **Change account email** — from Settings, re-authenticated with the current password; the new address is reset to unverified and a confirmation link is emailed
 - [ ] Other social providers (Apple, GitHub)
 - [ ] Multi-factor authentication (TOTP)
 

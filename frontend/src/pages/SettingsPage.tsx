@@ -43,6 +43,13 @@ export default function SettingsPage() {
   const [passwordOk, setPasswordOk] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
 
+  // Email section.
+  const [newEmail, setNewEmail] = useState('')
+  const [emailPassword, setEmailPassword] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailOk, setEmailOk] = useState(false)
+  const [savingEmail, setSavingEmail] = useState(false)
+
   // Daily quests section.
   const [questFeatures, setQuestFeatures] = useState<string[]>(
     user?.quest_features ?? QUEST_FEATURES.map((f) => f.key),
@@ -135,6 +142,42 @@ export default function SettingsPage() {
       )
     } finally {
       setSavingPassword(false)
+    }
+  }
+
+  async function handleEmail(e: FormEvent) {
+    e.preventDefault()
+    setEmailError(null)
+    setEmailOk(false)
+    if (!newEmail.trim()) {
+      setEmailError('Enter a new email.')
+      return
+    }
+    if (newEmail.trim().toLowerCase() === user!.email.toLowerCase()) {
+      setEmailError('That’s already your email.')
+      return
+    }
+    if (!emailPassword) {
+      setEmailError('Enter your current password to confirm.')
+      return
+    }
+    setSavingEmail(true)
+    try {
+      await authService.setEmail(newEmail.trim(), emailPassword)
+      await refresh() // email + email_verified change; the verify banner reappears
+      setEmailOk(true)
+      setNewEmail('')
+      setEmailPassword('')
+    } catch (err) {
+      setEmailError(
+        err instanceof ApiError && err.status === 409
+          ? 'That email already has an account.'
+          : err instanceof ApiError && err.status === 401
+            ? 'Your password is incorrect.'
+            : 'Something went wrong. Please try again.',
+      )
+    } finally {
+      setSavingEmail(false)
     }
   }
 
@@ -323,6 +366,48 @@ export default function SettingsPage() {
           </button>
         </form>
       </section>
+
+      {!user.is_guest && hasPassword && (
+        <section className="settings-section">
+          <h2>Change email</h2>
+          <p className="muted">
+            You’ll need to confirm a verification link sent to the new address.
+          </p>
+          <form onSubmit={handleEmail} noValidate>
+            <label htmlFor="new-email">New email</label>
+            <input
+              id="new-email"
+              type="email"
+              autoComplete="email"
+              value={newEmail}
+              placeholder={user.email}
+              onChange={(e) => {
+                setNewEmail(e.target.value)
+                setEmailOk(false)
+              }}
+            />
+            <label htmlFor="email-password">Current password</label>
+            <input
+              id="email-password"
+              type="password"
+              autoComplete="current-password"
+              value={emailPassword}
+              onChange={(e) => setEmailPassword(e.target.value)}
+            />
+            {emailError && (
+              <p role="alert" className="error">
+                {emailError}
+              </p>
+            )}
+            {emailOk && (
+              <p className="success">Email updated — check your inbox to verify it.</p>
+            )}
+            <button type="submit" disabled={savingEmail}>
+              {savingEmail ? 'Saving…' : 'Change email'}
+            </button>
+          </form>
+        </section>
+      )}
 
       {!user.is_guest && (
       <section className="settings-section">
