@@ -25,6 +25,8 @@ class SessionCreate(BaseModel):
     duration_seconds: int = Field(gt=0)
     occurred_at: datetime
     notes: str | None = Field(default=None, max_length=2000)
+    focus: int | None = Field(default=None, ge=1, le=5)
+    calm: int | None = Field(default=None, ge=1, le=5)
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
@@ -37,6 +39,8 @@ class SessionUpdate(BaseModel):
     duration_seconds: int | None = Field(default=None, gt=0)
     occurred_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=2000)
+    focus: int | None = Field(default=None, ge=1, le=5)
+    calm: int | None = Field(default=None, ge=1, le=5)
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
@@ -50,6 +54,8 @@ class SessionRead(BaseModel):
     duration_seconds: int
     occurred_at: datetime
     notes: str | None
+    focus: int | None
+    calm: int | None
     inhale_seconds: int | None
     exhale_seconds: int | None
     cycles_completed: int | None

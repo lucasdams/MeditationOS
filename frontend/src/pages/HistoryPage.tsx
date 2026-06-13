@@ -19,12 +19,22 @@ const formatDuration = (seconds: number) => `${Math.round(seconds / 60)} min`
 const csvEscape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
 
 function toCsv(rows: Session[]): string {
-  const header = ['type', 'duration_minutes', 'occurred_at', 'breaths_per_minute', 'notes']
+  const header = [
+    'type',
+    'duration_minutes',
+    'occurred_at',
+    'focus',
+    'calm',
+    'breaths_per_minute',
+    'notes',
+  ]
   const lines = rows.map((s) =>
     [
       s.type,
       String(Math.round(s.duration_seconds / 60)),
       s.occurred_at,
+      s.focus != null ? String(s.focus) : '',
+      s.calm != null ? String(s.calm) : '',
       s.breaths_per_minute != null ? String(s.breaths_per_minute) : '',
       s.notes ?? '',
     ]
@@ -56,6 +66,8 @@ export default function HistoryPage() {
   const [editMin, setEditMin] = useState(10)
   const [editWhen, setEditWhen] = useState('') // datetime-local value
   const [editNotes, setEditNotes] = useState('')
+  const [editFocus, setEditFocus] = useState('') // '' = not rated
+  const [editCalm, setEditCalm] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [exporting, setExporting] = useState(false)
 
@@ -100,6 +112,8 @@ export default function HistoryPage() {
     setEditMin(Math.max(1, Math.round(s.duration_seconds / 60)))
     setEditWhen(s.occurred_at.slice(0, 16)) // "YYYY-MM-DDTHH:mm" for datetime-local
     setEditNotes(s.notes ?? '')
+    setEditFocus(s.focus != null ? String(s.focus) : '')
+    setEditCalm(s.calm != null ? String(s.calm) : '')
     setError(null)
   }
 
@@ -116,6 +130,8 @@ export default function HistoryPage() {
         duration_seconds: editMin * 60,
         occurred_at: editWhen,
         notes: editNotes.trim() || null,
+        focus: editFocus ? Number(editFocus) : null,
+        calm: editCalm ? Number(editCalm) : null,
       })
       setSessions((prev) => prev?.map((s) => (s.id === id ? updated : s)) ?? null)
       setEditingId(null)
@@ -253,6 +269,28 @@ export default function HistoryPage() {
                       />
                     </label>
                     <label>
+                      Focus
+                      <select value={editFocus} onChange={(e) => setEditFocus(e.target.value)}>
+                        <option value="">Not rated</option>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>
+                            {n} / 5
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Calm
+                      <select value={editCalm} onChange={(e) => setEditCalm(e.target.value)}>
+                        <option value="">Not rated</option>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>
+                            {n} / 5
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
                       Notes
                       <textarea
                         rows={2}
@@ -277,6 +315,8 @@ export default function HistoryPage() {
                       {s.breaths_per_minute != null && (
                         <> · {s.breaths_per_minute} breaths per minute</>
                       )}
+                      {s.focus != null && <> · focus {s.focus}/5</>}
+                      {s.calm != null && <> · calm {s.calm}/5</>}
                     </div>
                     {s.notes && <div className="session-card-notes">{s.notes}</div>}
                     <div className="session-card-actions">

@@ -50,6 +50,10 @@ class Session(Base):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    # Optional post-session self-rating, 1–5 (how focused / how calm you felt).
+    focus: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    calm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Set only for type='resonance_breathing'.
     inhale_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     exhale_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -68,6 +72,8 @@ class Session(Base):
     __table_args__ = (
         CheckConstraint("duration_seconds > 0", name="ck_sessions_duration_positive"),
         CheckConstraint(f"type IN ({_TYPE_LIST})", name="ck_sessions_type"),
+        CheckConstraint("focus IS NULL OR focus BETWEEN 1 AND 5", name="ck_sessions_focus"),
+        CheckConstraint("calm IS NULL OR calm BETWEEN 1 AND 5", name="ck_sessions_calm"),
         # Every dashboard/streak query filters by user and time.
         Index("ix_sessions_user_id_occurred_at", "user_id", "occurred_at"),
     )

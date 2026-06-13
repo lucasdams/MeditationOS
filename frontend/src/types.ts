@@ -40,6 +40,8 @@ export interface Session {
   duration_seconds: number
   occurred_at: string
   notes: string | null
+  focus: number | null // 1–5 self-rating
+  calm: number | null // 1–5 self-rating
   inhale_seconds: number | null
   exhale_seconds: number | null
   cycles_completed: number | null
@@ -52,6 +54,8 @@ export interface SessionCreate {
   duration_seconds: number
   occurred_at: string
   notes?: string | null
+  focus?: number | null
+  calm?: number | null
   inhale_seconds?: number | null
   exhale_seconds?: number | null
   cycles_completed?: number | null
