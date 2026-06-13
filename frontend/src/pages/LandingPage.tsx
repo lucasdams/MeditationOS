@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import GuestButton from '../components/GuestButton'
+import SiteFooter from '../components/SiteFooter'
 
 const FEATURES = [
   { emoji: '🫁', title: 'HRV resonance breathing', body: 'A guided pacer at your chosen slow rate, with an ocean-breath audio guide.' },
@@ -43,6 +44,8 @@ export default function LandingPage() {
           </div>
         ))}
       </section>
+
+      <SiteFooter />
     </main>
   )
 }

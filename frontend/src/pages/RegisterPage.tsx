@@ -81,6 +81,11 @@ export default function RegisterPage() {
         <button type="submit" disabled={submitting}>
           {submitting ? 'Creating…' : 'Create account'}
         </button>
+
+        <p className="auth-legal muted">
+          By creating an account you agree to our <Link to="/terms">Terms</Link> and{' '}
+          <Link to="/privacy">Privacy Policy</Link>.
+        </p>
       </form>
 
       <div className="auth-divider">

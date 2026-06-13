@@ -433,6 +433,103 @@ body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
+/* Public legal pages (Privacy, Terms) */
+.legal {
+  max-width: 44rem;
+  margin: 3rem auto;
+  padding: 0 1.25rem 2rem;
+  line-height: 1.6;
+}
+
+.legal h1 {
+  margin-bottom: 0.25rem;
+}
+
+.legal-meta {
+  margin-top: 0;
+  font-size: 0.85rem;
+}
+
+.legal-template {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.legal-body h2 {
+  font-size: 1.05rem;
+  margin: 1.5rem 0 0.4rem;
+}
+
+.legal-body p,
+.legal-body li {
+  font-size: 0.95rem;
+}
+
+.legal-back {
+  margin-top: 2rem;
+}
+
+/* Public footer (landing + legal pages) */
+.site-footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e5ea;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+/* "By creating an account…" consent line on register */
+.auth-legal {
+  font-size: 0.8rem;
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+/* Dismissible cookie notice */
+.cookie-notice {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  margin: 0 auto;
+  max-width: 40rem;
+  background: #1c1c1e;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+}
+
+.cookie-notice-text {
+  margin: 0;
+  flex: 1;
+  font-size: 0.85rem;
+}
+
+.cookie-notice a {
+  color: #c7d2fe;
+}
+
+.cookie-notice button {
+  margin: 0;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  background: #4f46e5;
+}
+
 .landing {
   max-width: 52rem;
   margin: 0 auto;
