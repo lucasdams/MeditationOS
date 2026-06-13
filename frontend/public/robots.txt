@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Authenticated app routes require login and have no crawlable content, but they
+# are not secret — left allowed for simplicity.
+
+# TODO: set to your real production domain before launch.
+Sitemap: https://meditationos.app/sitemap.xml
