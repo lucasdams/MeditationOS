@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
-import { playBell, BELL_SOUNDS, type BellSound } from '../lib/sfx'
+import { playBell } from '../lib/sfx'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import Stepper, { type StepperOption } from '../components/Stepper'
@@ -51,7 +51,6 @@ export default function MeditatePage() {
   const [targetMin, setTargetMin] = useState(10)
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
-  const [bellSound, setBellSound] = useState<BellSound>('bowl')
   const [volume, setVolume] = useState(0.6)
   const [running, setRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -75,19 +74,17 @@ export default function MeditatePage() {
   const intervalRef = useRef(intervalMin)
   const bellsOnRef = useRef(bellsOn)
   const volumeRef = useRef(volume)
-  const bellSoundRef = useRef(bellSound)
   useEffect(() => {
     targetRef.current = targetMin
     intervalRef.current = intervalMin
     bellsOnRef.current = bellsOn
     volumeRef.current = volume
-    bellSoundRef.current = bellSound
-  }, [targetMin, intervalMin, bellsOn, volume, bellSound])
+  }, [targetMin, intervalMin, bellsOn, volume])
 
   function bell() {
     if (bellsOnRef.current) {
       try {
-        playBell(volumeRef.current, bellSoundRef.current)
+        playBell(volumeRef.current)
       } catch (err) {
         console.warn('bell failed', err)
       }
@@ -243,29 +240,14 @@ export default function MeditatePage() {
         ))}
       </select>
 
-      <label htmlFor="bell-sound">Bell sound</label>
-      <select
-        id="bell-sound"
-        value={bellSound}
-        disabled={!bellsOn}
-        onChange={(e) => {
-          const next = e.target.value as BellSound
-          setBellSound(next)
-          playBell(volume, next) // preview the chosen bell
-        }}
-      >
-        {BELL_SOUNDS.map((b) => (
-          <option key={b.value} value={b.value}>
-            {b.label}
-          </option>
-        ))}
-      </select>
-
       <label className="breathe-check">
         <input
           type="checkbox"
           checked={bellsOn}
-          onChange={(e) => setBellsOn(e.target.checked)}
+          onChange={(e) => {
+            setBellsOn(e.target.checked)
+            if (e.target.checked) playBell(volume) // preview the bell you just enabled
+          }}
         />
         Bells (at the start, each interval, and the end)
       </label>

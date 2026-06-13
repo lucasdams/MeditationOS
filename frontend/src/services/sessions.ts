@@ -3,6 +3,8 @@ import type { Session, SessionCreate } from '../types'
 
 export const sessionService = {
   create: (data: SessionCreate) => api.post<Session>('/sessions', data),
+  update: (id: string, data: Partial<SessionCreate>) =>
+    api.patch<Session>(`/sessions/${id}`, data),
   list: (opts?: { limit?: number; offset?: number }) => {
     const p = new URLSearchParams()
     if (opts?.limit != null) p.set('limit', String(opts.limit))

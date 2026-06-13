@@ -277,7 +277,10 @@ export default function BreathePage() {
 
   function toggleChime(on: boolean) {
     setChimeOn(on)
-    if (on) audio().resume()
+    if (on) {
+      audio().resume()
+      audio().chime('inhale') // preview the bell you just enabled
+    }
   }
 
   function reset() {
@@ -412,7 +415,7 @@ export default function BreathePage() {
           checked={chimeOn}
           onChange={(e) => toggleChime(e.target.checked)}
         />
-        Chime (a soft bell at each turn of the breath)
+        Chime
       </label>
 
       <label htmlFor="volume">Volume</label>

@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { sessionService } from '../services/sessions'
+import { MOOD_COLORS, tint } from '../lib/colors'
+import { useToast } from '../context/ToastContext'
 import type { Journal, MeditationType, Mood, Session } from '../types'
 
 const MOODS: Mood[] = [
@@ -33,6 +35,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const PAGE = 50
 
 export default function JournalPage() {
+  const { showToast } = useToast()
   const [entries, setEntries] = useState<Journal[] | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +46,12 @@ export default function JournalPage() {
   const [mood, setMood] = useState<Mood | ''>('')
   const [sessionId, setSessionId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Inline editing of an existing entry (body + mood).
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editBody, setEditBody] = useState('')
+  const [editMood, setEditMood] = useState<Mood | ''>('')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   useEffect(() => {
     journalService
@@ -97,10 +106,43 @@ export default function JournalPage() {
       setBody('')
       setMood('')
       setSessionId('')
+      showToast('Reflection saved.')
     } catch {
       setError('Could not save your reflection.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  function startEdit(j: Journal) {
+    setEditingId(j.id)
+    setEditBody(j.body)
+    setEditMood((j.mood as Mood | null) ?? '')
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditBody('')
+    setEditMood('')
+  }
+
+  async function saveEdit(id: string) {
+    if (!editBody.trim()) return
+    setSavingEdit(true)
+    setError(null)
+    try {
+      const updated = await journalService.update(id, {
+        body: editBody.trim(),
+        mood: editMood || null,
+      })
+      setEntries((prev) => prev?.map((j) => (j.id === id ? updated : j)) ?? null)
+      cancelEdit()
+      showToast('Reflection updated.')
+    } catch {
+      setError('Could not update that reflection.')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -109,6 +151,7 @@ export default function JournalPage() {
     try {
       await journalService.remove(id)
       setEntries((prev) => prev?.filter((j) => j.id !== id) ?? null)
+      showToast('Reflection deleted.')
     } catch {
       setError('Could not delete that reflection.')
     }
@@ -182,17 +225,71 @@ export default function JournalPage() {
         )}
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined
+          const editing = editingId === j.id
           return (
             <article key={j.id} className="journal-entry">
               <div className="journal-entry-head">
                 <span className="muted">{formatWhen(j.created_at)}</span>
-                {j.mood && <span className="journal-mood">{cap(j.mood)}</span>}
-                <button type="button" className="link-danger" onClick={() => handleDelete(j.id)}>
-                  Delete
-                </button>
+                {!editing && j.mood && (
+                  <span
+                    className="journal-mood"
+                    style={{ background: tint(MOOD_COLORS[j.mood]), color: MOOD_COLORS[j.mood] }}
+                  >
+                    {cap(j.mood)}
+                  </span>
+                )}
+                {!editing && (
+                  <span className="journal-entry-actions">
+                    <button type="button" className="link-neutral" onClick={() => startEdit(j)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="link-danger"
+                      onClick={() => handleDelete(j.id)}
+                    >
+                      Delete
+                    </button>
+                  </span>
+                )}
               </div>
-              <p className="journal-body">{j.body}</p>
-              {linked && (
+              {editing ? (
+                <div className="journal-edit">
+                  <textarea
+                    rows={4}
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    aria-label="Edit reflection"
+                  />
+                  <select
+                    value={editMood}
+                    onChange={(e) => setEditMood(e.target.value as Mood | '')}
+                    aria-label="Edit mood"
+                  >
+                    <option value="">No mood</option>
+                    {MOODS.map((m) => (
+                      <option key={m} value={m}>
+                        {cap(m)}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="journal-edit-actions">
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(j.id)}
+                      disabled={savingEdit || !editBody.trim()}
+                    >
+                      {savingEdit ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" className="link-neutral" onClick={cancelEdit}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="journal-body">{j.body}</p>
+              )}
+              {linked && !editing && (
                 <p className="journal-session">🧘 On {sessionLabel(linked)}</p>
               )}
             </article>

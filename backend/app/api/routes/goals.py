@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.exceptions import DailyLimitError
+from app.core.exceptions import DailyLimitError, GoalNotCheckableError
 from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
@@ -24,6 +24,10 @@ _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal n
 _DAILY_LIMIT = HTTPException(
     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
     detail="Daily limit reached. Please try again tomorrow.",
+)
+_NOT_CUSTOM = HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="Only custom goals can be checked in.",
 )
 
 
@@ -98,3 +102,42 @@ def delete_goal(
 ) -> None:
     if not goal_service.delete_goal(db, current_user.id, goal_id):
         raise _NOT_FOUND
+
+
+# --- Custom-habit check-ins (manual "done today" for `custom` goals only) ---
+
+
+@router.post("/{goal_id}/checkins", response_model=GoalRead)
+@limiter.limit(settings.write_rate_limit)
+def check_in(
+    request: Request,  # required by the rate limiter
+    goal_id: uuid.UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GoalRead:
+    today, tz = _today_for(current_user)
+    try:
+        goal = goal_service.add_checkin(db, current_user.id, goal_id, today=today, tz=tz)
+    except GoalNotCheckableError:
+        raise _NOT_CUSTOM from None
+    except DailyLimitError:
+        raise _DAILY_LIMIT from None
+    if goal is None:
+        raise _NOT_FOUND
+    return goal
+
+
+@router.delete("/{goal_id}/checkins/today", response_model=GoalRead)
+def undo_check_in(
+    goal_id: uuid.UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GoalRead:
+    today, tz = _today_for(current_user)
+    try:
+        goal = goal_service.remove_checkin(db, current_user.id, goal_id, today=today, tz=tz)
+    except GoalNotCheckableError:
+        raise _NOT_CUSTOM from None
+    if goal is None:
+        raise _NOT_FOUND
+    return goal

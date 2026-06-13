@@ -5,8 +5,6 @@ import { dashboardService } from '../services/dashboard'
 
 // Secondary destinations, tucked into the "More" menu.
 const MORE_LINKS = [
-  { to: '/gratitude', label: '🙏 Gratitude' },
-  { to: '/journal', label: '📓 Journal' },
   { to: '/goals', label: '🎯 Goals' },
   { to: '/sanctuary', label: '🌱 Sanctuary' },
   { to: '/analytics', label: '📈 Analytics' },
@@ -68,6 +66,12 @@ export default function AppHeader() {
         </Link>
         <Link to="/breathe" className="nav-breathe">
           🫁 Breathe
+        </Link>
+        <Link to="/gratitude" className="nav-gratitude">
+          🙏 Gratitude
+        </Link>
+        <Link to="/journal" className="nav-journal">
+          📓 Journal
         </Link>
         <Link to="/sessions/new" className="nav-log">
           + Log

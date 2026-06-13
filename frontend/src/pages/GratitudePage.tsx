@@ -3,6 +3,7 @@ import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
+import { useToast } from '../context/ToastContext'
 import type { Gratitude, GratitudeCategory } from '../types'
 
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
@@ -54,6 +55,7 @@ const fmtDate = (iso: string) =>
 const GRAT_PAGE = 50
 
 export default function GratitudePage() {
+  const { showToast } = useToast()
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
   const [options, setOptions] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
@@ -148,6 +150,7 @@ export default function GratitudePage() {
     try {
       await gratitudeService.remove(id)
       setEntries((prev) => prev?.filter((e) => e.id !== id) ?? null)
+      showToast('Entry deleted.')
     } catch {
       setError('Could not delete that entry.')
     }

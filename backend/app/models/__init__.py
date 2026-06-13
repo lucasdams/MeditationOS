@@ -3,7 +3,7 @@
 """
 
 from app.models.breathing_pattern import BreathingPattern  # noqa: F401
-from app.models.goal import Goal  # noqa: F401
+from app.models.goal import Goal, GoalCheckin  # noqa: F401
 from app.models.gratitude import GratitudeEntry  # noqa: F401
 from app.models.journal import Journal  # noqa: F401
 from app.models.sanctuary import SanctuaryPlanting  # noqa: F401

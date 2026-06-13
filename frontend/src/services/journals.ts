@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Journal, JournalCreate } from '../types'
+import type { Journal, JournalCreate, Mood } from '../types'
 
 export const journalService = {
   list: (opts?: { mood?: string; limit?: number; offset?: number }) => {
@@ -11,5 +11,7 @@ export const journalService = {
     return api.get<Journal[]>(`/journals${qs ? `?${qs}` : ''}`)
   },
   create: (data: JournalCreate) => api.post<Journal>('/journals', data),
+  update: (id: string, data: { body?: string; mood?: Mood | null }) =>
+    api.patch<Journal>(`/journals/${id}`, data),
   remove: (id: string) => api.del<void>(`/journals/${id}`),
 }

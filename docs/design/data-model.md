@@ -142,22 +142,41 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 ### `goals`
 
 A recurring practice habit: do an **activity** a **count** of times per **period**
-(e.g. "journal once a day", "breathe 3 times a week"). Only the intent is stored;
-**progress in the current period is computed on read** from activity (see Design notes
-/ ADR-0009), so there is no stored "completed" — a goal is `active` or `archived`, and
-whether it's met this period is derived.
+(e.g. "journal once a day", "breathe 3 times a week"). For built-in activities only the
+intent is stored; **progress in the current period is computed on read** from activity
+(see Design notes / ADR-0009), so there is no stored "completed" — a goal is `active` or
+`archived`, and whether it's met this period is derived. A `custom` goal (e.g. "Gym")
+carries a `label` and is tracked via stored `goal_checkins` instead.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
-| `activity` | text | NOT NULL, CHECK in (`meditate`,`breathe`,`gratitude`,`journal`) |
+| `activity` | text | NOT NULL, CHECK in (`meditate`,`breathe`,`gratitude`,`journal`,`custom`) |
+| `label` | text | NULL — the habit name; set only for `custom` goals |
 | `period` | text | NOT NULL, CHECK in (`day`,`week`) |
 | `count` | int | NOT NULL, CHECK > 0 — times per period |
 | `status` | text | NOT NULL, default `active`, CHECK in (`active`,`archived`) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Index:** `(user_id, created_at)`.
+
+### `goal_checkins`
+
+A manual "did it today" mark for a `custom` goal — at most one per local day, so a
+weekly cadence counts distinct days. This is the one place goal progress is **stored**
+rather than derived (a deliberate exception to ADR-0009: custom habits track activity
+the app doesn't record, so the user self-reports).
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `goal_id` | UUID | FK → `goals.id`, CASCADE, NOT NULL |
+| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
+| `checkin_date` | date | NOT NULL — the user's local day this counts for |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Unique:** `(goal_id, checkin_date)`. **Index:** `(user_id, checkin_date)`.
 
 ## Design notes
 

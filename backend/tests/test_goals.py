@@ -1,5 +1,6 @@
 """Tests for /api/v1/goals — activity + cadence habits with period progress."""
 
+import uuid
 from datetime import UTC, datetime
 
 
@@ -19,10 +20,11 @@ def _session(client, type="mindfulness"):
     )
 
 
-def _goal(client, activity, period, count):
-    return client.post(
-        "/api/v1/goals", json={"activity": activity, "period": period, "count": count}
-    )
+def _goal(client, activity, period, count, label=None):
+    payload = {"activity": activity, "period": period, "count": count}
+    if label is not None:
+        payload["label"] = label
+    return client.post("/api/v1/goals", json=payload)
 
 
 def test_list_requires_auth(client):
@@ -126,3 +128,68 @@ def test_get_and_delete_scoped(client):
     assert client.delete(f"/api/v1/goals/{gid}").status_code == 404
     _auth(client, "del@example.com")
     assert client.delete(f"/api/v1/goals/{gid}").status_code == 204
+
+
+# --- Custom-habit goals (manual check-ins) ---
+
+
+def test_custom_goal_requires_label(client):
+    _auth(client, "c1@example.com")
+    assert _goal(client, "custom", "day", 1).status_code == 422  # no label
+
+
+def test_builtin_goal_rejects_label(client):
+    _auth(client, "c2@example.com")
+    assert _goal(client, "journal", "day", 1, label="Gym").status_code == 422
+
+
+def test_custom_goal_create_starts_unmet(client):
+    _auth(client, "c3@example.com")
+    res = _goal(client, "custom", "week", 3, label="Gym")
+    assert res.status_code == 201
+    body = res.json()
+    assert body["activity"] == "custom" and body["label"] == "Gym"
+    assert body["done"] == 0 and body["achieved"] is False
+    assert body["checked_in_today"] is False
+
+
+def test_checkin_marks_done_and_is_idempotent(client):
+    _auth(client, "c4@example.com")
+    gid = _goal(client, "custom", "day", 1, label="Read").json()["id"]
+
+    res = client.post(f"/api/v1/goals/{gid}/checkins")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["done"] == 1 and body["achieved"] is True and body["checked_in_today"] is True
+
+    # Checking in again the same day doesn't double-count.
+    again = client.post(f"/api/v1/goals/{gid}/checkins").json()
+    assert again["done"] == 1
+
+
+def test_undo_checkin(client):
+    _auth(client, "c5@example.com")
+    gid = _goal(client, "custom", "day", 1, label="Walk").json()["id"]
+    client.post(f"/api/v1/goals/{gid}/checkins")
+    res = client.delete(f"/api/v1/goals/{gid}/checkins/today")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["done"] == 0 and body["checked_in_today"] is False
+
+
+def test_checkin_on_builtin_goal_rejected(client):
+    _auth(client, "c6@example.com")
+    gid = _goal(client, "journal", "day", 1).json()["id"]
+    assert client.post(f"/api/v1/goals/{gid}/checkins").status_code == 400
+
+
+def test_checkin_requires_auth(client):
+    assert client.post(f"/api/v1/goals/{uuid.uuid4()}/checkins").status_code == 401
+
+
+def test_checkin_other_users_goal_404(client):
+    _auth(client, "c7@example.com")
+    gid = _goal(client, "custom", "day", 1, label="Gym").json()["id"]
+    _auth(client, "c8@example.com")
+    assert client.post(f"/api/v1/goals/{gid}/checkins").status_code == 404
+    assert client.delete(f"/api/v1/goals/{gid}/checkins/today").status_code == 404

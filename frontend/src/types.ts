@@ -251,19 +251,21 @@ export interface JournalCreate {
   session_id?: string | null
 }
 
-export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal'
+export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
 export type GoalPeriod = 'day' | 'week'
 export type GoalStatus = 'active' | 'archived'
 
 export interface Goal {
   id: string
   activity: GoalActivity
+  label: string | null // habit name for custom goals; null for built-in activities
   period: GoalPeriod
   count: number // target times per period
   status: GoalStatus
   done: number // times done this period
   progress: number // 0.0 .. 1.0
   achieved: boolean
+  checked_in_today: boolean // custom goals only — is today already marked done?
   created_at: string
 }
 
@@ -271,4 +273,5 @@ export interface GoalCreate {
   activity: GoalActivity
   period: GoalPeriod
   count: number
+  label?: string // required for custom goals only
 }

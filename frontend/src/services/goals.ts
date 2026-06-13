@@ -8,4 +8,7 @@ export const goalService = {
   setStatus: (id: string, status: GoalStatus) =>
     api.patch<Goal>(`/goals/${id}`, { status }),
   remove: (id: string) => api.del<void>(`/goals/${id}`),
+  // Custom-habit goals: mark today done / undo today.
+  checkIn: (id: string) => api.post<Goal>(`/goals/${id}/checkins`),
+  undoCheckIn: (id: string) => api.del<Goal>(`/goals/${id}/checkins/today`),
 }
