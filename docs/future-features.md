@@ -16,11 +16,13 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 
 ## HRV & Breathing
 
+- [x] **Breaths-per-minute selector** (1–10, stepped) with the last pace remembered locally; inhale/exhale derived from the rate
+- [x] **Selectable ambient soundscape** (synthesized ocean / rain / stream) + a transition chime, and selectable meditation **bell timbres** (singing bowl / chime / gong / soft)
 - [ ] Breathing pattern library shared across devices
 - [ ] Session stats per pattern (which rates users practice most, time of day)
 - [ ] Optional breath holds between inhale and exhale
 - [ ] Haptic or audio-only breathing modes
-- [ ] Custom in:out ratio for resonance breathing (default is 2:3; advanced users with a known resonance frequency)
+- [ ] Custom in:out ratio for resonance breathing (the bpm selector ships a **~2:3 longer-exhale** ratio by default; a user-adjustable ratio for advanced users with a known resonance frequency is the open item)
 
 ### High-rate breathwork (Wim Hof–style) — separate mode
 
@@ -43,8 +45,9 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 
 ## Goals & Gamification
 
-- [x] **Daily quests** (write a gratitude · breathe a minute · log a session) with bonus XP, reset daily
+- [x] **Daily quests** — now **personalized**: each user picks ≥3 of meditate · breathe · gratitude · journal (first-run picker + editable in Settings; stored in `users.quest_features`), with bonus XP and a daily reset
 - [x] **Streak bonus XP** (scaled to your longest streak)
+- [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, +15 per daily-activity day
 - [x] **Goals** — recurring habits: an activity (meditate / breathe / gratitude / journal) done a count of times per day/week, with this-period progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
 - [ ] More cadences (custom counts, calendar-aligned weeks, monthly)
 - [ ] Achievement badges for streaks and hour milestones

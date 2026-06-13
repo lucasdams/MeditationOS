@@ -40,6 +40,7 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 | `reminder_enabled` | bool | NOT NULL, default `false` — opt-in daily practice reminder |
 | `reminder_hour` | int | NULL — local hour (0–23) to send the reminder; NULL when disabled |
 | `reminder_last_sent_at` | timestamptz | NULL — guards against sending more than once per local day |
+| `quest_features` | text[] | NULL — daily-activity quests the user opted into (≥3 of `meditate`/`breathe`/`gratitude`/`journal`). NULL = not chosen yet → first-run picker; quest generation falls back to all four. Existing users backfilled to all four; guests seeded with all four |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
 

@@ -2,10 +2,12 @@
 
 [← Back to README](../../README.md) · Related: [ADR-0009](../decisions/0009-gamification-computed-from-activity.md) · [data-model](data-model.md#design-notes)
 
-The engagement layer that turns logged practice into progress. **Everything here is
-computed on read from `sessions` + `gratitude_entries` — nothing is stored** (no XP
-column, no quest table). See [ADR-0009](../decisions/0009-gamification-computed-from-activity.md)
-for the why. All date bucketing is done in the **user's timezone** (`users.timezone`).
+The engagement layer that turns logged practice into progress. **Progress is
+computed on read from `sessions` + `gratitude_entries` + `journals` — nothing about
+progress is stored** (no XP column, no quest-status table). The one stored bit is the
+user's quest **selection** (`users.quest_features`), a preference rather than progress.
+See [ADR-0009](../decisions/0009-gamification-computed-from-activity.md) for the why.
+All date bucketing is done in the **user's timezone** (`users.timezone`).
 
 ## XP
 
@@ -13,9 +15,11 @@ for the why. All date bucketing is done in the **user's timezone** (`users.timez
 
 | Source | Rule |
 |--------|------|
-| Practice minutes | `total_seconds // 60`, but **resonance breathing counts 3×** |
+| Meditation minutes | `(non-breathing seconds) // 60 × 2` (`MEDITATION_XP_PER_MIN`) |
+| Breathing minutes | `(resonance-breathing seconds) // 60 × 3` (`BREATHING_XP_MULTIPLIER`) — the harder, signature practice |
 | Gratitude moments | `+5` per entry (`GRATITUDE_XP`) |
-| Daily quests | `+15` per quest per day it was completed (`QUEST_XP`) — see below |
+| Journal entries | `+5` per entry (`JOURNAL_XP`) |
+| Daily-activity bonus | `+15` per activity per day it happened (`QUEST_XP`) — see below |
 | Streak bonus | `10 × current_streak_days` (`STREAK_BONUS_PER_DAY`) |
 
 ## Levels
@@ -29,17 +33,25 @@ overlay (XP bar fill + tree growth + level-up fanfare). Tree tiers live in
 
 ## Daily quests
 
-Three quests, shown on the dashboard with today's done/todo status and a live
-"resets in Xh Ym" countdown to the user's **local midnight**:
+Quests are **personalized**: each user picks **at least 3** of the four daily
+activities they want quests for (stored in `users.quest_features`; `NULL` until
+chosen → a first-run picker, with all four as the working default). The four:
 
-- **Write a gratitude** — a gratitude entry today
+- **Meditate** — a meditation (non-breathing) session today
 - **Breathe for a minute** — ≥ 60s of resonance breathing today (`BREATHE_QUEST_SECONDS`)
-- **Log a session** — any session today
+- **Write a gratitude** — a gratitude entry today
+- **Write a journal entry** — a journal entry today
 
-Each is "did you do X **today**?" Completion is computed from the count of **distinct
-local days** the user did each action, so the total quest XP **only ever grows**
-(past days are fixed) while today's status resets at local midnight. No quest-state
-table is needed.
+The dashboard shows the user's selected quests with today's done/todo status and a
+live "resets in Xh Ym" countdown to the user's **local midnight**. Each is "did you
+do X **today**?", computed from the count of **distinct local days** the user did
+each action.
+
+The `+15` **daily-activity bonus** in the XP table is keyed to those same four
+activity-day counts (meditate / breathe / gratitude / journal days), so it **only
+ever grows** (past days are fixed) and is independent of which quests the user
+surfaced — doing the activity earns it. No quest-status table is needed; only the
+selection is stored.
 
 ## Streaks
 

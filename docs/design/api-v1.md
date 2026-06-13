@@ -57,6 +57,7 @@ Errors return FastAPI's default shape:
 | DELETE | `/auth/me` | ✓ | — | `204` — permanently deletes the account + all data, clears the cookie |
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 | POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
+| POST | `/auth/quest-features` | ✓ | `{ features: string[] }` | `200` user · `422` if any feature is unknown or fewer than 3 chosen |
 | POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
 | POST | `/auth/password/reset-request` | — | `{ email }` | `202` always (no enumeration); rate-limited |
 | POST | `/auth/password/reset` | — | `{ token, new_password }` | `204` · `400` if token invalid/expired/used |
@@ -268,7 +269,7 @@ counted from the user's own activity; nothing about progress is stored.
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET | `/dashboard/stats` | ✓ | Aggregates for the caller |
-| GET | `/dashboard/activity` | ✓ | A year of daily totals for the activity heatmap |
+| GET | `/dashboard/activity` | ✓ | Daily totals for the activity heatmap; `?days=` windows it (default `365`, `1`–`366`; the web UI requests `35` ≈ last month) |
 
 ```
 GET /api/v1/dashboard/stats
@@ -289,13 +290,15 @@ GET /api/v1/dashboard/stats
 }
 ```
 
-`this_week` is the last 7 calendar days, zero-filled. **XP = minutes practiced**
-(resonance breathing counts **3×**) **+ 5 per gratitude moment + daily-quest bonuses
-+ a streak bonus**; `level` follows a rising curve (computed, not stored).
-`daily_quests` lists today's three quests (write a gratitude · breathe a minute ·
-log a session) with `done` status — each completed day awards **+15 XP**, counted
-across all history so that part only grows. `streak_bonus_xp` is **10 × your current
-streak** (grows as you keep the streak, falls back if it lapses). Streaks, quests,
+`this_week` is the last 7 calendar days, zero-filled. **XP = meditation minutes ×2 +
+breathing minutes ×3 + 5 per gratitude moment + 5 per journal entry + daily-activity
+bonuses + a streak bonus**; `level` follows a rising curve (computed, not stored).
+`daily_quests` lists the user's **chosen** quests — at least 3 of `meditate` ·
+`breathe` · `gratitude` · `journal` (set via `POST /auth/quest-features`; all four
+until chosen) — each with `done` status. A `+15` bonus is awarded per activity per
+day it happened, counted across all history so that part only grows.
+`streak_bonus_xp` is **10 × your current streak** (grows as you keep the streak,
+falls back if it lapses). See [gamification](gamification.md) for the full rules. Streaks, quests,
 the heatmap, and the weekly view all bucket dates in the **user's timezone**
 (`users.timezone`, auto-synced from the browser via `POST /auth/timezone`), so the
 day rolls over at the user's **local midnight**. Streaks are computed from
