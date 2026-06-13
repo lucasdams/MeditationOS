@@ -4,6 +4,7 @@ import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import Achievements from '../components/Achievements'
 import { ACTIVITY_COLORS, type Activity } from '../lib/colors'
 import type { DashboardStats } from '../types'
 
@@ -158,6 +159,8 @@ export default function DashboardPage() {
           </section>
 
           <ActivityHeatmap />
+
+          <Achievements stats={stats} />
         </>
       )}
     </main>

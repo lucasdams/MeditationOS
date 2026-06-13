@@ -15,6 +15,25 @@ const TYPE_LABELS: Record<MeditationType, string> = {
 
 const formatDuration = (seconds: number) => `${Math.round(seconds / 60)} min`
 
+// Quote a CSV field if it contains a comma, quote, or newline (RFC 4180).
+const csvEscape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+
+function toCsv(rows: Session[]): string {
+  const header = ['type', 'duration_minutes', 'occurred_at', 'breaths_per_minute', 'notes']
+  const lines = rows.map((s) =>
+    [
+      s.type,
+      String(Math.round(s.duration_seconds / 60)),
+      s.occurred_at,
+      s.breaths_per_minute != null ? String(s.breaths_per_minute) : '',
+      s.notes ?? '',
+    ]
+      .map(csvEscape)
+      .join(','),
+  )
+  return [header.join(','), ...lines].join('\n')
+}
+
 // ISO timestamp -> "2026-06-09" (compact, for the collapsed summary)
 const formatDate = (iso: string) => iso.slice(0, 10)
 
@@ -38,6 +57,33 @@ export default function HistoryPage() {
   const [editWhen, setEditWhen] = useState('') // datetime-local value
   const [editNotes, setEditNotes] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  async function exportCsv() {
+    setError(null)
+    setExporting(true)
+    try {
+      // Pull every session (not just the loaded pages) so the export is complete.
+      const all: Session[] = []
+      for (let offset = 0; ; offset += 200) {
+        const rows = await sessionService.list({ limit: 200, offset })
+        all.push(...rows)
+        if (rows.length < 200) break
+      }
+      const blob = new Blob([toCsv(all)], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'meditation-sessions.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+      showToast('Sessions exported.')
+    } catch {
+      setError('Could not export your sessions.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function toggleExpanded(id: string) {
     setExpanded((prev) => {
@@ -126,6 +172,13 @@ export default function HistoryPage() {
         <h1>Your sessions</h1>
         <Link to="/sessions/new">+ Log a session</Link>
       </header>
+      {sessions !== null && sessions.length > 0 && (
+        <p>
+          <button type="button" className="link-neutral" onClick={exportCsv} disabled={exporting}>
+            {exporting ? 'Exporting…' : '⤓ Export CSV'}
+          </button>
+        </p>
+      )}
       <p>
         <Link to="/">← Dashboard</Link>
       </p>

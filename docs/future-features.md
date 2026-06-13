@@ -12,7 +12,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Session templates (duration + type + breathing pattern presets)
 - [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
 - [x] **Edit & delete logged sessions** — inline edit (type, duration, time, notes) and delete from the history list
-- [ ] Export session history (CSV / JSON)
+- [x] **Export session history** — one-click CSV download from the history page (JSON is also available via the full account export in Settings)
 - [ ] Session visibility — public/private per session (default private); public sessions are shareable to friends (needs the social layer). Planned `sessions.visibility` column.
 
 ## HRV & Breathing
@@ -53,7 +53,7 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [x] **Custom-habit goals** — track anything the app doesn't record ("Gym", "Read") with a daily **check-in**; the one stored-progress path (a deliberate exception to ADR-0009)
 - [ ] More cadences (custom counts, calendar-aligned weeks, monthly)
 - [ ] Multiple check-ins per day for a custom habit (today: one per day)
-- [ ] Achievement badges for streaks and hour milestones
+- [x] **Achievement badges** for session, hour, and streak milestones — derived from stats (no stored state), shown on the dashboard with earned/locked states
 - [ ] Long-term cumulative targets (e.g. 100 total hours) — distinct from the recurring-habit goals
 
 ### Sanctuary — build & upgrade your space (streak rewards)
