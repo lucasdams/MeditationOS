@@ -20,7 +20,7 @@ Store session date, duration, meditation type, and notes.
 
 ### HRV Resonance Breathing
 
-Guided **slow** breathing that paces the user at a target resonance rate (1–10 breaths/min) — parasympathetic, for calm and focus. The user picks a **rate** (breaths per minute); the shipped UI derives **equal inhale/exhale** whole seconds from that rate (`round(60/bpm)`, split evenly). The `sessions` table stores `inhale_seconds`/`exhale_seconds` separately, so a custom **2:3 longer-exhale ratio** (more vagal/parasympathetic activation) remains a possible future option. *(Note: the original design called for a 2:3 default; the bpm selector currently ships equal in/out — see follow-ups.)*
+Guided **slow** breathing that paces the user at a target resonance rate (1–10 breaths/min) — parasympathetic, for calm and focus. The user picks a **rate** (breaths per minute); the shipped UI derives whole-second inhale/exhale from that rate (`round(60/bpm)`) at a **~2:3 in:out ratio** — the longer exhale adds vagal/parasympathetic activation. The `sessions` table stores `inhale_seconds`/`exhale_seconds` separately, so fully custom ratios remain a future option.
 
 > **Distinct from high-rate breathwork** (e.g. Wim Hof–style), which is a *separate* feature — fast breathing + breath holds, stimulating rather than calming. See [future-features](future-features.md#hrv--breathing).
 
@@ -56,7 +56,7 @@ Guided **slow** breathing that paces the user at a target resonance rate (1–10
 
 **Presets & custom**
 
-- The breathe UI exposes a **breaths-per-minute selector (1–10, stepped from 10 down to 1)**; inhale/exhale are derived as whole seconds from the chosen rate (`round(60/bpm)`, split evenly), and the last pace is remembered locally. (The `breathing_patterns` API still exists for saved/global presets but is no longer the UI's selection mechanism.)
+- The breathe UI exposes a **breaths-per-minute selector (1–10, stepped from 10 down to 1)**; inhale/exhale are derived as whole seconds from the chosen rate (`round(60/bpm)`, split **~2:3** for a longer exhale), and the last pace is remembered locally. (The `breathing_patterns` API still exists for saved/global presets but is no longer the UI's selection mechanism.)
 - *(Later)* custom in:out ratios for advanced users with a known resonance frequency.
 - Validation: sensible min/max bounds on phase length and total cycle duration
 

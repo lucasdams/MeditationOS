@@ -22,7 +22,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Session stats per pattern (which rates users practice most, time of day)
 - [ ] Optional breath holds between inhale and exhale
 - [ ] Haptic or audio-only breathing modes
-- [ ] Custom in:out ratio for resonance breathing (the bpm selector currently ships **equal in/out**; a 2:3 longer-exhale ratio for more vagal activation is a wanted option)
+- [ ] Custom in:out ratio for resonance breathing (the bpm selector ships a **~2:3 longer-exhale** ratio by default; a user-adjustable ratio for advanced users with a known resonance frequency is the open item)
 
 ### High-rate breathwork (Wim Hof–style) — separate mode
 
