@@ -30,7 +30,7 @@ def test_stats_endpoint_reports_xp_and_level(client):
     creds = {"email": "xp@example.com", "password": "correct horse"}
     client.post("/api/v1/auth/register", json=creds)
     client.post("/api/v1/auth/login", json=creds)
-    # 60 minutes of practice → 60 XP → level 3
+    # 60 minutes of meditation → 120 XP (2/min)
     client.post(
         "/api/v1/sessions",
         json={
@@ -40,8 +40,8 @@ def test_stats_endpoint_reports_xp_and_level(client):
         },
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # 60 practice + 15 (session quest for that day) + 0 (current streak is 0 — the
-    # session is back in January) = 75, still level 3 (L3=60, L4=120).
-    assert body["xp"] == 75
-    assert body["level"] == 3
-    assert body["xp_for_next_level"] == 60
+    # 120 practice + 15 (meditate quest for that day) + 0 (current streak is 0 — the
+    # session is back in January) = 135 → level 4 (L4=120, L5=200).
+    assert body["xp"] == 135
+    assert body["level"] == 4
+    assert body["xp_for_next_level"] == 80

@@ -12,6 +12,9 @@ from app.models.journal import Journal
 from app.models.session import Session as PracticeSession
 from app.schemas.journal import JournalCreate, JournalUpdate
 
+# 5 XP per journal reflection — parity with a gratitude moment (see dashboard_service).
+JOURNAL_XP = 5
+
 
 def _owns_session(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> bool:
     stmt = select(PracticeSession.id).where(

@@ -48,6 +48,13 @@ class TimezoneUpdate(BaseModel):
     timezone: str = Field(min_length=1, max_length=64)
 
 
+class QuestFeaturesUpdate(BaseModel):
+    """Choose which daily-activity quests to receive (validated in the service:
+    each must be a known feature and at least 3 must be selected)."""
+
+    features: list[str]
+
+
 class PasswordUpdate(BaseModel):
     """Change or set the account password.
 
@@ -105,4 +112,5 @@ class UserRead(BaseModel):
     is_guest: bool
     reminder_enabled: bool
     reminder_hour: int | None
+    quest_features: list[str] | None
     created_at: datetime
