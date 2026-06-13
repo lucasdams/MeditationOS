@@ -83,15 +83,15 @@ def test_activity_user_scoped(client):
 def test_stats_breathing_earns_triple_xp(client):
     _auth(client, "breathe_xp@example.com")
     today = datetime.now(UTC).date()
-    # 10 min of mindfulness = 10 XP; 10 min of resonance breathing = 30 XP.
+    # 10 min meditation = 20 XP (2/min); 10 min resonance breathing = 30 XP (3/min).
     _session(client, f"{today.isoformat()}T08:00:00", seconds=600, type="mindfulness")
     _session(
         client, f"{today.isoformat()}T09:00:00", seconds=600, type="resonance_breathing"
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # 10 min mindfulness (10) + 10 min breathing (30) + session & breathe quests (30)
-    # + 1-day streak bonus (10) = 80.
-    assert body["xp"] == 80
+    # meditation (20) + breathing (30) + meditate & breathe quest bonuses (30)
+    # + 1-day streak bonus (10) = 90.
+    assert body["xp"] == 90
 
 
 def test_stats_gratitude_adds_xp(client):
@@ -104,6 +104,23 @@ def test_stats_gratitude_adds_xp(client):
     assert after["gratitude_count"] == 1
     # 5 (gratitude) + 15 (gratitude quest) = 20.
     assert after["xp"] == 20
+
+
+def test_stats_journal_adds_xp(client):
+    _auth(client, "journal_xp@example.com")
+    client.post("/api/v1/journals", json={"body": "A clear, quiet sit."})
+    body = client.get("/api/v1/dashboard/stats").json()
+    # 5 (journal entry) + 15 (journal quest bonus) = 20.
+    assert body["xp"] == 20
+
+
+def test_meditation_earns_two_xp_per_minute(client):
+    _auth(client, "med_rate@example.com")
+    # Back-dated (January) so no current-streak bonus muddies the arithmetic.
+    _session(client, "2026-01-01T08:00:00", seconds=600, type="mindfulness")
+    body = client.get("/api/v1/dashboard/stats").json()
+    # 10 min × 2 = 20 practice + 15 (meditate quest bonus) = 35.
+    assert body["xp"] == 35
 
 
 def test_daily_quests_track_today(client):
@@ -134,9 +151,9 @@ def test_daily_quests_track_today(client):
         "journal": False,
     }
     assert after["streak_bonus_xp"] == 10  # longest streak 1 day × 10
-    # XP is unchanged by personalization: 30 (breathing) + 30 (session+breathe day
-    # bonuses) + 10 (streak) = 70.
-    assert after["xp"] == 70
+    # 30 (breathing) + 15 (breathe quest bonus) + 10 (streak) = 55. Breathing no
+    # longer double-counts as a generic session.
+    assert after["xp"] == 55
 
 
 def test_breathe_quest_needs_a_full_minute(client):
