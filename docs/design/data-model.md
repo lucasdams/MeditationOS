@@ -59,6 +59,8 @@ A logged meditation. Resonance-breathing sessions reuse this table via `type` + 
 | `duration_seconds` | int | NOT NULL, CHECK > 0 |
 | `occurred_at` | timestamptz | NOT NULL (when the session happened — date + time) |
 | `notes` | text | NULL |
+| `focus` | int | NULL, CHECK 1–5 — optional post-session self-rating |
+| `calm` | int | NULL, CHECK 1–5 — optional post-session self-rating |
 | `breathing_pattern_id` | UUID | FK → `breathing_patterns.id`, `ON DELETE SET NULL`, NULL |
 | `inhale_seconds` | int | NULL, CHECK > 0 (set when `type = resonance_breathing`) |
 | `exhale_seconds` | int | NULL, CHECK > 0 |

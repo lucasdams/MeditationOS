@@ -151,14 +151,17 @@ POST /api/v1/sessions
   "inhale_seconds": 5,
   "exhale_seconds": 5,
   "cycles_completed": 60,
-  "notes": "calm"
+  "notes": "calm",
+  "focus": 4,
+  "calm": 5
 }
 → 201
 { "id": "…", "type": "resonance_breathing", "duration_seconds": 600,
   "breaths_per_minute": 6, "occurred_at": "2026-06-09T07:30:00", "created_at": "…" }
 ```
 
-`breaths_per_minute` is computed in the response, never stored.
+`breaths_per_minute` is computed in the response, never stored. `focus` and `calm`
+are an optional post-session self-rating (1–5 each); both nullable.
 
 ## Breathing patterns ✅ implemented
 
@@ -218,7 +221,7 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | POST | `/journals` | ✓ | Create `{ body, mood?, session_id? }` → `201`; `404` if a linked session isn't the caller's |
-| GET | `/journals` | ✓ | Caller's reflections, newest first; `?mood=` filter, paginated |
+| GET | `/journals` | ✓ | Caller's reflections, newest first; `?mood=` and `?q=` (text search) filters, paginated |
 | GET | `/journals/{id}` | ✓ | `404` if not owned |
 | PATCH | `/journals/{id}` | ✓ | Edit `body` / `mood` |
 | DELETE | `/journals/{id}` | ✓ | `204`; `404` if not owned |

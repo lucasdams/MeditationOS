@@ -29,7 +29,7 @@ breakdowns. Loading / error / empty states per the frontend rules.
 
 ## Deliberately deferred
 
-- **Mood-over-time** trend (moods plotted across weeks), beyond the current
-  distribution.
-- **Comparisons** ("this month vs last"), CSV export, and goal-progress history —
-  larger reporting features (some are V3 AI).
+- **Comparisons** ("this month vs last") and goal-progress history — larger
+  reporting features (some are V3 AI). *(Mood-over-time and session CSV export have
+  since shipped — per-week journal mood counts as stacked bars, and a one-click CSV
+  download from the history page.)*
