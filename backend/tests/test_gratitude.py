@@ -21,6 +21,22 @@ def test_create_requires_auth(client):
     assert _entry(client).status_code == 401
 
 
+def test_random_requires_auth(client):
+    assert client.get("/api/v1/gratitude/random").status_code == 401
+
+
+def test_random_404_when_empty(client):
+    _auth(client, "grand_empty@example.com")
+    assert client.get("/api/v1/gratitude/random").status_code == 404
+
+
+def test_random_returns_an_owned_entry(client):
+    _auth(client, "grand@example.com")
+    ids = {_entry(client, text=f"moment {i}").json()["id"] for i in range(5)}
+    got = client.get("/api/v1/gratitude/random")
+    assert got.status_code == 200 and got.json()["id"] in ids
+
+
 def test_create_and_read(client):
     _auth(client, "g1@example.com")
     res = _entry(client, "health", "A good night's sleep")

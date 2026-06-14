@@ -15,9 +15,17 @@ const ITEM_LABELS: Record<string, string> = {
   flower: 'Flower',
   pond: 'Pond',
   hut: 'Hut',
+  cottage: 'Cottage',
   barn: 'Barn',
+  car: 'Car',
+  beach_house: 'Beach house',
+  boat: 'Boat',
   bird: 'Bird',
+  goldfish: 'Goldfish',
+  cat: 'Cat',
+  snake: 'Snake',
   fox: 'Fox',
+  dog: 'Dog',
 }
 
 export function itemLabel(itemKey: string): string {

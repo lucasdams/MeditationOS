@@ -15,6 +15,8 @@ export const gratitudeService = {
     const qs = p.toString()
     return api.get<Gratitude[]>(`/gratitude${qs ? `?${qs}` : ''}`)
   },
+  // A random past gratitude moment (404 → ApiError when the user has none).
+  random: () => api.get<Gratitude>('/gratitude/random'),
   remove: (id: string) => api.del<void>(`/gratitude/${id}`),
   suggestions: (category: GratitudeCategory) =>
     api.get<GratitudeSuggestions>(`/gratitude/suggestions?category=${category}`),

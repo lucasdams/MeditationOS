@@ -11,6 +11,8 @@ export const journalService = {
     const qs = p.toString()
     return api.get<Journal[]>(`/journals${qs ? `?${qs}` : ''}`)
   },
+  // A random past reflection (404 → ApiError when the user has none).
+  random: () => api.get<Journal>('/journals/random'),
   create: (data: JournalCreate) => api.post<Journal>('/journals', data),
   update: (id: string, data: { body?: string; mood?: Mood | null }) =>
     api.patch<Journal>(`/journals/${id}`, data),

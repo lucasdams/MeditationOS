@@ -1,7 +1,11 @@
 """Tests for the Sanctuary routes (the plant-next loop with tracks, unlocks, vitality).
 
-Catalog: tree (grow 60, starter) · flower (30) · pond (120, ≥100 pts) ·
-hut (90, ≥60 pts) · barn (150, ≥150 pts) · bird (40, ≥50 pts) · fox (80, ≥3-day streak).
+Catalog (grow cost · unlock):
+  nature      — tree (60, starter) · flower (30) · pond (120, ≥100 pts)
+  structures  — hut (90, ≥60 pts) · cottage (110, ≥120 pts) · barn (150, ≥150 pts) ·
+                car (160, ≥200 pts) · beach_house (180, ≥250 pts) · boat (220, ≥350 pts)
+  companions  — goldfish (35, ≥30 pts) · bird (40, ≥50 pts) · cat (60, ≥80 pts) ·
+                snake (70, ≥120 pts) · fox (80, ≥3-day streak) · dog (100, ≥7-day streak)
 Practice points = minutes, breathing ×3. A session of N*60s on a far-past day adds N
 points with no current streak; sessions on recent consecutive days build the streak.
 """
@@ -69,8 +73,13 @@ def test_complete_lists_all_options_with_unlock_state(client):
     _practice(client, 60)  # tree done; 60 points, no streak
     scene = _scene(client)
     assert scene["current_position"] is None
-    assert _all_options(scene) == {"tree", "flower", "pond", "hut", "barn", "bird", "fox"}
-    assert _unlocked(scene) == {"tree", "flower", "hut", "bird"}  # pond/barn (pts), fox (streak)
+    assert _all_options(scene) == {
+        "tree", "flower", "pond",
+        "hut", "cottage", "barn", "car", "beach_house", "boat",
+        "goldfish", "bird", "cat", "snake", "fox", "dog",
+    }
+    # At 60 pts, no streak: only items needing ≤60 pts and no streak are offered.
+    assert _unlocked(scene) == {"tree", "flower", "goldfish", "hut", "bird"}
     pond = next(o for o in scene["next_options"] if o["item_key"] == "pond")
     assert pond["unlocked"] is False and "100 practice points" in pond["hint"]
     fox = next(o for o in scene["next_options"] if o["item_key"] == "fox")

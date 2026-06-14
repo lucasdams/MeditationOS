@@ -82,9 +82,17 @@ current streak):
 | `flower` | nature | 30 | always |
 | `pond` | nature | 120 | ≥ 100 points |
 | `hut` | structure | 90 | ≥ 60 points |
+| `cottage` | structure | 110 | ≥ 120 points |
 | `barn` | structure | 150 | ≥ 150 points |
+| `car` | structure | 160 | ≥ 200 points |
+| `beach_house` | structure | 180 | ≥ 250 points |
+| `boat` | structure | 220 | ≥ 350 points |
+| `goldfish` | companion | 35 | ≥ 30 points |
 | `bird` | companion | 40 | ≥ 50 points |
+| `cat` | companion | 60 | ≥ 80 points |
+| `snake` | companion | 70 | ≥ 120 points |
 | `fox` | companion | 80 | a 3-day streak |
+| `dog` | companion | 100 | a 7-day streak |
 
 `grow_cost` and `unlock` are tunable constants — changing them recomputes everything
 with no migration (the property valued in XP). Prefer lowering or holding costs; see

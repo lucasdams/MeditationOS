@@ -4,6 +4,7 @@ import { dashboardService } from '../services/dashboard'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import { useToast } from '../context/ToastContext'
+import { gratitudeColor, tint } from '../lib/colors'
 import type { Gratitude, GratitudeCategory } from '../types'
 
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
@@ -63,6 +64,7 @@ export default function GratitudePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [entries, setEntries] = useState<Gratitude[] | null>(null)
+  const [menuId, setMenuId] = useState<string | null>(null) // entry whose Delete is revealed
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [reward, setReward] = useState<{
@@ -234,24 +236,49 @@ export default function GratitudePage() {
           <p className="muted">No entries yet — your first grateful moment starts here.</p>
         )}
         {entries && entries.length > 0 && (
-          <ul className="session-list">
-            {entries.map((e) => (
-              <li key={e.id}>
-                <div>
-                  <div>{e.text}</div>
-                  <div className="muted">
-                    {LABELS[e.category] ?? e.category} · {fmtDate(e.created_at)}
-                  </div>
+          <ul className="journal-list grat-log">
+            {entries.map((e) => {
+              const color = gratitudeColor(e.category)
+              return (
+              <li
+                key={e.id}
+                className="journal-entry"
+                style={{ borderLeftColor: color }}
+              >
+                <div className="journal-entry-head">
+                  <span className="muted">{fmtDate(e.created_at)}</span>
+                  <span className="journal-mood" style={{ background: tint(color), color }}>
+                    {LABELS[e.category] ?? e.category}
+                  </span>
+                  <span className="journal-entry-actions">
+                    {menuId === e.id && (
+                      <button
+                        type="button"
+                        className="link-danger"
+                        onClick={() => {
+                          remove(e.id)
+                          setMenuId(null)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="journal-entry-menu"
+                      aria-label="Entry actions"
+                      aria-haspopup="true"
+                      aria-expanded={menuId === e.id}
+                      onClick={() => setMenuId(menuId === e.id ? null : e.id)}
+                    >
+                      ⋯
+                    </button>
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  className="link-danger"
-                  onClick={() => remove(e.id)}
-                >
-                  Delete
-                </button>
+                <p className="journal-body">{e.text}</p>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
         {hasMore && (

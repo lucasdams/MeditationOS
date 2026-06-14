@@ -3,7 +3,7 @@ user (see docs/decisions/0006-layered-architecture.md)."""
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.exceptions import LinkedSessionNotFoundError
@@ -59,6 +59,18 @@ def list_entries(
 def get_entry(db: DBSession, user_id: uuid.UUID, entry_id: uuid.UUID) -> Journal | None:
     """Fetch one entry owned by the user. None if missing or not theirs."""
     stmt = select(Journal).where(Journal.id == entry_id, Journal.user_id == user_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def random_entry(db: DBSession, user_id: uuid.UUID) -> Journal | None:
+    """A random reflection owned by the user — for the "resurface a memory" feature.
+    None if the user has no entries."""
+    stmt = (
+        select(Journal)
+        .where(Journal.user_id == user_id)
+        .order_by(func.random())
+        .limit(1)
+    )
     return db.execute(stmt).scalar_one_or_none()
 
 

@@ -28,8 +28,14 @@ def test_quest_features_requires_auth(client):
 
 def test_new_user_defaults_to_all_four(client):
     _auth(client, "qf_default@example.com")
-    # NULL until chosen → quest generation falls back to all four, in canonical order.
-    assert _quest_keys(client) == ["meditate", "breathe", "gratitude", "journal"]
+    # NULL until chosen → quest generation falls back to all four, but at most three
+    # surface on a given day (the daily cap), rotating by date. Today shows three of the
+    # four, in canonical order.
+    keys = _quest_keys(client)
+    assert len(keys) == 3
+    assert set(keys) <= {"meditate", "breathe", "gratitude", "journal"}
+    canonical = ["meditate", "breathe", "gratitude", "journal"]
+    assert keys == [k for k in canonical if k in keys]
     # /me exposes the (still unset) selection so the client can show the picker.
     assert client.get("/api/v1/auth/me").json()["quest_features"] is None
 

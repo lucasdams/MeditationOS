@@ -151,7 +151,7 @@ export default function GoalsPage() {
         <h1>Goals</h1>
       </header>
       <p>
-        <Link to="/">← Dashboard</Link>
+        <Link to="/" className="back-link">← Dashboard</Link>
       </p>
 
       {view === 'active' && (

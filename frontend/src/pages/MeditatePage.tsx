@@ -7,17 +7,26 @@ import { playBell } from '../lib/sfx'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import Stepper, { type StepperOption } from '../components/Stepper'
-import type { MeditationType } from '../types'
+import { useToast } from '../context/ToastContext'
+import {
+  MIN_DRAFT_SECONDS,
+  beaconSave,
+  clearDraft,
+  newClientToken,
+  readRestorableDraft,
+  writeDraft,
+  type SessionDraft,
+} from '../lib/sessionDraft'
+import type { MeditationType, SessionCreate } from '../types'
+
+const DRAFT_PAGE = 'meditate'
 
 // Unguided meditation styles (existing session types). Resonance breathing has its
 // own dedicated page, so it's intentionally not offered here.
-const TYPES: { value: MeditationType; label: string }[] = [
-  { value: 'mindfulness', label: 'Mindfulness' },
-  { value: 'body_scan', label: 'Body scan' },
-  { value: 'walking', label: 'Walking' },
-  { value: 'loving_kindness', label: 'Loving-kindness' },
-  { value: 'other', label: 'Other' },
-]
+// Unguided meditation sessions are all stored under one type — the style picker was
+// dropped (it was descriptive-only metadata). Breathing keeps its own type, set by the
+// Breathe page.
+const MEDITATION_TYPE: MeditationType = 'mindfulness'
 
 // Target length; 0 = open-ended (count up, finish manually). Stepped left→right,
 // so "Open" sits at the low end and the increments grow as you step right.
@@ -33,11 +42,14 @@ const DURATIONS: StepperOption<number>[] = [
   { value: 90, label: '90 min' },
 ]
 
-// Interval bell cadence; 0 = off.
-const INTERVALS = [
-  { label: 'Off', min: 0 },
-  { label: 'Every 5 min', min: 5 },
-  { label: 'Every 10 min', min: 10 },
+// One control for all bells. "Off" silences them; otherwise a soft bell rings at the
+// start and end, and optionally on an interval. Replaces a separate on/off checkbox +
+// interval dropdown that overlapped confusingly.
+const BELL_MODES = [
+  { value: 'off', label: 'Off' },
+  { value: 'ends', label: 'At start & end' },
+  { value: 'every5', label: 'Start, end & every 5 min' },
+  { value: 'every10', label: 'Start, end & every 10 min' },
 ]
 
 const mmss = (totalSec: number) => {
@@ -47,7 +59,7 @@ const mmss = (totalSec: number) => {
 
 export default function MeditatePage() {
   const navigate = useNavigate()
-  const [type, setType] = useState<MeditationType>('mindfulness')
+  const { showToast } = useToast()
   const [targetMin, setTargetMin] = useState(10)
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
@@ -61,6 +73,16 @@ export default function MeditatePage() {
     xpGained: number
     quests: string[]
   } | null>(null)
+  // Recovery for an unsaved sit: a leftover draft to offer on load, plus the live
+  // bits the draft/beacon read at tab-close time (kept in refs so listeners see fresh
+  // values). `tokenRef` ties a manual save and the auto-save to one row (idempotent).
+  const [restorable, setRestorable] = useState<SessionDraft | null>(() =>
+    readRestorableDraft(DRAFT_PAGE),
+  )
+  const tokenRef = useRef<string | null>(null)
+  const startedAtRef = useRef('')
+  const elapsedRef = useRef(0)
+  const savedRef = useRef(false)
 
   // Timing in refs so the interval loop reads fresh values without re-subscribing.
   // `baseElapsedRef` accumulates active seconds across pauses; `startRef` marks the
@@ -91,6 +113,42 @@ export default function MeditatePage() {
     }
   }
 
+  // The session payload for the current sit (or null if there's nothing worth saving).
+  function draftPayload(elapsedSec: number): SessionCreate | null {
+    if (!tokenRef.current || elapsedSec < MIN_DRAFT_SECONDS) return null
+    return {
+      type: MEDITATION_TYPE,
+      duration_seconds: Math.floor(elapsedSec),
+      occurred_at: startedAtRef.current || new Date().toISOString(),
+      client_token: tokenRef.current,
+    }
+  }
+
+  // Stash the in-progress sit so it can be restored if the tab closes before saving.
+  function persistDraft(elapsedSec: number) {
+    const payload = draftPayload(elapsedSec)
+    if (!payload) return
+    writeDraft(DRAFT_PAGE, {
+      clientToken: payload.client_token as string,
+      label: 'Meditation',
+      elapsedSeconds: Math.floor(elapsedSec),
+      payload,
+      savedAt: Date.now(),
+    })
+  }
+
+  // Best-effort save when the tab is actually closing (not on a mere tab switch).
+  useEffect(() => {
+    const onHide = () => {
+      if (savedRef.current) return
+      const payload = draftPayload(elapsedRef.current)
+      if (payload) beaconSave(payload)
+    }
+    window.addEventListener('pagehide', onHide)
+    return () => window.removeEventListener('pagehide', onHide)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // The clock + bell scheduling run on setInterval, which keeps firing in a
   // background tab (unlike requestAnimationFrame) — so a timed sit still completes.
   useEffect(() => {
@@ -99,6 +157,8 @@ export default function MeditatePage() {
       const now = performance.now()
       const total = baseElapsedRef.current + (now - startRef.current) / 1000
       setElapsed(total)
+      elapsedRef.current = total
+      persistDraft(total)
 
       const targetSec = targetRef.current * 60
       if (targetSec > 0 && total >= targetSec) {
@@ -130,19 +190,30 @@ export default function MeditatePage() {
     startRef.current = performance.now()
     baseElapsedRef.current = elapsed
     setRunning(true)
-    if (elapsed < 1) bell() // opening bell on a fresh sit, not on resume
+    if (elapsed < 1) {
+      // Fresh sit: new idempotency token + start time, and clear any old restore offer.
+      tokenRef.current = newClientToken()
+      startedAtRef.current = new Date().toISOString()
+      savedRef.current = false
+      setRestorable(null)
+      bell() // opening bell on a fresh sit, not on resume
+    }
   }
 
   function pause() {
     baseElapsedRef.current += (performance.now() - startRef.current) / 1000
     setRunning(false)
+    persistDraft(baseElapsedRef.current)
   }
 
   function reset() {
     setRunning(false)
     setElapsed(0)
     baseElapsedRef.current = 0
+    elapsedRef.current = 0
     lastBellMarkRef.current = 0
+    tokenRef.current = null
+    clearDraft(DRAFT_PAGE)
     setError(null)
   }
 
@@ -152,10 +223,14 @@ export default function MeditatePage() {
     try {
       const before = await dashboardService.getStats()
       await sessionService.create({
-        type,
+        type: MEDITATION_TYPE,
         duration_seconds: Math.floor(durationSec), // floor — never inflate the logged time
-        occurred_at: new Date().toISOString(),
+        occurred_at: startedAtRef.current || new Date().toISOString(),
+        client_token: tokenRef.current ?? undefined,
       })
+      // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
+      savedRef.current = true
+      clearDraft(DRAFT_PAGE)
       const after = await dashboardService.getStats()
       setReward({
         afterXp: after.xp,
@@ -178,44 +253,87 @@ export default function MeditatePage() {
     void saveSession(elapsed)
   }
 
+  // Save an unsaved sit recovered from a previous visit. Idempotent on its token, so if
+  // the tab-close beacon already saved it, this just no-ops server-side.
+  async function restoreSave() {
+    if (!restorable) return
+    setSaving(true)
+    setError(null)
+    try {
+      await sessionService.create(restorable.payload)
+      clearDraft(DRAFT_PAGE)
+      setRestorable(null)
+      showToast('Session saved.')
+    } catch {
+      setError('Could not save that session.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function discardRestore() {
+    clearDraft(DRAFT_PAGE)
+    setRestorable(null)
+  }
+
   const targetSec = targetMin * 60
   const remaining = targetSec > 0 ? Math.max(0, targetSec - elapsed) : elapsed
-  const settingsDisabled = running || elapsed > 0
+  // A sit is "underway" once started (running) or partway (paused). Before that, the
+  // session readouts (timer, elapsed, finish) are just noise over the setup form.
+  const started = running || elapsed > 0
+  const settingsDisabled = started
+
+  // The single "Bells" control maps to the underlying on/off + interval cadence.
+  const bellMode = !bellsOn ? 'off' : intervalMin === 5 ? 'every5' : intervalMin === 10 ? 'every10' : 'ends'
+  function setBellMode(value: string) {
+    if (value === 'off') {
+      setBellsOn(false)
+      return
+    }
+    setBellsOn(true)
+    setIntervalMin(value === 'every5' ? 5 : value === 'every10' ? 10 : 0)
+    playBell(volume) // preview the bell you just enabled
+  }
 
   return (
     <main className="breathe">
       <header>
         <h1>Meditate</h1>
-        <Link to="/">← Dashboard</Link>
+        <Link to="/" className="back-link">← Dashboard</Link>
       </header>
+
+      {restorable && !started && (
+        <div className="session-recover">
+          <span>
+            Unsaved {restorable.label.toLowerCase()} sit ·{' '}
+            {Math.round(restorable.elapsedSeconds / 60)} min from earlier.
+          </span>
+          <div className="session-recover-actions">
+            <button type="button" onClick={restoreSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save it'}
+            </button>
+            <button type="button" className="link-neutral" onClick={discardRestore}>
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="breathe-stage">
         <div className={`meditate-orb ${running ? 'running' : 'idle'}`}>
-          <span className="meditate-time">{mmss(remaining)}</span>
+          {started && <span className="meditate-time">{mmss(remaining)}</span>}
         </div>
         <div className="breathe-phase">
-          {running ? 'Be here' : elapsed > 0 ? 'Paused' : 'Ready'}
+          {running ? 'Be here' : elapsed > 0 ? 'Paused' : 'Ready when you are'}
         </div>
       </div>
 
-      <div className="breathe-stats">
-        <span>{mmss(elapsed)} elapsed</span>
-        {targetMin > 0 && <span>{targetMin} min sit</span>}
-      </div>
-
-      <label htmlFor="type">Type</label>
-      <select
-        id="type"
-        value={type}
-        disabled={settingsDisabled}
-        onChange={(e) => setType(e.target.value as MeditationType)}
-      >
-        {TYPES.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </select>
+      {started && (
+        <div className="breathe-stats">
+          <span>{mmss(elapsed)} elapsed</span>
+          {targetMin > 0 && <span>{targetMin} min sit</span>}
+        </div>
+      )}
 
       <label>Duration</label>
       <Stepper
@@ -226,31 +344,14 @@ export default function MeditatePage() {
         onChange={setTargetMin}
       />
 
-      <label htmlFor="interval">Interval bell</label>
-      <select
-        id="interval"
-        value={intervalMin}
-        disabled={settingsDisabled}
-        onChange={(e) => setIntervalMin(Number(e.target.value))}
-      >
-        {INTERVALS.map((i) => (
-          <option key={i.min} value={i.min}>
-            {i.label}
+      <label htmlFor="bells">Bells</label>
+      <select id="bells" value={bellMode} onChange={(e) => setBellMode(e.target.value)}>
+        {BELL_MODES.map((b) => (
+          <option key={b.value} value={b.value}>
+            {b.label}
           </option>
         ))}
       </select>
-
-      <label className="breathe-check">
-        <input
-          type="checkbox"
-          checked={bellsOn}
-          onChange={(e) => {
-            setBellsOn(e.target.checked)
-            if (e.target.checked) playBell(volume) // preview the bell you just enabled
-          }}
-        />
-        Bells (at the start, each interval, and the end)
-      </label>
 
       <label htmlFor="bell-volume">Volume</label>
       <input
@@ -281,9 +382,11 @@ export default function MeditatePage() {
             Pause
           </button>
         )}
-        <button type="button" className="secondary" onClick={finish} disabled={saving}>
-          {saving ? 'Saving…' : 'Finish & save'}
-        </button>
+        {started && (
+          <button type="button" className="secondary" onClick={finish} disabled={saving}>
+            {saving ? 'Saving…' : 'Finish & save'}
+          </button>
+        )}
       </div>
 
       {elapsed > 0 && !running && !saving && (

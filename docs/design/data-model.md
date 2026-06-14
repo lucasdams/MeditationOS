@@ -23,7 +23,7 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
 
 All child tables carry `user_id` and are always queried scoped to the authenticated user.
 Beyond the six shown, `users` also parents `goal_checkins`, `mood_logs`,
-`scheduled_sessions`, `program_enrollments`, and `push_subscriptions` (all detailed below).
+`scheduled_sessions` and `push_subscriptions` (all detailed below).
 
 ## Tables
 
@@ -70,9 +70,10 @@ A logged meditation. Resonance-breathing sessions reuse this table via `type` + 
 | `inhale_seconds` | int | NULL, CHECK > 0 (set when `type = resonance_breathing`) |
 | `exhale_seconds` | int | NULL, CHECK > 0 |
 | `cycles_completed` | int | NULL, CHECK >= 0 |
+| `client_token` | text | NULL — client idempotency key; a save with a token already seen for the user returns the existing row (lets the tab-close auto-save + a manual save collapse to one) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
-**Indexes:** `(user_id, occurred_at)` — every dashboard/streak query filters by user and time.
+**Indexes:** `(user_id, occurred_at)` — every dashboard/streak query filters by user and time. Plus a partial unique index on `(user_id, client_token)` where `client_token IS NOT NULL`, enforcing idempotent saves at the DB level.
 
 **Planned:** `visibility` (`public` / `private`, default `private`) so a user can share a session — deferred to the Social/Community phase (see [future-features](../future-features.md#practice--sessions)).
 
@@ -215,24 +216,6 @@ A planned future practice (date/time + type), so users can put practice on the c
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Index:** `(user_id, scheduled_at)`.
-
-### `program_enrollments`
-
-A user's progress through a multi-day **program**. The program catalog is static (in
-code: `app/services/program_catalog.py`), so this is the only stored program state.
-Progress advances by an explicit "day complete" action (a stored-progress path, like
-`goal_checkins`).
-
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | UUID | PK |
-| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
-| `program_key` | text | NOT NULL — references the in-code catalog (`calm7`, `focus10`, `habit21`); not a DB FK so the catalog can evolve |
-| `current_day` | int | NOT NULL, default 1, CHECK ≥ 1 — the next day to do |
-| `completed_at` | timestamptz | NULL — set when the last day is finished |
-| `created_at` / `updated_at` | timestamptz | NOT NULL, default `now()` |
-
-**Index:** `user_id`.
 
 ### `push_subscriptions`
 

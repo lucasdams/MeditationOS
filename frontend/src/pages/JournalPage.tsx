@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
+import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
 import { MOOD_COLORS, tint } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
@@ -48,8 +49,20 @@ export default function JournalPage() {
   const [mood, setMood] = useState<Mood | ''>('')
   const [sessionId, setSessionId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [composing, setComposing] = useState(false) // expand the composer on focus/typing
   const [query, setQuery] = useState('') // text search over reflections
 
+  // Which entry's edit/delete actions are revealed (kept tucked behind a ⋯ toggle
+  // so entries read cleanly and the actions aren't a prominent default).
+  const [menuId, setMenuId] = useState<string | null>(null)
+  // "Resurface a memory" — one random past reflection (journal or gratitude).
+  const [memory, setMemory] = useState<{
+    kind: 'journal' | 'gratitude'
+    text: string
+    mood?: Mood | null
+    when: string
+  } | null>(null)
+  const [resurfacing, setResurfacing] = useState(false)
   // Inline editing of an existing entry (body + mood).
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState('')
@@ -70,6 +83,7 @@ export default function JournalPage() {
   // in-progress edit, since the edited entry may fall out of the new results.
   useEffect(() => {
     setEditingId(null)
+    setMenuId(null)
     const t = setTimeout(
       () => {
         journalService
@@ -125,6 +139,7 @@ export default function JournalPage() {
       setBody('')
       setMood('')
       setSessionId('')
+      setComposing(false)
       showToast('Reflection saved.')
     } catch {
       setError('Could not save your reflection.')
@@ -196,68 +211,161 @@ export default function JournalPage() {
     })
   }
 
+  // Fetch a random journal and a random gratitude in parallel (each may be absent),
+  // then surface one of them at random — a gentle "remember this?" moment.
+  async function resurfaceMemory() {
+    setResurfacing(true)
+    try {
+      const [j, g] = await Promise.all([
+        journalService.random().catch(() => null),
+        gratitudeService.random().catch(() => null),
+      ])
+      const candidates: NonNullable<typeof memory>[] = []
+      if (j) candidates.push({ kind: 'journal', text: j.body, mood: j.mood, when: j.created_at })
+      if (g) candidates.push({ kind: 'gratitude', text: g.text, when: g.created_at })
+      if (candidates.length === 0) {
+        setMemory(null)
+        showToast('No past reflections to resurface yet.')
+        return
+      }
+      setMemory(candidates[Math.floor(Math.random() * candidates.length)])
+    } finally {
+      setResurfacing(false)
+    }
+  }
+
   const sessionLabel = (s: Session) => `${TYPE_LABELS[s.type]} · ${formatWhen(s.occurred_at)}`
+
+  // The composer expands once you focus it or have text; collapses back when empty.
+  const composerOpen = composing || body.trim().length > 0
 
   return (
     <main className="dashboard">
-      <header>
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
         <h1>Journal</h1>
+        <p className="page-subtitle">A quiet place for your reflections.</p>
       </header>
-      <p>
-        <Link to="/">← Dashboard</Link>
-      </p>
 
       <section className="journal-compose">
         <form onSubmit={handleSubmit} noValidate>
-          <label htmlFor="body">Reflection</label>
           <textarea
             id="body"
-            rows={4}
+            aria-label="Reflection"
+            rows={composerOpen ? 4 : 2}
             value={body}
+            onFocus={() => setComposing(true)}
             onChange={(e) => setBody(e.target.value)}
             placeholder="What came up in your practice today?"
           />
 
-          <label htmlFor="mood">Mood (optional)</label>
-          <select id="mood" value={mood} onChange={(e) => setMood(e.target.value as Mood | '')}>
-            <option value="">No mood</option>
-            {MOODS.map((m) => (
-              <option key={m} value={m}>
-                {cap(m)}
-              </option>
-            ))}
-          </select>
-
-          {sessions.length > 0 && (
+          {composerOpen && (
             <>
-              <label htmlFor="session">Reflecting on a session (optional)</label>
-              <select
-                id="session"
-                value={sessionId}
-                onChange={(e) => setSessionId(e.target.value)}
-              >
-                <option value="">Not linked</option>
-                {sessions.slice(0, 20).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {sessionLabel(s)}
-                  </option>
-                ))}
-              </select>
+              <div className="journal-compose-controls">
+                <label className="field">
+                  <span className="field-label">
+                    Mood (optional)
+                    {mood && (
+                      <button
+                        type="button"
+                        className="field-clear"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setMood('')
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </span>
+                  <select value={mood} onChange={(e) => setMood(e.target.value as Mood | '')}>
+                    <option value="">No mood</option>
+                    {MOODS.map((m) => (
+                      <option key={m} value={m}>
+                        {cap(m)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {sessions.length > 0 && (
+                  <label className="field">
+                    <span className="field-label">
+                      On a session (optional)
+                      {sessionId && (
+                        <button
+                          type="button"
+                          className="field-clear"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setSessionId('')
+                          }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </span>
+                    <select value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
+                      <option value="">Not linked</option>
+                      {sessions.slice(0, 20).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {sessionLabel(s)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              {error && (
+                <p role="alert" className="error">
+                  {error}
+                </p>
+              )}
+              <button type="submit" disabled={submitting || !body.trim()}>
+                {submitting ? 'Saving…' : 'Save reflection'}
+              </button>
             </>
           )}
-
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          <button type="submit" disabled={submitting || !body.trim()}>
-            {submitting ? 'Saving…' : 'Save reflection'}
-          </button>
         </form>
       </section>
 
       <section className="journal-list">
+        <div className="journal-list-head">
+          <h2 className="journal-list-title">Past reflections</h2>
+          {entries && entries.length > 0 && (
+            <button
+              type="button"
+              className="resurface-btn"
+              onClick={resurfaceMemory}
+              disabled={resurfacing}
+            >
+              {resurfacing ? 'Finding…' : '✨ Resurface a memory'}
+            </button>
+          )}
+        </div>
+
+        {memory && (
+          <div className="memory-card">
+            <div className="memory-head">
+              <span className="memory-kind">
+                {memory.kind === 'journal' ? '📓 From your journal' : '🙏 A gratitude'}
+                {memory.mood && ` · ${cap(memory.mood)}`}
+              </span>
+              <span className="muted">{formatWhen(memory.when)}</span>
+              <button
+                type="button"
+                className="memory-close"
+                aria-label="Dismiss"
+                onClick={() => setMemory(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="memory-text">{memory.text}</p>
+          </div>
+        )}
+
         <input
           type="search"
           className="journal-search"
@@ -276,7 +384,11 @@ export default function JournalPage() {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined
           const editing = editingId === j.id
           return (
-            <article key={j.id} className="journal-entry">
+            <article
+              key={j.id}
+              className="journal-entry"
+              style={j.mood ? { borderLeftColor: MOOD_COLORS[j.mood] } : undefined}
+            >
               <div className="journal-entry-head">
                 <span className="muted">{formatWhen(j.created_at)}</span>
                 {!editing && j.mood && (
@@ -289,15 +401,39 @@ export default function JournalPage() {
                 )}
                 {!editing && (
                   <span className="journal-entry-actions">
-                    <button type="button" className="link-neutral" onClick={() => startEdit(j)}>
-                      Edit
-                    </button>
+                    {menuId === j.id && (
+                      <>
+                        <button
+                          type="button"
+                          className="link-neutral"
+                          onClick={() => {
+                            startEdit(j)
+                            setMenuId(null)
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="link-danger"
+                          onClick={() => {
+                            handleDelete(j.id)
+                            setMenuId(null)
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                     <button
                       type="button"
-                      className="link-danger"
-                      onClick={() => handleDelete(j.id)}
+                      className="journal-entry-menu"
+                      aria-label="Entry actions"
+                      aria-haspopup="true"
+                      aria-expanded={menuId === j.id}
+                      onClick={() => setMenuId(menuId === j.id ? null : j.id)}
                     >
-                      Delete
+                      ⋯
                     </button>
                   </span>
                 )}

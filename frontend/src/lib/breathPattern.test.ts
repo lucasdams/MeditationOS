@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   PRESETS,
+  boxPatternForCount,
   breathEventAt,
+  coherencePatternForBpm,
   cycleLength,
   patternForBpm,
   patternSummary,
@@ -17,6 +19,23 @@ describe('patternForBpm', () => {
     // 6 bpm → 10s total → 4 in / 6 out.
     expect(patternForBpm(6)).toEqual({ inhale: 4, holdFull: 1, exhale: 6, holdEmpty: 1 })
     expect(patternForBpm(3).exhale).toBeGreaterThan(patternForBpm(3).inhale)
+  })
+})
+
+describe('coherencePatternForBpm', () => {
+  it('splits the breath evenly (1:1) with no holds', () => {
+    expect(coherencePatternForBpm(6)).toEqual({ inhale: 5, holdFull: 0, exhale: 5, holdEmpty: 0 })
+    const p = coherencePatternForBpm(5)
+    expect(p.inhale).toBe(p.exhale)
+    expect(p.holdFull).toBe(0)
+    expect(p.holdEmpty).toBe(0)
+  })
+})
+
+describe('boxPatternForCount', () => {
+  it('makes all four phases equal to the count', () => {
+    expect(boxPatternForCount(4)).toEqual({ inhale: 4, holdFull: 4, exhale: 4, holdEmpty: 4 })
+    expect(boxPatternForCount(6)).toEqual({ inhale: 6, holdFull: 6, exhale: 6, holdEmpty: 6 })
   })
 })
 
@@ -69,13 +88,20 @@ describe('breathEventAt', () => {
 })
 
 describe('PRESETS', () => {
-  it('has a resonance (bpm-driven) option plus fixed cadences', () => {
-    const resonance = PRESETS.find((x) => x.key === 'resonance')
-    expect(resonance?.pattern).toBeNull()
-    const fixed = PRESETS.filter((x) => x.pattern !== null)
-    expect(fixed.length).toBeGreaterThanOrEqual(3)
-    // every fixed preset has a positive inhale and exhale
-    expect(fixed.every((x) => x.pattern!.inhale > 0 && x.pattern!.exhale > 0)).toBe(true)
+  it('classifies presets by control, and adjustable ones derive from their control value', () => {
+    const byControl = (c: string) => PRESETS.filter((x) => x.control === c).map((x) => x.key)
+    expect(byControl('bpm')).toEqual(expect.arrayContaining(['resonance', 'coherence']))
+    expect(byControl('count')).toEqual(['box'])
+    expect(byControl('none')).toEqual(['478'])
+    // adjustable presets (bpm/count) carry a derive fn + null pattern; 'none' carries a pattern
+    for (const p of PRESETS) {
+      if (p.control === 'none') {
+        expect(p.pattern).not.toBeNull()
+      } else {
+        expect(p.pattern).toBeNull()
+        expect(typeof p.derive).toBe('function')
+      }
+    }
   })
 
   it('patternSummary shows holds only when present', () => {

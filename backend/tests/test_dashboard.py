@@ -164,13 +164,17 @@ def test_daily_quests_track_today(client):
     _auth(client, "quests@example.com")
     today = datetime.now(UTC).date()
 
+    # Pin the opt-in to three categories so the daily cap (max three surfaced) shows
+    # exactly these every day, regardless of the date's rotation.
+    client.post(
+        "/api/v1/auth/quest-features",
+        json={"features": ["meditate", "breathe", "gratitude"]},
+    )
     before = client.get("/api/v1/dashboard/stats").json()
-    # New accounts default to all four daily-activity quests.
     assert {q["key"] for q in before["daily_quests"]} == {
         "meditate",
         "breathe",
         "gratitude",
-        "journal",
     }
     assert all(q["done"] is False for q in before["daily_quests"])
 
@@ -193,7 +197,6 @@ def test_daily_quests_track_today(client):
         "meditate": False,
         "breathe": True,
         "gratitude": False,
-        "journal": False,
     }
     assert after["streak_bonus_xp"] == 10  # current streak 1 day × 10
     # 30 (breathing) + today's breathe quest XP + 10 (streak). Breathing no longer
@@ -204,6 +207,12 @@ def test_daily_quests_track_today(client):
 
 def test_breathe_quest_tracks_breathing_and_meditation(client):
     _auth(client, "shortbreath@example.com")
+    # Pin to three categories (incl. breathe + meditate) so both surface every day
+    # despite the daily cap's rotation.
+    client.post(
+        "/api/v1/auth/quest-features",
+        json={"features": ["meditate", "breathe", "gratitude"]},
+    )
     today = datetime.now(UTC).date()
     # Only 30s of breathing — below every breathe variant's bar (base 60s, deep 5 min,
     # slow ≤5 bpm) — plus two full meditation sessions so the meditate quest is met

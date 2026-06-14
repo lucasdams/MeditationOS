@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Programs, Scheduling, Dashboard (stats + weekly review + activity), Analytics, Sanctuary, Push, and Health — is built. This stays the living contract for further additions.
+**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Scheduling, Dashboard (stats + weekly review + activity), Analytics, Sanctuary, Push, and Health — is built. This stays the living contract for further additions.
 
 ## Conventions
 
@@ -137,7 +137,8 @@ like `/login`. Requires `GOOGLE_CLIENT_ID` to be configured (else `401`).
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| POST | `/sessions` | ✓ | Log a session |
+| POST | `/sessions` | ✓ | Log a session. Optional `client_token` makes it idempotent |
+| POST | `/sessions/beacon` | ✓ | `navigator.sendBeacon` target — saves an in-progress sit when the tab closes. Reads a raw `text/plain` JSON body, idempotent via `client_token`, best-effort → always `204` |
 | GET | `/sessions` | ✓ | List caller's sessions; `?from=&to=&type=` filters, paginated |
 | GET | `/sessions/{id}` | ✓ | `404` if not owned |
 | PATCH | `/sessions/{id}` | ✓ | Edit notes/fields |
@@ -164,6 +165,13 @@ POST /api/v1/sessions
 `breaths_per_minute` is computed in the response, never stored. `focus` and `calm`
 are an optional post-session self-rating (1–5 each); both nullable.
 
+**Idempotent saves.** An optional `client_token` (client-generated id) lets the same
+in-progress sit be saved more than once without duplicating: a save whose token already
+exists for the user returns the existing session. This is what lets the auto-save on tab
+close (`/sessions/beacon`) and a later manual/restored save collapse to one row. A
+sub-minute sit earns no XP (XP is per whole minute) and doesn't count toward streaks (see
+[gamification](gamification.md)).
+
 ## Breathing patterns ✅ implemented
 
 | Method | Path | Auth | Notes |
@@ -189,6 +197,7 @@ GET /api/v1/breathing-patterns
 |--------|------|------|-------|
 | POST | `/gratitude` | ✓ | Log a moment `{ category, text }` → `201` |
 | GET | `/gratitude` | ✓ | Caller's entries, newest first; `?category=` filter, paginated |
+| GET | `/gratitude/random` | ✓ | A random past moment (powers "resurface a memory"); `404` if none |
 | GET | `/gratitude/suggestions` | ✓ | `?category=…` → AI-suggested prompts (rate-limited) |
 | DELETE | `/gratitude/{id}` | ✓ | `204`; `404` if not owned |
 
@@ -223,6 +232,7 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 |--------|------|------|-------|
 | POST | `/journals` | ✓ | Create `{ body, mood?, session_id? }` → `201`; `404` if a linked session isn't the caller's |
 | GET | `/journals` | ✓ | Caller's reflections, newest first; `?mood=` and `?q=` (text search) filters, paginated |
+| GET | `/journals/random` | ✓ | A random past reflection (powers "resurface a memory"); `404` if none |
 | GET | `/journals/{id}` | ✓ | `404` if not owned |
 | PATCH | `/journals/{id}` | ✓ | Edit `body` / `mood` |
 | DELETE | `/journals/{id}` | ✓ | `204`; `404` if not owned |
@@ -427,19 +437,6 @@ Plan future practice + export a single event as iCalendar.
 | GET | `/scheduled-sessions` | ✓ | Soonest first; upcoming-only by default (`?upcoming=false` for all) |
 | GET | `/scheduled-sessions/{id}/ics` | ✓ | `text/calendar` download (an "add to calendar" event) |
 | DELETE | `/scheduled-sessions/{id}` | ✓ | `204` · `404` if not the caller's |
-
-## Programs ✅ implemented
-
-Curated multi-day plans (static catalog, in code) + per-user enrollment & progress.
-
-| Method | Path | Auth | Notes |
-|--------|------|------|-------|
-| GET | `/programs` | — | The catalog (summaries) |
-| GET | `/programs/{key}` | — | One program with its day-by-day plan · `404` if unknown |
-| GET | `/programs/enrollments` | ✓ | The caller's enrollments, each with computed progress + today's day |
-| POST | `/programs/enrollments` | ✓ | `{ program_key }` → `201`; idempotent while an enrollment is active · `404` if unknown |
-| POST | `/programs/enrollments/{id}/advance` | ✓ | Mark the current day done; completes after the last day · `404` if not the caller's |
-| DELETE | `/programs/enrollments/{id}` | ✓ | `204` — leave the program |
 
 ## Push ✅ implemented
 
