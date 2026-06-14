@@ -52,6 +52,15 @@ class User(Base):
     reminder_last_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Weekly summary email (opt-in). Sent on `weekly_summary_day` (0=Mon … 6=Sun, the
+    # user's local weekday); `weekly_summary_last_sent_at` makes it once-per-week.
+    weekly_summary_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
+    weekly_summary_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    weekly_summary_last_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Which daily-activity quests the user opted into (a subset of QUEST_FEATURES,
     # ≥3). NULL until they choose: the client shows a first-run picker, and quest
     # generation falls back to all four while NULL. Existing users were backfilled

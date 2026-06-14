@@ -46,6 +46,10 @@ export const authService = {
   setReminders: (enabled: boolean, hour: number | null) =>
     api.post<User>('/auth/reminders', { enabled, hour: enabled ? hour : null }),
 
+  // day (0=Mon … 6=Sun, local) is required when enabled; null when disabling.
+  setWeeklySummary: (enabled: boolean, day: number | null) =>
+    api.post<User>('/auth/weekly-summary', { enabled, day: enabled ? day : null }),
+
   // Always resolves the same way (no account enumeration).
   requestPasswordReset: (email: string) =>
     api.post<void>('/auth/password/reset-request', { email }),

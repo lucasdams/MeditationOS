@@ -8,6 +8,8 @@ export interface User {
   is_guest: boolean
   reminder_enabled: boolean
   reminder_hour: number | null
+  weekly_summary_enabled: boolean
+  weekly_summary_day: number | null
   // Daily-activity quests the user opted into (≥3 of QUEST_FEATURES). null until
   // they choose — the client shows a first-run picker while null.
   quest_features: string[] | null

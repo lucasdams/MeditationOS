@@ -106,6 +106,19 @@ class ReminderUpdate(BaseModel):
         return self
 
 
+class WeeklySummaryUpdate(BaseModel):
+    """Enable/disable the weekly summary email and set its local send day (0=Mon…6=Sun)."""
+
+    enabled: bool
+    day: int | None = Field(default=None, ge=0, le=6)
+
+    @model_validator(mode="after")
+    def _day_required_when_enabled(self) -> "WeeklySummaryUpdate":
+        if self.enabled and self.day is None:
+            raise ValueError("day is required when enabled is true")
+        return self
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 
@@ -120,5 +133,7 @@ class UserRead(BaseModel):
     is_guest: bool
     reminder_enabled: bool
     reminder_hour: int | None
+    weekly_summary_enabled: bool
+    weekly_summary_day: int | None
     quest_features: list[str] | None
     created_at: datetime

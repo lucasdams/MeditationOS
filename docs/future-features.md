@@ -45,7 +45,7 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [ ] Mood **over time** (moods plotted across weeks) and month-vs-month comparisons — beyond the current distribution
 - [x] **Search past journal entries by text** (case-insensitive substring; mood filter also available) — ranked full-text search is the open item
 - [x] **In-app weekly review** — a reflective "this week" card on the dashboard: minutes (vs last week), days practiced, streak, longest sit, and the mood logged most — computed from sessions + mood check-ins + journals (`GET /dashboard/weekly-review`, `weekly_review_service.py`)
-- [ ] **Weekly summary email** (opt-in) — the same review delivered weekly via email, reusing the reminder job pattern *(next)*
+- [x] **Weekly summary email** (opt-in) — the same review delivered weekly via email on a chosen local day, idempotent per ISO week; reuses the reminder job pattern (`weekly_review_service.send_due_weekly_summaries`, `app/jobs/send_weekly_summaries.py`); toggle in Settings
 - [ ] Monthly reports / month-vs-month comparisons
 
 ## Goals & Gamification

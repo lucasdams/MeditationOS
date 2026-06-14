@@ -18,6 +18,7 @@ function formatJoined(iso: string): string {
 }
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 function formatHour(h: number): string {
   const period = h < 12 ? 'AM' : 'PM'
   const display = h % 12 === 0 ? 12 : h % 12
@@ -66,6 +67,11 @@ export default function SettingsPage() {
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [reminderOk, setReminderOk] = useState(false)
   const [savingReminder, setSavingReminder] = useState(false)
+  const [summaryEnabled, setSummaryEnabled] = useState(user?.weekly_summary_enabled ?? false)
+  const [summaryDay, setSummaryDay] = useState(user?.weekly_summary_day ?? 1)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [summaryOk, setSummaryOk] = useState(false)
+  const [savingSummary, setSavingSummary] = useState(false)
 
   // Claim section (guest accounts only).
   const [claimEmail, setClaimEmail] = useState('')
@@ -282,6 +288,22 @@ export default function SettingsPage() {
       setReminderError('Something went wrong. Please try again.')
     } finally {
       setSavingReminder(false)
+    }
+  }
+
+  async function handleWeeklySummary(e: FormEvent) {
+    e.preventDefault()
+    setSummaryError(null)
+    setSummaryOk(false)
+    setSavingSummary(true)
+    try {
+      await authService.setWeeklySummary(summaryEnabled, summaryEnabled ? summaryDay : null)
+      await refresh()
+      setSummaryOk(true)
+    } catch {
+      setSummaryError('Something went wrong. Please try again.')
+    } finally {
+      setSavingSummary(false)
     }
   }
 
@@ -539,6 +561,55 @@ export default function SettingsPage() {
           {reminderOk && <p className="success">Reminder preferences saved.</p>}
           <button type="submit" disabled={savingReminder}>
             {savingReminder ? 'Saving…' : 'Save reminders'}
+          </button>
+        </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>Weekly summary</h2>
+        <p className="muted">
+          An opt-in email recap of your week — minutes, streak, and the mood you logged
+          most. Sent on your chosen day, in the morning your local time.
+        </p>
+        <form onSubmit={handleWeeklySummary} noValidate>
+          <label className="settings-check">
+            <input
+              type="checkbox"
+              checked={summaryEnabled}
+              onChange={(e) => {
+                setSummaryEnabled(e.target.checked)
+                setSummaryOk(false)
+              }}
+            />
+            Email me a weekly summary
+          </label>
+          {summaryEnabled && (
+            <>
+              <label htmlFor="summary-day">Day of week</label>
+              <select
+                id="summary-day"
+                value={summaryDay}
+                onChange={(e) => {
+                  setSummaryDay(Number(e.target.value))
+                  setSummaryOk(false)
+                }}
+              >
+                {WEEKDAYS.map((label, i) => (
+                  <option key={i} value={i}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {summaryError && (
+            <p role="alert" className="error">
+              {summaryError}
+            </p>
+          )}
+          {summaryOk && <p className="success">Weekly summary preferences saved.</p>}
+          <button type="submit" disabled={savingSummary}>
+            {savingSummary ? 'Saving…' : 'Save weekly summary'}
           </button>
         </form>
       </section>
