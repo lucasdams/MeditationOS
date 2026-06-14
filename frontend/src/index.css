@@ -2397,6 +2397,66 @@ textarea:focus-visible,
   }
 }
 
+/* Onboarding wizard (first run). */
+.onboarding-progress {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 0.5rem 0 1.2rem;
+}
+
+.onboarding-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--border, rgba(0, 0, 0, 0.18));
+}
+
+.onboarding-dot.active {
+  background: var(--accent, #059669);
+}
+
+.onboarding-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.onboarding-choice {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.14));
+  border-radius: 0.7rem;
+  background: var(--card, rgba(255, 255, 255, 0.6));
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.onboarding-choice:hover {
+  border-color: var(--accent, #059669);
+}
+
+.onboarding-choice.selected {
+  border-color: var(--accent, #059669);
+  box-shadow: 0 0 0 1px var(--accent, #059669) inset;
+}
+
+.onboarding-emoji {
+  font-size: 1.2rem;
+}
+
+.onboarding-back {
+  margin-top: 0.6rem;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  font: inherit;
+}
+
 /* Weekly review (dashboard) — a reflective "this week" card. */
 .weekly-review {
   margin: 1.5rem 0;
