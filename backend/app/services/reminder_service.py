@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.session import Session as PracticeSession
 from app.models.user import User
+from app.services import push_service
 from app.services.notifications import email
 
 logger = logging.getLogger("meditationos.reminders")
@@ -95,5 +96,9 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
         if email.send_email(user.email, REMINDER_SUBJECT, _reminder_body(user)):
             user.reminder_last_sent_at = now_utc
             sent += 1
+        # Also nudge via push if they've granted it (best-effort; no-op without VAPID).
+        push_service.send_to_user(
+            db, user.id, REMINDER_SUBJECT, "Take a few mindful minutes — your streak is waiting."
+        )
     db.commit()
     return sent

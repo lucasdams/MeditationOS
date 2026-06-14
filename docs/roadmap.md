@@ -84,10 +84,11 @@ timezone).
 
 ### Gamification (added during V1)
 
-XP, levels, and a growing ASCII tree; **personalized daily quests** (each user picks
-≥3 of meditate · breathe · gratitude · journal) with a streak bonus and a
-local-midnight reset. Progress is **computed from activity**, nothing stored (only
-the quest selection is) — see
+XP, levels, and a growing ASCII tree; **personalized, rotating daily quests** (each
+user picks ≥3 of meditate · breathe · gratitude · journal, and within each category
+the specific quest **rotates by the date** from a pool with **varied XP**) with a
+streak bonus and a local-midnight reset. Progress is **computed from activity**,
+nothing stored (only the quest selection is) — see
 [gamification design](design/gamification.md) and
 [ADR-0009](decisions/0009-gamification-computed-from-activity.md).
 

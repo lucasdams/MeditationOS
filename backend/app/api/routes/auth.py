@@ -36,8 +36,9 @@ from app.schemas.user import (
     UserLogin,
     UsernameUpdate,
     UserRead,
+    WeeklySummaryUpdate,
 )
-from app.services import reminder_service, user_service
+from app.services import reminder_service, user_service, weekly_review_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -320,4 +321,15 @@ def set_reminders(
 ) -> UserRead:
     return reminder_service.update_settings(
         db, current_user, enabled=data.enabled, hour=data.hour
+    )
+
+
+@router.post("/weekly-summary", response_model=UserRead)
+def set_weekly_summary(
+    data: WeeklySummaryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    return weekly_review_service.update_summary_settings(
+        db, current_user, enabled=data.enabled, day=data.day
     )

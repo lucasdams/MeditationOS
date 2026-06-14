@@ -2,9 +2,11 @@
 
 [← Back to README](../../README.md) · Related: [API contract](api-v1.md) · [Data model](data-model.md)
 
-How the app reaches the user. The first and only channel is **email**; it carries
-the **daily practice reminder**, the **password-reset** link, and the
-**email-verification** link (see [authentication](authentication.md)).
+How the app reaches the user. The primary channel is **email** — it carries the **daily
+practice reminder**, the **weekly summary**, the **password-reset** link, and the
+**email-verification** link (see [authentication](authentication.md)). A second, opt-in
+channel is **Web Push** (see [Web Push](#web-push)), used to also deliver the daily
+nudge as a push notification.
 
 ## The channel
 
@@ -46,15 +48,34 @@ A user is **due** when, evaluated in **their** timezone:
 The pass is **idempotent** (at most one reminder per user per local day), so the
 scheduler can run as often as it likes; hourly is enough given hour granularity.
 
+## Weekly summary
+
+Opt-in, stored on `users`: `weekly_summary_enabled`, `weekly_summary_day` (0=Mon…6=Sun,
+local), `weekly_summary_last_sent_at`.
+
+- **Set via** `POST /auth/weekly-summary { enabled, day }`.
+- **Sent by** `weekly_review_service.send_due_weekly_summaries`, via
+  `python -m app.jobs.send_weekly_summaries`, on the chosen local weekday at/after 9am.
+- Content is the same computed "this week" review the dashboard shows.
+- **Idempotent** per ISO week (`weekly_summary_last_sent_at`).
+
+## Web Push
+
+Opt-in browser push, **provider-optional** (mirrors the email/AI fallback): with no VAPID
+keys it's disabled — subscriptions still store but sends no-op. Endpoints live in
+`push_subscriptions`; `push_service.send_to_user` lazily uses `pywebpush`. The daily
+reminder job also pushes (best-effort) to a user's subscriptions. The browser side needs
+the production service worker (`public/sw.js`); see [api-v1 `/push`](api-v1.md#push--implemented).
+
 ## Deployment
 
-The send job is infra-agnostic — wire `python -m app.jobs.send_reminders` to any
-scheduler (cron, ECS scheduled task, k8s CronJob) on an hourly cadence. The web app
-does **not** send reminders inline; nothing blocks a request on email.
+The send jobs are infra-agnostic — wire `python -m app.jobs.send_reminders` and
+`python -m app.jobs.send_weekly_summaries` to any scheduler (cron, ECS scheduled task,
+k8s CronJob) on an hourly cadence. The web app does **not** send inline; nothing blocks
+a request on email or push.
 
 ## Deliberately deferred
 
 - Minute-level reminder times (hour granularity is enough for V1).
-- Web push / PWA notifications (needs a service worker + VAPID).
 - Streak-at-risk and milestone emails (same channel, later copy).
 - Per-email unsubscribe tokens (today: toggle in Settings).

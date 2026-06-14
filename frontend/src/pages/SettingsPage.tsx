@@ -4,7 +4,9 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import PushToggle from '../components/PushToggle'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
+import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
@@ -17,6 +19,7 @@ function formatJoined(iso: string): string {
 }
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 function formatHour(h: number): string {
   const period = h < 12 ? 'AM' : 'PM'
   const display = h % 12 === 0 ? 12 : h % 12
@@ -60,10 +63,16 @@ export default function SettingsPage() {
 
   // Reminders section.
   const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
+  const [soundsEnabled, setSoundsEnabled] = useState(getInterfaceSounds)
   const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [reminderOk, setReminderOk] = useState(false)
   const [savingReminder, setSavingReminder] = useState(false)
+  const [summaryEnabled, setSummaryEnabled] = useState(user?.weekly_summary_enabled ?? false)
+  const [summaryDay, setSummaryDay] = useState(user?.weekly_summary_day ?? 1)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [summaryOk, setSummaryOk] = useState(false)
+  const [savingSummary, setSavingSummary] = useState(false)
 
   // Claim section (guest accounts only).
   const [claimEmail, setClaimEmail] = useState('')
@@ -280,6 +289,22 @@ export default function SettingsPage() {
       setReminderError('Something went wrong. Please try again.')
     } finally {
       setSavingReminder(false)
+    }
+  }
+
+  async function handleWeeklySummary(e: FormEvent) {
+    e.preventDefault()
+    setSummaryError(null)
+    setSummaryOk(false)
+    setSavingSummary(true)
+    try {
+      await authService.setWeeklySummary(summaryEnabled, summaryEnabled ? summaryDay : null)
+      await refresh()
+      setSummaryOk(true)
+    } catch {
+      setSummaryError('Something went wrong. Please try again.')
+    } finally {
+      setSavingSummary(false)
     }
   }
 
@@ -542,6 +567,57 @@ export default function SettingsPage() {
       </section>
 
       <section className="settings-section">
+        <h2>Weekly summary</h2>
+        <p className="muted">
+          An opt-in email recap of your week — minutes, streak, and the mood you logged
+          most. Sent on your chosen day, in the morning your local time.
+        </p>
+        <form onSubmit={handleWeeklySummary} noValidate>
+          <label className="settings-check">
+            <input
+              type="checkbox"
+              checked={summaryEnabled}
+              onChange={(e) => {
+                setSummaryEnabled(e.target.checked)
+                setSummaryOk(false)
+              }}
+            />
+            Email me a weekly summary
+          </label>
+          {summaryEnabled && (
+            <>
+              <label htmlFor="summary-day">Day of week</label>
+              <select
+                id="summary-day"
+                value={summaryDay}
+                onChange={(e) => {
+                  setSummaryDay(Number(e.target.value))
+                  setSummaryOk(false)
+                }}
+              >
+                {WEEKDAYS.map((label, i) => (
+                  <option key={i} value={i}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {summaryError && (
+            <p role="alert" className="error">
+              {summaryError}
+            </p>
+          )}
+          {summaryOk && <p className="success">Weekly summary preferences saved.</p>}
+          <button type="submit" disabled={savingSummary}>
+            {savingSummary ? 'Saving…' : 'Save weekly summary'}
+          </button>
+        </form>
+      </section>
+
+      <PushToggle />
+
+      <section className="settings-section">
         <h2>Timezone</h2>
         <p className="muted">
           Automatically set from your browser, so streaks and daily quests roll over at
@@ -573,6 +649,21 @@ export default function SettingsPage() {
           {SEASONS.find((s) => s.value === season)?.label}
           {seasonPref === 'auto' && ' (auto)'} · {dayPhase}
         </p>
+        <label className="settings-check">
+          <input
+            type="checkbox"
+            checked={soundsEnabled}
+            onChange={(e) => {
+              const on = e.target.checked
+              setInterfaceSounds(on)
+              setSoundsEnabled(on)
+              // Play a tick as feedback when turning sounds on (so you hear what you
+              // just enabled); stay silent when turning them off.
+              if (on) playClick()
+            }}
+          />
+          Interface sounds (a soft tick when you tap controls)
+        </label>
       </section>
 
       <section className="settings-section">

@@ -4,7 +4,7 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete, plus early V2 (journaling & goals) — full account flows (email/password, Sign in with Google, email verification, password reset, **guest mode**), session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, a meditation journal, practice goals, an analytics page, a practice-grown Sanctuary garden, daily email reminders, and personalized daily quests/XP working locally · 220 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete, plus early V2 (journaling & goals) — full account flows (email/password, Sign in with Google, email verification, password reset, **guest mode**), session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, a meditation journal, practice goals, an analytics page, a practice-grown Sanctuary garden, daily email reminders, and personalized, rotating daily quests/XP working locally · 289 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
@@ -14,7 +14,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Meditation sessions — full CRUD API (user-scoped), a log-session form, and a history list with **inline edit & delete** in the browser
 - ✅ Stats dashboard — total practice time, current/longest streak, a weekly breakdown, and a GitHub-style activity heatmap (showing the **last ~month**, bucketed on the user's **local day**, per-user timezone)
 - ✅ Analytics — a dedicated insights page computed by **SQL**: minutes-per-week trend, practice by type, by day of week, by time of day, and journal-mood distribution (timezone-aware, nothing stored). See [Analytics design](docs/design/analytics.md)
-- ✅ Levels & XP + **personalized daily quests** — earn XP from practice (meditation **2×**/min, breathing **3×**, plus gratitude & journal entries), level up, grow an ASCII tree; each user picks **≥3** of meditate/breathe/gratitude/journal as their daily quests, with a streak bonus and a live reset countdown
+- ✅ Levels & XP + **personalized, rotating daily quests** — earn XP from practice (meditation **2×**/min, breathing **3×**, plus gratitude & journal entries), level up, grow an ASCII tree; each user picks **≥3** of meditate/breathe/gratitude/journal, and within each category the **specific quest rotates daily** from a pool with **varied XP** (e.g. "Sit 10+ minutes" `+30`, "Breathe slow, ≤5 bpm" `+35`), with a streak bonus and a live reset countdown
 - ✅ HRV resonance breathing — animated pacer with a **1–10 breaths/min selector** (whole-second inhale/exhale at a **2:3 longer-exhale** ratio, last pace remembered) and a 1s hold at each turn, a **selectable ambient soundscape** (ocean / rain / stream) + transition chime, optional duration timer; saves as a session
 - ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells (a soft singing bowl) at a chosen interval and volume; background-tab-safe timer; saves as a session and earns XP
 - ✅ Seasonal + day/night theme — a subtle ambient background that shifts by **season** (auto by date, or pick one in **Settings → Appearance**) and **day phase** (dawn / day / dusk / night, from your local clock); the Sanctuary gains a sun/moon sky band
@@ -25,7 +25,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Daily practice reminders — opt-in email nudge at your local hour, **timezone-aware** and **idempotent**, skipped on days you've already practiced; runs with no email provider in dev (logs instead of sends). See [Notifications design](docs/design/notifications.md)
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — a public landing page, protected routes, loading/empty/error states, a 404 page, and an app-wide error boundary
-- ✅ 220 backend tests (pytest against Postgres) + frontend tests (Vitest + Testing Library), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 289 backend tests (pytest against Postgres) + frontend tests (Vitest + Testing Library), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 

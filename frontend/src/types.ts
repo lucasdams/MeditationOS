@@ -8,6 +8,8 @@ export interface User {
   is_guest: boolean
   reminder_enabled: boolean
   reminder_hour: number | null
+  weekly_summary_enabled: boolean
+  weekly_summary_day: number | null
   // Daily-activity quests the user opted into (≥3 of QUEST_FEATURES). null until
   // they choose — the client shows a first-run picker while null.
   quest_features: string[] | null
@@ -78,6 +80,7 @@ export interface DashboardStats {
   session_count: number
   current_streak_days: number
   longest_streak_days: number
+  rest_day_used: boolean
   xp: number
   level: number
   xp_into_level: number
@@ -259,6 +262,71 @@ export interface JournalCreate {
   body: string
   mood?: Mood | null
   session_id?: string | null
+}
+
+export interface MoodLog {
+  id: string
+  mood: Mood
+  created_at: string
+}
+
+export interface ProgramDay {
+  day: number
+  title: string
+  activity: MeditationType | 'gratitude' | 'journal'
+  detail: string
+}
+
+export interface ProgramSummary {
+  key: string
+  title: string
+  description: string
+  category: string
+  total_days: number
+}
+
+export interface ProgramDetail extends ProgramSummary {
+  days: ProgramDay[]
+}
+
+export interface Enrollment {
+  id: string
+  program_key: string
+  title: string
+  total_days: number
+  current_day: number
+  completed: boolean
+  today: ProgramDay | null
+  started_at: string
+}
+
+export interface ScheduledSession {
+  id: string
+  type: MeditationType
+  scheduled_at: string
+  duration_minutes: number | null
+  note: string | null
+  created_at: string
+}
+
+export interface ScheduledSessionCreate {
+  type: MeditationType
+  scheduled_at: string
+  duration_minutes?: number | null
+  note?: string | null
+}
+
+export interface WeeklyReview {
+  start: string
+  end: string
+  minutes: number
+  last_week_minutes: number
+  sessions: number
+  active_days: number
+  current_streak_days: number
+  longest_session_seconds: number
+  top_mood: Mood | null
+  mood_counts: Record<string, number>
 }
 
 export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'

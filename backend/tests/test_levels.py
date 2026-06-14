@@ -1,6 +1,9 @@
 """XP / level curve (dashboard_service._level_progress)."""
 
+from datetime import date
+
 from app.services.dashboard_service import _level_progress
+from app.services.quest_pool import quest_for
 
 
 def test_zero_xp_is_level_one():
@@ -40,8 +43,11 @@ def test_stats_endpoint_reports_xp_and_level(client):
         },
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # 120 practice + 15 (meditate quest for that day) + 0 (current streak is 0 — the
-    # session is back in January) = 135 → level 4 (L4=120, L5=200).
-    assert body["xp"] == 135
+    # 120 practice + that day's meditate quest (a single 60-min session completes every
+    # variant except "meditate twice") + 0 streak (the session is back in January). All
+    # variants land XP in [120, 200) → level 4, with 80 XP to the next level regardless.
+    quest = quest_for("meditate", date(2026, 1, 1))
+    quest_xp = 0 if quest.variant == "double_sit" else quest.xp
+    assert body["xp"] == 120 + quest_xp
     assert body["level"] == 4
     assert body["xp_for_next_level"] == 80

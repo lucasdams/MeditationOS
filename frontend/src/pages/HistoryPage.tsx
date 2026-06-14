@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
+import { usePendingDelete } from '../hooks/usePendingDelete'
 import type { MeditationType, Session } from '../types'
 
 const TYPE_LABELS: Record<MeditationType, string> = {
@@ -54,6 +55,7 @@ const PAGE = 50
 
 export default function HistoryPage() {
   const { showToast } = useToast()
+  const { schedule, cancel } = usePendingDelete()
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
@@ -171,15 +173,35 @@ export default function HistoryPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  function handleDelete(id: string) {
+    if (!sessions) return
+    const index = sessions.findIndex((s) => s.id === id)
+    if (index === -1) return
+    const item = sessions[index]
     setError(null)
-    try {
-      await sessionService.remove(id)
-      setSessions((prev) => prev?.filter((s) => s.id !== id) ?? null)
-      showToast('Session deleted.')
-    } catch {
-      setError('Could not delete that session.')
-    }
+    // Optimistically remove now; the real delete fires only after the undo window.
+    setSessions((prev) => prev?.filter((s) => s.id !== id) ?? null)
+
+    const restore = () =>
+      setSessions((cur) => {
+        if (!cur || cur.some((s) => s.id === id)) return cur
+        const next = [...cur]
+        next.splice(Math.min(index, next.length), 0, item)
+        return next
+      })
+
+    schedule(id, () => {
+      sessionService.remove(id).catch(() => {
+        restore()
+        showToast('Could not delete that session.', 'error')
+      })
+    })
+    showToast('Session deleted.', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        if (cancel(id)) restore()
+      },
+    })
   }
 
   return (

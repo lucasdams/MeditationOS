@@ -37,6 +37,9 @@ export class BreathAudio {
   private noiseBuffer: AudioBuffer | null = null
   private gainTarget = 0.0001
   private filterTarget = 320
+  // Chimes scheduled ahead on the audio clock — tracked so stop() can cancel any that
+  // haven't fired yet (otherwise a queued bell would ring after pause/finish).
+  private scheduled: AudioScheduledSourceNode[] = []
   volume = 0.6
   private _ambient: AmbientSound = 'ocean'
 
@@ -61,6 +64,16 @@ export class BreathAudio {
     void this.ensureContext().resume()
   }
 
+  /** The audio clock (seconds). Drives look-ahead scheduling in BreathePage. */
+  audioTime(): number {
+    return this.ensureContext().currentTime
+  }
+
+  /** Whether the AudioContext is actually running (not suspended/blocked). */
+  isRunning(): boolean {
+    return this.ctx?.state === 'running'
+  }
+
   /** A couple of seconds of looping noise, coloured per the ambient (brown =
    *  soft/low ocean-like; white = airy rain-like). */
   private noise(ctx: AudioContext): AudioBuffer {
@@ -82,18 +95,21 @@ export class BreathAudio {
     return buffer
   }
 
-  /** Shape the wash toward this phase over `durationSec`. Lazily starts the loop. */
-  glide(phase: Phase, durationSec: number): void {
+  /** Shape the wash toward `phase` over `durationSec`, scheduling the ramp to BEGIN at
+   *  absolute audio-clock time `at`. This is look-ahead scheduling: events are queued on
+   *  the audio thread ahead of time, so the wash stays in time with the breath even when
+   *  a background tab throttles JS timers. Does NOT cancel future scheduled values (so
+   *  queued events survive). Lazily starts the loop. */
+  glideAt(phase: Phase, durationSec: number, at: number): void {
     const ctx = this.ensureContext()
-    // Safari drops sound scheduled while suspended — resume first, then retry.
     if (ctx.state !== 'running') {
-      void ctx.resume().then(() => this.glide(phase, durationSec)).catch(() => {})
+      void ctx.resume() // the scheduler retries on its next tick
       return
     }
-    const now = ctx.currentTime
-
+    const start = Math.max(at, ctx.currentTime)
     const spec = AMBIENTS[this._ambient]
     if (!this.source || !this.gain || !this.filter) {
+      const begin = ctx.currentTime
       const source = ctx.createBufferSource()
       source.buffer = this.noise(ctx)
       source.loop = true
@@ -101,12 +117,12 @@ export class BreathAudio {
       filter.type = 'lowpass'
       filter.Q.value = spec.q
       this.filterTarget = phase === 'inhale' ? spec.dark : spec.bright
-      filter.frequency.setValueAtTime(this.filterTarget, now)
+      filter.frequency.setValueAtTime(this.filterTarget, begin)
       const gain = ctx.createGain()
       this.gainTarget = 0.0001
-      gain.gain.setValueAtTime(this.gainTarget, now)
+      gain.gain.setValueAtTime(this.gainTarget, begin)
       source.connect(filter).connect(gain).connect(ctx.destination)
-      source.start(now)
+      source.start(begin)
       this.source = source
       this.filter = filter
       this.gain = gain
@@ -118,26 +134,39 @@ export class BreathAudio {
     const targetCutoff = swelling ? spec.bright : spec.dark // open brighter in / darker out
 
     const g = this.gain.gain
-    g.cancelScheduledValues(now)
-    g.setValueAtTime(this.gainTarget, now) // continue from the last rest value
-    g.linearRampToValueAtTime(targetGain, now + durationSec)
+    g.setValueAtTime(this.gainTarget, start) // hold the last rest value until `start`
+    g.linearRampToValueAtTime(targetGain, start + durationSec)
     this.gainTarget = targetGain
 
     const f = this.filter.frequency
-    f.cancelScheduledValues(now)
-    f.setValueAtTime(this.filterTarget, now)
-    f.linearRampToValueAtTime(targetCutoff, now + durationSec)
+    f.setValueAtTime(this.filterTarget, start)
+    f.linearRampToValueAtTime(targetCutoff, start + durationSec)
     this.filterTarget = targetCutoff
   }
 
-  /** Fade out and stop the wash (on pause / finish / toggle off) — no click. */
+  /** Fade out and stop the wash + cancel any queued chimes (on pause / finish / toggle
+   *  off / re-anchor) — no click. */
   stop(): void {
-    if (!this.source || !this.gain || !this.ctx) return
+    for (const node of this.scheduled) {
+      try {
+        node.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
+    this.scheduled = []
+    if (!this.source || !this.gain || !this.filter || !this.ctx) {
+      this.source = null
+      this.filter = null
+      this.gain = null
+      return
+    }
     const now = this.ctx.currentTime
     const g = this.gain.gain
     g.cancelScheduledValues(now)
     g.setValueAtTime(this.gainTarget, now)
     g.linearRampToValueAtTime(0.0001, now + 0.2)
+    this.filter.frequency.cancelScheduledValues(now)
     this.source.stop(now + 0.25)
     this.source = null
     this.filter = null
@@ -146,14 +175,20 @@ export class BreathAudio {
     this.filterTarget = 320
   }
 
-  /** Soft bell at a transition — fire-and-forget, independent of the wash. */
+  /** Soft bell, played now (e.g. previewing the toggle). */
   chime(phase: Phase): void {
+    this.chimeAt(phase, this.ensureContext().currentTime)
+  }
+
+  /** Soft bell at a transition, scheduled to strike at absolute audio-clock time `at` —
+   *  fire-and-forget, independent of the wash. Tracked so stop() can cancel it. */
+  chimeAt(phase: Phase, at: number): void {
     const ctx = this.ensureContext()
     if (ctx.state !== 'running') {
-      void ctx.resume().then(() => this.chime(phase)).catch(() => {})
+      void ctx.resume()
       return
     }
-    const now = ctx.currentTime
+    const now = Math.max(at, ctx.currentTime)
     const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
     const peak = Math.max(0.06, this.volume * 0.18) // gentle bell, sits under the ambient wash
 
@@ -175,6 +210,11 @@ export class BreathAudio {
       osc.connect(g).connect(out)
       osc.start(now)
       osc.stop(now + 2)
+      this.scheduled.push(osc)
+      osc.onended = () => {
+        const i = this.scheduled.indexOf(osc)
+        if (i >= 0) this.scheduled.splice(i, 1)
+      }
     }
   }
 

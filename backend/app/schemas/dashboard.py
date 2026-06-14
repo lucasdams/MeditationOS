@@ -11,7 +11,8 @@ class DailyTotal(BaseModel):
 
 
 class QuestStatus(BaseModel):
-    key: str
+    key: str  # the activity category (meditate/breathe/gratitude/journal)
+    variant: str  # which rotating quest within the category is up today
     label: str
     xp: int
     done: bool
@@ -22,6 +23,7 @@ class DashboardStats(BaseModel):
     session_count: int
     current_streak_days: int
     longest_streak_days: int
+    rest_day_used: bool = False  # the current streak is leaning on its rest day
     xp: int
     level: int
     xp_into_level: int

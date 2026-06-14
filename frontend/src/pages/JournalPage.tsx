@@ -4,6 +4,7 @@ import { journalService } from '../services/journals'
 import { sessionService } from '../services/sessions'
 import { MOOD_COLORS, tint } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
+import { usePendingDelete } from '../hooks/usePendingDelete'
 import type { Journal, MeditationType, Mood, Session } from '../types'
 
 const MOODS: Mood[] = [
@@ -36,6 +37,7 @@ const PAGE = 50
 
 export default function JournalPage() {
   const { showToast } = useToast()
+  const { schedule, cancel } = usePendingDelete()
   const [entries, setEntries] = useState<Journal[] | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -163,15 +165,35 @@ export default function JournalPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  function handleDelete(id: string) {
+    if (!entries) return
+    const index = entries.findIndex((j) => j.id === id)
+    if (index === -1) return
+    const item = entries[index]
     setError(null)
-    try {
-      await journalService.remove(id)
-      setEntries((prev) => prev?.filter((j) => j.id !== id) ?? null)
-      showToast('Reflection deleted.')
-    } catch {
-      setError('Could not delete that reflection.')
-    }
+    // Optimistically remove now; the real delete fires only after the undo window.
+    setEntries((prev) => prev?.filter((j) => j.id !== id) ?? null)
+
+    const restore = () =>
+      setEntries((cur) => {
+        if (!cur || cur.some((j) => j.id === id)) return cur
+        const next = [...cur]
+        next.splice(Math.min(index, next.length), 0, item)
+        return next
+      })
+
+    schedule(id, () => {
+      journalService.remove(id).catch(() => {
+        restore()
+        showToast('Could not delete that reflection.', 'error')
+      })
+    })
+    showToast('Reflection deleted.', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        if (cancel(id)) restore()
+      },
+    })
   }
 
   const sessionLabel = (s: Session) => `${TYPE_LABELS[s.type]} · ${formatWhen(s.occurred_at)}`

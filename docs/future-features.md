@@ -10,18 +10,21 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [x] **Multiple meditation types** (mindfulness, body scan, walking, loving-kindness, resonance breathing, other)
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
+- [x] **Structured programs / practice plans** — curated multi-day plans (7 Days to Calm, Focus Foundations, 21-Day Habit Builder) that prescribe one short practice a day; data-first (a *sequence*, not audio). The catalog is in-code (`app/services/program_catalog.py`); only per-user enrollment + progress is stored (`program_enrollments`), advanced by a "day complete" action. A `/programs` page browses, enrolls, tracks progress, and deep-links to each day's practice
 - [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
 - [x] **Edit & delete logged sessions** — inline edit (type, duration, time, notes) and delete from the history list
 - [x] **Export session history** — one-click CSV download from the history page (JSON is also available via the full account export in Settings)
+- [x] **Schedule practice** — plan future sessions (type + date/time + optional length/note) on a `/schedule` page, with an "add to calendar" (.ics) export per session; new `scheduled_sessions` table, user-scoped — see `app/services/scheduled_session_service.py`
 - [ ] Session visibility — public/private per session (default private); public sessions are shareable to friends (needs the social layer). Planned `sessions.visibility` column.
 
 ## HRV & Breathing
 
 - [x] **Breaths-per-minute selector** (1–10, stepped) with the last pace remembered locally; inhale/exhale derived from the rate
 - [x] **Selectable ambient soundscape** (synthesized ocean / rain / stream) + a transition chime on the breathing pacer; the meditation timer rings a soft singing-bowl bell at start / interval / end
+- [x] **Named breathing presets** — Resonance (bpm-driven longer-exhale, the default), Coherence (5·5), Box (4·4·4·4), and 4·7·8, selectable on the breathe page; the pacer was generalized to per-phase holds (`frontend/src/lib/breathPattern.ts`, unit-tested). Last preset remembered locally
 - [ ] Breathing pattern library shared across devices
 - [ ] Session stats per pattern (which rates users practice most, time of day)
-- [ ] Optional breath holds between inhale and exhale
+- [x] **Optional breath holds between inhale and exhale** — supported via the preset patterns (box/4·7·8 carry their own holds); a fully custom hold editor remains open
 - [ ] Haptic or audio-only breathing modes
 - [ ] Custom in:out ratio for resonance breathing (the bpm selector ships a **~2:3 longer-exhale** ratio by default; a user-adjustable ratio for advanced users with a known resonance frequency is the open item)
 
@@ -40,15 +43,19 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD (incl. **inline edit** of body + mood), filterable; **earns XP** (parity with gratitude) — see [journaling design](design/journaling.md)
 - [ ] Journal prompts tied to session type or streak milestones
 - [x] **Analytics page** — SQL-aggregated insights: minutes-per-week, by type / weekday / time-of-day, and a **journal-mood distribution** — see [analytics design](design/analytics.md)
+- [x] **Standalone mood check-in** — a one-tap "how do you feel?" on the dashboard (no written body required), stored in `mood_logs`, reusing the journal mood palette so it feeds the same analytics
 - [ ] Mood **over time** (moods plotted across weeks) and month-vs-month comparisons — beyond the current distribution
 - [x] **Search past journal entries by text** (case-insensitive substring; mood filter also available) — ranked full-text search is the open item
-- [ ] Weekly/monthly practice summary emails or in-app reports
+- [x] **In-app weekly review** — a reflective "this week" card on the dashboard: minutes (vs last week), days practiced, streak, longest sit, and the mood logged most — computed from sessions + mood check-ins + journals (`GET /dashboard/weekly-review`, `weekly_review_service.py`)
+- [x] **Weekly summary email** (opt-in) — the same review delivered weekly via email on a chosen local day, idempotent per ISO week; reuses the reminder job pattern (`weekly_review_service.send_due_weekly_summaries`, `app/jobs/send_weekly_summaries.py`); toggle in Settings
+- [ ] Monthly reports / month-vs-month comparisons
 
 ## Goals & Gamification
 
-- [x] **Daily quests** — now **personalized**: each user picks ≥3 of meditate · breathe · gratitude · journal (first-run picker + editable in Settings; stored in `users.quest_features`), with bonus XP and a daily reset
-- [x] **Streak bonus XP** (scaled to your longest streak)
-- [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, +15 per daily-activity day
+- [x] **Daily quests** — now **personalized and rotating**: each user picks ≥3 of meditate · breathe · gratitude · journal (first-run picker + editable in Settings; stored in `users.quest_features`), and within each category the specific quest **rotates by the date** from a pool with **varied XP** (e.g. "Sit 10+ minutes" `+30`, "Breathe slow, ≤5 bpm" `+35`); daily reset at local midnight — see [gamification design](design/gamification.md)
+- [x] **Streak bonus XP** (scaled to your current streak)
+- [x] **Streak insurance / rest day** — the current streak survives one skipped day (two-in-a-row still resets); computed, nothing stored; surfaced as a 🛡️ badge via `rest_day_used` on `/dashboard/stats`
+- [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, plus the day's rotating-quest bonus (`+10`…`+35` by variant)
 - [x] **Goals** — recurring habits: an activity (meditate / breathe / gratitude / journal) done a count of times per day/week, with this-period progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
 - [x] **Custom-habit goals** — track anything the app doesn't record ("Gym", "Read") with a daily **check-in**; the one stored-progress path (a deliberate exception to ADR-0009)
 - [ ] More cadences (custom counts, calendar-aligned weeks, monthly)
@@ -160,7 +167,8 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 
 ## Platform & Product
 
-- [ ] Mobile-responsive layout and PWA support
+- [x] **Onboarding / activation flow** — a first-run wizard (goal → experience → preferred time → quests) shown to new users in place of the bare quest picker; personalizes quests from the goal, sets a reminder from the preferred time, tunes the starting breathing pace from experience, and drops the user into a first session (`frontend/src/pages/Onboarding.tsx`)
+- [x] **PWA + Web Push** — installable app with an offline app-shell (`manifest.webmanifest` + `public/sw.js`, service worker registered in production only so it never breaks Vite HMR). Opt-in **Web Push** practice nudges: `push_subscriptions` table + `push_service` (provider-optional — subscriptions store, sends no-op without VAPID keys; lazy `pywebpush`), `/api/v1/push` endpoints, a Settings toggle, and push integrated into the daily reminder job. *(Remaining polish: PNG app icons; client-side offline session queue.)*
 - [x] **Seasonal + day/night ambient theme** — a subtle background that shifts by season (auto by date, or picked in Settings → Appearance) and by day phase (dawn/day/dusk/night from the local clock); the Sanctuary gains a sun/moon sky band
 - [ ] Full dark mode and broader accessibility improvements
 - [ ] **Internationalization (i18n)** — start with a **Japanese (JP) version** of the site (UI strings + AI prompts/suggestions in Japanese)

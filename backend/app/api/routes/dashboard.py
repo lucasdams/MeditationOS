@@ -10,7 +10,8 @@ from app.api.deps import get_current_user
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.dashboard import ActivityCalendar, DashboardStats
-from app.services import dashboard_service
+from app.schemas.weekly_review import WeeklyReview
+from app.services import dashboard_service, weekly_review_service
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -38,6 +39,15 @@ def get_stats(
         tz=tz,
         quest_features=current_user.quest_features,
     )
+
+
+@router.get("/weekly-review", response_model=WeeklyReview)
+def get_weekly_review(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WeeklyReview:
+    today, tz = _today_for(current_user)
+    return weekly_review_service.get_weekly_review(db, current_user.id, today=today, tz=tz)
 
 
 @router.get("/activity", response_model=ActivityCalendar)

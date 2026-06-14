@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { ActivityCalendar, DashboardStats } from '../types'
+import type { ActivityCalendar, DashboardStats, WeeklyReview } from '../types'
 
 export const dashboardService = {
   getStats: () => api.get<DashboardStats>('/dashboard/stats'),
@@ -7,4 +7,5 @@ export const dashboardService = {
     api.get<ActivityCalendar>(
       `/dashboard/activity${days ? `?days=${days}` : ''}`,
     ),
+  getWeeklyReview: () => api.get<WeeklyReview>('/dashboard/weekly-review'),
 }
