@@ -8,5 +8,6 @@ from app.models.gratitude import GratitudeEntry  # noqa: F401
 from app.models.journal import Journal  # noqa: F401
 from app.models.mood_log import MoodLog  # noqa: F401
 from app.models.sanctuary import SanctuaryPlanting  # noqa: F401
+from app.models.scheduled_session import ScheduledSession  # noqa: F401
 from app.models.session import Session  # noqa: F401
 from app.models.user import User  # noqa: F401

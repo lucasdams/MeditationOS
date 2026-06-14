@@ -2397,6 +2397,50 @@ textarea:focus-visible,
   }
 }
 
+/* Schedule page. */
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 28rem;
+  margin-bottom: 2rem;
+}
+
+.schedule-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.schedule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 0.7rem;
+}
+
+.schedule-note {
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+}
+
+.schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.schedule-ics {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 /* Onboarding wizard (first run). */
 .onboarding-progress {
   display: flex;

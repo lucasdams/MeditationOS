@@ -13,6 +13,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
 - [x] **Edit & delete logged sessions** — inline edit (type, duration, time, notes) and delete from the history list
 - [x] **Export session history** — one-click CSV download from the history page (JSON is also available via the full account export in Settings)
+- [x] **Schedule practice** — plan future sessions (type + date/time + optional length/note) on a `/schedule` page, with an "add to calendar" (.ics) export per session; new `scheduled_sessions` table, user-scoped — see `app/services/scheduled_session_service.py`
 - [ ] Session visibility — public/private per session (default private); public sessions are shareable to friends (needs the social layer). Planned `sessions.visibility` column.
 
 ## HRV & Breathing

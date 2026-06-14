@@ -13,6 +13,7 @@ from app.api.routes import (
     journals,
     mood_logs,
     sanctuary,
+    scheduled_sessions,
     sessions,
 )
 
@@ -27,4 +28,5 @@ api_router.include_router(gratitude.router)
 api_router.include_router(journals.router)
 api_router.include_router(mood_logs.router)
 api_router.include_router(goals.router)
+api_router.include_router(scheduled_sessions.router)
 api_router.include_router(sanctuary.router)

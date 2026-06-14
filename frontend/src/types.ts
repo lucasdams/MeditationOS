@@ -270,6 +270,22 @@ export interface MoodLog {
   created_at: string
 }
 
+export interface ScheduledSession {
+  id: string
+  type: MeditationType
+  scheduled_at: string
+  duration_minutes: number | null
+  note: string | null
+  created_at: string
+}
+
+export interface ScheduledSessionCreate {
+  type: MeditationType
+  scheduled_at: string
+  duration_minutes?: number | null
+  note?: string | null
+}
+
 export interface WeeklyReview {
   start: string
   end: string
