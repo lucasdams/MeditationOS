@@ -6,6 +6,7 @@ import { dashboardService } from '../services/dashboard'
 // Secondary destinations, tucked into the "More" menu.
 const MORE_LINKS = [
   { to: '/goals', label: '🎯 Goals' },
+  { to: '/programs', label: '🧭 Programs' },
   { to: '/schedule', label: '🗓️ Schedule' },
   { to: '/sanctuary', label: '🌱 Sanctuary' },
   { to: '/analytics', label: '📈 Analytics' },

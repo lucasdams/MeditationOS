@@ -14,6 +14,7 @@ import JournalPage from './pages/JournalPage'
 import GoalsPage from './pages/GoalsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SanctuaryPage from './pages/SanctuaryPage'
+import ProgramsPage from './pages/ProgramsPage'
 import SchedulePage from './pages/SchedulePage'
 import SettingsPage from './pages/SettingsPage'
 import PrivacyPage from './pages/PrivacyPage'
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/sanctuary" element={<SanctuaryPage />} />
+          <Route path="/programs" element={<ProgramsPage />} />
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/sessions" element={<HistoryPage />} />
           <Route path="/sessions/new" element={<LogSessionPage />} />

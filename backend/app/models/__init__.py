@@ -7,6 +7,7 @@ from app.models.goal import Goal, GoalCheckin  # noqa: F401
 from app.models.gratitude import GratitudeEntry  # noqa: F401
 from app.models.journal import Journal  # noqa: F401
 from app.models.mood_log import MoodLog  # noqa: F401
+from app.models.program_enrollment import ProgramEnrollment  # noqa: F401
 from app.models.sanctuary import SanctuaryPlanting  # noqa: F401
 from app.models.scheduled_session import ScheduledSession  # noqa: F401
 from app.models.session import Session  # noqa: F401

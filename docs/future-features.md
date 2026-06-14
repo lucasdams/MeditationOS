@@ -10,6 +10,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [x] **Multiple meditation types** (mindfulness, body scan, walking, loving-kindness, resonance breathing, other)
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
+- [x] **Structured programs / practice plans** — curated multi-day plans (7 Days to Calm, Focus Foundations, 21-Day Habit Builder) that prescribe one short practice a day; data-first (a *sequence*, not audio). The catalog is in-code (`app/services/program_catalog.py`); only per-user enrollment + progress is stored (`program_enrollments`), advanced by a "day complete" action. A `/programs` page browses, enrolls, tracks progress, and deep-links to each day's practice
 - [x] **Timer-only mode for unguided practice** — a `/meditate` page: pick a style + length, optional start/interval/end bells, saves as a session and earns XP
 - [x] **Edit & delete logged sessions** — inline edit (type, duration, time, notes) and delete from the history list
 - [x] **Export session history** — one-click CSV download from the history page (JSON is also available via the full account export in Settings)
