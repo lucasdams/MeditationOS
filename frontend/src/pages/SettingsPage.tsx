@@ -4,6 +4,7 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import PushToggle from '../components/PushToggle'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
@@ -613,6 +614,8 @@ export default function SettingsPage() {
           </button>
         </form>
       </section>
+
+      <PushToggle />
 
       <section className="settings-section">
         <h2>Timezone</h2>

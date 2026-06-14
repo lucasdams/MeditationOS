@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.
     anthropic_api_key: str = ""
+    # Web Push (VAPID). Both keys empty = push disabled (subscriptions still store, sends
+    # no-op) — mirrors the email/AI provider-optional pattern. Generate with
+    # `web-push generate-vapid-keys`. The public key is safe to expose to the client.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:noreply@meditationos.app"
     # Outbound email (practice reminders, password reset). With no SMTP host
     # configured the sender logs the message instead of delivering it — so the app
     # works locally with no provider, mirroring the AI curated-fallback pattern.

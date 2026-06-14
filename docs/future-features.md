@@ -168,7 +168,7 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 ## Platform & Product
 
 - [x] **Onboarding / activation flow** — a first-run wizard (goal → experience → preferred time → quests) shown to new users in place of the bare quest picker; personalizes quests from the goal, sets a reminder from the preferred time, tunes the starting breathing pace from experience, and drops the user into a first session (`frontend/src/pages/Onboarding.tsx`)
-- [ ] Mobile-responsive layout and PWA support
+- [x] **PWA + Web Push** — installable app with an offline app-shell (`manifest.webmanifest` + `public/sw.js`, service worker registered in production only so it never breaks Vite HMR). Opt-in **Web Push** practice nudges: `push_subscriptions` table + `push_service` (provider-optional — subscriptions store, sends no-op without VAPID keys; lazy `pywebpush`), `/api/v1/push` endpoints, a Settings toggle, and push integrated into the daily reminder job. *(Remaining polish: PNG app icons; client-side offline session queue.)*
 - [x] **Seasonal + day/night ambient theme** — a subtle background that shifts by season (auto by date, or picked in Settings → Appearance) and by day phase (dawn/day/dusk/night from the local clock); the Sanctuary gains a sun/moon sky band
 - [ ] Full dark mode and broader accessibility improvements
 - [ ] **Internationalization (i18n)** — start with a **Japanese (JP) version** of the site (UI strings + AI prompts/suggestions in Japanese)
