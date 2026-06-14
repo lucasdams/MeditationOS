@@ -310,7 +310,7 @@ export default function SettingsPage() {
 
   return (
     <main className="settings">
-      <Link to="/">← Dashboard</Link>
+      <Link to="/" className="back-link">← Dashboard</Link>
       <h1>Settings</h1>
 
       {user.is_guest && (

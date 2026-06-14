@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -65,6 +66,10 @@ class Session(Base):
         nullable=True,
     )
 
+    # Optional client-generated idempotency key, so an auto-save (beacon on tab close)
+    # and a manual/restored save of the same in-progress sit collapse to one row.
+    client_token: Mapped[str | None] = mapped_column(String, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -76,4 +81,12 @@ class Session(Base):
         CheckConstraint("calm IS NULL OR calm BETWEEN 1 AND 5", name="ck_sessions_calm"),
         # Every dashboard/streak query filters by user and time.
         Index("ix_sessions_user_id_occurred_at", "user_id", "occurred_at"),
+        # One row per (user, client_token) — enforces idempotent saves at the DB level.
+        Index(
+            "uq_sessions_user_client_token",
+            "user_id",
+            "client_token",
+            unique=True,
+            postgresql_where=text("client_token IS NOT NULL"),
+        ),
     )

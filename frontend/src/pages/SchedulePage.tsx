@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { scheduledSessionService } from '../services/scheduledSessions'
 import { useToast } from '../context/ToastContext'
+import { TYPE_COLORS } from '../lib/colors'
 import type { MeditationType, ScheduledSession } from '../types'
 
 const TYPES: { value: MeditationType; label: string }[] = [
@@ -89,10 +90,14 @@ export default function SchedulePage() {
   }
 
   return (
-    <main className="schedule">
-      <Link to="/">← Dashboard</Link>
-      <h1>Plan your practice</h1>
-      <p className="muted">Put sessions on the calendar and add them to your own calendar app.</p>
+    <main className="dashboard">
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
+        <h1>Plan your practice</h1>
+        <p className="page-subtitle">
+          Schedule a sit ahead of time, and add it to your own calendar.
+        </p>
+      </header>
 
       <form onSubmit={handleSubmit} noValidate className="schedule-form">
         <label htmlFor="sched-type">Type</label>
@@ -145,7 +150,7 @@ export default function SchedulePage() {
         </button>
       </form>
 
-      <h2>Upcoming</h2>
+      <h2 className="schedule-upcoming-title">Upcoming</h2>
       {!items && !error && <p>Loading…</p>}
       {items && items.length === 0 && (
         <p className="muted">Nothing planned yet — schedule your first session above. 🗓️</p>
@@ -153,7 +158,11 @@ export default function SchedulePage() {
       {items && items.length > 0 && (
         <ul className="schedule-list">
           {items.map((s) => (
-            <li key={s.id} className="schedule-item">
+            <li
+              key={s.id}
+              className="schedule-item"
+              style={{ borderLeftColor: TYPE_COLORS[s.type] ?? '#9ca3af' }}
+            >
               <div>
                 <strong>{formatWhen(s.scheduled_at)}</strong>
                 <span className="muted">

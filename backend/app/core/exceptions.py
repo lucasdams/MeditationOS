@@ -52,7 +52,3 @@ class DailyLimitError(Exception):
 class GoalNotCheckableError(Exception):
     """Raised when checking in on a non-custom goal — built-in activities derive
     their progress and can't be manually marked done."""
-
-
-class UnknownProgramError(Exception):
-    """Raised when enrolling in a program key that isn't in the catalog."""

@@ -8,6 +8,17 @@ import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
 import Stepper, { type StepperOption } from '../components/Stepper'
+import { useToast } from '../context/ToastContext'
+import {
+  MIN_DRAFT_SECONDS,
+  beaconSave,
+  clearDraft,
+  newClientToken,
+  readRestorableDraft,
+  writeDraft,
+  type SessionDraft,
+} from '../lib/sessionDraft'
+import type { SessionCreate } from '../types'
 import {
   MIN_SCALE,
   PRESETS,
@@ -27,6 +38,14 @@ import {
 // How far ahead (seconds) the scheduler queues audio on the audio clock. Comfortably
 // larger than a throttled background timer tick (~1s), so cues are always queued in time.
 const AUDIO_LOOKAHEAD = 2.5
+
+// A distinct icon + soft tint per pattern, so the cards read apart at a glance.
+const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
+  resonance: { emoji: '🌊', tint: '#e0f2fe' }, // rolling, longer exhale
+  coherence: { emoji: '⚖️', tint: '#dcfce7' }, // even, balanced
+  box: { emoji: '🟦', tint: '#e0e7ff' }, // four equal sides
+  '478': { emoji: '🌙', tint: '#ede9fe' }, // calming, for winding down
+}
 
 // Breaths-per-minute is the user's primary control for the Resonance preset: stepped
 // from the fast end (10) down to the deep end (1) in 0.5 increments. Slower is harder
@@ -50,6 +69,25 @@ const loadBpm = (): number => {
     // localStorage unavailable (private mode, etc.) — fall back to the default.
   }
   return DEFAULT_BPM
+}
+
+// Box uses a "seconds per phase" control (3–7s each for in · hold · out · hold) rather
+// than breaths/min, since its long holds make bpm meaningless.
+const BOX_COUNTS: StepperOption<number>[] = [3, 4, 5, 6, 7].map((n) => ({
+  value: n,
+  label: `${n}s each`,
+}))
+const DEFAULT_BOX = 4
+const BOX_STORAGE_KEY = 'breathe.box'
+
+const loadBox = (): number => {
+  try {
+    const n = Number(localStorage.getItem(BOX_STORAGE_KEY))
+    if (Number.isInteger(n) && n >= 3 && n <= 7) return n
+  } catch {
+    // localStorage unavailable — fall back to the default.
+  }
+  return DEFAULT_BOX
 }
 
 // Slower breathing is harder, so a lower bpm is more advanced. Surfaced next to the
@@ -81,9 +119,13 @@ const mmss = (totalSec: number) => {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
+const DRAFT_PAGE = 'breathe'
+
 export default function BreathePage() {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [bpm, setBpm] = useState<number>(loadBpm)
+  const [boxCount, setBoxCount] = useState<number>(loadBox)
   const [presetKey, setPresetKey] = useState<string>(loadPreset)
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
@@ -102,10 +144,25 @@ export default function BreathePage() {
   const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
   const [volume, setVolume] = useState(0.6)
   const [targetMin, setTargetMin] = useState(0)
+  // Unsaved-sit recovery (see lib/sessionDraft): a leftover draft to offer on load, plus
+  // refs the draft/beacon read at tab-close time.
+  const [restorable, setRestorable] = useState<SessionDraft | null>(() =>
+    readRestorableDraft(DRAFT_PAGE),
+  )
+  const tokenRef = useRef<string | null>(null)
+  const startedAtRef = useRef('')
+  const elapsedRef = useRef(0)
+  const savedRef = useRef(false)
+  const lastPersistRef = useRef(-1)
 
-  // The active pattern: a fixed preset, or — for Resonance — derived from the bpm pace.
+  // The active pattern: a fixed preset (4·7·8), or derived from its control value —
+  // the bpm pace (Resonance/Coherence) or the box count (Box).
   const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0]
-  const pattern: Pattern = preset.pattern ?? patternForBpm(bpm)
+  const controlValue = preset.control === 'count' ? boxCount : bpm
+  const pattern: Pattern =
+    preset.control === 'none'
+      ? (preset.pattern as Pattern)
+      : (preset.derive ?? patternForBpm)(controlValue)
   const { inhale, exhale } = pattern
 
   // Remember the chosen pace + preset for next time.
@@ -123,6 +180,13 @@ export default function BreathePage() {
       // ignore — preference just won't persist
     }
   }, [presetKey])
+  useEffect(() => {
+    try {
+      localStorage.setItem(BOX_STORAGE_KEY, String(boxCount))
+    } catch {
+      // ignore — preference just won't persist
+    }
+  }, [boxCount])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
@@ -142,6 +206,45 @@ export default function BreathePage() {
   useEffect(() => {
     patternRef.current = pattern
   }, [pattern.inhale, pattern.holdFull, pattern.exhale, pattern.holdEmpty])
+
+  // The session payload for the current breathing sit (or null if nothing to save).
+  function draftPayload(elapsedSec: number): SessionCreate | null {
+    if (!tokenRef.current || elapsedSec < MIN_DRAFT_SECONDS) return null
+    const p = patternRef.current
+    return {
+      type: 'resonance_breathing',
+      duration_seconds: Math.floor(elapsedSec),
+      occurred_at: startedAtRef.current || new Date().toISOString(),
+      inhale_seconds: p.inhale,
+      exhale_seconds: p.exhale,
+      cycles_completed: Math.floor(elapsedSec / cycleLength(p)),
+      client_token: tokenRef.current,
+    }
+  }
+
+  function persistDraft(elapsedSec: number) {
+    const payload = draftPayload(elapsedSec)
+    if (!payload) return
+    writeDraft(DRAFT_PAGE, {
+      clientToken: payload.client_token as string,
+      label: 'Breathing',
+      elapsedSeconds: Math.floor(elapsedSec),
+      payload,
+      savedAt: Date.now(),
+    })
+  }
+
+  // Best-effort save when the tab is actually closing.
+  useEffect(() => {
+    const onHide = () => {
+      if (savedRef.current) return
+      const payload = draftPayload(elapsedRef.current)
+      if (payload) beaconSave(payload)
+    }
+    window.addEventListener('pagehide', onHide)
+    return () => window.removeEventListener('pagehide', onHide)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Audio guide (lazily created so the AudioContext only opens on a user gesture).
   const audioRef = useRef<BreathAudio | null>(null)
@@ -183,6 +286,13 @@ export default function BreathePage() {
       const runSec = (now - cycleStartRef.current) / 1000
       const total = baseElapsedRef.current + runSec
       setElapsed(total)
+      elapsedRef.current = total
+      // Persist the draft at most once per second (rAF runs ~60fps).
+      const sec = Math.floor(total)
+      if (sec !== lastPersistRef.current) {
+        lastPersistRef.current = sec
+        persistDraft(total)
+      }
       setScale(scaleAt(runSec % cycle, p))
       setCycles(Math.floor(total / cycle))
       const seg = segmentAt(runSec % cycle, p)
@@ -201,8 +311,9 @@ export default function BreathePage() {
   // themselves fire on time on the audio thread, so the guide stays in sync when hidden.
   useEffect(() => {
     if (!running) return
-    const a = audio()
     const tick = () => {
+      const a = audio() // re-reads volume/ambient from the live refs, so mid-session
+      //                    audio tweaks take effect on the next queued cue
       if (!a.isRunning()) {
         a.resume() // suspended (e.g. returning to a mobile tab) — re-anchor handles re-sync
         return
@@ -273,11 +384,20 @@ export default function BreathePage() {
     phaseRef.current = 'inhale'
     setPhase('inhale')
     setRunning(true)
+    if (elapsed < 1) {
+      // Fresh sit: new idempotency token + start time; drop any stale restore offer.
+      tokenRef.current = newClientToken()
+      startedAtRef.current = new Date().toISOString()
+      savedRef.current = false
+      lastPersistRef.current = -1
+      setRestorable(null)
+    }
   }
 
   function pause() {
     setRunning(false)
     audioRef.current?.stop()
+    persistDraft(elapsedRef.current)
   }
 
   function toggleAudio(on: boolean) {
@@ -300,6 +420,9 @@ export default function BreathePage() {
     setCycles(0)
     nextEventRef.current = 0
     baseElapsedRef.current = 0
+    elapsedRef.current = 0
+    tokenRef.current = null
+    clearDraft(DRAFT_PAGE)
     setScale(MIN_SCALE)
     setPhase('inhale')
   }
@@ -314,13 +437,17 @@ export default function BreathePage() {
         // Floor, never round up — a sub-minute breath must not count as the
         // "breathe a minute" quest (which needs a true ≥60s).
         duration_seconds: Math.floor(durationSec),
-        occurred_at: new Date().toISOString(),
+        occurred_at: startedAtRef.current || new Date().toISOString(),
         inhale_seconds: inhale,
         exhale_seconds: exhale,
         // Completed breaths = whole cycles in the elapsed time (derived, so it's right
         // even if the tab was backgrounded and the visual counter was frozen).
         cycles_completed: Math.floor(durationSec / cycleLength(pattern)),
+        client_token: tokenRef.current ?? undefined,
       })
+      // Saved — drop the recovery draft and stop the tab-close beacon from re-firing.
+      savedRef.current = true
+      clearDraft(DRAFT_PAGE)
       const after = await dashboardService.getStats()
       // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
       setReward({
@@ -345,9 +472,36 @@ export default function BreathePage() {
     void saveSession(elapsed)
   }
 
+  // Save a breathing sit recovered from a previous visit (idempotent on its token).
+  async function restoreSave() {
+    if (!restorable) return
+    setSaving(true)
+    setError(null)
+    try {
+      await sessionService.create(restorable.payload)
+      clearDraft(DRAFT_PAGE)
+      setRestorable(null)
+      showToast('Session saved.')
+    } catch {
+      setError('Could not save that session.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function discardRestore() {
+    clearDraft(DRAFT_PAGE)
+    setRestorable(null)
+  }
+
   // Changing the pace restarts the breath so the new rate begins cleanly.
   function selectBpm(next: number) {
     setBpm(next)
+    reset()
+  }
+
+  function selectBoxCount(next: number) {
+    setBoxCount(next)
     reset()
   }
 
@@ -361,45 +515,82 @@ export default function BreathePage() {
     <main className="breathe">
       <header>
         <h1>Breathe</h1>
-        <Link to="/">← Dashboard</Link>
+        <Link to="/" className="back-link">← Dashboard</Link>
       </header>
 
-      <div className="breathe-stage">
-        <div
-          className={`breathe-circle ${running ? phase : 'idle'}`}
-          style={{ transform: `scale(${scale})` }}
-        />
-        <div className="breathe-phase">{running ? SEGMENT_LABEL[phase] : 'Ready'}</div>
-      </div>
+      {restorable && !running && elapsed === 0 && (
+        <div className="session-recover">
+          <span>
+            Unsaved breathing sit · {Math.round(restorable.elapsedSeconds / 60)} min from earlier.
+          </span>
+          <div className="session-recover-actions">
+            <button type="button" onClick={restoreSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save it'}
+            </button>
+            <button type="button" className="link-neutral" onClick={discardRestore}>
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
 
-      <div className="breathe-stats">
-        <span>
-          {mmss(elapsed)}
-          {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}
-        </span>
-        <span>{cycles} cycles</span>
-        <span>{preset.pattern === null ? `${bpm} breaths per minute` : patternSummary(pattern)}</span>
-      </div>
+      {(running || elapsed > 0) && (
+        <div className="breathe-stage">
+          <div
+            className={`breathe-circle ${running ? phase : 'idle'}`}
+            style={{ transform: `scale(${scale})` }}
+          />
+          <div className="breathe-phase">{running ? SEGMENT_LABEL[phase] : 'Ready'}</div>
+        </div>
+      )}
 
+      {(running || elapsed > 0) && (
+        <div className="breathe-stats">
+          <span>
+            {mmss(elapsed)}
+            {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}
+          </span>
+          <span>{cycles} cycles</span>
+          <span>
+            {preset.pattern === null ? `${bpm} breaths per minute` : patternSummary(pattern)}
+          </span>
+        </div>
+      )}
+
+      {/* Setup (pattern, pace, duration, sound) shows before/while paused; during a
+          running session the screen stays calm — just the circle, timer, and controls. */}
+      {!running && (
+        <>
       <label>Pattern</label>
-      <div className="breathe-presets" role="group" aria-label="Breathing pattern">
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            className={`breathe-preset${presetKey === p.key ? ' selected' : ''}`}
-            disabled={running}
-            aria-pressed={presetKey === p.key}
-            title={p.hint}
-            onClick={() => selectPreset(p.key)}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="pattern-cards" role="group" aria-label="Breathing pattern">
+        {PRESETS.map((p) => {
+          const selected = presetKey === p.key
+          return (
+            <button
+              key={p.key}
+              type="button"
+              className={`pattern-card${selected ? ' selected' : ''}`}
+              disabled={running}
+              aria-pressed={selected}
+              onClick={() => selectPreset(p.key)}
+            >
+              <span
+                className="pattern-card-icon"
+                style={{ background: PATTERN_STYLE[p.key]?.tint }}
+                aria-hidden="true"
+              >
+                {PATTERN_STYLE[p.key]?.emoji}
+              </span>
+              <span className="pattern-card-body">
+                <span className="pattern-card-name">{p.label}</span>
+                {selected && <span className="pattern-card-hint">{p.hint}</span>}
+              </span>
+            </button>
+          )
+        })}
       </div>
-      <p className="muted breathe-preset-hint">{preset.hint}</p>
 
-      {preset.pattern === null && (
+      {preset.control === 'bpm' && (
         <>
           <label>Pace</label>
           <Stepper
@@ -419,6 +610,21 @@ export default function BreathePage() {
         </>
       )}
 
+      {preset.control === 'count' && (
+        <>
+          <label>Each phase</label>
+          <Stepper
+            options={BOX_COUNTS}
+            value={boxCount}
+            disabled={running}
+            ariaLabel="Seconds per phase"
+            prevLabel="Shorter"
+            nextLabel="Longer"
+            onChange={selectBoxCount}
+          />
+        </>
+      )}
+
       <label>Duration</label>
       <Stepper
         options={DURATIONS}
@@ -427,7 +633,10 @@ export default function BreathePage() {
         ariaLabel="Duration"
         onChange={setTargetMin}
       />
+        </>
+      )}
 
+      {/* Audio stays adjustable during a session — a live comfort knob. */}
       <label htmlFor="ambient">Sound</label>
       <select
         id="ambient"
@@ -439,6 +648,7 @@ export default function BreathePage() {
           } else {
             setAmbient(v as AmbientSound)
             if (!audioOn) toggleAudio(true)
+            else if (running) audioRef.current?.stop() // switch the wash live (rebuilds next cue)
           }
         }}
       >
@@ -495,14 +705,14 @@ export default function BreathePage() {
         )}
       </div>
 
-      <BreathingInfo />
+      {!running && <BreathingInfo />}
 
       {reward && (
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
           questsCompleted={reward.quests}
-          onClose={() => navigate('/sessions')}
+          onClose={() => navigate('/')}
         />
       )}
     </main>

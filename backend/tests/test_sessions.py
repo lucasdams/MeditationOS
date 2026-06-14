@@ -21,6 +21,46 @@ def test_create_session(client):
     assert "id" in body
 
 
+def test_client_token_makes_create_idempotent(client):
+    _auth(client, "idem@example.com")
+    payload = {**MINDFUL, "client_token": "abc-123"}
+    first = client.post("/api/v1/sessions", json=payload)
+    second = client.post("/api/v1/sessions", json=payload)
+    assert first.status_code == 201 and second.status_code == 201
+    assert first.json()["id"] == second.json()["id"]  # same row, not a duplicate
+    assert len(client.get("/api/v1/sessions").json()) == 1
+
+
+def test_beacon_saves_a_session_and_is_idempotent_with_manual_save(client):
+    import json
+
+    _auth(client, "beacon@example.com")
+    payload = {**MINDFUL, "client_token": "tok-xyz"}
+    # The beacon sends a raw (text/plain) JSON body, like navigator.sendBeacon does.
+    res = client.post(
+        "/api/v1/sessions/beacon",
+        content=json.dumps(payload),
+        headers={"Content-Type": "text/plain"},
+    )
+    assert res.status_code == 204
+    assert len(client.get("/api/v1/sessions").json()) == 1
+    # A later manual save of the same sit (same token) doesn't double it.
+    manual = client.post("/api/v1/sessions", json=payload)
+    assert manual.status_code == 201
+    assert len(client.get("/api/v1/sessions").json()) == 1
+
+
+def test_beacon_requires_auth(client):
+    import json
+
+    res = client.post(
+        "/api/v1/sessions/beacon",
+        content=json.dumps(MINDFUL),
+        headers={"Content-Type": "text/plain"},
+    )
+    assert res.status_code == 401
+
+
 def test_create_with_focus_calm_rating(client):
     _auth(client, "rate@example.com")
     resp = client.post("/api/v1/sessions", json={**MINDFUL, "focus": 4, "calm": 5})

@@ -5,7 +5,8 @@ always scoped to the authenticated user.
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user
@@ -38,6 +39,32 @@ def create_session(
         return session_service.create_session(db, current_user.id, data)
     except DailyLimitError:
         raise _DAILY_LIMIT from None
+
+
+@router.post("/beacon", status_code=status.HTTP_204_NO_CONTENT)
+async def save_session_beacon(
+    request: Request,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Best-effort save used by `navigator.sendBeacon` when a tab closes mid-session.
+
+    Beacons send a CORS-safelisted `text/plain` body (no JSON content-type / preflight),
+    so we parse the raw body ourselves. Idempotent via `client_token`, so it never
+    duplicates a session the user also saved manually. Malformed/duplicate beacons and
+    rate/daily caps are swallowed — this is fire-and-forget; the localStorage draft is
+    the reliable fallback.
+    """
+    raw = await request.body()
+    try:
+        data = SessionCreate.model_validate_json(raw)
+    except ValidationError:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    try:
+        session_service.create_session(db, current_user.id, data)
+    except DailyLimitError:
+        pass
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("", response_model=list[SessionRead])

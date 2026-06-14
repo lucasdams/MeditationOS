@@ -24,7 +24,7 @@ from app.schemas.dashboard import (
 )
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
-from app.services.quest_pool import quest_for
+from app.services.quest_pool import categories_for_day, quest_for
 
 # XP per minute of meditation (non-breathing). Breathing — the harder, signature
 # practice — earns BREATHING_XP_MULTIPLIER× this.
@@ -32,6 +32,18 @@ MEDITATION_XP_PER_MIN = 2
 BREATHING_XP_MULTIPLIER = 3
 # Bonus XP per day of your current streak (grows as you keep it up, falls if it lapses).
 STREAK_BONUS_PER_DAY = 10
+# A meditation only "counts" for the meditate quest once the day's total reaches this,
+# so a spammed 1-second sit earns nothing (mirrors BREATHE_QUEST_SECONDS).
+MEDITATE_QUEST_SECONDS = 60
+# A day only counts as practice (for streaks + the activity heatmap) once its total
+# session time reaches this, so daily 1-second sits can't prop up a streak or light the
+# calendar. Short sessions still save and show their real time in the weekly view.
+MIN_PRACTICE_SECONDS = 60
+# Anti-spam: only the first N gratitude / journal entries on any local day earn XP, so
+# you can't farm XP by posting a flood of trivial entries. Genuine daily use is well
+# under these; beyond them the entries still save, they just stop paying XP.
+GRATITUDE_XP_DAILY_CAP = 5
+JOURNAL_XP_DAILY_CAP = 5
 # A day with at least this much resonance breathing completes the base breathing quest;
 # the "deep breathe" challenge variant asks for DEEP_BREATHE_SECONDS.
 BREATHE_QUEST_SECONDS = 60
@@ -107,6 +119,20 @@ def _local_date(tz: str, column):
     return func.date(func.timezone(tz, column))
 
 
+def _capped_daily_xp_units(db: DBSession, model, *, user_id: uuid.UUID, tz: str, cap: int) -> int:
+    """Sum of per-local-day row counts for `model`, each capped at `cap`. Only the first
+    `cap` entries on a day earn XP, so spamming trivial entries stops paying (anti-farm).
+    """
+    day = _local_date(tz, model.created_at)
+    per_day = (
+        select(func.least(func.count(model.id), cap).label("c"))
+        .where(model.user_id == user_id)
+        .group_by(day)
+        .subquery()
+    )
+    return int(db.execute(select(func.coalesce(func.sum(per_day.c.c), 0))).scalar_one())
+
+
 def get_stats(
     db: DBSession,
     user_id: uuid.UUID,
@@ -152,11 +178,14 @@ def get_stats(
         day = week_start + timedelta(days=i)
         this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
 
-    # All distinct practice days (for streaks + the "log a session" quest).
+    # Practice days (for streaks): a day counts only once its total session time reaches
+    # MIN_PRACTICE_SECONDS, so a 1-second sit can't keep a streak alive.
+    session_local_day = _local_date(tz, Session.occurred_at)
     day_rows = db.execute(
-        select(_local_date(tz, Session.occurred_at))
+        select(session_local_day)
         .where(Session.user_id == user_id)
-        .distinct()
+        .group_by(session_local_day)
+        .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
     ).all()
     session_days = {row[0] for row in day_rows}
     current_streak, longest_streak, rest_day_used = _compute_streaks(session_days, today)
@@ -184,12 +213,15 @@ def get_stats(
     ).all()
     breathing_days = {row[0] for row in breathing_day_rows}
 
-    # Days with a meditation (non-breathing) session — the "meditate" quest. Distinct
-    # from "breathe" so a user can opt into either or both.
+    # Days with a real meditation (non-breathing) session — the "meditate" quest. Needs
+    # at least MEDITATE_QUEST_SECONDS total on the day, so a spammed 1-second "sit" earns
+    # nothing. Distinct from "breathe" so a user can opt into either or both.
+    meditation_local_day = _local_date(tz, Session.occurred_at)
     meditation_day_rows = db.execute(
-        select(_local_date(tz, Session.occurred_at))
+        select(meditation_local_day)
         .where(Session.user_id == user_id, Session.type != "resonance_breathing")
-        .distinct()
+        .group_by(meditation_local_day)
+        .having(func.sum(Session.duration_seconds) >= MEDITATE_QUEST_SECONDS)
     ).all()
     meditation_days = {row[0] for row in meditation_day_rows}
 
@@ -200,11 +232,6 @@ def get_stats(
         .distinct()
     ).all()
     journal_days = {row[0] for row in journal_day_rows}
-    journal_count = int(
-        db.execute(
-            select(func.count(Journal.id)).where(Journal.user_id == user_id)
-        ).scalar_one()
-    )
 
     # --- Per-day conditions for the rotating quest *challenge* variants ---------
     # Each set holds the local days on which a given variant was satisfied; the keys
@@ -312,15 +339,24 @@ def get_stats(
                 quest_bonus_xp += quest.xp
     streak_bonus_xp = current_streak * STREAK_BONUS_PER_DAY
 
-    # MEDITATION_XP_PER_MIN per minute of meditation; resonance breathing counts
-    # BREATHING_XP_MULTIPLIER×; plus GRATITUDE_XP/JOURNAL_XP per reflection, the
-    # daily-quest bonus, and the streak bonus.
+    # Gratitude/journal XP is capped per day (only the first N entries each day pay), so
+    # a flood of trivial entries can't farm XP. The displayed totals stay uncapped.
+    gratitude_xp_units = _capped_daily_xp_units(
+        db, GratitudeEntry, user_id=user_id, tz=tz, cap=GRATITUDE_XP_DAILY_CAP
+    )
+    journal_xp_units = _capped_daily_xp_units(
+        db, Journal, user_id=user_id, tz=tz, cap=JOURNAL_XP_DAILY_CAP
+    )
+
+    # MEDITATION_XP_PER_MIN per minute of meditation (so a sub-minute sit earns 0);
+    # resonance breathing counts BREATHING_XP_MULTIPLIER×; plus GRATITUDE_XP/JOURNAL_XP
+    # per (capped) reflection, the daily-quest bonus, and the streak bonus.
     non_breathing_seconds = int(total_seconds) - int(breathing_seconds)
     xp = (
         non_breathing_seconds // 60 * MEDITATION_XP_PER_MIN
         + int(breathing_seconds) // 60 * BREATHING_XP_MULTIPLIER
-        + gratitude_count * GRATITUDE_XP
-        + journal_count * JOURNAL_XP
+        + gratitude_xp_units * GRATITUDE_XP
+        + journal_xp_units * JOURNAL_XP
         + quest_bonus_xp
         + streak_bonus_xp
     )
@@ -329,19 +365,43 @@ def get_stats(
     # Today's quest list is personalized: the user opts into a subset of
     # QUEST_FEATURES (≥3); NULL (not chosen yet) falls back to all four. Within each
     # chosen category, today's rotating variant is surfaced with its own label + XP.
+    # For count-based variants ("meditate twice", "write three gratitudes"), how many of
+    # the thing was done today — drives the X/Y counter the UI shows.
+    today_count = {
+        "double_sit": db.execute(
+            select(func.count(Session.id)).where(
+                Session.user_id == user_id,
+                Session.type != "resonance_breathing",
+                _local_date(tz, Session.occurred_at) == today,
+            )
+        ).scalar_one(),
+        "gratitude_three": db.execute(
+            select(func.count(GratitudeEntry.id)).where(
+                GratitudeEntry.user_id == user_id,
+                _local_date(tz, GratitudeEntry.created_at) == today,
+            )
+        ).scalar_one(),
+    }
+
     selected = set(quest_features) if quest_features else set(QUEST_FEATURES)
     daily_quests = []
-    for key in QUEST_FEATURES:  # canonical order
-        if key not in selected:
-            continue
+    for key in categories_for_day(selected, today):  # canonical order, capped + rotating
         quest = quest_for(key, today)
+        done = today in cond_days[quest.cond]
+        progress = (
+            min(int(today_count.get(quest.variant, 0)), quest.target)
+            if quest.target > 1
+            else int(done)
+        )
         daily_quests.append(
             QuestStatus(
                 key=quest.key,
                 variant=quest.variant,
                 label=quest.label,
                 xp=quest.xp,
-                done=today in cond_days[quest.cond],
+                done=done,
+                progress=progress,
+                target=quest.target,
             )
         )
 
@@ -384,6 +444,7 @@ def get_activity(
             local_day <= today,
         )
         .group_by(local_day)
+        .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
         .order_by(local_day)
     ).all()
 

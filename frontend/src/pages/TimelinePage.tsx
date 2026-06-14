@@ -1,0 +1,398 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { journalService } from '../services/journals'
+import { gratitudeService } from '../services/gratitude'
+import { sessionService } from '../services/sessions'
+import { useToast } from '../context/ToastContext'
+import { usePendingDelete } from '../hooks/usePendingDelete'
+import { MOOD_COLORS, gratitudeColor, tint } from '../lib/colors'
+import type { MeditationType, Mood, Session } from '../types'
+
+// One unified, chronological feed of everything you log — reflections (journal),
+// gratitude, and practice (meditation / breathing). Sessions are editable inline here
+// (this replaced the separate History page); journal/gratitude rows are read-only and
+// managed on their own pages. We merge the most recent slice of each source.
+const PER_SOURCE = 50
+
+const TYPE_LABELS: Record<MeditationType, string> = {
+  mindfulness: 'Mindfulness',
+  body_scan: 'Body scan',
+  walking: 'Walking',
+  loving_kindness: 'Loving-kindness',
+  resonance_breathing: 'Resonance breathing',
+  other: 'Other',
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
+const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
+
+// CSV export (sessions only) — quote per RFC 4180.
+const csvEscape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+function toCsv(rows: Session[]): string {
+  const header = ['type', 'duration_minutes', 'occurred_at', 'focus', 'calm', 'breaths_per_minute', 'notes']
+  const lines = rows.map((s) =>
+    [
+      s.type,
+      String(Math.round(s.duration_seconds / 60)),
+      s.occurred_at,
+      s.focus != null ? String(s.focus) : '',
+      s.calm != null ? String(s.calm) : '',
+      s.breaths_per_minute != null ? String(s.breaths_per_minute) : '',
+      s.notes ?? '',
+    ]
+      .map(csvEscape)
+      .join(','),
+  )
+  return [header.join(','), ...lines].join('\n')
+}
+
+type TimelineItem =
+  | { kind: 'journal'; id: string; when: string; text: string; mood: Mood | null }
+  | { kind: 'gratitude'; id: string; when: string; text: string; category: string }
+  | { kind: 'session'; id: string; when: string; session: Session }
+
+const sortByWhenDesc = (a: TimelineItem, b: TimelineItem) => (a.when < b.when ? 1 : -1)
+
+export default function TimelinePage() {
+  const { showToast } = useToast()
+  const { schedule, cancel } = usePendingDelete()
+  const [items, setItems] = useState<TimelineItem[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [menuId, setMenuId] = useState<string | null>(null) // session whose actions are revealed
+  const [exporting, setExporting] = useState(false)
+
+  // Inline session edit.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editType, setEditType] = useState<MeditationType>('mindfulness')
+  const [editMin, setEditMin] = useState(10)
+  const [editWhen, setEditWhen] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editFocus, setEditFocus] = useState('')
+  const [editCalm, setEditCalm] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  useEffect(() => {
+    // Each source is non-critical on its own; fail quietly per-source and merge whatever
+    // loaded, so one failing endpoint never blanks the whole timeline.
+    Promise.all([
+      journalService.list({ limit: PER_SOURCE }).catch(() => []),
+      gratitudeService.list({ limit: PER_SOURCE }).catch(() => []),
+      sessionService.list({ limit: PER_SOURCE }).catch(() => []),
+    ])
+      .then(([journals, gratitudes, sessions]) => {
+        const merged: TimelineItem[] = [
+          ...journals.map((j) => ({
+            kind: 'journal' as const,
+            id: j.id,
+            when: j.created_at,
+            text: j.body,
+            mood: j.mood,
+          })),
+          ...gratitudes.map((g) => ({
+            kind: 'gratitude' as const,
+            id: g.id,
+            when: g.created_at,
+            text: g.text,
+            category: g.category,
+          })),
+          ...sessions.map((s) => ({
+            kind: 'session' as const,
+            id: s.id,
+            when: s.occurred_at,
+            session: s,
+          })),
+        ]
+        merged.sort(sortByWhenDesc)
+        setItems(merged)
+      })
+      .catch(() => setError('Could not load your timeline.'))
+  }, [])
+
+  function startEdit(s: Session) {
+    setEditingId(s.id)
+    setMenuId(null)
+    setEditType(s.type)
+    setEditMin(Math.max(1, Math.round(s.duration_seconds / 60)))
+    setEditWhen(s.occurred_at.slice(0, 16))
+    setEditNotes(s.notes ?? '')
+    setEditFocus(s.focus != null ? String(s.focus) : '')
+    setEditCalm(s.calm != null ? String(s.calm) : '')
+    setError(null)
+  }
+
+  async function saveEdit(id: string) {
+    setSavingEdit(true)
+    setError(null)
+    try {
+      const updated = await sessionService.update(id, {
+        type: editType,
+        duration_seconds: editMin * 60,
+        occurred_at: editWhen,
+        notes: editNotes.trim() || null,
+        focus: editFocus ? Number(editFocus) : null,
+        calm: editCalm ? Number(editCalm) : null,
+      })
+      setItems(
+        (prev) =>
+          prev
+            ?.map((it) =>
+              it.kind === 'session' && it.id === id
+                ? { ...it, when: updated.occurred_at, session: updated }
+                : it,
+            )
+            .sort(sortByWhenDesc) ?? null,
+      )
+      setEditingId(null)
+      showToast('Session updated.')
+    } catch {
+      setError('Could not update that session.')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  function handleDelete(id: string) {
+    if (!items) return
+    const index = items.findIndex((it) => it.id === id && it.kind === 'session')
+    if (index === -1) return
+    const item = items[index]
+    setMenuId(null)
+    setError(null)
+    setItems((prev) => prev?.filter((it) => !(it.kind === 'session' && it.id === id)) ?? null)
+
+    const restore = () =>
+      setItems((cur) => {
+        if (!cur || cur.some((it) => it.id === id)) return cur
+        return [...cur, item].sort(sortByWhenDesc)
+      })
+
+    schedule(id, () => {
+      sessionService.remove(id).catch(() => {
+        restore()
+        showToast('Could not delete that session.', 'error')
+      })
+    })
+    showToast('Session deleted.', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        if (cancel(id)) restore()
+      },
+    })
+  }
+
+  async function exportCsv() {
+    setError(null)
+    setExporting(true)
+    try {
+      const all: Session[] = []
+      for (let offset = 0; ; offset += 200) {
+        const rows = await sessionService.list({ limit: 200, offset })
+        all.push(...rows)
+        if (rows.length < 200) break
+      }
+      const blob = new Blob([toCsv(all)], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'meditation-sessions.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+      showToast('Sessions exported.')
+    } catch {
+      setError('Could not export your sessions.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const hasSession = !!items?.some((it) => it.kind === 'session')
+
+  return (
+    <main className="dashboard">
+      <Link to="/" className="back-link">
+        ← Dashboard
+      </Link>
+      <header className="page-head">
+        <h1>Timeline</h1>
+        <p className="page-subtitle">Everything you've logged, in one place.</p>
+      </header>
+
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+
+      {items === null && !error && <p>Loading…</p>}
+
+      {items && items.length === 0 && (
+        <p className="muted">
+          Nothing logged yet. <Link to="/meditate">Meditate</Link>,{' '}
+          <Link to="/journal">journal</Link>, or <Link to="/gratitude">add a gratitude</Link> to
+          begin.
+        </p>
+      )}
+
+      {items && items.length > 0 && (
+        <ul className="timeline">
+          {items.map((item) => {
+            const accent =
+              item.kind === 'gratitude'
+                ? gratitudeColor(item.category)
+                : item.kind === 'journal' && item.mood
+                  ? MOOD_COLORS[item.mood]
+                  : undefined
+            const emoji =
+              item.kind === 'session'
+                ? item.session.type === 'resonance_breathing'
+                  ? '🫁'
+                  : '🧘'
+                : item.kind === 'journal'
+                  ? '📓'
+                  : '🙏'
+
+            // Sessions: editable inline (the folded-in History). Edit form replaces the row.
+            if (item.kind === 'session' && editingId === item.id) {
+              return (
+                <li key={`session-${item.id}`} className="timeline-item timeline-item--session">
+                  <div className="session-edit" style={{ width: '100%' }}>
+                    <label>
+                      Type
+                      <select value={editType} onChange={(e) => setEditType(e.target.value as MeditationType)}>
+                        {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Duration (min)
+                      <input
+                        type="number"
+                        min="1"
+                        value={editMin}
+                        onChange={(e) => setEditMin(Math.max(1, Number(e.target.value)))}
+                      />
+                    </label>
+                    <label>
+                      When
+                      <input type="datetime-local" value={editWhen} onChange={(e) => setEditWhen(e.target.value)} />
+                    </label>
+                    <label>
+                      Focus
+                      <select value={editFocus} onChange={(e) => setEditFocus(e.target.value)}>
+                        <option value="">Not rated</option>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>
+                            {n} / 5
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Calm
+                      <select value={editCalm} onChange={(e) => setEditCalm(e.target.value)}>
+                        <option value="">Not rated</option>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>
+                            {n} / 5
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Notes
+                      <textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                    </label>
+                    <div className="session-edit-actions">
+                      <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
+                        {savingEdit ? 'Saving…' : 'Save'}
+                      </button>
+                      <button type="button" className="link-neutral" onClick={() => setEditingId(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              )
+            }
+
+            return (
+              <li
+                key={`${item.kind}-${item.id}`}
+                className={`timeline-item timeline-item--${item.kind}`}
+                style={accent ? { borderLeftColor: accent } : undefined}
+              >
+                <span className="timeline-emoji" aria-hidden="true">
+                  {emoji}
+                </span>
+                <div className="timeline-body">
+                  <div className="timeline-line">
+                    {item.kind === 'session' ? (
+                      <span className="timeline-text">
+                        {TYPE_LABELS[item.session.type]} · {minutes(item.session.duration_seconds)}
+                      </span>
+                    ) : (
+                      <span className="timeline-text">{item.text}</span>
+                    )}
+                    {item.kind === 'journal' && item.mood && (
+                      <span
+                        className="journal-mood"
+                        style={{ background: tint(MOOD_COLORS[item.mood]), color: MOOD_COLORS[item.mood] }}
+                      >
+                        {cap(item.mood)}
+                      </span>
+                    )}
+                    {item.kind === 'session' && (
+                      <span className="journal-entry-actions">
+                        {menuId === item.id && (
+                          <>
+                            <button
+                              type="button"
+                              className="link-neutral"
+                              onClick={() => startEdit(item.session)}
+                            >
+                              Edit
+                            </button>
+                            <button type="button" className="link-danger" onClick={() => handleDelete(item.id)}>
+                              Delete
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="journal-entry-menu"
+                          aria-label="Session actions"
+                          aria-haspopup="true"
+                          aria-expanded={menuId === item.id}
+                          onClick={() => setMenuId(menuId === item.id ? null : item.id)}
+                        >
+                          ⋯
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  <span className="timeline-meta muted">
+                    {item.kind === 'session' ? 'Practice' : item.kind === 'journal' ? 'Journal' : 'Gratitude'}
+                    {' · '}
+                    {formatWhen(item.when)}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {hasSession && (
+        <p className="history-export muted">
+          <button type="button" className="link-neutral" onClick={exportCsv} disabled={exporting}>
+            {exporting ? 'Exporting…' : '⤓ Export sessions (CSV)'}
+          </button>
+        </p>
+      )}
+    </main>
+  )
+}

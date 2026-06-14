@@ -3,7 +3,7 @@
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.limits import enforce_daily_create_cap
@@ -44,6 +44,18 @@ def get_entry(
     """Fetch one entry owned by the user. None if missing or not theirs."""
     stmt = select(GratitudeEntry).where(
         GratitudeEntry.id == entry_id, GratitudeEntry.user_id == user_id
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def random_entry(db: DBSession, user_id: uuid.UUID) -> GratitudeEntry | None:
+    """A random gratitude moment owned by the user — for "resurface a memory".
+    None if the user has no entries."""
+    stmt = (
+        select(GratitudeEntry)
+        .where(GratitudeEntry.user_id == user_id)
+        .order_by(func.random())
+        .limit(1)
     )
     return db.execute(stmt).scalar_one_or_none()
 

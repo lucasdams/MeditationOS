@@ -7,13 +7,11 @@ import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import type { MeditationType } from '../types'
 
+// The meditation style picker was dropped; only the structural meditation-vs-breathing
+// distinction remains, so a past breathing session can still be logged here.
 const TYPES: { value: MeditationType; label: string }[] = [
-  { value: 'mindfulness', label: 'Mindfulness' },
-  { value: 'body_scan', label: 'Body scan' },
-  { value: 'walking', label: 'Walking' },
-  { value: 'loving_kindness', label: 'Loving-kindness' },
-  { value: 'resonance_breathing', label: 'Resonance breathing' },
-  { value: 'other', label: 'Other' },
+  { value: 'mindfulness', label: 'Meditation' },
+  { value: 'resonance_breathing', label: 'Breathing' },
 ]
 
 // Local "now" formatted for a <input type="datetime-local"> (YYYY-MM-DDThh:mm).
@@ -86,7 +84,7 @@ export default function LogSessionPage() {
     <main className="auth-card">
       <h1>Log a session</h1>
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="type">Type</label>
+        <label htmlFor="type">Practice</label>
         <select id="type" value={type} onChange={(e) => setType(e.target.value as MeditationType)}>
           {TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -159,7 +157,7 @@ export default function LogSessionPage() {
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
           questsCompleted={reward.quests}
-          onClose={() => navigate('/sessions')}
+          onClose={() => navigate('/timeline')}
         />
       )}
     </main>

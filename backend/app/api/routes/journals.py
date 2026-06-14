@@ -57,6 +57,19 @@ def list_journals(
     )
 
 
+# Declared before /{journal_id} so "random" isn't parsed as a UUID path param.
+@router.get("/random", response_model=JournalRead)
+def random_journal(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JournalRead:
+    """A random past reflection — powers the "resurface a memory" feature."""
+    entry = journal_service.random_entry(db, current_user.id)
+    if entry is None:
+        raise _NOT_FOUND
+    return entry
+
+
 # Unowned (or missing) IDs return 404 — never 403 — to avoid leaking which IDs exist.
 @router.get("/{journal_id}", response_model=JournalRead)
 def get_journal(

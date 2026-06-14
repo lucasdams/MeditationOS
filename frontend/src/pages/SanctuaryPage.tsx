@@ -75,7 +75,7 @@ export default function SanctuaryPage() {
     <main className="sanctuary-page">
       <header>
         <h1>Sanctuary</h1>
-        <Link to="/">← Dashboard</Link>
+        <Link to="/" className="back-link">← Dashboard</Link>
       </header>
       <p className="muted">A garden you grow by practicing. Finish one, then choose the next.</p>
 

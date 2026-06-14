@@ -16,6 +16,8 @@ class QuestStatus(BaseModel):
     label: str
     xp: int
     done: bool
+    progress: int = 0  # how many done today (toward `target`)
+    target: int = 1  # how many complete it; the UI shows an X/Y counter when > 1
 
 
 class DashboardStats(BaseModel):

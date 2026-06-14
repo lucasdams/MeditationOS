@@ -28,6 +28,25 @@ def test_create_requires_auth(client):
     assert client.post("/api/v1/journals", json=ENTRY).status_code == 401
 
 
+def test_random_requires_auth(client):
+    assert client.get("/api/v1/journals/random").status_code == 401
+
+
+def test_random_404_when_empty(client):
+    _auth(client, "jrand_empty@example.com")
+    assert client.get("/api/v1/journals/random").status_code == 404
+
+
+def test_random_returns_an_owned_entry(client):
+    _auth(client, "jrand@example.com")
+    ids = {
+        client.post("/api/v1/journals", json={"body": f"reflection {i}"}).json()["id"]
+        for i in range(5)
+    }
+    got = client.get("/api/v1/journals/random")
+    assert got.status_code == 200 and got.json()["id"] in ids
+
+
 def test_create_and_list(client):
     _auth(client, "j1@example.com")
     res = client.post("/api/v1/journals", json=ENTRY)

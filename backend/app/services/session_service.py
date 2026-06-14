@@ -8,6 +8,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.limits import enforce_daily_create_cap
@@ -15,11 +16,32 @@ from app.models.session import Session
 from app.schemas.session import SessionCreate, SessionUpdate
 
 
+def _by_client_token(db: DBSession, user_id: uuid.UUID, token: str) -> Session | None:
+    return db.execute(
+        select(Session).where(Session.user_id == user_id, Session.client_token == token)
+    ).scalar_one_or_none()
+
+
 def create_session(db: DBSession, user_id: uuid.UUID, data: SessionCreate) -> Session:
+    # Idempotent on client_token: a manual save and an auto-save (beacon) of the same
+    # in-progress sit collapse to one row instead of double-counting.
+    if data.client_token:
+        existing = _by_client_token(db, user_id, data.client_token)
+        if existing is not None:
+            return existing
     enforce_daily_create_cap(db, Session, user_id)
     session = Session(user_id=user_id, **data.model_dump())
     db.add(session)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent save with the same token won the race — return that row.
+        db.rollback()
+        if data.client_token:
+            existing = _by_client_token(db, user_id, data.client_token)
+            if existing is not None:
+                return existing
+        raise
     db.refresh(session)
     return session
 

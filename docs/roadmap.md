@@ -70,6 +70,9 @@ open-ended), with optional **start / interval / end bells**. Saves as a session
 (reusing the existing `mindfulness` type — no new schema), so it earns XP, completes
 the "meditate" daily quest, and feeds streaks and the heatmap like any session.
 The in-session clock uses the same background-tab-safe timing as the breathing pacer.
+If you leave mid-sit without saving, it isn't lost: a `navigator.sendBeacon` best-effort
+save fires on tab close, and the in-progress sit is also stashed locally so the next
+visit offers to restore it — both carrying a `client_token` so they never double-save.
 
 **Demonstrates:** real-time UI state, timer logic, Web Audio cues, reuse over new schema
 
@@ -142,9 +145,23 @@ with no backend or data-model footprint
 ### Meditation Journal ✅ shipped (early)
 
 Users write reflections, optionally tied to a session, with an optional mood tag from
-a fixed palette. Full CRUD, user-scoped. See [journaling design](design/journaling.md).
+a fixed palette. Full CRUD, user-scoped. Each entry reads as a mood-tinted card with
+edit/delete tucked behind a quiet "⋯", and a **"resurface a memory"** action surfaces a
+random past journal *or* gratitude entry (`GET /journals/random`, `/gratitude/random`).
+See [journaling design](design/journaling.md).
 
 **Demonstrates:** rich data models, text storage, cross-entity links (journal ↔ session)
+
+### Timeline ✅ shipped (added during V2)
+
+One chronological feed merging journal, gratitude, and practice (meditation / breathing)
+into a single place to look back instead of separate logs. **Sessions are editable inline
+here** (edit / delete with undo, plus CSV export) — this replaced the standalone History
+page, which was redundant with the feed. Journal/gratitude rows are read-only (managed on
+their own pages). Merged client-side from the existing list endpoints — no new tables or
+API; `/sessions` now redirects here.
+
+**Demonstrates:** a unifying view over heterogeneous activity without new storage
 
 ### Analytics ✅ shipped (early)
 

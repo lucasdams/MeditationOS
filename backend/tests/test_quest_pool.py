@@ -10,9 +10,14 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import select
 
 from app.models.gratitude import GratitudeEntry
-from app.models.user import User
+from app.models.user import QUEST_FEATURES, User
 from app.services import dashboard_service
-from app.services.quest_pool import QUEST_POOL, quest_for
+from app.services.quest_pool import (
+    DAILY_QUEST_LIMIT,
+    QUEST_POOL,
+    categories_for_day,
+    quest_for,
+)
 
 
 def _auth(client, email):
@@ -35,8 +40,10 @@ def _date_for(category: str, variant: str) -> date:
 
 
 def _quest(db_session, user_id, day, key):
+    # Pin the opt-in to just this category so the daily cap's rotating window never
+    # drops it on the test's chosen date — these tests assert one category's variant.
     stats = dashboard_service.get_stats(
-        db_session, user_id, today=day, tz="UTC", quest_features=None
+        db_session, user_id, today=day, tz="UTC", quest_features=[key]
     )
     return next(q for q in stats.daily_quests if q.key == key)
 
@@ -61,6 +68,35 @@ def test_quests_have_varied_xp():
     assert min(all_xp) >= 5 and max(all_xp) <= 50  # sane range
     # The hardest practice (slow breathing) pays the most.
     assert max(all_xp) == next(q.xp for q in QUEST_POOL["breathe"] if q.variant == "slow_breathe")
+
+
+# --- the daily cap: at most three quests, rotating when more are opted in --------
+
+def test_categories_for_day_passes_through_when_at_or_under_the_cap():
+    # Three or fewer selected → all of them surface, in canonical order, every day.
+    day = date(2026, 6, 14)
+    assert categories_for_day(["breathe", "meditate", "gratitude"], day) == [
+        "meditate", "breathe", "gratitude",
+    ]
+    assert categories_for_day(["journal", "meditate"], day) == ["meditate", "journal"]
+
+
+def test_categories_for_day_caps_and_rotates_when_all_four_selected():
+    selected = list(QUEST_FEATURES)  # all four
+    base = date(2026, 6, 14)
+    seen: set[str] = set()
+    for i in range(len(selected)):
+        shown = categories_for_day(selected, base + timedelta(days=i))
+        assert len(shown) == DAILY_QUEST_LIMIT  # never more than the cap
+        assert shown == [c for c in QUEST_FEATURES if c in shown]  # canonical order
+        seen.update(shown)
+    assert seen == set(selected)  # every category surfaces across the rotation
+
+
+def test_capped_dashboard_shows_only_three_quests():
+    # A user opted into all four still sees at most three quests on any given day.
+    shown = categories_for_day(list(QUEST_FEATURES), date(2026, 6, 14))
+    assert len(shown) == 3
 
 
 def test_keys_are_the_four_activity_categories():
@@ -100,7 +136,9 @@ def test_double_sit_variant_needs_two_sessions(client, db_session):
         "/api/v1/sessions",
         json={"type": "mindfulness", "duration_seconds": 600, "occurred_at": f"{iso}T08:00:00"},
     )
-    assert _quest(db_session, uid, day, "meditate").done is False  # one session isn't two
+    mq = _quest(db_session, uid, day, "meditate")
+    assert mq.done is False  # one session isn't two
+    assert mq.target == 2 and mq.progress == 1  # the X/Y counter reads 1/2
 
     client.post(
         "/api/v1/sessions",
@@ -108,6 +146,7 @@ def test_double_sit_variant_needs_two_sessions(client, db_session):
     )
     mq = _quest(db_session, uid, day, "meditate")
     assert mq.variant == "double_sit" and mq.xp == 25 and mq.done is True
+    assert mq.progress == 2 and mq.target == 2
 
 
 def test_slow_breathe_variant_needs_a_slow_pace(client, db_session):

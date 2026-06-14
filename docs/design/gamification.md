@@ -15,12 +15,21 @@ All date bucketing is done in the **user's timezone** (`users.timezone`).
 
 | Source | Rule |
 |--------|------|
-| Meditation minutes | `(non-breathing seconds) // 60 × 2` (`MEDITATION_XP_PER_MIN`) |
+| Meditation minutes | `(non-breathing seconds) // 60 × 2` (`MEDITATION_XP_PER_MIN`) — per *minute*, so a sub-minute "sit" earns 0 |
 | Breathing minutes | `(resonance-breathing seconds) // 60 × 3` (`BREATHING_XP_MULTIPLIER`) — the harder, signature practice |
-| Gratitude moments | `+5` per entry (`GRATITUDE_XP`) |
-| Journal entries | `+5` per entry (`JOURNAL_XP`) |
+| Gratitude moments | `+5` per entry (`GRATITUDE_XP`), **only the first `GRATITUDE_XP_DAILY_CAP` (5) entries each day** |
+| Journal entries | `+5` per entry (`JOURNAL_XP`), **only the first `JOURNAL_XP_DAILY_CAP` (5) entries each day** |
 | Daily-quest bonus | the day's rotating quest XP (varies by variant, `+10`…`+35`) for each category whose quest was completed that day — see below |
 | Streak bonus | `10 × current_streak_days` (`STREAK_BONUS_PER_DAY`) |
+
+**Anti-spam.** XP rewards genuine practice, not volume: meditation pays per whole minute
+(so spamming 1-second sits earns nothing, and the *meditate* quest needs
+`MEDITATE_QUEST_SECONDS` = 60s on the day), and gratitude/journal XP is capped to the
+first few entries per local day (the entries still save — they just stop paying). The
+displayed gratitude/journal totals stay uncapped. A day also only counts as practice for
+**streaks and the activity heatmap** once its total session time reaches
+`MIN_PRACTICE_SECONDS` = 60s, so daily 1-second sits can't prop up a streak or light the
+calendar (the weekly bars still show the real, uncapped seconds).
 
 ## Levels
 
@@ -51,11 +60,13 @@ minutes"* (+30) the next. The pool today:
 | journal | Write a journal entry `+20` · Journal with a mood `+25` |
 
 The rotation is a pure function of `(category, date)` — nothing stored — staggered
-per category so they don't all advance in lockstep. The dashboard shows the user's
-selected categories with **today's** surfaced quest (label + XP + done) and a live
-"resets in Xh Ym" countdown to the user's **local midnight**. `QuestStatus.key`
-stays the category (so the frontend keeps its icon/link/colour mapping); the new
-`variant` field names the specific quest.
+per category so they don't all advance in lockstep. **At most `DAILY_QUEST_LIMIT` (3)
+quests surface on any one day** (`quest_pool.categories_for_day`): a user opted into all
+four still sees three, via a date-rotating window over the selected categories, so each
+one appears regularly without crowding a single day. The dashboard shows those with
+**today's** surfaced quest (label + XP + done) and a live "resets in Xh Ym" countdown to
+the user's **local midnight**. `QuestStatus.key` stays the category (so the frontend
+keeps its icon/link/colour mapping); the `variant` field names the specific quest.
 
 The **daily-quest bonus** in the XP table awards the surfaced quest's XP for each day
 its condition was met, summed over all activity days across **all four** categories

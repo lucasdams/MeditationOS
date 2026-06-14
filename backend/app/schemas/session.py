@@ -30,6 +30,9 @@ class SessionCreate(BaseModel):
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
+    # Optional client idempotency key — a save with a token already seen for this user
+    # returns the existing session instead of creating a duplicate (auto-save + manual).
+    client_token: str | None = Field(default=None, max_length=64)
 
 
 class SessionUpdate(BaseModel):

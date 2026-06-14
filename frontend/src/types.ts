@@ -61,6 +61,8 @@ export interface SessionCreate {
   inhale_seconds?: number | null
   exhale_seconds?: number | null
   cycles_completed?: number | null
+  // Client idempotency key so an auto-save (tab close) + manual save collapse to one row.
+  client_token?: string
 }
 
 export interface DailyTotal {
@@ -73,6 +75,8 @@ export interface DailyQuest {
   label: string
   xp: number
   done: boolean
+  progress: number
+  target: number
 }
 
 export interface DashboardStats {
@@ -268,36 +272,6 @@ export interface MoodLog {
   id: string
   mood: Mood
   created_at: string
-}
-
-export interface ProgramDay {
-  day: number
-  title: string
-  activity: MeditationType | 'gratitude' | 'journal'
-  detail: string
-}
-
-export interface ProgramSummary {
-  key: string
-  title: string
-  description: string
-  category: string
-  total_days: number
-}
-
-export interface ProgramDetail extends ProgramSummary {
-  days: ProgramDay[]
-}
-
-export interface Enrollment {
-  id: string
-  program_key: string
-  title: string
-  total_days: number
-  current_day: number
-  completed: boolean
-  today: ProgramDay | null
-  started_at: string
 }
 
 export interface ScheduledSession {

@@ -43,5 +43,29 @@ export const MOOD_COLORS: Record<Mood, string> = {
 // A rotating palette for charts not keyed to a known concept.
 export const PALETTE = ['#6366f1', '#14b8a6', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#10b981']
 
+// Gratitude has ~37 categories — too many to hand-map. Derive a stable colour for each
+// from a curated palette by hashing the category key, so a given category is always the
+// same colour and the log reads as a spread of colours rather than all-amber.
+const GRATITUDE_PALETTE = [
+  '#f59e0b', // amber
+  '#14b8a6', // teal
+  '#ec4899', // pink
+  '#8b5cf6', // violet
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f97316', // orange
+  '#0ea5e9', // sky
+  '#a855f7', // purple
+  '#e11d48', // rose
+  '#0891b2', // cyan
+  '#65a30d', // lime
+]
+
+export const gratitudeColor = (category: string): string => {
+  let h = 0
+  for (let i = 0; i < category.length; i++) h = (h * 31 + category.charCodeAt(i)) >>> 0
+  return GRATITUDE_PALETTE[h % GRATITUDE_PALETTE.length]
+}
+
 // A soft tinted background for a given accent — for pills/badges with coloured text.
 export const tint = (color: string) => `color-mix(in srgb, ${color} 16%, white)`

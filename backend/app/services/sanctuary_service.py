@@ -44,10 +44,20 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "pond": CatalogItem("pond", "nature", grow_cost=120, stage_count=3, unlock_points=100),
     # Structures
     "hut": CatalogItem("hut", "structure", grow_cost=90, stage_count=3, unlock_points=60),
+    "cottage": CatalogItem("cottage", "structure", grow_cost=110, stage_count=3, unlock_points=120),
     "barn": CatalogItem("barn", "structure", grow_cost=150, stage_count=3, unlock_points=150),
+    "car": CatalogItem("car", "structure", grow_cost=160, stage_count=3, unlock_points=200),
+    "beach_house": CatalogItem(
+        "beach_house", "structure", grow_cost=180, stage_count=3, unlock_points=250
+    ),
+    "boat": CatalogItem("boat", "structure", grow_cost=220, stage_count=3, unlock_points=350),
     # Companions
+    "goldfish": CatalogItem("goldfish", "companion", grow_cost=35, stage_count=3, unlock_points=30),
     "bird": CatalogItem("bird", "companion", grow_cost=40, stage_count=3, unlock_points=50),
+    "cat": CatalogItem("cat", "companion", grow_cost=60, stage_count=3, unlock_points=80),
+    "snake": CatalogItem("snake", "companion", grow_cost=70, stage_count=3, unlock_points=120),
     "fox": CatalogItem("fox", "companion", grow_cost=80, stage_count=3, unlock_streak=3),
+    "dog": CatalogItem("dog", "companion", grow_cost=100, stage_count=3, unlock_streak=7),
 }
 
 STARTER_KEY = "tree"

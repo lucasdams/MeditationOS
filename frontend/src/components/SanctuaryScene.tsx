@@ -26,6 +26,8 @@ export default function SanctuaryScene() {
 
   const { plantings, current_position, next_options, vitality } = scene
   const current = plantings.find((p) => p.position === current_position) ?? null
+  // What you've already finished — shown small, apart from the one in progress.
+  const grown = plantings.filter((p) => p.complete)
   // The dashboard mini-scene keeps it simple: only unlocked options (the full
   // /sanctuary page shows locked ones with their unlock hints).
   const unlockedOptions = next_options.filter((o) => o.unlocked)
@@ -51,39 +53,25 @@ export default function SanctuaryScene() {
         </Link>
       </div>
 
-      <div className={`sanctuary-garden vit-${vitality}`}>
-        {plantings.map((p) => (
-          <div
-            key={p.position}
-            className={`sanctuary-plot${p.position === current_position ? ' growing' : ''}`}
-          >
-            <SanctuaryPlant itemKey={p.item_key} progress={p.progress} />
-            <div className="sanctuary-caption">{itemLabel(p.item_key)}</div>
-          </div>
-        ))}
-      </div>
-      <div className={`sanctuary-vitality vit-${vitality}`}>
-        {VITALITY[vitality].emoji} {VITALITY[vitality].label}
-      </div>
-
       {current && (
-        <>
+        <div className={`sanctuary-current vit-${vitality}`}>
+          <div className="sanctuary-now-label">🌱 Now growing</div>
+          <div className="sanctuary-current-plant">
+            <SanctuaryPlant itemKey={current.item_key} progress={current.progress} />
+          </div>
+          <div className="sanctuary-current-name">{itemLabel(current.item_key)}</div>
           <div className="xp-bar">
-            <div
-              className="xp-fill"
-              style={{ width: `${Math.round(current.progress * 100)}%` }}
-            />
+            <div className="xp-fill" style={{ width: `${Math.round(current.progress * 100)}%` }} />
           </div>
           <div className="sanctuary-hint muted">
-            Growing your {itemLabel(current.item_key).toLowerCase()} —{' '}
-            {Math.round(current.progress * 100)}% there. Keep practicing.
+            {Math.round(current.progress * 100)}% grown — keep practicing.
           </div>
-        </>
+        </div>
       )}
 
       {readyToPlant && (
         <div className="sanctuary-next">
-          <div className="sanctuary-hint">🌱 Choose what to grow next:</div>
+          <div className="sanctuary-hint">✨ Fully grown — choose what to grow next:</div>
           <div className="sanctuary-options">
             {unlockedOptions.map((o) => (
               <button
@@ -99,6 +87,24 @@ export default function SanctuaryScene() {
           </div>
         </div>
       )}
+
+      {grown.length > 0 && (
+        <div className="sanctuary-grown">
+          <div className="sanctuary-grown-label muted">Grown · {grown.length}</div>
+          <div className="sanctuary-grown-row">
+            {grown.map((p) => (
+              <div key={p.position} className="sanctuary-grown-item" title={itemLabel(p.item_key)}>
+                <SanctuaryPlant itemKey={p.item_key} progress={1} />
+                <div className="sanctuary-grown-name">{itemLabel(p.item_key)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={`sanctuary-vitality vit-${vitality}`}>
+        {VITALITY[vitality].emoji} {VITALITY[vitality].label}
+      </div>
     </section>
   )
 }

@@ -65,12 +65,11 @@ export default function AnalyticsPage() {
 
   return (
     <main className="dashboard">
-      <header>
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
         <h1>Analytics</h1>
+        <p className="page-subtitle">Patterns in your practice, computed from your activity.</p>
       </header>
-      <p>
-        <Link to="/">← Dashboard</Link>
-      </p>
 
       {error && (
         <p role="alert" className="error">

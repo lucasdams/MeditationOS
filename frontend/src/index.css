@@ -2,7 +2,16 @@
   font-family: system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   color: #1c1c1e;
-  background: #f5f5f7;
+  /* The seasonal gradient lives on the root element so it's propagated to the whole
+     canvas — covering the full scroll height even on short pages (no white strip below
+     a page shorter than the viewport). `body` stays transparent. */
+  background: linear-gradient(
+    180deg,
+    hsl(var(--season-hue) var(--season-sat) var(--sky-top)),
+    hsl(var(--season-hue) var(--season-sat) var(--sky-bottom))
+  );
+  background-attachment: fixed;
+  transition: background 1.5s ease;
 
   /* Seasonal + time-of-day ambient theme. The season sets the hue/saturation,
      the day phase nudges the lightness; both come from data attributes on <html>
@@ -56,13 +65,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(
-    180deg,
-    hsl(var(--season-hue) var(--season-sat) var(--sky-top)),
-    hsl(var(--season-hue) var(--season-sat) var(--sky-bottom))
-  );
-  background-attachment: fixed;
-  transition: background 1.5s ease;
+  background: transparent; /* the gradient is on :root (covers the full canvas) */
 }
 
 .centered {
@@ -132,13 +135,19 @@ body {
 
 /* Analytics page */
 .analytics-stats {
-  display: flex;
-  gap: 1.5rem;
-  margin: 1rem 0 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin: 0 0 1rem;
 }
 
 .analytics-stats .stat {
   text-align: center;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 0.9rem 0.5rem;
 }
 
 .analytics-stats .stat-value {
@@ -152,12 +161,18 @@ body {
 }
 
 .analytics-section {
-  margin: 1.5rem 0;
+  margin: 0 0 1rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 1rem 1.15rem 1.15rem;
 }
 
 .analytics-section h2 {
-  font-size: 1.05rem;
-  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  margin: 0 0 0.8rem;
+  color: #45454a;
 }
 
 .bars {
@@ -752,19 +767,156 @@ body {
 }
 
 .journal-compose {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.journal-compose textarea {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.journal-compose-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.journal-compose-controls .field {
+  flex: 1;
+  min-width: 9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #6b6b70;
+}
+
+.journal-compose-controls .field select {
+  margin: 0;
+}
+
+.journal-compose-controls .field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.field-clear {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.field-clear:hover {
+  text-decoration: underline;
+}
+
+.journal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(27, 27, 30, 0.1);
+}
+
+.journal-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.journal-list-title {
+  margin: 0;
+  font-size: 1rem;
+  color: #45454a;
+}
+
+.resurface-btn {
+  width: auto;
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4f46e5;
+  background: transparent;
+  border: 1px solid rgba(79, 70, 229, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.resurface-btn:hover:not(:disabled) {
+  background: rgba(79, 70, 229, 0.08);
+}
+
+/* A gentle resurfaced memory — softly tinted so it reads as a special moment, not
+   just another log row. */
+.memory-card {
+  background: linear-gradient(135deg, #faf5ff, #eef2ff);
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+  padding: 0.75rem 0.95rem;
+}
+
+.memory-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+}
+
+.memory-kind {
+  font-weight: 600;
+  color: #6d28d9;
+}
+
+.memory-close {
+  margin: 0 0 0 auto;
+  width: auto;
+  padding: 0 0.2rem;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.memory-close:hover {
+  color: #6d28d9;
+}
+
+.memory-text {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .journal-entry {
-  padding: 0.9rem 0;
-  border-top: 1px solid #ececf0;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-left: 4px solid #d4d4dc;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 0.4rem 0.8rem;
 }
 
 .journal-entry-head {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 0.85rem;
+  gap: 0.5rem;
+  font-size: 0.78rem;
 }
 
 .journal-mood {
@@ -778,17 +930,40 @@ body {
 .journal-entry-actions {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 0.75rem;
 }
 
+/* Quiet "⋯" toggle — edit/delete stay hidden behind it so they're not a prominent
+   default on every entry. */
+.journal-entry-menu {
+  margin: 0;
+  width: auto;
+  padding: 0 0.4rem;
+  line-height: 1;
+  font-size: 1.1rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.journal-entry-menu:hover {
+  color: #4f46e5;
+  background: rgba(79, 70, 229, 0.08);
+}
+
 .journal-body {
-  margin: 0.4rem 0 0;
+  margin: 0.1rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
   white-space: pre-wrap;
 }
 
 .journal-search {
   width: 100%;
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
 }
 
 .journal-edit {
@@ -1035,80 +1210,7 @@ textarea:focus-visible,
   margin: 1rem 0;
 }
 
-.session-list {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0;
-}
-
-.session-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e5ea;
-}
-
-/* Session history as cards */
-.session-cards {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.session-card {
-  --session-accent: #9ca3af;
-  background: #fff;
-  border: 1px solid #e5e5ea;
-  border-left: 4px solid var(--session-accent);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* The whole collapsed row is the toggle: type + a compact summary + chevron. */
-.session-card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  background: none;
-  border: 0;
-  padding: 0.9rem 1.1rem;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.session-card-summary {
-  margin-left: auto;
-  font-size: 0.85rem;
-  color: #6b6b70;
-  white-space: nowrap;
-}
-
-.session-card-chevron {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-.session-card-details {
-  padding: 0 1.1rem 0.9rem;
-  border-top: 1px solid #f0f0f2;
-  padding-top: 0.75rem;
-}
-
-.session-card-actions {
-  display: flex;
-  gap: 0.9rem;
-  margin-top: 0.6rem;
-}
-
-/* Inline session edit form */
+/* Inline session edit form (used by the Timeline's expandable session rows). */
 .session-edit label {
   display: block;
   font-size: 0.8rem;
@@ -1138,52 +1240,6 @@ textarea:focus-visible,
   width: auto;
   margin: 0;
   padding: 0.4rem 1rem;
-}
-
-/* One calm accent colour per meditation type, so the list reads at a glance. */
-.session-card--mindfulness {
-  --session-accent: #14b8a6;
-}
-.session-card--body_scan {
-  --session-accent: #8b5cf6;
-}
-.session-card--walking {
-  --session-accent: #f59e0b;
-}
-.session-card--loving_kindness {
-  --session-accent: #ec4899;
-}
-.session-card--resonance_breathing {
-  --session-accent: #3b82f6;
-}
-.session-card--other {
-  --session-accent: #9ca3af;
-}
-
-.session-card-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-}
-
-.session-card-dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: var(--session-accent);
-  flex-shrink: 0;
-}
-
-.session-card-meta {
-  font-size: 0.85rem;
-  color: #6b6b70;
-  margin-top: 0.15rem;
-}
-
-.session-card-notes {
-  margin-top: 0.4rem;
-  font-size: 0.9rem;
 }
 
 /* Completed-quest lines in the reward overlay */
@@ -1252,6 +1308,53 @@ textarea:focus-visible,
   text-decoration: underline;
 }
 
+/* Quiet "back to dashboard" link — no default underline; a soft arrow that nudges
+   on hover. Used at the top of the secondary pages. */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #6b6b70;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: #4f46e5;
+}
+
+/* A calmer page header: a smaller, softer title with a one-line subtitle, instead of
+   a lone shouting word. */
+.dashboard .page-head {
+  display: block; /* override the flex layout of .dashboard header so the subtitle stacks */
+  margin: 0.5rem 0 1.25rem;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: -0.01em;
+}
+
+.page-subtitle {
+  margin: 0.25rem 0 0;
+  color: #6b6b70;
+  font-size: 0.9rem;
+}
+
+/* Export lives quietly at the foot of the sessions list — a utility, not a CTA. */
+.history-export {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(27, 27, 30, 0.08);
+}
+
+.history-export .link-neutral {
+  font-size: 0.8rem;
+  color: #6b6b70;
+}
+
 .level-card {
   display: flex;
   align-items: center;
@@ -1316,7 +1419,14 @@ textarea:focus-visible,
   font-size: 1rem;
 }
 
-/* The garden: the assortment of plants laid out in a row that wraps. */
+.sanctuary-svg {
+  display: block;
+  margin: 0 auto;
+  width: 60px;
+  height: 60px;
+}
+
+/* The full /sanctuary page lays the whole assortment in a wrapping row. */
 .sanctuary-garden {
   display: flex;
   flex-wrap: wrap;
@@ -1332,24 +1442,76 @@ textarea:focus-visible,
   border: 1px solid transparent;
 }
 
-/* The one currently growing is gently highlighted. */
 .sanctuary-plot.growing {
   background: #fff;
   border-color: #bbf7d0;
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.08);
 }
 
-.sanctuary-svg {
-  display: block;
-  margin: 0 auto 0.35rem;
-  width: 60px;
-  height: 60px;
-}
-
 .sanctuary-caption {
   font-weight: 600;
   color: #15803d;
   font-size: 0.85rem;
+  text-align: center;
+}
+
+/* The one in progress — featured large in its own card, with its growth bar. */
+.sanctuary-current {
+  background: #fff;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.sanctuary-now-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: #059669;
+}
+
+.sanctuary-current-plant .sanctuary-svg {
+  width: 88px;
+  height: 88px;
+}
+
+.sanctuary-current-name {
+  font-weight: 700;
+  color: #15803d;
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+}
+
+/* What you've already grown — a smaller, quieter strip below. */
+.sanctuary-grown {
+  margin-bottom: 0.75rem;
+}
+
+.sanctuary-grown-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.sanctuary-grown-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.sanctuary-grown-item .sanctuary-svg {
+  width: 40px;
+  height: 40px;
+}
+
+.sanctuary-grown-name {
+  font-size: 0.72rem;
+  color: #6b6b70;
   text-align: center;
 }
 
@@ -1656,14 +1818,42 @@ textarea:focus-visible,
   text-decoration: line-through;
 }
 
-.quest-xp {
-  font-size: 0.8rem;
+.quest-progress {
+  font-size: 0.75rem;
   font-weight: 700;
-  color: #4f46e5;
+  font-variant-numeric: tabular-nums;
+  color: #6b6b70;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
 }
 
 .quest-streak {
   margin: 0.6rem 0 0;
+}
+
+/* Collapsible "progress" drawer — keeps totals, heatmap, and achievements off the
+   default landing view so it stays calm. */
+.dashboard-more {
+  margin-top: 1.5rem;
+}
+
+.show-more-toggle {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4f46e5;
+  background: transparent;
+  border: 1px solid rgba(79, 70, 229, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.show-more-toggle:hover {
+  background: rgba(79, 70, 229, 0.08);
 }
 
 .stat-cards {
@@ -1775,7 +1965,9 @@ textarea:focus-visible,
   width: 12px;
   height: 12px;
   border-radius: 2px;
-  background: #ebedf0; /* lvl-0 / no practice */
+  background: #cdd0d6; /* lvl-0 / no practice — darker than GitHub's so it reads on the warm seasonal background */
+  /* Hairline edge so every cell stays defined against the ambient gradient. */
+  box-shadow: inset 0 0 0 1px rgba(27, 27, 30, 0.08);
 }
 
 .heatmap-cell.lvl-1 {
@@ -1788,6 +1980,7 @@ textarea:focus-visible,
 
 .heatmap-cell.out {
   background: transparent; /* padding days outside the range */
+  box-shadow: none;
 }
 
 .heatmap-legend {
@@ -1810,6 +2003,80 @@ textarea:focus-visible,
 .heatmap-key .heatmap-cell {
   width: 11px;
   height: 11px;
+}
+
+/* Gratitude "Recent" reuses the journal card look, minus the composer divider. */
+.grat-log {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0 0;
+  border-top: none;
+}
+
+/* Unified timeline feed */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-left: 4px solid #d4d4dc;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 0.45rem 0.8rem;
+}
+
+.timeline-item--session {
+  border-left-color: #6366f1;
+}
+
+.timeline-item--gratitude {
+  border-left-color: #f59e0b;
+}
+
+.timeline-item--journal {
+  border-left-color: #8b5cf6;
+}
+
+.timeline-emoji {
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.timeline-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timeline-text {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+/* The mood chip otherwise inherits the full body size — shrink it to match the row. */
+.timeline-line .journal-mood {
+  font-size: 0.72rem;
+}
+
+.timeline-meta {
+  font-size: 0.72rem;
 }
 
 /* Gratitude */
@@ -2397,84 +2664,31 @@ textarea:focus-visible,
   }
 }
 
-/* Programs page. */
-.program-list {
-  list-style: none;
-  padding: 0;
+/* Recover an unsaved session (left a sit without saving). */
+.session-recover {
   display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  margin-bottom: 1.5rem;
-}
-
-.program-enrollment,
-.program-card {
-  padding: 1rem;
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
-  border-radius: 0.7rem;
-}
-
-.program-card {
-  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0.7rem 0.9rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  font-size: 0.9rem;
 }
 
-.program-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-}
-
-.program-tag {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.65;
-}
-
-.program-meta {
-  font-size: 0.8rem;
-}
-
-.program-bar {
-  height: 0.4rem;
-  border-radius: 999px;
-  background: var(--border, rgba(0, 0, 0, 0.1));
-  margin: 0.5rem 0;
-  overflow: hidden;
-}
-
-.program-bar-fill {
-  height: 100%;
-  background: var(--accent, #059669);
-}
-
-.program-today {
-  margin: 0.6rem 0;
-  padding: 0.7rem;
-  border-radius: 0.6rem;
-  background: var(--card, rgba(0, 0, 0, 0.03));
-}
-
-.program-actions {
+.session-recover-actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
 }
 
-.program-leave {
-  background: none;
-  border: none;
-  color: inherit;
-  opacity: 0.6;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.8rem;
-  padding: 0;
+.session-recover-actions button:first-child {
+  width: auto;
+  margin: 0;
+  padding: 0.35rem 0.9rem;
 }
 
 /* Schedule page. */
@@ -2482,16 +2696,27 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  max-width: 28rem;
   margin-bottom: 2rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 1.1rem 1.2rem;
+}
+
+.schedule-upcoming-title {
+  font-size: 1rem;
+  color: #45454a;
+  margin: 0 0 0.6rem;
 }
 
 .schedule-list {
   list-style: none;
   padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .schedule-item {
@@ -2499,9 +2724,12 @@ textarea:focus-visible,
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
-  border-radius: 0.7rem;
+  padding: 0.7rem 0.95rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-left: 4px solid #d4d4dc;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .schedule-note {
@@ -2537,7 +2765,7 @@ textarea:focus-visible,
 }
 
 .onboarding-dot.active {
-  background: var(--accent, #059669);
+  background: var(--accent, #4f46e5);
 }
 
 .onboarding-options {
@@ -2555,16 +2783,17 @@ textarea:focus-visible,
   background: var(--card, rgba(255, 255, 255, 0.6));
   font: inherit;
   font-weight: 600;
+  color: inherit; /* override the global white button text */
   cursor: pointer;
 }
 
 .onboarding-choice:hover {
-  border-color: var(--accent, #059669);
+  border-color: var(--accent, #4f46e5);
 }
 
 .onboarding-choice.selected {
-  border-color: var(--accent, #059669);
-  box-shadow: 0 0 0 1px var(--accent, #059669) inset;
+  border-color: var(--accent, #4f46e5);
+  box-shadow: 0 0 0 1px var(--accent, #4f46e5) inset;
 }
 
 .onboarding-emoji {
@@ -2638,6 +2867,7 @@ textarea:focus-visible,
   background: var(--card, rgba(255, 255, 255, 0.5));
   cursor: pointer;
   font: inherit;
+  color: inherit; /* override the global white button text */
   transition: transform 0.08s ease, border-color 0.12s ease;
 }
 
@@ -2646,8 +2876,8 @@ textarea:focus-visible,
 }
 
 .mood-chip.selected {
-  border-color: var(--accent, #059669);
-  box-shadow: 0 0 0 1px var(--accent, #059669) inset;
+  border-color: var(--accent, #4f46e5);
+  box-shadow: 0 0 0 1px var(--accent, #4f46e5) inset;
 }
 
 .mood-chip:disabled {
@@ -2676,37 +2906,69 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 
-/* Breathing pattern presets (breathe page). */
-.breathe-presets {
+/* Breathing pattern selector — a list of cards (breathe page). */
+.pattern-cards {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.5rem; /* separate, distinct cards rather than one fused list */
   margin-top: 0.3rem;
 }
 
-.breathe-preset {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
-  border-radius: 999px;
-  background: var(--card, rgba(255, 255, 255, 0.5));
+.pattern-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  background: var(--card, rgba(255, 255, 255, 0.45));
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.16));
+  border-radius: 0.6rem;
   font: inherit;
-  font-weight: 600;
+  color: inherit; /* override the global white button text */
   cursor: pointer;
 }
 
-.breathe-preset.selected {
-  border-color: var(--accent, #059669);
-  box-shadow: 0 0 0 1px var(--accent, #059669) inset;
+.pattern-card:hover:not(:disabled) {
+  border-color: var(--accent, #4f46e5);
 }
 
-.breathe-preset:disabled {
-  opacity: 0.6;
+.pattern-card.selected {
+  border-color: var(--accent, #4f46e5);
+  box-shadow: 0 0 0 1px var(--accent, #4f46e5); /* a clear selected ring */
+}
+
+.pattern-card:disabled {
+  opacity: 0.55;
   cursor: default;
 }
 
-.breathe-preset-hint {
-  margin-top: 0.35rem;
-  font-size: 0.82rem;
+.pattern-card-icon {
+  flex-shrink: 0;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  font-size: 1.2rem;
+}
+
+.pattern-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.pattern-card-name {
+  font-weight: 700;
+}
+
+.pattern-card-hint {
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 /* A little gentle character (see lib/zen.ts). */

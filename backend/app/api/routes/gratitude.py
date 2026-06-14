@@ -55,6 +55,18 @@ def list_entries(
     )
 
 
+@router.get("/random", response_model=GratitudeRead)
+def random_entry(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> GratitudeRead:
+    """A random past gratitude moment — powers the "resurface a memory" feature."""
+    entry = gratitude_service.random_entry(db, current_user.id)
+    if entry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return entry
+
+
 @router.get("/suggestions", response_model=GratitudeSuggestions)
 @limiter.limit("30/minute")
 def suggestions(
