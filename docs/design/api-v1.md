@@ -310,7 +310,8 @@ a pool with **varied XP** (e.g. meditate's *"Sit 10+ minutes"* pays `+30`, grati
 *"Write a gratitude"* pays `+10`). The daily-quest bonus awards the surfaced quest's XP
 for each day its condition was met, counted across all history so that part only grows.
 `streak_bonus_xp` is **10 × your current streak** (grows as you keep the streak,
-falls back if it lapses). See [gamification](gamification.md) for the full rules. Streaks, quests,
+falls back if it lapses). The streak tolerates one skipped day (a "rest day");
+`rest_day_used` is `true` when the current streak is leaning on it. See [gamification](gamification.md) for the full rules. Streaks, quests,
 the heatmap, and the weekly view all bucket dates in the **user's timezone**
 (`users.timezone`, auto-synced from the browser via `POST /auth/timezone`), so the
 day rolls over at the user's **local midnight**. Streaks are computed from

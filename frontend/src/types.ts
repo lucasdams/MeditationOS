@@ -78,6 +78,7 @@ export interface DashboardStats {
   session_count: number
   current_streak_days: number
   longest_streak_days: number
+  rest_day_used: boolean
   xp: number
   level: number
   xp_into_level: number

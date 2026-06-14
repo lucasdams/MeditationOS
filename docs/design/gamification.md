@@ -66,9 +66,15 @@ needed; only the category selection is stored.
 ## Streaks
 
 Current and longest streaks are derived from the distinct local dates with a session
-(`_compute_streaks`): **longest** = the longest run of consecutive days ever;
-**current** = the run ending today *or yesterday* (a grace window — you have until
-end of day to keep it). The **streak bonus rides the current streak**, so XP grows as
+(`_compute_streaks`): **longest** = the longest run of consecutive days ever (and at
+least the current streak); **current** = the run ending today *or yesterday* (a grace
+window — you have until end of day to keep it).
+
+**Rest day (streak insurance).** The current streak tolerates **one skipped day**
+(`REST_DAYS_PER_STREAK`): a single-day gap is bridged so a missed day doesn't reset
+progress — wellness should nudge, not shame. Two missed days in a row still ends it.
+It's computed (nothing stored); `rest_day_used` on `/dashboard/stats` tells the UI
+when the streak is currently leaning on its rest day (shown as a 🛡️ badge). The **streak bonus rides the current streak**, so XP grows as
 you keep it up and falls back when it lapses (a deliberate "live" feeling — see
 [ADR-0009 trade-offs](../decisions/0009-gamification-computed-from-activity.md)).
 

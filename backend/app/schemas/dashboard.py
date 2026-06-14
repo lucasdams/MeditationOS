@@ -23,6 +23,7 @@ class DashboardStats(BaseModel):
     session_count: int
     current_streak_days: int
     longest_streak_days: int
+    rest_day_used: bool = False  # the current streak is leaning on its rest day
     xp: int
     level: int
     xp_into_level: int

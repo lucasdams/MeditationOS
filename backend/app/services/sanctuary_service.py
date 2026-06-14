@@ -98,7 +98,7 @@ def _current_streak(db: DBSession, user_id: uuid.UUID, today: date, tz: str) -> 
         .where(Session.user_id == user_id)
         .distinct()
     ).all()
-    current, _longest = _compute_streaks({r[0] for r in rows}, today)
+    current, _longest, _rest = _compute_streaks({r[0] for r in rows}, today)
     return current
 
 

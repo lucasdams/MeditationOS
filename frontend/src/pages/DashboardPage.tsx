@@ -137,7 +137,14 @@ export default function DashboardPage() {
             </div>
             <div className="stat-card">
               <div className="stat-value">{stats.current_streak_days} 🔥</div>
-              <div className="stat-label">Current streak (days)</div>
+              <div className="stat-label">
+                Current streak (days)
+                {stats.rest_day_used && (
+                  <span className="rest-day-badge" title="A rest day is protecting your streak — one skipped day is OK.">
+                    {' '}🛡️ rest day
+                  </span>
+                )}
+              </div>
             </div>
             <div className="stat-card">
               <div className="stat-value">{stats.session_count}</div>

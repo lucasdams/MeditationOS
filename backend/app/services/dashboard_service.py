@@ -43,15 +43,22 @@ LONG_SIT_SECONDS = 600
 SLOW_BREATH_SECONDS = 12
 
 
-def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
-    """Return (current_streak_days, longest_streak_days) from days-with-a-session.
+# Streak insurance ("rest day"): the current streak tolerates ONE skipped day — a
+# single-day gap is bridged so a missed day doesn't reset progress (wellness: a nudge,
+# not shame). Two missed days in a row still ends it. Computed, nothing stored.
+REST_DAYS_PER_STREAK = 1
 
-    - longest: the longest run of consecutive days, ever.
-    - current: the run ending today OR yesterday (grace through end of today);
-      0 if neither has a session.
+
+def _compute_streaks(dates: set[date], today: date) -> tuple[int, int, bool]:
+    """Return (current_streak_days, longest_streak_days, rest_day_used).
+
+    - longest: the longest run of consecutive days ever (at least the current streak).
+    - current: the run ending today OR yesterday (grace through end of today), allowing
+      up to REST_DAYS_PER_STREAK single-day gaps to be bridged; 0 if it has lapsed.
+    - rest_day_used: whether the current streak is currently leaning on a rest day.
     """
     if not dates:
-        return 0, 0
+        return 0, 0, False
 
     ordered = sorted(dates)
     longest = run = 1
@@ -59,15 +66,25 @@ def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
         run = run + 1 if (cur - prev).days == 1 else 1
         longest = max(longest, run)
 
+    # Walk back from today (a missing today is free — grace), bridging a single skipped
+    # day with the rest-day allowance. The bridged day isn't counted toward the length.
     current = 0
-    anchor = today if today in dates else today - timedelta(days=1)
-    if anchor in dates:
-        day = anchor
-        while day in dates:
+    rest_budget = REST_DAYS_PER_STREAK
+    rest_used = False
+    day = today if today in dates else today - timedelta(days=1)
+    while True:
+        if day in dates:
             current += 1
             day -= timedelta(days=1)
+        elif rest_budget > 0 and (day - timedelta(days=1)) in dates:
+            rest_budget -= 1
+            rest_used = True
+            day -= timedelta(days=1)
+        else:
+            break
 
-    return current, longest
+    # The insured current streak counts toward "longest" too (so current ≤ longest).
+    return current, max(longest, current), rest_used
 
 
 def _level_progress(xp: int) -> tuple[int, int, int]:
@@ -142,7 +159,7 @@ def get_stats(
         .distinct()
     ).all()
     session_days = {row[0] for row in day_rows}
-    current_streak, longest_streak = _compute_streaks(session_days, today)
+    current_streak, longest_streak, rest_day_used = _compute_streaks(session_days, today)
 
     # Days with a gratitude entry (the "write a gratitude" quest).
     grat_day_rows = db.execute(
@@ -333,6 +350,7 @@ def get_stats(
         session_count=int(session_count),
         current_streak_days=current_streak,
         longest_streak_days=longest_streak,
+        rest_day_used=rest_day_used,
         xp=xp,
         level=level,
         xp_into_level=xp_into_level,

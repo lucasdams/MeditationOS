@@ -50,6 +50,7 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 
 - [x] **Daily quests** — now **personalized and rotating**: each user picks ≥3 of meditate · breathe · gratitude · journal (first-run picker + editable in Settings; stored in `users.quest_features`), and within each category the specific quest **rotates by the date** from a pool with **varied XP** (e.g. "Sit 10+ minutes" `+30`, "Breathe slow, ≤5 bpm" `+35`); daily reset at local midnight — see [gamification design](design/gamification.md)
 - [x] **Streak bonus XP** (scaled to your current streak)
+- [x] **Streak insurance / rest day** — the current streak survives one skipped day (two-in-a-row still resets); computed, nothing stored; surfaced as a 🛡️ badge via `rest_day_used` on `/dashboard/stats`
 - [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, plus the day's rotating-quest bonus (`+10`…`+35` by variant)
 - [x] **Goals** — recurring habits: an activity (meditate / breathe / gratitude / journal) done a count of times per day/week, with this-period progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
 - [x] **Custom-habit goals** — track anything the app doesn't record ("Gym", "Read") with a daily **check-in**; the one stored-progress path (a deliberate exception to ADR-0009)

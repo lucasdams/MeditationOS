@@ -2452,6 +2452,13 @@ textarea:focus-visible,
   font-size: 0.85rem;
 }
 
+/* Streak rest-day badge (dashboard). */
+.rest-day-badge {
+  font-size: 0.72rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
 /* Breathing pattern presets (breathe page). */
 .breathe-presets {
   display: flex;
