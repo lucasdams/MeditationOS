@@ -22,6 +22,8 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
 ```
 
 All child tables carry `user_id` and are always queried scoped to the authenticated user.
+Beyond the six shown, `users` also parents `goal_checkins`, `mood_logs`,
+`scheduled_sessions`, `program_enrollments`, and `push_subscriptions` (all detailed below).
 
 ## Tables
 
@@ -40,6 +42,9 @@ All child tables carry `user_id` and are always queried scoped to the authentica
 | `reminder_enabled` | bool | NOT NULL, default `false` — opt-in daily practice reminder |
 | `reminder_hour` | int | NULL — local hour (0–23) to send the reminder; NULL when disabled |
 | `reminder_last_sent_at` | timestamptz | NULL — guards against sending more than once per local day |
+| `weekly_summary_enabled` | bool | NOT NULL, default `false` — opt-in weekly summary email |
+| `weekly_summary_day` | int | NULL, CHECK 0–6 — local weekday (0=Mon…6=Sun) to send on; NULL when disabled |
+| `weekly_summary_last_sent_at` | timestamptz | NULL — once-per-ISO-week idempotency guard |
 | `quest_features` | text[] | NULL — daily-activity quests the user opted into (≥3 of `meditate`/`breathe`/`gratitude`/`journal`). NULL = not chosen yet → first-run picker; quest generation falls back to all four. Existing users backfilled to all four; guests seeded with all four |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
@@ -179,6 +184,71 @@ the app doesn't record, so the user self-reports).
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Unique:** `(goal_id, checkin_date)`. **Index:** `(user_id, checkin_date)`.
+
+### `mood_logs`
+
+A standalone one-tap mood check-in (no written body, unlike `journals`). Reuses the
+journal `MOODS` palette so check-ins and journal moods feed the same analytics.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
+| `mood` | text | NOT NULL, CHECK in the journal `MOODS` palette |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Index:** `(user_id, created_at)`.
+
+### `scheduled_sessions`
+
+A planned future practice (date/time + type), so users can put practice on the calendar
+— distinct from `sessions` (practice that happened). Exports as a single-event `.ics`.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
+| `type` | text | NOT NULL, CHECK in the `sessions` type set |
+| `scheduled_at` | timestamptz | NOT NULL — when they plan to practice |
+| `duration_minutes` | int | NULL, CHECK > 0 — optional target length |
+| `note` | text | NULL |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Index:** `(user_id, scheduled_at)`.
+
+### `program_enrollments`
+
+A user's progress through a multi-day **program**. The program catalog is static (in
+code: `app/services/program_catalog.py`), so this is the only stored program state.
+Progress advances by an explicit "day complete" action (a stored-progress path, like
+`goal_checkins`).
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
+| `program_key` | text | NOT NULL — references the in-code catalog (`calm7`, `focus10`, `habit21`); not a DB FK so the catalog can evolve |
+| `current_day` | int | NOT NULL, default 1, CHECK ≥ 1 — the next day to do |
+| `completed_at` | timestamptz | NULL — set when the last day is finished |
+| `created_at` / `updated_at` | timestamptz | NOT NULL, default `now()` |
+
+**Index:** `user_id`.
+
+### `push_subscriptions`
+
+A browser Web Push endpoint a user has granted, so practice nudges can be sent as push
+notifications (alongside email). One row per browser/endpoint.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
+| `endpoint` | text | NOT NULL |
+| `p256dh` | text | NOT NULL — the browser's public key (to encrypt the payload) |
+| `auth` | text | NOT NULL — the subscription auth secret |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Unique:** `(user_id, endpoint)` — re-subscribing upserts. **Index:** `user_id`.
 
 ## Design notes
 

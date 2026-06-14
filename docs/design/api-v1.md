@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The full V1 surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Goals, Dashboard (stats + activity), Analytics, Sanctuary, and Health — is built. This stays the living contract for V1.5+ additions.
+**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Programs, Scheduling, Dashboard (stats + weekly review + activity), Analytics, Sanctuary, Push, and Health — is built. This stays the living contract for further additions.
 
 ## Conventions
 
@@ -17,9 +17,9 @@ REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentica
 - **Pagination:** list endpoints (`/sessions`, `/gratitude`, `/journals`) take `limit`
   (default `50`, max `200`) + `offset`; the UI loads pages with a "Load more" control.
 - **Abuse limits:** auth endpoints are IP rate-limited, with a per-email login
-  throttle on top; creating a resource (session / gratitude / journal / goal) is
-  capped per user per UTC day (`DAILY_CREATE_LIMIT`, default `200`) and per-IP per
-  minute (`WRITE_RATE_LIMIT`). All over-limit cases return `429`.
+  throttle on top; creating a resource (session / gratitude / journal / goal /
+  mood-log / scheduled-session) is capped per user per UTC day (`DAILY_CREATE_LIMIT`,
+  default `200`) and per-IP per minute (`WRITE_RATE_LIMIT`). All over-limit cases return `429`.
 
 ### Error envelope
 
@@ -64,6 +64,7 @@ Errors return FastAPI's default shape:
 | POST | `/auth/verify-email` | — | `{ token }` | `204` · `400` if token invalid/expired |
 | POST | `/auth/verify-email/resend` | ✓ | — | `202`; rate-limited |
 | POST | `/auth/reminders` | ✓ | `{ enabled, hour? }` | `200` user · `422` if `enabled` without `hour` / `hour` out of 0–23 |
+| POST | `/auth/weekly-summary` | ✓ | `{ enabled, day? }` | `200` user · `422` if `enabled` without `day` / `day` out of 0–6 |
 
 ```
 POST /api/v1/auth/register
@@ -279,6 +280,7 @@ stored); for custom goals it's the count of stored daily check-ins.
 |--------|------|------|-------|
 | GET | `/dashboard/stats` | ✓ | Aggregates for the caller |
 | GET | `/dashboard/activity` | ✓ | Daily totals for the activity heatmap; `?days=` windows it (default `365`, `1`–`366`; the web UI requests `35` ≈ last month) |
+| GET | `/dashboard/weekly-review` | ✓ | Reflective last-7-days summary: minutes (+ vs last week), days practiced, streak, longest sit, and top mood — all computed, nothing stored |
 
 ```
 GET /api/v1/dashboard/stats
@@ -404,6 +406,50 @@ cumulative practice points and the current streak — no wallet or balance is st
 a `hint` describing the unlock requirement. See
 [ADR-0010](../decisions/0010-sanctuary-cultivation.md) and the
 [Sanctuary design](sanctuary.md).
+
+## Mood check-ins ✅ implemented
+
+A one-tap "how do you feel?" log (no body, unlike journals); feeds the same mood analytics.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/mood-logs` | ✓ | `{ mood }` → `201`; `422` if mood not in the palette; daily-create-capped |
+| GET | `/mood-logs` | ✓ | Recent check-ins, newest first; `?days=` windows it for a trend |
+| DELETE | `/mood-logs/{id}` | ✓ | `204` · `404` if not the caller's |
+
+## Scheduling ✅ implemented
+
+Plan future practice + export a single event as iCalendar.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/scheduled-sessions` | ✓ | `{ type, scheduled_at, duration_minutes?, note? }` → `201`; daily-create-capped |
+| GET | `/scheduled-sessions` | ✓ | Soonest first; upcoming-only by default (`?upcoming=false` for all) |
+| GET | `/scheduled-sessions/{id}/ics` | ✓ | `text/calendar` download (an "add to calendar" event) |
+| DELETE | `/scheduled-sessions/{id}` | ✓ | `204` · `404` if not the caller's |
+
+## Programs ✅ implemented
+
+Curated multi-day plans (static catalog, in code) + per-user enrollment & progress.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/programs` | — | The catalog (summaries) |
+| GET | `/programs/{key}` | — | One program with its day-by-day plan · `404` if unknown |
+| GET | `/programs/enrollments` | ✓ | The caller's enrollments, each with computed progress + today's day |
+| POST | `/programs/enrollments` | ✓ | `{ program_key }` → `201`; idempotent while an enrollment is active · `404` if unknown |
+| POST | `/programs/enrollments/{id}/advance` | ✓ | Mark the current day done; completes after the last day · `404` if not the caller's |
+| DELETE | `/programs/enrollments/{id}` | ✓ | `204` — leave the program |
+
+## Push ✅ implemented
+
+Web Push subscriptions (provider-optional — no-ops without VAPID keys; see [notifications](notifications.md)).
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/push/config` | ✓ | `{ configured, public_key }` — whether push is available + the VAPID public key |
+| POST | `/push/subscribe` | ✓ | The browser `PushSubscription` (`{ endpoint, keys }`) → `204`; upserts |
+| POST | `/push/unsubscribe` | ✓ | `{ endpoint }` → `204` |
 
 ## Health ✅ implemented
 
