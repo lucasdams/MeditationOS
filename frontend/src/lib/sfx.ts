@@ -3,13 +3,48 @@
 
 import { getAudioContext } from './audioContext'
 
+// Interface-sounds preference (the stepper tick and any future UI ticks). Kept as a
+// module-level flag, read once from localStorage at load and updated from the
+// Settings toggle, so non-React callers like playClick() can honour it without
+// plumbing through context. Default on. The meditation bell / reward / level-up cues
+// are *meaningful moments*, not interface chrome, so they ignore this flag.
+const INTERFACE_SOUNDS_KEY = 'sfx:interface'
+
+function readInterfaceSounds(): boolean {
+  try {
+    // Default on: only an explicit "off" disables.
+    return localStorage.getItem(INTERFACE_SOUNDS_KEY) !== 'off'
+  } catch {
+    // localStorage unavailable (private mode, etc.) — default on.
+    return true
+  }
+}
+
+let interfaceSoundsEnabled = readInterfaceSounds()
+
+export function getInterfaceSounds(): boolean {
+  return interfaceSoundsEnabled
+}
+
+export function setInterfaceSounds(on: boolean): void {
+  interfaceSoundsEnabled = on
+  try {
+    localStorage.setItem(INTERFACE_SOUNDS_KEY, on ? 'on' : 'off')
+  } catch {
+    // ignore — the preference simply won't persist
+  }
+}
+
 /**
  * A soft, short UI "tick" for tactile feedback when pressing controls (the
  * duration / breaths-per-minute steppers, etc.). Deliberately quiet and brief so
  * rapid presses stay pleasant, not fatiguing. `volume` is 0–1. Always fired from a
  * click handler, so the shared audio context is already gesture-unlocked.
+ *
+ * No-ops when the user has turned interface sounds off (Settings → Appearance).
  */
 export function playClick(volume = 0.5): void {
+  if (!interfaceSoundsEnabled) return
   try {
     const ctx = getAudioContext()
     if (ctx.state !== 'running') {

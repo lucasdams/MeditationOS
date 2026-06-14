@@ -5,6 +5,7 @@ import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
+import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
@@ -60,6 +61,7 @@ export default function SettingsPage() {
 
   // Reminders section.
   const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
+  const [soundsEnabled, setSoundsEnabled] = useState(getInterfaceSounds)
   const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [reminderOk, setReminderOk] = useState(false)
@@ -573,6 +575,21 @@ export default function SettingsPage() {
           {SEASONS.find((s) => s.value === season)?.label}
           {seasonPref === 'auto' && ' (auto)'} · {dayPhase}
         </p>
+        <label className="settings-check">
+          <input
+            type="checkbox"
+            checked={soundsEnabled}
+            onChange={(e) => {
+              const on = e.target.checked
+              setInterfaceSounds(on)
+              setSoundsEnabled(on)
+              // Play a tick as feedback when turning sounds on (so you hear what you
+              // just enabled); stay silent when turning them off.
+              if (on) playClick()
+            }}
+          />
+          Interface sounds (a soft tick when you tap controls)
+        </label>
       </section>
 
       <section className="settings-section">

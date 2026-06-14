@@ -261,6 +261,12 @@ export interface JournalCreate {
   session_id?: string | null
 }
 
+export interface MoodLog {
+  id: string
+  mood: Mood
+  created_at: string
+}
+
 export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
 export type GoalPeriod = 'day' | 'week' | 'total'
 export type GoalStatus = 'active' | 'archived'

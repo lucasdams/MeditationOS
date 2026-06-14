@@ -71,7 +71,11 @@ def test_journal_quest_completes_on_a_journal_entry(client):
 
     assert _quest_done(client)["journal"] is False
 
-    client.post("/api/v1/journals", json={"body": "A quiet, clear sit today."})
+    # A journal entry with a mood completes whichever journal variant is up today
+    # ("write a journal entry" or "journal with a mood").
+    client.post(
+        "/api/v1/journals", json={"body": "A quiet, clear sit today.", "mood": "calm"}
+    )
     assert _quest_done(client)["journal"] is True
 
 
@@ -79,13 +83,16 @@ def test_meditate_quest_ignores_breathing_sessions(client):
     _auth(client, "qf_meditate@example.com")
     client.post(ENDPOINT, json={"features": ["meditate", "breathe", "gratitude"]})
     today = datetime.now(UTC).date().isoformat()
-    # A breathing session must not complete the (non-breathing) meditate quest.
+    # A breathing session must not complete the (non-breathing) meditate quest. The
+    # slow pace makes it satisfy every breathe variant, so breathe is done either way.
     client.post(
         "/api/v1/sessions",
         json={
             "type": "resonance_breathing",
             "duration_seconds": 600,
             "occurred_at": f"{today}T08:00:00",
+            "inhale_seconds": 5,
+            "exhale_seconds": 7,
         },
     )
     done = _quest_done(client)

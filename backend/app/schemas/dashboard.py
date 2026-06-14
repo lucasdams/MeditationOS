@@ -11,7 +11,8 @@ class DailyTotal(BaseModel):
 
 
 class QuestStatus(BaseModel):
-    key: str
+    key: str  # the activity category (meditate/breathe/gratitude/journal)
+    variant: str  # which rotating quest within the category is up today
     label: str
     xp: int
     done: bool

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
+import MoodCheckin from '../components/MoodCheckin'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import Achievements from '../components/Achievements'
 import { ACTIVITY_COLORS, type Activity } from '../lib/colors'
+import { GREETINGS, LOADING, dailyOf, randomOf } from '../lib/zen'
 import type { DashboardStats } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
@@ -45,6 +47,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [resetIn, setResetIn] = useState(msUntilLocalMidnight())
+  // A gentle daily greeting (stable through the day) and a mindful loading line.
+  const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
+  const [loadingLine] = useState(() => randomOf(LOADING))
 
   useEffect(() => {
     dashboardService
@@ -64,6 +69,7 @@ export default function DashboardPage() {
   return (
     <main className="dashboard">
       <h1>Your practice</h1>
+      <p className="zen-greeting muted">{greeting}</p>
 
       {error && (
         <p role="alert" className="error">
@@ -71,9 +77,11 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {!stats && !error && <p>Loading…</p>}
+      {!stats && !error && <p>{loadingLine}</p>}
 
       {stats && <LevelCard stats={stats} />}
+
+      <MoodCheckin />
 
       <SanctuaryScene />
 

@@ -300,12 +300,15 @@ GET /api/v1/dashboard/stats
 ```
 
 `this_week` is the last 7 calendar days, zero-filled. **XP = meditation minutes ×2 +
-breathing minutes ×3 + 5 per gratitude moment + 5 per journal entry + daily-activity
+breathing minutes ×3 + 5 per gratitude moment + 5 per journal entry + daily-quest
 bonuses + a streak bonus**; `level` follows a rising curve (computed, not stored).
-`daily_quests` lists the user's **chosen** quests — at least 3 of `meditate` ·
-`breathe` · `gratitude` · `journal` (set via `POST /auth/quest-features`; all four
-until chosen) — each with `done` status. A `+15` bonus is awarded per activity per
-day it happened, counted across all history so that part only grows.
+`daily_quests` lists the user's **chosen** quest categories — at least 3 of
+`meditate` · `breathe` · `gratitude` · `journal` (set via `POST /auth/quest-features`;
+all four until chosen). Each entry is `{ key, variant, label, xp, done }`: `key` is the
+category, and the **specific quest (`variant`, `label`, `xp`) rotates by the date** from
+a pool with **varied XP** (e.g. meditate's *"Sit 10+ minutes"* pays `+30`, gratitude's
+*"Write a gratitude"* pays `+10`). The daily-quest bonus awards the surfaced quest's XP
+for each day its condition was met, counted across all history so that part only grows.
 `streak_bonus_xp` is **10 × your current streak** (grows as you keep the streak,
 falls back if it lapses). See [gamification](gamification.md) for the full rules. Streaks, quests,
 the heatmap, and the weekly view all bucket dates in the **user's timezone**

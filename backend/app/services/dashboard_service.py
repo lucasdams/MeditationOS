@@ -24,17 +24,23 @@ from app.schemas.dashboard import (
 )
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
+from app.services.quest_pool import quest_for
 
 # XP per minute of meditation (non-breathing). Breathing — the harder, signature
 # practice — earns BREATHING_XP_MULTIPLIER× this.
 MEDITATION_XP_PER_MIN = 2
 BREATHING_XP_MULTIPLIER = 3
-# Each daily quest, completed on a given day, is worth this much (counts once per day).
-QUEST_XP = 15
 # Bonus XP per day of your current streak (grows as you keep it up, falls if it lapses).
 STREAK_BONUS_PER_DAY = 10
-# A day with at least this much resonance breathing completes the breathing quest.
+# A day with at least this much resonance breathing completes the base breathing quest;
+# the "deep breathe" challenge variant asks for DEEP_BREATHE_SECONDS.
 BREATHE_QUEST_SECONDS = 60
+DEEP_BREATHE_SECONDS = 300
+# The "sit 10+ minutes" challenge: a single meditation session of at least this long.
+LONG_SIT_SECONDS = 600
+# The "slow breathe" challenge: a breathing session paced at ≤5 bpm, i.e. one full
+# breath (inhale + exhale) lasting at least this many seconds.
+SLOW_BREATH_SECONDS = 12
 
 
 def _compute_streaks(dates: set[date], today: date) -> tuple[int, int]:
@@ -183,19 +189,110 @@ def get_stats(
         ).scalar_one()
     )
 
-    # Daily quests reset each day; total XP counts every day they were ever completed,
-    # so that part only ever grows. The streak bonus rides the *current* streak, so it
-    # grows as you keep it up and falls back if the streak lapses.
-    # The daily-quest bonus rewards completing each activity on a day, keyed to the
-    # four real quest categories (so journal & meditate pay, and breathing no longer
-    # double-counts as a generic session). Independent of which quests the user
-    # surfaced — doing the activity earns the bonus.
-    quest_bonus_xp = (
-        len(meditation_days)
-        + len(breathing_days)
-        + len(gratitude_days)
-        + len(journal_days)
-    ) * QUEST_XP
+    # --- Per-day conditions for the rotating quest *challenge* variants ---------
+    # Each set holds the local days on which a given variant was satisfied; the keys
+    # match Quest.cond in app/services/quest_pool.py. The four base conditions
+    # (meditate/breathe/gratitude/journal) reuse the sets computed above.
+
+    # "Sit 10+ minutes": a single non-breathing session ≥ LONG_SIT_SECONDS.
+    long_sit_days = {
+        r[0]
+        for r in db.execute(
+            select(_local_date(tz, Session.occurred_at))
+            .where(
+                Session.user_id == user_id,
+                Session.type != "resonance_breathing",
+                Session.duration_seconds >= LONG_SIT_SECONDS,
+            )
+            .distinct()
+        ).all()
+    }
+    # "Meditate twice today": ≥2 non-breathing sessions on the day.
+    double_sit_local_day = _local_date(tz, Session.occurred_at)
+    double_sit_days = {
+        r[0]
+        for r in db.execute(
+            select(double_sit_local_day)
+            .where(Session.user_id == user_id, Session.type != "resonance_breathing")
+            .group_by(double_sit_local_day)
+            .having(func.count(Session.id) >= 2)
+        ).all()
+    }
+    # "Breathe 5+ minutes": total resonance breathing ≥ DEEP_BREATHE_SECONDS.
+    deep_breathe_days = {
+        r[0]
+        for r in db.execute(
+            select(breathing_local_day)
+            .where(Session.user_id == user_id, Session.type == "resonance_breathing")
+            .group_by(breathing_local_day)
+            .having(func.sum(Session.duration_seconds) >= DEEP_BREATHE_SECONDS)
+        ).all()
+    }
+    # "Breathe slow (≤5 bpm)": a breathing session with inhale+exhale ≥ SLOW_BREATH_SECONDS.
+    slow_breathe_days = {
+        r[0]
+        for r in db.execute(
+            select(_local_date(tz, Session.occurred_at))
+            .where(
+                Session.user_id == user_id,
+                Session.type == "resonance_breathing",
+                Session.inhale_seconds.isnot(None),
+                Session.exhale_seconds.isnot(None),
+                (Session.inhale_seconds + Session.exhale_seconds) >= SLOW_BREATH_SECONDS,
+            )
+            .distinct()
+        ).all()
+    }
+    # "Write three gratitudes": ≥3 gratitude entries on the day.
+    grat_three_local_day = _local_date(tz, GratitudeEntry.created_at)
+    gratitude_three_days = {
+        r[0]
+        for r in db.execute(
+            select(grat_three_local_day)
+            .where(GratitudeEntry.user_id == user_id)
+            .group_by(grat_three_local_day)
+            .having(func.count(GratitudeEntry.id) >= 3)
+        ).all()
+    }
+    # "Journal with a mood": a journal entry carrying a mood tag.
+    mood_journal_days = {
+        r[0]
+        for r in db.execute(
+            select(_local_date(tz, Journal.created_at))
+            .where(Journal.user_id == user_id, Journal.mood.isnot(None))
+            .distinct()
+        ).all()
+    }
+
+    cond_days = {
+        "meditate": meditation_days,
+        "long_sit": long_sit_days,
+        "double_sit": double_sit_days,
+        "breathe": breathing_days,
+        "deep_breathe": deep_breathe_days,
+        "slow_breathe": slow_breathe_days,
+        "gratitude": gratitude_days,
+        "gratitude_three": gratitude_three_days,
+        "journal": journal_days,
+        "mood_journal": mood_journal_days,
+    }
+
+    # Daily quests reset each day; total quest XP counts every day a quest was ever
+    # completed, so that part only ever grows (each past day's quest is fixed by its
+    # date). The streak bonus rides the *current* streak, so it grows as you keep it up
+    # and falls back if the streak lapses.
+    #
+    # The quest the user faces in each category rotates by date (quest_pool.quest_for),
+    # and each variant pays its own XP. Earning is independent of which quests the user
+    # surfaced — doing the day's activity for any of the four categories earns that
+    # day's variant's XP. We sum over every day with any activity.
+    all_active_days = session_days | gratitude_days | journal_days
+    quest_bonus_xp = 0
+    for day in all_active_days:
+        for category in QUEST_FEATURES:
+            quest = quest_for(category, day)
+            if day in cond_days[quest.cond]:
+                quest_bonus_xp += quest.xp
     streak_bonus_xp = current_streak * STREAK_BONUS_PER_DAY
 
     # MEDITATION_XP_PER_MIN per minute of meditation; resonance breathing counts
@@ -212,26 +309,24 @@ def get_stats(
     )
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
 
-    # Daily quests are personalized: the user opts into a subset of QUEST_FEATURES
-    # (≥3). NULL (not chosen yet) falls back to all four. XP and the heatmap's
-    # all-quests flag deliberately stay tied to the original categories above.
-    quest_meta = {
-        "meditate": ("Meditate today", meditation_days),
-        "breathe": ("Breathe for a minute", breathing_days),
-        "gratitude": ("Write a gratitude", gratitude_days),
-        "journal": ("Write a journal entry", journal_days),
-    }
+    # Today's quest list is personalized: the user opts into a subset of
+    # QUEST_FEATURES (≥3); NULL (not chosen yet) falls back to all four. Within each
+    # chosen category, today's rotating variant is surfaced with its own label + XP.
     selected = set(quest_features) if quest_features else set(QUEST_FEATURES)
-    daily_quests = [
-        QuestStatus(
-            key=key,
-            label=quest_meta[key][0],
-            xp=QUEST_XP,
-            done=today in quest_meta[key][1],
+    daily_quests = []
+    for key in QUEST_FEATURES:  # canonical order
+        if key not in selected:
+            continue
+        quest = quest_for(key, today)
+        daily_quests.append(
+            QuestStatus(
+                key=quest.key,
+                variant=quest.variant,
+                label=quest.label,
+                xp=quest.xp,
+                done=today in cond_days[quest.cond],
+            )
         )
-        for key in QUEST_FEATURES  # canonical order
-        if key in selected
-    ]
 
     return DashboardStats(
         total_seconds=int(total_seconds),

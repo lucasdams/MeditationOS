@@ -8,18 +8,26 @@ import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
 import Stepper, { type StepperOption } from '../components/Stepper'
+import {
+  MIN_SCALE,
+  PRESETS,
+  PRESET_STORAGE_KEY,
+  type Pattern,
+  type Segment,
+  SEGMENT_LABEL,
+  cycleLength,
+  loadPreset,
+  patternForBpm,
+  patternSummary,
+  scaleAt,
+  segmentAt,
+} from '../lib/breathPattern'
 
-const MIN_SCALE = 0.35
-const MAX_SCALE = 1
-const HOLD = 1 // 1s pause at the top (full) and bottom (empty) of each breath
-
-// Breaths-per-minute is the user's primary control: stepped from the fast end (10)
-// down to the deep end (1) in 0.5 increments. Slower is harder (see DIFFICULTY).
-// Following the app's convention that bpm = 60/(inhale + exhale) with the two
-// 1-second holds counted as extra, a pace of N gives a total in/out time of
-// round(60/N) seconds, split ~2:3 inhale:exhale — the longer exhale is what makes
-// resonance breathing parasympathetic (vagal activation). Sessions store integer
-// seconds, so the split rounds to whole seconds.
+// Breaths-per-minute is the user's primary control for the Resonance preset: stepped
+// from the fast end (10) down to the deep end (1) in 0.5 increments. Slower is harder
+// (see DIFFICULTY). A pace of N gives a total in/out time of round(60/N) seconds, split
+// ~2:3 inhale:exhale — the longer exhale is what makes resonance breathing
+// parasympathetic. Sessions store integer seconds, so the split rounds to whole seconds.
 const BPM_OPTIONS: StepperOption<number>[] = Array.from({ length: 19 }, (_, i) => {
   const n = 10 - i * 0.5 // 10, 9.5, … 1
   return { value: n, label: `${n} breaths/min` }
@@ -48,44 +56,6 @@ const DIFFICULTY = (bpm: number): { label: string; key: string } => {
   return { label: 'Gentle', key: 'gentle' }
 }
 
-// Whole-second inhale/exhale for a target pace, at a ~2:3 in:out ratio (longer
-// exhale). total = round(60/bpm) is strictly decreasing over 1–10, so every step is
-// a distinct breath; inhale takes ~2/5 of it (≥1s) and the exhale gets the rest, so
-// inhale+exhale still equals total and the chosen rate is preserved.
-const phasesForBpm = (bpm: number): { inhale: number; exhale: number } => {
-  const total = Math.round(60 / bpm)
-  const inhale = Math.max(1, Math.round((total * 2) / 5))
-  return { inhale, exhale: total - inhale }
-}
-
-// A cycle is inhale → hold-full → exhale → hold-empty.
-type Segment = 'inhale' | 'hold-full' | 'exhale' | 'hold-empty'
-
-const cycleLength = (inhale: number, exhale: number) => inhale + exhale + 2 * HOLD
-
-const segmentAt = (pos: number, inhale: number, exhale: number): Segment => {
-  if (pos < inhale) return 'inhale'
-  if (pos < inhale + HOLD) return 'hold-full'
-  if (pos < inhale + HOLD + exhale) return 'exhale'
-  return 'hold-empty'
-}
-
-const scaleAt = (pos: number, inhale: number, exhale: number): number => {
-  if (pos < inhale) return MIN_SCALE + (MAX_SCALE - MIN_SCALE) * (pos / inhale)
-  if (pos < inhale + HOLD) return MAX_SCALE
-  if (pos < inhale + HOLD + exhale) {
-    return MAX_SCALE - (MAX_SCALE - MIN_SCALE) * ((pos - inhale - HOLD) / exhale)
-  }
-  return MIN_SCALE
-}
-
-const SEGMENT_LABEL: Record<Segment, string> = {
-  inhale: 'Breathe in',
-  'hold-full': 'Hold',
-  exhale: 'Breathe out',
-  'hold-empty': 'Hold',
-}
-
 // Optional session length; 0 = open-ended (finish manually). Stepped left→right.
 const DURATIONS: StepperOption<number>[] = [
   { value: 0, label: 'Open' },
@@ -111,6 +81,7 @@ type Phase = 'inhale' | 'exhale'
 export default function BreathePage() {
   const navigate = useNavigate()
   const [bpm, setBpm] = useState<number>(loadBpm)
+  const [presetKey, setPresetKey] = useState<string>(loadPreset)
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
   const [scale, setScale] = useState(MIN_SCALE)
@@ -129,10 +100,12 @@ export default function BreathePage() {
   const [volume, setVolume] = useState(0.6)
   const [targetMin, setTargetMin] = useState(0)
 
-  // Whole-second inhale/exhale derived from the chosen pace (see phasesForBpm).
-  const { inhale, exhale } = phasesForBpm(bpm)
+  // The active pattern: a fixed preset, or — for Resonance — derived from the bpm pace.
+  const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0]
+  const pattern: Pattern = preset.pattern ?? patternForBpm(bpm)
+  const { inhale, exhale } = pattern
 
-  // Remember the chosen pace for next time.
+  // Remember the chosen pace + preset for next time.
   useEffect(() => {
     try {
       localStorage.setItem(BPM_STORAGE_KEY, String(bpm))
@@ -140,6 +113,13 @@ export default function BreathePage() {
       // ignore — preference just won't persist
     }
   }, [bpm])
+  useEffect(() => {
+    try {
+      localStorage.setItem(PRESET_STORAGE_KEY, presetKey)
+    } catch {
+      // ignore — preference just won't persist
+    }
+  }, [presetKey])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
@@ -150,10 +130,10 @@ export default function BreathePage() {
   const baseElapsedRef = useRef(0)
   const phaseRef = useRef<Segment>('inhale')
   const cyclesRef = useRef(0)
-  const phaseSecsRef = useRef({ inhale, exhale })
+  const patternRef = useRef<Pattern>(pattern)
   useEffect(() => {
-    phaseSecsRef.current = { inhale, exhale }
-  }, [inhale, exhale])
+    patternRef.current = pattern
+  }, [pattern.inhale, pattern.holdFull, pattern.exhale, pattern.holdEmpty])
 
   // Audio guide (lazily created so the AudioContext only opens on a user gesture).
   const audioRef = useRef<BreathAudio | null>(null)
@@ -184,7 +164,7 @@ export default function BreathePage() {
     const a = audio()
     // Each guarded independently so a failure in one never silences the other.
     if (audioOnRef.current) {
-      const dur = p === 'inhale' ? phaseSecsRef.current.inhale : phaseSecsRef.current.exhale
+      const dur = p === 'inhale' ? patternRef.current.inhale : patternRef.current.exhale
       try {
         a.glide(p, dur)
       } catch (err) {
@@ -208,10 +188,10 @@ export default function BreathePage() {
     if (!running) return
     let raf = 0
     const draw = (now: number) => {
-      const { inhale: inh, exhale: exh } = phaseSecsRef.current
+      const p = patternRef.current
       const runSec = (now - cycleStartRef.current) / 1000
       setElapsed(baseElapsedRef.current + runSec)
-      setScale(scaleAt(runSec % cycleLength(inh, exh), inh, exh))
+      setScale(scaleAt(runSec % cycleLength(p), p))
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
@@ -223,8 +203,8 @@ export default function BreathePage() {
   useEffect(() => {
     if (!running) return
     const id = setInterval(() => {
-      const { inhale: inh, exhale: exh } = phaseSecsRef.current
-      const cycle = cycleLength(inh, exh)
+      const p = patternRef.current
+      const cycle = cycleLength(p)
       const runSec = (performance.now() - cycleStartRef.current) / 1000
       const elapsed = baseElapsedRef.current + runSec
 
@@ -236,10 +216,11 @@ export default function BreathePage() {
         return
       }
 
-      const seg = segmentAt(runSec % cycle, inh, exh)
+      const seg = segmentAt(runSec % cycle, p)
       if (seg !== phaseRef.current) {
-        // A full breath completes when we roll from the empty-hold back into an inhale.
-        if (seg === 'inhale' && phaseRef.current === 'hold-empty') {
+        // A full breath completes whenever we roll back into an inhale from a later
+        // phase — robust to presets with no empty-hold (e.g. 4·7·8, coherence).
+        if (seg === 'inhale' && phaseRef.current !== 'inhale') {
           cyclesRef.current += 1
           setCycles(cyclesRef.current)
         }
@@ -338,6 +319,12 @@ export default function BreathePage() {
     reset()
   }
 
+  // Switching patterns also restarts the breath cleanly at the inhale.
+  function selectPreset(key: string) {
+    setPresetKey(key)
+    reset()
+  }
+
   return (
     <main className="breathe">
       <header>
@@ -359,24 +346,46 @@ export default function BreathePage() {
           {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}
         </span>
         <span>{cycles} cycles</span>
-        <span>{bpm} breaths per minute</span>
+        <span>{preset.pattern === null ? `${bpm} breaths per minute` : patternSummary(pattern)}</span>
       </div>
 
-      <label>Pace</label>
-      <Stepper
-        options={BPM_OPTIONS}
-        value={bpm}
-        disabled={running}
-        ariaLabel="Breaths per minute"
-        prevLabel="Gentler"
-        nextLabel="Harder"
-        valueSuffix={
-          <span className={`pace-difficulty d-${DIFFICULTY(bpm).key}`}>
-            {DIFFICULTY(bpm).label}
-          </span>
-        }
-        onChange={selectBpm}
-      />
+      <label>Pattern</label>
+      <div className="breathe-presets" role="group" aria-label="Breathing pattern">
+        {PRESETS.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            className={`breathe-preset${presetKey === p.key ? ' selected' : ''}`}
+            disabled={running}
+            aria-pressed={presetKey === p.key}
+            title={p.hint}
+            onClick={() => selectPreset(p.key)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <p className="muted breathe-preset-hint">{preset.hint}</p>
+
+      {preset.pattern === null && (
+        <>
+          <label>Pace</label>
+          <Stepper
+            options={BPM_OPTIONS}
+            value={bpm}
+            disabled={running}
+            ariaLabel="Breaths per minute"
+            prevLabel="Gentler"
+            nextLabel="Harder"
+            valueSuffix={
+              <span className={`pace-difficulty d-${DIFFICULTY(bpm).key}`}>
+                {DIFFICULTY(bpm).label}
+              </span>
+            }
+            onChange={selectBpm}
+          />
+        </>
+      )}
 
       <label>Duration</label>
       <Stepper

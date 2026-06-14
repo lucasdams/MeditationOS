@@ -11,6 +11,7 @@ from app.api.routes import (
     gratitude,
     health,
     journals,
+    mood_logs,
     sanctuary,
     sessions,
 )
@@ -24,5 +25,6 @@ api_router.include_router(analytics.router)
 api_router.include_router(breathing_patterns.router)
 api_router.include_router(gratitude.router)
 api_router.include_router(journals.router)
+api_router.include_router(mood_logs.router)
 api_router.include_router(goals.router)
 api_router.include_router(sanctuary.router)

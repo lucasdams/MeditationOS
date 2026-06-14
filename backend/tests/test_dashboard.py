@@ -1,6 +1,8 @@
 """Tests for the dashboard routes: /stats (totals + weekly) and /activity."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+
+from app.services.quest_pool import quest_for
 
 
 def _auth(client, email):
@@ -113,9 +115,11 @@ def test_stats_breathing_earns_triple_xp(client):
         client, f"{today.isoformat()}T09:00:00", seconds=600, type="resonance_breathing"
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # meditation (20) + breathing (30) + meditate & breathe quest bonuses (30)
-    # + 1-day streak bonus (10) = 90.
-    assert body["xp"] == 90
+    # Practice (20 + 30) + whatever of today's rotating quests this activity completed
+    # (their XP varies by variant) + the 1-day streak bonus.
+    quest_xp = sum(q["xp"] for q in body["daily_quests"] if q["done"])
+    assert body["streak_bonus_xp"] == 10
+    assert body["xp"] == 20 + 30 + quest_xp + 10
 
 
 def test_stats_gratitude_adds_xp(client):
@@ -126,25 +130,34 @@ def test_stats_gratitude_adds_xp(client):
     client.post("/api/v1/gratitude", json={"category": "self", "text": "I showed up today"})
     after = client.get("/api/v1/dashboard/stats").json()
     assert after["gratitude_count"] == 1
-    # 5 (gratitude) + 15 (gratitude quest) = 20.
-    assert after["xp"] == 20
+    # 5 (the gratitude entry) + today's gratitude quest XP if this one entry completed
+    # it (the base "write a gratitude" variant is done by one; "write three" is not).
+    gq = next(q for q in after["daily_quests"] if q["key"] == "gratitude")
+    assert after["xp"] == 5 + (gq["xp"] if gq["done"] else 0)
 
 
 def test_stats_journal_adds_xp(client):
     _auth(client, "journal_xp@example.com")
-    client.post("/api/v1/journals", json={"body": "A clear, quiet sit."})
+    client.post("/api/v1/journals", json={"body": "A clear, quiet sit.", "mood": "calm"})
     body = client.get("/api/v1/dashboard/stats").json()
-    # 5 (journal entry) + 15 (journal quest bonus) = 20.
-    assert body["xp"] == 20
+    # 5 (the journal entry) + today's journal quest XP. The entry carries a mood, so it
+    # completes whichever variant is up ("write a journal entry" or "journal with a mood").
+    jq = next(q for q in body["daily_quests"] if q["key"] == "journal")
+    assert jq["done"] is True
+    assert body["xp"] == 5 + jq["xp"]
 
 
 def test_meditation_earns_two_xp_per_minute(client):
     _auth(client, "med_rate@example.com")
-    # Back-dated (January) so no current-streak bonus muddies the arithmetic.
+    # Back-dated (January) so no current-streak bonus muddies the arithmetic. The
+    # quest that day is fixed by the date, so the expected XP is fully deterministic.
     _session(client, "2026-01-01T08:00:00", seconds=600, type="mindfulness")
     body = client.get("/api/v1/dashboard/stats").json()
-    # 10 min × 2 = 20 practice + 15 (meditate quest bonus) = 35.
-    assert body["xp"] == 35
+    # 10 min × 2 = 20 practice + that day's meditate quest. A single 10-min session
+    # completes "meditate"/"sit 10+ min" but not "meditate twice".
+    quest = quest_for("meditate", date(2026, 1, 1))
+    quest_done = quest.variant != "double_sit"
+    assert body["xp"] == 20 + (quest.xp if quest_done else 0)
 
 
 def test_daily_quests_track_today(client):
@@ -161,10 +174,18 @@ def test_daily_quests_track_today(client):
     }
     assert all(q["done"] is False for q in before["daily_quests"])
 
-    # A 10-minute breathing session completes only the breathe quest — breathing is
-    # not a meditation session.
-    _session(
-        client, f"{today.isoformat()}T08:00:00", seconds=600, type="resonance_breathing"
+    # A 10-minute slow breathing session completes only the breathe quest — breathing
+    # is not a meditation session. inhale/exhale make it satisfy every breathe variant
+    # (base / 5+ min / ≤5 bpm), so the assertion holds whichever one is up today.
+    client.post(
+        "/api/v1/sessions",
+        json={
+            "type": "resonance_breathing",
+            "duration_seconds": 600,
+            "occurred_at": f"{today.isoformat()}T08:00:00",
+            "inhale_seconds": 5,
+            "exhale_seconds": 7,
+        },
     )
     after = client.get("/api/v1/dashboard/stats").json()
     done = {q["key"]: q["done"] for q in after["daily_quests"]}
@@ -174,26 +195,38 @@ def test_daily_quests_track_today(client):
         "gratitude": False,
         "journal": False,
     }
-    assert after["streak_bonus_xp"] == 10  # longest streak 1 day × 10
-    # 30 (breathing) + 15 (breathe quest bonus) + 10 (streak) = 55. Breathing no
-    # longer double-counts as a generic session.
-    assert after["xp"] == 55
+    assert after["streak_bonus_xp"] == 10  # current streak 1 day × 10
+    # 30 (breathing) + today's breathe quest XP + 10 (streak). Breathing no longer
+    # double-counts as a generic session.
+    bq = next(q for q in after["daily_quests"] if q["key"] == "breathe")
+    assert after["xp"] == 30 + bq["xp"] + 10
 
 
-def test_breathe_quest_needs_a_full_minute(client):
+def test_breathe_quest_tracks_breathing_and_meditation(client):
     _auth(client, "shortbreath@example.com")
     today = datetime.now(UTC).date()
+    # Only 30s of breathing — below every breathe variant's bar (base 60s, deep 5 min,
+    # slow ≤5 bpm) — plus two full meditation sessions so the meditate quest is met
+    # whichever variant is up ("meditate" / "sit 10+ min" / "meditate twice").
     _session(
         client, f"{today.isoformat()}T08:00:00", seconds=30, type="resonance_breathing"
     )
     _session(client, f"{today.isoformat()}T09:00:00", seconds=600, type="mindfulness")
+    _session(client, f"{today.isoformat()}T10:00:00", seconds=600, type="mindfulness")
     body = client.get("/api/v1/dashboard/stats").json()
     quests = {q["key"]: q["done"] for q in body["daily_quests"]}
-    assert quests["breathe"] is False  # only 30s < 60s threshold
-    assert quests["meditate"] is True  # the mindfulness session counts
-    # Cross the 60s threshold (30 + 30) → the breathe quest completes.
-    _session(
-        client, f"{today.isoformat()}T08:05:00", seconds=30, type="resonance_breathing"
+    assert quests["breathe"] is False  # 30s isn't enough for any breathe variant
+    assert quests["meditate"] is True  # two full meditation sessions count
+    # A proper slow breathing session satisfies every breathe variant → quest completes.
+    client.post(
+        "/api/v1/sessions",
+        json={
+            "type": "resonance_breathing",
+            "duration_seconds": 600,
+            "occurred_at": f"{today.isoformat()}T08:05:00",
+            "inhale_seconds": 5,
+            "exhale_seconds": 7,
+        },
     )
     after = client.get("/api/v1/dashboard/stats").json()
     after_quests = {q["key"]: q["done"] for q in after["daily_quests"]}
