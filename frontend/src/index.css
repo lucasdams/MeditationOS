@@ -2397,6 +2397,39 @@ textarea:focus-visible,
   }
 }
 
+/* Weekly review (dashboard) — a reflective "this week" card. */
+.weekly-review {
+  margin: 1.5rem 0;
+}
+
+.weekly-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  margin-top: 0.6rem;
+}
+
+.weekly-stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 4.5rem;
+}
+
+.weekly-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.weekly-label {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.weekly-delta {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+}
+
 /* Mood check-in (dashboard) — one-tap "how do you feel?". */
 .mood-checkin {
   margin: 1.5rem 0;

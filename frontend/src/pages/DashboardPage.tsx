@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import LevelCard from '../components/LevelCard'
 import MoodCheckin from '../components/MoodCheckin'
+import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import Achievements from '../components/Achievements'
@@ -80,6 +81,8 @@ export default function DashboardPage() {
       {!stats && !error && <p>{loadingLine}</p>}
 
       {stats && <LevelCard stats={stats} />}
+
+      <WeeklyReview />
 
       <MoodCheckin />
 

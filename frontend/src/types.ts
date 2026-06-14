@@ -268,6 +268,19 @@ export interface MoodLog {
   created_at: string
 }
 
+export interface WeeklyReview {
+  start: string
+  end: string
+  minutes: number
+  last_week_minutes: number
+  sessions: number
+  active_days: number
+  current_streak_days: number
+  longest_session_seconds: number
+  top_mood: Mood | null
+  mood_counts: Record<string, number>
+}
+
 export type GoalActivity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
 export type GoalPeriod = 'day' | 'week' | 'total'
 export type GoalStatus = 'active' | 'archived'

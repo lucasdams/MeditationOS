@@ -44,7 +44,9 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [x] **Standalone mood check-in** — a one-tap "how do you feel?" on the dashboard (no written body required), stored in `mood_logs`, reusing the journal mood palette so it feeds the same analytics
 - [ ] Mood **over time** (moods plotted across weeks) and month-vs-month comparisons — beyond the current distribution
 - [x] **Search past journal entries by text** (case-insensitive substring; mood filter also available) — ranked full-text search is the open item
-- [ ] Weekly/monthly practice summary emails or in-app reports
+- [x] **In-app weekly review** — a reflective "this week" card on the dashboard: minutes (vs last week), days practiced, streak, longest sit, and the mood logged most — computed from sessions + mood check-ins + journals (`GET /dashboard/weekly-review`, `weekly_review_service.py`)
+- [ ] **Weekly summary email** (opt-in) — the same review delivered weekly via email, reusing the reminder job pattern *(next)*
+- [ ] Monthly reports / month-vs-month comparisons
 
 ## Goals & Gamification
 
