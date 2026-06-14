@@ -456,9 +456,11 @@ export default function BreathePage() {
             Pause
           </button>
         )}
-        <button type="button" className="secondary" onClick={finish} disabled={saving}>
-          {saving ? 'Saving…' : 'Finish & save'}
-        </button>
+        {(running || elapsed > 0) && (
+          <button type="button" className="secondary" onClick={finish} disabled={saving}>
+            {saving ? 'Saving…' : 'Finish & save'}
+          </button>
+        )}
       </div>
 
       <BreathingInfo />
