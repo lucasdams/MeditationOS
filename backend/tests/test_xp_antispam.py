@@ -35,7 +35,9 @@ def _xp(client):
 
 def test_gratitude_xp_is_capped_per_day(client):
     _auth(client, "gspam@example.com")
-    add = lambda: client.post("/api/v1/gratitude", json={"category": "people", "text": "x"})
+
+    def add():
+        client.post("/api/v1/gratitude", json={"category": "people", "text": "x"})
 
     add()
     xp1 = _xp(client)
@@ -53,7 +55,9 @@ def test_gratitude_xp_is_capped_per_day(client):
 
 def test_journal_xp_is_capped_per_day(client):
     _auth(client, "jspam@example.com")
-    add = lambda: client.post("/api/v1/journals", json={"body": "x"})
+
+    def add():
+        client.post("/api/v1/journals", json={"body": "x"})
 
     add()
     xp1 = _xp(client)
@@ -74,7 +78,11 @@ def test_one_second_sit_earns_no_xp_and_no_meditate_quest(client, db_session):
     day = date(2026, 3, 1)
     client.post(
         "/api/v1/sessions",
-        json={"type": "mindfulness", "duration_seconds": 1, "occurred_at": f"{day.isoformat()}T08:00:00"},
+        json={
+            "type": "mindfulness",
+            "duration_seconds": 1,
+            "occurred_at": f"{day.isoformat()}T08:00:00",
+        },
     )
     stats = dashboard_service.get_stats(
         db_session, uid, today=day, tz="UTC", quest_features=["meditate"]
@@ -111,7 +119,11 @@ def test_real_minute_sit_completes_the_meditate_quest(client, db_session):
     day = date(2026, 3, 2)
     client.post(
         "/api/v1/sessions",
-        json={"type": "mindfulness", "duration_seconds": 60, "occurred_at": f"{day.isoformat()}T08:00:00"},
+        json={
+            "type": "mindfulness",
+            "duration_seconds": 60,
+            "occurred_at": f"{day.isoformat()}T08:00:00",
+        },
     )
     stats = dashboard_service.get_stats(
         db_session, uid, today=day, tz="UTC", quest_features=["meditate"]

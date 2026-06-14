@@ -232,11 +232,6 @@ def get_stats(
         .distinct()
     ).all()
     journal_days = {row[0] for row in journal_day_rows}
-    journal_count = int(
-        db.execute(
-            select(func.count(Journal.id)).where(Journal.user_id == user_id)
-        ).scalar_one()
-    )
 
     # --- Per-day conditions for the rotating quest *challenge* variants ---------
     # Each set holds the local days on which a given variant was satisfied; the keys

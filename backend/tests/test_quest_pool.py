@@ -10,8 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import select
 
 from app.models.gratitude import GratitudeEntry
-from app.models.user import User
-from app.models.user import QUEST_FEATURES
+from app.models.user import QUEST_FEATURES, User
 from app.services import dashboard_service
 from app.services.quest_pool import (
     DAILY_QUEST_LIMIT,

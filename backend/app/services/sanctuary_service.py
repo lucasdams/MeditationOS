@@ -47,7 +47,9 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "cottage": CatalogItem("cottage", "structure", grow_cost=110, stage_count=3, unlock_points=120),
     "barn": CatalogItem("barn", "structure", grow_cost=150, stage_count=3, unlock_points=150),
     "car": CatalogItem("car", "structure", grow_cost=160, stage_count=3, unlock_points=200),
-    "beach_house": CatalogItem("beach_house", "structure", grow_cost=180, stage_count=3, unlock_points=250),
+    "beach_house": CatalogItem(
+        "beach_house", "structure", grow_cost=180, stage_count=3, unlock_points=250
+    ),
     "boat": CatalogItem("boat", "structure", grow_cost=220, stage_count=3, unlock_points=350),
     # Companions
     "goldfish": CatalogItem("goldfish", "companion", grow_cost=35, stage_count=3, unlock_points=30),
