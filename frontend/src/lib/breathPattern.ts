@@ -50,6 +50,27 @@ export const scaleAt = (pos: number, p: Pattern): number => {
   return MIN_SCALE
 }
 
+// --- Audio cue events (for the look-ahead scheduler) ------------------------
+// The breath drives two audio cues per cycle — the inhale at the cycle start and the
+// exhale after the inhale + full-hold (holds carry no cue). `breathEventAt` gives the
+// nth cue (n = 0, 1, 2, …) as a time offset (seconds from the run's inhale start) plus
+// its phase duration, so audio can be scheduled ahead on the Web Audio clock instead of
+// reacting to a JS timer (which background tabs throttle).
+export interface BreathEvent {
+  phase: 'inhale' | 'exhale'
+  time: number // seconds from the run's inhale start
+  duration: number // the phase length, for the gain/filter glide
+}
+
+export function breathEventAt(p: Pattern, n: number): BreathEvent {
+  const cyc = cycleLength(p)
+  const k = Math.floor(n / 2)
+  if (n % 2 === 0) {
+    return { phase: 'inhale', time: k * cyc, duration: p.inhale }
+  }
+  return { phase: 'exhale', time: k * cyc + p.inhale + p.holdFull, duration: p.exhale }
+}
+
 export type Preset = { key: string; label: string; pattern: Pattern | null; hint: string }
 
 // `pattern: null` = resonance (the user's bpm Stepper drives it); the rest are fixed

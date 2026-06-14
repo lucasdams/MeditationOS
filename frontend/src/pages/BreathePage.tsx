@@ -15,6 +15,7 @@ import {
   type Pattern,
   type Segment,
   SEGMENT_LABEL,
+  breathEventAt,
   cycleLength,
   loadPreset,
   patternForBpm,
@@ -22,6 +23,10 @@ import {
   scaleAt,
   segmentAt,
 } from '../lib/breathPattern'
+
+// How far ahead (seconds) the scheduler queues audio on the audio clock. Comfortably
+// larger than a throttled background timer tick (~1s), so cues are always queued in time.
+const AUDIO_LOOKAHEAD = 2.5
 
 // Breaths-per-minute is the user's primary control for the Resonance preset: stepped
 // from the fast end (10) down to the deep end (1) in 0.5 increments. Slower is harder
@@ -76,8 +81,6 @@ const mmss = (totalSec: number) => {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
-type Phase = 'inhale' | 'exhale'
-
 export default function BreathePage() {
   const navigate = useNavigate()
   const [bpm, setBpm] = useState<number>(loadBpm)
@@ -129,8 +132,13 @@ export default function BreathePage() {
   const cycleStartRef = useRef(0)
   const baseElapsedRef = useRef(0)
   const phaseRef = useRef<Segment>('inhale')
-  const cyclesRef = useRef(0)
   const patternRef = useRef<Pattern>(pattern)
+  // Audio look-ahead scheduler: `audioAnchorRef` is the audio-clock time of this run's
+  // inhale start, and `nextEventRef` the index of the next cue to schedule. Audio events
+  // are queued ahead on the audio clock (see lib/breathAudio.glideAt), so the guide stays
+  // in time with the breath even when a background tab throttles JS timers.
+  const audioAnchorRef = useRef(0)
+  const nextEventRef = useRef(0)
   useEffect(() => {
     patternRef.current = pattern
   }, [pattern.inhale, pattern.holdFull, pattern.exhale, pattern.holdEmpty])
@@ -160,89 +168,111 @@ export default function BreathePage() {
     return audioRef.current
   }
 
-  function cuePhase(p: Phase) {
-    const a = audio()
-    // Each guarded independently so a failure in one never silences the other.
-    if (audioOnRef.current) {
-      const dur = p === 'inhale' ? patternRef.current.inhale : patternRef.current.exhale
-      try {
-        a.glide(p, dur)
-      } catch (err) {
-        console.warn('ocean sound failed', err)
-      }
-    }
-    if (chimeOnRef.current) {
-      try {
-        a.chime(p)
-      } catch (err) {
-        console.warn('chime failed', err)
-      }
-    }
-  }
-
   useEffect(() => () => audioRef.current?.close(), [])
 
   // Visuals (rAF). Position is derived from absolute time, so when the tab is
-  // backgrounded — where rAF pauses — the heart simply catches up on return.
+  // backgrounded — where rAF pauses — the circle simply catches up on return. The
+  // phase label + cycle count are derived here too (purely cosmetic; only matters when
+  // the page is visible).
   useEffect(() => {
     if (!running) return
     let raf = 0
     const draw = (now: number) => {
       const p = patternRef.current
+      const cycle = cycleLength(p)
       const runSec = (now - cycleStartRef.current) / 1000
-      setElapsed(baseElapsedRef.current + runSec)
-      setScale(scaleAt(runSec % cycleLength(p), p))
+      const total = baseElapsedRef.current + runSec
+      setElapsed(total)
+      setScale(scaleAt(runSec % cycle, p))
+      setCycles(Math.floor(total / cycle))
+      const seg = segmentAt(runSec % cycle, p)
+      if (seg !== phaseRef.current) {
+        phaseRef.current = seg
+        setPhase(seg)
+      }
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
   }, [running])
 
-  // Phase transitions + audio cues run on setInterval, which keeps firing in a
-  // background tab (unlike rAF) — so the sound keeps playing when you switch away.
+  // Audio scheduler + the timed-finish check. Runs on a coarse timer (which a background
+  // tab throttles to ~1s), but it only QUEUES audio ahead on the audio clock — the cues
+  // themselves fire on time on the audio thread, so the guide stays in sync when hidden.
   useEffect(() => {
     if (!running) return
-    const id = setInterval(() => {
-      const p = patternRef.current
-      const cycle = cycleLength(p)
-      const runSec = (performance.now() - cycleStartRef.current) / 1000
-      const elapsed = baseElapsedRef.current + runSec
+    const a = audio()
+    const tick = () => {
+      if (!a.isRunning()) {
+        a.resume() // suspended (e.g. returning to a mobile tab) — re-anchor handles re-sync
+        return
+      }
+      const ctxNow = a.audioTime()
 
-      if (targetRef.current > 0 && elapsed >= targetRef.current * 60) {
-        clearInterval(id)
+      // Timed sessions finish + save even while backgrounded (within a throttle tick).
+      const total = baseElapsedRef.current + (performance.now() - cycleStartRef.current) / 1000
+      if (targetRef.current > 0 && total >= targetRef.current * 60) {
         setRunning(false)
-        audioRef.current?.stop()
+        a.stop()
         void saveSession(targetRef.current * 60)
         return
       }
 
-      const seg = segmentAt(runSec % cycle, p)
-      if (seg !== phaseRef.current) {
-        // A full breath completes whenever we roll back into an inhale from a later
-        // phase — robust to presets with no empty-hold (e.g. 4·7·8, coherence).
-        if (seg === 'inhale' && phaseRef.current !== 'inhale') {
-          cyclesRef.current += 1
-          setCycles(cyclesRef.current)
-        }
-        phaseRef.current = seg
-        setPhase(seg)
-        // Sound only at the start of an actual breath, not during the holds.
-        if (seg === 'inhale' || seg === 'exhale') cuePhase(seg)
+      // Queue every cue whose start falls within the look-ahead window.
+      const p = patternRef.current
+      const horizon = ctxNow + AUDIO_LOOKAHEAD
+      for (let guard = 0; guard < 64; guard++) {
+        const ev = breathEventAt(p, nextEventRef.current)
+        const at = audioAnchorRef.current + ev.time
+        if (at >= horizon) break
+        const startAt = Math.max(at, ctxNow)
+        if (audioOnRef.current) a.glideAt(ev.phase, ev.duration, startAt)
+        if (chimeOnRef.current) a.chimeAt(ev.phase, startAt)
+        nextEventRef.current += 1
       }
-    }, 60)
+    }
+    tick() // queue immediately on start/resume rather than waiting a tick
+    const id = setInterval(tick, 250)
     return () => clearInterval(id)
   }, [running])
 
+  // Returning to the tab: re-anchor the audio to the breath's real position (the audio
+  // clock pauses while suspended; the visual clock doesn't), and re-queue from there.
+  useEffect(() => {
+    if (!running) return
+    function reanchor() {
+      if (document.visibilityState !== 'visible') return
+      const a = audio()
+      a.resume()
+      a.stop() // drop stale queued audio; the scheduler rebuilds it on its next tick
+      const p = patternRef.current
+      const runSec = (performance.now() - cycleStartRef.current) / 1000
+      audioAnchorRef.current = a.audioTime() - runSec
+      let n = 0
+      while (breathEventAt(p, n).time <= runSec && n < 100000) n += 1
+      nextEventRef.current = n
+    }
+    document.addEventListener('visibilitychange', reanchor)
+    window.addEventListener('focus', reanchor)
+    return () => {
+      document.removeEventListener('visibilitychange', reanchor)
+      window.removeEventListener('focus', reanchor)
+    }
+  }, [running])
+
   function start() {
-    // Restart the breath at the inhale, carrying total elapsed forward. The cue
-    // below and the visual both begin the inhale together, so they can't drift.
+    // Restart the breath at the inhale, carrying total elapsed forward. Anchor both
+    // clocks (visual = performance.now, audio = the audio clock) to "now" so the cues
+    // and the circle begin the inhale together; the scheduler then queues from event 0.
+    const a = audio()
+    a.resume()
     cycleStartRef.current = performance.now()
+    audioAnchorRef.current = a.audioTime()
+    nextEventRef.current = 0
     baseElapsedRef.current = elapsed
     phaseRef.current = 'inhale'
     setPhase('inhale')
     setRunning(true)
-    if (audioOnRef.current || chimeOnRef.current) audio().resume()
-    cuePhase('inhale')
   }
 
   function pause() {
@@ -268,7 +298,7 @@ export default function BreathePage() {
     setRunning(false)
     setElapsed(0)
     setCycles(0)
-    cyclesRef.current = 0
+    nextEventRef.current = 0
     baseElapsedRef.current = 0
     setScale(MIN_SCALE)
     setPhase('inhale')
@@ -287,7 +317,9 @@ export default function BreathePage() {
         occurred_at: new Date().toISOString(),
         inhale_seconds: inhale,
         exhale_seconds: exhale,
-        cycles_completed: cyclesRef.current,
+        // Completed breaths = whole cycles in the elapsed time (derived, so it's right
+        // even if the tab was backgrounded and the visual counter was frozen).
+        cycles_completed: Math.floor(durationSec / cycleLength(pattern)),
       })
       const after = await dashboardService.getStats()
       // True gain from the server (3× breathing XP + any daily-quest/streak bonus).

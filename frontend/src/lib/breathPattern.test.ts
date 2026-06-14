@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   PRESETS,
+  breathEventAt,
   cycleLength,
   patternForBpm,
   patternSummary,
@@ -48,6 +49,22 @@ describe('scaleAt', () => {
     expect(scaleAt(4.5, p)).toBeCloseTo(MAX_SCALE) // hold-full
     expect(scaleAt(11, p)).toBeCloseTo(MIN_SCALE) // end of exhale
     expect(scaleAt(11.5, p)).toBeCloseTo(MIN_SCALE) // hold-empty
+  })
+})
+
+describe('breathEventAt', () => {
+  it('alternates inhale/exhale at the right offsets, across cycles', () => {
+    const box: Pattern = { inhale: 4, holdFull: 4, exhale: 4, holdEmpty: 4 } // cycle 16
+    expect(breathEventAt(box, 0)).toEqual({ phase: 'inhale', time: 0, duration: 4 })
+    expect(breathEventAt(box, 1)).toEqual({ phase: 'exhale', time: 8, duration: 4 }) // after in+holdFull
+    expect(breathEventAt(box, 2)).toEqual({ phase: 'inhale', time: 16, duration: 4 }) // next cycle
+    expect(breathEventAt(box, 3)).toEqual({ phase: 'exhale', time: 24, duration: 4 })
+  })
+
+  it('places the exhale right after the inhale when there is no full-hold', () => {
+    const p: Pattern = { inhale: 4, holdFull: 1, exhale: 6, holdEmpty: 1 } // resonance, cycle 12
+    expect(breathEventAt(p, 1)).toEqual({ phase: 'exhale', time: 5, duration: 6 })
+    expect(breathEventAt(p, 2).time).toBe(12)
   })
 })
 
