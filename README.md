@@ -4,7 +4,7 @@
 
 A production-style **business application** for meditation and wellness. Portfolio project demonstrating backend development, database design, cloud deployment, AI integration, and professional delivery practices (tickets, review, deployment).
 
-**Status:** Cycles 1–4 complete, plus early V2 (journaling & goals) — full account flows (email/password, Sign in with Google, email verification, password reset, **guest mode**), session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, a meditation journal, practice goals, an analytics page, a practice-grown Sanctuary garden, daily email reminders, and personalized, rotating daily quests/XP working locally · 231 backend tests passing · Cycle 5 (AWS deploy) up next
+**Status:** Cycles 1–4 complete, plus early V2 (journaling & goals) — full account flows (email/password, Sign in with Google, email verification, password reset, **guest mode**), session tracking, a stats dashboard, guided HRV breathing, an unguided meditation timer, an AI gratitude tool, a meditation journal, practice goals, an analytics page, a practice-grown Sanctuary garden, daily email reminders, and personalized, rotating daily quests/XP working locally · 289 backend tests passing · Cycle 5 (AWS deploy) up next
 
 **What's working now (Cycles 1–4):**
 
@@ -25,7 +25,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ Daily practice reminders — opt-in email nudge at your local hour, **timezone-aware** and **idempotent**, skipped on days you've already practiced; runs with no email provider in dev (logs instead of sends). See [Notifications design](docs/design/notifications.md)
 - ✅ PostgreSQL schema + Alembic migrations, auto-applied on startup
 - ✅ React + TypeScript frontend — a public landing page, protected routes, loading/empty/error states, a 404 page, and an app-wide error boundary
-- ✅ 231 backend tests (pytest against Postgres) + frontend tests (Vitest + Testing Library), CI on every PR, Dockerized dev stack, security review actioned
+- ✅ 289 backend tests (pytest against Postgres) + frontend tests (Vitest + Testing Library), CI on every PR, Dockerized dev stack, security review actioned
 
 > 🧘 _Runs locally in one command — see [Getting Started](#getting-started). Screenshots land with the V1 release._
 
