@@ -1,5 +1,6 @@
-"""Sanctuary routes (a spend economy — see ADR-0011). Thin handlers; domain errors from
-the service map to HTTP status codes here. All scoped to the authenticated user.
+"""Sanctuary routes (a spend economy — see ADR-0011 / ADR-0012). Thin handlers; domain
+errors from the service map to HTTP status codes here. All scoped to the authenticated
+user (default-deny via get_current_user).
 """
 
 import uuid
@@ -12,13 +13,15 @@ from sqlalchemy.orm import Session as DBSession
 from app.api.deps import get_current_user
 from app.core.db import get_db
 from app.models.user import User
-from app.schemas.sanctuary import BuyRequest, SanctuaryScene
+from app.schemas.sanctuary import BuyRequest, CustomizeRequest, SanctuaryScene
 from app.services import sanctuary_service
 from app.services.sanctuary_service import (
+    AlreadyApplied,
     InsufficientCoins,
     ItemLocked,
-    MaxTier,
     UnknownItem,
+    UnknownSlotOption,
+    UnknownVariant,
 )
 
 router = APIRouter(prefix="/sanctuary", tags=["sanctuary"])
@@ -55,7 +58,7 @@ def buy_item(
     today, tz = _today_for(current_user)
     try:
         return sanctuary_service.buy(db, current_user.id, body, today=today, tz=tz)
-    except UnknownItem:
+    except (UnknownItem, UnknownVariant):
         raise _NOT_FOUND from None
     except ItemLocked:
         raise HTTPException(
@@ -65,18 +68,29 @@ def buy_item(
         raise _BROKE from None
 
 
-@router.post("/items/{planting_id}/upgrade", response_model=SanctuaryScene)
-def upgrade_item(
+@router.post("/items/{planting_id}/customize", response_model=SanctuaryScene)
+def customize_item(
     planting_id: uuid.UUID,
+    body: CustomizeRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SanctuaryScene:
+    """Apply a customization (slot → option) to an owned item. Each customization costs
+    coins (deducted from the derived balance)."""
     today, tz = _today_for(current_user)
     try:
-        scene = sanctuary_service.upgrade(db, current_user.id, planting_id, today=today, tz=tz)
-    except MaxTier:
+        scene = sanctuary_service.customize(
+            db, current_user.id, planting_id, body, today=today, tz=tz
+        )
+    except UnknownSlotOption:
+        raise _NOT_FOUND from None
+    except ItemLocked:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Already at the highest tier"
+            status_code=status.HTTP_409_CONFLICT, detail="That option is not unlocked yet"
+        ) from None
+    except AlreadyApplied:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="That option is already applied"
         ) from None
     except InsufficientCoins:
         raise _BROKE from None

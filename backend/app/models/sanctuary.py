@@ -1,8 +1,11 @@
-"""Sanctuary item model — one item the user owns, at a given upgrade tier.
+"""Sanctuary item model — one item the user owns, with a chosen variant and a set of
+mix-and-match customizations.
 
-The only stored Sanctuary state (ADR-0011): which items the user has bought and each
-item's `tier`. The coin balance is computed on read (coins earned from levels − coins
-spent on what's owned). Item costs / tiers live in code (SANCTUARY_CATALOG).
+The only stored Sanctuary state (ADR-0011 + ADR-0012): which items the user has bought,
+each item's `variant` (base form), and its `customizations` (`{slot: option}`). The coin
+balance is computed on read (coins earned from levels − coins spent on what's owned).
+What things cost — buy price, variants, customization options — lives in code
+(SANCTUARY_CATALOG), so retuning needs no migration.
 """
 
 import uuid
@@ -16,8 +19,9 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -38,8 +42,15 @@ class SanctuaryPlanting(Base):
     item_key: Mapped[str] = mapped_column(String, nullable=False)
     # Display order: 0, 1, 2, … (repeats of an item_key are allowed).
     position: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Upgrade tier: 0 = base, each purchased upgrade bumps it. Drives cost + art.
-    tier: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Chosen base form (e.g. a dog breed, a tree species). NULL = the item's default
+    # variant (legacy rows + items that have no variants).
+    variant: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Mix-and-match customizations as {slot: option} (e.g. {"grown": "grown",
+    # "accessory": "hat"}). Each entry was bought with coins; the catalog prices them.
+    # Empty {} = the base form (legacy rows), so no extra spend.
+    customizations: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

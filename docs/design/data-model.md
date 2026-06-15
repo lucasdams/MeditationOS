@@ -115,7 +115,7 @@ accepts an AI-suggested) prompt as free `text`.
 
 ### `sanctuary_plantings`
 
-The user's garden as a **spend economy** ([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)): each row is an item they **bought**, with its upgrade `tier`. The coin balance is computed on read (see [Sanctuary design](sanctuary.md)).
+The user's garden as a **spend economy** ([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)) with **personalization** ([ADR-0012](../decisions/0012-sanctuary-personalization.md)): each row is an item they **bought**, with a chosen `variant` and a set of `customizations`. The coin balance is computed on read (see [Sanctuary design](sanctuary.md)).
 
 | Column | Type | Constraints |
 |--------|------|-------------|
@@ -123,13 +123,14 @@ The user's garden as a **spend economy** ([ADR-0011](../decisions/0011-sanctuary
 | `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
 | `item_key` | text | NOT NULL — references the in-code `SANCTUARY_CATALOG` (`tree`, `flower`, `cat`, `boat`, …); not a DB enum so the catalog can evolve without a migration |
 | `position` | int | NOT NULL — display order (0, 1, 2, …) |
-| `tier` | int | NOT NULL, default `0` — upgrade tier (0 = base); drives cost + art |
+| `variant` | text | NULL — chosen base form (e.g. dog breed, tree species); `NULL` = the item's default variant |
+| `customizations` | jsonb | NOT NULL, default `'{}'` — `{slot: option}` of purchased mix-and-match customizations |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Constraint:** `UNIQUE(user_id, position)`. **Index:** `user_id`.
 
-- **No wallet or transaction log** — the holdings *are* the ledger. `coins_spent` = Σ over owned items of `buy_cost + upgrade_costs up to tier`; `coins_earned = level × COINS_PER_LEVEL` (the level from *earned* XP, so coins never decrease); balance = earned − spent. All in `sanctuary_service`.
-- Buying inserts a row at the next `position` (tier 0); upgrading bumps a row's `tier`.
+- **No wallet or transaction log** — the holdings *are* the ledger. `coins_spent` = Σ over owned items of `buy_cost + variant_cost_delta + Σ (customization option costs)`; `coins_earned = level × COINS_PER_LEVEL` (the level from *earned* XP, so coins never decrease); balance = earned − spent. All in `sanctuary_service`.
+- Buying inserts a row at the next `position` (with the chosen variant); customizing sets a key in the row's `customizations`. The earlier `tier` column was folded into the `grown` customization and dropped (legacy spend preserved).
 
 ### `journals`
 

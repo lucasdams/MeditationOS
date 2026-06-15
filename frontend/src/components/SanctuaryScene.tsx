@@ -52,7 +52,11 @@ export default function SanctuaryScene() {
         <div className="sanctuary-grown-row">
           {preview.map((o) => (
             <div key={o.id} className="sanctuary-grown-item" title={itemLabel(o.item_key)}>
-              <SanctuaryPlant itemKey={o.item_key} tier={o.tier} />
+              <SanctuaryPlant
+                itemKey={o.item_key}
+                variant={o.variant}
+                customizations={o.customizations}
+              />
               <div className="sanctuary-grown-name">{itemLabel(o.item_key)}</div>
             </div>
           ))}

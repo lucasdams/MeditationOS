@@ -375,13 +375,14 @@ distribution.
 
 ## Sanctuary ✅ implemented
 
-A small spend economy: earn coins by levelling, spend them to buy and upgrade items.
+A small spend economy: earn coins by levelling, spend them to buy items (picking a
+**variant**) and apply mix-and-match **customizations**.
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/sanctuary` | ✓ | Coins, level, owned items (with tier + next upgrade cost), and the shop |
-| POST | `/sanctuary/buy` | ✓ | Buy a fresh tier-0 item `{ item_key }` → updated scene; `404` unknown · `409` level-locked or too few coins |
-| POST | `/sanctuary/items/{id}/upgrade` | ✓ | Upgrade an owned item one tier → updated scene; `404` not the caller's · `409` already maxed or too few coins |
+| GET | `/sanctuary` | ✓ | Coins, level, owned items (variant + customizations + available slots), and the shop (with variants) |
+| POST | `/sanctuary/buy` | ✓ | Buy a fresh item `{ item_key, variant? }` → updated scene; `404` unknown item/variant · `409` level-locked or too few coins · `422` bad shape |
+| POST | `/sanctuary/items/{id}/customize` | ✓ | Apply a customization `{ slot, option }` → updated scene; `404` not the caller's / unknown slot+option · `409` locked, already-applied, or too few coins · `422` bad shape |
 
 ```
 GET /api/v1/sanctuary
@@ -391,11 +392,18 @@ GET /api/v1/sanctuary
   "level": 5,
   "owned": [
     { "id": "…", "item_key": "tree", "track": "nature", "position": 0,
-      "tier": 1, "max_tier": 2, "next_upgrade_cost": 120 }
+      "variant": "cherry", "customizations": { "foliage": "blossom" },
+      "available": [
+        { "slot": "grown", "applied": null,
+          "options": [ { "option": "grown", "cost": 60, "unlocked": true,
+                         "unlock_hint": null, "affordable": true, "applied": false } ] }
+      ] }
   ],
   "shop": [
-    { "item_key": "flower", "track": "nature", "cost": 25, "unlocked": true, "hint": null },
-    { "item_key": "pond", "track": "nature", "cost": 80, "unlocked": false, "hint": "Reach level 4" }
+    { "item_key": "flower", "track": "nature", "cost": 25, "unlocked": true, "hint": null,
+      "variants": [ { "variant": "rose", "cost_delta": 0, "unlocked": true, "unlock_hint": null } ] },
+    { "item_key": "pond", "track": "nature", "cost": 80, "unlocked": false,
+      "hint": "Reach level 4", "variants": [] }
   ],
   "vitality": "thriving",
   "current_streak": 3
@@ -403,15 +411,17 @@ GET /api/v1/sanctuary
 ```
 
 ```
-POST /api/v1/sanctuary/buy            { "item_key": "flower" }   → 201 (updated scene)
-POST /api/v1/sanctuary/items/{id}/upgrade                        → 200 (updated scene)
+POST /api/v1/sanctuary/buy                  { "item_key": "tree", "variant": "cherry" }   → 201 (updated scene)
+POST /api/v1/sanctuary/items/{id}/customize { "slot": "foliage", "option": "blossom" }    → 200 (updated scene)
 ```
 
-Only the holdings (`sanctuary_plantings`, with a `tier`) are stored; the **coin balance
-is computed on read** — `level × COINS_PER_LEVEL − Σ spent`, with the level taken from
-*earned XP* (total XP minus the streak bonus) so coins never decrease. `vitality`
-(`dormant` / `thriving` / `flourishing`) is from the current streak. See
-[ADR-0011](../decisions/0011-sanctuary-spend-economy.md) and the
+Only the holdings (`sanctuary_plantings`, with `variant` + `customizations`) are stored;
+the **coin balance is computed on read** — `level × COINS_PER_LEVEL − Σ spent`, where an
+item's spent is `buy_cost + variant_cost_delta + Σ (customization option costs)`, with the
+level taken from *earned XP* (total XP minus the streak bonus) so coins never decrease.
+`vitality` (`dormant` / `thriving` / `flourishing`) is from the current streak. See
+[ADR-0011](../decisions/0011-sanctuary-spend-economy.md),
+[ADR-0012](../decisions/0012-sanctuary-personalization.md), and the
 [Sanctuary design](sanctuary.md).
 
 ## Mood check-ins ✅ implemented

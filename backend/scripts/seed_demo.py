@@ -40,7 +40,7 @@ from app.models.journal import Journal
 from app.models.sanctuary import SanctuaryPlanting
 from app.models.session import Session as PracticeSession
 from app.models.user import QUEST_FEATURES, User
-from app.schemas.sanctuary import BuyRequest
+from app.schemas.sanctuary import BuyRequest, CustomizeRequest
 from app.services import sanctuary_service
 
 DEMO_EMAIL = "demo@meditationos.app"
@@ -301,7 +301,8 @@ def _seed_goals(db: DBSession, user: User) -> None:
 
 
 def _seed_sanctuary(db: DBSession, user: User, today: date) -> None:
-    """Spend the coins the seeded sessions earned: buy a few items, upgrade a couple.
+    """Spend the coins the seeded sessions earned: buy a few items (with a chosen
+    variant), then apply a customization or two.
 
     Goes through `sanctuary_service` so coin balance / level / unlock rules are
     enforced exactly as the live app does. Items are chosen low-to-high cost and only
@@ -310,27 +311,58 @@ def _seed_sanctuary(db: DBSession, user: User, today: date) -> None:
     scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
     print(f"  sanctuary: level {scene.level}, {scene.coins} coins to spend")
 
-    wishlist = ["flower", "tree", "goldfish", "bird", "cat", "pond"]
-    for item_key in wishlist:
+    # (item_key, preferred variant) — variant falls back to the default if unavailable.
+    wishlist = [
+        ("flower", "tulip"),
+        ("tree", "cherry"),
+        ("goldfish", "orange"),
+        ("bird", "bluebird"),
+        ("cat", "ginger"),
+        ("pond", None),
+    ]
+    for item_key, variant in wishlist:
         scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
         shop = {s.item_key: s for s in scene.shop}
         item = shop.get(item_key)
         if item is None or not item.unlocked or item.cost > scene.coins:
             continue
+        offered = {v.variant for v in item.variants}
+        chosen = variant if variant in offered else None
         sanctuary_service.buy(
-            db, user.id, BuyRequest(item_key=item_key), today=today, tz=DEMO_TZ
+            db,
+            user.id,
+            BuyRequest(item_key=item_key, variant=chosen),
+            today=today,
+            tz=DEMO_TZ,
         )
 
-    # Upgrade the first one or two owned items while coins allow.
-    scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
-    for owned in scene.owned[:2]:
-        cost = owned.next_upgrade_cost
-        if cost is None or cost > scene.coins:
-            continue
-        sanctuary_service.upgrade(
-            db, user.id, uuid.UUID(owned.id), today=today, tz=DEMO_TZ
-        )
+    # Apply the first affordable customization on a couple of owned items, while coins
+    # allow — shows the mix-and-match panel populated.
+    for _ in range(3):
         scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
+        applied = False
+        for owned in scene.owned:
+            for slot in owned.available:
+                option = next(
+                    (o for o in slot.options if not o.applied and o.unlocked and o.affordable),
+                    None,
+                )
+                if option is None:
+                    continue
+                sanctuary_service.customize(
+                    db,
+                    user.id,
+                    uuid.UUID(owned.id),
+                    CustomizeRequest(slot=slot.slot, option=option.option),
+                    today=today,
+                    tz=DEMO_TZ,
+                )
+                applied = True
+                break
+            if applied:
+                break
+        if not applied:
+            break
 
 
 def seed(db: DBSession) -> None:
