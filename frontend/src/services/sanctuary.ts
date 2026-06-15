@@ -9,4 +9,8 @@ export const sanctuaryService = {
   // Apply a mix-and-match customization (slot → option) to an owned item.
   customize: (id: string, slot: string, option: string) =>
     api.post<SanctuaryScene>(`/sanctuary/items/${id}/customize`, { slot, option }),
+  // Move an owned item to a grid cell (layout only — never affects the economy). Swaps
+  // with whatever item already occupies the target cell.
+  move: (id: string, cell: number) =>
+    api.post<SanctuaryScene>(`/sanctuary/items/${id}/move`, { cell }),
 }

@@ -7,6 +7,10 @@ import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY } from '../li
 import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
 
+// Grid layout width (must mirror the backend's GRID_COLUMNS). The garden lays items out
+// row-major: cell = row * GRID_COLUMNS + col. One tunable constant maps cell ↔ (row, col).
+const GRID_COLUMNS = 4
+
 export default function SanctuaryPage() {
   const { showToast } = useToast()
   const [scene, setScene] = useState<Scene | null>(null)
@@ -19,6 +23,11 @@ export default function SanctuaryPage() {
   // The id of the item just bought, so only it pops/glows into the garden (cleared
   // after the brief animation so it doesn't re-fire on later renders).
   const [justBought, setJustBought] = useState<string | null>(null)
+  // Drag-to-move (desktop): the id of the item currently being dragged.
+  const [dragging, setDragging] = useState<string | null>(null)
+  // Tap-to-move (touch/keyboard fallback): the id of the item picked up, awaiting a
+  // target cell tap. Desktop dragging works too; this keeps moving usable on touch.
+  const [selected, setSelected] = useState<string | null>(null)
 
   useEffect(() => {
     sanctuaryService
@@ -86,6 +95,39 @@ export default function SanctuaryPage() {
     }
   }
 
+  // Move an owned item to a grid cell. Optimistically reorders locally (swapping with any
+  // item already in the target cell), calls the move endpoint, and reverts on failure.
+  async function moveItem(id: string, cell: number) {
+    setSelected(null)
+    setDragging(null)
+    if (!scene) return
+    const item = scene.owned.find((o) => o.id === id)
+    if (!item || item.cell === cell) return
+
+    const prev = scene
+    const occupant = scene.owned.find((o) => o.cell === cell && o.id !== id)
+    const optimistic: Scene = {
+      ...scene,
+      owned: scene.owned
+        .map((o) => {
+          if (o.id === id) return { ...o, cell }
+          if (occupant && o.id === occupant.id) return { ...o, cell: item.cell }
+          return o
+        })
+        .sort((a, b) => a.cell - b.cell),
+    }
+    setScene(optimistic)
+    setBusy(`move:${id}`)
+    try {
+      setScene(await sanctuaryService.move(id, cell))
+    } catch {
+      setScene(prev) // revert the optimistic reorder
+      showToast('Could not move that item.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <main className="dashboard sanctuary-page">
       <Link to="/" className="back-link">
@@ -119,81 +161,158 @@ export default function SanctuaryPage() {
           {scene.owned.length === 0 ? (
             <p className="muted">Empty for now — choose your first item from the shop below.</p>
           ) : (
-            <div className="sanctuary-grid">
-              {scene.owned.map((o) => {
-                const customCount = Object.keys(o.customizations).length
-                const open = editing === o.id
-                const fresh = justBought === o.id
-                return (
-                  <div key={o.id} className={`sanctuary-card${fresh ? ' just-bought' : ''}`}>
-                    <SanctuaryPlant
-                      itemKey={o.item_key}
-                      variant={o.variant}
-                      customizations={o.customizations}
-                    />
-                    <div className="sanctuary-card-name">
-                      {itemLabel(o.item_key)}
-                      {o.variant && (
-                        <span className="muted sanctuary-variant"> · {variantLabel(o.variant)}</span>
-                      )}
-                    </div>
-                    {o.available.length > 0 ? (
-                      <button
-                        type="button"
-                        className="sanctuary-buy sanctuary-customize-toggle"
-                        aria-expanded={open}
-                        onClick={() => setEditing(open ? null : o.id)}
-                      >
-                        {open
-                          ? 'Done'
-                          : customCount > 0
-                            ? `Personalize (${customCount})`
-                            : 'Personalize'}
-                      </button>
-                    ) : (
-                      <span className="muted sanctuary-maxed">No add-ons</span>
-                    )}
-                    {open && (
-                      <div className="sanctuary-customize-panel">
-                        {o.available.map((s) => (
-                          <fieldset key={s.slot} className="sanctuary-slot">
-                            <legend>{slotLabel(s.slot)}</legend>
-                            <div className="sanctuary-slot-options">
-                              {s.options.map((opt) => {
-                                const cantApply =
-                                  busy != null || opt.applied || !opt.unlocked || !opt.affordable
-                                return (
-                                  <button
-                                    key={opt.option}
-                                    type="button"
-                                    className={`sanctuary-option${opt.applied ? ' applied' : ''}`}
-                                    disabled={cantApply}
-                                    title={
-                                      !opt.unlocked
-                                        ? (opt.unlock_hint ?? 'Locked')
-                                        : !opt.affordable
-                                          ? 'Earn more coins'
-                                          : undefined
-                                    }
-                                    onClick={() => customize(o, s.slot, opt.option)}
-                                  >
-                                    {opt.applied
-                                      ? `✓ ${optionLabel(opt.option)}`
-                                      : !opt.unlocked
-                                        ? `🔒 ${optionLabel(opt.option)}`
-                                        : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
-                                  </button>
-                                )
-                              })}
+            (() => {
+              // Lay items out on a row-major grid by `cell`. Show every occupied cell plus a
+              // trailing empty row so there's always somewhere to drop into a new spot.
+              const byCell = new Map<number, OwnedItem>()
+              for (const o of scene.owned) byCell.set(o.cell, o)
+              const maxCell = Math.max(...scene.owned.map((o) => o.cell))
+              const rows = Math.floor(maxCell / GRID_COLUMNS) + 2 // occupied rows + one spare
+              const cellCount = rows * GRID_COLUMNS
+
+              return (
+                <>
+                  <p className="muted sanctuary-move-hint">
+                    {selected
+                      ? 'Now tap a spot to place it (or tap it again to cancel).'
+                      : 'Drag an item — or tap to pick it up, then tap a spot — to rearrange your garden.'}
+                  </p>
+                  <div
+                    className="sanctuary-garden-grid"
+                    style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)` }}
+                  >
+                    {Array.from({ length: cellCount }, (_, cell) => {
+                      const o = byCell.get(cell)
+                      if (!o) {
+                        return (
+                          <button
+                            key={`empty-${cell}`}
+                            type="button"
+                            className={`sanctuary-cell empty${selected ? ' droppable' : ''}`}
+                            aria-label={`Empty spot ${cell + 1}`}
+                            disabled={busy != null && busy.startsWith('move')}
+                            onClick={() => selected && moveItem(selected, cell)}
+                            onDragOver={(e) => {
+                              if (dragging) e.preventDefault()
+                            }}
+                            onDrop={() => dragging && moveItem(dragging, cell)}
+                          />
+                        )
+                      }
+                      const customCount = Object.keys(o.customizations).length
+                      const open = editing === o.id
+                      const fresh = justBought === o.id
+                      const picked = selected === o.id
+                      // Dragging is disabled while a card's customization panel is open, so
+                      // dragging and editing never fight for the same pointer gestures.
+                      const canDrag = !open
+                      return (
+                        <div
+                          key={o.id}
+                          className={`sanctuary-cell sanctuary-card${fresh ? ' just-bought' : ''}${
+                            picked ? ' picked' : ''
+                          }${dragging === o.id ? ' dragging' : ''}`}
+                          draggable={canDrag}
+                          onDragStart={() => canDrag && setDragging(o.id)}
+                          onDragEnd={() => setDragging(null)}
+                          onDragOver={(e) => {
+                            if (dragging && dragging !== o.id) e.preventDefault()
+                          }}
+                          onDrop={() => dragging && dragging !== o.id && moveItem(dragging, o.cell)}
+                        >
+                          <button
+                            type="button"
+                            className="sanctuary-grab"
+                            aria-label={
+                              picked
+                                ? `Cancel moving ${itemLabel(o.item_key)}`
+                                : `Move ${itemLabel(o.item_key)}`
+                            }
+                            aria-pressed={picked}
+                            title="Move"
+                            onClick={() => {
+                              if (selected && selected !== o.id) moveItem(selected, o.cell)
+                              else setSelected(picked ? null : o.id)
+                            }}
+                          >
+                            <SanctuaryPlant
+                              itemKey={o.item_key}
+                              variant={o.variant}
+                              customizations={o.customizations}
+                            />
+                          </button>
+                          <div className="sanctuary-card-name">
+                            {itemLabel(o.item_key)}
+                            {o.variant && (
+                              <span className="muted sanctuary-variant">
+                                {' '}
+                                · {variantLabel(o.variant)}
+                              </span>
+                            )}
+                          </div>
+                          {o.available.length > 0 ? (
+                            <button
+                              type="button"
+                              className="sanctuary-buy sanctuary-customize-toggle"
+                              aria-expanded={open}
+                              onClick={() => setEditing(open ? null : o.id)}
+                            >
+                              {open
+                                ? 'Done'
+                                : customCount > 0
+                                  ? `Personalize (${customCount})`
+                                  : 'Personalize'}
+                            </button>
+                          ) : (
+                            <span className="muted sanctuary-maxed">No add-ons</span>
+                          )}
+                          {open && (
+                            <div className="sanctuary-customize-panel">
+                              {o.available.map((s) => (
+                                <fieldset key={s.slot} className="sanctuary-slot">
+                                  <legend>{slotLabel(s.slot)}</legend>
+                                  <div className="sanctuary-slot-options">
+                                    {s.options.map((opt) => {
+                                      const cantApply =
+                                        busy != null ||
+                                        opt.applied ||
+                                        !opt.unlocked ||
+                                        !opt.affordable
+                                      return (
+                                        <button
+                                          key={opt.option}
+                                          type="button"
+                                          className={`sanctuary-option${opt.applied ? ' applied' : ''}`}
+                                          disabled={cantApply}
+                                          title={
+                                            !opt.unlocked
+                                              ? (opt.unlock_hint ?? 'Locked')
+                                              : !opt.affordable
+                                                ? 'Earn more coins'
+                                                : undefined
+                                          }
+                                          onClick={() => customize(o, s.slot, opt.option)}
+                                        >
+                                          {opt.applied
+                                            ? `✓ ${optionLabel(opt.option)}`
+                                            : !opt.unlocked
+                                              ? `🔒 ${optionLabel(opt.option)}`
+                                              : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </fieldset>
+                              ))}
                             </div>
-                          </fieldset>
-                        ))}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
+                </>
+              )
+            })()
           )}
 
           <h2 className="sanctuary-section-title">Shop</h2>

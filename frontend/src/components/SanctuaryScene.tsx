@@ -25,7 +25,9 @@ export default function SanctuaryScene() {
   if (error || !scene) return null // non-critical to the dashboard; fail/await quietly
 
   const { coins, owned, vitality } = scene
-  const preview = owned.slice(-PREVIEW_LIMIT)
+  // The scene already returns items in grid order (by `cell`); preview the first few so
+  // the dashboard reflects the user's chosen layout (top-left of their garden).
+  const preview = [...owned].sort((a, b) => a.cell - b.cell).slice(0, PREVIEW_LIMIT)
 
   return (
     <section className="sanctuary" aria-label="Your sanctuary">

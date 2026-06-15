@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import type { SanctuaryScene } from '../types'
@@ -7,6 +7,7 @@ import type { SanctuaryScene } from '../types'
 const getScene = vi.fn()
 const buy = vi.fn()
 const customize = vi.fn()
+const move = vi.fn()
 const playReward = vi.fn()
 
 vi.mock('../services/sanctuary', () => ({
@@ -14,6 +15,7 @@ vi.mock('../services/sanctuary', () => ({
     getScene: (...a: unknown[]) => getScene(...a),
     buy: (...a: unknown[]) => buy(...a),
     customize: (...a: unknown[]) => customize(...a),
+    move: (...a: unknown[]) => move(...a),
   },
 }))
 vi.mock('../lib/sfx', () => ({ playReward: (...a: unknown[]) => playReward(...a) }))
@@ -48,11 +50,25 @@ const after = sceneWith(40, [
     item_key: 'tree',
     track: 'nature',
     position: 0,
+    cell: 0,
     variant: null,
     customizations: {},
     available: [],
   },
 ])
+
+function ownedItem(id: string, cell: number): SanctuaryScene['owned'][number] {
+  return {
+    id,
+    item_key: 'tree',
+    track: 'nature',
+    position: cell,
+    cell,
+    variant: null,
+    customizations: {},
+    available: [],
+  }
+}
 
 const renderPage = () =>
   render(
@@ -62,6 +78,10 @@ const renderPage = () =>
       </ToastProvider>
     </MemoryRouter>,
   )
+
+// Unmount between tests so queries don't see a prior test's DOM (the grid renders many
+// empty cells, which would otherwise collide across renders).
+afterEach(cleanup)
 
 describe('SanctuaryPage buy feedback', () => {
   beforeEach(() => {
@@ -103,5 +123,49 @@ describe('SanctuaryPage buy feedback', () => {
 
     await waitFor(() => expect(screen.getByText(/Could not buy that/)).toBeInTheDocument())
     expect(playReward).not.toHaveBeenCalled()
+  })
+})
+
+describe('SanctuaryPage move (grid layout)', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+    move.mockReset()
+  })
+
+  it('tap-to-pick then tap an empty cell calls move with the target cell', async () => {
+    const start = sceneWith(40, [ownedItem('a', 0)])
+    const moved = sceneWith(40, [ownedItem('a', 5)])
+    getScene.mockResolvedValue(start)
+    move.mockResolvedValue(moved)
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    // Pick up the item (its plant doubles as the move handle).
+    const grab = await view.findByRole('button', { name: /Move Tree/ })
+    fireEvent.click(grab)
+    expect(grab).toHaveAttribute('aria-pressed', 'true')
+
+    // Tap an empty spot → moves there. Cell 1 is "Empty spot 2" (1-indexed label).
+    const spot = view.getByRole('button', { name: 'Empty spot 2' })
+    fireEvent.click(spot)
+
+    await waitFor(() => expect(move).toHaveBeenCalledWith('a', 1))
+  })
+
+  it('reverts and shows an error toast when the move fails', async () => {
+    const start = sceneWith(40, [ownedItem('a', 0)])
+    getScene.mockResolvedValue(start)
+    move.mockRejectedValue(new Error('nope'))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    const grab = await view.findByRole('button', { name: /Move Tree/ })
+    fireEvent.click(grab)
+    const spot = view.getByRole('button', { name: 'Empty spot 2' })
+    fireEvent.click(spot)
+
+    await waitFor(() => expect(screen.getByText(/Could not move that item/)).toBeInTheDocument())
   })
 })

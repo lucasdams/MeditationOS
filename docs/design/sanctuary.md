@@ -1,6 +1,6 @@
 # Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn
 **coins** as you level up and spend them to **buy** items (plants, structures, pets) and
@@ -68,17 +68,28 @@ sanctuary_plantings
   id              UUID         pk
   user_id         UUID         fk users ON DELETE CASCADE
   item_key        TEXT         -- references SANCTUARY_CATALOG (in code)
-  position        INT          -- display order: 0, 1, 2, …
+  position        INT          -- immutable acquisition order: 0, 1, 2, … (economy key)
+  cell            INT          -- grid layout slot, row-major; rearranged freely (layout)
   variant         TEXT NULL    -- chosen base form; NULL = the item's default variant
   customizations  JSONB        -- {slot: option} purchased; default '{}'
   created_at      timestamptz  server default now()
   UNIQUE (user_id, position)
+  UNIQUE (user_id, cell)
   INDEX (user_id)
 ```
 
 Still no `user_wallet` and no spend ledger — the holdings *are* the ledger
 ([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)). `item_key` may repeat. The old
 `tier` INT column was migrated into `customizations.grown` and dropped.
+
+`position` and `cell` are deliberately separate
+([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)). `position` is the **immutable
+acquisition order** the progressive surcharge is keyed off (ADR-0013), so it must never be
+reordered — moving an item by rewriting `position` would silently re-price the garden and
+shift balances. `cell` is a **layout-only** row-major grid index the user rearranges by
+dragging; it has no effect on cost. New items are bought into the lowest free cell;
+existing gardens backfilled `cell = position`, so they keep their prior order as the
+initial layout.
 
 ## Catalog (in-code constant)
 
@@ -173,10 +184,14 @@ Layered route → service → model, user-scoped, default-deny (the standard che
 | `GET` | `/api/v1/sanctuary` | coins, level, owned (variant + customizations + available slots), and the shop (with variants) |
 | `POST` | `/api/v1/sanctuary/buy` | `{ item_key, variant? }` → buy a fresh item · `404` unknown item/variant · `409` locked or too poor · `422` bad shape |
 | `POST` | `/api/v1/sanctuary/items/{id}/customize` | `{ slot, option }` → apply a customization · `404` not yours / unknown slot+option · `409` locked, already-applied, or too poor · `422` bad shape |
+| `POST` | `/api/v1/sanctuary/items/{id}/move` | `{ cell }` → move to a grid cell (layout only — never touches `position` or pricing); swaps with whatever occupies the cell · `404` not yours · `422` bad shape / out-of-bounds cell |
 
-Both writes validate the level requirement and the **balance** before committing, and the
-request bodies reject unexpected fields. The old `/upgrade` (tier ladder) route is removed
-in favour of `/customize`.
+The `customize` and `buy` writes validate the level requirement and the **balance** before
+committing; `move` is layout-only and never changes the balance. All request bodies reject
+unexpected fields. The old `/upgrade` (tier ladder) route is removed in favour of
+`/customize`. `move` swaps cells atomically in one transaction (the moving row is parked on
+a temporary out-of-range sentinel cell to avoid tripping `UNIQUE(user_id, cell)`), and
+returns the updated scene.
 
 ## Frontend
 
@@ -193,6 +208,12 @@ in favour of `/customize`.
 - **Personalize:** each owned card has a calm "Personalize" panel listing its slots and
   options with cost and `applied` / `locked` / `affordable` state — mix and match over
   time. Validate (affordable + unlocked) before submit; server errors surface as a toast.
+- **Arrange:** the garden renders on a row-major **grid** (`GRID_COLUMNS = 4`, mirroring
+  the backend) ordered by `cell`, so each user lays their garden out where they want it
+  ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)). Desktop supports **drag-to-move**
+  (native HTML5 DnD — no new deps); touch/keyboard use a **tap-to-pick-then-tap-target**
+  fallback (HTML5 DnD is unreliable on touch). Moves are optimistic, reverting with an
+  error toast on failure. Layout-only — moving never changes coins.
 - **States:** loading / error / empty as usual; the empty scene invites a first purchase.
 
 ## Build order
@@ -217,6 +238,10 @@ Each step is independently shippable.
    mix-and-match **customizations** bought over time, each a real SVG change; the tier
    ladder retired (`/upgrade` → `/customize`), `tier` folded into the `grown` slot. Still
    a derived balance, no wallet/ledger ([ADR-0012](../decisions/0012-sanctuary-personalization.md)).
+7. ✅ **Movable grid layout** — a `cell` column (separate from the economy key `position`)
+   + the `/move` endpoint let users arrange items on a grid by drag (desktop) or
+   tap-to-place (touch). Layout-only; the economy is untouched
+   ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)).
 
 ## Out of scope (here)
 

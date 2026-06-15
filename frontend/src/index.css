@@ -1667,6 +1667,61 @@ textarea:focus-visible,
   margin-bottom: 1.5rem;
 }
 
+/* The garden's movable layout grid (ADR-0014): a fixed-width grid the user rearranges by
+   dragging items (desktop) or tap-to-pick-then-tap-target (touch/keyboard). Columns are
+   set inline from GRID_COLUMNS so the layout maths stays in one place. */
+.sanctuary-garden-grid {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.sanctuary-move-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Empty drop targets keep a stable cell footprint so the grid never collapses. */
+.sanctuary-cell.empty {
+  min-height: 6rem;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: transparent;
+  cursor: default;
+}
+
+/* While an item is picked up, empty cells invite a drop. */
+.sanctuary-cell.empty.droppable {
+  border-color: #34d399;
+  background: #ecfdf5;
+  cursor: pointer;
+}
+
+/* The picked-up / dragging card reads as lifted. */
+.sanctuary-card.picked {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+.sanctuary-card.dragging {
+  opacity: 0.5;
+}
+
+/* The plant doubles as the grab handle: a plain button wrapper, no chrome. */
+.sanctuary-grab {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sanctuary-grab:active {
+  cursor: grabbing;
+}
+
 .sanctuary-card {
   display: flex;
   flex-direction: column;

@@ -228,7 +228,8 @@ export interface OwnedItem {
   id: string
   item_key: string
   track: string
-  position: number
+  position: number // immutable acquisition order (economy key — NOT the layout)
+  cell: number // grid layout slot (row-major index); the user rearranges this freely
   variant: string | null // chosen base form (default when the item has variants)
   customizations: Record<string, string> // {slot: option} purchased
   available: AvailableSlot[] // slots/options still applicable, with hints
