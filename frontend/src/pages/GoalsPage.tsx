@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { goalService } from '../services/goals'
 import { ACTIVITY_COLORS } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
-import { usePendingDelete } from '../hooks/usePendingDelete'
+import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
 const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = [
@@ -38,7 +38,6 @@ function cadenceLabel(count: number, period: GoalPeriod): string {
 
 export default function GoalsPage() {
   const { showToast } = useToast()
-  const { schedule, cancel } = usePendingDelete()
   const [goals, setGoals] = useState<Goal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<GoalStatus>('active')
@@ -114,36 +113,14 @@ export default function GoalsPage() {
     }
   }
 
-  function remove(id: string) {
-    if (!goals) return
-    const index = goals.findIndex((g) => g.id === id)
-    if (index === -1) return
-    const item = goals[index]
-    setError(null)
-    // Optimistically remove now; the real delete fires only after the undo window.
-    setGoals((prev) => prev?.filter((g) => g.id !== id) ?? null)
-
-    const restore = () =>
-      setGoals((cur) => {
-        if (!cur || cur.some((g) => g.id === id)) return cur
-        const next = [...cur]
-        next.splice(Math.min(index, next.length), 0, item)
-        return next
-      })
-
-    schedule(id, () => {
-      goalService.remove(id).catch(() => {
-        restore()
-        showToast('Could not delete that goal.', 'error')
-      })
-    })
-    showToast('Goal deleted.', 'success', {
-      label: 'Undo',
-      onClick: () => {
-        if (cancel(id)) restore()
-      },
-    })
-  }
+  const remove = useUndoableDelete<Goal>({
+    list: goals,
+    setList: setGoals,
+    getId: (g) => g.id,
+    remove: (id) => goalService.remove(id),
+    messages: { success: 'Goal deleted.', error: 'Could not delete that goal.' },
+    onStart: () => setError(null),
+  })
 
   return (
     <main className="dashboard">

@@ -81,8 +81,14 @@ export default function LogSessionPage() {
   }
 
   return (
-    <main className="auth-card">
-      <h1>Log a session</h1>
+    <main className="dashboard log-session">
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
+        <h1>Log a session</h1>
+        <p className="page-subtitle">
+          Record a meditation or breathing sit you did away from the app.
+        </p>
+      </header>
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="type">Practice</label>
         <select id="type" value={type} onChange={(e) => setType(e.target.value as MeditationType)}>
@@ -148,9 +154,6 @@ export default function LogSessionPage() {
           {submitting ? 'Saving…' : 'Save session'}
         </button>
       </form>
-      <p>
-        <Link to="/">Back to dashboard</Link>
-      </p>
 
       {reward && (
         <RewardOverlay

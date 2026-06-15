@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { scheduledSessionService } from '../services/scheduledSessions'
 import { useToast } from '../context/ToastContext'
-import { usePendingDelete } from '../hooks/usePendingDelete'
+import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { TYPE_COLORS } from '../lib/colors'
 import type { MeditationType, ScheduledSession } from '../types'
 
@@ -39,7 +39,6 @@ function formatWhen(iso: string): string {
 
 export default function SchedulePage() {
   const { showToast } = useToast()
-  const { schedule, cancel } = usePendingDelete()
   const [items, setItems] = useState<ScheduledSession[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [type, setType] = useState<MeditationType>('mindfulness')
@@ -47,6 +46,18 @@ export default function SchedulePage() {
   const [duration, setDuration] = useState(0)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const handleDelete = useUndoableDelete<ScheduledSession>({
+    list: items,
+    setList: setItems,
+    getId: (s) => s.id,
+    remove: (id) => scheduledSessionService.remove(id),
+    messages: {
+      success: 'Removed from your schedule.',
+      error: 'Could not remove that session.',
+    },
+    onStart: () => setError(null),
+  })
 
   useEffect(() => {
     scheduledSessionService
@@ -79,37 +90,6 @@ export default function SchedulePage() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function handleDelete(id: string) {
-    if (!items) return
-    const index = items.findIndex((s) => s.id === id)
-    if (index === -1) return
-    const item = items[index]
-    setError(null)
-    // Optimistically remove now; the real delete fires only after the undo window.
-    setItems((prev) => prev?.filter((s) => s.id !== id) ?? null)
-
-    const restore = () =>
-      setItems((cur) => {
-        if (!cur || cur.some((s) => s.id === id)) return cur
-        const next = [...cur]
-        next.splice(Math.min(index, next.length), 0, item)
-        return next
-      })
-
-    schedule(id, () => {
-      scheduledSessionService.remove(id).catch(() => {
-        restore()
-        showToast('Could not remove that session.', 'error')
-      })
-    })
-    showToast('Removed from your schedule.', 'success', {
-      label: 'Undo',
-      onClick: () => {
-        if (cancel(id)) restore()
-      },
-    })
   }
 
   return (

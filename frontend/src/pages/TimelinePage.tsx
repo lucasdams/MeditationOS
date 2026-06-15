@@ -4,7 +4,7 @@ import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
 import { useToast } from '../context/ToastContext'
-import { usePendingDelete } from '../hooks/usePendingDelete'
+import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { MOOD_COLORS, gratitudeColor, tint } from '../lib/colors'
 import type { MeditationType, Mood, Session } from '../types'
 
@@ -56,7 +56,6 @@ const sortByWhenDesc = (a: TimelineItem, b: TimelineItem) => (a.when < b.when ? 
 
 export default function TimelinePage() {
   const { showToast } = useToast()
-  const { schedule, cancel } = usePendingDelete()
   const [items, setItems] = useState<TimelineItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null) // session whose actions are revealed
@@ -152,34 +151,18 @@ export default function TimelinePage() {
     }
   }
 
-  function handleDelete(id: string) {
-    if (!items) return
-    const index = items.findIndex((it) => it.id === id && it.kind === 'session')
-    if (index === -1) return
-    const item = items[index]
-    setMenuId(null)
-    setError(null)
-    setItems((prev) => prev?.filter((it) => !(it.kind === 'session' && it.id === id)) ?? null)
-
-    const restore = () =>
-      setItems((cur) => {
-        if (!cur || cur.some((it) => it.id === id)) return cur
-        return [...cur, item].sort(sortByWhenDesc)
-      })
-
-    schedule(id, () => {
-      sessionService.remove(id).catch(() => {
-        restore()
-        showToast('Could not delete that session.', 'error')
-      })
-    })
-    showToast('Session deleted.', 'success', {
-      label: 'Undo',
-      onClick: () => {
-        if (cancel(id)) restore()
-      },
-    })
-  }
+  // Only session rows expose a Delete; journal/gratitude are managed on their own pages.
+  const handleDelete = useUndoableDelete<TimelineItem>({
+    list: items,
+    setList: setItems,
+    getId: (it) => it.id,
+    remove: (id) => sessionService.remove(id),
+    messages: { success: 'Session deleted.', error: 'Could not delete that session.' },
+    onStart: () => {
+      setMenuId(null)
+      setError(null)
+    },
+  })
 
   async function exportCsv() {
     setError(null)
