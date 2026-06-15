@@ -108,6 +108,12 @@ def test_activity_days_param_out_of_range_rejected(client):
 
 def test_stats_breathing_earns_triple_xp(client):
     _auth(client, "breathe_xp@example.com")
+    # Pin meditate + breathe so both surface (the daily cap can otherwise drop one from
+    # the shown set while it still earns XP, which would skew the assertion by date).
+    client.post(
+        "/api/v1/auth/quest-features",
+        json={"features": ["meditate", "breathe", "gratitude"]},
+    )
     today = datetime.now(UTC).date()
     # 10 min meditation = 20 XP (2/min); 10 min resonance breathing = 30 XP (3/min).
     _session(client, f"{today.isoformat()}T08:00:00", seconds=600, type="mindfulness")
@@ -115,8 +121,8 @@ def test_stats_breathing_earns_triple_xp(client):
         client, f"{today.isoformat()}T09:00:00", seconds=600, type="resonance_breathing"
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # Practice (20 + 30) + whatever of today's rotating quests this activity completed
-    # (their XP varies by variant) + the 1-day streak bonus.
+    # Practice (20 + 30) + the meditate & breathe quests done today (only those two
+    # categories were practiced; their XP varies by variant) + the 1-day streak bonus.
     quest_xp = sum(q["xp"] for q in body["daily_quests"] if q["done"])
     assert body["streak_bonus_xp"] == 10
     assert body["xp"] == 20 + 30 + quest_xp + 10

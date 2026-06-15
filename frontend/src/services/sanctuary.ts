@@ -3,6 +3,7 @@ import type { SanctuaryScene } from '../types'
 
 export const sanctuaryService = {
   getScene: () => api.get<SanctuaryScene>('/sanctuary'),
-  plantNext: (itemKey: string) =>
-    api.post<SanctuaryScene>('/sanctuary/plantings', { item_key: itemKey }),
+  buy: (itemKey: string) =>
+    api.post<SanctuaryScene>('/sanctuary/buy', { item_key: itemKey }),
+  upgrade: (id: string) => api.post<SanctuaryScene>(`/sanctuary/items/${id}/upgrade`),
 }

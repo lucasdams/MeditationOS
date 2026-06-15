@@ -18,7 +18,7 @@ A production-style **business application** for meditation and wellness. Portfol
 - ✅ HRV resonance breathing — animated pacer with a **1–10 breaths/min selector** (whole-second inhale/exhale at a **2:3 longer-exhale** ratio, last pace remembered) and a 1s hold at each turn, a **selectable ambient soundscape** (ocean / rain / stream) + transition chime, optional duration timer; saves as a session
 - ✅ Meditation timer — an unguided "sit now" page: pick a style + length (or open-ended), optional start/interval/end bells (a soft singing bowl) at a chosen interval and volume; background-tab-safe timer; saves as a session and earns XP
 - ✅ Seasonal + day/night theme — a subtle ambient background that shifts by **season** (auto by date, or pick one in **Settings → Appearance**) and **day phase** (dawn / day / dusk / night, from your local clock); the Sanctuary gains a sun/moon sky band
-- ✅ Sanctuary — a garden you grow by practicing: smoothly-growing **vector (SVG)** plants across **nature, structures & companions** grow from your practice and you **choose what to grow next** (milestone-unlocked by points or a streak), with a streak-driven **vitality**, on a dedicated page with a completion celebration. See [Sanctuary design](docs/design/sanctuary.md)
+- ✅ Sanctuary — a garden built through a small **spend economy**: earn **coins** as you level up, then **buy** procedural **vector (SVG)** items across **nature, structures & companions** and **upgrade** them through visual tiers, with a streak-driven **vitality**. Only the holdings are stored; the coin balance is computed. See [Sanctuary design](docs/design/sanctuary.md)
 - ✅ Gratitude tool — pick from 37 themes (including a free-form **custom** option), get AI-suggested prompts (Claude Haiku, with a ~90-deep curated fallback) or write your own; each moment earns XP
 - ✅ Meditation journal — write reflections, optionally **tied to a session**, with an optional **mood** tag from a fixed palette; full CRUD, filterable. See [Journaling design](docs/design/journaling.md)
 - ✅ Goals — build **habits**: pick an activity (meditate / breathe / gratitude / journal) and a cadence (e.g. once a day, 3× a week); this-period progress is **computed from activity**, never stored, with an active/archived lifecycle. Plus **custom habits** ("Gym", "Read") you mark done with a daily check-in — the one stored-progress path, for things the app doesn't otherwise track. See [Goals design](docs/design/goals.md)
@@ -279,7 +279,7 @@ The engineering reasoning behind the build — written up as it's decided, so th
 | [Data Model](docs/design/data-model.md) | Detailed schema: column types, constraints, indexes, and why streaks are computed |
 | [API Contract (V1)](docs/design/api-v1.md) | Endpoints, request/response shapes, status codes, and the error envelope |
 | [Gamification](docs/design/gamification.md) | XP, levels, daily quests, streaks — all computed from activity (per-user local day) |
-| [Sanctuary](docs/design/sanctuary.md) | A garden grown by practicing — one item at a time, choose the next; one append-only table, everything else computed |
+| [Sanctuary](docs/design/sanctuary.md) | A spend economy — coins from levelling, buy & upgrade items; one table of holdings, balance computed |
 | [Journaling](docs/design/journaling.md) | Written reflections, optionally linked to a session, with a fixed mood palette — full CRUD, user-scoped |
 | [Goals](docs/design/goals.md) | Recurring habit goals (activity × cadence); intent stored, this-period progress computed on read |
 | [Analytics](docs/design/analytics.md) | SQL-aggregated insights — minutes-per-week, by type / weekday / time-of-day, journal moods; timezone-aware, read-only |
@@ -299,7 +299,8 @@ Numbered, immutable records of significant choices — see [`docs/decisions/`](d
 | [0007](docs/decisions/0007-google-oauth-id-token.md) | Sign in with Google via ID-token verification |
 | [0008](docs/decisions/0008-ai-suggestions-curated-fallback.md) | AI suggestions with a curated fallback |
 | [0009](docs/decisions/0009-gamification-computed-from-activity.md) | Gamification computed from activity, not stored |
-| [0010](docs/decisions/0010-sanctuary-cultivation.md) | Sanctuary — cultivation sequence, not a spend economy |
+| [0010](docs/decisions/0010-sanctuary-cultivation.md) | Sanctuary — cultivation sequence, not a spend economy _(superseded by 0011)_ |
+| [0011](docs/decisions/0011-sanctuary-spend-economy.md) | Sanctuary — a spend economy (coins, buy, upgrade) |
 
 ---
 

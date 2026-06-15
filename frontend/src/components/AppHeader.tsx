@@ -18,6 +18,7 @@ export default function AppHeader() {
   const location = useLocation()
   const [level, setLevel] = useState<number | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const moreRef = useRef<HTMLDivElement>(null)
 
   // Refetch on every navigation so the level stays live after earning XP.
@@ -28,8 +29,11 @@ export default function AppHeader() {
       .catch(() => {})
   }, [location.pathname])
 
-  // Close the "More" menu on navigation.
-  useEffect(() => setMoreOpen(false), [location.pathname])
+  // Close the "More" menu and the mobile nav on navigation.
+  useEffect(() => {
+    setMoreOpen(false)
+    setNavOpen(false)
+  }, [location.pathname])
 
   // Close it on an outside click or Escape.
   useEffect(() => {
@@ -58,7 +62,16 @@ export default function AppHeader() {
       <Link to="/" className="app-brand">
         MeditationOS
       </Link>
-      <nav className="app-nav">
+      <button
+        type="button"
+        className="nav-toggle"
+        aria-label="Menu"
+        aria-expanded={navOpen}
+        onClick={() => setNavOpen((o) => !o)}
+      >
+        {navOpen ? '✕' : '☰'}
+      </button>
+      <nav className={`app-nav${navOpen ? ' open' : ''}`}>
         <Link to="/" className="nav-home">
           Home
         </Link>
@@ -97,6 +110,15 @@ export default function AppHeader() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* On mobile the "More" dropdown is hidden; its links show inline in the menu. */}
+        <div className="nav-mobile-extra">
+          {MORE_LINKS.map((l) => (
+            <Link key={l.to} to={l.to}>
+              {l.label}
+            </Link>
+          ))}
         </div>
       </nav>
       <div className="app-user">

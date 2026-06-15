@@ -3,10 +3,14 @@ import GuestButton from '../components/GuestButton'
 import SiteFooter from '../components/SiteFooter'
 
 const FEATURES = [
-  { emoji: '🫁', title: 'HRV resonance breathing', body: 'A guided pacer at your chosen slow rate, with an ocean-breath audio guide.' },
-  { emoji: '📊', title: 'A dashboard for your practice', body: 'Streaks, levels, a weekly breakdown, and a year-long activity heatmap.' },
-  { emoji: '📓', title: 'Journal & gratitude', body: 'Reflect on a session and capture what you’re grateful for — with AI-suggested prompts.' },
-  { emoji: '🎯', title: 'Goals & a garden', body: 'Set targets and grow a Sanctuary that flourishes the more you practice.' },
+  { emoji: '🧘', title: 'Meditation timer', body: 'Unguided “sit now” sessions with a calm timer, optional start / interval / end bells, and timing that survives a backgrounded tab.' },
+  { emoji: '🫁', title: 'HRV resonance breathing', body: 'A guided pacer at your chosen slow rate, with an ocean-breath audio guide and a breathing circle to follow.' },
+  { emoji: '🙏', title: 'Gratitude', body: 'Capture small moments of gratitude across 37 themes — with AI-suggested prompts, or write your own.' },
+  { emoji: '📓', title: 'Journal', body: 'Reflect on a sit, tag a mood, and resurface a random past entry to revisit.' },
+  { emoji: '🎯', title: 'Goals', body: 'Set recurring habits — meditate, breathe, journal — and watch progress fill in automatically from your activity.' },
+  { emoji: '🌳', title: 'Sanctuary', body: 'Earn coins as you level up, then buy and upgrade a garden of plants, pets, and places.' },
+  { emoji: '📊', title: 'Dashboard & analytics', body: 'Streaks, levels, a weekly breakdown, an activity heatmap, and trends across type, day, and time.' },
+  { emoji: '🔥', title: 'Streaks, XP & quests', body: 'Rotating daily quests, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
 ]
 
 export default function LandingPage() {

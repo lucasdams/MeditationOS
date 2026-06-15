@@ -108,13 +108,15 @@ toward the V3 AI features below.
 
 ### Sanctuary (added during V1)
 
-A garden you grow by practicing: procedural **SVG** plants across nature, structures
-& companions tracks, grown one at a time, with milestone unlocks and streak-driven
-vitality. Stored as a single append-only list of choices; growth/unlocks/vitality are
-**computed from activity**. See [sanctuary design](design/sanctuary.md) and
-[ADR-0010](decisions/0010-sanctuary-cultivation.md).
+A garden built through a small **spend economy**: earn **coins** as you level up, then
+**buy** procedural **SVG** items (nature · structures · companions) and **upgrade** them
+through visual tiers. Only the holdings + each item's tier are stored; the coin balance
+is **computed on read** (`level × coins − spent`), with the level taken from *earned XP*
+so coins never decrease. See [sanctuary design](design/sanctuary.md) and
+[ADR-0011](decisions/0011-sanctuary-spend-economy.md) (which superseded the original
+cultivation model, [ADR-0010](decisions/0010-sanctuary-cultivation.md)).
 
-**Demonstrates:** the product's strongest retention loop with a minimal data footprint
+**Demonstrates:** an in-app economy with a derived balance and a minimal data footprint
 
 ### Daily practice reminders (added during V1)
 

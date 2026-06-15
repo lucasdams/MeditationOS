@@ -1,6 +1,11 @@
 # ADR-0010: Sanctuary — cultivation sequence, not a spend economy
 
-**Status:** Accepted · 2026-06 · Detail: [Sanctuary design](../design/sanctuary.md) · Amends [ADR-0009](0009-gamification-computed-from-activity.md)
+**Status:** Superseded by [ADR-0011](0011-sanctuary-spend-economy.md) (2026-06-15) · Detail: [Sanctuary design](../design/sanctuary.md) · Amends [ADR-0009](0009-gamification-computed-from-activity.md)
+
+> **Superseded.** The product later adopted the spend-economy shape this ADR rejected —
+> coins earned by levelling, spent to **buy** and **upgrade** items — for a richer
+> "earn → choose → upgrade" loop. See [ADR-0011](0011-sanctuary-spend-economy.md). The
+> rest of this document is kept for the original rationale.
 
 ## Context
 

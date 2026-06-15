@@ -1,161 +1,129 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { itemLabel, VITALITY } from '../lib/sanctuaryArt'
+import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
-import { useTheme } from '../context/ThemeContext'
-import { celestialFraction, SEASONS } from '../lib/theme'
-import type { SanctuaryScene } from '../types'
+import { itemLabel, VITALITY } from '../lib/sanctuaryArt'
+import type { SanctuaryScene as Scene } from '../types'
 
-// A small day/night band above the garden: a sun or moon that arcs across the sky
-// by the local time, over a season-tinted gradient. Purely ambient.
-function SanctuarySky() {
-  const { season, dayPhase, now } = useTheme()
-  const frac = celestialFraction(now)
-  const left = frac * 100
-  // Arc: low near midnight, highest at midday.
-  const top = 64 - 46 * Math.sin(frac * Math.PI)
-  const isNight = dayPhase === 'night'
-  const seasonMeta = SEASONS.find((s) => s.value === season)
+const stars = (n: number) => '★'.repeat(n)
 
-  return (
-    <div className="sanctuary-sky" data-night={isNight}>
-      <div className="sanctuary-celestial" style={{ left: `${left}%`, top: `${top}%` }} />
-      <div className="sanctuary-sky-label">
-        {seasonMeta?.emoji} {seasonMeta?.label} · {dayPhase}
-      </div>
-    </div>
-  )
-}
-
-/**
- * Sanctuary (Phase 3): the dedicated builder page. Shows the full garden, the plant
- * currently growing, and — when it's fully grown — a celebratory "choose what to grow
- * next" beat. A just-planted item pops in.
- */
 export default function SanctuaryPage() {
-  const [scene, setScene] = useState<SanctuaryScene | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [planting, setPlanting] = useState(false)
-  const [justPlanted, setJustPlanted] = useState<number | null>(null)
-  const flashTimer = useRef<number | null>(null)
+  const { showToast } = useToast()
+  const [scene, setScene] = useState<Scene | null>(null)
+  const [error, setError] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
 
   useEffect(() => {
     sanctuaryService
       .getScene()
       .then(setScene)
-      .catch(() => setError('Could not load your sanctuary.'))
-    return () => {
-      if (flashTimer.current) window.clearTimeout(flashTimer.current)
-    }
+      .catch(() => setError(true))
   }, [])
 
-  async function plant(itemKey: string) {
-    setPlanting(true)
-    setError(null)
+  async function buy(key: string) {
+    setBusy(`buy:${key}`)
     try {
-      const updated = await sanctuaryService.plantNext(itemKey)
-      setScene(updated)
-      setJustPlanted(updated.plantings.length - 1)
-      if (flashTimer.current) window.clearTimeout(flashTimer.current)
-      flashTimer.current = window.setTimeout(() => setJustPlanted(null), 1200)
+      setScene(await sanctuaryService.buy(key))
+      showToast(`Bought a ${itemLabel(key).toLowerCase()}. 🌱`)
     } catch {
-      setError('Could not plant that. Please try again.')
+      showToast('Could not buy that — earn more coins by practicing.', 'error')
     } finally {
-      setPlanting(false)
+      setBusy(null)
     }
   }
 
-  const plantings = scene?.plantings ?? []
-  const currentPos = scene?.current_position ?? null
-  const current = plantings.find((p) => p.position === currentPos) ?? null
-  const readyToPlant = scene != null && currentPos === null && scene.next_options.length > 0
+  async function upgrade(id: string, key: string) {
+    setBusy(`up:${id}`)
+    try {
+      setScene(await sanctuaryService.upgrade(id))
+      showToast(`Upgraded your ${itemLabel(key).toLowerCase()}. ✨`)
+    } catch {
+      showToast('Could not upgrade that yet.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   return (
-    <main className="sanctuary-page">
-      <header>
+    <main className="dashboard">
+      <Link to="/" className="back-link">
+        ← Dashboard
+      </Link>
+      <header className="page-head">
         <h1>Sanctuary</h1>
-        <Link to="/" className="back-link">← Dashboard</Link>
+        <p className="page-subtitle">
+          Earn coins as you level up, then buy and upgrade your garden.
+        </p>
       </header>
-      <p className="muted">A garden you grow by practicing. Finish one, then choose the next.</p>
 
-      <SanctuarySky />
-
+      {!scene && !error && <p>Loading…</p>}
       {error && (
         <p role="alert" className="error">
-          {error}
+          Could not load your sanctuary.
         </p>
       )}
-      {!scene && !error && <p className="muted">Loading…</p>}
 
       {scene && (
         <>
-          <div className={`sanctuary-garden big vit-${scene.vitality}`}>
-            {plantings.map((p) => (
-              <div
-                key={p.position}
-                className={[
-                  'sanctuary-plot',
-                  p.position === currentPos ? 'growing' : '',
-                  p.complete ? 'grown' : '',
-                  p.position === justPlanted ? 'just-planted' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                <SanctuaryPlant itemKey={p.item_key} progress={p.progress} />
-                <div className="sanctuary-caption">{itemLabel(p.item_key)}</div>
+          <div className="sanctuary-wallet">
+            <span className="sanctuary-coins">🪙 {scene.coins}</span>
+            <span className="muted">
+              Level {scene.level} · {VITALITY[scene.vitality].emoji}{' '}
+              {VITALITY[scene.vitality].label}
+            </span>
+          </div>
+
+          <h2 className="sanctuary-section-title">Your garden</h2>
+          {scene.owned.length === 0 ? (
+            <p className="muted">Empty for now — buy your first item from the shop below.</p>
+          ) : (
+            <div className="sanctuary-grid">
+              {scene.owned.map((o) => (
+                <div key={o.id} className="sanctuary-card">
+                  <SanctuaryPlant itemKey={o.item_key} tier={o.tier} />
+                  <div className="sanctuary-card-name">
+                    {itemLabel(o.item_key)}
+                    {o.tier > 0 && <span className="sanctuary-tier"> {stars(o.tier)}</span>}
+                  </div>
+                  {o.next_upgrade_cost != null ? (
+                    <button
+                      type="button"
+                      className="sanctuary-buy"
+                      disabled={busy != null || scene.coins < o.next_upgrade_cost}
+                      onClick={() => upgrade(o.id, o.item_key)}
+                    >
+                      ⬆ Upgrade · 🪙 {o.next_upgrade_cost}
+                    </button>
+                  ) : (
+                    <span className="muted sanctuary-maxed">Max tier {stars(o.max_tier)}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h2 className="sanctuary-section-title">Shop</h2>
+          <div className="sanctuary-grid">
+            {scene.shop.map((s) => (
+              <div key={s.item_key} className={`sanctuary-card${s.unlocked ? '' : ' locked'}`}>
+                <SanctuaryPlant itemKey={s.item_key} tier={0} />
+                <div className="sanctuary-card-name">{itemLabel(s.item_key)}</div>
+                {s.unlocked ? (
+                  <button
+                    type="button"
+                    className="sanctuary-buy"
+                    disabled={busy != null || scene.coins < s.cost}
+                    onClick={() => buy(s.item_key)}
+                  >
+                    Buy · 🪙 {s.cost}
+                  </button>
+                ) : (
+                  <span className="muted sanctuary-locked-hint">🔒 {s.hint}</span>
+                )}
               </div>
             ))}
           </div>
-
-          <div className={`sanctuary-vitality vit-${scene.vitality}`}>
-            {VITALITY[scene.vitality].emoji} {VITALITY[scene.vitality].label}
-            {scene.current_streak > 0 && ` · ${scene.current_streak}-day streak`}
-          </div>
-
-          {current && (
-            <div className="sanctuary-current">
-              <div className="xp-bar">
-                <div
-                  className="xp-fill"
-                  style={{ width: `${Math.round(current.progress * 100)}%` }}
-                />
-              </div>
-              <div className="sanctuary-hint muted">
-                Growing your {itemLabel(current.item_key).toLowerCase()} —{' '}
-                {Math.round(current.progress * 100)}% there. Keep practicing.
-              </div>
-            </div>
-          )}
-
-          {readyToPlant && (
-            <div className="sanctuary-celebrate">
-              <div className="sanctuary-celebrate-title">
-                ✨ Fully grown — choose what to grow next
-              </div>
-              <div className="sanctuary-options">
-                {scene.next_options.map((o) => (
-                  <button
-                    key={o.item_key}
-                    type="button"
-                    className={`chip${o.unlocked ? '' : ' chip-locked'}`}
-                    disabled={planting || !o.unlocked}
-                    title={o.hint ?? undefined}
-                    onClick={() => o.unlocked && plant(o.item_key)}
-                  >
-                    {o.unlocked ? '' : '🔒 '}
-                    {itemLabel(o.item_key)}
-                    {!o.unlocked && o.hint && <span className="chip-hint"> · {o.hint}</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <p className="muted sanctuary-summary">
-            {plantings.length} {plantings.length === 1 ? 'planting' : 'plantings'} in your sanctuary
-          </p>
         </>
       )}
     </main>
