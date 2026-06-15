@@ -277,13 +277,37 @@ const RENDERERS: Record<string, (props: { p: number }) => JSX.Element> = {
   dog: Dog,
 }
 
-export default function SanctuaryPlant({ itemKey, progress }: { itemKey: string; progress: number }) {
-  const Render = RENDERERS[itemKey]
-  const p = clamp01(progress)
+// A 4-point sparkle, used to mark upgraded items (one per tier).
+function Sparkle({ cx, cy, r = 2.4 }: { cx: number; cy: number; r?: number }) {
   return (
-    <svg className="sanctuary-svg" viewBox="0 0 80 80" role="img" aria-label={itemKey}>
+    <path
+      d={`M${cx} ${cy - r * 1.7} L${cx + r * 0.5} ${cy - r * 0.5} L${cx + r * 1.7} ${cy} L${cx + r * 0.5} ${cy + r * 0.5} L${cx} ${cy + r * 1.7} L${cx - r * 0.5} ${cy + r * 0.5} L${cx - r * 1.7} ${cy} L${cx - r * 0.5} ${cy - r * 0.5} Z`}
+      fill="#fbbf24"
+    />
+  )
+}
+
+const SPARKLE_SPOTS = [
+  { cx: 62, cy: 18 },
+  { cx: 18, cy: 16 },
+  { cx: 64, cy: 40 },
+]
+
+// Items are bought fully built; `tier` adds a visible "upgraded" flourish — a slight
+// scale, a golden aura at the top tier, and one sparkle per tier.
+export default function SanctuaryPlant({ itemKey, tier = 0 }: { itemKey: string; tier?: number }) {
+  const Render = RENDERERS[itemKey]
+  const k = 1 + Math.min(Math.max(tier, 0), 3) * 0.05 // gentle scale-up per tier
+  return (
+    <svg className="sanctuary-svg" viewBox="0 0 80 80" role="img" aria-label={`${itemKey} tier ${tier}`}>
+      {tier >= 2 && <circle cx={40} cy={46} r={28} fill="#fde68a" opacity={0.28} />}
       <ellipse cx={40} cy={72} rx={24} ry={4} fill="#dcfce7" />
-      {Render ? <Render p={p} /> : <circle cx={40} cy={50} r={6} fill="#cbd5e1" />}
+      <g transform={`translate(40 50) scale(${k}) translate(-40 -50)`}>
+        {Render ? <Render p={1} /> : <circle cx={40} cy={50} r={6} fill="#cbd5e1" />}
+      </g>
+      {Array.from({ length: Math.min(tier, SPARKLE_SPOTS.length) }).map((_, i) => (
+        <Sparkle key={i} {...SPARKLE_SPOTS[i]} />
+      ))}
     </svg>
   )
 }

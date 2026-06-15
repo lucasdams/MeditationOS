@@ -1,62 +1,57 @@
-# Sanctuary Design — a garden you grow by practicing
+# Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0010 (cultivation, not a spend economy)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
-The Sanctuary is the product's strongest retention loop: a space — a garden /
-homestead — that fills up over time **through practice**. You grow **one thing at a
-time**; as you practice it grows; when it finishes, you **choose what to grow next**
-(another tree, a flower, a barn, a companion). The page background becomes the
-accumulated assortment of everything you've completed, with the current item visibly
-growing among them.
+The Sanctuary is the product's retention loop: a small **spend economy**. You earn
+**coins** as you level up and spend them to **buy** items (plants, structures, pets) and
+**upgrade** them through visual tiers (tree → flowering → old oak). The loop is *earn →
+choose → upgrade*.
 
-It extends, in stored form, the same idea already shipped in miniature: the dashboard
-ASCII tree that grows with your level. Here the tree is just the first plant in a
-larger, user-shaped scene.
+> Previously this was a *cultivation* model — grow one thing at a time by practicing,
+> no currency. That's [ADR-0010](../decisions/0010-sanctuary-cultivation.md), now
+> superseded by [ADR-0011](../decisions/0011-sanctuary-spend-economy.md).
 
 ## Core principle
 
-Practice **is** the currency — there is no separate one to bank or spend. The only
-thing the user *decides* is **what to grow and in what order**, so that is the only
-thing stored. Everything else (progress, completion, what's unlocked, thriving vs.
-dormant) is **computed on read** from the activity log + the sequence. See
-[ADR-0010](../decisions/0010-sanctuary-cultivation.md); this honors
-[ADR-0009](../decisions/0009-gamification-computed-from-activity.md)'s
-"store only what cannot be derived."
+Coins come from your **level**, which is computed from **earned XP** — total XP minus
+the streak bonus. Excluding the volatile streak bonus keeps coins **monotonic**: a lapsed
+streak never takes coins (or bought items) away, so the garden never regresses. Because
+level rises with *all* XP-earning activity, meditation, breathing, gratitude, and journal
+all contribute to coins.
+
+The only stored state is **what you own and each item's tier**. Spending is *derived from
+holdings* — there's no wallet row or transaction log:
+
+```
+coins_earned = level × COINS_PER_LEVEL          (level from earned XP)
+coins_spent  = Σ owned (buy_cost + Σ upgrade_costs up to its tier)
+balance      = coins_earned − coins_spent
+```
 
 ## The loop
 
 ```
-practice → current item grows → it completes → choose what to grow next → it joins the scene
-                     ▲                                                              │
-                     └──────────────────────────────────────────────────────────────┘
+level up → coins → buy an item (or upgrade one you own) → it joins / improves the garden
 ```
-
-- **Auto-seeded.** Every user starts with a seedling at position 0, so the scene
-  always has something growing from day one.
-- **One at a time.** Exactly one item is "growing" at any moment; the rest are done
-  (placed in the background) or not-yet-chosen.
-- **Carry-over.** Practice accrued past a completion is not wasted — it flows into the
-  next item once chosen, so returning after a break can find the next plant already
-  part-grown ("your practice was waiting for you").
 
 ## Data model
 
-The entire persistent footprint is one append-only table.
+One table — the holdings; the balance is computed.
 
 ```
 sanctuary_plantings
   id          UUID         pk
   user_id     UUID         fk users ON DELETE CASCADE
   item_key    TEXT         -- references SANCTUARY_CATALOG (in code)
-  position    INT          -- order in the growth sequence: 0, 1, 2, …
+  position    INT          -- display order: 0, 1, 2, …
+  tier        INT          -- 0 = base; each upgrade bumps it (drives cost + art)
   created_at  timestamptz  server default now()
   UNIQUE (user_id, position)
   INDEX (user_id)
 ```
 
-No `user_wallet`, no spend ledger, no `upgrades` table — see
-[ADR-0010 alternatives](../decisions/0010-sanctuary-cultivation.md#alternatives-considered).
-`item_key` may repeat (an assortment of many trees).
+Still no `user_wallet` and no spend ledger — the holdings *are* the ledger
+([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)). `item_key` may repeat.
 
 ## Catalog (in-code constant)
 
@@ -66,49 +61,45 @@ No `user_wallet`, no spend ledger, no `upgrades` table — see
 | field | meaning |
 |-------|---------|
 | `key` | stable id stored in `sanctuary_plantings.item_key` |
-| `track` | `nature` · `structure` · `ambiance` · `companion` |
-| `grow_cost` | practice points to complete (minutes; resonance breathing ×3) |
-| `unlock` | condition to be *offered* (e.g. `level ≥ 5`, `streak ≥ 30`), computed from stats |
-| `stages` | ASCII art per growth stage (seedling → full), reusing the `lib/tree.ts` tier idea |
+| `track` | `nature` · `structure` · `companion` |
+| `cost` | coins to **buy** (tier 0) |
+| `unlock_level` | level required before it appears in the shop |
+| `upgrade_costs` | coins to reach tier 1, 2, … (so `max_tier = len(upgrade_costs)`) |
 
-Sketch:
+Each item ships with **2 upgrade tiers**, priced off the buy cost (`×1.5`, then `×3`).
+The shipped catalog (coins):
 
-The shipped catalog (`grow_cost` in practice points; unlocks by lifetime points and/or
-current streak):
+| key | track | buy | unlock | upgrades (t1, t2) |
+|-----|-------|-----|--------|-------------------|
+| `tree` | nature | 40 | lvl 1 | 60, 120 |
+| `flower` | nature | 25 | lvl 1 | 38, 75 |
+| `pond` | nature | 80 | lvl 4 | 120, 240 |
+| `hut` | structure | 60 | lvl 2 | 90, 180 |
+| `cottage` | structure | 90 | lvl 3 | 135, 270 |
+| `barn` | structure | 120 | lvl 4 | 180, 360 |
+| `car` | structure | 130 | lvl 5 | 195, 390 |
+| `beach_house` | structure | 150 | lvl 6 | 225, 450 |
+| `boat` | structure | 170 | lvl 8 | 255, 510 |
+| `goldfish` | companion | 30 | lvl 1 | 45, 90 |
+| `bird` | companion | 35 | lvl 2 | 53, 105 |
+| `cat` | companion | 50 | lvl 3 | 75, 150 |
+| `snake` | companion | 60 | lvl 4 | 90, 180 |
+| `fox` | companion | 70 | lvl 5 | 105, 210 |
+| `dog` | companion | 90 | lvl 6 | 135, 270 |
 
-| key | track | grow cost | unlock |
-|-----|-------|-----------|--------|
-| `tree` | nature | 60 | always (starter) |
-| `flower` | nature | 30 | always |
-| `pond` | nature | 120 | ≥ 100 points |
-| `hut` | structure | 90 | ≥ 60 points |
-| `cottage` | structure | 110 | ≥ 120 points |
-| `barn` | structure | 150 | ≥ 150 points |
-| `car` | structure | 160 | ≥ 200 points |
-| `beach_house` | structure | 180 | ≥ 250 points |
-| `boat` | structure | 220 | ≥ 350 points |
-| `goldfish` | companion | 35 | ≥ 30 points |
-| `bird` | companion | 40 | ≥ 50 points |
-| `cat` | companion | 60 | ≥ 80 points |
-| `snake` | companion | 70 | ≥ 120 points |
-| `fox` | companion | 80 | a 3-day streak |
-| `dog` | companion | 100 | a 7-day streak |
-
-`grow_cost` and `unlock` are tunable constants — changing them recomputes everything
-with no migration (the property valued in XP). Prefer lowering or holding costs; see
-the ADR consequences.
+All costs are tunable constants — retuning needs no migration. `COINS_PER_LEVEL = 50`.
 
 ## Computed state
 
-In a `sanctuary_service`, from cumulative practice points `P` (the same activity
-`dashboard_service` already reads) and the ordered plantings:
+In `sanctuary_service`, from the user's level (via `dashboard_service.get_stats`, on
+**earned XP**) and the stored holdings:
 
-- **Completion** — planting `i` is complete when `P ≥ Σ grow_cost[0..i]` (thresholds
-  stack in order).
-- **Current item** — the first not-yet-complete planting; its progress = how far `P`
-  reaches into its band, `0..1`.
-- **Offered next** — catalog items whose `unlock` condition is met, surfaced only when
-  the current item is complete.
+- **Coins** — `level × COINS_PER_LEVEL − Σ spent`, where spent of an owned item at tier
+  `t` is `cost + Σ upgrade_costs[0..t-1]`. Clamped to ≥ 0 (legacy gardens may show 0).
+- **Owned** — each holding with its `tier`, `max_tier`, and `next_upgrade_cost`
+  (`null` when maxed).
+- **Shop** — every catalog item with `unlocked = level ≥ unlock_level` and a hint
+  otherwise.
 - **Vitality** — a thriving/dim flag from `current_streak_days`; visual only, never
   destructive.
 
@@ -118,13 +109,11 @@ Layered route → service → model, user-scoped, default-deny (the standard che
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/api/v1/sanctuary` | the scene: ordered plantings (with computed completion + current progress), and the unlocked next-options when ready |
-| `POST` | `/api/v1/sanctuary/plantings` | `{ item_key }` — grow the next item |
+| `GET` | `/api/v1/sanctuary` | coins, level, owned (with tier + upgrade cost), and the shop |
+| `POST` | `/api/v1/sanctuary/buy` | `{ item_key }` → buy a fresh tier-0 item · `404` unknown · `409` locked or too poor |
+| `POST` | `/api/v1/sanctuary/items/{id}/upgrade` | upgrade one tier · `404` not yours · `409` maxed or too poor |
 
-`POST` validates, in order: (1) `item_key` is in the catalog and **unlocked**; (2) the
-**current item is complete** (no queuing ahead). Then it appends at the next
-`position` and returns the updated scene. The very first planting (empty sequence) is
-the auto-seeded starter. No balance check exists — there is no balance.
+Both writes validate the level requirement (buy) and the **balance** before committing.
 
 ## Frontend
 

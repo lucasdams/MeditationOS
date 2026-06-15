@@ -375,25 +375,27 @@ distribution.
 
 ## Sanctuary ✅ implemented
 
+A small spend economy: earn coins by levelling, spend them to buy and upgrade items.
+
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/sanctuary` | ✓ | The caller's garden scene — ordered plantings with computed growth, plus the unlocked next-options |
-| POST | `/sanctuary/plantings` | ✓ | Grow the next item `{ item_key }` → updated scene; `409` if locked or something is still growing |
+| GET | `/sanctuary` | ✓ | Coins, level, owned items (with tier + next upgrade cost), and the shop |
+| POST | `/sanctuary/buy` | ✓ | Buy a fresh tier-0 item `{ item_key }` → updated scene; `404` unknown · `409` level-locked or too few coins |
+| POST | `/sanctuary/items/{id}/upgrade` | ✓ | Upgrade an owned item one tier → updated scene; `404` not the caller's · `409` already maxed or too few coins |
 
 ```
 GET /api/v1/sanctuary
 → 200
 {
-  "plantings": [
-    { "item_key": "tree", "track": "nature", "position": 0,
-      "stage": 4, "stage_count": 4, "progress": 1, "complete": true },
-    { "item_key": "pond", "track": "nature", "position": 1,
-      "stage": 0, "stage_count": 4, "progress": 0.13, "complete": false }
+  "coins": 130,
+  "level": 5,
+  "owned": [
+    { "id": "…", "item_key": "tree", "track": "nature", "position": 0,
+      "tier": 1, "max_tier": 2, "next_upgrade_cost": 120 }
   ],
-  "current_position": 1,
-  "next_options": [
-    { "item_key": "flower", "track": "nature", "unlocked": true },
-    { "item_key": "fox", "track": "companion", "unlocked": false, "hint": "Keep a 3-day streak" }
+  "shop": [
+    { "item_key": "flower", "track": "nature", "cost": 25, "unlocked": true, "hint": null },
+    { "item_key": "pond", "track": "nature", "cost": 80, "unlocked": false, "hint": "Reach level 4" }
   ],
   "vitality": "thriving",
   "current_streak": 3
@@ -401,20 +403,15 @@ GET /api/v1/sanctuary
 ```
 
 ```
-POST /api/v1/sanctuary/plantings
-{ "item_key": "flower" }
-→ 201   (the updated scene, same shape as GET /sanctuary)
-   · 404 if item_key is unknown
-   · 409 if it isn't unlocked yet, or the current item is still growing
+POST /api/v1/sanctuary/buy            { "item_key": "flower" }   → 201 (updated scene)
+POST /api/v1/sanctuary/items/{id}/upgrade                        → 200 (updated scene)
 ```
 
-The garden is stored only as the **ordered sequence of plantings** (`sanctuary_plantings`,
-see [data-model](data-model.md)); growth, completion, the offered next-options, and
-`vitality` (`dormant` / `thriving` / `flourishing`) are all **computed on read** from
-cumulative practice points and the current streak — no wallet or balance is stored.
-`next_options` is surfaced only when the current item is fully grown; locked items carry
-a `hint` describing the unlock requirement. See
-[ADR-0010](../decisions/0010-sanctuary-cultivation.md) and the
+Only the holdings (`sanctuary_plantings`, with a `tier`) are stored; the **coin balance
+is computed on read** — `level × COINS_PER_LEVEL − Σ spent`, with the level taken from
+*earned XP* (total XP minus the streak bonus) so coins never decrease. `vitality`
+(`dormant` / `thriving` / `flourishing`) is from the current streak. See
+[ADR-0011](../decisions/0011-sanctuary-spend-economy.md) and the
 [Sanctuary design](sanctuary.md).
 
 ## Mood check-ins ✅ implemented

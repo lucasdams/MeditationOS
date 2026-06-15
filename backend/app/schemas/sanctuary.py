@@ -1,41 +1,42 @@
-"""Sanctuary response schemas. See docs/design/sanctuary.md.
+"""Sanctuary response schemas. See docs/design/sanctuary.md and ADR-0011.
 
-The scene is the user's ordered cultivation sequence. Each planting's stage, progress,
-and completion — plus the garden's vitality and which items are unlocked — are computed
-on read; the ASCII art for each (item_key, stage) lives on the frontend
-(`lib/sanctuaryArt.ts`). The backend owns *growth*, the frontend owns *rendering*.
+The sanctuary is a small spend economy: you earn **coins** as you level up (computed
+from earned XP) and spend them to **buy** items or **upgrade** them through visual tiers.
+What you own (and each item's tier) is the only stored state; the balance is computed
+on read as coins earned − coins spent.
 """
 
 from pydantic import BaseModel
 
 
-class PlantState(BaseModel):
+class OwnedItem(BaseModel):
+    id: str  # the planting row id (for upgrade requests)
     item_key: str
     track: str
-    position: int  # order in the sequence
-    stage: int  # 0 .. stage_count - 1
-    stage_count: int
-    progress: float  # 0.0 .. 1.0
-    complete: bool
+    position: int  # display order
+    tier: int  # 0 = base; each upgrade bumps it
+    max_tier: int  # highest tier available for this item
+    next_upgrade_cost: int | None  # coins to upgrade once more; None if maxed
 
 
-class CatalogOption(BaseModel):
-    """An item the user may choose to grow next. Locked items are still listed (so the
-    UI can show them with their requirement), but only `unlocked` ones can be planted."""
+class ShopItem(BaseModel):
+    """A catalog item you can buy. Locked items are listed with a hint (level needed)."""
 
     item_key: str
     track: str
-    unlocked: bool
-    hint: str | None  # what's needed to unlock it (None when already unlocked)
+    cost: int  # coins to buy (tier 0)
+    unlocked: bool  # level requirement met
+    hint: str | None  # what's needed to unlock (None when unlocked)
 
 
 class SanctuaryScene(BaseModel):
-    plantings: list[PlantState]  # the whole garden, ordered
-    current_position: int | None  # the actively growing planting; None if all complete
-    next_options: list[CatalogOption]  # offered only when ready to plant next
+    coins: int  # spendable balance (earned − spent)
+    level: int  # the user's level (coins accrue as it rises)
+    owned: list[OwnedItem]  # the garden, in display order
+    shop: list[ShopItem]  # everything buyable, with unlock state
     vitality: str  # "dormant" | "thriving" | "flourishing" — from the current streak
     current_streak: int
 
 
-class PlantRequest(BaseModel):
+class BuyRequest(BaseModel):
     item_key: str

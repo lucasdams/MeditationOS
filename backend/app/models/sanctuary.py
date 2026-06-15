@@ -1,8 +1,8 @@
-"""Sanctuary planting model — one item in the user's cultivation sequence.
+"""Sanctuary item model — one item the user owns, at a given upgrade tier.
 
-The *only* stored Sanctuary state (ADR-0010): an append-only, ordered list of what the
-user chose to grow. Progress, completion, the current item, and unlocks are all
-computed on read from activity — nothing about growth is stored here.
+The only stored Sanctuary state (ADR-0011): which items the user has bought and each
+item's `tier`. The coin balance is computed on read (coins earned from levels − coins
+spent on what's owned). Item costs / tiers live in code (SANCTUARY_CATALOG).
 """
 
 import uuid
@@ -36,8 +36,10 @@ class SanctuaryPlanting(Base):
     )
     # References the in-code SANCTUARY_CATALOG (not a DB FK — the catalog lives in code).
     item_key: Mapped[str] = mapped_column(String, nullable=False)
-    # Order in the growth sequence: 0, 1, 2, … (repeats of an item_key are allowed).
+    # Display order: 0, 1, 2, … (repeats of an item_key are allowed).
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Upgrade tier: 0 = base, each purchased upgrade bumps it. Drives cost + art.
+    tier: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

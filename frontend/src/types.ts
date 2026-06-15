@@ -206,29 +206,33 @@ export interface GratitudeSuggestions {
   options: string[]
 }
 
-export interface PlantState {
+// An item the user owns, at a given upgrade tier.
+export interface OwnedItem {
+  id: string
   item_key: string
   track: string
   position: number
-  stage: number // 0 .. stage_count - 1
-  stage_count: number
-  progress: number // 0.0 .. 1.0
-  complete: boolean
+  tier: number // 0 = base
+  max_tier: number
+  next_upgrade_cost: number | null // coins to upgrade once more; null if maxed
 }
 
-export interface CatalogOption {
+// A buyable catalog item (locked ones carry a hint).
+export interface ShopItem {
   item_key: string
   track: string
+  cost: number
   unlocked: boolean
-  hint: string | null // what's needed to unlock it (null when unlocked)
+  hint: string | null
 }
 
 export type Vitality = 'dormant' | 'thriving' | 'flourishing'
 
 export interface SanctuaryScene {
-  plantings: PlantState[]
-  current_position: number | null // the actively growing planting; null if all complete
-  next_options: CatalogOption[]
+  coins: number // spendable balance
+  level: number
+  owned: OwnedItem[]
+  shop: ShopItem[]
   vitality: Vitality
   current_streak: number
 }

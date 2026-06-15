@@ -115,20 +115,21 @@ accepts an AI-suggested) prompt as free `text`.
 
 ### `sanctuary_plantings`
 
-The user's garden, stored as an **append-only ordered list of what they chose to grow**. Everything else — growth, completion, unlocks, vitality — is computed on read from practice activity (see [ADR-0010](../decisions/0010-sanctuary-cultivation.md) and the [Sanctuary design](sanctuary.md)).
+The user's garden as a **spend economy** ([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)): each row is an item they **bought**, with its upgrade `tier`. The coin balance is computed on read (see [Sanctuary design](sanctuary.md)).
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
-| `item_key` | text | NOT NULL — references the in-code `SANCTUARY_CATALOG` (`tree`, `flower`, `pond`, `hut`, `barn`, `bird`, `fox`); not a DB enum so the catalog can evolve without a migration |
-| `position` | int | NOT NULL — order in the growth sequence (0, 1, 2, …) |
+| `item_key` | text | NOT NULL — references the in-code `SANCTUARY_CATALOG` (`tree`, `flower`, `cat`, `boat`, …); not a DB enum so the catalog can evolve without a migration |
+| `position` | int | NOT NULL — display order (0, 1, 2, …) |
+| `tier` | int | NOT NULL, default `0` — upgrade tier (0 = base); drives cost + art |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
-**Constraint:** `UNIQUE(user_id, position)` — backstops a double-plant race. **Index:** `user_id`.
+**Constraint:** `UNIQUE(user_id, position)`. **Index:** `user_id`.
 
-- **No wallet, no spend ledger, no balance** — just the sequence of choices. Grow cost, stage, completion, the next-unlocked options, and vitality are all derived in `sanctuary_service` from cumulative practice points (the same XP unit the dashboard computes) and the current streak.
-- A new user's garden is seeded with a `tree` at `position = 0` on first read (no write until they plant their next item).
+- **No wallet or transaction log** — the holdings *are* the ledger. `coins_spent` = Σ over owned items of `buy_cost + upgrade_costs up to tier`; `coins_earned = level × COINS_PER_LEVEL` (the level from *earned* XP, so coins never decrease); balance = earned − spent. All in `sanctuary_service`.
+- Buying inserts a row at the next `position` (tier 0); upgrading bumps a row's `tier`.
 
 ### `journals`
 
