@@ -40,6 +40,21 @@ export const MOOD_COLORS: Record<Mood, string> = {
   low: '#475569',
 }
 
+// Mood emoji + label — the single source of truth for how a mood reads, shared by the
+// one-tap check-in and the timeline. Order matches the `Mood` type (pleasant → harder).
+export const MOOD_META: Record<Mood, { emoji: string; label: string }> = {
+  calm: { emoji: '😌', label: 'Calm' },
+  content: { emoji: '🙂', label: 'Content' },
+  focused: { emoji: '🎯', label: 'Focused' },
+  energized: { emoji: '⚡', label: 'Energized' },
+  grateful: { emoji: '🙏', label: 'Grateful' },
+  neutral: { emoji: '😐', label: 'Neutral' },
+  restless: { emoji: '😣', label: 'Restless' },
+  anxious: { emoji: '😰', label: 'Anxious' },
+  tired: { emoji: '😴', label: 'Tired' },
+  low: { emoji: '😔', label: 'Low' },
+}
+
 // A rotating palette for charts not keyed to a known concept.
 export const PALETTE = ['#6366f1', '#14b8a6', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#10b981']
 
