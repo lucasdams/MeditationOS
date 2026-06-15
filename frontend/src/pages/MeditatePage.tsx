@@ -297,9 +297,9 @@ export default function MeditatePage() {
 
   return (
     <main className="breathe">
-      <header>
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
         <h1>Meditate</h1>
-        <Link to="/" className="back-link">← Dashboard</Link>
       </header>
 
       {restorable && !started && (

@@ -4,8 +4,7 @@ import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
-import { useToast } from '../context/ToastContext'
-import { usePendingDelete } from '../hooks/usePendingDelete'
+import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor, tint } from '../lib/colors'
 import type { Gratitude, GratitudeCategory } from '../types'
 
@@ -52,15 +51,33 @@ const LABELS: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
 )
 
+// A short, common-first subset shown by default so the composer stays close to the top;
+// the rest hide behind "More themes". Keep "custom" (write-your-own) always visible.
+const COMMON_KEYS: GratitudeCategory[] = [
+  'custom',
+  'people',
+  'health',
+  'nature',
+  'experiences',
+  'growth',
+  'home',
+  'self',
+  'simple_pleasures',
+  'work',
+  'food',
+  'friendship',
+]
+const COMMON = CATEGORIES.filter((c) => COMMON_KEYS.includes(c.key))
+const REST = CATEGORIES.filter((c) => !COMMON_KEYS.includes(c.key))
+
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
 const GRAT_PAGE = 50
 
 export default function GratitudePage() {
-  const { showToast } = useToast()
-  const { schedule, cancel } = usePendingDelete()
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
+  const [showAllThemes, setShowAllThemes] = useState(false)
   const [options, setOptions] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
   const [text, setText] = useState('')
@@ -75,6 +92,15 @@ export default function GratitudePage() {
     xpGained: number
     quests: string[]
   } | null>(null)
+
+  const remove = useUndoableDelete<Gratitude>({
+    list: entries,
+    setList: setEntries,
+    getId: (e) => e.id,
+    remove: (id) => gratitudeService.remove(id),
+    messages: { success: 'Entry deleted.', error: 'Could not delete that entry.' },
+    onStart: () => setError(null),
+  })
 
   useEffect(() => {
     gratitudeService
@@ -151,37 +177,6 @@ export default function GratitudePage() {
     }
   }
 
-  function remove(id: string) {
-    if (!entries) return
-    const index = entries.findIndex((e) => e.id === id)
-    if (index === -1) return
-    const item = entries[index]
-    setError(null)
-    // Optimistically remove now; the real delete fires only after the undo window.
-    setEntries((prev) => prev?.filter((e) => e.id !== id) ?? null)
-
-    const restore = () =>
-      setEntries((cur) => {
-        if (!cur || cur.some((e) => e.id === id)) return cur
-        const next = [...cur]
-        next.splice(Math.min(index, next.length), 0, item)
-        return next
-      })
-
-    schedule(id, () => {
-      gratitudeService.remove(id).catch(() => {
-        restore()
-        showToast('Could not delete that entry.', 'error')
-      })
-    })
-    showToast('Entry deleted.', 'success', {
-      label: 'Undo',
-      onClick: () => {
-        if (cancel(id)) restore()
-      },
-    })
-  }
-
   return (
     <main className="gratitude">
       <Link to="/" className="back-link">← Dashboard</Link>
@@ -193,7 +188,7 @@ export default function GratitudePage() {
       </header>
 
       <div className="grat-categories">
-        {CATEGORIES.map((c) => (
+        {COMMON.map((c) => (
           <button
             key={c.key}
             type="button"
@@ -203,6 +198,27 @@ export default function GratitudePage() {
             <span aria-hidden="true">{c.emoji}</span> {c.label}
           </button>
         ))}
+        {/* Keep a chosen theme on screen even when its from the collapsed set. */}
+        {REST.map((c) =>
+          showAllThemes || category === c.key ? (
+            <button
+              key={c.key}
+              type="button"
+              className={`chip${category === c.key ? ' chip-active' : ''}`}
+              onClick={() => pickCategory(c.key)}
+            >
+              <span aria-hidden="true">{c.emoji}</span> {c.label}
+            </button>
+          ) : null,
+        )}
+        <button
+          type="button"
+          className="chip grat-more"
+          aria-expanded={showAllThemes}
+          onClick={() => setShowAllThemes((v) => !v)}
+        >
+          {showAllThemes ? 'Fewer themes' : 'More themes…'}
+        </button>
       </div>
 
       {category && (
