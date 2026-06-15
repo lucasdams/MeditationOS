@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
-import { newlyCompletedQuests } from '../lib/quests'
+import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor, tint } from '../lib/colors'
@@ -90,7 +90,7 @@ export default function GratitudePage() {
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
-    quests: string[]
+    breakdown: XpLine[]
   } | null>(null)
 
   const remove = useUndoableDelete<Gratitude>({
@@ -160,12 +160,9 @@ export default function GratitudePage() {
       const entry = await gratitudeService.create({ category, text: text.trim() })
       setEntries((prev) => [entry, ...(prev ?? [])])
       const after = await dashboardService.getStats()
-      // True gain from the server (gratitude XP + any daily-quest/streak bonus).
-      setReward({
-        afterXp: after.xp,
-        xpGained: Math.max(0, after.xp - before.xp),
-        quests: newlyCompletedQuests(before, after),
-      })
+      // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
+      const bd = buildXpBreakdown(before, after, '🙏 Gratitude')
+      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
       // Return to the "pick a category" state for next time.
       setCategory(null)
       setText('')
@@ -335,7 +332,7 @@ export default function GratitudePage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
-          questsCompleted={reward.quests}
+          breakdown={reward.breakdown}
           onClose={() => setReward(null)}
         />
       )}

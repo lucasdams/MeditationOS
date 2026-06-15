@@ -4,7 +4,7 @@ import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { playBell } from '../lib/sfx'
-import { newlyCompletedQuests } from '../lib/quests'
+import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import { useToast } from '../context/ToastContext'
@@ -71,7 +71,7 @@ export default function MeditatePage() {
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
-    quests: string[]
+    breakdown: XpLine[]
   } | null>(null)
   // Recovery for an unsaved sit: a leftover draft to offer on load, plus the live
   // bits the draft/beacon read at tab-close time (kept in refs so listeners see fresh
@@ -232,11 +232,8 @@ export default function MeditatePage() {
       savedRef.current = true
       clearDraft(DRAFT_PAGE)
       const after = await dashboardService.getStats()
-      setReward({
-        afterXp: after.xp,
-        xpGained: Math.max(0, after.xp - before.xp),
-        quests: newlyCompletedQuests(before, after),
-      })
+      const bd = buildXpBreakdown(before, after, '🧘 Meditation')
+      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
@@ -399,7 +396,7 @@ export default function MeditatePage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
-          questsCompleted={reward.quests}
+          breakdown={reward.breakdown}
           onClose={() => navigate('/')}
         />
       )}
