@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
 import { newlyCompletedQuests } from '../lib/quests'
 import RewardOverlay from '../components/RewardOverlay'
 import { useToast } from '../context/ToastContext'
+import { usePendingDelete } from '../hooks/usePendingDelete'
 import { gratitudeColor, tint } from '../lib/colors'
 import type { Gratitude, GratitudeCategory } from '../types'
 
@@ -57,6 +59,7 @@ const GRAT_PAGE = 50
 
 export default function GratitudePage() {
   const { showToast } = useToast()
+  const { schedule, cancel } = usePendingDelete()
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
   const [options, setOptions] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
@@ -148,22 +151,46 @@ export default function GratitudePage() {
     }
   }
 
-  async function remove(id: string) {
-    try {
-      await gratitudeService.remove(id)
-      setEntries((prev) => prev?.filter((e) => e.id !== id) ?? null)
-      showToast('Entry deleted.')
-    } catch {
-      setError('Could not delete that entry.')
-    }
+  function remove(id: string) {
+    if (!entries) return
+    const index = entries.findIndex((e) => e.id === id)
+    if (index === -1) return
+    const item = entries[index]
+    setError(null)
+    // Optimistically remove now; the real delete fires only after the undo window.
+    setEntries((prev) => prev?.filter((e) => e.id !== id) ?? null)
+
+    const restore = () =>
+      setEntries((cur) => {
+        if (!cur || cur.some((e) => e.id === id)) return cur
+        const next = [...cur]
+        next.splice(Math.min(index, next.length), 0, item)
+        return next
+      })
+
+    schedule(id, () => {
+      gratitudeService.remove(id).catch(() => {
+        restore()
+        showToast('Could not delete that entry.', 'error')
+      })
+    })
+    showToast('Entry deleted.', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        if (cancel(id)) restore()
+      },
+    })
   }
 
   return (
     <main className="gratitude">
-      <h1>Gratitude</h1>
-      <p className="muted">
-        What are you grateful for right now? Pick a theme for ideas, or write your own.
-      </p>
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
+        <h1>Gratitude</h1>
+        <p className="page-subtitle">
+          What are you grateful for right now? Pick a theme for ideas, or write your own.
+        </p>
+      </header>
 
       <div className="grat-categories">
         {CATEGORIES.map((c) => (
@@ -231,7 +258,7 @@ export default function GratitudePage() {
 
       <section className="grat-journal">
         <h2>Recent</h2>
-        {!entries && !error && <p className="muted">Loading…</p>}
+        {!entries && !error && <p>Loading…</p>}
         {entries && entries.length === 0 && (
           <p className="muted">No entries yet — your first grateful moment starts here.</p>
         )}

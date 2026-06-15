@@ -1346,7 +1346,8 @@ textarea:focus-visible,
 
 /* A calmer page header: a smaller, softer title with a one-line subtitle, instead of
    a lone shouting word. */
-.dashboard .page-head {
+.dashboard .page-head,
+.gratitude .page-head {
   display: block; /* override the flex layout of .dashboard header so the subtitle stacks */
   margin: 0.5rem 0 1.25rem;
 }
