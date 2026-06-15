@@ -1400,13 +1400,27 @@ textarea:focus-visible,
   border-radius: 12px;
 }
 
-.level-tree {
-  margin: 0;
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  line-height: 1.05;
-  font-size: 0.8rem;
-  color: #15803d;
-  white-space: pre;
+.level-badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.level-badge-mark {
+  position: absolute;
+  font-size: 56px;
+  line-height: 1;
+  color: #6ee7b7;
+}
+
+.level-badge-num {
+  position: relative;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #065f46;
 }
 
 .level-meta {
@@ -1414,8 +1428,22 @@ textarea:focus-visible,
 }
 
 .level-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+}
+
+.level-coins {
+  font-weight: 600;
+  color: #b45309;
+}
+
+.level-unlock {
+  font-size: 0.8rem;
+  margin-top: 0.35rem;
 }
 
 .xp-bar {
@@ -1856,11 +1884,8 @@ textarea:focus-visible,
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
 }
 
-.reward-card .level-tree {
-  display: inline-block;
-  text-align: left;
-  color: #15803d;
-  margin-bottom: 1rem;
+.level-badge--reward {
+  margin: 0 auto 1rem;
 }
 
 .reward-level {
@@ -1871,6 +1896,12 @@ textarea:focus-visible,
 
 .reward-up {
   color: #059669;
+}
+
+.reward-coins {
+  font-size: 0.85rem;
+  color: #b45309;
+  margin-top: 0.5rem;
 }
 
 .reward-card .xp-bar {
