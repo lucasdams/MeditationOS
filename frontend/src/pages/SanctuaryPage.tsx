@@ -4,6 +4,7 @@ import { sanctuaryService } from '../services/sanctuary'
 import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
 import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY } from '../lib/sanctuaryArt'
+import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
 
 export default function SanctuaryPage() {
@@ -15,6 +16,9 @@ export default function SanctuaryPage() {
   const [picking, setPicking] = useState<ShopItem | null>(null)
   // The owned item whose customization panel is open.
   const [editing, setEditing] = useState<string | null>(null)
+  // The id of the item just bought, so only it pops/glows into the garden (cleared
+  // after the brief animation so it doesn't re-fire on later renders).
+  const [justBought, setJustBought] = useState<string | null>(null)
 
   useEffect(() => {
     sanctuaryService
@@ -23,12 +27,44 @@ export default function SanctuaryPage() {
       .catch(() => setError(true))
   }, [])
 
+  // Clear the just-bought marker once its pop/glow has played, so the animation
+  // fires only on the new item and never replays on later renders.
+  useEffect(() => {
+    if (justBought == null) return
+    const t = setTimeout(() => setJustBought(null), 900)
+    return () => clearTimeout(t)
+  }, [justBought])
+
   async function buy(key: string, variant: string | null) {
     setBusy(`buy:${key}`)
+    // Snapshot before the buy so we can compute what was spent and spot the new item.
+    const before = scene
+    const beforeIds = new Set(before?.owned.map((o) => o.id) ?? [])
     try {
-      setScene(await sanctuaryService.buy(key, variant))
+      const next = await sanctuaryService.buy(key, variant)
+      setScene(next)
       setPicking(null)
-      showToast(`Bought a ${itemLabel(key).toLowerCase()}. 🌱`)
+
+      // The newly added item is the one whose id wasn't owned before (fall back to the
+      // highest position if ids can't be diffed — e.g. a missing prior scene).
+      const added =
+        next.owned.find((o) => !beforeIds.has(o.id)) ??
+        next.owned.reduce<OwnedItem | null>(
+          (best, o) => (best == null || o.position > best.position ? o : best),
+          null,
+        )
+      if (added) setJustBought(added.id)
+
+      // Gentle audio cue (honours the user's sound setting via the shared sfx module).
+      playReward()
+
+      // Rich feedback: what it's called, what it cost, what's left. Keep the variant
+      // name in the label when one was chosen (e.g. "Oak tree added · …").
+      const name = variant ? `${variantLabel(variant)} ${itemLabel(key).toLowerCase()}` : itemLabel(key)
+      const spent = before ? before.coins - next.coins : null
+      const detail =
+        spent != null ? ` · ${spent} 🪙 spent, ${next.coins} left` : ` · ${next.coins} 🪙 left`
+      showToast(`${name} added${detail}`)
     } catch {
       showToast('Could not buy that — earn more coins by practicing.', 'error')
     } finally {
@@ -87,8 +123,9 @@ export default function SanctuaryPage() {
               {scene.owned.map((o) => {
                 const customCount = Object.keys(o.customizations).length
                 const open = editing === o.id
+                const fresh = justBought === o.id
                 return (
-                  <div key={o.id} className="sanctuary-card">
+                  <div key={o.id} className={`sanctuary-card${fresh ? ' just-bought' : ''}`}>
                     <SanctuaryPlant
                       itemKey={o.item_key}
                       variant={o.variant}
@@ -184,7 +221,7 @@ export default function SanctuaryPage() {
                         disabled={busy != null || !affordable}
                         onClick={() => buy(s.item_key, null)}
                       >
-                        Buy · 🪙 {s.cost}
+                        {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
                       </button>
                     )
                   ) : (
