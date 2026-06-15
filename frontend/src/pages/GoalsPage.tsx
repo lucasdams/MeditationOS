@@ -147,12 +147,11 @@ export default function GoalsPage() {
 
   return (
     <main className="dashboard">
-      <header>
+      <Link to="/" className="back-link">← Dashboard</Link>
+      <header className="page-head">
         <h1>Goals</h1>
+        <p className="page-subtitle">Pick a habit and a cadence, then check in as you practice.</p>
       </header>
-      <p>
-        <Link to="/" className="back-link">← Dashboard</Link>
-      </p>
 
       {view === 'active' && (
         <section className="goal-compose">
