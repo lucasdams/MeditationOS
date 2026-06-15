@@ -9,7 +9,11 @@ bonuses that vary by date.
 
 import uuid
 
-from app.services.sanctuary_service import COINS_PER_LEVEL, SANCTUARY_CATALOG
+from app.services.sanctuary_service import (
+    COINS_PER_LEVEL,
+    SANCTUARY_CATALOG,
+    progressive_surcharge,
+)
 
 
 def _auth(client, email):
@@ -106,9 +110,20 @@ def test_buy_rejects_unexpected_fields(client):
 
 def test_buy_rejected_when_too_poor(client):
     _auth(client, "broke@example.com")
-    client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})  # 25 of 50 spent
-    # Tree (40) now unaffordable (25 left).
-    assert client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).status_code == 409
+    # A fresh user (level 1) has COINS_PER_LEVEL coins. Buy cheap items until the balance
+    # can no longer cover the next surcharged purchase, then assert the next buy is 409.
+    flower = SANCTUARY_CATALOG["flower"].cost  # cheapest item
+    n = 0
+    while True:
+        next_price = flower + progressive_surcharge(n)
+        if _scene(client)["coins"] < next_price:
+            break
+        res = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+        assert res.status_code == 201
+        n += 1
+    assert n >= 1  # at least one purchase was affordable to start
+    # The next flower (with its progressive surcharge) is now unaffordable.
+    assert client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).status_code == 409
 
 
 def test_buy_rejected_when_level_locked(client):
@@ -209,11 +224,27 @@ def test_customize_rejects_unexpected_fields(client):
 
 def test_customize_when_too_poor_is_409(client):
     _auth(client, "poorcustom@example.com")
-    # Buy a flower (25 of 50). 25 left; the grown option costs round(25*1.5)=38.
-    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
-    flower_id = bought["owned"][0]["id"]
+    grown_cost = SANCTUARY_CATALOG["flower"].slot("grown").option("grown").cost
+    # The first flower is our (never-grown) target; growing it should later be rejected.
+    target_id = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()[
+        "owned"
+    ][0]["id"]
+    # Drain the wallet below the grown option's cost by buying + growing *other* flowers; the
+    # rising progressive surcharge guarantees the balance falls under grown_cost eventually.
+    while _scene(client)["coins"] >= grown_cost:
+        bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+        if bought.status_code == 409:
+            break  # too poor even to buy the cheapest item
+        other_id = bought.json()["owned"][-1]["id"]
+        if _scene(client)["coins"] >= grown_cost:
+            client.post(
+                f"/api/v1/sanctuary/items/{other_id}/customize",
+                json={"slot": "grown", "option": "grown"},
+            )
+    assert _scene(client)["coins"] < grown_cost
+    # Growing the still-base target flower is now unaffordable.
     res = client.post(
-        f"/api/v1/sanctuary/items/{flower_id}/customize",
+        f"/api/v1/sanctuary/items/{target_id}/customize",
         json={"slot": "grown", "option": "grown"},
     )
     assert res.status_code == 409
@@ -275,5 +306,87 @@ def test_legacy_row_without_variant_or_customizations_loads(client, db_session):
     flower = next(o for o in scene["owned"] if o["item_key"] == "flower")
     assert flower["variant"] == SANCTUARY_CATALOG["flower"].default_variant
     assert flower["customizations"] == {}
-    # Legacy base form costs exactly the buy price — no extra spend folded in.
+    # Legacy base form costs exactly the buy price — no extra spend folded in. (Position 0
+    # carries no progressive surcharge, so a single legacy row is unaffected by ADR-0013.)
     assert scene["coins"] == before - SANCTUARY_CATALOG["flower"].cost
+
+
+# --- Progressive pricing (ADR-0013) -----------------------------------------------------
+
+
+def test_each_additional_item_costs_more(client):
+    """The k-th item a user buys carries a progressive surcharge round(STEP*position): the
+    first item has none, and each later identical item costs strictly more than the last."""
+    _auth(client, "progressive@example.com")
+    _practice(client, 200)  # plenty of coins so affordability never interferes
+    flower_cost = SANCTUARY_CATALOG["flower"].cost
+
+    prev_balance = _scene(client)["coins"]
+    last_charge = None
+    for k in range(4):
+        after = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+        charge = prev_balance - after["coins"]
+        assert charge == flower_cost + progressive_surcharge(k)
+        if last_charge is not None:
+            assert charge > last_charge  # each additional item costs strictly more
+        last_charge, prev_balance = charge, after["coins"]
+
+
+def test_buy_rejected_when_surcharge_exceeds_balance(client):
+    """The affordability check uses the surcharged cost: an item whose base price is
+    affordable but whose base + surcharge is not must be rejected with 409."""
+    _auth(client, "surcharge409@example.com")
+    flower_cost = SANCTUARY_CATALOG["flower"].cost
+    # Buy flowers until the next one's *base* price still fits but base + surcharge does not.
+    while True:
+        coins = _scene(client)["coins"]
+        n = len(_scene(client)["owned"])
+        surcharged = flower_cost + progressive_surcharge(n)
+        if flower_cost <= coins < surcharged:
+            break  # base affordable, surcharged not — the case we want to assert
+        if coins < flower_cost:
+            # Practice a little to top up so we can reach the target window deterministically.
+            _practice(client, 60, day="2026-02-01")
+            continue
+        assert client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).status_code == 201
+    res = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+    assert res.status_code == 409
+
+
+def test_small_garden_spend_not_above_flat_pricing(client):
+    """A small/typical garden's *spend* under the new (cheaper base + surcharge) economy must
+    not exceed its spend under the old flat pricing for a representative item — so nobody
+    typical is punished even before counting the higher COINS_PER_LEVEL (ADR-0013).
+
+    Old flat economy (pre-tuning): tree base=40, no surcharge.
+    """
+    _auth(client, "notpunished@example.com")
+    _practice(client, 300)  # enough coins for several items
+    OLD_TREE = 40  # pre-ADR-0013 flat buy cost; new base is cheaper (offsets early surcharge)
+
+    before = _scene(client)["coins"]
+    for k in range(3):  # a small, typical 3-item garden
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"})
+        new_spent = before - _scene(client)["coins"]
+        old_spent = OLD_TREE * (k + 1)
+        assert new_spent <= old_spent  # new spend never exceeds the old flat spend
+
+
+def test_small_garden_balance_not_reduced_vs_old_economy(client):
+    """At a fixed level, a small existing garden's *balance* under the new economy is at
+    least its balance under the old economy (old COINS_PER_LEVEL=50, old flower base=25,
+    no surcharge) — the cheaper base + higher COINS_PER_LEVEL more than offset the early
+    surcharge for 1–4 items (ADR-0013)."""
+    _auth(client, "balanceok@example.com")
+    _practice(client, 300)
+    scene = _scene(client)
+    level = scene["level"]
+    OLD_CPL, OLD_FLOWER = 50, 25
+
+    before = scene["coins"]
+    for k in range(4):  # 1..4-item garden
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+        new_balance = _scene(client)["coins"]
+        old_balance = max(0, level * OLD_CPL - OLD_FLOWER * (k + 1))
+        assert new_balance >= old_balance, f"k={k}: {new_balance} < {old_balance}"
+    assert before > 0

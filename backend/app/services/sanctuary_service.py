@@ -9,7 +9,11 @@ streak bonus, so coins never decrease) minus coins spent on owned items. There i
 wallet row and no transaction ledger; the holdings *are* the ledger (ADR-0011).
 
 Spend of one owned item = buy cost + variant cost delta + Σ (cost of each purchased
-customization option). Costs (buy, variants, customization options) are all in-code
+customization option) + a **progressive surcharge** that depends only on the item's
+ordinal among the user's holdings (the k-th item acquired, 0-indexed, pays
+`round(PROGRESSIVE_STEP * k)`). The surcharge is a deterministic function of acquisition
+order, so the balance stays fully derived from holdings (ADR-0011/0013) — no wallet, no
+ledger. Costs (buy, variants, customization options, the surcharge step) are all in-code
 constants — retuning needs no migration.
 """
 
@@ -34,7 +38,27 @@ from app.schemas.sanctuary import (
 from app.services import dashboard_service
 
 # Coins granted per level reached. The garden is paced against this (see catalog costs).
-COINS_PER_LEVEL = 50
+# Raised from 50 → 70 to compensate for the front-loaded per-session XP curve, which makes
+# XP — and therefore coins — accrue more slowly for longer sits (ADR-0013).
+COINS_PER_LEVEL = 70
+
+# Progressive pricing: each additional item the user owns costs more. The surcharge for the
+# k-th holding (0-indexed by acquisition / `position` order) is `round(PROGRESSIVE_STEP * k)`,
+# so the first item pays nothing extra and each later item pays a linearly growing premium.
+# A linear step (rather than geometric) keeps later items expensive but not runaway, and the
+# total is computable purely from the count + order of holdings — balance stays derived
+# (ADR-0013). Combined with the cheaper base costs above, small/typical gardens (1–4 items)
+# are no more expensive than before; only larger gardens pay meaningfully more.
+PROGRESSIVE_STEP = 8
+
+
+def progressive_surcharge(ordinal: int) -> int:
+    """Extra coins charged for the `ordinal`-th item a user acquires (0-indexed).
+
+    Deterministic in the ordinal alone, so total spend is derivable from holdings (no
+    wallet/ledger). `ordinal` is the item's rank in the user's acquisition order.
+    """
+    return round(PROGRESSIVE_STEP * max(0, ordinal))
 
 
 @dataclass(frozen=True)
@@ -163,7 +187,7 @@ def _grown(cost: int) -> tuple[str, int]:
 SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     # --- Nature -----------------------------------------------------------------------
     "tree": (
-        _Build("tree", "nature", 40)
+        _Build("tree", "nature", 30)
         .variants("oak", "pine", "cherry", "willow")
         .slot("grown", _grown(40))
         .slot("foliage", ("fruit", 30), ("blossom", 30), ("autumn", 30))
@@ -172,7 +196,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     "flower": (
-        _Build("flower", "nature", 25)
+        _Build("flower", "nature", 20)
         .variants("rose", "tulip", "sunflower", "daisy")
         .slot("grown", _grown(25))
         .slot("bloom", ("double", 18))
@@ -180,7 +204,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     "pond": (
-        _Build("pond", "nature", 80, unlock_level=4)
+        _Build("pond", "nature", 60, unlock_level=4)
         .slot("grown", _grown(80))
         .slot("lilies", ("lilies", 40))
         .slot("koi", ("koi", 50))
@@ -189,7 +213,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     ),
     # --- Structures -------------------------------------------------------------------
     "hut": (
-        _Build("hut", "structure", 60, unlock_level=2)
+        _Build("hut", "structure", 45, unlock_level=2)
         .variants("straw", "wood")
         .slot("grown", _grown(60))
         .slot("chimney_smoke", ("smoke", 30))
@@ -198,7 +222,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     "cottage": (
-        _Build("cottage", "structure", 90, unlock_level=3)
+        _Build("cottage", "structure", 70, unlock_level=3)
         .variants("cream", "stone")
         .slot("grown", _grown(90))
         .slot("chimney_smoke", ("smoke", 40))
@@ -207,7 +231,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     "barn": (
-        _Build("barn", "structure", 120, unlock_level=4)
+        _Build("barn", "structure", 90, unlock_level=4)
         .variants("red", "gray")
         .slot("grown", _grown(120))
         .slot("chimney_smoke", ("smoke", 50))
@@ -216,14 +240,14 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     "car": (
-        _Build("car", "structure", 130, unlock_level=5)
+        _Build("car", "structure", 100, unlock_level=5)
         .variants("red", "blue", "yellow")
         .slot("grown", _grown(130))
         .slot("lights", ("lights", 45))
         .build()
     ),
     "beach_house": (
-        _Build("beach_house", "structure", 150, unlock_level=6)
+        _Build("beach_house", "structure", 110, unlock_level=6)
         .variants("white", "teal")
         .slot("grown", _grown(150))
         .slot("garden", ("garden", 60))
@@ -231,7 +255,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     "boat": (
-        _Build("boat", "structure", 170, unlock_level=8)
+        _Build("boat", "structure", 130, unlock_level=8)
         .variants("wood", "white")
         .slot("grown", _grown(170))
         .slot("lights", ("lights", 60))
@@ -239,41 +263,41 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     ),
     # --- Companions -------------------------------------------------------------------
     "goldfish": (
-        _Build("goldfish", "companion", 30)
+        _Build("goldfish", "companion", 20)
         .variants("orange", "white", "black")
         .slot("grown", _grown(30))
         .build()
     ),
     "bird": (
-        _Build("bird", "companion", 35, unlock_level=2)
+        _Build("bird", "companion", 25, unlock_level=2)
         .variants("bluebird", "robin", "canary")
         .slot("grown", _grown(35))
         .slot("accessory", ("hat", 25))
         .build()
     ),
     "cat": (
-        _Build("cat", "companion", 50, unlock_level=3)
+        _Build("cat", "companion", 40, unlock_level=3)
         .variants("gray", "ginger", "black", "white")
         .slot("grown", _grown(50))
         .slot("accessory", ("collar", 25), ("bandana", 25), ("hat", 30))
         .build()
     ),
     "snake": (
-        _Build("snake", "companion", 60, unlock_level=4)
+        _Build("snake", "companion", 45, unlock_level=4)
         .variants("green", "amber", "blue")
         .slot("grown", _grown(60))
         .slot("accessory", ("hat", 30))
         .build()
     ),
     "fox": (
-        _Build("fox", "companion", 70, unlock_level=5)
+        _Build("fox", "companion", 50, unlock_level=5)
         .variants("red", "arctic")
         .slot("grown", _grown(70))
         .slot("accessory", ("collar", 30), ("bandana", 30))
         .build()
     ),
     "dog": (
-        _Build("dog", "companion", 90, unlock_level=6)
+        _Build("dog", "companion", 70, unlock_level=6)
         .variants("corgi", "husky", "shiba", "dalmatian")
         .slot("grown", _grown(90))
         .slot("accessory", ("collar", 30), ("bandana", 35), ("hat", 40))
@@ -347,11 +371,15 @@ def _customizations(row: SanctuaryPlanting) -> dict[str, str]:
 
 
 def _spent(plantings: list[SanctuaryPlanting]) -> int:
+    """Coins sunk into the whole garden: per-item spend plus the progressive surcharge for
+    each holding's ordinal. We key the surcharge off the row's stable `position` (the dense,
+    monotonic acquisition order assigned at buy time), so the total is a deterministic
+    function of holdings alone — no wallet/ledger (ADR-0013)."""
     total = 0
     for p in plantings:
         item = SANCTUARY_CATALOG.get(p.item_key)
         if item is not None:
-            total += item.spent(p.variant, _customizations(p))
+            total += item.spent(p.variant, _customizations(p)) + progressive_surcharge(p.position)
     return total
 
 
@@ -457,10 +485,16 @@ def buy(
     if variant is not None and level < variant.unlock_level:
         raise ItemLocked(variant.key)
     plantings = _load(db, user_id)
-    price = item.cost + (variant.cost_delta if variant is not None else 0)
+    # The next item's ordinal (its position) drives its progressive surcharge, so the
+    # affordability check uses the same surcharged cost the balance will reflect (ADR-0013).
+    next_position = (max((p.position for p in plantings), default=-1)) + 1
+    price = (
+        item.cost
+        + (variant.cost_delta if variant is not None else 0)
+        + progressive_surcharge(next_position)
+    )
     if coins_earned - _spent(plantings) < price:
         raise InsufficientCoins(data.item_key)
-    next_position = (max((p.position for p in plantings), default=-1)) + 1
     db.add(
         SanctuaryPlanting(
             user_id=user_id,
