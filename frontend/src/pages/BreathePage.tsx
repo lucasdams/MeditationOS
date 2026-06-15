@@ -4,7 +4,7 @@ import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAudio'
-import { newlyCompletedQuests } from '../lib/quests'
+import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import BreathingInfo from '../components/BreathingInfo'
 import Stepper, { type StepperOption } from '../components/Stepper'
@@ -137,7 +137,7 @@ export default function BreathePage() {
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
-    quests: string[]
+    breakdown: XpLine[]
   } | null>(null)
   const [audioOn, setAudioOn] = useState(true) // ambient wash on by default
   const [ambient, setAmbient] = useState<AmbientSound>('ocean')
@@ -450,11 +450,8 @@ export default function BreathePage() {
       clearDraft(DRAFT_PAGE)
       const after = await dashboardService.getStats()
       // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
-      setReward({
-        afterXp: after.xp,
-        xpGained: Math.max(0, after.xp - before.xp),
-        quests: newlyCompletedQuests(before, after),
-      })
+      const bd = buildXpBreakdown(before, after, '🫁 Breathing')
+      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
@@ -711,7 +708,7 @@ export default function BreathePage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
-          questsCompleted={reward.quests}
+          breakdown={reward.breakdown}
           onClose={() => navigate('/')}
         />
       )}

@@ -1263,17 +1263,29 @@ textarea:focus-visible,
 }
 
 /* Completed-quest lines in the reward overlay */
-.reward-quests {
+/* Itemized XP sources in the reward overlay (activity + quest(s) + streak bonus). */
+.reward-breakdown {
   list-style: none;
-  padding: 0;
-  margin: 0.75rem 0 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #059669;
+  padding: 0.6rem 0 0;
+  margin: 0.6rem 0 0;
+  border-top: 1px solid #ececf0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
 }
 
-.reward-quests li {
-  margin: 0.2rem 0;
+.reward-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #45454a;
+}
+
+.reward-breakdown-xp {
+  font-weight: 700;
+  color: #059669;
+  font-variant-numeric: tabular-nums;
 }
 
 .muted {

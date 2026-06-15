@@ -3,7 +3,10 @@ import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
+import { dashboardService } from '../services/dashboard'
 import { MOOD_COLORS, tint } from '../lib/colors'
+import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
+import RewardOverlay from '../components/RewardOverlay'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import type { Journal, MeditationType, Mood, Session } from '../types'
@@ -50,6 +53,11 @@ export default function JournalPage() {
   const [submitting, setSubmitting] = useState(false)
   const [composing, setComposing] = useState(false) // expand the composer on focus/typing
   const [query, setQuery] = useState('') // text search over reflections
+  const [reward, setReward] = useState<{
+    afterXp: number
+    xpGained: number
+    breakdown: XpLine[]
+  } | null>(null)
 
   // Which entry's edit/delete actions are revealed (kept tucked behind a ⋯ toggle
   // so entries read cleanly and the actions aren't a prominent default).
@@ -129,6 +137,7 @@ export default function JournalPage() {
     if (!body.trim()) return
     setSubmitting(true)
     try {
+      const before = await dashboardService.getStats()
       const created = await journalService.create({
         body: body.trim(),
         mood: mood || null,
@@ -139,7 +148,11 @@ export default function JournalPage() {
       setMood('')
       setSessionId('')
       setComposing(false)
-      showToast('Reflection saved.')
+      // Itemized XP: the journal entry + any quest (write a journal / journal with a
+      // mood) and streak bonus it just completed.
+      const after = await dashboardService.getStats()
+      const bd = buildXpBreakdown(before, after, '📓 Journal entry')
+      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch {
       setError('Could not save your reflection.')
     } finally {
@@ -224,7 +237,9 @@ export default function JournalPage() {
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Journal</h1>
-        <p className="page-subtitle">A quiet place for your reflections.</p>
+        <p className="page-subtitle">
+          A space to reflect — on your practice, your day, or anything on your mind.
+        </p>
       </header>
 
       <section className="journal-compose">
@@ -236,7 +251,7 @@ export default function JournalPage() {
             value={body}
             onFocus={() => setComposing(true)}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="What came up in your practice today?"
+            placeholder="What's on your mind?"
           />
 
           {composerOpen && (
@@ -466,6 +481,15 @@ export default function JournalPage() {
           </button>
         )}
       </section>
+
+      {reward && (
+        <RewardOverlay
+          afterXp={reward.afterXp}
+          xpGained={reward.xpGained}
+          breakdown={reward.breakdown}
+          onClose={() => setReward(null)}
+        />
+      )}
     </main>
   )
 }

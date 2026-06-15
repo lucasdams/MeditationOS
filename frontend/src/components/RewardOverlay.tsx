@@ -2,20 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { levelProgress } from '../lib/level'
 import { tierFor } from '../lib/tree'
 import { playLevelUp, playReward } from '../lib/sfx'
+import type { XpLine } from '../lib/xpBreakdown'
 
 /**
  * Post-session reward: animates the XP bar from (afterXp − xpGained) up to afterXp,
- * growing the tree and playing a fanfare each time a level is crossed.
+ * growing the tree and playing a fanfare each time a level is crossed. When the XP comes
+ * from more than one source (the activity + a quest + a streak bonus), `breakdown`
+ * itemizes how much came from each.
  */
 export default function RewardOverlay({
   afterXp,
   xpGained,
-  questsCompleted = [],
+  breakdown = [],
   onClose,
 }: {
   afterXp: number
   xpGained: number
-  questsCompleted?: string[]
+  breakdown?: XpLine[]
   onClose: () => void
 }) {
   const startXp = Math.max(0, afterXp - xpGained)
@@ -69,10 +72,13 @@ export default function RewardOverlay({
         <div className="xp-text">
           +{xpGained} XP · {prog.xpIntoLevel} / {prog.xpForNextLevel} to next
         </div>
-        {questsCompleted.length > 0 && (
-          <ul className="reward-quests">
-            {questsCompleted.map((q) => (
-              <li key={q}>✓ Quest complete: {q}</li>
+        {breakdown.length > 1 && (
+          <ul className="reward-breakdown">
+            {breakdown.map((line) => (
+              <li key={line.label}>
+                <span>{line.label}</span>
+                <span className="reward-breakdown-xp">+{line.xp}</span>
+              </li>
             ))}
           </ul>
         )}

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
-import { newlyCompletedQuests } from '../lib/quests'
+import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import type { MeditationType } from '../types'
 
@@ -34,7 +34,7 @@ export default function LogSessionPage() {
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
-    quests: string[]
+    breakdown: XpLine[]
   } | null>(null)
 
   async function handleSubmit(e: FormEvent) {
@@ -63,12 +63,10 @@ export default function LogSessionPage() {
         calm: calm ? Number(calm) : null,
       })
       const after = await dashboardService.getStats()
-      // True gain from the server (XP weighting + any daily-quest/streak bonus).
-      setReward({
-        afterXp: after.xp,
-        xpGained: Math.max(0, after.xp - before.xp),
-        quests: newlyCompletedQuests(before, after),
-      })
+      // True gain from the server, itemized (the session + any quest/streak bonus).
+      const label = type === 'resonance_breathing' ? '🫁 Breathing' : '🧘 Meditation'
+      const bd = buildXpBreakdown(before, after, label)
+      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -159,7 +157,7 @@ export default function LogSessionPage() {
         <RewardOverlay
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
-          questsCompleted={reward.quests}
+          breakdown={reward.breakdown}
           onClose={() => navigate('/timeline')}
         />
       )}
