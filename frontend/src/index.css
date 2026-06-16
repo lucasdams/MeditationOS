@@ -1684,6 +1684,30 @@ textarea:focus-visible,
   opacity: 0.7;
 }
 
+/* A just-bought item gently pops in where it lands, with a brief soft glow on the
+   card. Only the new item carries this class (cleared after the animation), so the
+   rest of the garden never re-animates. Reuses the existing sanctuary-pop keyframe;
+   the prefers-reduced-motion guard above neutralises both. */
+.sanctuary-card.just-bought {
+  animation: sanctuary-buy-glow 0.9s ease-out;
+}
+
+.sanctuary-card.just-bought .sanctuary-svg {
+  animation: sanctuary-pop 0.5s ease;
+}
+
+@keyframes sanctuary-buy-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  35% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
+  }
+  100% {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+}
+
 .sanctuary-card-name {
   font-size: 0.85rem;
   font-weight: 600;
