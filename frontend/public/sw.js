@@ -1,19 +1,28 @@
 /* MeditationOS service worker — app-shell caching for offline + Web Push.
    Registered in production only (see main.tsx), so it never interferes with the Vite
-   dev server / HMR. */
-const CACHE = 'medos-v1'
-const SHELL = ['/', '/favicon.svg', '/manifest.webmanifest']
+   dev server / HMR.
+   Cache versioning: bump CACHE_VERSION on every SW deploy so activate purges the old
+   cache and returning users never get stranded on a stale index.html. */
+const CACHE = 'medos-v2-20260616'
+// Only precache truly static, rarely-changing assets.  index.html / '/' is intentionally
+// excluded: navigations are handled network-first below so the browser always fetches a
+// fresh shell on a deploy.  Caching '/' here would freeze the old HTML under a key that
+// activate can never bust (because the name didn't change between deploys).
+const STATIC_ASSETS = ['/favicon.svg', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => c.addAll(SHELL))
+      .then((c) => c.addAll(STATIC_ASSETS))
       .then(() => self.skipWaiting()),
   )
 })
 
 self.addEventListener('activate', (event) => {
+  // Delete every cache whose name is not the current CACHE version.  Because we bumped
+  // the version string, this cleanly removes the old 'medos-v1' (or any prior) cache
+  // that held the stale index.html.
   event.waitUntil(
     caches
       .keys()
@@ -29,8 +38,21 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return // pass through cross-origin (API, fonts)
 
   if (req.mode === 'navigate') {
-    // Network-first for navigations; fall back to the cached shell when offline.
-    event.respondWith(fetch(req).catch(() => caches.match('/')))
+    // Network-first for navigations: always fetch a fresh index.html from the server so
+    // a new deploy's HTML is picked up immediately.  On network failure (offline) fall
+    // back to the last successfully-fetched shell that we stored in the cache.
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          // Cache the fresh shell so we have an up-to-date copy for offline fallback.
+          if (res.ok) {
+            const clone = res.clone()
+            caches.open(CACHE).then((c) => c.put(new Request('/'), clone))
+          }
+          return res
+        })
+        .catch(() => caches.match('/')),
+    )
     return
   }
 
