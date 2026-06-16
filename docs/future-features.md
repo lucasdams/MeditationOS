@@ -7,7 +7,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 ## Practice & Sessions
 
 - [x] **Daily practice reminders** — opt-in email nudge at the user's local hour (timezone-aware, idempotent, skipped on days already practiced) — see [notifications design](design/notifications.md)
-- [ ] **Streak-save nudge** — a gentle later-in-the-day reminder *only* when an active streak is at risk and the user hasn't practiced yet (builds on the existing skip-if-practiced reminder; nudge, not shame)
+- [x] **Streak-save nudge** — a gentle late-evening email (local 20:00+) *only* when an active streak is at risk and the user hasn't practiced yet; uses a separate idempotency timestamp so it never conflicts with the morning reminder (nudge, not shame)
 - [x] **Multiple meditation types** (mindfulness, body scan, walking, loving-kindness, resonance breathing, other)
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
@@ -62,8 +62,10 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 
 - [x] **Gratitude tool** — category → AI-suggested prompts (Claude Haiku, curated fallback) or free text; earns XP — see [ADR-0008](decisions/0008-ai-suggestions-curated-fallback.md)
 - [x] **Meditation journal** — written reflections, optionally linked to a session, with a fixed **mood** palette; full CRUD (incl. **inline edit** of body + mood), filterable; **earns XP** (parity with gratitude) — see [journaling design](design/journaling.md)
-- [ ] Journal prompts tied to session type or streak milestones
+- [x] **Journaling prompts** — a gentle daily rotating prompt shown above the compose box to reduce blank-page friction; dismissible, shuffleable, never intrusive
+- [ ] Journal prompts tied to session type or streak milestones (contextual prompts, beyond the current daily pool)
 - [x] **Analytics page** — SQL-aggregated insights: minutes-per-week, by type / weekday / time-of-day, and a **journal-mood distribution** — see [analytics design](design/analytics.md)
+- [x] **Honest pattern observations** — time-of-day calm scores, breathing-vs-meditation calm comparison, calm trend, and consistency observations, each guarded by a minimum sample threshold so nothing surfaces prematurely — see [analytics design](design/analytics.md)
 - [x] **Standalone mood check-in** — a one-tap "how do you feel?" on the dashboard (no written body required), stored in `mood_logs`, reusing the journal mood palette so it feeds the same analytics
 - [ ] Mood **over time** (moods plotted across weeks) and month-vs-month comparisons — beyond the current distribution
 - [x] **Search past journal entries by text** (case-insensitive substring; mood filter also available) — ranked full-text search is the open item
@@ -76,7 +78,8 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [x] **Daily quests** — now **personalized and rotating**: each user picks ≥3 of meditate · breathe · gratitude · journal (first-run picker + editable in Settings; stored in `users.quest_features`), and within each category the specific quest **rotates by the date** from a pool with **varied XP** (e.g. "Sit 10+ minutes" `+30`, "Breathe slow, ≤5 bpm" `+35`); daily reset at local midnight — see [gamification design](design/gamification.md)
 - [x] **Streak bonus XP** (scaled to your current streak)
 - [x] **Streak insurance / rest day** — the current streak survives one skipped day (two-in-a-row still resets); computed, nothing stored; surfaced as a 🛡️ badge via `rest_day_used` on `/dashboard/stats`
-- [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, plus the day's rotating-quest bonus (`+10`…`+35` by variant)
+- [x] **XP rebalance toward time-based practice** — meditation 2 XP/min, breathing 3 XP/min, gratitude & journal 5 each, plus the day's rotating-quest bonus (`+10`…`+35` by variant); rewards are **itemized** on the post-session overlay so you see exactly what you earned and why
+- [x] **Front-loaded per-session XP curve** — longer sits earn more per minute via a concave curve that rewards meaningful practice; short sits still earn something but the biggest gains come from sustained sessions
 - [x] **Goals** — recurring habits: an activity (meditate / breathe / gratitude / journal) done a count of times per day/week, with this-period progress computed on read; active/archived lifecycle — see [goals design](design/goals.md)
 - [x] **Custom-habit goals** — track anything the app doesn't record ("Gym", "Read") with a daily **check-in**; the one stored-progress path (a deliberate exception to ADR-0009)
 - [ ] More cadences (custom counts, calendar-aligned weeks, monthly)
@@ -84,39 +87,37 @@ A **different practice** from slow resonance breathing: stimulating (sympathetic
 - [x] **Achievement badges** for session, hour, and streak milestones — derived from stats (no stored state), shown on the dashboard with earned/locked states
 - [ ] Long-term cumulative targets (e.g. 100 total hours) — distinct from the recurring-habit goals
 
-### Sanctuary — build & upgrade your space (streak rewards)
+### Sanctuary — a spend economy you build with coins
 
 A persistent space the user grows by practicing — a calm **sanctuary** (garden /
-farm / home / retreat) that becomes a long-term reason to keep the streak alive.
+farm / home / retreat) that becomes a long-term reason to keep levelling up.
 The strongest retention loop in the product.
 
-> **Shipped in V1** — see **[Sanctuary design](design/sanctuary.md)** and
-> **[ADR-0010](decisions/0010-sanctuary-cultivation.md)**. Built as a
-> **cultivation sequence** (grow one thing at a time, choose what's next on
-> completion) rather than a spend economy — no currency, one append-only table,
-> everything else computed. Plants render as **procedural SVG** that grow from your
-> practice; the nature, structures, and companion tracks are live with point/streak
-> milestone unlocks and streak-driven vitality. *(Remaining: the ambiance track, the
-> per-user L-system "unique tree", and Stripe cosmetic packs.)*
+> **Shipped in V1 and expanded through V2** — see **[Sanctuary design](design/sanctuary.md)**
+> and [ADR-0011](decisions/0011-sanctuary-spend-economy.md) through
+> [ADR-0016](decisions/0016-sanctuary-shop-expansion-and-retune.md). The original
+> cultivation model ([ADR-0010](decisions/0010-sanctuary-cultivation.md)) was superseded
+> by a **spend economy**: earn **coins** as you level up, **buy** items from the shop, and
+> personalize them over time. Plants, structures, companions, and a **whimsy** track render
+> as **procedural SVG**. *(Remaining: the ambiance track and Stripe cosmetic packs.)*
 
-- [x] **Cultivation loop** — `practice → current item grows → it completes → choose what to grow next → it joins the scene`. One item grows at a time; practice carries over so nothing's wasted.
-- [x] **A few tracks**, so there's always a next thing to work toward *(ambiance still pending)*:
-  - *Nature* ✅ — trees, flowers, a pond
-  - *Structures* ✅ — meditation hut, barn
-  - *Ambiance* — time-of-day, weather, soundscape, lighting *(not yet)*
-  - *Companions* ✅ — animals/creatures ("a friend"): a bird, a fox
+- [x] **Spend economy** — earn coins from levels, buy items from a shop, coin balance computed from holdings (no wallet row); [ADR-0011](decisions/0011-sanctuary-spend-economy.md)
+- [x] **Four tracks** of items:
+  - *Nature* ✅ — trees, flowers, mushroom ring, pond
+  - *Structures* ✅ — hut, cottage, barn, car, beach house, boat
+  - *Companions* ✅ — goldfish, snail, bird, cat, hedgehog, snake, fox, dog
+  - *Whimsy* ✅ — garden gnome, wind chime, lantern, frog on a lily, scarecrow, fairy door, hammock, tea cart; [ADR-0016](decisions/0016-sanctuary-shop-expansion-and-retune.md)
+- [x] **Variants + mix-and-match customizations** — choose a base form at purchase (e.g. oak/pine/cherry/willow tree, corgi/husky/shiba/dalmatian dog) and buy independent customization slots over time (swing, birdhouse, foliage type on a tree; collar/bandana/hat on a pet); [ADR-0012](decisions/0012-sanctuary-personalization.md)
+- [x] **Progressive pricing** — each additional item carries a small surcharge (keyed to immutable acquisition order), a gentle anti-hoarding nudge; [ADR-0013](decisions/0013-sanctuary-progressive-pricing.md)
+- [x] **Movable grid layout** — items sit on a row-major grid the user rearranges by drag (desktop) or tap-to-place (touch); moving is layout-only and never changes the coin balance; [ADR-0014](decisions/0014-sanctuary-grid-layout.md)
+- [x] **Item naming + note + favourite** — optional name plaque, a one-line note, and a favourite star per item; all cosmetic and default-off; [ADR-0015](decisions/0015-sanctuary-personalization-touches.md)
 - [x] **Streak drives vitality.** An active streak keeps the space thriving; a long gap lets it go gently dormant — **never punishing** (no destroyed progress; it recovers when you return). Wellness app: nudge, not shame.
-- [x] **Milestone unlocks** — streak/point milestones unlock new items to grow (pond, barn, companions). One-off cosmetics still pair with future achievement badges and avatars.
-- [ ] **A tree unique to each person** *(later flavour)* — *generate* each plant from the user's data (dominant meditation type → character, streak → fullness, level → size, per-user seed), likely via an **L-system**. Procedural **SVG** rendering shipped; the per-user generative variation is still ahead. The render is decoupled from the data model.
+- [x] **Level-gated shop** — higher-level items are locked until the user reaches the required level; the shop groups items by track with per-track headers.
+- [ ] **Ambiance track** — time-of-day, weather, soundscape, lighting *(not yet)*
+- [ ] **A sanctuary item unique to each person** *(later flavour)* — generate each plant from the user's data (meditation type → character, streak → fullness, level → size, per-user seed), likely via an **L-system**. Procedural SVG rendering shipped; per-user generative variation is still ahead.
 
 **Monetization tie-in:** premium cosmetic packs via Stripe — purely cosmetic, never
 pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
-
-**Depends on:** the **streak engine (Cycle 3)** for vitality + milestone unlocks.
-Build order (per the design): ✅ grow + scene read-only → ✅ plant-next write path +
-`sanctuary_plantings` → ✅ builder UI (dedicated page + completion celebration) →
-✅ depth (structures + companions tracks, point/streak unlocks, vitality) →
-✅ procedural **SVG** render. *(Remaining: ambiance track, Stripe cosmetic packs.)*
 
 ## AI (Post-V3)
 
@@ -174,6 +175,7 @@ sessions stay private unless a member chooses otherwise.
 - [x] **Email verification** (emailed link; Google sign-in arrives verified) — see [auth design](design/authentication.md#email-verification--implemented)
 - [x] **Guest accounts** — "use without signing up"; an anonymous account you can later **claim** (add email + password) without losing data — see [auth design](design/authentication.md#guest-accounts--implemented)
 - [x] **Change account email** — from Settings, re-authenticated with the current password; the new address is reset to unverified and a confirmation link is emailed
+- [x] **Email-verification gate** (`REQUIRE_EMAIL_VERIFICATION` env var, off by default) — when enabled, data routes return `403` for unverified users; the frontend catches the `403` and shows a "confirm your email" screen with a resend button. Google sign-in always arrives verified. Off by default so the app works without an email provider configured.
 - [ ] Other social providers (Apple, GitHub)
 - [ ] Multi-factor authentication (TOTP)
 
@@ -191,7 +193,9 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 - [x] **Onboarding / activation flow** — a first-run wizard (goal → experience → preferred time → quests) shown to new users in place of the bare quest picker; personalizes quests from the goal, sets a reminder from the preferred time, tunes the starting breathing pace from experience, and drops the user into a first session (`frontend/src/pages/Onboarding.tsx`)
 - [x] **PWA + Web Push** — installable app with an offline app-shell (`manifest.webmanifest` + `public/sw.js`, service worker registered in production only so it never breaks Vite HMR). Opt-in **Web Push** practice nudges: `push_subscriptions` table + `push_service` (provider-optional — subscriptions store, sends no-op without VAPID keys; lazy `pywebpush`), `/api/v1/push` endpoints, a Settings toggle, and push integrated into the daily reminder job. *(Remaining polish: PNG app icons; client-side offline session queue.)*
 - [x] **Seasonal + day/night ambient theme** — a subtle background that shifts by season (auto by date, or picked in Settings → Appearance) and by day phase (dawn/day/dusk/night from the local clock); the Sanctuary gains a sun/moon sky band
-- [ ] Full dark mode and broader accessibility improvements
+- [x] **Dark mode** — Light / Dark / System toggle in Settings → Appearance, built on the CSS custom-properties theme system; `System` follows the OS `prefers-color-scheme`. Broader accessibility improvements remain open.
 - [ ] **Internationalization (i18n)** — start with a **Japanese (JP) version** of the site (UI strings + AI prompts/suggestions in Japanese)
 - [ ] Staging environment separate from production
 - [x] **User data export and account deletion** (privacy) — `GET /auth/export` (full JSON) and `DELETE /auth/me` (cascade delete), surfaced in Settings
+- [x] **Admin metrics dashboard** — aggregate-only product health metrics (`/admin`), gated on `ADMIN_EMAILS` env-var allowlist + verified email; never exposes individual user content
+- [x] **Sentry error monitoring** — provider-optional (`SENTRY_DSN` env var); PII-scrubbed before events leave the process; performance tracing at low sample rate; no-op when DSN is absent

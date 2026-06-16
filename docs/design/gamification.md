@@ -37,8 +37,16 @@ A Pokémon-style rising curve (`_level_progress`): cumulative XP to **reach** le
 `L` is `10·L·(L−1)`, so each level costs `20·L` more than the last — quick early
 levels, slower later. Returns `(level, xp_into_level, xp_for_next_level)`. The
 frontend mirrors the curve in `lib/level.ts` to animate the post-session reward
-overlay (XP bar fill + tree growth + level-up fanfare). Tree tiers live in
-`lib/tree.ts`.
+overlay (XP bar fill + level-up fanfare). The level is displayed as a neutral
+**level badge** (◆ + number, `LevelCard.tsx`), decoupled from any tree metaphor —
+it also shows the **coins earned** to date and the **next Sanctuary item** the
+current level will unlock. XP rewards are **itemized** on the post-session overlay
+so the user sees exactly what they earned and why.
+
+**Front-loaded per-session XP curve:** longer sits earn more per minute via a
+concave curve, so sustained practice is rewarded more than many short sits. The
+coin accrual rate follows the same curve, which informed the `COINS_PER_LEVEL = 80`
+retune in [ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md).
 
 ## Daily quests
 

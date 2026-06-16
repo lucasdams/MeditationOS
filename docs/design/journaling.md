@@ -12,7 +12,8 @@ One table, `journals` (see [data-model](data-model.md)):
 
 - `body` — free text, the reflection itself (required).
 - `mood` — optional tag from a **fixed palette** (`calm`, `content`, `focused`,
-  `energized`, `grateful`, `neutral`, `restless`, `anxious`, `tired`, `low`),
+  `energized`, `grateful`, `hopeful`, `excited`, `peaceful`, `neutral`, `restless`,
+  `anxious`, `frustrated`, `overwhelmed`, `tired`, `low`),
   constrained by a CHECK so entries stay filterable — same approach as gratitude
   categories. Source of truth: `app/models/journal.py` `MOODS`.
 - `session_id` — optional FK to a session, `ON DELETE SET NULL` so deleting the
@@ -38,5 +39,11 @@ session sets it NULL). Loading / error / empty states per the frontend rules.
   ships today (`GET /journals?q=`); Postgres full-text + relevance ranking is the
   open item.
 - **Mood trends** and journal-pattern analysis — V2 analytics / V3 AI.
-- **Prompted journaling** (suggested reflection questions), akin to gratitude
-  suggestions.
+
+## Journaling prompts ✅ shipped
+
+A gentle daily rotating prompt appears above the compose box to reduce blank-page
+friction (`frontend/src/lib/journalPrompts.ts`). It is dismissible, shuffleable
+(tap for another), and resets to a stable daily default on page load so the same
+prompt doesn't keep reappearing. The prompts are a frontend-only feature — no backend
+call, no stored state.
