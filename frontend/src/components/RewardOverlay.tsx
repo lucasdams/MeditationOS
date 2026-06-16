@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { levelProgress } from '../lib/level'
-import { tierFor } from '../lib/tree'
 import { playLevelUp, playReward } from '../lib/sfx'
 import type { XpLine } from '../lib/xpBreakdown'
 
 /**
  * Post-session reward: animates the XP bar from (afterXp − xpGained) up to afterXp,
- * growing the tree and playing a fanfare each time a level is crossed. When the XP comes
+ * playing a fanfare each time a level is crossed. A level earns coins to spend in the
+ * sanctuary (the level is the coin/unlock track, not a thing you grow). When the XP comes
  * from more than one source (the activity + a quest + a streak bonus), `breakdown`
  * itemizes how much came from each.
  */
@@ -53,19 +53,22 @@ export default function RewardOverlay({
   }, [startXp, afterXp])
 
   const prog = levelProgress(Math.floor(shownXp))
-  const tier = tierFor(prog.level)
   const pct = Math.min(100, Math.round((prog.xpIntoLevel / prog.xpForNextLevel) * 100))
 
   return (
     <div className="reward-overlay" role="dialog" aria-modal="true">
       <div className="reward-card">
-        <pre className="level-tree" aria-hidden="true">
-          {tier.art.join('\n')}
-        </pre>
+        <div className="level-badge level-badge--reward" aria-hidden="true">
+          <span className="level-badge-mark">◆</span>
+          <span className="level-badge-num">{prog.level}</span>
+        </div>
         <div className="reward-level">
           Level {prog.level}
           {leveledUp && <span className="reward-up"> · Level up! 🎉</span>}
         </div>
+        {leveledUp && (
+          <div className="reward-coins">You've earned coins to spend in your sanctuary 🪙</div>
+        )}
         <div className="xp-bar">
           <div className="xp-fill" style={{ width: `${pct}%` }} />
         </div>
