@@ -507,8 +507,14 @@ def _lock_user_garden(db: DBSession, user_id: uuid.UUID) -> None:
     transaction commits/rolls back, so it spans the read-compute-write of a single
     mutating method while never blocking writes for *other* users. SQLAlchemy autobegins
     a transaction on first use, so this lock reliably covers the subsequent reads + flush.
+
+    Keys the lock on an int8 hash (`hashtextextended`, 64-bit) rather than `hashtext`'s
+    int4: a 32-bit space makes cross-user hash collisions plausible, which would needlessly
+    serialize two *different* users against each other. int8 makes that negligible. Same-user
+    serialization (the intended behaviour) is unaffected.
     """
-    db.execute(select(func.pg_advisory_xact_lock(func.hashtext(str(user_id)))))
+    key = func.pg_advisory_xact_lock(func.hashtextextended(str(user_id), 0))
+    db.execute(select(key))
 
 
 def _vitality(streak: int) -> str:
@@ -730,6 +736,11 @@ def customize(
     isn't the caller's. Raises on unknown slot/option, locked option, already-applied, or
     insufficient coins. Each customization costs coins (deducted via the derived balance).
     """
+    # Lock FIRST — before reading the target row — so the affordability math *and* the
+    # `customizations` map we merge onto are read under the lock. A concurrent customize of
+    # the same planting otherwise reads a stale pre-lock snapshot and last-writer-wins
+    # clobbers the whole JSON column (+ mischarges). The lock is per-user and txn-scoped.
+    _lock_user_garden(db, user_id)
     row = db.execute(
         select(SanctuaryPlanting).where(
             SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
@@ -746,12 +757,10 @@ def customize(
     option = slot.option(data.option)
     if option is None:
         raise UnknownSlotOption(data.option)
+    # Read the row's customizations UNDER the lock so the merge below is onto fresh state.
     current = _customizations(row)
     if current.get(slot.key) == option.key:
         raise AlreadyApplied(data.option)
-    # Serialize per-user writes so the affordability check + balance deduction can't race a
-    # parallel buy/customize (no overspend below 0 → no silently-free customization).
-    _lock_user_garden(db, user_id)
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     if level < option.unlock_level:
         raise ItemLocked(option.key)
@@ -795,6 +804,9 @@ def personalize(
     so the derived balance (ADR-0011) is untouched (the scene is rebuilt only to echo the
     update + current balance back to the client).
     """
+    # Lock FIRST — before reading the row — so the partial update merges onto state read
+    # under the lock, not a stale pre-lock snapshot (consistent with the other mutators).
+    _lock_user_garden(db, user_id)
     row = db.execute(
         select(SanctuaryPlanting).where(
             SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
@@ -802,9 +814,6 @@ def personalize(
     ).scalar_one_or_none()
     if row is None:
         return None
-    # Serialize per-user garden writes so this cosmetic update can't interleave with a
-    # concurrent buy/customize/move on the same user (consistent with the other mutators).
-    _lock_user_garden(db, user_id)
     fields = data.model_fields_set
     if "name" in fields:
         row.name = data.name
@@ -841,6 +850,11 @@ def move(
     """
     if data.cell < 0 or data.cell >= GRID_CELLS:
         raise CellOutOfBounds(data.cell)
+    # Lock FIRST — before reading the target row — so `row.cell`, the occupant lookup, and
+    # the swap all read fresh state under the lock. Reading the row before the lock would let
+    # a concurrent move read a stale source cell and collide on uq(user_id, cell). The lock
+    # is per-user and txn-scoped (never blocks other users).
+    _lock_user_garden(db, user_id)
     row = db.execute(
         select(SanctuaryPlanting).where(
             SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
@@ -850,9 +864,6 @@ def move(
         return None
 
     if row.cell != data.cell:
-        # Serialize per-user writes so the read-occupant → swap → commit can't race a
-        # parallel move/buy on the same user and collide on uq(user_id, cell).
-        _lock_user_garden(db, user_id)
         occupant = db.execute(
             select(SanctuaryPlanting).where(
                 SanctuaryPlanting.user_id == user_id,

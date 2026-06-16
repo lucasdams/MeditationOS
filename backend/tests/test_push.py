@@ -99,6 +99,48 @@ def test_subscribe_upserts_on_endpoint(db_session):
     assert count == 1  # upserted, not duplicated
 
 
+def test_subscribe_recovers_from_insert_race(db_session, monkeypatch):
+    """The pre-check sees no row, so subscribe() takes the INSERT path; meanwhile a concurrent
+    subscribe inserts the same (user, endpoint) first, so our commit hits the unique
+    constraint. The service rolls back and updates that now-existing row (idempotent upsert)
+    instead of 500-ing."""
+    from sqlalchemy.exc import IntegrityError
+
+    ENDPOINT = "https://fcm.googleapis.com/x"
+    user = _user(db_session, "svc-race@example.com")
+
+    real_commit = db_session.commit
+    state = {"armed": True}
+
+    def fake_commit(*args, **kwargs):
+        # On the first (insert) commit, simulate the concurrent writer winning the race:
+        # really commit a colliding row, then raise the unique-violation our commit would hit.
+        if state["armed"]:
+            state["armed"] = False
+            db_session.rollback()  # drop our pending INSERT (as a real uq-violation rollback would)
+            db_session.add(
+                PushSubscription(
+                    user_id=user.id, endpoint=ENDPOINT, p256dh="theirs", auth="theirs"
+                )
+            )
+            real_commit()
+            raise IntegrityError("INSERT", {}, Exception("uq user+endpoint"))
+        return real_commit(*args, **kwargs)
+
+    monkeypatch.setattr(db_session, "commit", fake_commit)
+    refreshed = push_service.subscribe(
+        db_session,
+        user.id,
+        PushSubscriptionCreate(endpoint=ENDPOINT, keys=PushKeys(p256dh="new-p", auth="new-a")),
+    )
+    # Recovery updated the existing row to our keys, no duplicate, no 500.
+    assert refreshed.p256dh == "new-p" and refreshed.auth == "new-a"
+    count = (
+        db_session.query(PushSubscription).filter(PushSubscription.user_id == user.id).count()
+    )
+    assert count == 1
+
+
 def test_send_is_noop_without_vapid(db_session):
     user = _user(db_session, "svc2@example.com")
     push_service.subscribe(db_session, user.id, _create())

@@ -42,3 +42,23 @@ def test_can_change_own_username(client):
     resp = client.post("/api/v1/auth/username", json={"username": "second"})
     assert resp.status_code == 200
     assert resp.json()["username"] == "second"
+
+
+def test_username_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """If a concurrent request claims the same username between our pre-check and commit,
+    the unique-constraint IntegrityError surfaces as 409, never an unhandled 500."""
+    from sqlalchemy.exc import IntegrityError
+
+    _auth(client, "u-race@example.com")
+    real_commit = db_session.commit
+    state = {"armed": True}
+
+    def fake_commit(*args, **kwargs):
+        if state["armed"]:
+            state["armed"] = False
+            raise IntegrityError("UPDATE users", {}, Exception("uq username"))
+        return real_commit(*args, **kwargs)
+
+    monkeypatch.setattr(db_session, "commit", fake_commit)
+    res = client.post("/api/v1/auth/username", json={"username": "raced"})
+    assert res.status_code == 409

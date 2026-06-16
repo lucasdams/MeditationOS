@@ -88,3 +88,26 @@ def test_claim_rejects_non_guest(client):
         json={"email": "new@example.com", "password": "a real secret"},
     )
     assert res.status_code == 400
+
+
+def test_claim_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """Two guests claiming the same email race past the pre-check; the loser's commit hits
+    the unique-email constraint and must surface as 409, not an unhandled 500."""
+    from sqlalchemy.exc import IntegrityError
+
+    client.post("/api/v1/auth/guest")
+    real_commit = db_session.commit
+    state = {"armed": True}
+
+    def fake_commit(*args, **kwargs):
+        if state["armed"]:
+            state["armed"] = False
+            raise IntegrityError("UPDATE users", {}, Exception("uq email"))
+        return real_commit(*args, **kwargs)
+
+    monkeypatch.setattr(db_session, "commit", fake_commit)
+    res = client.post(
+        "/api/v1/auth/claim",
+        json={"email": "raced-claim@example.com", "password": "a real secret"},
+    )
+    assert res.status_code == 409
