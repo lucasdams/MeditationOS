@@ -7,6 +7,7 @@ distinct calendar dates of `occurred_at` in the **user's timezone** (Postgres
 
 import uuid
 from datetime import date, timedelta
+from typing import NamedTuple
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
@@ -147,49 +148,44 @@ def _capped_daily_xp_units(db: DBSession, model, *, user_id: uuid.UUID, tz: str,
     return int(db.execute(select(func.coalesce(func.sum(per_day.c.c), 0))).scalar_one())
 
 
-def get_stats(
-    db: DBSession,
-    user_id: uuid.UUID,
-    *,
-    today: date,
-    tz: str = "UTC",
-    quest_features: list[str] | None = None,
-) -> DashboardStats:
-    total_seconds, session_count = db.execute(
-        select(
-            func.coalesce(func.sum(Session.duration_seconds), 0),
-            func.count(Session.id),
-        ).where(Session.user_id == user_id)
-    ).one()
+class _XpBasis(NamedTuple):
+    """The shared XP/streak core that funds BOTH the dashboard and the sanctuary wallet.
 
+    `earned_xp` is total XP *minus* the streak bonus (so the wallet balance never drops
+    when a streak lapses); `xp` adds the streak bonus back for the dashboard. The day-set
+    fields are returned so `get_stats` can build its daily-quest list without re-querying.
+    """
+
+    earned_xp: int
+    streak_bonus_xp: int
+    current_streak: int
+    longest_streak: int
+    rest_day_used: bool
+    cond_days: dict[str, set[date]]
+    session_days: set[date]
+    gratitude_days: set[date]
+    journal_days: set[date]
+    gratitude_count: int
+
+    @property
+    def xp(self) -> int:
+        """Total XP, including the streak bonus — what the dashboard displays."""
+        return self.earned_xp + self.streak_bonus_xp
+
+
+def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _XpBasis:
+    """Compute the earned XP, streak bonus, and streak — the single source of truth used
+    by both `get_stats` (dashboard) and `get_wallet_basis` (sanctuary coins/level). This
+    runs the per-session XP curve, the capped gratitude/journal XP, the daily-quest bonus,
+    and the streak; it does NOT build the heatmap, this-week, today-count, or quest-list
+    blocks that only `get_stats` needs — so the wallet path skips that work entirely.
+    """
     # Practice XP is computed PER SESSION (front-loaded curve), so we need each session's
     # duration and whether it's resonance breathing — not a single SUM. Resonance
     # breathing earns extra XP per minute (it's the harder, signature practice).
     practice_rows = db.execute(
         select(Session.duration_seconds, Session.type).where(Session.user_id == user_id)
     ).all()
-
-    # Last 7 calendar days, zero-filled, oldest → today.
-    week_start = today - timedelta(days=6)
-    local_day = _local_date(tz, Session.occurred_at)
-    rows = db.execute(
-        select(
-            local_day,
-            func.coalesce(func.sum(Session.duration_seconds), 0),
-        )
-        .where(
-            Session.user_id == user_id,
-            local_day >= week_start,
-            local_day <= today,
-        )
-        .group_by(local_day)
-    ).all()
-    by_date = {row[0]: int(row[1]) for row in rows}
-
-    this_week = []
-    for i in range(7):
-        day = week_start + timedelta(days=i)
-        this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
 
     # Practice days (for streaks): a day counts only once its total session time reaches
     # MIN_PRACTICE_SECONDS, so a 1-second sit can't keep a streak alive.
@@ -365,17 +361,101 @@ def get_stats(
     # earn 0; resonance breathing counts BREATHING_XP_MULTIPLIER×), then summed across
     # sessions — so a long sit is worth progressively less per minute and splitting
     # practice across sessions beats one giant sit. Plus GRATITUDE_XP/JOURNAL_XP per
-    # (capped) reflection, the daily-quest bonus, and the streak bonus.
+    # (capped) reflection and the daily-quest bonus. The streak bonus is tracked
+    # separately so coins (funded by *earned* XP) never drop when a streak lapses.
     practice_xp = _practice_xp(
         [(secs, type_ == "resonance_breathing") for secs, type_ in practice_rows]
     )
-    xp = (
+    earned_xp = (
         practice_xp
         + gratitude_xp_units * GRATITUDE_XP
         + journal_xp_units * JOURNAL_XP
         + quest_bonus_xp
-        + streak_bonus_xp
     )
+    return _XpBasis(
+        earned_xp=earned_xp,
+        streak_bonus_xp=streak_bonus_xp,
+        current_streak=current_streak,
+        longest_streak=longest_streak,
+        rest_day_used=rest_day_used,
+        cond_days=cond_days,
+        session_days=session_days,
+        gratitude_days=gratitude_days,
+        journal_days=journal_days,
+        gratitude_count=gratitude_count,
+    )
+
+
+class WalletBasis(NamedTuple):
+    """The minimal earned-XP/level/streak the sanctuary wallet needs to mint coins."""
+
+    earned_xp: int
+    level: int
+    current_streak: int
+
+
+def get_wallet_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> WalletBasis:
+    """Earned XP, the level it implies, and the current streak — the only values the
+    sanctuary wallet reads. Computed via the SAME `_xp_basis` core as `get_stats`, so the
+    coins/level/streak are byte-identical to the dashboard, but WITHOUT the heatmap,
+    this-week, today-count, or quest-list work that `get_stats` does and the wallet throws
+    away. The level is computed on *earned* XP (total minus the streak bonus) so coins
+    never drop when a streak lapses.
+    """
+    basis = _xp_basis(db, user_id, today=today, tz=tz)
+    level, _into, _next = _level_progress(basis.earned_xp)
+    return WalletBasis(
+        earned_xp=basis.earned_xp,
+        level=level,
+        current_streak=basis.current_streak,
+    )
+
+
+def get_stats(
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+    quest_features: list[str] | None = None,
+) -> DashboardStats:
+    total_seconds, session_count = db.execute(
+        select(
+            func.coalesce(func.sum(Session.duration_seconds), 0),
+            func.count(Session.id),
+        ).where(Session.user_id == user_id)
+    ).one()
+
+    # The XP/streak core (also drives the sanctuary wallet — single source of truth).
+    basis = _xp_basis(db, user_id, today=today, tz=tz)
+    cond_days = basis.cond_days
+    current_streak = basis.current_streak
+    streak_bonus_xp = basis.streak_bonus_xp
+
+    # Last 7 calendar days, zero-filled, oldest → today.
+    week_start = today - timedelta(days=6)
+    local_day = _local_date(tz, Session.occurred_at)
+    rows = db.execute(
+        select(
+            local_day,
+            func.coalesce(func.sum(Session.duration_seconds), 0),
+        )
+        .where(
+            Session.user_id == user_id,
+            local_day >= week_start,
+            local_day <= today,
+        )
+        .group_by(local_day)
+    ).all()
+    by_date = {row[0]: int(row[1]) for row in rows}
+
+    this_week = []
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
+
+    # Total XP adds the streak bonus back; the displayed level rides full XP.
+    xp = basis.xp
     level, xp_into_level, xp_for_next_level = _level_progress(xp)
 
     # Today's quest list is personalized: the user opts into a subset of
@@ -425,14 +505,14 @@ def get_stats(
         total_seconds=int(total_seconds),
         session_count=int(session_count),
         current_streak_days=current_streak,
-        longest_streak_days=longest_streak,
-        rest_day_used=rest_day_used,
+        longest_streak_days=basis.longest_streak,
+        rest_day_used=basis.rest_day_used,
         xp=xp,
         level=level,
         xp_into_level=xp_into_level,
         xp_for_next_level=xp_for_next_level,
         this_week=this_week,
-        gratitude_count=gratitude_count,
+        gratitude_count=basis.gratitude_count,
         streak_bonus_xp=streak_bonus_xp,
         daily_quests=daily_quests,
     )

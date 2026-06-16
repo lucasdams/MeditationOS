@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -88,6 +88,23 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    __table_args__ = (
+        # The hourly reminder / weekly-summary jobs scan `users` for opted-in
+        # accounts (`reminder_enabled` / `weekly_summary_enabled` true). These are
+        # tiny partial indexes over only the opted-in rows, so each run does an
+        # index scan instead of a full table scan as the user base grows.
+        Index(
+            "ix_users_reminder_enabled",
+            "reminder_enabled",
+            postgresql_where=text("reminder_enabled"),
+        ),
+        Index(
+            "ix_users_weekly_summary_enabled",
+            "weekly_summary_enabled",
+            postgresql_where=text("weekly_summary_enabled"),
+        ),
     )
 
     @property

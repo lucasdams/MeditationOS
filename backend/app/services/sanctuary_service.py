@@ -523,11 +523,13 @@ def _vitality(streak: int) -> str:
 def _wallet(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> tuple[int, int, int]:
     """(coins_earned, level, current_streak). Coins come from a level computed on *earned*
     XP (total XP minus the streak bonus), so the balance never drops when a streak lapses.
+
+    Reads the lightweight `get_wallet_basis` (the same XP core as the dashboard, without
+    the heatmap / this-week / quest-list work) rather than the full `get_stats`, so a
+    sanctuary interaction doesn't pay for blocks it would only discard.
     """
-    stats = dashboard_service.get_stats(db, user_id, today=today, tz=tz)
-    earned_xp = max(0, stats.xp - stats.streak_bonus_xp)
-    level, _into, _next = dashboard_service._level_progress(earned_xp)
-    return level * COINS_PER_LEVEL, level, stats.current_streak_days
+    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    return basis.level * COINS_PER_LEVEL, basis.level, basis.current_streak
 
 
 def _load(db: DBSession, user_id: uuid.UUID) -> list[SanctuaryPlanting]:
