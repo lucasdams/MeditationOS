@@ -49,6 +49,11 @@ class DailyLimitError(Exception):
     """Raised when a user hits the per-day creation cap for a resource (anti-spam)."""
 
 
+# User-facing detail returned (as HTTP 429) when a DailyLimitError reaches the API
+# boundary. Mapped once, app-wide, by the handler in `app/main.py`.
+DAILY_LIMIT_DETAIL = "Daily limit reached. Please try again tomorrow."
+
+
 class GoalNotCheckableError(Exception):
     """Raised when checking in on a non-custom goal — built-in activities derive
     their progress and can't be manually marked done."""

@@ -5,10 +5,11 @@ always scoped to the authenticated user.
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session as DBSession
 
+from app.api._http import not_found
 from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
@@ -24,11 +25,7 @@ router = APIRouter(
     dependencies=[Depends(require_verified_email)],
 )
 
-_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-_DAILY_LIMIT = HTTPException(
-    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-    detail="Daily limit reached. Please try again tomorrow.",
-)
+_NOT_FOUND = not_found("Session not found")
 
 
 @router.post("", response_model=SessionRead, status_code=status.HTTP_201_CREATED)
@@ -39,10 +36,8 @@ def create_session(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SessionRead:
-    try:
-        return session_service.create_session(db, current_user.id, data)
-    except DailyLimitError:
-        raise _DAILY_LIMIT from None
+    # DailyLimitError → 429 is mapped app-wide (see app/main.py).
+    return session_service.create_session(db, current_user.id, data)
 
 
 @router.post("/beacon", status_code=status.HTTP_204_NO_CONTENT)

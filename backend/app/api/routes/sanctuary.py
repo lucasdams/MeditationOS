@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 
+from app.api._http import not_found
 from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
@@ -39,7 +40,7 @@ router = APIRouter(
     dependencies=[Depends(require_verified_email)],
 )
 
-_NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+_NOT_FOUND = not_found("Not found")
 _BROKE = HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Not enough coins")
 
 

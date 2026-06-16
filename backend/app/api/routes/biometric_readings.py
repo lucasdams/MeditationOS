@@ -3,13 +3,14 @@ user. Readings are a personal wellness signal, not a medical measurement."""
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
+from app.api._http import not_found
 from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.exceptions import DailyLimitError, LinkedSessionNotFoundError
+from app.core.exceptions import LinkedSessionNotFoundError
 from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.biometric_reading import (
@@ -25,11 +26,6 @@ router = APIRouter(
     dependencies=[Depends(require_verified_email)],
 )
 
-_DAILY_LIMIT = HTTPException(
-    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-    detail="Daily limit reached. Please try again tomorrow.",
-)
-
 
 @router.post("", response_model=BiometricReadingRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.write_rate_limit)
@@ -39,14 +35,11 @@ def create_reading(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BiometricReadingRead:
+    # DailyLimitError → 429 is mapped app-wide (see app/main.py).
     try:
         return biometric_reading_service.create_reading(db, current_user.id, data)
-    except DailyLimitError:
-        raise _DAILY_LIMIT from None
     except LinkedSessionNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Linked session not found"
-        ) from None
+        raise not_found("Linked session not found") from None
 
 
 @router.get("", response_model=list[BiometricReadingRead])
@@ -79,4 +72,4 @@ def delete_reading(
     current_user: User = Depends(get_current_user),
 ) -> None:
     if not biometric_reading_service.delete_reading(db, current_user.id, reading_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+        raise not_found()

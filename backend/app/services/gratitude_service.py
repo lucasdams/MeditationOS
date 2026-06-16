@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.core.limits import enforce_daily_create_cap
 from app.models.gratitude import GratitudeEntry
 from app.schemas.gratitude import GratitudeCreate
+from app.services._ownership import delete_owned, get_owned
 
 # 5 XP per gratitude moment (a meditation minute is 1 XP; see dashboard_service).
 GRATITUDE_XP = 5
@@ -42,10 +43,7 @@ def get_entry(
     db: DBSession, user_id: uuid.UUID, entry_id: uuid.UUID
 ) -> GratitudeEntry | None:
     """Fetch one entry owned by the user. None if missing or not theirs."""
-    stmt = select(GratitudeEntry).where(
-        GratitudeEntry.id == entry_id, GratitudeEntry.user_id == user_id
-    )
-    return db.execute(stmt).scalar_one_or_none()
+    return get_owned(db, GratitudeEntry, user_id, entry_id)
 
 
 def random_entry(db: DBSession, user_id: uuid.UUID) -> GratitudeEntry | None:
@@ -62,9 +60,4 @@ def random_entry(db: DBSession, user_id: uuid.UUID) -> GratitudeEntry | None:
 
 def delete_entry(db: DBSession, user_id: uuid.UUID, entry_id: uuid.UUID) -> bool:
     """Delete one entry owned by the user. Returns False if it wasn't found."""
-    entry = get_entry(db, user_id, entry_id)
-    if entry is None:
-        return False
-    db.delete(entry)
-    db.commit()
-    return True
+    return delete_owned(db, GratitudeEntry, user_id, entry_id)
