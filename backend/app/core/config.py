@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     daily_create_limit: int = 200
     # OAuth client ID for "Sign in with Google" (public value). Empty = disabled.
     google_client_id: str = ""
+    # Comma-separated allowlist of admin email addresses. An account whose email is in
+    # this list is treated as an admin (matched case-insensitively). Migration-free and
+    # matches the app's env-config ethos (CORS/SMTP/VAPID are all env). Empty = no admins.
+    admin_emails: str = ""
     # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.
     anthropic_api_key: str = ""
     # Web Push (VAPID). Both keys empty = push disabled (subscriptions still store, sends
@@ -65,6 +69,13 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """CORS origins as a list, parsed from the comma-separated env value."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def admin_emails_set(self) -> set[str]:
+        """Admin email allowlist as a lowercased set, parsed from the comma-separated
+        env value. Lowercased so membership tests are case-insensitive (emails are
+        stored case-insensitively via citext)."""
+        return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
 
     @model_validator(mode="after")
     def _require_secret_key_in_production(self) -> "Settings":

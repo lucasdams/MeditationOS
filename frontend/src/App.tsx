@@ -17,6 +17,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import SanctuaryPage from './pages/SanctuaryPage'
 import SchedulePage from './pages/SchedulePage'
 import SettingsPage from './pages/SettingsPage'
+import AdminPage from './pages/AdminPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -52,6 +53,9 @@ export default function App() {
           <Route path="/sessions/new" element={<LogSessionPage />} />
           <Route path="/biometrics/new" element={<LogReadingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          {/* Admin dashboard — AdminPage redirects non-admins to "/"; the backend
+              independently 403s every /admin/* API call for non-admins. */}
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

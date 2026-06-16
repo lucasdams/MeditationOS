@@ -37,6 +37,7 @@ const baseUser = (over: Partial<User> = {}): User =>
     has_password: true,
     email_verified: true,
     is_guest: false,
+    is_admin: false,
     reminder_enabled: false,
     reminder_hour: null,
     weekly_summary_enabled: false,

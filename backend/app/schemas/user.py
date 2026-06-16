@@ -131,6 +131,9 @@ class UserRead(BaseModel):
     has_password: bool
     email_verified: bool
     is_guest: bool
+    # Derived from the ADMIN_EMAILS allowlist (never stored). Lets the frontend gate
+    # admin nav/routes; the backend still enforces access via `require_admin`.
+    is_admin: bool
     reminder_enabled: bool
     reminder_hour: int | None
     weekly_summary_enabled: bool
