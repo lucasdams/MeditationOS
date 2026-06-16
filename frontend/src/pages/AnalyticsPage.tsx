@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { analyticsService } from '../services/analytics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
-import type { AnalyticsSummary, MeditationType, Mood } from '../types'
+import type { AnalyticsSummary, InsightsResponse, MeditationType, Mood } from '../types'
 
 const TYPE_LABELS: Record<string, string> = {
   mindfulness: 'Mindfulness',
@@ -52,6 +52,51 @@ function Bar({
   )
 }
 
+// Gentle, honest observations from the user's own data. Loads independently of the
+// charts so a hiccup in one doesn't blank the other.
+function Insights() {
+  const [insights, setInsights] = useState<InsightsResponse | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    analyticsService
+      .insights()
+      .then(setInsights)
+      .catch(() => setError(true))
+  }, [])
+
+  if (error) return null // stay quiet — the charts below still carry the page
+  if (!insights) {
+    return (
+      <section className="analytics-section">
+        <h2>Patterns</h2>
+        <p className="muted">Looking for patterns…</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="analytics-section">
+      <h2>Patterns</h2>
+      {insights.needs_more_data || insights.insights.length === 0 ? (
+        <p className="muted">
+          Keep practicing — gentle patterns will appear here as your history grows.
+        </p>
+      ) : (
+        <ul className="insight-cards">
+          {insights.insights.map((i) => (
+            <li key={i.kind} className="insight-card">
+              <span className="insight-title">{i.title}</span>
+              <span className="insight-detail">{i.detail}</span>
+              <span className="insight-basis">{i.basis}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -98,6 +143,8 @@ export default function AnalyticsPage() {
               <div className="stat-label">days practiced</div>
             </div>
           </section>
+
+          <Insights />
 
           <section className="analytics-section">
             <h2>Minutes per week</h2>

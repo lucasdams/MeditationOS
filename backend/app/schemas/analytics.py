@@ -36,6 +36,27 @@ class WeekMoods(BaseModel):
     counts: dict[str, int]  # mood -> number of journal entries that week
 
 
+class Insight(BaseModel):
+    """A single gentle, honest observation about the user's practice.
+
+    `kind` is a stable machine key (for the frontend to pick an icon/order);
+    `title` and `detail` are user-facing copy; `basis` states the sample it rests
+    on ("based on 23 rated sessions") so observations stay credible, not clinical.
+    """
+
+    kind: str
+    title: str
+    detail: str
+    basis: str
+
+
+class InsightsResponse(BaseModel):
+    insights: list[Insight]
+    # True when there isn't yet enough data for any honest pattern — the frontend
+    # shows an encouraging "patterns appear soon" state instead of empty silence.
+    needs_more_data: bool
+
+
 class AnalyticsSummary(BaseModel):
     total_sessions: int
     total_minutes: int

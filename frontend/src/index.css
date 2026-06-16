@@ -3719,6 +3719,45 @@ textarea:focus-visible,
   }
 }
 
+/* Insights / patterns cards (Analytics page). Calm, low-pressure: soft cards that
+   read as gentle observations, not alerts. Appended additively. */
+.insight-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.insight-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e5e5ea;
+  border-left: 3px solid #6366f1;
+  border-radius: 12px;
+  background: #f8f9ff;
+}
+
+.insight-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #45454a;
+}
+
+.insight-detail {
+  font-size: 0.88rem;
+  color: #1c1c1e;
+  line-height: 1.45;
+}
+
+.insight-basis {
+  font-size: 0.78rem;
+  color: #6b6b70;
+}
+
 /* Gentle journaling prompt nudge (see JournalPage.tsx). */
 .journal-nudge {
   display: flex;
