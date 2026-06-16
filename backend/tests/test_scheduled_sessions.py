@@ -106,3 +106,51 @@ def test_daily_create_cap(client, monkeypatch):
     _auth(client, "sccap@example.com")
     assert _schedule(client).status_code == 201
     assert _schedule(client).status_code == 429
+
+
+# ── ICS text escaping (RFC 5545 property injection) ────────────────────────
+
+
+def test_ics_escapes_comma_and_newline_in_note(client):
+    """A note with commas and newlines must produce a single valid DESCRIPTION line
+    with escaped values — no injected iCal properties."""
+    _auth(client, "ics_escape@example.com")
+    # A note that, without escaping, would inject an iCal property via newline.
+    evil_note = "morning,\nevening\nEND:VEVENT\nBEGIN:VEVENT\nSUMMARY:injected"
+    sid = _schedule(client, note=evil_note).json()["id"]
+    res = client.get(f"/api/v1/scheduled-sessions/{sid}/ics")
+    assert res.status_code == 200
+    body = res.text
+
+    # The literal word "injected" must not appear as a top-level SUMMARY property.
+    lines = body.splitlines()
+    summary_lines = [line for line in lines if line.startswith("SUMMARY:")]
+    assert len(summary_lines) == 1, "Only one SUMMARY line expected; injection detected"
+    assert "injected" not in summary_lines[0]
+
+    # The DESCRIPTION line must contain the escaped comma and \n sequences, not raw chars.
+    desc_lines = [line for line in lines if line.startswith("DESCRIPTION:")]
+    assert len(desc_lines) == 1, "Only one DESCRIPTION line expected; injection detected"
+    assert "\\," in desc_lines[0] or "\\n" in desc_lines[0], (
+        "Comma or newline in note must be escaped in DESCRIPTION"
+    )
+    # The raw newline must not appear inside DESCRIPTION (would break property boundary).
+    assert "\n" not in desc_lines[0]
+
+
+def test_ics_escapes_backslash_and_semicolon(client):
+    """Backslash and semicolon in user text must be escaped per RFC 5545."""
+    from app.services.scheduled_session_service import _ics_text
+
+    result = _ics_text("back\\slash; semi")
+    assert result == "back\\\\slash\\; semi"
+
+
+def test_ics_strips_raw_cr(client):
+    """Carriage returns in user text must be stripped (not passed raw to the ICS stream)."""
+    from app.services.scheduled_session_service import _ics_text
+
+    result = _ics_text("line one\r\nline two")
+    # CR stripped; LF → \n escape
+    assert "\r" not in result
+    assert "\\n" in result

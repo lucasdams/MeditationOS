@@ -42,6 +42,33 @@ def test_init_sentry_no_dsn_is_noop():
     )
 
 
+def test_init_sentry_disables_local_variables_and_body(monkeypatch):
+    """When a DSN is provided, init must pass include_local_variables=False
+    and max_request_body_size='never' to prevent frame locals leaking PII."""
+    import sentry_sdk
+
+    captured: dict = {}
+
+    def _fake_init(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(sentry_sdk, "init", _fake_init)
+    init_sentry(
+        dsn="https://fake@o0.ingest.sentry.io/0",
+        environment="test",
+        traces_sample_rate=0.0,
+    )
+
+    assert captured.get("include_local_variables") is False, (
+        "include_local_variables must be False to prevent frame locals from "
+        "leaking plaintext passwords, JWTs, and decrypted wellness content"
+    )
+    assert captured.get("max_request_body_size") == "never", (
+        "max_request_body_size must be 'never' as defense-in-depth against "
+        "body content bypassing the before_send scrubber"
+    )
+
+
 # ---------------------------------------------------------------------------
 # _strip_query
 # ---------------------------------------------------------------------------
