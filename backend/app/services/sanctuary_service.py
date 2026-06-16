@@ -21,7 +21,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.sanctuary import SanctuaryPlanting
@@ -495,6 +496,21 @@ class CellOutOfBounds(Exception):
     """The requested grid cell is outside the addressable layout (0 ≤ cell < GRID_CELLS)."""
 
 
+class SanctuaryConflictError(Exception):
+    """A concurrent write to the same user's garden collided on a unique constraint
+    (position/cell). The caller should retry; the route maps this to 409, not 500."""
+
+
+def _lock_user_garden(db: DBSession, user_id: uuid.UUID) -> None:
+    """Serialize concurrent *writes* to one user's garden by taking a transaction-scoped
+    PostgreSQL advisory lock keyed on the user. The lock is held until the surrounding
+    transaction commits/rolls back, so it spans the read-compute-write of a single
+    mutating method while never blocking writes for *other* users. SQLAlchemy autobegins
+    a transaction on first use, so this lock reliably covers the subsequent reads + flush.
+    """
+    db.execute(select(func.pg_advisory_xact_lock(func.hashtext(str(user_id)))))
+
+
 def _vitality(streak: int) -> str:
     """Visual-only health of the garden — never destructive (owned items persist)."""
     if streak == 0:
@@ -657,6 +673,9 @@ def buy(
     variant = item.variant(data.variant)  # None when item has no variants
     if data.variant is not None and variant is None:
         raise UnknownVariant(data.variant)
+    # Serialize concurrent writes for this user so the affordability check + insert below
+    # are atomic against a parallel buy/customize (no double-spend, no position/cell race).
+    _lock_user_garden(db, user_id)
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     if level < item.unlock_level:
         raise ItemLocked(data.item_key)
@@ -688,7 +707,11 @@ def buy(
             name=data.name,
         )
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as err:  # lost a race on uq position/cell despite the lock
+        db.rollback()
+        raise SanctuaryConflictError(item.key) from err
     return _build_scene(_load(db, user_id), coins_earned, level, streak)
 
 
@@ -724,6 +747,9 @@ def customize(
     current = _customizations(row)
     if current.get(slot.key) == option.key:
         raise AlreadyApplied(data.option)
+    # Serialize per-user writes so the affordability check + balance deduction can't race a
+    # parallel buy/customize (no overspend below 0 → no silently-free customization).
+    _lock_user_garden(db, user_id)
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     if level < option.unlock_level:
         raise ItemLocked(option.key)
@@ -741,7 +767,11 @@ def customize(
     updated = dict(current)
     updated[slot.key] = option.key
     row.customizations = updated
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as err:
+        db.rollback()
+        raise SanctuaryConflictError(row.item_key) from err
     return _build_scene(_load(db, user_id), coins_earned, level, streak)
 
 
@@ -770,6 +800,9 @@ def personalize(
     ).scalar_one_or_none()
     if row is None:
         return None
+    # Serialize per-user garden writes so this cosmetic update can't interleave with a
+    # concurrent buy/customize/move on the same user (consistent with the other mutators).
+    _lock_user_garden(db, user_id)
     fields = data.model_fields_set
     if "name" in fields:
         row.name = data.name
@@ -777,7 +810,11 @@ def personalize(
         row.note = data.note
     if "favorite" in fields and data.favorite is not None:
         row.favorite = data.favorite
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as err:
+        db.rollback()
+        raise SanctuaryConflictError(row.item_key) from err
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     return _build_scene(_load(db, user_id), coins_earned, level, streak)
 
@@ -811,6 +848,9 @@ def move(
         return None
 
     if row.cell != data.cell:
+        # Serialize per-user writes so the read-occupant → swap → commit can't race a
+        # parallel move/buy on the same user and collide on uq(user_id, cell).
+        _lock_user_garden(db, user_id)
         occupant = db.execute(
             select(SanctuaryPlanting).where(
                 SanctuaryPlanting.user_id == user_id,
@@ -818,17 +858,22 @@ def move(
             )
         ).scalar_one_or_none()
         source_cell = row.cell
-        if occupant is None:
-            row.cell = data.cell
-        else:
-            # Swap: park the moving row on a temporary sentinel cell (out of the addressable
-            # range, so it can never collide with a real cell), flush, then place both.
-            row.cell = -1
-            db.flush()
-            occupant.cell = source_cell
-            db.flush()
-            row.cell = data.cell
-        db.commit()
+        try:
+            if occupant is None:
+                row.cell = data.cell
+            else:
+                # Swap: park the moving row on a temporary sentinel cell (out of the
+                # addressable range, so it can never collide with a real cell), flush, then
+                # place both.
+                row.cell = -1
+                db.flush()
+                occupant.cell = source_cell
+                db.flush()
+                row.cell = data.cell
+            db.commit()
+        except IntegrityError as err:
+            db.rollback()
+            raise SanctuaryConflictError(row.item_key) from err
 
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     return _build_scene(_load(db, user_id), coins_earned, level, streak)

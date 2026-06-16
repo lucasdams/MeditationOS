@@ -295,7 +295,14 @@ def login_with_google(db: Session, credential: str) -> User:
             raise GoogleAuthError("account disabled")
         user.google_sub = google_sub  # link the verified Google identity
         user.email_verified = True
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            # A near-simultaneous first-time Google login linked/created this identity
+            # first and won the race on the unique google_sub. Roll back and re-resolve
+            # to that now-existing account — idempotent retry (mirrors create_session).
+            db.rollback()
+            return _resolve_google_user(db, google_sub, email)
         db.refresh(user)
         return user
 
@@ -303,8 +310,31 @@ def login_with_google(db: Session, credential: str) -> User:
         email=email, google_sub=google_sub, password_hash=None, email_verified=True
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent first-time login created the account (unique google_sub/email)
+        # first — recover idempotently by returning that account rather than 500-ing.
+        db.rollback()
+        return _resolve_google_user(db, google_sub, email)
     db.refresh(user)
+    return user
+
+
+def _resolve_google_user(db: Session, google_sub: str, email: str) -> User:
+    """Re-fetch the account that won a concurrent first-time Google login: by google_sub
+    first, then by email. Used to recover idempotently from a unique-constraint race."""
+    user = db.execute(
+        select(User).where(User.google_sub == google_sub)
+    ).scalar_one_or_none()
+    if user is None:
+        user = get_user_by_email(db, email)
+    if user is None:
+        # The colliding row vanished between rollback and re-read — surface a clean auth
+        # error rather than returning None (the caller's type is non-optional).
+        raise GoogleAuthError("could not resolve Google account after a concurrent login")
+    if user.is_disabled:
+        raise GoogleAuthError("account disabled")
     return user
 
 
