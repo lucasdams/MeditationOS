@@ -127,8 +127,8 @@ export default function DashboardPage() {
 
       {stats && stats.session_count === 0 && (
         <p className="muted">
-          Your tree is just a seedling. <Link to="/sessions/new">Log a session</Link> or{' '}
-          <Link to="/breathe">breathe</Link> to help it grow.
+          You're just getting started. <Link to="/sessions/new">Log a session</Link> or{' '}
+          <Link to="/breathe">breathe</Link> to earn your first coins.
         </p>
       )}
 
