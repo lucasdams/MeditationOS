@@ -80,11 +80,18 @@ def list_users(
     """
     stmt = select(User)
     if query:
-        like = f"%{query.strip()}%"
+        # Escape LIKE metacharacters so user input like "%" or "_" is treated as
+        # a literal substring rather than a wildcard (no SQLi risk, but avoids
+        # full-table-scan on "%" and unexpected match-all behaviour).
+        escaped = query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped}%"
         # email/username are citext, so ILIKE is redundant but harmless; cast username to
         # avoid NULLs short-circuiting the OR.
         stmt = stmt.where(
-            or_(User.email.ilike(like), func.coalesce(User.username, "").ilike(like))
+            or_(
+                User.email.ilike(like, escape="\\"),
+                func.coalesce(User.username, "").ilike(like, escape="\\"),
+            )
         )
 
     total = int(

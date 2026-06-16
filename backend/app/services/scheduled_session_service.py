@@ -67,13 +67,29 @@ def _ics_dt(dt: datetime) -> str:
     return dt.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
+def _ics_text(value: str) -> str:
+    """Escape a user-supplied string for use as an iCalendar TEXT value (RFC 5545 §3.3.11).
+
+    Order matters: backslash must be escaped first so the replacement chars
+    we insert aren't double-escaped.
+    """
+    # Strip raw carriage returns first (we re-encode line endings as \n below).
+    value = value.replace("\r", "")
+    value = value.replace("\\", "\\\\")
+    value = value.replace(";", "\\;")
+    value = value.replace(",", "\\,")
+    value = value.replace("\n", "\\n")
+    return value
+
+
 def to_ics(row: ScheduledSession) -> str:
     """A minimal, valid single-event iCalendar document for 'add to calendar'."""
     start = row.scheduled_at
     end = start + timedelta(minutes=row.duration_minutes or DEFAULT_ICS_MINUTES)
     label = _TYPE_LABELS.get(row.type, "Meditation")
-    summary = f"Meditation: {label}"
-    description = row.note or "Time to practice. — MeditationOS"
+    # SUMMARY and DESCRIPTION are TEXT properties — escape user-supplied values.
+    summary = _ics_text(f"Meditation: {label}")
+    description = _ics_text(row.note or "Time to practice. — MeditationOS")
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",

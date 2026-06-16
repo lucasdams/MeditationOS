@@ -423,3 +423,36 @@ def test_delete_rolls_back_if_audit_raises(db_session, as_admin, monkeypatch):
             assert count == 1
     finally:
         _app.dependency_overrides.clear()
+
+
+# ── Search LIKE wildcard escaping ──────────────────────────────────────────
+
+
+def test_search_literal_percent_does_not_match_all(client, db_session, as_admin):
+    """A query of '%' must match only users whose email/username contains a literal '%';
+    it must NOT return all users (regression: unescaped wildcard → full-table match)."""
+    _become_admin(client, db_session, as_admin)
+    # Register a normal user that does NOT contain a literal '%'.
+    _register(client, "nopercent@example.com")
+    _login(client, "boss@example.com")
+
+    body = client.get("/api/v1/admin/users", params={"q": "%"}).json()
+    # The wildcard-percent should match nobody (no email contains a literal '%').
+    assert all("%" in u["email"] for u in body["users"]), (
+        "search for '%' must only return rows whose email contains a literal '%'"
+    )
+    assert body["total"] == 0 or all("%" in u["email"] for u in body["users"])
+
+
+def test_search_literal_underscore_does_not_over_match(client, db_session, as_admin):
+    """A query of '_' must not match single-char substrings (regex-wildcard behaviour)."""
+    _become_admin(client, db_session, as_admin)
+    _register(client, "nounderscore@example.com")
+    _login(client, "boss@example.com")
+
+    body = client.get("/api/v1/admin/users", params={"q": "_"}).json()
+    # All returned rows must actually contain a literal '_' in email or username.
+    for u in body["users"]:
+        assert "_" in (u["email"] or "") or "_" in (u.get("username") or ""), (
+            f"user {u['email']} does not contain a literal underscore but was matched"
+        )

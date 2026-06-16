@@ -54,6 +54,14 @@ async def save_session_beacon(
     rate/daily caps are swallowed — this is fire-and-forget; the localStorage draft is
     the reliable fallback.
     """
+    # CSRF guard: beacons use text/plain (a CORS-safelisted content-type), so
+    # the browser sends no preflight — a cross-site page could forge a write.
+    # Reject any Origin that is present but not in the allowlist.  A missing
+    # Origin is allowed (same-origin requests from some browsers omit it).
+    origin = request.headers.get("origin")
+    if origin and origin not in settings.cors_origins_list:
+        return Response(status_code=status.HTTP_403_FORBIDDEN)
+
     raw = await request.body()
     try:
         data = SessionCreate.model_validate_json(raw)

@@ -81,6 +81,58 @@ def test_beacon_requires_auth(client):
     assert res.status_code == 401
 
 
+def test_beacon_rejects_cross_site_origin(client, monkeypatch):
+    """A beacon with a foreign Origin header must be rejected (403) without writing."""
+    import json
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "cors_origins", "http://localhost:5173")
+    _auth(client, "beacon_csrf@example.com")
+    payload = {**MINDFUL, "client_token": "csrf-tok"}
+    res = client.post(
+        "/api/v1/sessions/beacon",
+        content=json.dumps(payload),
+        headers={"Content-Type": "text/plain", "Origin": "https://evil.example.com"},
+    )
+    assert res.status_code == 403
+    # No session must have been created.
+    assert client.get("/api/v1/sessions").json() == []
+
+
+def test_beacon_allows_same_origin(client, monkeypatch):
+    """A beacon with a same-site Origin header must succeed (204)."""
+    import json
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "cors_origins", "http://localhost:5173")
+    _auth(client, "beacon_sameorigin@example.com")
+    payload = {**MINDFUL, "client_token": "same-tok"}
+    res = client.post(
+        "/api/v1/sessions/beacon",
+        content=json.dumps(payload),
+        headers={"Content-Type": "text/plain", "Origin": "http://localhost:5173"},
+    )
+    assert res.status_code == 204
+    assert len(client.get("/api/v1/sessions").json()) == 1
+
+
+def test_beacon_allows_no_origin(client):
+    """A beacon with no Origin header (some same-origin requests omit it) must succeed."""
+    import json
+
+    _auth(client, "beacon_noorigin@example.com")
+    payload = {**MINDFUL, "client_token": "no-origin-tok"}
+    res = client.post(
+        "/api/v1/sessions/beacon",
+        content=json.dumps(payload),
+        headers={"Content-Type": "text/plain"},
+    )
+    assert res.status_code == 204
+    assert len(client.get("/api/v1/sessions").json()) == 1
+
+
 def test_create_with_focus_calm_rating(client):
     _auth(client, "rate@example.com")
     resp = client.post("/api/v1/sessions", json={**MINDFUL, "focus": 4, "calm": 5})

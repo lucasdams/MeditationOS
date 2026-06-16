@@ -157,6 +157,13 @@ def init_sentry(dsn: str, environment: str, traces_sample_rate: float) -> None:
         environment=environment,
         # Never collect PII automatically (user IDs, IPs, request bodies).
         send_default_pii=False,
+        # Disable local variable capture — frame locals can contain plaintext
+        # passwords, JWT strings, or decrypted user content (journal/biometric)
+        # and the before_send body scrubber does NOT walk exception frame locals.
+        include_local_variables=False,
+        # Defense-in-depth: never send request bodies even if before_send is
+        # bypassed or misconfigured.  "never" is the strictest option.
+        max_request_body_size="never",
         traces_sample_rate=traces_sample_rate,
         integrations=[
             StarletteIntegration(transaction_style="endpoint"),
