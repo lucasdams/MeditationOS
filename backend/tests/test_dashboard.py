@@ -380,3 +380,47 @@ def test_get_wallet_basis_empty_user(db_session):
     assert wallet.earned_xp == 0
     assert wallet.level == 1  # _level_progress(0) → level 1
     assert wallet.current_streak == 0
+
+
+def test_sub_minute_slow_breath_pays_quest_bonus(db_session):
+    # A single 50-second slow-breath day: under MIN_PRACTICE_SECONDS (60s), so the day
+    # is NOT in session_days and earns 0 practice XP — but it DOES satisfy the
+    # slow_breathe quest condition (one full breath ≥ SLOW_BREATH_SECONDS). On
+    # 2026-06-16 the breathe category's rotating quest is `slow_breathe` (35 XP).
+    # Regression: the quest-bonus loop must still visit this day and pay the bonus.
+    user = User(email="subminute_quest@example.com", password_hash="x")
+    db_session.add(user)
+    db_session.commit()
+    today = date(2026, 6, 16)
+    db_session.add(
+        PracticeSession(
+            user_id=user.id,
+            type="resonance_breathing",
+            duration_seconds=50,  # < 60s: not a "practice day", 0 practice XP
+            occurred_at=datetime(today.year, today.month, today.day, 8, 0, tzinfo=UTC),
+            inhale_seconds=6,
+            exhale_seconds=6,  # 12s/breath = 5 bpm → satisfies slow_breathe
+        )
+    )
+    db_session.commit()
+
+    quest = quest_for("breathe", today)
+    assert quest.variant == "slow_breathe"  # guards the fixture's date assumption
+
+    stats = dashboard_service.get_stats(
+        db_session, user.id, today=today, tz="UTC",
+        quest_features=["meditate", "breathe", "gratitude"],
+    )
+    breathe_q = next(q for q in stats.daily_quests if q.key == "breathe")
+    assert breathe_q.done is True  # the sub-60s slow breath completes the quest
+    # The day earns no practice XP (sub-minute) and there's no streak today-only bonus
+    # beyond the 1-day streak... wait: a sub-60s day is NOT a practice day, so there is
+    # NO current streak. Total XP is therefore exactly the slow_breathe bonus.
+    assert stats.current_streak_days == 0
+    assert stats.streak_bonus_xp == 0
+    assert stats.xp == quest.xp  # 35 — the bonus is now paid (was 0 before the fix)
+
+    # Wallet parity: get_wallet_basis shares _xp_basis, so earned XP matches and the
+    # bonus isn't double-counted.
+    wallet = dashboard_service.get_wallet_basis(db_session, user.id, today=today, tz="UTC")
+    assert wallet.earned_xp == quest.xp  # earned XP == total here (no streak bonus)

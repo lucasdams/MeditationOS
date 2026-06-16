@@ -1,5 +1,6 @@
 """Tests for GET /api/v1/analytics/insights — gentle pattern observations."""
 
+import random
 from datetime import date, timedelta
 
 # Fixed anchor: all session dates are relative to this past date so the test
@@ -47,11 +48,15 @@ def test_needs_more_data_when_sparse(client):
 
 def test_time_of_day_calm_pattern(client):
     _auth(client, "morning@example.com")
-    # Calmer mornings than evenings, well past the min-sample threshold.
-    for d in range(5):
-        _session(client, hour=7, calm=5, days_ago=d)
-    for d in range(5):
-        _session(client, hour=20, calm=2, days_ago=d)
+    # A GENUINE effect with realistic within-group spread (not a perfectly clean split):
+    # mornings cluster around 4–5, evenings around 1–2. The gap clears the stricter
+    # multiple-comparisons effect-size bar even with some variance.
+    morning_calm = [5, 4, 5, 4, 5, 4, 5, 4]
+    evening_calm = [2, 1, 2, 1, 2, 1, 2, 1]
+    for i, c in enumerate(morning_calm):
+        _session(client, hour=7, calm=c, days_ago=i)
+    for i, c in enumerate(evening_calm):
+        _session(client, hour=20, calm=c, days_ago=i)
 
     body = client.get("/api/v1/analytics/insights").json()
     assert body["needs_more_data"] is False
@@ -63,9 +68,14 @@ def test_time_of_day_calm_pattern(client):
 
 def test_breathing_vs_meditation_pattern(client):
     _auth(client, "breath@example.com")
-    for d in range(4):
-        _session(client, type="resonance_breathing", calm=5, days_ago=d)
-        _session(client, type="mindfulness", calm=2, days_ago=d)
+    # Clearly separated distributions (breathing ~4–5, meditation ~1–2) with some
+    # spread, so the effect size — not just the mean gap — carries the pattern.
+    breathing_calm = [5, 4, 5, 4, 5, 4]
+    meditation_calm = [2, 1, 2, 1, 2, 1]
+    for i, c in enumerate(breathing_calm):
+        _session(client, type="resonance_breathing", calm=c, days_ago=i)
+    for i, c in enumerate(meditation_calm):
+        _session(client, type="mindfulness", calm=c, days_ago=i)
 
     body = client.get("/api/v1/analytics/insights").json()
     assert "breathing_vs_meditation" in _kinds(body)
@@ -94,3 +104,69 @@ def test_user_scoped(client):
     body = client.get("/api/v1/analytics/insights").json()
     assert body["needs_more_data"] is True
     assert body["insights"] == []
+
+
+# --- Noise must NOT manufacture a pattern ---------------------------------------
+# These are the key regression tests for the significance gate: random, overlapping
+# calm ratings (no real effect) must not surface a time-of-day or breathing-vs-
+# meditation "pattern". Before the effect-size test, the bucket max-select fired a
+# false "calmest on mornings" the large majority of the time.
+
+# Comparison observations that claim a DIRECTIONAL pattern from noise. (calm_trend
+# always returns a "steady/up/down" insight and is excluded — on noise it reports
+# "steady", which is honest, not a false pattern.)
+_COMPARISON_KINDS = {"time_of_day_calm", "breathing_vs_meditation"}
+
+
+def test_time_of_day_noise_reports_no_pattern(client):
+    # A single user with plenty of rated sits spread across all four time buckets, but
+    # calm drawn from the SAME overlapping distribution everywhere — no real effect.
+    _auth(client, "tod_noise@example.com")
+    rng = random.Random(1234)
+    hours = [7, 14, 19, 23]  # morning / afternoon / evening / night
+    for d in range(40):
+        _session(client, hour=rng.choice(hours), calm=rng.randint(2, 4), days_ago=d % 30)
+
+    body = client.get("/api/v1/analytics/insights").json()
+    assert "time_of_day_calm" not in _kinds(body)
+
+
+def test_breathing_vs_meditation_noise_reports_no_pattern(client):
+    # Breathing and meditation rated from the same overlapping distribution — no effect.
+    _auth(client, "bvm_noise@example.com")
+    rng = random.Random(987)
+    for d in range(30):
+        _session(
+            client, type="resonance_breathing", calm=rng.randint(2, 4), days_ago=d
+        )
+        _session(client, type="mindfulness", calm=rng.randint(2, 4), days_ago=d)
+
+    body = client.get("/api/v1/analytics/insights").json()
+    assert "breathing_vs_meditation" not in _kinds(body)
+
+
+def test_false_positive_rate_is_low_over_many_noise_users(client):
+    # Monte-Carlo: many independent users, each with PURE-NOISE calm ratings spread
+    # across time buckets and practice types. The comparison observations should fire
+    # on only a small fraction — proof the gate suppresses manufactured patterns.
+    rng = random.Random(42)
+    hours = [7, 14, 19, 23]
+    trials = 25
+    fired = 0
+    for t in range(trials):
+        _auth(client, f"fp_{t}@example.com")
+        for d in range(36):
+            _session(
+                client,
+                hour=rng.choice(hours),
+                type=rng.choice(["mindfulness", "resonance_breathing"]),
+                calm=rng.randint(1, 5),
+                days_ago=d % 30,
+            )
+        kinds = _kinds(client.get("/api/v1/analytics/insights").json())
+        if kinds & _COMPARISON_KINDS:
+            fired += 1
+
+    # Random ratings have no real time-of-day or practice-type effect; the gate should
+    # let a false pattern slip through only occasionally (well under a quarter of users).
+    assert fired <= trials // 4, f"false positives: {fired}/{trials}"

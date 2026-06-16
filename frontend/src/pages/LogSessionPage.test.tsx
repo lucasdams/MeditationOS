@@ -134,6 +134,22 @@ describe('LogSessionPage', () => {
     expect(payload.occurred_at.length).toBeGreaterThan(0)
   })
 
+  it('sends a tz-aware (UTC ISO) occurred_at, not a naive datetime-local string', async () => {
+    // The picker holds a tz-naive "YYYY-MM-DDThh:mm"; the payload must be a tz-aware
+    // ISO 8601 string (UTC "Z" suffix) so the backend buckets the local day correctly,
+    // matching MeditatePage / BiometricCapture (which send toISOString()).
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+
+    const occurredAt: string = mockCreate.mock.calls[0][0].occurred_at
+    // ISO with offset — a naive "datetime-local" value has none.
+    expect(occurredAt).toMatch(/Z$/)
+    expect(occurredAt).not.toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+    // It round-trips through Date (i.e. it's a valid timestamp).
+    expect(Number.isNaN(new Date(occurredAt).getTime())).toBe(false)
+  })
+
   it('submits a resonance_breathing payload when Breathing is selected', async () => {
     renderPage()
 

@@ -84,7 +84,10 @@ def get_weekly_review(
         .group_by(Journal.mood)
     ).all():
         counts[mood] += int(n)
-    top_mood = counts.most_common(1)[0][0] if counts else None
+    # Deterministic tie-break: most frequent, then the mood name alphabetically.
+    # (Counter.most_common falls back to insertion order, which here mirrors
+    # nondeterministic DB row order — two equally-common moods could flip between calls.)
+    top_mood = min(counts, key=lambda m: (-counts[m], m)) if counts else None
 
     return WeeklyReview(
         start=week_start,
