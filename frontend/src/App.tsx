@@ -6,6 +6,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
 import LogSessionPage from './pages/LogSessionPage'
+import LogReadingPage from './pages/LogReadingPage'
 import BreathePage from './pages/BreathePage'
 import MeditatePage from './pages/MeditatePage'
 import GratitudePage from './pages/GratitudePage'
@@ -49,6 +50,7 @@ export default function App() {
           {/* History folded into Timeline; redirect old links/bookmarks. */}
           <Route path="/sessions" element={<Navigate to="/timeline" replace />} />
           <Route path="/sessions/new" element={<LogSessionPage />} />
+          <Route path="/biometrics/new" element={<LogReadingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

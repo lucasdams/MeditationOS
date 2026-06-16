@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { analyticsService } from '../services/analytics'
+import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
-import type { AnalyticsSummary, InsightsResponse, MeditationType, Mood } from '../types'
+import type {
+  AnalyticsSummary,
+  BiometricDelta,
+  BiometricReading,
+  InsightsResponse,
+  MeditationType,
+  Mood,
+} from '../types'
+
+// Trend window: recent weeks of readings feed the heart-rate (and HRV) chart.
+const TREND_DAYS = 84 // ~12 weeks
+const HR_COLOR = '#ef4444' // warm red for heart rate
+const HRV_COLOR = '#10b981' // green for HRV (higher generally = more recovered)
 
 const TYPE_LABELS: Record<string, string> = {
   mindfulness: 'Mindfulness',
@@ -97,6 +110,148 @@ function Insights() {
   )
 }
 
+// Format the gentle pre→post delta sentence, or null when there isn't enough basis.
+function deltaSentence(delta: BiometricDelta): string | null {
+  if (delta.sample_size < 1 || delta.avg_bpm_delta == null) return null
+  const n = delta.sample_size
+  const basis = `based on ${n} ${n === 1 ? 'sit' : 'sits'} with a pre- and post-reading`
+  const bpm = delta.avg_bpm_delta
+  if (bpm < 0) {
+    return `Your heart rate settles about ${Math.abs(bpm)} bpm over a sit, ${basis}.`
+  }
+  if (bpm > 0) {
+    return `Your heart rate is about ${bpm} bpm higher after a sit, ${basis}.`
+  }
+  return `Your heart rate is about the same before and after a sit, ${basis}.`
+}
+
+// A heart-rate (and optional HRV) trend over recent readings. Loads independently so
+// a hiccup here never blanks the practice charts above. Readings are a personal
+// wellness signal the user enters — not a medical measurement.
+function BiometricTrend() {
+  const [readings, setReadings] = useState<BiometricReading[] | null>(null)
+  const [delta, setDelta] = useState<BiometricDelta | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    Promise.all([
+      biometricsService.list({ days: TREND_DAYS, limit: 200 }),
+      biometricsService.delta({ days: TREND_DAYS }),
+    ])
+      .then(([r, d]) => {
+        setReadings(r)
+        setDelta(d)
+      })
+      .catch(() => setError(true))
+  }, [])
+
+  if (error) return null // stay quiet — the practice charts still carry the page
+
+  if (!readings) {
+    return (
+      <section className="analytics-section">
+        <h2>Heart rate &amp; HRV</h2>
+        <p className="muted">Loading your readings…</p>
+      </section>
+    )
+  }
+
+  if (readings.length === 0) {
+    return (
+      <section className="analytics-section">
+        <h2>Heart rate &amp; HRV</h2>
+        <p className="muted">
+          No readings yet. Log a quick one after a sit, or{' '}
+          <Link to="/biometrics/new">add a resting reading</Link>, to start a trend.
+        </p>
+      </section>
+    )
+  }
+
+  // Oldest → newest for a left-to-right trend (the API returns newest first).
+  const ordered = [...readings].reverse()
+  const bpms = ordered.map((r) => r.bpm)
+  const minBpm = Math.min(...bpms)
+  const maxBpm = Math.max(...bpms)
+  const bpmRange = Math.max(1, maxBpm - minBpm)
+  // Height as a share of the band, with a floor so a flat line stays visible.
+  const barHeight = (v: number) => 15 + ((v - minBpm) / bpmRange) * 85
+
+  const hrvReadings = ordered.filter((r) => r.hrv_ms != null)
+  const hrvVals = hrvReadings.map((r) => r.hrv_ms as number)
+  const minHrv = hrvVals.length ? Math.min(...hrvVals) : 0
+  const maxHrv = hrvVals.length ? Math.max(...hrvVals) : 1
+  const hrvRange = Math.max(1, maxHrv - minHrv)
+
+  const sentence = delta ? deltaSentence(delta) : null
+
+  return (
+    <section className="analytics-section">
+      <h2>Heart rate &amp; HRV</h2>
+      <p className="muted biometric-note">
+        A personal wellness signal you log yourself — not a medical measurement.
+      </p>
+
+      <div className="weeks" aria-hidden="true">
+        {ordered.map((r) => (
+          <div
+            key={r.id}
+            className="week-col"
+            title={`${new Date(r.measured_at).toLocaleDateString()} · ${r.bpm} bpm${
+              r.hrv_ms != null ? ` · HRV ${r.hrv_ms} ms` : ''
+            } · ${r.context}`}
+          >
+            <div
+              className="week-bar"
+              style={{ height: `${barHeight(r.bpm)}%`, background: HR_COLOR }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="muted analytics-axis">
+        <span>{minBpm} bpm</span>
+        <span>heart rate, oldest → newest</span>
+        <span>{maxBpm} bpm</span>
+      </div>
+
+      {hrvReadings.length > 0 && (
+        <>
+          <div className="weeks biometric-hrv-row" aria-hidden="true">
+            {hrvReadings.map((r) => (
+              <div
+                key={r.id}
+                className="week-col"
+                title={`${new Date(r.measured_at).toLocaleDateString()} · HRV ${
+                  r.hrv_ms
+                } ms`}
+              >
+                <div
+                  className="week-bar"
+                  style={{
+                    height: `${15 + (((r.hrv_ms as number) - minHrv) / hrvRange) * 85}%`,
+                    background: HRV_COLOR,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="muted analytics-axis">
+            <span>{minHrv} ms</span>
+            <span>HRV (when logged)</span>
+            <span>{maxHrv} ms</span>
+          </div>
+        </>
+      )}
+
+      {sentence && <p className="biometric-delta">{sentence}</p>}
+
+      <p className="muted biometric-cta">
+        <Link to="/biometrics/new">Log a resting reading</Link>
+      </p>
+    </section>
+  )
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -124,7 +279,13 @@ export default function AnalyticsPage() {
       {!data && !error && <p>Loading…</p>}
 
       {data && data.total_sessions === 0 && data.moods.length === 0 && (
-        <p className="muted">No data yet — practice a little and your trends will appear here.</p>
+        <>
+          <p className="muted">
+            No practice data yet — practice a little and your trends will appear here.
+          </p>
+          {/* Readings can exist independently of sessions, so still offer the trend. */}
+          <BiometricTrend />
+        </>
       )}
 
       {data && (data.total_sessions > 0 || data.moods.length > 0) && (
@@ -145,6 +306,8 @@ export default function AnalyticsPage() {
           </section>
 
           <Insights />
+
+          <BiometricTrend />
 
           <section className="analytics-section">
             <h2>Minutes per week</h2>

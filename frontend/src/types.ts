@@ -327,6 +327,40 @@ export interface MoodLog {
   created_at: string
 }
 
+// A biometric (heart-rate, optional HRV) reading — a personal wellness signal,
+// NOT a medical measurement. Source-agnostic: manual/estimated now; camera and
+// wearable plug in later without a shape change.
+export type ReadingContext = 'pre' | 'post' | 'resting'
+export type ReadingSource = 'manual' | 'estimated' | 'camera' | 'wearable'
+
+export interface BiometricReading {
+  id: string
+  session_id: string | null
+  context: ReadingContext
+  bpm: number
+  hrv_ms: number | null
+  source: ReadingSource
+  measured_at: string
+  created_at: string
+}
+
+export interface BiometricReadingCreate {
+  context: ReadingContext
+  bpm: number
+  hrv_ms?: number | null
+  source?: ReadingSource
+  measured_at: string
+  session_id?: string | null
+}
+
+// Average pre→post change around sits, with the sample basis. Nulls until there
+// are enough paired readings to say anything.
+export interface BiometricDelta {
+  sample_size: number
+  avg_bpm_delta: number | null
+  avg_hrv_ms_delta: number | null
+}
+
 export interface ScheduledSession {
   id: string
   type: MeditationType

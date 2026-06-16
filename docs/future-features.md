@@ -33,11 +33,21 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 
 The product is branded on *HRV resonance breathing* but never **measures** HRV, so the user breathes without seeing the effect. Closing "breathe → measure → see your resonance improve" would make the core thesis tangible (and is a real differentiator). Privacy-first; biometric data stays the user's.
 
-- [ ] **Wearable / health-platform import** — pull HRV (and resting HR, sleep) from **Apple Health / Google Fit / Oura / Whoop / Fitbit**; show HRV trend alongside practice (does consistent breathing raise it over weeks?)
-- [ ] **Camera PPG** — estimate heart rate / a coarse HRV from the phone camera (fingertip), as a no-wearable option; clearly labelled an estimate, not a medical device
-- [ ] **Pre/post-session HRV delta** — optional quick reading before and after a breathing sit to surface the immediate calming effect
+> **In progress (2026-06):** the **data + capture loop** has shipped — a source-agnostic
+> `biometric_readings` table (heart rate + optional HRV, `context` pre/post/resting,
+> `source` manual/estimated/camera/wearable), a user-scoped API, a **skippable
+> post-session capture** on the Meditate/Breathe pages, a **standalone manual entry**
+> (`/biometrics/new`), and a **heart-rate/HRV trend + pre/post delta** on Analytics.
+> Manual/estimated entry only for now; camera and wearable are already valid `source`
+> values, so they plug in without a schema change. See
+> [ADR-0017](decisions/0017-biometric-readings-data-model.md).
+
+- [ ] **Wearable / health-platform import** — pull HRV (and resting HR, sleep) from **Apple Health / Google Fit / Oura / Whoop / Fitbit**; show HRV trend alongside practice (does consistent breathing raise it over weeks?) — *writes `source='wearable'` into the shipped model*
+- [ ] **Camera PPG** — estimate heart rate / a coarse HRV from the phone camera (fingertip), as a no-wearable option; clearly labelled an estimate, not a medical device — *writes `source='camera'`/`'estimated'` into the shipped model*
+- [x] **Pre/post-session HRV delta** — optional quick reading after a sit (linked to it); the average post-vs-pre change is computed on read and shown gently on Analytics with its sample basis (a dedicated *pre*-reading prompt before a sit is a small UI follow-up on the same model)
+- [x] **Manual / estimated entry to start** — source-agnostic readings, skippable post-session capture, standalone resting entry, and a trend view ([ADR-0017](decisions/0017-biometric-readings-data-model.md))
 - [ ] Personal **resonance-frequency finder** — sweep breathing rates while reading HRV to estimate the user's individual resonance rate (ties into the custom in:out ratio above)
-- [ ] Strictly non-clinical framing throughout (no diagnosis / medical claims), per `.claude/rules/ai-product.md` tone
+- [x] Strictly non-clinical framing throughout (no diagnosis / medical claims), per `.claude/rules/ai-product.md` tone — capture form and trend both label readings a *personal wellness signal, not a medical measurement*
 
 ### High-rate breathwork (Wim Hof–style) — separate mode
 

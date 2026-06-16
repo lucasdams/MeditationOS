@@ -2475,6 +2475,95 @@ textarea:focus-visible,
   margin-top: 1.5rem;
 }
 
+/* ── Biometric capture (post-session prompt + standalone) ── */
+.biometric-capture {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  animation: fade-in 0.2s ease;
+  padding: 1rem;
+}
+
+.biometric-card {
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 40px var(--shadow-modal);
+}
+
+.biometric-card h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+.biometric-intro {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.biometric-disclaimer {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.biometric-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+/* The standalone reading page mounts the capture inline (not over an overlay). */
+.log-session .biometric-capture {
+  position: static;
+  inset: auto;
+  background: transparent;
+  padding: 0;
+  display: block;
+  animation: none;
+}
+
+.log-session .biometric-card {
+  width: 100%;
+  box-shadow: 0 1px 3px var(--shadow-card);
+}
+
+/* ── Biometric trend (Analytics) ── */
+.biometric-note {
+  margin-top: -0.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.biometric-hrv-row {
+  margin-top: 1rem;
+}
+
+.biometric-delta {
+  margin: 1rem 0 0;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: var(--accent-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.biometric-cta {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
 .quests {
   margin: 1.25rem 0;
   padding: 1rem 1.25rem;
