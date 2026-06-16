@@ -2101,6 +2101,116 @@ textarea:focus-visible,
   cursor: pointer;
 }
 
+/* --- Personalization touches: name plaque, note, favourite (ADR-0015) --- */
+/* The user's own name reads first; the item/variant becomes a quiet subtitle. */
+.sanctuary-plaque {
+  font-weight: 700;
+}
+
+.sanctuary-fav-star {
+  color: #f59e0b;
+}
+
+.sanctuary-card-sub {
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.sanctuary-card-note {
+  font-size: 0.74rem;
+  font-style: italic;
+  margin: 0.1rem 0 0;
+  line-height: 1.3;
+}
+
+/* The calm name/note/favourite editor inside the personalize panel. */
+.sanctuary-personal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 0.2rem;
+}
+
+.sanctuary-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.sanctuary-field input {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #1f2937;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sanctuary-field input:focus {
+  outline: none;
+  border-color: #34d399;
+}
+
+.sanctuary-fav-toggle {
+  align-self: flex-start;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #fff;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+  cursor: pointer;
+}
+
+.sanctuary-fav-toggle.on {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.sanctuary-fav-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Buy row: the one-tap Buy plus a quiet, optional "name it…" affordance. */
+.sanctuary-buy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem 0.5rem;
+}
+
+.sanctuary-name-it {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.72rem;
+  color: #6b7280;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sanctuary-name-it:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sanctuary-modal-name {
+  margin-bottom: 0.9rem;
+}
+
+.sanctuary-modal-buy {
+  width: 100%;
+}
+
 .reward-overlay {
   position: fixed;
   inset: 0;

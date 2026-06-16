@@ -1,6 +1,6 @@
 # Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn
 **coins** as you level up and spend them to **buy** items (plants, structures, pets) and
@@ -65,18 +65,27 @@ One table — the holdings; the balance is computed.
 
 ```
 sanctuary_plantings
-  id              UUID         pk
-  user_id         UUID         fk users ON DELETE CASCADE
-  item_key        TEXT         -- references SANCTUARY_CATALOG (in code)
-  position        INT          -- immutable acquisition order: 0, 1, 2, … (economy key)
-  cell            INT          -- grid layout slot, row-major; rearranged freely (layout)
-  variant         TEXT NULL    -- chosen base form; NULL = the item's default variant
-  customizations  JSONB        -- {slot: option} purchased; default '{}'
-  created_at      timestamptz  server default now()
+  id              UUID            pk
+  user_id         UUID            fk users ON DELETE CASCADE
+  item_key        TEXT            -- references SANCTUARY_CATALOG (in code)
+  position        INT             -- immutable acquisition order: 0, 1, 2, … (economy key)
+  cell            INT             -- grid layout slot, row-major; rearranged freely (layout)
+  variant         TEXT NULL       -- chosen base form; NULL = the item's default variant
+  customizations  JSONB           -- {slot: option} purchased; default '{}'
+  name            VARCHAR(40) NULL    -- user plaque/nickname; NULL = unnamed (cosmetic)
+  note            VARCHAR(140) NULL   -- short free-text caption/memory; NULL = none (cosmetic)
+  favorite        BOOLEAN         -- pin flag; default false (cosmetic)
+  created_at      timestamptz     server default now()
   UNIQUE (user_id, position)
   UNIQUE (user_id, cell)
   INDEX (user_id)
 ```
+
+`name`, `note`, and `favorite` ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md))
+are **purely cosmetic** personal touches — all optional and default-off. They never enter the
+spend computation below, so naming/noting/pinning an item can never change coins, and they are
+independent of `cell` (layout). `name`/`note` are trimmed and length-capped server-side (40 /
+140 chars; empty → NULL); over-length input is rejected as `422`.
 
 Still no `user_wallet` and no spend ledger — the holdings *are* the ledger
 ([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)). `item_key` may repeat. The old
@@ -182,8 +191,9 @@ Layered route → service → model, user-scoped, default-deny (the standard che
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/v1/sanctuary` | coins, level, owned (variant + customizations + available slots), and the shop (with variants) |
-| `POST` | `/api/v1/sanctuary/buy` | `{ item_key, variant? }` → buy a fresh item · `404` unknown item/variant · `409` locked or too poor · `422` bad shape |
+| `POST` | `/api/v1/sanctuary/buy` | `{ item_key, variant?, name? }` → buy a fresh item (optional name plaque) · `404` unknown item/variant · `409` locked or too poor · `422` bad shape / over-length name |
 | `POST` | `/api/v1/sanctuary/items/{id}/customize` | `{ slot, option }` → apply a customization · `404` not yours / unknown slot+option · `409` locked, already-applied, or too poor · `422` bad shape |
+| `PATCH` | `/api/v1/sanctuary/items/{id}` | `{ name?, note?, favorite? }` → set/clear cosmetic personalization (partial update; empty/null clears name/note); never changes coins · `404` not yours · `422` bad shape / over-length |
 | `POST` | `/api/v1/sanctuary/items/{id}/move` | `{ cell }` → move to a grid cell (layout only — never touches `position` or pricing); swaps with whatever occupies the cell · `404` not yours · `422` bad shape / out-of-bounds cell |
 
 The `customize` and `buy` writes validate the level requirement and the **balance** before
@@ -205,9 +215,16 @@ returns the updated scene.
   `grown` size). viewBox 0 0 80 80, flat style.
 - **Buy:** items with more than one variant open a small **variant picker** modal (each
   form previewed) before purchase; single-form items buy directly.
-- **Personalize:** each owned card has a calm "Personalize" panel listing its slots and
-  options with cost and `applied` / `locked` / `affordable` state — mix and match over
-  time. Validate (affordable + unlocked) before submit; server errors surface as a toast.
+- **Personalize:** each owned card has a calm "Personalize" panel. At the top, optional
+  cosmetic touches ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)) — a
+  **name** plaque, a one-line **note**, and a **favourite** star — committed quietly on blur
+  (an empty field clears it). Below, the slots and options with cost and `applied` / `locked`
+  / `affordable` state — mix and match over time. Validate (affordable + unlocked) before
+  submit; server errors surface as a toast.
+- **Name at purchase:** the buy modal (multi-variant items) carries an optional name field;
+  single-variant items keep their one-tap Buy with a quiet, optional "name it…" affordance, so
+  naming is always available but never a nag. A named item shows its plaque first (the item /
+  variant becomes a quiet subtitle) and a small star when favourited.
 - **Arrange:** the garden renders on a row-major **grid** (`GRID_COLUMNS = 4`, mirroring
   the backend) ordered by `cell`, so each user lays their garden out where they want it
   ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)). Desktop supports **drag-to-move**
@@ -242,6 +259,10 @@ Each step is independently shippable.
    + the `/move` endpoint let users arrange items on a grid by drag (desktop) or
    tap-to-place (touch). Layout-only; the economy is untouched
    ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)).
+8. ✅ **Naming + personal touches** — an optional `name` plaque (set at purchase or anytime),
+   a short `note`, and a `favourite` star, via a `PATCH /items/{id}` endpoint. All cosmetic,
+   optional, and default-off — the derived balance is untouched
+   ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)).
 
 ## Out of scope (here)
 

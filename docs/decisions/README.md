@@ -20,3 +20,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0012](0012-sanctuary-personalization.md) | Sanctuary — variants + mix-and-match customizations | Accepted |
 | [0013](0013-sanctuary-progressive-pricing.md) | Sanctuary — progressive pricing + economy retune | Accepted |
 | [0014](0014-sanctuary-grid-layout.md) | Sanctuary — movable grid layout (cell separate from position) | Accepted |
+| [0015](0015-sanctuary-personalization-touches.md) | Sanctuary — naming and personal touches (name, note, favourite) | Accepted |

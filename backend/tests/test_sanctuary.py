@@ -563,3 +563,210 @@ def test_move_rejects_unexpected_fields(client):
         f"/api/v1/sanctuary/items/{item_id}/move", json={"cell": 1, "position": 9}
     )
     assert res.status_code == 422
+
+
+# --- Personalization touches: name / note / favorite (ADR-0015) -------------------------
+
+
+def _only(scene):
+    """The single owned item in a one-item garden (the common case for these tests)."""
+    return scene["owned"][0]
+
+
+def test_buy_with_a_name_stores_and_returns_it(client):
+    _auth(client, "named@example.com")
+    before = _scene(client)["coins"]
+    res = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "Daisy's spot"}
+    )
+    assert res.status_code == 201
+    item = _only(res.json())
+    assert item["name"] == "Daisy's spot"
+    # Naming is cosmetic — it never costs coins (the price is just the flower's base).
+    assert res.json()["coins"] == before - SANCTUARY_CATALOG["flower"].cost
+
+
+def test_buy_trims_the_name_and_blank_becomes_null(client):
+    _auth(client, "trim@example.com")
+    res = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "  Rosie  "}
+    )
+    assert _only(res.json())["name"] == "Rosie"  # surrounding whitespace trimmed
+    # A whitespace-only name is treated as no name at all.
+    res = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "tree", "name": "   "}
+    )
+    tree = next(o for o in res.json()["owned"] if o["item_key"] == "tree")
+    assert tree["name"] is None
+
+
+def test_buy_without_a_name_defaults_to_unnamed(client):
+    _auth(client, "unnamed@example.com")
+    res = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+    item = _only(res.json())
+    assert item["name"] is None
+    assert item["note"] is None
+    assert item["favorite"] is False  # all touches default-off
+
+
+def test_buy_with_overlong_name_is_422(client):
+    _auth(client, "longname@example.com")
+    res = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "x" * 41}
+    )
+    assert res.status_code == 422  # name capped at 40 chars
+
+
+def test_buy_with_max_length_name_is_accepted(client):
+    _auth(client, "maxname@example.com")
+    name = "x" * 40
+    res = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": name}
+    )
+    assert res.status_code == 201
+    assert _only(res.json())["name"] == name
+
+
+def test_personalize_sets_name(client):
+    _auth(client, "rename@example.com")
+    item_id = _only(
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    )["id"]
+    before = _scene(client)["coins"]
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{item_id}", json={"name": "Sunny"}
+    )
+    assert res.status_code == 200
+    assert _by_id(res.json(), item_id)["name"] == "Sunny"
+    # Renaming is cosmetic — the balance is unchanged.
+    assert res.json()["coins"] == before
+
+
+def test_personalize_clears_name_with_null(client):
+    _auth(client, "clearname@example.com")
+    item_id = _only(
+        client.post(
+            "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "Temp"}
+        ).json()
+    )["id"]
+    res = client.patch(f"/api/v1/sanctuary/items/{item_id}", json={"name": None})
+    assert res.status_code == 200
+    assert _by_id(res.json(), item_id)["name"] is None
+
+
+def test_personalize_clears_name_with_blank(client):
+    _auth(client, "blankname@example.com")
+    item_id = _only(
+        client.post(
+            "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "Temp"}
+        ).json()
+    )["id"]
+    res = client.patch(f"/api/v1/sanctuary/items/{item_id}", json={"name": "   "})
+    assert res.status_code == 200
+    assert _by_id(res.json(), item_id)["name"] is None
+
+
+def test_personalize_is_partial_name_and_note_independent(client):
+    """A partial update changes only the fields present: setting a note must not wipe an
+    already-set name, and vice versa."""
+    _auth(client, "partial@example.com")
+    item_id = _only(
+        client.post(
+            "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "Keep me"}
+        ).json()
+    )["id"]
+    # Add a note without touching the name.
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{item_id}", json={"note": "Planted on day one"}
+    )
+    item = _by_id(res.json(), item_id)
+    assert item["name"] == "Keep me"  # untouched by the note-only update
+    assert item["note"] == "Planted on day one"
+    # Toggle favourite without touching name or note.
+    res = client.patch(f"/api/v1/sanctuary/items/{item_id}", json={"favorite": True})
+    item = _by_id(res.json(), item_id)
+    assert item["favorite"] is True
+    assert item["name"] == "Keep me"
+    assert item["note"] == "Planted on day one"
+
+
+def test_personalize_favorite_toggles(client):
+    _auth(client, "fav@example.com")
+    item_id = _only(
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    )["id"]
+    res = client.patch(f"/api/v1/sanctuary/items/{item_id}", json={"favorite": True})
+    assert _by_id(res.json(), item_id)["favorite"] is True
+    res = client.patch(f"/api/v1/sanctuary/items/{item_id}", json={"favorite": False})
+    assert _by_id(res.json(), item_id)["favorite"] is False
+
+
+def test_personalize_overlong_name_is_422(client):
+    _auth(client, "longrename@example.com")
+    item_id = _only(
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    )["id"]
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{item_id}", json={"name": "x" * 41}
+    )
+    assert res.status_code == 422
+
+
+def test_personalize_overlong_note_is_422(client):
+    _auth(client, "longnote@example.com")
+    item_id = _only(
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    )["id"]
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{item_id}", json={"note": "x" * 141}
+    )
+    assert res.status_code == 422
+
+
+def test_personalize_rejects_unexpected_fields(client):
+    _auth(client, "extrapatch@example.com")
+    item_id = _only(
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    )["id"]
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{item_id}", json={"name": "Ok", "color": "red"}
+    )
+    assert res.status_code == 422
+
+
+def test_personalize_requires_auth(client):
+    assert (
+        client.patch(
+            f"/api/v1/sanctuary/items/{uuid.uuid4()}", json={"name": "Nope"}
+        ).status_code
+        == 401
+    )
+
+
+def test_personalize_someone_elses_item_is_404(client):
+    _auth(client, "owner-name@example.com")
+    client.post("/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "Mine"})
+    _auth(client, "other-name@example.com")  # switch users
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{uuid.uuid4()}", json={"name": "Stolen"}
+    )
+    assert res.status_code == 404
+
+
+def test_personalize_does_not_leak_across_users(client):
+    """Another user cannot rename my real planting id (404, not a silent edit)."""
+    _auth(client, "victim@example.com")
+    victim_item = _only(
+        client.post(
+            "/api/v1/sanctuary/buy", json={"item_key": "flower", "name": "Original"}
+        ).json()
+    )
+    item_id = victim_item["id"]
+    _auth(client, "attacker@example.com")  # switch users
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{item_id}", json={"name": "Hacked"}
+    )
+    assert res.status_code == 404
+    # The victim's item is untouched.
+    _auth(client, "victim@example.com")
+    assert _by_id(_scene(client), item_id)["name"] == "Original"
