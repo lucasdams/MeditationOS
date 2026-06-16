@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 SessionType = Literal[
     "mindfulness",
@@ -34,9 +34,19 @@ class SessionCreate(BaseModel):
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
+    # Optional pre-session intention, trimmed and coerced to null when blank.
+    intention: str | None = Field(default=None, max_length=140)
     # Optional client idempotency key — a save with a token already seen for this user
     # returns the existing session instead of creating a duplicate (auto-save + manual).
     client_token: str | None = Field(default=None, max_length=64)
+
+    @field_validator("intention", mode="before")
+    @classmethod
+    def _trim_intention(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            return v if v else None
+        return v
 
 
 class SessionUpdate(BaseModel):
@@ -53,6 +63,15 @@ class SessionUpdate(BaseModel):
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
+    intention: str | None = Field(default=None, max_length=140)
+
+    @field_validator("intention", mode="before")
+    @classmethod
+    def _trim_intention(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            return v if v else None
+        return v
 
 
 class SessionRead(BaseModel):
@@ -68,6 +87,7 @@ class SessionRead(BaseModel):
     inhale_seconds: int | None
     exhale_seconds: int | None
     cycles_completed: int | None
+    intention: str | None
     created_at: datetime
 
     @computed_field

@@ -66,6 +66,9 @@ class Session(Base):
         nullable=True,
     )
 
+    # Pre-session intention: a short phrase the user sets before sitting (≤ 140 chars).
+    intention: Mapped[str | None] = mapped_column(String, nullable=True)
+
     # Optional client-generated idempotency key, so an auto-save (beacon on tab close)
     # and a manual/restored save of the same in-progress sit collapse to one row.
     client_token: Mapped[str | None] = mapped_column(String, nullable=True)
