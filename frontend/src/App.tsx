@@ -1,29 +1,44 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+
+// --- Eagerly-loaded routes (auth flow + core dashboard hit on first paint) ---
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
-import LogSessionPage from './pages/LogSessionPage'
-import LogReadingPage from './pages/LogReadingPage'
 import BreathePage from './pages/BreathePage'
 import MeditatePage from './pages/MeditatePage'
 import GratitudePage from './pages/GratitudePage'
 import JournalPage from './pages/JournalPage'
-import TimelinePage from './pages/TimelinePage'
-import GoalsPage from './pages/GoalsPage'
-import AnalyticsPage from './pages/AnalyticsPage'
-import SanctuaryPage from './pages/SanctuaryPage'
-import SchedulePage from './pages/SchedulePage'
-import SettingsPage from './pages/SettingsPage'
-import AdminPage from './pages/AdminPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import CookieNotice from './components/CookieNotice'
 import ZenEgg from './components/ZenEgg'
+
+// --- Lazily-loaded routes (heavy pages unlikely to be the first URL visited) ---
+const LogSessionPage  = lazy(() => import('./pages/LogSessionPage'))
+const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
+const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
+const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
+const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
+const SanctuaryPage   = lazy(() => import('./pages/SanctuaryPage'))
+const SchedulePage    = lazy(() => import('./pages/SchedulePage'))
+const SettingsPage    = lazy(() => import('./pages/SettingsPage'))
+const AdminPage       = lazy(() => import('./pages/AdminPage'))
+
+// A lightweight Suspense fallback that respects the app's dark/season theme via
+// CSS custom properties (--text-muted is set by ThemeProvider on <html>).
+function PageFallback() {
+  return (
+    <main style={{ padding: '2rem' }}>
+      <p className="muted">Loading…</p>
+    </main>
+  )
+}
 
 export default function App() {
   return (
@@ -43,19 +58,46 @@ export default function App() {
           <Route path="/meditate" element={<MeditatePage />} />
           <Route path="/gratitude" element={<GratitudePage />} />
           <Route path="/journal" element={<JournalPage />} />
-          <Route path="/timeline" element={<TimelinePage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/sanctuary" element={<SanctuaryPage />} />
-          <Route path="/schedule" element={<SchedulePage />} />
+          <Route
+            path="/timeline"
+            element={<Suspense fallback={<PageFallback />}><TimelinePage /></Suspense>}
+          />
+          <Route
+            path="/goals"
+            element={<Suspense fallback={<PageFallback />}><GoalsPage /></Suspense>}
+          />
+          <Route
+            path="/analytics"
+            element={<Suspense fallback={<PageFallback />}><AnalyticsPage /></Suspense>}
+          />
+          <Route
+            path="/sanctuary"
+            element={<Suspense fallback={<PageFallback />}><SanctuaryPage /></Suspense>}
+          />
+          <Route
+            path="/schedule"
+            element={<Suspense fallback={<PageFallback />}><SchedulePage /></Suspense>}
+          />
           {/* History folded into Timeline; redirect old links/bookmarks. */}
           <Route path="/sessions" element={<Navigate to="/timeline" replace />} />
-          <Route path="/sessions/new" element={<LogSessionPage />} />
-          <Route path="/biometrics/new" element={<LogReadingPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/sessions/new"
+            element={<Suspense fallback={<PageFallback />}><LogSessionPage /></Suspense>}
+          />
+          <Route
+            path="/biometrics/new"
+            element={<Suspense fallback={<PageFallback />}><LogReadingPage /></Suspense>}
+          />
+          <Route
+            path="/settings"
+            element={<Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>}
+          />
           {/* Admin dashboard — AdminPage redirects non-admins to "/"; the backend
               independently 403s every /admin/* API call for non-admins. */}
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin"
+            element={<Suspense fallback={<PageFallback />}><AdminPage /></Suspense>}
+          />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

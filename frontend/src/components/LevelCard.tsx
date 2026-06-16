@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react'
-import { sanctuaryService } from '../services/sanctuary'
 import { itemLabel } from '../lib/sanctuaryArt'
 import type { DashboardStats, SanctuaryScene, ShopItem } from '../types'
 
@@ -14,17 +12,10 @@ function nextUnlock(shop: ShopItem[]): ShopItem | null {
 
 // Your level is the coin/unlock track — not a thing you grow. It shows the level, the
 // coins it has earned you to spend in the sanctuary, and what the next level unlocks.
-export default function LevelCard({ stats }: { stats: DashboardStats }) {
+// `scene` is fetched once by DashboardPage and passed down; when used standalone (outside
+// the dashboard) the prop may be omitted and the coins/unlock row simply won't appear.
+export default function LevelCard({ stats, scene = null }: { stats: DashboardStats; scene?: SanctuaryScene | null }) {
   const pct = Math.min(100, Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100))
-  const [scene, setScene] = useState<SanctuaryScene | null>(null)
-
-  // Coins + next unlock come from the sanctuary; non-critical to the card, so fail quietly.
-  useEffect(() => {
-    sanctuaryService
-      .getScene()
-      .then(setScene)
-      .catch(() => {})
-  }, [])
 
   const unlock = scene ? nextUnlock(scene.shop) : null
 
