@@ -17,6 +17,7 @@ from app.schemas.sanctuary import (
     BuyRequest,
     CustomizeRequest,
     MoveRequest,
+    PersonalizeRequest,
     SanctuaryScene,
 )
 from app.services import sanctuary_service
@@ -104,6 +105,27 @@ def customize_item(
         ) from None
     except InsufficientCoins:
         raise _BROKE from None
+    if scene is None:
+        raise _NOT_FOUND
+    return scene
+
+
+@router.patch("/items/{planting_id}", response_model=SanctuaryScene)
+def personalize_item(
+    planting_id: uuid.UUID,
+    body: PersonalizeRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SanctuaryScene:
+    """Set or clear an owned item's cosmetic personalization — name (plaque), note, and
+    favourite flag (ADR-0015). Partial update: only fields present in the body change; an
+    empty/whitespace/null name or note clears it. Purely cosmetic — never changes coins.
+    Over-length name/note is rejected as 422 by the schema; another user's item is 404.
+    """
+    today, tz = _today_for(current_user)
+    scene = sanctuary_service.personalize(
+        db, current_user.id, planting_id, body, today=today, tz=tz
+    )
     if scene is None:
         raise _NOT_FOUND
     return scene

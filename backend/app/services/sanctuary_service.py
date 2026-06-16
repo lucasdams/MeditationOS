@@ -31,6 +31,7 @@ from app.schemas.sanctuary import (
     CustomizeRequest,
     MoveRequest,
     OwnedItem,
+    PersonalizeRequest,
     SanctuaryScene,
     ShopItem,
     SlotOption,
@@ -458,6 +459,10 @@ def _build_scene(
                 variant=p.variant if p.variant is not None else item.default_variant,
                 customizations=customizations,
                 available=_available_slots(item, customizations, balance, level),
+                # Cosmetic personalization (ADR-0015) — never affects the derived balance.
+                name=p.name,
+                note=p.note,
+                favorite=bool(p.favorite),
             )
         )
     # Every shop item, if bought next, lands at the same ordinal and so carries the same
@@ -541,6 +546,9 @@ def buy(
             cell=_lowest_free_cell(plantings),
             variant=variant.key if variant is not None else None,
             customizations={},
+            # Optional plaque set at purchase (ADR-0015); already trimmed/capped/empty→None
+            # by the schema. Cosmetic only — it never affects the price charged above.
+            name=data.name,
         )
     )
     db.commit()
@@ -597,6 +605,43 @@ def customize(
     updated[slot.key] = option.key
     row.customizations = updated
     db.commit()
+    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+
+
+def personalize(
+    db: DBSession,
+    user_id: uuid.UUID,
+    planting_id: uuid.UUID,
+    data: PersonalizeRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SanctuaryScene | None:
+    """Set/clear an owned item's cosmetic personalization — its name (plaque), note, and
+    favourite flag (ADR-0015). Returns None if the item isn't the caller's (→ 404).
+
+    Partial update: only fields *present* in the request are changed, so the UI can rename
+    without disturbing the note. An explicit null (or empty/whitespace, normalised to None
+    by the schema) clears name/note. Purely cosmetic — never costs coins or moves the item,
+    so the derived balance (ADR-0011) is untouched (the scene is rebuilt only to echo the
+    update + current balance back to the client).
+    """
+    row = db.execute(
+        select(SanctuaryPlanting).where(
+            SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    fields = data.model_fields_set
+    if "name" in fields:
+        row.name = data.name
+    if "note" in fields:
+        row.note = data.note
+    if "favorite" in fields and data.favorite is not None:
+        row.favorite = data.favorite
+    db.commit()
+    coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     return _build_scene(_load(db, user_id), coins_earned, level, streak)
 
 

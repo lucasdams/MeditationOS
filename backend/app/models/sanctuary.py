@@ -19,6 +19,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -62,6 +63,21 @@ class SanctuaryPlanting(Base):
     # Empty {} = the base form (legacy rows), so no extra spend.
     customizations: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    # --- Personalization touches (ADR-0015) — all optional, default-off, purely cosmetic.
+    # They carry no cost and never touch the economy: the derived balance (ADR-0011) ignores
+    # them, so naming/noting/pinning an item can never change coins. Legacy rows have NULL
+    # name + note and favorite=false, i.e. a clean, unlabelled item.
+    #
+    # A user-chosen nickname/plaque shown under the item (e.g. "Grandpa's Oak"). NULL = no
+    # name. Trimmed + length-capped server-side (see schemas); empty input stored as NULL.
+    name: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # A short free-text caption/memory for the item. NULL = none; trimmed + capped server-side.
+    note: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    # A pin/favourite flag — the user's special items, surfaced subtly (a small star). Layout-
+    # and economy-neutral.
+    favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
