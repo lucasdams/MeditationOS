@@ -32,6 +32,7 @@ const treeShop = {
   unlocked: true,
   hint: null,
   variants: [],
+  blurb: 'A patient old soul.',
 }
 
 function sceneWith(coins: number, owned: SanctuaryScene['owned']): SanctuaryScene {
@@ -132,6 +133,17 @@ describe('SanctuaryPage buy feedback', () => {
 
     await waitFor(() => expect(screen.getByText(/Could not buy that/)).toBeInTheDocument())
     expect(playReward).not.toHaveBeenCalled()
+  })
+
+  it("shows an item's flavour blurb quietly in the shop (ADR-0016)", async () => {
+    getScene.mockResolvedValue(before)
+
+    renderPage()
+
+    // The blurb renders as a quiet line under the item's name.
+    await waitFor(() =>
+      expect(screen.getByText('A patient old soul.')).toBeInTheDocument(),
+    )
   })
 })
 

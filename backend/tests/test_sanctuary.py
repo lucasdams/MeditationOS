@@ -770,3 +770,209 @@ def test_personalize_does_not_leak_across_users(client):
     # The victim's item is untouched.
     _auth(client, "victim@example.com")
     assert _by_id(_scene(client), item_id)["name"] == "Original"
+
+
+# --- Shop expansion + whimsy track (ADR-0016) -------------------------------------------
+
+# The new items added in the expansion pass, with their unlock level. Drives the
+# "appears in shop, gated, buyable" coverage below.
+NEW_ITEMS = {
+    "mushroom_ring": 2,
+    "hedgehog": 3,
+    "snail": 2,
+    "garden_gnome": 2,
+    "wind_chime": 3,
+    "lantern": 3,
+    "frog_lily": 4,
+    "scarecrow": 5,
+    "fairy_door": 6,
+    "hammock": 7,
+    "tea_cart": 12,
+}
+
+
+def _earn_to_level(client, target_level):
+    """Practice long sits across the earn-days until the scene reports >= target_level.
+
+    A 200-minute sit on each of the (non-consecutive) earn-days reaches level 12 by the
+    tenth day under the front-loaded curve, enough for every catalog unlock gate.
+    """
+    for day in _EARN_DAYS:
+        _practice(client, 200, day=day)
+        if _scene(client)["level"] >= target_level:
+            break
+    return _scene(client)
+
+
+def test_new_items_appear_in_the_shop(client):
+    _auth(client, "expansion@example.com")
+    shop = {s["item_key"] for s in _scene(client)["shop"]}
+    for key in NEW_ITEMS:
+        assert key in shop, f"{key} missing from shop"
+    # The whimsy track is surfaced on its items.
+    by_key = {s["item_key"]: s for s in _scene(client)["shop"]}
+    assert by_key["garden_gnome"]["track"] == "whimsy"
+    assert by_key["tea_cart"]["track"] == "whimsy"
+
+
+def test_new_items_carry_a_blurb(client):
+    """Every catalog item (including the new ones) surfaces a non-empty flavour blurb."""
+    _auth(client, "blurbs@example.com")
+    for s in _scene(client)["shop"]:
+        assert isinstance(s["blurb"], str) and s["blurb"].strip(), s["item_key"]
+
+
+def test_new_items_are_level_gated(client):
+    """A fresh level-1 user sees the new (lvl ≥ 2) items locked with a reach-level hint and
+    cannot buy them yet."""
+    _auth(client, "gated@example.com")
+    by_key = {s["item_key"]: s for s in _scene(client)["shop"]}
+    for key, lvl in NEW_ITEMS.items():
+        if lvl > 1:
+            assert by_key[key]["unlocked"] is False, key
+            assert f"level {lvl}" in by_key[key]["hint"]
+            assert client.post("/api/v1/sanctuary/buy", json={"item_key": key}).status_code == 409
+
+
+def test_new_items_buyable_once_unlocked(client):
+    """With enough levels earned, each new item unlocks and buys successfully, charging the
+    base cost + the next-item progressive surcharge."""
+    _auth(client, "buynew@example.com")
+    _earn_to_level(client, 12)
+    for key in NEW_ITEMS:
+        before = _scene(client)["coins"]
+        n_owned = len(_scene(client)["owned"])
+        item = SANCTUARY_CATALOG[key]
+        res = client.post("/api/v1/sanctuary/buy", json={"item_key": key})
+        assert res.status_code == 201, (key, res.json())
+        after = res.json()["coins"]
+        assert before - after == item.cost + progressive_surcharge(n_owned), key
+
+
+def test_new_item_variant_and_customization_cost_math(client):
+    """Buying a whimsy item with a variant then applying two independent customizations
+    deducts exactly variant_delta + each option cost (plus the buy's surcharge)."""
+    _auth(client, "whimsymath@example.com")
+    _earn_to_level(client, 7)
+    item = SANCTUARY_CATALOG["hammock"]
+    before = _scene(client)["coins"]
+    n_owned = len(_scene(client)["owned"])
+    bought = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "hammock", "variant": "rainbow"}
+    ).json()
+    hammock = next(o for o in bought["owned"] if o["item_key"] == "hammock")
+    assert hammock["variant"] == "rainbow"
+    expected_buy = item.cost + item.variant_cost_delta("rainbow") + progressive_surcharge(n_owned)
+    assert before - bought["coins"] == expected_buy
+
+    # Two independent slots: grown size AND an occupant. Each charges its own option cost.
+    coins = bought["coins"]
+    grown_cost = item.slot("grown").option("grown").cost
+    client.post(
+        f"/api/v1/sanctuary/items/{hammock['id']}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    occ_cost = item.slot("occupant").option("cat").cost
+    res = client.post(
+        f"/api/v1/sanctuary/items/{hammock['id']}/customize",
+        json={"slot": "occupant", "option": "cat"},
+    )
+    updated = next(o for o in res.json()["owned"] if o["item_key"] == "hammock")
+    assert updated["customizations"] == {"grown": "grown", "occupant": "cat"}
+    assert res.json()["coins"] == coins - grown_cost - occ_cost
+
+
+# --- Economy retune safety (ADR-0016) ---------------------------------------------------
+
+
+def test_retune_never_drives_a_pre_owned_garden_negative(client, db_session):
+    """The retune (COINS_PER_LEVEL 70→80, PROGRESSIVE_STEP 8→6, existing base costs
+    unchanged) only ever *raises* an existing garden's derived balance. Simulate a garden
+    bought under the PRE-retune economy (the costliest reasonable holding at each position)
+    and assert the balance under the CURRENT economy is non-negative and ≥ the old balance.
+    """
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+    from app.services import sanctuary_service
+
+    _auth(client, "retunesafe@example.com")
+    # Earn a real level so coins_earned is fixed and comparable across both economies.
+    scene = _earn_to_level(client, 6)
+    level = scene["level"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "retunesafe@example.com")
+    ).scalar_one()
+
+    # Seed a pre-owned 6-item garden directly (bypassing affordability), each at a distinct
+    # position so the progressive surcharge applies. Mix of items + a customization.
+    holdings = [
+        ("flower", None, {}),
+        ("tree", "oak", {"foliage": "blossom"}),
+        ("cat", "ginger", {"grown": "grown"}),
+        ("hut", "wood", {"lights": "lights"}),
+        ("pond", None, {"koi": "koi"}),
+        ("barn", "red", {"garden": "garden"}),
+    ]
+    for pos, (key, variant, cust) in enumerate(holdings):
+        db_session.add(
+            SanctuaryPlanting(
+                user_id=user_id,
+                item_key=key,
+                position=pos,
+                cell=pos,
+                variant=variant,
+                customizations=cust,
+            )
+        )
+    db_session.commit()
+
+    plantings = sanctuary_service._load(db_session, user_id)
+
+    # Recompute spend under the OLD economy (PROGRESSIVE_STEP was 8; base costs unchanged).
+    def old_surcharge(ordinal: int) -> int:
+        return round(8 * max(0, ordinal))
+
+    old_spent = sum(
+        SANCTUARY_CATALOG[p.item_key].spent(p.variant, p.customizations) + old_surcharge(p.position)
+        for p in plantings
+    )
+    old_balance = max(0, level * 70 - old_spent)
+
+    # Current economy via the live service computation.
+    new_spent = sanctuary_service._spent(plantings)
+    new_balance = max(0, level * sanctuary_service.COINS_PER_LEVEL - new_spent)
+
+    # The retune is the safe (generous) direction: balance never drops, never goes negative.
+    assert new_balance >= 0
+    assert new_balance >= old_balance
+    # And the scene the user actually sees reports the same non-negative balance.
+    assert _scene(client)["coins"] == new_balance
+
+
+def test_existing_owned_config_balance_never_negative_across_levels(client, db_session):
+    """Property check: for a large owned garden at a low level (coins_earned small relative
+    to spend), the reported balance is clamped to 0 — never negative — and _wallet stays
+    consistent. Guards the retroactive-cost edge the retune must not break."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "clamp@example.com")  # fresh level-1 user (small coins_earned)
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "clamp@example.com")
+    ).scalar_one()
+    # Seed many items directly so spend dwarfs a level-1 wallet.
+    for pos in range(8):
+        db_session.add(
+            SanctuaryPlanting(
+                user_id=user_id, item_key="barn", position=pos, cell=pos, customizations={}
+            )
+        )
+    db_session.commit()
+    scene = _scene(client)
+    assert scene["coins"] == 0  # clamped, not negative
+    assert scene["coins"] >= 0
+    assert len(scene["owned"]) == 8  # the scene still renders every holding

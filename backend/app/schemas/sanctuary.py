@@ -107,6 +107,7 @@ class ShopItem(BaseModel):
     unlocked: bool  # level requirement met
     hint: str | None  # what's needed to unlock (None when unlocked)
     variants: list[VariantOption]  # selectable base forms (empty for fixed-form items)
+    blurb: str  # a short, calm flavour line (cosmetic; "" when the item has none)
 
 
 class SanctuaryScene(BaseModel):

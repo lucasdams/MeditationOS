@@ -255,6 +255,7 @@ export interface ShopItem {
   unlocked: boolean
   hint: string | null
   variants: VariantOption[] // selectable base forms (empty for fixed-form items)
+  blurb: string // a short, calm flavour line (cosmetic; '' when the item has none)
 }
 
 export type Vitality = 'dormant' | 'thriving' | 'flourishing'
