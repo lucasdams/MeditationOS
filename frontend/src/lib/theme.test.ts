@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { dayPhaseFromHour, resolveSeason, seasonFromMonth } from './theme'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  applyColorMode,
+  dayPhaseFromHour,
+  readColorModePref,
+  resolveSeason,
+  seasonFromMonth,
+  writeColorModePref,
+} from './theme'
 
 describe('seasonFromMonth (northern hemisphere)', () => {
   it('maps months to meteorological seasons', () => {
@@ -41,5 +48,42 @@ describe('resolveSeason', () => {
   it('follows the calendar when set to auto', () => {
     const july = new Date(2026, 6, 1)
     expect(resolveSeason('auto', july)).toBe('summer')
+  })
+})
+
+describe('color mode persistence', () => {
+  afterEach(() => {
+    // Reset so tests don't bleed into each other
+    localStorage.removeItem('theme:color-mode')
+    delete document.documentElement.dataset.theme
+  })
+
+  it('returns "system" when nothing is stored', () => {
+    expect(readColorModePref()).toBe('system')
+  })
+
+  it('round-trips a written preference', () => {
+    writeColorModePref('dark')
+    expect(readColorModePref()).toBe('dark')
+
+    writeColorModePref('light')
+    expect(readColorModePref()).toBe('light')
+
+    writeColorModePref('system')
+    expect(readColorModePref()).toBe('system')
+  })
+
+  it('applyColorMode sets data-theme for explicit choices', () => {
+    applyColorMode('dark')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+
+    applyColorMode('light')
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('applyColorMode removes data-theme for "system"', () => {
+    document.documentElement.dataset.theme = 'dark'
+    applyColorMode('system')
+    expect(document.documentElement.dataset.theme).toBeUndefined()
   })
 })

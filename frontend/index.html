@@ -46,6 +46,19 @@
 
     <!-- Google Identity Services (Sign in with Google). No-op unless a client ID is set. -->
     <script src="https://accounts.google.com/gsi/client" async></script>
+
+    <!-- Apply the saved color-mode preference before the first paint to avoid a flash.
+         Reads localStorage directly (no React/JS bundle needed at this point). -->
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem('theme:color-mode')
+          if (m === 'dark') document.documentElement.dataset.theme = 'dark'
+          else if (m === 'light') document.documentElement.dataset.theme = 'light'
+          // 'system' or missing → no attribute; @media handles it
+        } catch (e) { /* private mode / unavailable — ignore */ }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
