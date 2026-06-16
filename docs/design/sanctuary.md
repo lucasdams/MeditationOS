@@ -1,6 +1,6 @@
 # Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0016 (shop expansion + retune)](../decisions/0016-sanctuary-shop-expansion-and-retune.md) · [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn
 **coins** as you level up and spend them to **buy** items (plants, structures, pets) and
@@ -59,6 +59,16 @@ derived-balance principle of ADR-0011:
 The old `tier` is folded into a `grown` customization (the size slot), so existing spend
 is preserved exactly with no break.
 
+### Character & whimsy (ADR-0016)
+
+Beyond the plants, structures, and pets, a **whimsy** track adds characterful garden friends
+and curios — a garden gnome, a toadstool ring, a wind chime, a lantern, a frog on a lily, a
+scarecrow, a fairy door, a hammock, and a premium tea cart — each with its own variants and
+customization slots and full SVG art. Each catalog item also carries an optional cosmetic
+`blurb`: a short, calm flavour line surfaced quietly in the shop (a quiet italic line + a
+hover tooltip). Personality lives in the art and the blurbs, never in nags or noise — a quiet
+smile, in keeping with the app's low-pressure stance.
+
 ## Data model
 
 One table — the holdings; the balance is computed.
@@ -108,18 +118,21 @@ initial layout.
 | field | meaning |
 |-------|---------|
 | `key` | stable id stored in `sanctuary_plantings.item_key` |
-| `track` | `nature` · `structure` · `companion` |
+| `track` | `nature` · `structure` · `companion` · `whimsy` |
 | `cost` | coins to **buy** (default variant, no customizations) |
 | `unlock_level` | level required before it appears in the shop |
 | `variants` | selectable base forms (each with an optional `cost_delta` + `unlock_level`) |
 | `slots` | customization slots → `{option: cost}` (+ optional per-option `unlock_level`) |
+| `blurb` | a short, calm flavour line shown in the shop tooltip / plaque (cosmetic; ADR-0016) |
 
-The shipped catalog (buy cost / variants / customization slots):
+The shipped catalog (buy cost / variants / customization slots). The **whimsy** track and a
+couple of nature/companion additions were added in [ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md):
 
 | key | track | buy | unlock | variants | customization slots (option·cost) |
 |-----|-------|-----|--------|----------|-----------------------------------|
 | `tree` | nature | 30 | lvl 1 | oak·pine·cherry·willow | grown·45 · foliage{fruit,blossom,autumn}·30 · swing·25 · birdhouse·20 |
 | `flower` | nature | 20 | lvl 1 | rose·tulip·sunflower·daisy | grown·30 · bloom{double}·18 · butterfly·20 |
+| `mushroom_ring` | nature | 28 | lvl 2 | ruby·amber·violet | grown·54 · glow·24 · sprite·30 |
 | `pond` | nature | 60 | lvl 4 | — | grown·90 · lilies·40 · koi·50 · bridge·60 |
 | `hut` | structure | 45 | lvl 2 | straw·wood | grown·68 · chimney_smoke·30 · garden·35 · lights·25 |
 | `cottage` | structure | 70 | lvl 3 | cream·stone | grown·105 · chimney_smoke·40 · garden·45 · lights·35 |
@@ -128,23 +141,36 @@ The shipped catalog (buy cost / variants / customization slots):
 | `beach_house` | structure | 110 | lvl 6 | white·teal | grown·165 · garden·60 · lights·55 |
 | `boat` | structure | 130 | lvl 8 | wood·white | grown·195 · lights·60 |
 | `goldfish` | companion | 20 | lvl 1 | orange·white·black | grown·30 |
+| `snail` | companion | 22 | lvl 2 | amber·minty·rosy | grown·42 · accessory{hat}·24 |
 | `bird` | companion | 25 | lvl 2 | bluebird·robin·canary | grown·38 · accessory{hat}·25 |
 | `cat` | companion | 40 | lvl 3 | gray·ginger·black·white | grown·60 · accessory{collar,bandana,hat}·25–30 |
+| `hedgehog` | companion | 38 | lvl 3 | brown·cream·salt | grown·72 · accessory{scarf,leaf}·22–26 |
 | `snake` | companion | 45 | lvl 4 | green·amber·blue | grown·68 · accessory{hat}·30 |
 | `fox` | companion | 50 | lvl 5 | red·arctic | grown·75 · accessory{collar,bandana}·30 |
 | `dog` | companion | 70 | lvl 6 | corgi·husky·shiba·dalmatian | grown·105 · accessory{collar,bandana,hat}·30–40 |
+| `garden_gnome` | whimsy | 26 | lvl 2 | classic·mossy·sleepy | grown·48 · lantern·24 · companion{snail}·22 |
+| `wind_chime` | whimsy | 30 | lvl 3 | brass·bamboo·seaglass | grown·57 · ribbon·22 · bell·26 |
+| `lantern` | whimsy | 34 | lvl 3 | paper·iron·stone | grown·63 · flame{warm,blue}·24–28 · moth·20 |
+| `frog_lily` | whimsy | 36 | lvl 4 | green·golden·blue | grown·69 · crown·30 · hat·26 |
+| `scarecrow` | whimsy | 48 | lvl 5 | straw·patchwork·pumpkin | grown·90 · crow·28 · lights·32 |
+| `fairy_door` | whimsy | 54 | lvl 6 | acorn·toadstool·rosewood | grown·99 · glow·28 · path·30 |
+| `hammock` | whimsy | 64 | lvl 7 | striped·canvas·rainbow | grown·120 · occupant{cat,napper}·30–34 · lights·36 |
+| `tea_cart` | whimsy | 120 | lvl 12 | rose·mint·midnight | grown·225 · lights·48 · cat·40 |
 
 Variants are free in the shipped catalog (a per-variant `cost_delta` is supported for
 future tuning). All costs are tunable constants — retuning needs no migration.
-`COINS_PER_LEVEL = 70` and the `grown` size is `round(buy_cost × 1.5)`.
+`COINS_PER_LEVEL = 80` ([ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md))
+and the `grown` size is `round(buy_cost × 1.5)`. Each item also carries a cosmetic `blurb`.
 
-### Progressive pricing (ADR-0013)
+### Progressive pricing (ADR-0013, retuned in ADR-0016)
 
-Buy costs above were lowered (~25%) and `COINS_PER_LEVEL` raised 50 → 70 to keep early
-progress rewarding after practice XP became front-loaded per session (coins now accrue more
-slowly for longer sits). On top of the catalog price, each *additional* item carries a
-**progressive surcharge** `round(PROGRESSIVE_STEP × position)` with `PROGRESSIVE_STEP = 8`
-(position = the item's 0-indexed acquisition order). The first item pays nothing extra; the
+Buy costs were lowered (~25%) and `COINS_PER_LEVEL` raised 50 → 70 (ADR-0013), then 70 → **80**
+([ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md)) to keep mid-level
+progress rewarding under the front-loaded XP curve (coins accrue slowly for longer sits). On
+top of the catalog price, each *additional* item carries a **progressive surcharge**
+`round(PROGRESSIVE_STEP × position)` with `PROGRESSIVE_STEP = 6` (8 → 6 in ADR-0016, a gentler
+anti-hoarding tax; position = the item's 0-indexed acquisition order). The first item pays
+nothing extra; the
 second 8; the third 16; and so on. The surcharge is applied identically at read (the spent
 computation) and at write (the `buy` affordability check), and a swap of a customization
 *within a slot* still charges only the option difference (the surcharge is per-item, not
@@ -263,6 +289,12 @@ Each step is independently shippable.
    a short `note`, and a `favourite` star, via a `PATCH /items/{id}` endpoint. All cosmetic,
    optional, and default-off — the derived balance is untouched
    ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)).
+9. ✅ **Shop expansion + economy retune** — a **whimsy** track of characterful garden friends
+   and curios (+11 items), an optional cosmetic `blurb` per item, and a holistic economy
+   retune (`COINS_PER_LEVEL` 70 → 80, `PROGRESSIVE_STEP` 8 → 6) for a steadier purchase cadence
+   under the front-loaded XP curve. Both economy levers move in the safe (generous) direction,
+   so no existing garden's derived balance can be driven negative
+   ([ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md)).
 
 ## Out of scope (here)
 

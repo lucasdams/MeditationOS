@@ -239,7 +239,8 @@ export default function SanctuaryPage() {
       <header className="page-head">
         <h1>Sanctuary</h1>
         <p className="page-subtitle">
-          Earn coins as you level up, then choose and personalize your garden.
+          Earn coins as you practice, then gather a quiet little world — plants, friends,
+          and a few delightful curios — and make it your own.
         </p>
       </header>
 
@@ -262,7 +263,10 @@ export default function SanctuaryPage() {
 
           <h2 className="sanctuary-section-title">Your garden</h2>
           {scene.owned.length === 0 ? (
-            <p className="muted">Empty for now — choose your first item from the shop below.</p>
+            <p className="muted">
+              A quiet, empty patch — for now. Pick your first little friend from the shop
+              below and watch your garden begin.
+            </p>
           ) : (
             (() => {
               // Lay items out on a row-major grid by `cell`. Show every occupied cell plus a
@@ -447,9 +451,15 @@ export default function SanctuaryPage() {
             {scene.shop.map((s) => {
               const affordable = scene.coins >= s.cost
               return (
-                <div key={s.item_key} className={`sanctuary-card${s.unlocked ? '' : ' locked'}`}>
+                <div
+                  key={s.item_key}
+                  className={`sanctuary-card${s.unlocked ? '' : ' locked'}`}
+                  title={s.blurb || undefined}
+                >
                   <SanctuaryPlant itemKey={s.item_key} variant={s.variants[0]?.variant ?? null} />
                   <div className="sanctuary-card-name">{itemLabel(s.item_key)}</div>
+                  {/* A quiet line of character (ADR-0016) — a small smile, never shouty. */}
+                  {s.blurb && <p className="muted sanctuary-card-blurb">{s.blurb}</p>}
                   {s.unlocked ? (
                     s.variants.length > 1 ? (
                       <button
