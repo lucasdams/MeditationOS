@@ -7,6 +7,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 ## Practice & Sessions
 
 - [x] **Daily practice reminders** — opt-in email nudge at the user's local hour (timezone-aware, idempotent, skipped on days already practiced) — see [notifications design](design/notifications.md)
+- [ ] **Streak-save nudge** — a gentle later-in-the-day reminder *only* when an active streak is at risk and the user hasn't practiced yet (builds on the existing skip-if-practiced reminder; nudge, not shame)
 - [x] **Multiple meditation types** (mindfulness, body scan, walking, loving-kindness, resonance breathing, other)
 - [ ] Pre-session intention setting and post-session quick rating (focus, calm, mood)
 - [ ] Session templates (duration + type + breathing pattern presets)
@@ -27,6 +28,16 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [x] **Optional breath holds between inhale and exhale** — supported via the preset patterns (box/4·7·8 carry their own holds); a fully custom hold editor remains open
 - [ ] Haptic or audio-only breathing modes
 - [ ] Custom in:out ratio for resonance breathing (the bpm selector ships a **~2:3 longer-exhale** ratio by default; a user-adjustable ratio for advanced users with a known resonance frequency is the open item)
+
+### HRV measurement — close the resonance loop
+
+The product is branded on *HRV resonance breathing* but never **measures** HRV, so the user breathes without seeing the effect. Closing "breathe → measure → see your resonance improve" would make the core thesis tangible (and is a real differentiator). Privacy-first; biometric data stays the user's.
+
+- [ ] **Wearable / health-platform import** — pull HRV (and resting HR, sleep) from **Apple Health / Google Fit / Oura / Whoop / Fitbit**; show HRV trend alongside practice (does consistent breathing raise it over weeks?)
+- [ ] **Camera PPG** — estimate heart rate / a coarse HRV from the phone camera (fingertip), as a no-wearable option; clearly labelled an estimate, not a medical device
+- [ ] **Pre/post-session HRV delta** — optional quick reading before and after a breathing sit to surface the immediate calming effect
+- [ ] Personal **resonance-frequency finder** — sweep breathing rates while reading HRV to estimate the user's individual resonance rate (ties into the custom in:out ratio above)
+- [ ] Strictly non-clinical framing throughout (no diagnosis / medical claims), per `.claude/rules/ai-product.md` tone
 
 ### High-rate breathwork (Wim Hof–style) — separate mode
 
