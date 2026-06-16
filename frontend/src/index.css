@@ -15,7 +15,10 @@
   --text-primary: #1c1c1e;
   --text-secondary: #45454a;
   --text-muted: #6b6b70;
-  --text-faint: #9b9ba0;
+  --text-faint: #76767c;
+
+  /* Success text — green that passes AA on both light and dark surfaces */
+  --success-text: #047857;
 
   /* Borders & dividers */
   --border: #e5e5ea;
@@ -94,8 +97,11 @@
   /* Text */
   --text-primary: #e8e8f0;
   --text-secondary: #b4b4c8;
-  --text-muted: #8888a8;
-  --text-faint: #6060808;
+  --text-muted: #9494b4;
+  --text-faint: #8b8bb0;
+
+  /* Success text */
+  --success-text: #34d399;
 
   /* Borders */
   --border: #2e3250;
@@ -160,8 +166,9 @@
     --bg-input: #252940;
     --text-primary: #e8e8f0;
     --text-secondary: #b4b4c8;
-    --text-muted: #8888a8;
-    --text-faint: #606080;
+    --text-muted: #9494b4;
+    --text-faint: #8b8bb0;
+    --success-text: #34d399;
     --border: #2e3250;
     --border-strong: #3a3f64;
     --border-light: #252940;
@@ -1501,7 +1508,7 @@ textarea:focus-visible,
 
 .reward-breakdown-xp {
   font-weight: 700;
-  color: #059669;
+  color: var(--success-text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1887,7 +1894,7 @@ textarea:focus-visible,
 .sanctuary-card-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--success-text);
 }
 
 .sanctuary-buy {
@@ -1917,7 +1924,7 @@ textarea:focus-visible,
 .sanctuary-link {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #047857;
+  color: var(--success-text);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -1961,7 +1968,7 @@ textarea:focus-visible,
   color: #92866b;
 }
 .sanctuary-vitality.vit-thriving {
-  color: #047857;
+  color: var(--success-text);
 }
 .sanctuary-vitality.vit-flourishing {
   color: #be185d;
@@ -2013,7 +2020,7 @@ textarea:focus-visible,
   font-weight: 600;
   border-radius: 999px;
   background: var(--bg-surface);
-  color: #047857;
+  color: var(--success-text);
   border: 1px solid #bbf7d0;
   cursor: pointer;
 }
@@ -2093,7 +2100,7 @@ textarea:focus-visible,
 .sanctuary-variant-name {
   font-size: 0.76rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--success-text);
 }
 
 .sanctuary-modal-cancel {
@@ -4315,4 +4322,80 @@ details[open] .meditate-disclosure-summary::before {
 .soundscape-chip:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* ── Dark-mode overrides for light-tinted panel backgrounds ─────────────────
+   These panels use hardcoded light palette colours that look washed-out on dark
+   surfaces.  The overrides below flip them to dark equivalents without touching
+   the light-mode aesthetic.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root[data-theme='dark'] .sanctuary,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary {
+  background: #0f2a1e;
+  border-color: #1a3d2a;
+}
+
+:root[data-theme='dark'] .sanctuary-customize-toggle,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-customize-toggle {
+  background: #0f2a1e;
+  color: var(--success-text);
+  border-color: #1a3d2a;
+}
+
+:root[data-theme='dark'] .badge.earned,
+:root:not([data-theme='light']):not([data-theme='dark']) .badge.earned {
+  background: var(--bg-surface-raised);
+  border-color: #3730a3;
+}
+
+:root[data-theme='dark'] .memory-card,
+:root:not([data-theme='light']):not([data-theme='dark']) .memory-card {
+  background: linear-gradient(135deg, #1e1640, #1e2242);
+  border-color: #3730a3;
+}
+
+:root[data-theme='dark'] .level-card,
+:root:not([data-theme='light']):not([data-theme='dark']) .level-card {
+  background: linear-gradient(135deg, #0f2a1e, #132b1a);
+  border-color: #1a3d2a;
+}
+
+:root[data-theme='dark'] .session-recover,
+:root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
+  background: #2a2010;
+  border-color: #3d300a;
+}
+
+:root[data-theme='dark'] .sanctuary-wallet,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-wallet {
+  background: #2a2010;
+  border-color: #3d300a;
+}
+
+:root[data-theme='dark'] .auth-notice,
+:root:not([data-theme='light']):not([data-theme='dark']) .auth-notice {
+  background: #2a1f00;
+  border-color: #3d2e00;
+  color: #fcd34d;
+}
+
+:root[data-theme='dark'] .verify-banner,
+:root:not([data-theme='light']):not([data-theme='dark']) .verify-banner {
+  background: #2a1f00;
+  border-color: #3d2e00;
+  color: #fcd34d;
+}
+
+:root[data-theme='dark'] .legal-template,
+:root:not([data-theme='light']):not([data-theme='dark']) .legal-template {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-customize-toggle {
+    background: #0f2a1e;
+    color: var(--success-text);
+    border-color: #1a3d2a;
+  }
 }
