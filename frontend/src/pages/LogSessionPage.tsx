@@ -9,10 +9,13 @@ import type { MeditationType } from '../types'
 
 // The meditation style picker was dropped; only the structural meditation-vs-breathing
 // distinction remains, so a past breathing session can still be logged here.
-const TYPES: { value: MeditationType; label: string }[] = [
-  { value: 'mindfulness', label: 'Meditation' },
-  { value: 'resonance_breathing', label: 'Breathing' },
+const TYPES: { value: MeditationType; label: string; emoji: string; tint: string }[] = [
+  { value: 'mindfulness', label: 'Meditation', emoji: '🧘', tint: '#ccfbf1' },
+  { value: 'resonance_breathing', label: 'Breathing', emoji: '🫁', tint: '#e0f2fe' },
 ]
+
+// Quick-pick durations (minutes). A "Custom" option appears after these chips.
+const DURATION_CHIPS = [5, 10, 15, 20, 30, 45, 60]
 
 // Local "now" formatted for a <input type="datetime-local"> (YYYY-MM-DDThh:mm).
 const nowLocal = () => {
@@ -25,6 +28,7 @@ export default function LogSessionPage() {
   const navigate = useNavigate()
   const [type, setType] = useState<MeditationType>('mindfulness')
   const [minutes, setMinutes] = useState('10')
+  const [customMinutes, setCustomMinutes] = useState('')
   const [occurredAt, setOccurredAt] = useState(nowLocal())
   const [notes, setNotes] = useState('')
   const [focus, setFocus] = useState('') // '' = not rated
@@ -36,6 +40,19 @@ export default function LogSessionPage() {
     xpGained: number
     breakdown: XpLine[]
   } | null>(null)
+
+  // Whether the user is entering a custom duration (not one of the preset chips).
+  const isCustom = !DURATION_CHIPS.map(String).includes(minutes)
+
+  function pickDuration(min: number) {
+    setMinutes(String(min))
+    setCustomMinutes('')
+  }
+
+  function handleCustomMinutes(val: string) {
+    setCustomMinutes(val)
+    setMinutes(val)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -87,25 +104,73 @@ export default function LogSessionPage() {
           Record a meditation or breathing sit you did away from the app.
         </p>
       </header>
+
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="type">Practice</label>
-        <select id="type" value={type} onChange={(e) => setType(e.target.value as MeditationType)}>
+        {/* Practice type — pattern-card style matching how Breathe presents choices */}
+        <label>Practice</label>
+        <div className="pattern-cards" role="group" aria-label="Practice type">
           {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
+            <button
+              key={t.value}
+              type="button"
+              className={`pattern-card${type === t.value ? ' selected' : ''}`}
+              aria-pressed={type === t.value}
+              onClick={() => setType(t.value)}
+            >
+              <span
+                className="pattern-card-icon"
+                style={{ background: t.tint }}
+                aria-hidden="true"
+              >
+                {t.emoji}
+              </span>
+              <span className="pattern-card-body">
+                <span className="pattern-card-name">{t.label}</span>
+              </span>
+            </button>
           ))}
-        </select>
+        </div>
 
-        <label htmlFor="minutes">Duration (minutes)</label>
-        <input
-          id="minutes"
-          type="number"
-          min="1"
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
-        />
+        {/* Duration — quick-pick chips + optional custom number input */}
+        <label>Duration (minutes)</label>
+        <div className="log-session-duration-chips" role="group" aria-label="Duration in minutes">
+          {DURATION_CHIPS.map((min) => (
+            <button
+              key={min}
+              type="button"
+              className={`chip${!isCustom && minutes === String(min) ? ' chip-active' : ''}`}
+              aria-pressed={!isCustom && minutes === String(min)}
+              onClick={() => pickDuration(min)}
+            >
+              {min}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`chip${isCustom ? ' chip-active' : ''}`}
+            aria-pressed={isCustom}
+            onClick={() => {
+              setCustomMinutes(isCustom ? customMinutes : '')
+              setMinutes('')
+            }}
+          >
+            Custom
+          </button>
+        </div>
+        {isCustom && (
+          <input
+            id="minutes"
+            type="number"
+            min="1"
+            placeholder="e.g. 25"
+            aria-label="Custom duration in minutes"
+            value={customMinutes}
+            onChange={(e) => handleCustomMinutes(e.target.value)}
+            style={{ marginTop: '0.35rem' }}
+          />
+        )}
 
+        {/* Date & time */}
         <label htmlFor="occurred">Date &amp; time</label>
         <input
           id="occurred"
@@ -114,31 +179,61 @@ export default function LogSessionPage() {
           onChange={(e) => setOccurredAt(e.target.value)}
         />
 
-        <label htmlFor="focus">Focus (optional)</label>
-        <select id="focus" value={focus} onChange={(e) => setFocus(e.target.value)}>
-          <option value="">Not rated</option>
+        {/* Focus rating — inline 1–5 buttons instead of a dropdown */}
+        <label>Focus (optional)</label>
+        <div className="log-session-rating" role="group" aria-label="Focus rating">
+          <button
+            type="button"
+            className={`chip${focus === '' ? ' chip-active' : ''}`}
+            aria-pressed={focus === ''}
+            onClick={() => setFocus('')}
+          >
+            Not rated
+          </button>
           {[1, 2, 3, 4, 5].map((n) => (
-            <option key={n} value={n}>
-              {n} / 5
-            </option>
+            <button
+              key={n}
+              type="button"
+              className={`chip${focus === String(n) ? ' chip-active' : ''}`}
+              aria-pressed={focus === String(n)}
+              onClick={() => setFocus(String(n))}
+            >
+              {n}
+            </button>
           ))}
-        </select>
+        </div>
 
-        <label htmlFor="calm">Calm (optional)</label>
-        <select id="calm" value={calm} onChange={(e) => setCalm(e.target.value)}>
-          <option value="">Not rated</option>
+        {/* Calm rating — inline 1–5 buttons instead of a dropdown */}
+        <label>Calm (optional)</label>
+        <div className="log-session-rating" role="group" aria-label="Calm rating">
+          <button
+            type="button"
+            className={`chip${calm === '' ? ' chip-active' : ''}`}
+            aria-pressed={calm === ''}
+            onClick={() => setCalm('')}
+          >
+            Not rated
+          </button>
           {[1, 2, 3, 4, 5].map((n) => (
-            <option key={n} value={n}>
-              {n} / 5
-            </option>
+            <button
+              key={n}
+              type="button"
+              className={`chip${calm === String(n) ? ' chip-active' : ''}`}
+              aria-pressed={calm === String(n)}
+              onClick={() => setCalm(String(n))}
+            >
+              {n}
+            </button>
           ))}
-        </select>
+        </div>
 
+        {/* Notes */}
         <label htmlFor="notes">Notes (optional)</label>
         <textarea
           id="notes"
           value={notes}
           rows={3}
+          placeholder="Anything notable about this sit…"
           onChange={(e) => setNotes(e.target.value)}
         />
 
