@@ -45,11 +45,6 @@ export function dayPhaseFor(now: Date): DayPhase {
   return dayPhaseFromHour(now.getHours())
 }
 
-// 0..1 position of the sun/moon across the sky for the current time (left → right).
-export function celestialFraction(now: Date): number {
-  return (now.getHours() * 60 + now.getMinutes()) / (24 * 60)
-}
-
 const STORAGE_KEY = 'theme:season'
 
 export function readSeasonPref(): SeasonPref {

@@ -1447,12 +1447,6 @@ textarea:focus-visible,
   background: var(--text-primary);
 }
 
-.dash-nav {
-  display: flex;
-  gap: 1.5rem;
-  margin: 1rem 0;
-}
-
 /* Inline session edit form (used by the Timeline's expandable session rows). */
 .session-edit label {
   display: block;
@@ -1711,76 +1705,6 @@ textarea:focus-visible,
   height: 60px;
 }
 
-/* The full /sanctuary page lays the whole assortment in a wrapping row. */
-.sanctuary-garden {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.sanctuary-plot {
-  padding: 0.4rem 0.6rem;
-  border-radius: 10px;
-  border: 1px solid transparent;
-}
-
-.sanctuary-plot.growing {
-  background: #fff;
-  border-color: #bbf7d0;
-  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.08);
-}
-
-.sanctuary-caption {
-  font-weight: 600;
-  color: #15803d;
-  font-size: 0.85rem;
-  text-align: center;
-}
-
-/* The one in progress — featured large in its own card, with its growth bar. */
-.sanctuary-current {
-  background: var(--bg-surface);
-  border: 1px solid #bbf7d0;
-  border-radius: 12px;
-  padding: 0.6rem 0.9rem 0.8rem;
-  margin-bottom: 0.75rem;
-}
-
-.sanctuary-now-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  color: #059669;
-}
-
-.sanctuary-current-plant .sanctuary-svg {
-  width: 88px;
-  height: 88px;
-}
-
-.sanctuary-current-name {
-  font-weight: 700;
-  color: #15803d;
-  font-size: 0.95rem;
-  margin-bottom: 0.4rem;
-}
-
-/* What you've already grown — a smaller, quieter strip below. */
-.sanctuary-grown {
-  margin-bottom: 0.75rem;
-}
-
-.sanctuary-grown-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
-}
-
 .sanctuary-grown-row {
   display: flex;
   flex-wrap: wrap;
@@ -1798,32 +1722,6 @@ textarea:focus-visible,
   font-size: 0.72rem;
   color: var(--text-muted);
   text-align: center;
-}
-
-.sanctuary-next {
-  margin-top: 0.75rem;
-}
-
-.sanctuary-options {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.sanctuary-options .chip {
-  margin: 0;
-}
-
-.sanctuary .xp-bar {
-  max-width: 18rem;
-  margin: 0 auto;
-}
-
-.sanctuary-hint {
-  margin-top: 0.4rem;
-  font-size: 0.82rem;
 }
 
 /* Dashboard mini-scene header with a link to the full page. */
@@ -1992,10 +1890,6 @@ textarea:focus-visible,
   color: #15803d;
 }
 
-.sanctuary-tier {
-  color: #f59e0b;
-}
-
 .sanctuary-buy {
   width: auto;
   margin: 0;
@@ -2041,29 +1935,6 @@ textarea:focus-visible,
   justify-content: space-between;
 }
 
-.sanctuary-garden.big {
-  background: #f0fdf4;
-  border: 1px solid #dcfce7;
-  border-radius: 12px;
-  padding: 1.25rem 1rem;
-  margin: 1rem 0;
-}
-
-.sanctuary-garden.big .sanctuary-svg {
-  width: 80px;
-  height: 80px;
-}
-
-/* A finished plant gets a soft glow; a just-planted one pops in. */
-.sanctuary-plot.grown {
-  background: #fff;
-  border-color: #bbf7d0;
-}
-
-.sanctuary-plot.just-planted {
-  animation: sanctuary-pop 0.5s ease;
-}
-
 @keyframes sanctuary-pop {
   0% {
     transform: scale(0.6);
@@ -2076,47 +1947,6 @@ textarea:focus-visible,
     transform: scale(1);
     opacity: 1;
   }
-}
-
-.sanctuary-current {
-  max-width: 22rem;
-  margin: 0 auto 1rem;
-  text-align: center;
-}
-
-.sanctuary-current .xp-bar {
-  max-width: none;
-}
-
-/* The completion celebration. */
-.sanctuary-celebrate {
-  text-align: center;
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border: 1px solid #a7f3d0;
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  margin: 1rem 0;
-  animation: sanctuary-glow 2.4s ease-in-out infinite;
-}
-
-.sanctuary-celebrate-title {
-  font-weight: 700;
-  color: #047857;
-  margin-bottom: 0.6rem;
-}
-
-@keyframes sanctuary-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.12);
-  }
-}
-
-.sanctuary-summary {
-  text-align: center;
 }
 
 /* Vitality — a visual-only state from the current streak (never destructive). */
@@ -2135,28 +1965,6 @@ textarea:focus-visible,
 }
 .sanctuary-vitality.vit-flourishing {
   color: #be185d;
-}
-
-/* A dormant garden gently dims; a flourishing one warms. */
-.sanctuary-garden.vit-dormant {
-  filter: grayscale(0.55) opacity(0.8);
-}
-.sanctuary-garden.vit-flourishing {
-  background: linear-gradient(135deg, #fdf2f8, #f0fdf4);
-}
-
-/* Locked next-options on the full page. */
-.chip-locked {
-  background: var(--chip-bg);
-  border-color: var(--border);
-  color: #94a3b8;
-  cursor: not-allowed;
-  font-weight: 500;
-}
-
-.chip-hint {
-  font-weight: 400;
-  font-size: 0.78rem;
 }
 
 /* --- Sanctuary personalization: variants + mix-and-match customizations --- */
@@ -2723,35 +2531,6 @@ textarea:focus-visible,
 
 .week h2 {
   font-size: 1rem;
-}
-
-.week-bars {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.week-day {
-  flex: 1;
-}
-
-.week-track {
-  height: 100px;
-  display: flex;
-  align-items: flex-end;
-}
-
-.week-bar {
-  width: 100%;
-  min-height: 2px;
-  background: #4f46e5;
-  border-radius: 4px 4px 0 0;
-}
-
-.week-label {
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 0.35rem;
 }
 
 /* GitHub-style activity heatmap */
@@ -3390,16 +3169,6 @@ details[open] .meditate-disclosure-summary::before {
   line-height: 1.55;
 }
 
-.breathe-audio {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
 /* A standalone toggle row (e.g. the breathing Chime) — kept off the volume line. */
 .breathe-check {
   display: flex;
@@ -3420,11 +3189,6 @@ details[open] .meditate-disclosure-summary::before {
   display: block;
   width: 100%;
   margin: 0.35rem 0 1rem;
-  padding: 0;
-}
-
-.breathe-audio input[type='range'] {
-  flex: 1;
   padding: 0;
 }
 
@@ -3492,80 +3256,9 @@ details[open] .meditate-disclosure-summary::before {
   }
 }
 
-/* ── Sanctuary sky: a day/night band with a sun or moon, tinted by season ── */
-:root[data-dayphase='dawn'] {
-  --sky-band-1: hsl(28 72% 80%);
-  --sky-band-2: hsl(var(--season-hue) 50% 74%);
-  --celestial: #ffd27a;
-  --celestial-glow: rgba(255, 210, 122, 0.7);
-}
-:root[data-dayphase='day'] {
-  --sky-band-1: hsl(var(--season-hue) 55% 82%);
-  --sky-band-2: hsl(var(--season-hue) 60% 70%);
-  --celestial: #fff0b0;
-  --celestial-glow: rgba(255, 240, 176, 0.85);
-}
-:root[data-dayphase='dusk'] {
-  --sky-band-1: hsl(22 68% 66%);
-  --sky-band-2: hsl(280 32% 52%);
-  --celestial: #ff9e6d;
-  --celestial-glow: rgba(255, 158, 109, 0.7);
-}
-:root[data-dayphase='night'] {
-  --sky-band-1: hsl(235 38% 30%);
-  --sky-band-2: hsl(245 42% 18%);
-  --celestial: #d6ddff;
-  --celestial-glow: rgba(214, 221, 255, 0.55);
-}
-
-.sanctuary-sky {
-  position: relative;
-  height: 88px;
-  margin: 0 0 1rem;
-  border-radius: 14px;
-  overflow: hidden;
-  background: linear-gradient(180deg, var(--sky-band-2, #9bc), var(--sky-band-1, #cde));
-  transition: background 1.5s ease;
-}
-
-.sanctuary-celestial {
-  position: absolute;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--celestial, #ffe08a);
-  box-shadow: 0 0 24px 8px var(--celestial-glow, rgba(255, 224, 138, 0.7));
-  transform: translate(-50%, -50%);
-  transition: background 1.5s ease;
-}
-
-/* Carve a crescent out of the disc at night to read as a moon. */
-.sanctuary-sky[data-night='true'] .sanctuary-celestial::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--sky-band-2, #245);
-  transform: translate(28%, -22%);
-}
-
 .settings-theme-now {
   margin-top: 0.6rem;
   text-transform: capitalize;
-}
-
-.sanctuary-sky-label {
-  position: absolute;
-  left: 12px;
-  bottom: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.45);
-  text-transform: capitalize;
-}
-:root[data-dayphase='night'] .sanctuary-sky-label,
-:root[data-dayphase='dusk'] .sanctuary-sky-label {
-  color: rgba(255, 255, 255, 0.75);
 }
 
 /* Achievements — milestone badges on the dashboard. */
