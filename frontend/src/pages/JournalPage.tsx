@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
@@ -9,6 +9,7 @@ import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
+import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
 import type { Journal, MeditationType, Mood, Session } from '../types'
 
 const MOODS: Mood[] = [
@@ -53,6 +54,11 @@ export default function JournalPage() {
   const [submitting, setSubmitting] = useState(false)
   const [composing, setComposing] = useState(false) // expand the composer on focus/typing
   const [query, setQuery] = useState('') // text search over reflections
+
+  // Journaling prompt nudge — stable daily default, shuffleable, dismissible.
+  const todayPrompt = useMemo(() => dailyPrompt(new Date()), [])
+  const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt>(todayPrompt)
+  const [promptDismissed, setPromptDismissed] = useState(false)
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
@@ -243,6 +249,43 @@ export default function JournalPage() {
       </header>
 
       <section className="journal-compose">
+        {!promptDismissed && (
+          <div className="journal-nudge" role="note">
+            <span className="journal-nudge-label">Need a nudge?</span>
+            <button
+              type="button"
+              className="journal-nudge-text"
+              aria-label={`Use prompt: ${currentPrompt.text}`}
+              onClick={() => {
+                if (!body.trim()) {
+                  setBody(currentPrompt.text + ' ')
+                  setComposing(true)
+                }
+              }}
+            >
+              {currentPrompt.text}
+            </button>
+            <div className="journal-nudge-actions">
+              <button
+                type="button"
+                className="journal-nudge-shuffle"
+                aria-label="Show another prompt"
+                onClick={() => setCurrentPrompt((p) => randomPrompt(p))}
+              >
+                another
+              </button>
+              <button
+                type="button"
+                className="journal-nudge-dismiss"
+                aria-label="Dismiss prompt"
+                onClick={() => setPromptDismissed(true)}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} noValidate>
           <textarea
             id="body"
