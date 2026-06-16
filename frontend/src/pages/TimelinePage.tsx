@@ -74,6 +74,7 @@ export default function TimelinePage() {
   const [savingEdit, setSavingEdit] = useState(false)
 
   useEffect(() => {
+    let ignore = false
     // Each source is non-critical on its own; fail quietly per-source and merge whatever
     // loaded, so one failing endpoint never blanks the whole timeline.
     Promise.all([
@@ -83,6 +84,7 @@ export default function TimelinePage() {
       moodLogService.list({ limit: PER_SOURCE }).catch(() => []),
     ])
       .then(([journals, gratitudes, sessions, moods]) => {
+        if (ignore) return
         const merged: TimelineItem[] = [
           ...journals.map((j) => ({
             kind: 'journal' as const,
@@ -114,7 +116,8 @@ export default function TimelinePage() {
         merged.sort(sortByWhenDesc)
         setItems(merged)
       })
-      .catch(() => setError('Could not load your timeline.'))
+      .catch(() => { if (!ignore) setError('Could not load your timeline.') })
+    return () => { ignore = true }
   }, [])
 
   function startEdit(s: Session) {

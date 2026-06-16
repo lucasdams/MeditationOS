@@ -84,9 +84,11 @@ export default function GuidedCues({
   const totalPhases = structure.phases.length
 
   return (
-    <div className="guided-cues" aria-live="polite" aria-atomic="true">
-      <p className="guided-cues-text">{phase.cue}</p>
-      <div className="guided-cues-footer">
+    <div className="guided-cues">
+      <div aria-live="polite" aria-atomic="true">
+        <p className="guided-cues-text">{phase.cue}</p>
+      </div>
+      <div className="guided-cues-footer" aria-hidden="true">
         <span className="guided-cues-progress-label">
           {phaseNum} / {totalPhases}
         </span>

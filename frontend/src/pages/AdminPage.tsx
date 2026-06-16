@@ -40,10 +40,12 @@ function MetricsView() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let ignore = false
     adminService
       .metrics()
-      .then(setData)
-      .catch(() => setError('Could not load admin metrics.'))
+      .then((d) => { if (!ignore) setData(d) })
+      .catch(() => { if (!ignore) setError('Could not load admin metrics.') })
+    return () => { ignore = true }
   }, [])
 
   if (error)
@@ -444,10 +446,12 @@ function AuditView() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let ignore = false
     adminService
       .audit({ limit: 100 })
-      .then((d) => setEntries(d.entries))
-      .catch(() => setError('Could not load the audit log.'))
+      .then((d) => { if (!ignore) setEntries(d.entries) })
+      .catch(() => { if (!ignore) setError('Could not load the audit log.') })
+    return () => { ignore = true }
   }, [])
 
   if (error)

@@ -72,10 +72,12 @@ function Insights() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    let ignore = false
     analyticsService
       .insights()
-      .then(setInsights)
-      .catch(() => setError(true))
+      .then((d) => { if (!ignore) setInsights(d) })
+      .catch(() => { if (!ignore) setError(true) })
+    return () => { ignore = true }
   }, [])
 
   if (error) return null // stay quiet — the charts below still carry the page
@@ -147,15 +149,19 @@ function BiometricTrend() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    let ignore = false
     Promise.all([
       biometricsService.list({ days: TREND_DAYS, limit: 200 }),
       biometricsService.delta({ days: TREND_DAYS }),
     ])
       .then(([r, d]) => {
-        setReadings(r)
-        setDelta(d)
+        if (!ignore) {
+          setReadings(r)
+          setDelta(d)
+        }
       })
-      .catch(() => setError(true))
+      .catch(() => { if (!ignore) setError(true) })
+    return () => { ignore = true }
   }, [])
 
   if (error) return null // stay quiet — the practice charts still carry the page
@@ -270,10 +276,12 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let ignore = false
     analyticsService
       .get()
-      .then(setData)
-      .catch(() => setError('Could not load your analytics.'))
+      .then((d) => { if (!ignore) setData(d) })
+      .catch(() => { if (!ignore) setError('Could not load your analytics.') })
+    return () => { ignore = true }
   }, [])
 
   return (
