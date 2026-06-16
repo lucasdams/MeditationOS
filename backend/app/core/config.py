@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     # ONLY once verification email delivery (SMTP_*) is live and confirmed, or you lock
     # out every unconfirmed user. Mirrors the provider-optional pattern (email/AI/push).
     require_email_verification: bool = False
+    # Error monitoring (Sentry). Leave blank to disable — the app runs identically
+    # without a DSN (provider-optional pattern, same as email/AI/push).
+    sentry_dsn: str = ""
+    # Fraction of transactions to send as performance traces (0.0 = none, 1.0 = all).
+    # Keep low in production; traces carry route metadata but no request bodies.
+    sentry_traces_sample_rate: float = 0.05
 
     @property
     def cors_origins_list(self) -> list[str]:

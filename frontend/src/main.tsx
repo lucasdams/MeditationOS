@@ -6,7 +6,11 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import { initSentry } from './lib/observability'
 import './index.css'
+
+// Initialise Sentry before the app renders.  No-op when VITE_SENTRY_DSN is unset.
+initSentry()
 
 // Register the service worker (PWA install + offline + push) in production only — in
 // dev it would intercept Vite's module requests and break HMR.
