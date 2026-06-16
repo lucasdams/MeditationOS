@@ -119,3 +119,39 @@ describe('MeditatePage — intention prompts', () => {
     expect(textarea.placeholder.length).toBeGreaterThan(0)
   })
 })
+
+describe('MeditatePage — Sound & bells disclosure', () => {
+  afterEach(cleanup)
+
+  // The disclosure is collapsed by default; bells controls live inside it.
+  it('has a "Sound & bells" disclosure toggle', () => {
+    renderPage()
+    expect(screen.getByText(/sound & bells/i)).toBeInTheDocument()
+  })
+
+  it('disclosure is collapsed by default (Bells select not visible)', () => {
+    renderPage()
+    // The <details> element starts closed, so the Bells select is in the DOM
+    // but the disclosure itself is not open.
+    const disclosure = document.querySelector('details.meditate-disclosure') as HTMLDetailsElement
+    expect(disclosure).toBeInTheDocument()
+    expect(disclosure.open).toBe(false)
+  })
+
+  it('opening the disclosure reveals the Bells select', () => {
+    renderPage()
+    const summary = screen.getByText(/sound & bells/i)
+    fireEvent.click(summary)
+    // After clicking, the Bells select should be reachable.
+    expect(screen.getByLabelText(/bells/i)).toBeInTheDocument()
+  })
+
+  it('closing the disclosure after opening sets it back to closed', () => {
+    renderPage()
+    const summary = screen.getByText(/sound & bells/i)
+    fireEvent.click(summary) // open
+    fireEvent.click(summary) // close
+    const disclosure = document.querySelector('details.meditate-disclosure') as HTMLDetailsElement
+    expect(disclosure.open).toBe(false)
+  })
+})

@@ -29,6 +29,25 @@ import {
 } from '../lib/soundscapes'
 import type { MeditationType, SessionCreate } from '../types'
 
+// localStorage key for the Sound & bells disclosure open/closed state.
+const SOUND_DISCLOSURE_KEY = 'meditate:sound-disclosure-open'
+
+function readSoundDisclosureOpen(): boolean {
+  try {
+    return localStorage.getItem(SOUND_DISCLOSURE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writeSoundDisclosureOpen(open: boolean) {
+  try {
+    localStorage.setItem(SOUND_DISCLOSURE_KEY, String(open))
+  } catch {
+    // ignore
+  }
+}
+
 const DRAFT_PAGE = 'meditate'
 
 // Unguided meditation styles (existing session types). Resonance breathing has its
@@ -135,6 +154,7 @@ export default function MeditatePage() {
   const [bellsOn, setBellsOn] = useState(true)
   const [volume, setVolume] = useState(0.6)
   const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(readGuidedChoice)
+  const [soundDisclosureOpen, setSoundDisclosureOpen] = useState(readSoundDisclosureOpen)
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(0.4)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
@@ -528,6 +548,8 @@ export default function MeditatePage() {
         </div>
       )}
 
+      {/* ── Primary setup: the practice-meaningful choices always visible ─────── */}
+
       <label>Duration</label>
       <Stepper
         options={DURATIONS}
@@ -535,46 +557,6 @@ export default function MeditatePage() {
         disabled={settingsDisabled}
         ariaLabel="Duration"
         onChange={setTargetMin}
-      />
-
-      <label htmlFor="bells">Bells</label>
-      <select id="bells" value={bellMode} onChange={(e) => setBellMode(e.target.value)}>
-        {BELL_MODES.map((b) => (
-          <option key={b.value} value={b.value}>
-            {b.label}
-          </option>
-        ))}
-      </select>
-
-      <label htmlFor="bell-volume">Volume</label>
-      <input
-        id="bell-volume"
-        className="breathe-volume"
-        type="range"
-        min="0"
-        max="1"
-        step="0.05"
-        value={volume}
-        disabled={!bellsOn}
-        onChange={(e) => setVolume(Number(e.target.value))}
-      />
-
-      <label>Ambient sound</label>
-      <SoundscapePicker
-        value={soundscape}
-        volume={soundscapeVol}
-        onSoundscapeChange={(name) => {
-          setSoundscape(name)
-          if (running) {
-            // Live switch: restart soundscape with new choice
-            soundscapeEngineRef.current?.stop()
-            if (name !== 'silent') {
-              if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-              soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
-            }
-          }
-        }}
-        onVolumeChange={setSoundscapeVol}
       />
 
       <label htmlFor="guided-structure">Guided structure</label>
@@ -613,6 +595,67 @@ export default function MeditatePage() {
           </p>
         </div>
       )}
+
+      {/* ── Secondary: Sound & bells — tucked behind a quiet disclosure ───────── */}
+      {/* Soundscape stays live-adjustable during a sit (open the disclosure to change). */}
+      <details
+        className="meditate-disclosure"
+        open={soundDisclosureOpen}
+        onToggle={(e) => {
+          const open = (e.currentTarget as HTMLDetailsElement).open
+          setSoundDisclosureOpen(open)
+          writeSoundDisclosureOpen(open)
+        }}
+      >
+        <summary
+          className="meditate-disclosure-summary"
+          aria-expanded={soundDisclosureOpen}
+        >
+          Sound &amp; bells
+        </summary>
+
+        <div className="meditate-disclosure-body">
+          <label>Ambient sound</label>
+          <SoundscapePicker
+            value={soundscape}
+            volume={soundscapeVol}
+            onSoundscapeChange={(name) => {
+              setSoundscape(name)
+              if (running) {
+                // Live switch: restart soundscape with new choice
+                soundscapeEngineRef.current?.stop()
+                if (name !== 'silent') {
+                  if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
+                  soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+                }
+              }
+            }}
+            onVolumeChange={setSoundscapeVol}
+          />
+
+          <label htmlFor="bells">Bells</label>
+          <select id="bells" value={bellMode} disabled={settingsDisabled} onChange={(e) => setBellMode(e.target.value)}>
+            {BELL_MODES.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor="bell-volume">Volume</label>
+          <input
+            id="bell-volume"
+            className="breathe-volume"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={volume}
+            disabled={!bellsOn}
+            onChange={(e) => setVolume(Number(e.target.value))}
+          />
+        </div>
+      </details>
 
       {/* Show the locked-in intention quietly during the sit. */}
       {started && intention.trim() && (
