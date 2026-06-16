@@ -33,9 +33,14 @@ export const MOOD_COLORS: Record<Mood, string> = {
   focused: '#3b82f6',
   energized: '#f59e0b',
   grateful: '#ec4899',
+  hopeful: '#34d399',   // emerald-green — forward-looking warmth
+  excited: '#fbbf24',  // amber-yellow — bright, upbeat
+  peaceful: '#67e8f9', // cyan — soft and still
   neutral: '#9ca3af',
   restless: '#f97316',
   anxious: '#8b5cf6',
+  frustrated: '#94a3b8', // slate — cool-muted, not alarm-red
+  overwhelmed: '#6366f1', // indigo — heavy but not alarming
   tired: '#64748b',
   low: '#475569',
 }
@@ -48,9 +53,14 @@ export const MOOD_META: Record<Mood, { emoji: string; label: string }> = {
   focused: { emoji: '🎯', label: 'Focused' },
   energized: { emoji: '⚡', label: 'Energized' },
   grateful: { emoji: '🙏', label: 'Grateful' },
+  hopeful: { emoji: '🌱', label: 'Hopeful' },
+  excited: { emoji: '✨', label: 'Excited' },
+  peaceful: { emoji: '🌿', label: 'Peaceful' },
   neutral: { emoji: '😐', label: 'Neutral' },
   restless: { emoji: '😣', label: 'Restless' },
   anxious: { emoji: '😰', label: 'Anxious' },
+  frustrated: { emoji: '😤', label: 'Frustrated' },
+  overwhelmed: { emoji: '😮‍💨', label: 'Overwhelmed' },
   tired: { emoji: '😴', label: 'Tired' },
   low: { emoji: '😔', label: 'Low' },
 }

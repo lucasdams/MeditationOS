@@ -118,7 +118,7 @@ export default function DashboardPage() {
             <p className="quest-streak muted">
               🌱 {stats.current_streak_days}-day practice streak
               {stats.rest_day_used
-                ? ' · 🛡️ a rest day is holding it — skipping one is fine'
+                ? ' · 🛡️ rest day — skipping one is fine'
                 : ''}
             </p>
           )}
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                   <div className="stat-label">
                     Current streak (days)
                     {stats.rest_day_used && (
-                      <span className="rest-day-badge" title="A rest day is protecting your streak — one skipped day is OK.">
+                      <span className="rest-day-badge" title="Rest day — one skipped day is fine.">
                         {' '}🛡️ rest day
                       </span>
                     )}
