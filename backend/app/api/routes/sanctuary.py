@@ -29,6 +29,7 @@ from app.services.sanctuary_service import (
     CellOutOfBounds,
     InsufficientCoins,
     ItemLocked,
+    SanctuaryConflictError,
     UnknownItem,
     UnknownSlotOption,
     UnknownVariant,
@@ -42,6 +43,10 @@ router = APIRouter(
 
 _NOT_FOUND = not_found("Not found")
 _BROKE = HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Not enough coins")
+# A concurrent write to the same garden collided on a unique constraint — 409, not 500.
+_CONFLICT = HTTPException(
+    status_code=status.HTTP_409_CONFLICT, detail="The garden was updated concurrently; retry"
+)
 
 
 def _today_for(user: User) -> tuple[date, str]:
@@ -82,6 +87,8 @@ def buy_item(
         ) from None
     except InsufficientCoins:
         raise _BROKE from None
+    except SanctuaryConflictError:
+        raise _CONFLICT from None
 
 
 @router.post("/items/{planting_id}/customize", response_model=SanctuaryScene)
@@ -112,6 +119,8 @@ def customize_item(
         ) from None
     except InsufficientCoins:
         raise _BROKE from None
+    except SanctuaryConflictError:
+        raise _CONFLICT from None
     if scene is None:
         raise _NOT_FOUND
     return scene
@@ -132,9 +141,12 @@ def personalize_item(
     Over-length name/note is rejected as 422 by the schema; another user's item is 404.
     """
     today, tz = _today_for(current_user)
-    scene = sanctuary_service.personalize(
-        db, current_user.id, planting_id, body, today=today, tz=tz
-    )
+    try:
+        scene = sanctuary_service.personalize(
+            db, current_user.id, planting_id, body, today=today, tz=tz
+        )
+    except SanctuaryConflictError:
+        raise _CONFLICT from None
     if scene is None:
         raise _NOT_FOUND
     return scene
@@ -161,6 +173,8 @@ def move_item(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="That cell is outside the garden grid",
         ) from None
+    except SanctuaryConflictError:
+        raise _CONFLICT from None
     if scene is None:
         raise _NOT_FOUND
     return scene

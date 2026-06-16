@@ -112,3 +112,77 @@ def test_google_disabled_via_email_link_is_rejected(client, db_session):
     assert res.status_code in (401, 403), (
         f"Expected 401 or 403 for a disabled account (email-link branch), got {res.status_code}"
     )
+
+
+# ── First-time-login unique-race recovery ──────────────────────────────────
+
+
+def _arm_commit_to_raise_once(db_session):
+    """Make the next session commit raise IntegrityError once (a concurrent first-time
+    Google login won the unique google_sub/email race), then restore the real commit so the
+    service's rollback + re-resolve can complete."""
+    from sqlalchemy.exc import IntegrityError
+
+    real_commit = db_session.commit
+    state = {"armed": True}
+
+    def fake_commit(*args, **kwargs):
+        if state["armed"]:
+            state["armed"] = False
+            raise IntegrityError("INSERT users", {}, Exception("uq google_sub"))
+        return real_commit(*args, **kwargs)
+
+    db_session.commit = fake_commit  # restored implicitly by per-test rollback/teardown
+
+
+def test_google_create_race_recovers_to_existing_account(client, db_session):
+    """Branch 3 (create): a near-simultaneous first-time login created the account first.
+    The create commit hits the unique google_sub constraint → the service rolls back and
+    re-resolves to the existing account, returning 200 (not 500)."""
+    from app.models.user import User
+
+    # Simulate the row the racing request already committed.
+    db_session.add(
+        User(email="race-new@example.com", google_sub="g-race-1", email_verified=True)
+    )
+    db_session.commit()
+    winner_id = str(
+        db_session.execute(
+            select(User.id).where(User.google_sub == "g-race-1")
+        ).scalar_one()
+    )
+
+    _arm_commit_to_raise_once(db_session)
+    with patch(GOOGLE_VERIFY, return_value=_claims("race-new@example.com", "g-race-1")):
+        res = client.post("/api/v1/auth/google", json={"credential": "tok"})
+    assert res.status_code == 200, "Create race must recover, not 500"
+    assert res.json()["id"] == winner_id  # resolved to the account that won the race
+
+
+def test_google_link_race_recovers_to_existing_account(client, db_session):
+    """Branch 2 (link): an existing password account is being linked, but a concurrent login
+    linked/created the google_sub first. The link commit collides → roll back and re-resolve
+    by google_sub, returning 200 (not 500)."""
+    from app.models.user import User
+
+    # A password account with this email, plus a separate row already holding the google_sub
+    # (what the racing request committed first).
+    client.post(
+        "/api/v1/auth/register",
+        json={"email": "race-link@example.com", "password": "correct horse"},
+    )
+    db_session.add(
+        User(email="winner-link@example.com", google_sub="g-race-2", email_verified=True)
+    )
+    db_session.commit()
+    winner_id = str(
+        db_session.execute(
+            select(User.id).where(User.google_sub == "g-race-2")
+        ).scalar_one()
+    )
+
+    _arm_commit_to_raise_once(db_session)
+    with patch(GOOGLE_VERIFY, return_value=_claims("race-link@example.com", "g-race-2")):
+        res = client.post("/api/v1/auth/google", json={"credential": "tok"})
+    assert res.status_code == 200, "Link race must recover, not 500"
+    assert res.json()["id"] == winner_id  # resolved by google_sub to the racing account
