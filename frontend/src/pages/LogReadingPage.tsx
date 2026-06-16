@@ -11,7 +11,7 @@ export default function LogReadingPage() {
   const { showToast } = useToast()
 
   return (
-    <main className="dashboard log-session">
+    <main id="main-content" className="dashboard log-session">
       <Link to="/analytics" className="back-link">← Analytics</Link>
       <header className="page-head">
         <h1>Log a reading</h1>

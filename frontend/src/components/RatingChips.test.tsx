@@ -25,7 +25,7 @@ describe('RatingChips', () => {
 
   it('marks the selected numeric chip pressed', () => {
     render(<RatingChips ariaLabel="Focus" value="3" onChange={vi.fn()} />)
-    expect(screen.getByRole('button', { name: '3' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Rate 3 of 5' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -38,7 +38,7 @@ describe('RatingChips', () => {
   it('calls onChange with the chip value, and "" for not-rated', () => {
     const onChange = vi.fn()
     render(<RatingChips ariaLabel="Focus" value="2" onChange={onChange} />)
-    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Rate 4 of 5' }))
     expect(onChange).toHaveBeenCalledWith('4')
     fireEvent.click(screen.getByRole('button', { name: /not rated/i }))
     expect(onChange).toHaveBeenCalledWith('')

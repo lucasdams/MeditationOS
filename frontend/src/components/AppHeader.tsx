@@ -97,19 +97,23 @@ export default function AppHeader() {
         </Link>
 
         <div className="nav-more" ref={moreRef}>
+          {/* Drop role="menu"/role="menuitem" — these links aren't a widget menu and
+              arrow-key navigation isn't implemented. Plain nav links are correct here.
+              aria-controls ties the button to the nav region it expands. */}
           <button
             type="button"
             className="nav-more-btn"
             aria-haspopup="true"
             aria-expanded={moreOpen}
+            aria-controls="nav-more-dropdown"
             onClick={() => setMoreOpen((o) => !o)}
           >
             More ▾
           </button>
           {moreOpen && (
-            <div className="nav-more-menu" role="menu">
+            <div id="nav-more-dropdown" className="nav-more-menu">
               {moreLinks.map((l) => (
-                <Link key={l.to} to={l.to} role="menuitem">
+                <Link key={l.to} to={l.to}>
                   {l.label}
                 </Link>
               ))}

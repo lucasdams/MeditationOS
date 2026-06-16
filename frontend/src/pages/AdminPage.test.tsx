@@ -135,7 +135,7 @@ describe('AdminPage', () => {
     disableUser.mockResolvedValue({ ...sampleDetail, is_disabled: true })
     renderPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Users' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Users' }))
     fireEvent.change(screen.getByLabelText(/search by email/i), {
       target: { value: 'jane' },
     })
@@ -171,7 +171,7 @@ describe('AdminPage', () => {
     audit.mockResolvedValue(auditData)
     renderPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Audit log' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Audit log' }))
     await waitFor(() => expect(audit).toHaveBeenCalled())
     expect(await screen.findByText(/disabled account/i)).toBeInTheDocument()
   })
@@ -183,7 +183,7 @@ describe('AdminPage', () => {
     getUser.mockResolvedValue({ ...sampleDetail, id: 'user-1' })
     renderPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Users' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Users' }))
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
     fireEvent.click(await screen.findByText('jane@example.com'))
 

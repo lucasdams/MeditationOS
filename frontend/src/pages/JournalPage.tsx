@@ -240,7 +240,7 @@ export default function JournalPage() {
   const composerOpen = composing || body.trim().length > 0
 
   return (
-    <main className="dashboard">
+    <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Journal</h1>

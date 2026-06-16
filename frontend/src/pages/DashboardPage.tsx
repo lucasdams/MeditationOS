@@ -86,7 +86,7 @@ export default function DashboardPage() {
   }, [])
 
   return (
-    <main className="dashboard">
+    <main id="main-content" className="dashboard">
       <h1>Your practice</h1>
       <p className="zen-greeting muted">{greeting}</p>
 

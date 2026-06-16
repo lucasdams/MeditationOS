@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
@@ -16,6 +16,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   // Set when an expired session bounced the user here (see AuthContext).
   useEffect(() => {
@@ -29,8 +31,14 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
 
-    if (!email || !password) {
+    if (!email) {
       setError('Please enter your email and password.')
+      emailRef.current?.focus()
+      return
+    }
+    if (!password) {
+      setError('Please enter your email and password.')
+      passwordRef.current?.focus()
       return
     }
 
@@ -53,30 +61,36 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-card">
+    <main id="main-content" className="auth-card">
       <AuthBrand />
       <h1>Log in</h1>
       {notice && <p className="auth-notice">{notice}</p>}
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="email">Email</label>
         <input
+          ref={emailRef}
           id="email"
           type="email"
           autoComplete="email"
+          required
+          aria-describedby={error ? 'login-error' : undefined}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <label htmlFor="password">Password</label>
         <input
+          ref={passwordRef}
           id="password"
           type="password"
           autoComplete="current-password"
+          required
+          aria-describedby={error ? 'login-error' : undefined}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} id="login-error" />
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}

@@ -1420,6 +1420,39 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ── Accessibility utilities ────────────────────────────────────────────────
+   .sr-only  — visually hidden but available to screen readers.
+   .skip-link — skip-to-main, visible on focus so keyboard users see it first. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -999px;
+  left: 1rem;
+  z-index: 9999;
+  background: var(--bg-surface);
+  color: var(--accent);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 2px solid var(--accent);
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
 /* A clear, consistent keyboard-focus ring across all interactive elements. */
 a:focus-visible,
 button:focus-visible,
@@ -2041,26 +2074,11 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
-/* Variant picker modal (buy-time). */
-.sanctuary-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 50;
-}
-
-.sanctuary-modal {
-  background: var(--bg-surface);
-  border-radius: 16px;
-  padding: 1.25rem;
-  max-width: 24rem;
-  width: 100%;
-  box-shadow: 0 8px 30px var(--shadow-modal);
-}
+/* Variant picker modal (buy-time) — sizing override applied BELOW .modal-card
+   (see the .modal-card.sanctuary-modal rule after the modal scaffold block) so
+   the more-specific selector wins. The old .sanctuary-modal-backdrop and the
+   inline .sanctuary-modal block that appeared before .modal-card are removed
+   (they were dead after the shared Modal refactor). */
 
 .sanctuary-modal h3 {
   margin: 0 0 0.75rem;
@@ -2268,6 +2286,14 @@ textarea:focus-visible,
   border-radius: 16px;
   padding: 2rem;
   box-shadow: 0 10px 40px var(--shadow-modal);
+}
+
+/* Sanctuary variant-picker modal: narrower card with tighter padding.
+   Placed AFTER .modal-card so this more-specific selector reliably wins. */
+.modal-card.sanctuary-modal {
+  max-width: 24rem;
+  width: 100%;
+  padding: 1.25rem;
 }
 
 .reward-card {

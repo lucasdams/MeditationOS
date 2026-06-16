@@ -71,7 +71,8 @@ export default function WeeklyReview() {
         </div>
         {data.top_mood && (
           <div className="weekly-stat">
-            <span className="weekly-value">{MOOD_EMOJI[data.top_mood] ?? '🙂'}</span>
+            {/* The emoji is decorative; the text label below names the mood. */}
+            <span className="weekly-value" aria-hidden="true">{MOOD_EMOJI[data.top_mood] ?? '🙂'}</span>
             <span className="weekly-label">mostly {data.top_mood}</span>
           </div>
         )}

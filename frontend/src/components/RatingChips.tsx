@@ -34,6 +34,7 @@ export default function RatingChips({
           type="button"
           className={`chip${value === String(n) ? ' chip-active' : ''}`}
           aria-pressed={value === String(n)}
+          aria-label={`Rate ${n} of 5`}
           onClick={() => onChange(String(n))}
         >
           {n}

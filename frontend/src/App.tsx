@@ -34,7 +34,7 @@ const AdminPage       = lazy(() => import('./pages/AdminPage'))
 // CSS custom properties (--text-muted is set by ThemeProvider on <html>).
 function PageFallback() {
   return (
-    <main style={{ padding: '2rem' }}>
+    <main id="main-content" style={{ padding: '2rem' }}>
       <p className="muted">Loading…</p>
     </main>
   )
@@ -43,6 +43,11 @@ function PageFallback() {
 export default function App() {
   return (
     <>
+      {/* Skip-to-content link: visually hidden until focused so keyboard/SR users
+          can bypass the repeated nav header on every page. */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

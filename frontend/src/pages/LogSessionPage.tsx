@@ -122,7 +122,7 @@ export default function LogSessionPage() {
   }
 
   return (
-    <main className="dashboard log-session">
+    <main id="main-content" className="dashboard log-session">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Log a session</h1>

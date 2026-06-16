@@ -127,7 +127,7 @@ export default function GoalsPage() {
   })
 
   return (
-    <main className="dashboard">
+    <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Goals</h1>

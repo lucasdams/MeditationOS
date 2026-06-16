@@ -236,7 +236,7 @@ export default function SanctuaryPage() {
   }
 
   return (
-    <main className="dashboard sanctuary-page">
+    <main id="main-content" className="dashboard sanctuary-page">
       <Link to="/" className="back-link">
         ← Dashboard
       </Link>

@@ -62,7 +62,8 @@ export default function Stepper<T extends string | number>({
         </button>
         {prevLabel && <span className="stepper-side-label">{prevLabel}</span>}
       </div>
-      <span className="stepper-value">
+      {/* aria-live announces the current value to screen readers when it changes. */}
+      <span className="stepper-value" aria-live="polite" aria-atomic="true">
         {current?.label}
         {valueSuffix != null && <span className="stepper-value-suffix"> · {valueSuffix}</span>}
       </span>
