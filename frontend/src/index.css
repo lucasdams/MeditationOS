@@ -3323,6 +3323,38 @@ textarea:focus-visible,
   margin-top: 0.5rem;
 }
 
+/* Duration quick-pick chips + rating rows on the Log a session page. */
+.log-session-duration-chips,
+.log-session-rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.25rem;
+}
+
+/* Override the default amber chip-active so duration/rating selections use
+   the app's primary indigo accent, which reads naturally here (not gratitude). */
+.log-session-duration-chips .chip-active,
+.log-session-rating .chip-active {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  border-color: #3730a3;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+}
+
+.log-session-duration-chips .chip-active:hover,
+.log-session-rating .chip-active:hover {
+  filter: brightness(1.05);
+}
+
+/* Rating chips are a bit more compact (1–5 fit snugly in a row). */
+.log-session-rating .chip {
+  min-width: 2.5rem;
+  text-align: center;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
 .schedule-upcoming-title {
   font-size: 1rem;
   color: #45454a;
