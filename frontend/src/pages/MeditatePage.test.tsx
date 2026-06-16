@@ -277,3 +277,42 @@ describe('MeditatePage — post-session reflection', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1) // still only the one save
   })
 })
+
+// ── Best-effort post-save stats ──────────────────────────────────────────────
+// If getStats throws AFTER the session is saved, the reward overlay must still
+// appear (the session is not lost). The UI must NOT show "Could not save the session."
+
+describe('MeditatePage — best-effort post-save stats', () => {
+  beforeEach(() => {
+    rewardOverlayState.onClose = null
+    mockCreate.mockReset()
+    mockUpdate.mockReset()
+    mockGetStats.mockReset()
+    mockNavigate.mockReset()
+    mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
+  })
+  afterEach(cleanup)
+
+  it('shows the reward overlay even when the after-getStats call throws', async () => {
+    // First getStats (before save) succeeds; second (after save) throws.
+    mockGetStats
+      .mockResolvedValueOnce(BASE_STATS)
+      .mockRejectedValueOnce(new Error('network error'))
+
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    await act(async () => { vi.advanceTimersByTime(2000) })
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
+    vi.useRealTimers()
+
+    // Session must be created.
+    await vi.waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1))
+
+    // Reward overlay must be shown (onClose captured by mock).
+    await vi.waitFor(() => expect(rewardOverlayState.onClose).not.toBeNull())
+
+    // No save-error banner.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})

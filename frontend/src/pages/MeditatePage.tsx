@@ -31,7 +31,16 @@ import {
   loadSoundscapePref,
   type SoundscapeName,
 } from '../lib/soundscapes'
-import type { MeditationType, SessionCreate } from '../types'
+import type { DashboardStats, MeditationType, SessionCreate } from '../types'
+
+// Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
+// Passing it to buildXpBreakdown yields an all-zero breakdown rather than a crash.
+const ZERO_STATS: DashboardStats = {
+  xp: 0, level: 1, xp_into_level: 0, xp_for_next_level: 100,
+  current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
+  streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
+  gratitude_count: 0, this_week: [], daily_quests: [],
+}
 
 // localStorage key for the Sound & bells disclosure open/closed state.
 const SOUND_DISCLOSURE_KEY = 'meditate:sound-disclosure-open'
@@ -328,9 +337,16 @@ export default function MeditatePage() {
     setError(null)
     setSaving(true)
     const trimmedIntention = intention.trim() || undefined
+
+    // Fetch pre-save stats outside the save try/catch so a getStats failure before
+    // the create does not silently swallow the real save error. If the pre-fetch fails
+    // we still save; XP breakdown will show zeros.
+    const before = await dashboardService.getStats().catch(() => ZERO_STATS)
+
+    // The save itself — this is the one step that must succeed.
+    let saved: { id: string }
     try {
-      const before = await dashboardService.getStats()
-      const saved = await sessionService.create({
+      saved = await sessionService.create({
         type: MEDITATION_TYPE,
         duration_seconds: Math.floor(durationSec), // floor — never inflate the logged time
         occurred_at: startedAtRef.current || new Date().toISOString(),
@@ -339,17 +355,23 @@ export default function MeditatePage() {
         // optional and the reflection step can patch it via PATCH later if needed).
         intention: trimmedIntention ?? null,
       })
-      savedSessionIdRef.current = saved.id
-      // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
-      savedRef.current = true
-      clearDraft(DRAFT_PAGE)
-      const after = await dashboardService.getStats()
-      const bd = buildXpBreakdown(before, after, '🧘 Meditation')
-      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
       setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
       setSaving(false)
+      return
     }
+
+    savedSessionIdRef.current = saved.id
+    // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
+    savedRef.current = true
+    clearDraft(DRAFT_PAGE)
+
+    // Post-save stats are best-effort: if getStats throws the session is still saved
+    // and the reward overlay still fires (with a zero/minimal breakdown). The user
+    // must not see "Could not save the session." when only the stats fetch failed.
+    const after = await dashboardService.getStats().catch(() => ZERO_STATS)
+    const bd = buildXpBreakdown(before, after, '🧘 Meditation')
+    setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
   function finish() {
