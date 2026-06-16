@@ -424,6 +424,52 @@ export interface DailyCount {
   count: number
 }
 
+// ── Admin user-management / support tooling ────────────────────────────────
+// Account METADATA only — the backend never returns user content here.
+
+export interface AdminUserSummary {
+  id: string
+  email: string
+  username: string | null
+  created_at: string
+  email_verified: boolean
+  is_guest: boolean
+  is_admin: boolean
+  is_disabled: boolean
+}
+
+export interface AdminUserCounts {
+  sessions: number
+  journals: number
+  gratitude: number
+  mood_logs: number
+  goals: number
+}
+
+export interface AdminUserDetail extends AdminUserSummary {
+  last_active_at: string | null
+  counts: AdminUserCounts
+}
+
+export interface AdminUserList {
+  users: AdminUserSummary[]
+  total: number
+}
+
+export interface AuditEntry {
+  id: string
+  actor_user_id: string | null
+  target_user_id: string | null
+  action: string
+  detail: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface AuditList {
+  entries: AuditEntry[]
+  total: number
+}
+
 export interface AdminMetrics {
   generated_at: string // ISO date the snapshot was computed (UTC)
   users: {

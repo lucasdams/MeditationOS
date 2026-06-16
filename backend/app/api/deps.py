@@ -19,6 +19,10 @@ _EMAIL_UNVERIFIED = HTTPException(
 _FORBIDDEN = HTTPException(
     status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
 )
+_DISABLED = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail="This account has been disabled. Contact support.",
+)
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -37,6 +41,11 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = user_service.get_user_by_id(db, user_id)
     if user is None:
         raise _UNAUTHORIZED
+    # An admin-disabled account is blocked here, so a still-valid token can't be used to
+    # reach any authenticated route (including /auth/me). Enforced at the single choke
+    # point every protected route depends on — 403, with a clear message.
+    if user.is_disabled:
+        raise _DISABLED
     return user
 
 

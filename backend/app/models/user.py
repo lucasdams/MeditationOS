@@ -38,6 +38,13 @@ class User(Base):
     is_guest: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false", default=False
     )
+    # Admin-controlled account suspension. A disabled account is blocked at
+    # authentication (get_current_user → 403) so the user can neither log in nor use an
+    # existing session, without losing their data. Toggled only by admin support
+    # tooling (see admin_service.set_user_disabled); every change is audited.
+    is_disabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
     # Google's stable subject id ("sub"), set when the account is linked to Google.
     google_sub: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     # IANA timezone (e.g. "Asia/Tokyo") for local-day streaks/quests. Default UTC.
