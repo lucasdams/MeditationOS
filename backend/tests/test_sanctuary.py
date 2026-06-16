@@ -976,3 +976,77 @@ def test_existing_owned_config_balance_never_negative_across_levels(client, db_s
     assert scene["coins"] == 0  # clamped, not negative
     assert scene["coins"] >= 0
     assert len(scene["owned"]) == 8  # the scene still renders every holding
+
+
+# --- Concurrency safety: per-user advisory lock + IntegrityError → 409 -------------------
+#
+# pytest is single-threaded, so we can't truly race two requests. Instead we (a) assert the
+# mutating service methods take the per-user advisory lock that serializes concurrent writes,
+# and (b) force an IntegrityError on the commit and assert the route returns 409, not a 500.
+
+
+def _commit_raises_once(db_session, monkeypatch):
+    """Patch the session so the *next* commit raises IntegrityError once, then restores the
+    real commit (so the service's rollback + any later commits behave normally)."""
+    from sqlalchemy.exc import IntegrityError
+
+    real_commit = db_session.commit
+    state = {"armed": True}
+
+    def fake_commit(*args, **kwargs):
+        if state["armed"]:
+            state["armed"] = False
+            raise IntegrityError("INSERT", {}, Exception("uq collision"))
+        return real_commit(*args, **kwargs)
+
+    monkeypatch.setattr(db_session, "commit", fake_commit)
+
+
+def test_buy_takes_a_per_user_advisory_lock(client, db_session, monkeypatch):
+    """buy() serializes concurrent same-user writes via a transaction-scoped advisory lock."""
+    from app.services import sanctuary_service
+
+    _auth(client, "lock-buy@example.com")
+    calls: list = []
+    real = sanctuary_service._lock_user_garden
+    monkeypatch.setattr(
+        sanctuary_service,
+        "_lock_user_garden",
+        lambda db, user_id: (calls.append(user_id), real(db, user_id))[1],
+    )
+    res = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+    assert res.status_code == 201
+    assert len(calls) == 1  # the lock was acquired exactly once for the buy
+
+
+def test_buy_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """A unique-constraint collision on the insert surfaces as 409, never an unhandled 500."""
+    _auth(client, "conflict-buy@example.com")
+    _commit_raises_once(db_session, monkeypatch)
+    res = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+    assert res.status_code == 409
+
+
+def test_customize_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """A collision while applying a customization surfaces as 409, never a 500."""
+    _auth(client, "conflict-cust@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    planting_id = bought["owned"][0]["id"]
+    _commit_raises_once(db_session, monkeypatch)
+    res = client.post(
+        f"/api/v1/sanctuary/items/{planting_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    assert res.status_code == 409
+
+
+def test_move_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """A collision on uq(user_id, cell) during a move surfaces as 409, never a 500."""
+    _auth(client, "conflict-move@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    planting_id = bought["owned"][0]["id"]
+    _commit_raises_once(db_session, monkeypatch)
+    res = client.post(
+        f"/api/v1/sanctuary/items/{planting_id}/move", json={"cell": 5}
+    )
+    assert res.status_code == 409
