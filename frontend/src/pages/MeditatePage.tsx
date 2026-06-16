@@ -7,6 +7,7 @@ import { playBell } from '../lib/sfx'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
+import GuidedCues from '../components/GuidedCues'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
@@ -19,6 +20,7 @@ import {
   writeDraft,
   type SessionDraft,
 } from '../lib/sessionDraft'
+import { GUIDED_STRUCTURES, type GuidedStructureId } from '../lib/guidedSessions'
 import {
   SoundscapeEngine,
   loadSoundscapePref,
@@ -59,6 +61,28 @@ const BELL_MODES = [
   { value: 'every10', label: 'Start, end & every 10 min' },
 ]
 
+// Persist the last-chosen guided structure across sessions.
+const GUIDED_STRUCTURE_KEY = 'meditate:guided-structure'
+type GuidedChoice = GuidedStructureId | 'none'
+
+function readGuidedChoice(): GuidedChoice {
+  try {
+    const v = localStorage.getItem(GUIDED_STRUCTURE_KEY)
+    if (v === 'body-scan' || v === 'loving-kindness') return v
+    return 'none'
+  } catch {
+    return 'none'
+  }
+}
+
+function writeGuidedChoice(choice: GuidedChoice) {
+  try {
+    localStorage.setItem(GUIDED_STRUCTURE_KEY, choice)
+  } catch {
+    // ignore — preference simply won't persist
+  }
+}
+
 const mmss = (totalSec: number) => {
   const s = Math.max(0, Math.floor(totalSec))
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
@@ -71,6 +95,7 @@ export default function MeditatePage() {
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
   const [volume, setVolume] = useState(0.6)
+  const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(readGuidedChoice)
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(0.4)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
@@ -323,6 +348,11 @@ export default function MeditatePage() {
     setRestorable(null)
   }
 
+  function setGuidedChoice(choice: GuidedChoice) {
+    setGuidedChoiceState(choice)
+    writeGuidedChoice(choice)
+  }
+
   const targetSec = targetMin * 60
   const remaining = targetSec > 0 ? Math.max(0, targetSec - elapsed) : elapsed
   // A sit is "underway" once started (running) or partway (paused). Before that, the
@@ -374,6 +404,16 @@ export default function MeditatePage() {
           {running ? 'Be here' : elapsed > 0 ? 'Paused' : 'Ready when you are'}
         </div>
       </div>
+
+      {started && guidedChoice !== 'none' && (
+        <GuidedCues
+          structureId={guidedChoice}
+          elapsed={elapsed}
+          durationSec={targetSec}
+          volume={volume}
+          bellsOn={bellsOn}
+        />
+      )}
 
       {started && (
         <div className="breathe-stats">
@@ -430,6 +470,21 @@ export default function MeditatePage() {
         }}
         onVolumeChange={setSoundscapeVol}
       />
+
+      <label htmlFor="guided-structure">Guided structure</label>
+      <select
+        id="guided-structure"
+        value={guidedChoice}
+        disabled={settingsDisabled}
+        onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
+      >
+        <option value="none">None — plain timer</option>
+        {GUIDED_STRUCTURES.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.label} — {s.description}
+          </option>
+        ))}
+      </select>
 
       {error && (
         <p role="alert" className="error">
