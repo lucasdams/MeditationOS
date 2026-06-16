@@ -5,6 +5,7 @@ import { dashboardService } from '../services/dashboard'
 
 // Secondary destinations, tucked into the "More" menu.
 const MORE_LINKS = [
+  { to: '/sessions/new', label: '➕ Log a session' },
   { to: '/timeline', label: '🕒 Timeline' },
   { to: '/goals', label: '🎯 Goals' },
   { to: '/schedule', label: '🗓️ Schedule' },
@@ -86,9 +87,6 @@ export default function AppHeader() {
         </Link>
         <Link to="/journal" className="nav-journal">
           📓 Journal
-        </Link>
-        <Link to="/sessions/new" className="nav-log">
-          + Log
         </Link>
 
         <div className="nav-more" ref={moreRef}>

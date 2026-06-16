@@ -296,11 +296,6 @@ body {
   margin-top: 0.3rem;
 }
 
-.app-nav a.nav-log {
-  background: #dcfce7;
-  color: #15803d;
-}
-
 .app-nav a:hover {
   filter: brightness(0.96);
 }
