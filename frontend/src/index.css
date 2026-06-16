@@ -2323,20 +2323,50 @@ textarea:focus-visible,
   color: #059669;
 }
 
+/* The entire quest row is now a single link — clear affordance, full keyboard target. */
+.quest-row-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.quest-row-link:hover .quest-label,
+.quest-row-link:focus-visible .quest-label {
+  text-decoration: underline;
+}
+
+.quest-row-link:hover .quest-arrow,
+.quest-row-link:focus-visible .quest-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
 .quest-label {
   flex: 1;
   color: #1c1c1e;
-  text-decoration: none;
   font-weight: 500;
-}
-
-.quest-label:hover {
-  text-decoration: underline;
 }
 
 .quest.done .quest-label {
   color: #6b6b70;
   text-decoration: line-through;
+}
+
+/* Trailing arrow — quietly present, brightens on hover. */
+.quest-arrow {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: var(--activity-accent, #9ca3af);
+  opacity: 0.45;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.quest.done .quest-arrow {
+  display: none;
 }
 
 .quest-progress {
@@ -3402,6 +3432,54 @@ textarea:focus-visible,
   opacity: 0.7;
   cursor: pointer;
   font: inherit;
+}
+
+/* Quick-action feature tiles — a compact, tappable row linking to the five main
+   features. Placed right after LevelCard so they're one tap away on load. */
+.feature-tiles {
+  display: grid;
+  /* 5 tiles: equal columns on wide screens, wraps to 3+2 then 2+2+1 at mobile. */
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.feature-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.4rem 0.55rem;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 28%, #e5e5ea);
+  border-top: 2px solid var(--tile-accent, #c4c4c9);
+  border-radius: 10px;
+  text-decoration: none;
+  color: #1c1c1e;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.feature-tile:hover {
+  background: color-mix(in srgb, var(--tile-accent) 8%, #fff);
+  border-color: var(--tile-accent, #c4c4c9);
+}
+
+.feature-tile-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.feature-tile-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--tile-accent) 70%, #1c1c1e);
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .feature-tiles {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* Weekly review (dashboard) — a reflective "this week" card. */
