@@ -8,9 +8,26 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, computed_field
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    computed_field,
+)
 
-from app.schemas._validators import _capped_blank_to_none
+from app.schemas._validators import (
+    _capped_blank_to_none,
+    reject_implausible_timestamp,
+)
+
+# A user-set occurrence time, clamped to a plausible window (not far-future / far-past)
+# so a bogus date can't inflate total minutes → XP → coins or skew the heatmap window.
+OccurredAt = Annotated[datetime, AfterValidator(reject_implausible_timestamp)]
+# Upper bound for a single breath phase (10 min). Patterns cap at 60s; an ad-hoc logged
+# sit can run longer, but an unbounded value would distort breaths_per_minute.
+BREATH_PHASE_MAX_SECONDS = 600
 
 SessionType = Literal[
     "mindfulness",
@@ -35,12 +52,12 @@ class SessionCreate(BaseModel):
     # Capped at 24h: an unbounded value would inflate XP→level→coins and break the
     # sanctuary economy.
     duration_seconds: int = Field(gt=0, le=86_400)
-    occurred_at: datetime
+    occurred_at: OccurredAt
     notes: str | None = Field(default=None, max_length=2000)
     focus: int | None = Field(default=None, ge=1, le=5)
     calm: int | None = Field(default=None, ge=1, le=5)
-    inhale_seconds: int | None = Field(default=None, gt=0)
-    exhale_seconds: int | None = Field(default=None, gt=0)
+    inhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
+    exhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
     cycles_completed: int | None = Field(default=None, ge=0)
     # Optional pre-session intention, trimmed and coerced to null when blank.
     intention: Intention = None
@@ -56,12 +73,12 @@ class SessionUpdate(BaseModel):
 
     type: SessionType | None = None
     duration_seconds: int | None = Field(default=None, gt=0, le=86_400)
-    occurred_at: datetime | None = None
+    occurred_at: OccurredAt | None = None
     notes: str | None = Field(default=None, max_length=2000)
     focus: int | None = Field(default=None, ge=1, le=5)
     calm: int | None = Field(default=None, ge=1, le=5)
-    inhale_seconds: int | None = Field(default=None, gt=0)
-    exhale_seconds: int | None = Field(default=None, gt=0)
+    inhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
+    exhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
     cycles_completed: int | None = Field(default=None, ge=0)
     intention: Intention = None
 

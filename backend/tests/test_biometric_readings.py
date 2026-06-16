@@ -1,6 +1,8 @@
 """Tests for biometric reading routes: create, list (trend window), user-scoping,
 validation, session linkage, the pre/post delta, and the daily create cap."""
 
+from datetime import UTC, datetime, timedelta
+
 from app.core.config import settings
 
 
@@ -74,6 +76,53 @@ def test_extra_field_rejected(client):
 def test_negative_hrv_rejected(client):
     _auth(client, "b6@example.com")
     assert _reading(client, hrv_ms=-5).status_code == 422
+
+
+def test_hrv_over_physiological_max_rejected(client):
+    _auth(client, "b6max@example.com")
+    assert _reading(client, hrv_ms=1500).status_code == 422  # above 1000ms
+
+
+def test_future_measured_at_rejected(client):
+    _auth(client, "b-future@example.com")
+    future = (datetime.now(UTC) + timedelta(days=2)).isoformat()
+    assert _reading(client, measured_at=future).status_code == 422
+
+
+def test_far_past_measured_at_rejected(client):
+    _auth(client, "b-past@example.com")
+    far_past = (datetime.now(UTC) - timedelta(days=365 * 6)).isoformat()
+    assert _reading(client, measured_at=far_past).status_code == 422
+
+
+def test_recent_measured_at_accepted(client):
+    _auth(client, "b-recent@example.com")
+    now = datetime.now(UTC).isoformat()
+    assert _reading(client, measured_at=now).status_code == 201
+
+
+def test_client_token_makes_create_idempotent(client):
+    _auth(client, "b-idem@example.com")
+    first = _reading(client, client_token="rd-1")
+    second = _reading(client, client_token="rd-1")
+    assert first.status_code == 201 and second.status_code == 201
+    assert first.json()["id"] == second.json()["id"]  # same row, not a duplicate
+    assert len(client.get("/api/v1/biometric-readings").json()) == 1
+
+
+def test_idempotent_post_reading_keeps_delta_deterministic(client):
+    # A double-submitted post reading must not create a second row that could flip the
+    # pre/post pairing — the delta stays the same regardless of submit count.
+    _auth(client, "b-idem-delta@example.com")
+    session_id = _session(client).json()["id"]
+    _reading(client, context="pre", bpm=72, session_id=session_id)
+    _reading(client, context="post", bpm=66, session_id=session_id, client_token="post-1")
+    _reading(client, context="post", bpm=66, session_id=session_id, client_token="post-1")
+
+    assert len(client.get("/api/v1/biometric-readings").json()) == 2  # pre + one post
+    delta = client.get("/api/v1/biometric-readings/delta").json()
+    assert delta["sample_size"] == 1
+    assert delta["avg_bpm_delta"] == -6.0
 
 
 def test_list_is_user_scoped(client):

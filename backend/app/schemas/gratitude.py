@@ -2,9 +2,18 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict
+
+from app.schemas._validators import trimmed_nonblank
+
+# Required gratitude text: trimmed, with a whitespace-only entry rejected (422) so it
+# can't light the gratitude quest or earn XP. Cap stays at 500 chars.
+GRATITUDE_TEXT_MAX_LENGTH = 500
+GratitudeText = Annotated[
+    str, BeforeValidator(trimmed_nonblank(GRATITUDE_TEXT_MAX_LENGTH))
+]
 
 GratitudeCategory = Literal[
     "people",
@@ -53,7 +62,7 @@ class GratitudeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     category: GratitudeCategory
-    text: str = Field(min_length=1, max_length=500)
+    text: GratitudeText
 
 
 class GratitudeRead(BaseModel):

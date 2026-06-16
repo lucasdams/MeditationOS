@@ -10,6 +10,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.exceptions import LinkedSessionNotFoundError
@@ -31,9 +32,26 @@ def _session_owned(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> 
     )
 
 
+def _by_client_token(
+    db: DBSession, user_id: uuid.UUID, token: str
+) -> BiometricReading | None:
+    return db.execute(
+        select(BiometricReading).where(
+            BiometricReading.user_id == user_id,
+            BiometricReading.client_token == token,
+        )
+    ).scalar_one_or_none()
+
+
 def create_reading(
     db: DBSession, user_id: uuid.UUID, data: BiometricReadingCreate
 ) -> BiometricReading:
+    # Idempotent on client_token: a rapid double-submit of the same reading collapses
+    # to one row, keeping the pre/post delta deterministic instead of order-dependent.
+    if data.client_token:
+        existing = _by_client_token(db, user_id, data.client_token)
+        if existing is not None:
+            return existing
     # A reading may link to a sit — but only one the user owns. Treat an unknown or
     # other-user session id as not-found (no enumeration of foreign ids).
     if data.session_id is not None and not _session_owned(db, user_id, data.session_id):
@@ -41,7 +59,16 @@ def create_reading(
     enforce_daily_create_cap(db, BiometricReading, user_id)
     reading = BiometricReading(user_id=user_id, **data.model_dump())
     db.add(reading)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent save with the same token won the race — return that row.
+        db.rollback()
+        if data.client_token:
+            existing = _by_client_token(db, user_id, data.client_token)
+            if existing is not None:
+                return existing
+        raise
     db.refresh(reading)
     return reading
 

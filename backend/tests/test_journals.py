@@ -77,6 +77,26 @@ def test_empty_body_rejected(client):
     assert client.post("/api/v1/journals", json={"body": ""}).status_code == 422
 
 
+def test_whitespace_only_body_rejected(client):
+    # A whitespace-only body must not store, light the quest, or earn XP.
+    _auth(client, "j4ws@example.com")
+    assert client.post("/api/v1/journals", json={"body": "   \n\t "}).status_code == 422
+
+
+def test_body_is_trimmed(client):
+    _auth(client, "j4trim@example.com")
+    res = client.post("/api/v1/journals", json={"body": "  padded reflection  "})
+    assert res.status_code == 201
+    assert res.json()["body"] == "padded reflection"
+
+
+def test_update_whitespace_only_body_rejected(client):
+    _auth(client, "j4upd@example.com")
+    entry_id = client.post("/api/v1/journals", json=ENTRY).json()["id"]
+    res = client.patch(f"/api/v1/journals/{entry_id}", json={"body": "   "})
+    assert res.status_code == 422
+
+
 def test_can_link_own_session(client):
     _auth(client, "j5@example.com")
     session_id = _make_session(client)

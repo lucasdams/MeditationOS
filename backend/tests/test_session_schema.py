@@ -1,12 +1,12 @@
 """Unit tests for the SessionRead computed field (no DB needed)."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.session import SessionCreate, SessionRead
+from app.schemas.session import SessionCreate, SessionRead, SessionUpdate
 
 
 def _make(**overrides) -> SessionRead:
@@ -77,3 +77,52 @@ def test_intention_over_140_chars_rejected():
     long_str = "x" * 141
     with pytest.raises(ValidationError):
         SessionCreate(**{**_BASE_CREATE, "intention": long_str})
+
+
+# ── occurred_at clamping ─────────────────────────────────────────────────────
+
+
+def test_occurred_at_now_accepted():
+    SessionCreate(**{**_BASE_CREATE, "occurred_at": datetime.now(UTC)})
+
+
+def test_occurred_at_yesterday_accepted():
+    yesterday = datetime.now(UTC) - timedelta(days=1)
+    SessionCreate(**{**_BASE_CREATE, "occurred_at": yesterday})
+
+
+def test_occurred_at_far_future_rejected():
+    far_future = datetime.now(UTC) + timedelta(days=2)
+    with pytest.raises(ValidationError):
+        SessionCreate(**{**_BASE_CREATE, "occurred_at": far_future})
+
+
+def test_occurred_at_far_past_rejected():
+    far_past = datetime.now(UTC) - timedelta(days=365 * 6)
+    with pytest.raises(ValidationError):
+        SessionCreate(**{**_BASE_CREATE, "occurred_at": far_past})
+
+
+def test_occurred_at_update_far_future_rejected():
+    far_future = datetime.now(UTC) + timedelta(days=2)
+    with pytest.raises(ValidationError):
+        SessionUpdate(occurred_at=far_future)
+
+
+def test_occurred_at_update_none_accepted():
+    # A partial update that doesn't touch occurred_at must still validate.
+    assert SessionUpdate(notes="tweak").occurred_at is None
+
+
+# ── breath-phase bounds ──────────────────────────────────────────────────────
+
+
+def test_breath_phase_within_bound_accepted():
+    SessionCreate(**{**_BASE_CREATE, "inhale_seconds": 600, "exhale_seconds": 600})
+
+
+def test_breath_phase_over_bound_rejected():
+    with pytest.raises(ValidationError):
+        SessionCreate(**{**_BASE_CREATE, "inhale_seconds": 601})
+    with pytest.raises(ValidationError):
+        SessionCreate(**{**_BASE_CREATE, "exhale_seconds": 601})
