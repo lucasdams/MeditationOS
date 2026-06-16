@@ -114,6 +114,35 @@ const DURATIONS: StepperOption<number>[] = [
   { value: 90, label: '90 min' },
 ]
 
+// Remember the last-used sound + duration setup so the next session opens where you
+// left off. (Pace/preset/box are persisted separately above.) One blob under a single
+// key keeps these related toggles together; `{...defaults, ...parsed}` means a missing
+// or stale field falls back safely.
+interface BreathePrefs {
+  audioOn: boolean
+  ambient: AmbientSound
+  chimeOn: boolean
+  volume: number
+  targetMin: number
+}
+const PREFS_KEY = 'breathe:prefs'
+const DEFAULT_PREFS: BreathePrefs = {
+  audioOn: true,
+  ambient: 'ocean',
+  chimeOn: true,
+  volume: 0.6,
+  targetMin: 0,
+}
+const loadPrefs = (): BreathePrefs => {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY)
+    if (raw) return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<BreathePrefs>) }
+  } catch {
+    // malformed or unavailable storage — fall back to defaults.
+  }
+  return DEFAULT_PREFS
+}
+
 const mmss = (totalSec: number) => {
   const s = Math.max(0, Math.floor(totalSec))
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
@@ -139,11 +168,11 @@ export default function BreathePage() {
     xpGained: number
     breakdown: XpLine[]
   } | null>(null)
-  const [audioOn, setAudioOn] = useState(true) // ambient wash on by default
-  const [ambient, setAmbient] = useState<AmbientSound>('ocean')
-  const [chimeOn, setChimeOn] = useState(true) // soft transition bell on by default
-  const [volume, setVolume] = useState(0.6)
-  const [targetMin, setTargetMin] = useState(0)
+  const [audioOn, setAudioOn] = useState(() => loadPrefs().audioOn) // ambient wash on by default
+  const [ambient, setAmbient] = useState<AmbientSound>(() => loadPrefs().ambient)
+  const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
+  const [volume, setVolume] = useState(() => loadPrefs().volume)
+  const [targetMin, setTargetMin] = useState(() => loadPrefs().targetMin)
   // Unsaved-sit recovery (see lib/sessionDraft): a leftover draft to offer on load, plus
   // refs the draft/beacon read at tab-close time.
   const [restorable, setRestorable] = useState<SessionDraft | null>(() =>
@@ -187,6 +216,17 @@ export default function BreathePage() {
       // ignore — preference just won't persist
     }
   }, [boxCount])
+  // Remember the sound + duration setup so it becomes the default next time.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        PREFS_KEY,
+        JSON.stringify({ audioOn, ambient, chimeOn, volume, targetMin }),
+      )
+    } catch {
+      // storage unavailable — preferences just won't persist
+    }
+  }, [audioOn, ambient, chimeOn, volume, targetMin])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
