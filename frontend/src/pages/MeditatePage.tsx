@@ -8,6 +8,7 @@ import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
 import Stepper, { type StepperOption } from '../components/Stepper'
+import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
 import {
   MIN_DRAFT_SECONDS,
@@ -18,6 +19,11 @@ import {
   writeDraft,
   type SessionDraft,
 } from '../lib/sessionDraft'
+import {
+  SoundscapeEngine,
+  loadSoundscapePref,
+  type SoundscapeName,
+} from '../lib/soundscapes'
 import type { MeditationType, SessionCreate } from '../types'
 
 const DRAFT_PAGE = 'meditate'
@@ -65,6 +71,11 @@ export default function MeditatePage() {
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
   const [volume, setVolume] = useState(0.6)
+  const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
+  const [soundscapeVol, setSoundscapeVol] = useState(0.4)
+  const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
+  const soundscapeRef = useRef(soundscape)
+  const soundscapeVolRef = useRef(soundscapeVol)
   const [running, setRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -107,6 +118,23 @@ export default function MeditatePage() {
     bellsOnRef.current = bellsOn
     volumeRef.current = volume
   }, [targetMin, intervalMin, bellsOn, volume])
+
+  useEffect(() => {
+    soundscapeRef.current = soundscape
+    soundscapeVolRef.current = soundscapeVol
+  }, [soundscape, soundscapeVol])
+
+  // Keep soundscape engine in sync with live volume changes.
+  useEffect(() => {
+    soundscapeEngineRef.current?.setVolume(soundscapeVol)
+  }, [soundscapeVol])
+
+  // Stop and clean up the soundscape engine on unmount.
+  useEffect(() => {
+    return () => {
+      soundscapeEngineRef.current?.stop()
+    }
+  }, [])
 
   function bell() {
     if (bellsOnRef.current) {
@@ -170,6 +198,7 @@ export default function MeditatePage() {
         clearInterval(id)
         setElapsed(targetSec)
         setRunning(false)
+        stopSoundscape()
         bell() // closing bell
         void saveSession(targetSec)
         return
@@ -191,10 +220,22 @@ export default function MeditatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
+  function startSoundscape() {
+    const name = soundscapeRef.current
+    if (name === 'silent') return
+    if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
+    soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+  }
+
+  function stopSoundscape() {
+    soundscapeEngineRef.current?.stop()
+  }
+
   function start() {
     startRef.current = performance.now()
     baseElapsedRef.current = elapsed
     setRunning(true)
+    startSoundscape()
     if (elapsed < 1) {
       // Fresh sit: new idempotency token + start time, and clear any old restore offer.
       tokenRef.current = newClientToken()
@@ -208,11 +249,13 @@ export default function MeditatePage() {
   function pause() {
     baseElapsedRef.current += (performance.now() - startRef.current) / 1000
     setRunning(false)
+    stopSoundscape()
     persistDraft(baseElapsedRef.current)
   }
 
   function reset() {
     setRunning(false)
+    stopSoundscape()
     setElapsed(0)
     baseElapsedRef.current = 0
     elapsedRef.current = 0
@@ -248,6 +291,7 @@ export default function MeditatePage() {
 
   function finish() {
     if (running) pause()
+    stopSoundscape()
     if (elapsed < 1) {
       navigate('/')
       return
@@ -367,6 +411,24 @@ export default function MeditatePage() {
         value={volume}
         disabled={!bellsOn}
         onChange={(e) => setVolume(Number(e.target.value))}
+      />
+
+      <label>Ambient sound</label>
+      <SoundscapePicker
+        value={soundscape}
+        volume={soundscapeVol}
+        onSoundscapeChange={(name) => {
+          setSoundscape(name)
+          if (running) {
+            // Live switch: restart soundscape with new choice
+            soundscapeEngineRef.current?.stop()
+            if (name !== 'silent') {
+              if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
+              soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+            }
+          }
+        }}
+        onVolumeChange={setSoundscapeVol}
       />
 
       {error && (
