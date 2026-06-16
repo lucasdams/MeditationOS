@@ -1,6 +1,6 @@
 """Tests for GET /api/v1/analytics/insights — gentle pattern observations."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 
 # Fixed anchor: all session dates are relative to this past date so the test
 # is deterministic regardless of when (or at what UTC time) it runs.
