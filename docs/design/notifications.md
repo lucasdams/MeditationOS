@@ -74,8 +74,24 @@ The send jobs are infra-agnostic — wire `python -m app.jobs.send_reminders` an
 k8s CronJob) on an hourly cadence. The web app does **not** send inline; nothing blocks
 a request on email or push.
 
+## Streak-save nudge ✅ shipped
+
+A separate, **opt-in evening email** sent only when ALL of:
+1. the user's daily reminder is enabled (same opt-in);
+2. their local time has reached 20:00;
+3. they have an active streak (≥1 day);
+4. they have **not practiced today** (so the streak is at risk);
+5. the streak is not currently safe via the rest-day allowance; and
+6. no streak-save nudge has been sent yet today (`users.streak_save_last_sent_at`).
+
+The nudge uses its own timestamp (`streak_save_last_sent_at`) so it never interferes
+with the morning reminder. It is strictly **nudge, not shame** — if the user has
+already practiced, or if the streak is safe via rest-day insurance, no nudge fires.
+Sent by `reminder_service.send_streak_save_nudges`, invoked via
+`python -m app.jobs.send_reminders` on the same scheduler as the morning reminder.
+
 ## Deliberately deferred
 
 - Minute-level reminder times (hour granularity is enough for V1).
-- Streak-at-risk and milestone emails (same channel, later copy).
+- Milestone emails (same channel, later copy).
 - Per-email unsubscribe tokens (today: toggle in Settings).

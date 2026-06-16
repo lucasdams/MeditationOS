@@ -20,12 +20,28 @@ no analytics tables and no precomputed rollups to drift ([ADR-0009](../decisions
 | **By day of week** | `count` grouped by `extract(dow, local)`, 7 buckets (Sun→Sat) |
 | **By time of day** | `count` grouped by `extract(hour, local)`, folded into morning / afternoon / evening / night |
 | **Journal moods** | `count` grouped by `journals.mood` |
+| **Biometric trend** | heart-rate / HRV readings over time from `biometric_readings`; pre/post-session delta computed as the average of (`post` − `pre`) pairs linked to sessions |
 
 ## Frontend
 
 The `/analytics` page renders the payload as simple CSS bar charts (no chart library):
 a column trend for minutes-per-week and labelled horizontal bars for the categorical
 breakdowns. Loading / error / empty states per the frontend rules.
+
+## Pattern observations ✅ shipped
+
+Honest, gentle observations over the user's own practice data (`app/services/insights_service.py`,
+`GET /api/v1/analytics/insights`). Each observation is guarded by a minimum sample
+threshold — nothing surfaces until there is enough data to be meaningful. Differences
+must also clear a small minimum gap to avoid surfacing noise. When fewer data points
+exist the frontend shows a friendly "patterns appear soon" state.
+
+| Observation | Guard |
+|-------------|-------|
+| **Time-of-day calm** — which part of the day tends to yield calmer sits | ≥5 rated sessions across ≥2 buckets |
+| **Breathing vs meditation calm** — whether resonance breathing tends calmer than other sits | ≥5 rated sessions per type |
+| **Calm trend** — whether average calm has risen over recent weeks | ≥6 rated sessions in the last 8 weeks |
+| **Consistency** — streak and days-per-week observations | ≥7 sessions in the last 28 days |
 
 ## Deliberately deferred
 

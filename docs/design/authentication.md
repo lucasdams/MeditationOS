@@ -153,9 +153,13 @@ Registration emails a confirmation link over the [email channel](notifications.m
 `POST /auth/verify-email` confirms it and `POST /auth/verify-email/resend`
 (authenticated, rate-limited) re-sends. The token is a **signed, 24-hour JWT**
 carrying the user id and the issued-for address. **Sign in with Google** accounts
-arrive verified (`email_verified` claim). Verification is **not enforced** in V1 —
+arrive verified (`email_verified` claim). Verification is **not enforced** by default —
 unverified users see a reminder banner but keep full access (`users.email_verified`
-tracks state). Enforcement (gating sensitive actions) can come later.
+tracks state). Enforcement can be enabled via the `REQUIRE_EMAIL_VERIFICATION`
+environment variable (off by default so the app works without an email provider): when
+enabled, data routes return `403` for unverified users, the frontend catches the `403`
+and shows a "confirm your email" screen with a resend button, and the admin dependency
+requires a verified email to prevent privilege escalation via an unverified address.
 
 ## Deliberately deferred (post-V1)
 

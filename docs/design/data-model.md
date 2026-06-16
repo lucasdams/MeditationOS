@@ -23,7 +23,7 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
 
 All child tables carry `user_id` and are always queried scoped to the authenticated user.
 Beyond the six shown, `users` also parents `goal_checkins`, `mood_logs`,
-`scheduled_sessions` and `push_subscriptions` (all detailed below).
+`scheduled_sessions`, `push_subscriptions`, and `biometric_readings` (all detailed below).
 
 ## Tables
 
@@ -45,6 +45,7 @@ Beyond the six shown, `users` also parents `goal_checkins`, `mood_logs`,
 | `weekly_summary_enabled` | bool | NOT NULL, default `false` — opt-in weekly summary email |
 | `weekly_summary_day` | int | NULL, CHECK 0–6 — local weekday (0=Mon…6=Sun) to send on; NULL when disabled |
 | `weekly_summary_last_sent_at` | timestamptz | NULL — once-per-ISO-week idempotency guard |
+| `streak_save_last_sent_at` | timestamptz | NULL — guards against sending more than one streak-save nudge per local day |
 | `quest_features` | text[] | NULL — daily-activity quests the user opted into (≥3 of `meditate`/`breathe`/`gratitude`/`journal`). NULL = not chosen yet → first-run picker; quest generation falls back to all four. Existing users backfilled to all four; guests seeded with all four |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
@@ -144,7 +145,7 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
 | `session_id` | UUID | FK → `sessions.id`, `ON DELETE SET NULL`, NULL — deleting the session keeps the reflection |
 | `body` | text | NOT NULL |
-| `mood` | text | NULL, CHECK in a fixed palette (`calm`, `content`, `focused`, `energized`, `grateful`, `neutral`, `restless`, `anxious`, `tired`, `low`) — see `app/models/journal.py` `MOODS` |
+| `mood` | text | NULL, CHECK in a fixed palette (`calm`, `content`, `focused`, `energized`, `grateful`, `hopeful`, `excited`, `peaceful`, `neutral`, `restless`, `anxious`, `frustrated`, `overwhelmed`, `tired`, `low`) — see `app/models/journal.py` `MOODS` |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Index:** `(user_id, created_at)`.
@@ -236,6 +237,29 @@ notifications (alongside email). One row per browser/endpoint.
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Unique:** `(user_id, endpoint)` — re-subscribing upserts. **Index:** `user_id`.
+
+### `biometric_readings`
+
+A source-agnostic heart-rate / HRV reading captured before or after a practice
+session, or as a standalone resting entry. See
+[ADR-0017](../decisions/0017-biometric-readings-data-model.md).
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
+| `session_id` | UUID | FK → `sessions.id`, `ON DELETE SET NULL`, NULL — the session this reading is linked to (if any) |
+| `heart_rate` | int | NULL, CHECK > 0 — beats per minute |
+| `hrv_ms` | float | NULL, CHECK >= 0 — HRV in milliseconds (RMSSD or similar) |
+| `context` | text | NOT NULL, CHECK in (`pre`, `post`, `resting`) — when the reading was taken relative to a session |
+| `source` | text | NOT NULL, CHECK in (`manual`, `estimated`, `camera`, `wearable`) — how it was captured; `camera` and `wearable` plug in without a schema change when those flows ship |
+| `created_at` | timestamptz | NOT NULL, default `now()` |
+
+**Index:** `(user_id, created_at)`.
+
+- At least one of `heart_rate` or `hrv_ms` must be non-null (enforced in the service layer).
+- The framing throughout is a personal wellness signal, not a medical measurement — this is enforced in the UI copy and the API response schema.
+- Pre/post delta on Analytics is `avg(post.heart_rate − pre.heart_rate)` across pairs linked to the same session.
 
 ## Design notes
 

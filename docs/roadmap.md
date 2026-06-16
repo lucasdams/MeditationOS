@@ -87,12 +87,15 @@ timezone).
 
 ### Gamification (added during V1)
 
-XP, levels, and a growing ASCII tree; **personalized, rotating daily quests** (each
-user picks ≥3 of meditate · breathe · gratitude · journal, and within each category
-the specific quest **rotates by the date** from a pool with **varied XP**) with a
-streak bonus and a local-midnight reset. Progress is **computed from activity**,
-nothing stored (only the quest selection is) — see
-[gamification design](design/gamification.md) and
+XP, levels, and **personalized, rotating daily quests** (each user picks ≥3 of
+meditate · breathe · gratitude · journal, and within each category the specific
+quest **rotates by the date** from a pool with **varied XP**, with
+**itemized per-source XP rewards** and a **front-loaded per-session XP curve**) with
+a streak bonus and a local-midnight reset. The level is displayed as a neutral
+**level badge** (◆ + number), decoupled from the old tree metaphor; the badge
+shows **coins earned** and the **next item your level will unlock** in the Sanctuary.
+Progress is **computed from activity**, nothing stored (only the quest selection is)
+— see [gamification design](design/gamification.md) and
 [ADR-0009](decisions/0009-gamification-computed-from-activity.md).
 
 **Demonstrates:** derived state, engagement mechanics without write-path drift
@@ -109,12 +112,17 @@ toward the V3 AI features below.
 ### Sanctuary (added during V1)
 
 A garden built through a small **spend economy**: earn **coins** as you level up, then
-**buy** procedural **SVG** items (nature · structures · companions) and **upgrade** them
-through visual tiers. Only the holdings + each item's tier are stored; the coin balance
-is **computed on read** (`level × coins − spent`), with the level taken from *earned XP*
-so coins never decrease. See [sanctuary design](design/sanctuary.md) and
-[ADR-0011](decisions/0011-sanctuary-spend-economy.md) (which superseded the original
-cultivation model, [ADR-0010](decisions/0010-sanctuary-cultivation.md)).
+**buy** procedural **SVG** items across four tracks (nature · structures · companions ·
+whimsy) with **variants** chosen at purchase and independent mix-and-match
+**customizations** bought over time. Items sit on a **movable grid layout** (drag on
+desktop, tap-to-place on touch). Each item can carry an optional **name plaque**, a
+short **note**, and a **favourite** star. The coin balance is **computed on read** from
+holdings with a **progressive surcharge** (each additional item costs a little more),
+with the level taken from *earned XP* so coins never decrease. See
+[sanctuary design](design/sanctuary.md),
+[ADR-0011](decisions/0011-sanctuary-spend-economy.md) through
+[ADR-0016](decisions/0016-sanctuary-shop-expansion-and-retune.md) (which collectively
+superseded the original cultivation model, [ADR-0010](decisions/0010-sanctuary-cultivation.md)).
 
 **Demonstrates:** an in-app economy with a derived balance and a minimal data footprint
 
@@ -122,7 +130,10 @@ cultivation model, [ADR-0010](decisions/0010-sanctuary-cultivation.md)).
 
 Opt-in email nudge at the user's local hour — timezone-aware, idempotent, and skipped
 on days they've already practiced. Runs over an email channel that logs instead of
-sending when no provider is configured. See [notifications design](design/notifications.md).
+sending when no provider is configured. Also delivers a **streak-save nudge**: a
+separate gentle evening email (local 20:00+) only when an active streak is at risk and
+the user hasn't practiced yet, using its own idempotency timestamp so it never
+interferes with the morning reminder. See [notifications design](design/notifications.md).
 
 **Demonstrates:** an outbound channel + scheduled, timezone-correct delivery
 
@@ -140,6 +151,15 @@ functions of a `Date` (`lib/theme.ts`, unit-tested); a small context applies the
 **Demonstrates:** pure, testable time logic + a small context layer; ambient polish
 with no backend or data-model footprint
 
+### Dark mode (added during V1)
+
+**Light / Dark / System** colour-scheme toggle in **Settings → Appearance**, built on
+the existing CSS custom-properties theme system. `System` follows the OS preference
+(`prefers-color-scheme`). The chosen mode persists locally. All new feature CSS
+(insights observations, journaling prompts) is dark-mode-aware from day one.
+
+**Demonstrates:** OS-integrated theming via CSS custom properties
+
 ---
 
 ## Version 2: Journaling & Analytics
@@ -147,10 +167,13 @@ with no backend or data-model footprint
 ### Meditation Journal ✅ shipped (early)
 
 Users write reflections, optionally tied to a session, with an optional mood tag from
-a fixed palette. Full CRUD, user-scoped. Each entry reads as a mood-tinted card with
+a fixed palette (`calm`, `content`, `focused`, `energized`, `grateful`, `hopeful`,
+`excited`, `peaceful`, `neutral`, `restless`, `anxious`, `frustrated`, `overwhelmed`,
+`tired`, `low`). Full CRUD, user-scoped. Each entry reads as a mood-tinted card with
 edit/delete tucked behind a quiet "⋯", and a **"resurface a memory"** action surfaces a
 random past journal *or* gratitude entry (`GET /journals/random`, `/gratitude/random`).
-See [journaling design](design/journaling.md).
+**Gentle journaling prompts** reduce blank-page friction — a stable daily default with a
+shuffle option, dismissible. See [journaling design](design/journaling.md).
 
 **Demonstrates:** rich data models, text storage, cross-entity links (journal ↔ session)
 
@@ -169,7 +192,11 @@ API; `/sessions` now redirects here.
 
 A dedicated page of insights computed by SQL: minutes-per-week trend, practice by
 type, by day of week, by time of day, and journal-mood distribution — all bucketed in
-the user's timezone, read-only (no analytics tables). See [analytics design](design/analytics.md).
+the user's timezone, read-only (no analytics tables). Also includes **honest pattern
+observations** (time-of-day calm scores, breathing-vs-meditation calm comparison, calm
+trend, consistency patterns) with minimum-sample guards so nothing surfaces until there
+is enough data to be meaningful. A **heart-rate / HRV trend and pre/post-session delta**
+shows biometric readings linked to practice. See [analytics design](design/analytics.md).
 
 **Demonstrates:** SQL aggregation, reporting, data processing
 
@@ -181,6 +208,38 @@ Only the intent is stored; **this-period progress is computed on read** from act
 Full CRUD with active/archived lifecycle. See [goals design](design/goals.md).
 
 **Demonstrates:** business logic, progress tracking without write-path drift
+
+### Dashboard UX (added during V2)
+
+The dashboard home gained **quick-action feature tiles** (prominent shortcuts to the
+core practice flows) and a cleaner quest section with direct links. The weekly review
+card moved to the bottom. The **Log a session** entry moved from the primary nav into
+the secondary "More" menu, de-cluttering the navigation. The log-session page was
+also restyled to match the app's overall design language.
+
+**Demonstrates:** progressive UI refinement, information architecture
+
+### Admin metrics dashboard (added during V2)
+
+An aggregate-only **admin metrics** page (`/admin`) gated behind two checks: the
+request must be authenticated *and* the account's email must be in the `ADMIN_EMAILS`
+environment variable allowlist (matched case-insensitively; empty = no admins). The
+admin view is strictly aggregate — it shows product health numbers (total users, recent
+signups, DAU/WAU, feature-adoption counts) but never exposes individual users'
+content (journal bodies, biometric values, mood tags). Verified-email gate prevents
+unverified escalation. Migration-free (env-var, not a DB role column).
+
+**Demonstrates:** RBAC without schema churn, privacy-conscious aggregation
+
+### Sentry error monitoring (added during V2)
+
+**Provider-optional** error monitoring: the app boots and runs identically with no
+`SENTRY_DSN` set. When a DSN is provided, `sentry-sdk[fastapi]` initialises with
+PII scrubbing — request bodies, query-string tokens, auth headers, and sensitive
+field names are stripped before any event leaves the process. Performance tracing at a
+low sample rate (5% by default). Does not log full journal text or biometric values.
+
+**Demonstrates:** observability, provider-optional integration, PII hygiene
 
 ---
 
