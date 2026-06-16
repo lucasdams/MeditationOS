@@ -16,6 +16,9 @@ _EMAIL_UNVERIFIED = HTTPException(
     status_code=status.HTTP_403_FORBIDDEN,
     detail="Please confirm your email address to continue.",
 )
+_FORBIDDEN = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+)
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -46,3 +49,13 @@ def require_verified_email(user: User = Depends(get_current_user)) -> None:
     get_current_user call the route uses, so it adds no extra DB hit."""
     if settings.require_email_verification and not user.email_verified:
         raise _EMAIL_UNVERIFIED
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    """Default-deny admin gate: resolve the authenticated user, then 403 unless their
+    email is in the ADMIN_EMAILS allowlist (`User.is_admin`). Apply at the router level
+    (`dependencies=[Depends(require_admin)]`) so every admin route is protected — an
+    unauthenticated caller still gets 401 from `get_current_user` first."""
+    if not user.is_admin:
+        raise _FORBIDDEN
+    return user

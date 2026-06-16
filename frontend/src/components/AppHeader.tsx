@@ -21,6 +21,11 @@ export default function AppHeader() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const moreRef = useRef<HTMLDivElement>(null)
+  // The admin entry renders only for admins (is_admin from /auth/me). Non-admins never
+  // see it; the backend also 403s every /admin/* call regardless of the UI.
+  const moreLinks = user?.is_admin
+    ? [...MORE_LINKS, { to: '/admin', label: '🛠️ Admin' }]
+    : MORE_LINKS
 
   // Refetch on every navigation so the level stays live after earning XP.
   useEffect(() => {
@@ -101,7 +106,7 @@ export default function AppHeader() {
           </button>
           {moreOpen && (
             <div className="nav-more-menu" role="menu">
-              {MORE_LINKS.map((l) => (
+              {moreLinks.map((l) => (
                 <Link key={l.to} to={l.to} role="menuitem">
                   {l.label}
                 </Link>
@@ -112,7 +117,7 @@ export default function AppHeader() {
 
         {/* On mobile the "More" dropdown is hidden; its links show inline in the menu. */}
         <div className="nav-mobile-extra">
-          {MORE_LINKS.map((l) => (
+          {moreLinks.map((l) => (
             <Link key={l.to} to={l.to}>
               {l.label}
             </Link>
