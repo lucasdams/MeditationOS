@@ -25,6 +25,7 @@ from app.schemas.user import (
     ClaimAccount,
     EmailUpdate,
     EmailVerify,
+    ExportData,
     GoogleLogin,
     PasswordResetConfirm,
     PasswordResetRequest,
@@ -140,11 +141,11 @@ def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-@router.get("/export")
+@router.get("/export", response_model=ExportData)
 def export_my_data(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict:
+) -> ExportData:
     """Download everything this account owns (data portability)."""
     return user_service.export_user_data(db, current_user)
 

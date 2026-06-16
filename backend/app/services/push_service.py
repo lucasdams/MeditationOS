@@ -119,6 +119,7 @@ def send_to_user(db: DBSession, user_id: uuid.UUID, title: str, body: str) -> in
                 data=payload,
                 vapid_private_key=settings.vapid_private_key,
                 vapid_claims=dict(vapid_claims),
+                timeout=10,
             )
             sent += 1
         except WebPushException as err:

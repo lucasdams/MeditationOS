@@ -19,9 +19,15 @@ def verify_id_token(credential: str) -> dict:
 
     # Imported lazily so the dependency is only loaded when the feature is used
     # (and so tests can patch `verify_id_token` without importing google-auth).
-    from google.auth.transport import requests as google_requests
+    import urllib3
+    from google.auth.transport import urllib3 as google_urllib3
     from google.oauth2 import id_token
 
+    # A 10 s timeout ensures a hung Google cert endpoint can't stall the login
+    # flow indefinitely. urllib3.PoolManager forwards the Timeout to every request.
+    http = urllib3.PoolManager(timeout=urllib3.Timeout(connect=10, read=10))
     return id_token.verify_oauth2_token(
-        credential, google_requests.Request(), settings.google_client_id
+        credential,
+        google_urllib3.Request(http),
+        settings.google_client_id,
     )

@@ -147,6 +147,25 @@ class WeeklySummaryUpdate(BaseModel):
         return self
 
 
+class ExportData(BaseModel):
+    """Full portable snapshot of a user's own data (data-portability export).
+
+    Returned by GET /auth/export. The `account` field never contains the
+    password hash. All list fields contain dicts with raw column values.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    account: dict
+    sessions: list[dict]
+    gratitude: list[dict]
+    journals: list[dict]
+    mood_logs: list[dict]
+    goals: list[dict]
+    sanctuary: list[dict]
+    biometric_readings: list[dict]
+
+
 class UserRead(BaseModel):
     """Safe user representation returned to clients."""
 

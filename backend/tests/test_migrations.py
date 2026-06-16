@@ -5,6 +5,9 @@ main test conftest) silently misses:
   1. Mis-parented revision chains (multiple heads, broken parent links).
   2. Model/migration drift (a column exists in the ORM but no migration adds it, or
      vice-versa — detected by an autogenerate diff after upgrade head).
+  3. Missing ON DELETE CASCADE: account-delete depends entirely on DB-level cascades
+     (there are no ORM `cascade=` relationships), so a residual-rows test guards that
+     every user-owned table actually deletes when the user is deleted.
 
 Strategy
 --------
@@ -174,7 +177,7 @@ def test_autogenerate_diff_is_empty(scratch_engine):
             conn,
             opts={
                 "compare_type": True,
-                "compare_server_default": False,  # trivial formatting differences
+                "compare_server_default": True,
             },
         )
         diff = autogenerate.compare_metadata(mc, Base.metadata)
@@ -184,3 +187,189 @@ def test_autogenerate_diff_is_empty(scratch_engine):
         f"between the ORM models and the migrated DB — add a new migration to fix:\n"
         + "\n".join(str(d) for d in diff)
     )
+
+
+def test_account_delete_cascades_to_all_owned_tables(scratch_engine):
+    """Deleting a user must leave zero residual rows in every user-owned table.
+
+    account-delete (`DELETE /auth/me`) relies entirely on DB-level `ON DELETE CASCADE`
+    (there are no ORM `cascade=` relationships), so this test exercises the real
+    Postgres FK behaviour on the schema built by alembic upgrade head.
+
+    The intentional exception is `audit_logs`: both `actor_user_id` and
+    `target_user_id` use `ON DELETE SET NULL`, so the rows survive with the FK
+    nulled (the audit trail outlives any individual account).
+    """
+    import datetime
+    import uuid
+
+    from sqlalchemy import text
+
+    user_id = uuid.uuid4()
+    session_id = uuid.uuid4()
+    goal_id = uuid.uuid4()
+    audit_id = uuid.uuid4()
+    now = datetime.datetime.now(datetime.UTC)
+    today = datetime.date.today()
+
+    with scratch_engine.begin() as conn:
+        # ── user ──────────────────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO users (id, email, password_hash, email_verified, is_guest,"
+                " is_disabled, timezone, created_at) VALUES (:id, :email, 'hash', false,"
+                " false, false, 'UTC', :now)"
+            ),
+            {"id": user_id, "email": f"cascade_test_{user_id.hex[:8]}@example.com", "now": now},
+        )
+
+        # ── sessions ──────────────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO sessions (id, user_id, type, duration_seconds, occurred_at,"
+                " created_at) VALUES (:id, :uid, 'mindfulness', 300, :now, :now)"
+            ),
+            {"id": session_id, "uid": user_id, "now": now},
+        )
+
+        # ── journals ──────────────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO journals (id, user_id, body, created_at)"
+                " VALUES (:id, :uid, 'test', :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── gratitude_entries ─────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO gratitude_entries (id, user_id, category, text, created_at)"
+                " VALUES (:id, :uid, 'people', 'thanks', :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── mood_logs ─────────────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO mood_logs (id, user_id, mood, created_at)"
+                " VALUES (:id, :uid, 'calm', :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── goals + goal_checkins ─────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO goals (id, user_id, activity, period, count, status, created_at)"
+                " VALUES (:id, :uid, 'custom', 'day', 1, 'active', :now)"
+            ),
+            {"id": goal_id, "uid": user_id, "now": now},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO goal_checkins (id, goal_id, user_id, checkin_date, created_at)"
+                " VALUES (:id, :gid, :uid, :today, :now)"
+            ),
+            {"id": uuid.uuid4(), "gid": goal_id, "uid": user_id, "today": today, "now": now},
+        )
+
+        # ── scheduled_sessions ────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO scheduled_sessions (id, user_id, type, scheduled_at, created_at)"
+                " VALUES (:id, :uid, 'mindfulness', :now, :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── biometric_readings ────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO biometric_readings (id, user_id, context, bpm, source,"
+                " measured_at, created_at, updated_at)"
+                " VALUES (:id, :uid, 'resting', 65, 'manual', :now, :now, :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── sanctuary_plantings ───────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO sanctuary_plantings (id, user_id, item_key, position, cell,"
+                " customizations, created_at)"
+                " VALUES (:id, :uid, 'oak', 0, 0, '{}', :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── push_subscriptions ────────────────────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO push_subscriptions (id, user_id, endpoint, p256dh, auth,"
+                " created_at) VALUES (:id, :uid, 'https://example.com/push', 'pk', 'ak',"
+                " :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── breathing_patterns (user-owned) ───────────────────────────────────
+        conn.execute(
+            text(
+                "INSERT INTO breathing_patterns (id, user_id, name, inhale_seconds,"
+                " exhale_seconds, is_preset, created_at)"
+                " VALUES (:id, :uid, '4-4', 4, 4, false, :now)"
+            ),
+            {"id": uuid.uuid4(), "uid": user_id, "now": now},
+        )
+
+        # ── audit_logs (intentional exception: SET NULL, not CASCADE) ─────────
+        conn.execute(
+            text(
+                "INSERT INTO audit_logs (id, actor_user_id, target_user_id, action,"
+                " created_at) VALUES (:id, :uid, :uid, 'test_action', :now)"
+            ),
+            {"id": audit_id, "uid": user_id, "now": now},
+        )
+
+    # ── delete the user ───────────────────────────────────────────────────────
+    with scratch_engine.begin() as conn:
+        conn.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user_id})
+
+    # ── assert no residual rows in owned tables ───────────────────────────────
+    owned_tables = [
+        "sessions",
+        "journals",
+        "gratitude_entries",
+        "mood_logs",
+        "goals",
+        "goal_checkins",
+        "scheduled_sessions",
+        "biometric_readings",
+        "sanctuary_plantings",
+        "push_subscriptions",
+        "breathing_patterns",
+    ]
+    with scratch_engine.connect() as conn:
+        for table in owned_tables:
+            count = conn.execute(
+                text(f"SELECT COUNT(*) FROM {table} WHERE user_id = :uid"),  # noqa: S608
+                {"uid": user_id},
+            ).scalar()
+            assert count == 0, (
+                f"Expected 0 rows in {table} after user delete, got {count} — "
+                "the ON DELETE CASCADE FK may be missing or wrong"
+            )
+
+        # audit_logs: rows survive but FKs are nulled (SET NULL, not CASCADE)
+        audit_row = conn.execute(
+            text("SELECT actor_user_id, target_user_id FROM audit_logs WHERE id = :id"),
+            {"id": audit_id},
+        ).mappings().one()
+        assert audit_row["actor_user_id"] is None, (
+            "audit_logs.actor_user_id should be NULL after user delete (ON DELETE SET NULL)"
+        )
+        assert audit_row["target_user_id"] is None, (
+            "audit_logs.target_user_id should be NULL after user delete (ON DELETE SET NULL)"
+        )
