@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
+import { newClientToken } from '../lib/sessionDraft'
 import Modal from './Modal'
 import { ErrorBanner } from './StateViews'
 import type { BiometricReading, ReadingContext } from '../types'
@@ -38,6 +39,9 @@ export default function BiometricCapture({
   const [hrv, setHrv] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Stable per-capture idempotency key so a double-click / retry of this same reading
+  // dedups server-side instead of creating a duplicate row.
+  const clientToken = useRef(newClientToken())
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -66,6 +70,7 @@ export default function BiometricCapture({
         source: 'manual',
         measured_at: new Date().toISOString(),
         session_id: sessionId ?? null,
+        client_token: clientToken.current,
       })
       onDone(reading)
     } catch (err) {

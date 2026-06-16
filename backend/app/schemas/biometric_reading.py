@@ -6,12 +6,18 @@ keeps them in a plausible human range but makes no clinical claim.
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+
+from app.schemas._validators import reject_implausible_timestamp
 
 ReadingContext = Literal["pre", "post", "resting"]
 ReadingSource = Literal["manual", "estimated", "camera", "wearable"]
+
+# A user-set measurement time, clamped to a plausible window (not far-future / far-past)
+# so a bogus date can't skew the biometric trend window.
+MeasuredAt = Annotated[datetime, AfterValidator(reject_implausible_timestamp)]
 
 
 class BiometricReadingCreate(BaseModel):
@@ -20,12 +26,17 @@ class BiometricReadingCreate(BaseModel):
 
     context: ReadingContext
     bpm: int = Field(ge=30, le=220)
-    hrv_ms: float | None = Field(default=None, ge=0)
+    # Physiological ceiling for RMSSD-style HRV; a wild value would skew the trend.
+    hrv_ms: float | None = Field(default=None, ge=0, le=1000)
     # Defaults to manual; clients may pass `estimated`. camera/wearable arrive later.
     source: ReadingSource = "manual"
-    measured_at: datetime
+    measured_at: MeasuredAt
     # Optional link to the sit this reading belongs to (ownership verified server-side).
     session_id: uuid.UUID | None = None
+    # Optional client idempotency key — a rapid double-submit of the same reading
+    # (e.g. a post reading saved twice) collapses to one row, keeping the pre/post
+    # delta deterministic instead of order-dependent.
+    client_token: str | None = Field(default=None, max_length=64)
 
 
 class BiometricReadingRead(BaseModel):

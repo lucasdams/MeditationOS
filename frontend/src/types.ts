@@ -356,6 +356,8 @@ export interface BiometricReadingCreate {
   source?: ReadingSource
   measured_at: string
   session_id?: string | null
+  // Client idempotency key so a rapid double-submit collapses to one row.
+  client_token?: string
 }
 
 // Average pre→post change around sits, with the sample basis. Nulls until there

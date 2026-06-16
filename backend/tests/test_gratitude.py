@@ -53,6 +53,19 @@ def test_create_rejects_bad_category(client):
     assert res.status_code == 422
 
 
+def test_create_rejects_whitespace_only_text(client):
+    # A whitespace-only entry must not store, light the quest, or earn XP.
+    _auth(client, "g2ws@example.com")
+    assert _entry(client, text="   \n ").status_code == 422
+
+
+def test_create_trims_text(client):
+    _auth(client, "g2trim@example.com")
+    res = _entry(client, text="  a quiet morning  ")
+    assert res.status_code == 201
+    assert res.json()["text"] == "a quiet morning"
+
+
 def test_create_custom_category(client):
     _auth(client, "gcustom@example.com")
     res = _entry(client, "custom", "A thought entirely my own")

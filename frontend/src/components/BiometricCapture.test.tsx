@@ -52,6 +52,9 @@ describe('BiometricCapture', () => {
       source: 'manual',
     })
     expect(typeof payload.measured_at).toBe('string')
+    // Carries an idempotency key so a double-submit dedups server-side.
+    expect(typeof payload.client_token).toBe('string')
+    expect(payload.client_token.length).toBeGreaterThan(0)
     await waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 

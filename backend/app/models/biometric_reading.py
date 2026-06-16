@@ -21,6 +21,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -65,6 +66,10 @@ class BiometricReading(Base):
     # When the reading was taken (user-set, tz-aware).
     measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
+    # Optional client-generated idempotency key, so a rapid double-submit of the same
+    # reading collapses to one row (keeps the pre/post delta deterministic).
+    client_token: Mapped[str | None] = mapped_column(String, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -84,4 +89,12 @@ class BiometricReading(Base):
         Index("ix_biometric_readings_user_id_measured_at", "user_id", "measured_at"),
         # Looking up readings attached to a sit (pre/post pairing).
         Index("ix_biometric_readings_session_id", "session_id"),
+        # One row per (user, client_token) — enforces idempotent saves at the DB level.
+        Index(
+            "uq_biometric_readings_user_client_token",
+            "user_id",
+            "client_token",
+            unique=True,
+            postgresql_where=text("client_token IS NOT NULL"),
+        ),
     )

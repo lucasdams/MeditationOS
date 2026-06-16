@@ -2,9 +2,16 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict
+
+from app.schemas._validators import trimmed_nonblank
+
+# Required reflection text: trimmed, with a whitespace-only body rejected (422) so it
+# can't light the journal quest or earn XP. Cap stays at 5000 chars.
+JOURNAL_BODY_MAX_LENGTH = 5000
+JournalBody = Annotated[str, BeforeValidator(trimmed_nonblank(JOURNAL_BODY_MAX_LENGTH))]
 
 Mood = Literal[
     "calm",
@@ -30,7 +37,7 @@ class JournalCreate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    body: str = Field(min_length=1, max_length=5000)
+    body: JournalBody
     mood: Mood | None = None
     session_id: uuid.UUID | None = None
 
@@ -40,7 +47,7 @@ class JournalUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    body: str | None = Field(default=None, min_length=1, max_length=5000)
+    body: JournalBody | None = None
     mood: Mood | None = None
 
 
