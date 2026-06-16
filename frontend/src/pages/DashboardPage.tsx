@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
+import { sanctuaryService } from '../services/sanctuary'
 import LevelCard from '../components/LevelCard'
 import MoodCheckin from '../components/MoodCheckin'
 import WeeklyReview from '../components/WeeklyReview'
@@ -10,7 +11,7 @@ import Achievements from '../components/Achievements'
 import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
 import { ErrorBanner } from '../components/StateViews'
 import { GREETINGS, LOADING, dailyOf, randomOf } from '../lib/zen'
-import type { DashboardStats } from '../types'
+import type { DashboardStats, SanctuaryScene as SanctuarySceneType } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
 const QUEST_LINKS: Record<string, string> = {
@@ -54,6 +55,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [resetIn, setResetIn] = useState(msUntilLocalMidnight())
+  // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
+  // both LevelCard (coins + next unlock) and SanctuaryScene (garden preview).
+  const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
   // Retrospective stats (totals, heatmap, achievements) start collapsed so the
   // landing view stays calm — the day's practice first, history on request.
   const [showMore, setShowMore] = useState(false)
@@ -66,6 +70,13 @@ export default function DashboardPage() {
       .getStats()
       .then(setStats)
       .catch(() => setError('Could not load your stats.'))
+  }, [])
+
+  useEffect(() => {
+    sanctuaryService
+      .getScene()
+      .then(setSanctuaryScene)
+      .catch(() => {}) // non-critical; LevelCard and SanctuaryScene handle null gracefully
   }, [])
 
   // Live countdown to the daily quest reset.
@@ -83,7 +94,7 @@ export default function DashboardPage() {
 
       {!stats && !error && <p>{loadingLine}</p>}
 
-      {stats && <LevelCard stats={stats} />}
+      {stats && <LevelCard stats={stats} scene={sanctuaryScene} />}
 
       {/* Quick-access tiles — one tap to every main feature. */}
       <nav className="feature-tiles" aria-label="Quick access">
@@ -105,7 +116,7 @@ export default function DashboardPage() {
 
       <MoodCheckin />
 
-      <SanctuaryScene />
+      <SanctuaryScene scene={sanctuaryScene} />
 
       {stats && (
         <section className="quests">

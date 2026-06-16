@@ -8,19 +8,26 @@ import type { SanctuaryScene as Scene } from '../types'
 /**
  * Compact sanctuary on the dashboard: your coin balance and a preview of the garden,
  * linking to the full /sanctuary page to buy and upgrade (the spend economy, ADR-0011).
+ *
+ * When `scene` is provided (DashboardPage fetches it once and passes it down) we use that
+ * directly. When omitted (standalone usage) we fetch it ourselves as a fallback.
  */
 const PREVIEW_LIMIT = 6
 
-export default function SanctuaryScene() {
-  const [scene, setScene] = useState<Scene | null>(null)
+export default function SanctuaryScene({ scene: sceneProp }: { scene?: Scene | null }) {
+  const [sceneFetched, setSceneFetched] = useState<Scene | null>(null)
   const [error, setError] = useState(false)
 
+  // Only fetch when the parent hasn't supplied a scene already.
   useEffect(() => {
+    if (sceneProp !== undefined) return
     sanctuaryService
       .getScene()
-      .then(setScene)
+      .then(setSceneFetched)
       .catch(() => setError(true))
-  }, [])
+  }, [sceneProp])
+
+  const scene = sceneProp !== undefined ? sceneProp : sceneFetched
 
   if (error || !scene) return null // non-critical to the dashboard; fail/await quietly
 

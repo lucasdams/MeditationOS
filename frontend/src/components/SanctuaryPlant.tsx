@@ -4,6 +4,8 @@
 // a tree, a hat on a pet, lilies on a pond, smoke from a chimney). The backend owns what
 // was bought; this owns rendering. viewBox is 0 0 80 80, in the existing flat style.
 
+import { memo } from 'react'
+
 const GROUND = 70
 
 type Cust = Record<string, string>
@@ -977,7 +979,7 @@ const RENDERERS: Record<string, Renderer> = {
 
 // Items are drawn from their chosen variant + purchased customizations (each a real
 // visual change). No more tier ladder — personalization is mix-and-match.
-export default function SanctuaryPlant({
+function SanctuaryPlant({
   itemKey,
   variant = null,
   customizations,
@@ -1001,3 +1003,22 @@ export default function SanctuaryPlant({
     </svg>
   )
 }
+
+// Custom comparator: `customizations` is a plain object that may be a fresh reference on
+// every render (the parent rebuilds the owned-grid inline). Compare by value so the memo
+// bail-out fires correctly — a plant only re-renders when its data actually changes.
+function arePlantsEqual(
+  prev: Readonly<{ itemKey: string; variant?: string | null; customizations?: Record<string, string> }>,
+  next: Readonly<{ itemKey: string; variant?: string | null; customizations?: Record<string, string> }>,
+): boolean {
+  if (prev.itemKey !== next.itemKey || prev.variant !== next.variant) return false
+  const pc = prev.customizations ?? {}
+  const nc = next.customizations ?? {}
+  const keys = new Set([...Object.keys(pc), ...Object.keys(nc)])
+  for (const k of keys) {
+    if (pc[k] !== nc[k]) return false
+  }
+  return true
+}
+
+export default memo(SanctuaryPlant, arePlantsEqual)
