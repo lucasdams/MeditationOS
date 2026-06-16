@@ -8,11 +8,18 @@ PII scrubbing policy (this app stores sensitive wellness data):
 - ``send_default_pii=False``  — disables automatic PII collection globally.
 - ``before_send`` drops the ``request.data`` body on every event so journal
   text, gratitude entries, mood logs, and biometric readings are never sent.
+- ``request.url`` and ``transaction`` have their query strings stripped so
+  single-use secrets (``?token=…``, ``?code=…``) are never transmitted.
+- ``request.query_string`` is cleared entirely.
 - Headers that may carry credentials (Authorization, Cookie, Set-Cookie,
   X-Auth-Token) are scrubbed from every event and transaction.
 - A lightweight field-level scrubber removes common PII key names
-  (email, password, token, …) wherever they appear in ``extra`` data.
-- ``before_send_transaction`` applies the same body + header scrubbing.
+  (email, password, token, …) wherever they appear in ``extra`` and
+  ``contexts`` data, including inside nested lists of dicts.
+- ``before_send_transaction`` applies the same body + header + URL scrubbing.
+- The FastAPI/Starlette integration uses ``transaction_style="endpoint"`` so
+  transaction names are route patterns (e.g. ``/api/v1/users/{id}``) rather
+  than raw URLs, minimising exposure even before ``_scrub_event`` runs.
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +51,22 @@ _SENSITIVE_HEADERS = frozenset(
 )
 
 
+def _strip_query(url: str | None) -> str | None:
+    """Return *url* with the query string and fragment removed.
+
+    Keeps scheme, host, and path intact.  Returns the original value
+    unchanged if parsing fails, rather than raising.
+    """
+    if not url:
+        return url
+    try:
+        parts = urlsplit(url)
+        # Replace query and fragment with empty strings.
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    except Exception:  # pragma: no cover – defensive only
+        return url
+
+
 def _scrub_headers(headers: dict[str, str] | None) -> dict[str, str] | None:
     """Replace sensitive header values with ``[Filtered]``."""
     if not headers:
@@ -53,31 +77,50 @@ def _scrub_headers(headers: dict[str, str] | None) -> dict[str, str] | None:
     }
 
 
-def _scrub_dict(d: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Recursively replace values whose keys match the PII pattern."""
-    if not isinstance(d, dict):
-        return d
-    result = {}
-    for k, v in d.items():
-        if _PII_KEY_RE.search(str(k)):
-            result[k] = "[Filtered]"
-        elif isinstance(v, dict):
-            result[k] = _scrub_dict(v)
-        else:
-            result[k] = v
-    return result
+def _scrub_dict(d: Any) -> Any:
+    """Recursively replace values whose keys match the PII pattern.
+
+    Handles nested dicts and lists of dicts so PII is scrubbed regardless
+    of nesting depth or whether the value is inside a list.
+    """
+    if isinstance(d, dict):
+        result: dict[str, Any] = {}
+        for k, v in d.items():
+            if _PII_KEY_RE.search(str(k)):
+                result[k] = "[Filtered]"
+            else:
+                result[k] = _scrub_dict(v)
+        return result
+    if isinstance(d, list):
+        return [_scrub_dict(item) for item in d]
+    return d
 
 
 def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
-    """Strip request body and sensitive headers from a Sentry event payload."""
+    """Strip request body, query strings, and sensitive headers from a Sentry event."""
     request = event.get("request")
     if isinstance(request, dict):
         # Drop the entire body — it may contain journal text, biometrics, etc.
         request.pop("data", None)
+        # Strip query strings from the URL — they may contain single-use tokens.
+        request["url"] = _strip_query(request.get("url"))
+        # Clear the query_string field entirely.
+        request.pop("query_string", None)
         request["headers"] = _scrub_headers(request.get("headers"))
+
+    # Strip any query string from the transaction name (raw-URL style names
+    # may appear before the endpoint integration rewrites them).
+    if "transaction" in event and isinstance(event["transaction"], str):
+        event["transaction"] = _strip_query(event["transaction"])
+
     # Scrub any extra context that may have been attached manually.
     if "extra" in event:
         event["extra"] = _scrub_dict(event["extra"])
+
+    # Scrub contexts too — they can carry device/runtime info with PII keys.
+    if "contexts" in event:
+        event["contexts"] = _scrub_dict(event["contexts"])
+
     return event
 
 
@@ -116,8 +159,8 @@ def init_sentry(dsn: str, environment: str, traces_sample_rate: float) -> None:
         send_default_pii=False,
         traces_sample_rate=traces_sample_rate,
         integrations=[
-            StarletteIntegration(transaction_style="url"),
-            FastApiIntegration(transaction_style="url"),
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
         ],
         before_send=before_send,
         before_send_transaction=before_send_transaction,
