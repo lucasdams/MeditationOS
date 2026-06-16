@@ -723,6 +723,30 @@ body {
   margin: 0.75rem 0 0;
 }
 
+/* A button that reads as an inline link (used for resend/log-out actions in auth flows). */
+.link-button {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-size: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  color: #4338ca;
+}
+
+.link-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .auth-notice {
   margin: 0 0 1rem;
   padding: 0.6rem 0.8rem;

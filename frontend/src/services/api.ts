@@ -35,6 +35,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (res.status === 401 && typeof window !== 'undefined') {
       window.dispatchEvent(new Event('auth:unauthorized'))
     }
+    // A 403 on a data route can mean the backend email-verification gate is now
+    // enforcing (REQUIRE_EMAIL_VERIFICATION on) and this account isn't confirmed.
+    // Signal the app so it can re-check /auth/me and, only if email_verified is
+    // false, show the hard "confirm your email" gate. We never decide that here from
+    // the 403 detail string — AuthContext confirms via email_verified — so unrelated
+    // 403s don't trip the gate. Ships dark: while the flag is off there are no 403s.
+    if (res.status === 403 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth:forbidden'))
+    }
     throw new ApiError(res.status, detail)
   }
 
