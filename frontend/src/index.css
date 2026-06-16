@@ -1148,6 +1148,7 @@ body {
   font-size: 0.95rem;
   line-height: 1.45;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .journal-entry {
@@ -1206,6 +1207,7 @@ body {
   font-size: 0.88rem;
   line-height: 1.35;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .journal-search {
@@ -1895,6 +1897,7 @@ textarea:focus-visible,
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--success-text);
+  overflow-wrap: anywhere;
 }
 
 .sanctuary-buy {
@@ -2119,6 +2122,7 @@ textarea:focus-visible,
 /* The user's own name reads first; the item/variant becomes a quiet subtitle. */
 .sanctuary-plaque {
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .sanctuary-fav-star {
@@ -2135,6 +2139,7 @@ textarea:focus-visible,
   font-style: italic;
   margin: 0.1rem 0 0;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 /* A quiet flavour line under a shop item's name (ADR-0016). Small and unobtrusive —
