@@ -18,3 +18,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0010](0010-sanctuary-cultivation.md) | Sanctuary — cultivation sequence, not a spend economy | Superseded by 0011 |
 | [0011](0011-sanctuary-spend-economy.md) | Sanctuary — a spend economy (coins, buy, upgrade) | Accepted |
 | [0012](0012-sanctuary-personalization.md) | Sanctuary — variants + mix-and-match customizations | Accepted |
+| [0013](0013-sanctuary-progressive-pricing.md) | Sanctuary — progressive pricing + economy retune | Accepted |

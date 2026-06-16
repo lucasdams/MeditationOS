@@ -1,6 +1,6 @@
 # Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn
 **coins** as you level up and spend them to **buy** items (plants, structures, pets) and
@@ -24,9 +24,16 @@ holdings* — there's no wallet row or transaction log:
 
 ```
 coins_earned = level × COINS_PER_LEVEL          (level from earned XP)
-coins_spent  = Σ owned (buy_cost + Σ upgrade_costs up to its tier)
-balance      = coins_earned − coins_spent
+coins_spent  = Σ owned (buy_cost + variant_delta + Σ customization_costs + progressive_surcharge(position))
+balance      = max(0, coins_earned − coins_spent)
 ```
+
+The **progressive surcharge** ([ADR-0013](../decisions/0013-sanctuary-progressive-pricing.md))
+makes each *additional* item cost more: the k-th item a user acquires (0-indexed by its
+stable `position`) pays `round(PROGRESSIVE_STEP × k)` on top of its catalog price — the
+first item pays nothing extra, each later one a linearly growing premium. It is a
+deterministic function of the holding's ordinal alone, so the balance is still **fully
+derived from holdings** — no wallet, no ledger.
 
 ## The loop
 
@@ -91,25 +98,52 @@ The shipped catalog (buy cost / variants / customization slots):
 
 | key | track | buy | unlock | variants | customization slots (option·cost) |
 |-----|-------|-----|--------|----------|-----------------------------------|
-| `tree` | nature | 40 | lvl 1 | oak·pine·cherry·willow | grown·60 · foliage{fruit,blossom,autumn}·30 · swing·25 · birdhouse·20 |
-| `flower` | nature | 25 | lvl 1 | rose·tulip·sunflower·daisy | grown·38 · bloom{double}·18 · butterfly·20 |
-| `pond` | nature | 80 | lvl 4 | — | grown·120 · lilies·40 · koi·50 · bridge·60 |
-| `hut` | structure | 60 | lvl 2 | straw·wood | grown·90 · chimney_smoke·30 · garden·35 · lights·25 |
-| `cottage` | structure | 90 | lvl 3 | cream·stone | grown·135 · chimney_smoke·40 · garden·45 · lights·35 |
-| `barn` | structure | 120 | lvl 4 | red·gray | grown·180 · chimney_smoke·50 · garden·55 · lights·45 |
-| `car` | structure | 130 | lvl 5 | red·blue·yellow | grown·195 · lights·45 |
-| `beach_house` | structure | 150 | lvl 6 | white·teal | grown·225 · garden·60 · lights·55 |
-| `boat` | structure | 170 | lvl 8 | wood·white | grown·255 · lights·60 |
-| `goldfish` | companion | 30 | lvl 1 | orange·white·black | grown·45 |
-| `bird` | companion | 35 | lvl 2 | bluebird·robin·canary | grown·53 · accessory{hat}·25 |
-| `cat` | companion | 50 | lvl 3 | gray·ginger·black·white | grown·75 · accessory{collar,bandana,hat}·25–30 |
-| `snake` | companion | 60 | lvl 4 | green·amber·blue | grown·90 · accessory{hat}·30 |
-| `fox` | companion | 70 | lvl 5 | red·arctic | grown·105 · accessory{collar,bandana}·30 |
-| `dog` | companion | 90 | lvl 6 | corgi·husky·shiba·dalmatian | grown·135 · accessory{collar,bandana,hat}·30–40 |
+| `tree` | nature | 30 | lvl 1 | oak·pine·cherry·willow | grown·45 · foliage{fruit,blossom,autumn}·30 · swing·25 · birdhouse·20 |
+| `flower` | nature | 20 | lvl 1 | rose·tulip·sunflower·daisy | grown·30 · bloom{double}·18 · butterfly·20 |
+| `pond` | nature | 60 | lvl 4 | — | grown·90 · lilies·40 · koi·50 · bridge·60 |
+| `hut` | structure | 45 | lvl 2 | straw·wood | grown·68 · chimney_smoke·30 · garden·35 · lights·25 |
+| `cottage` | structure | 70 | lvl 3 | cream·stone | grown·105 · chimney_smoke·40 · garden·45 · lights·35 |
+| `barn` | structure | 90 | lvl 4 | red·gray | grown·135 · chimney_smoke·50 · garden·55 · lights·45 |
+| `car` | structure | 100 | lvl 5 | red·blue·yellow | grown·150 · lights·45 |
+| `beach_house` | structure | 110 | lvl 6 | white·teal | grown·165 · garden·60 · lights·55 |
+| `boat` | structure | 130 | lvl 8 | wood·white | grown·195 · lights·60 |
+| `goldfish` | companion | 20 | lvl 1 | orange·white·black | grown·30 |
+| `bird` | companion | 25 | lvl 2 | bluebird·robin·canary | grown·38 · accessory{hat}·25 |
+| `cat` | companion | 40 | lvl 3 | gray·ginger·black·white | grown·60 · accessory{collar,bandana,hat}·25–30 |
+| `snake` | companion | 45 | lvl 4 | green·amber·blue | grown·68 · accessory{hat}·30 |
+| `fox` | companion | 50 | lvl 5 | red·arctic | grown·75 · accessory{collar,bandana}·30 |
+| `dog` | companion | 70 | lvl 6 | corgi·husky·shiba·dalmatian | grown·105 · accessory{collar,bandana,hat}·30–40 |
 
 Variants are free in the shipped catalog (a per-variant `cost_delta` is supported for
 future tuning). All costs are tunable constants — retuning needs no migration.
-`COINS_PER_LEVEL = 50`.
+`COINS_PER_LEVEL = 70` and the `grown` size is `round(buy_cost × 1.5)`.
+
+### Progressive pricing (ADR-0013)
+
+Buy costs above were lowered (~25%) and `COINS_PER_LEVEL` raised 50 → 70 to keep early
+progress rewarding after practice XP became front-loaded per session (coins now accrue more
+slowly for longer sits). On top of the catalog price, each *additional* item carries a
+**progressive surcharge** `round(PROGRESSIVE_STEP × position)` with `PROGRESSIVE_STEP = 8`
+(position = the item's 0-indexed acquisition order). The first item pays nothing extra; the
+second 8; the third 16; and so on. The surcharge is applied identically at read (the spent
+computation) and at write (the `buy` affordability check), and a swap of a customization
+*within a slot* still charges only the option difference (the surcharge is per-item, not
+per-customization).
+
+The cheaper base + higher `COINS_PER_LEVEL` offset the early surcharge so small/typical
+gardens are never worse off; only larger gardens pay meaningfully more. Example garden of
+N identical trees (old flat buy = 40, new buy = 30 + surcharge):
+
+| items | old `coins_spent` | new `coins_spent` | balance @ lvl 6 (old→new) |
+|------:|------------------:|------------------:|---------------------------|
+| 1 | 40 | 30 | 260 → 390 |
+| 3 | 120 | 114 | 180 → 306 |
+| 6 | 240 | 300 | 60 → 120 |
+| 10 | 400 | 660 | 0 → 0 |
+
+Small gardens (1–3) are cheaper in raw spend; even where a larger garden's raw spend rises
+(6, 10), the balance at a fixed level never drops below the old economy (clamped ≥ 0), so no
+existing garden is punished.
 
 ## Computed state
 
@@ -117,9 +151,11 @@ In `sanctuary_service`, from the user's level (via `dashboard_service.get_stats`
 **earned XP**) and the stored holdings:
 
 - **Coins** — `level × COINS_PER_LEVEL − Σ spent`, where spent of an owned item is
-  `buy_cost + variant_cost_delta + Σ (cost of each purchased customization option)`.
-  Clamped to ≥ 0 (legacy gardens may show 0). Legacy rows (no variant, empty
-  customizations) cost exactly the buy price — no retroactive spend.
+  `buy_cost + variant_cost_delta + Σ (cost of each purchased customization option) +
+  progressive_surcharge(position)` (the surcharge is keyed to the holding's stable
+  position, so the balance stays derived). Clamped to ≥ 0 (legacy gardens may show 0). A
+  single legacy row at position 0 carries no surcharge and costs exactly the buy price — no
+  retroactive spend.
 - **Owned** — each holding with its `variant`, `customizations` (`{slot: option}`), and
   `available` slots (each option with its cost + `unlocked` / `affordable` / `applied`
   hints).
