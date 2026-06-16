@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError
@@ -14,7 +14,11 @@ from app.models.user import User
 from app.schemas.mood_log import MoodLogCreate, MoodLogRead
 from app.services import mood_log_service
 
-router = APIRouter(prefix="/mood-logs", tags=["mood-logs"])
+router = APIRouter(
+    prefix="/mood-logs",
+    tags=["mood-logs"],
+    dependencies=[Depends(require_verified_email)],
+)
 
 _DAILY_LIMIT = HTTPException(
     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError
@@ -15,7 +15,11 @@ from app.models.user import User
 from app.schemas.scheduled_session import ScheduledSessionCreate, ScheduledSessionRead
 from app.services import scheduled_session_service
 
-router = APIRouter(prefix="/scheduled-sessions", tags=["scheduled-sessions"])
+router = APIRouter(
+    prefix="/scheduled-sessions",
+    tags=["scheduled-sessions"],
+    dependencies=[Depends(require_verified_email)],
+)
 
 _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 _DAILY_LIMIT = HTTPException(

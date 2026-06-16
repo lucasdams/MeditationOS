@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.sanctuary import (
@@ -30,7 +30,11 @@ from app.services.sanctuary_service import (
     UnknownVariant,
 )
 
-router = APIRouter(prefix="/sanctuary", tags=["sanctuary"])
+router = APIRouter(
+    prefix="/sanctuary",
+    tags=["sanctuary"],
+    dependencies=[Depends(require_verified_email)],
+)
 
 _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 _BROKE = HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Not enough coins")

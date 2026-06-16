@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError
@@ -20,7 +20,11 @@ from app.schemas.gratitude import (
 from app.services import gratitude_service
 from app.services.ai import gratitude_suggester
 
-router = APIRouter(prefix="/gratitude", tags=["gratitude"])
+router = APIRouter(
+    prefix="/gratitude",
+    tags=["gratitude"],
+    dependencies=[Depends(require_verified_email)],
+)
 
 _DAILY_LIMIT = HTTPException(
     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

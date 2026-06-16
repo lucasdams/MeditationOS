@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     email_from: str = "MeditationOS <noreply@meditationos.app>"
     # Base URL the frontend is served from, used to build links in emails.
     app_base_url: str = "http://localhost:5173"
+    # When True, accounts with an unconfirmed email are blocked (403) from every data
+    # route (sessions, journals, sanctuary, …); auth/verify/resend/logout stay open so
+    # they can confirm. Google sign-ins and guests arrive verified, so only
+    # email/password signups are gated. Default False so it ships dark — flip to true
+    # ONLY once verification email delivery (SMTP_*) is live and confirmed, or you lock
+    # out every unconfirmed user. Mirrors the provider-optional pattern (email/AI/push).
+    require_email_verification: bool = False
 
     @property
     def cors_origins_list(self) -> list[str]:
