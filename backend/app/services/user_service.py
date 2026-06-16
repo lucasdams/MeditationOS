@@ -240,12 +240,18 @@ def get_user_by_id(db: Session, user_id: str) -> User | None:
 
 
 def authenticate(db: Session, email: str, password: str) -> User | None:
-    """Return the user if credentials are valid, else None (no enumeration hint)."""
+    """Return the user if credentials are valid, else None (no enumeration hint).
+
+    A disabled account never authenticates — even with correct credentials — so an
+    admin suspension can't be bypassed by logging in again for a fresh cookie.
+    """
     user = get_user_by_email(db, email)
     # A Google-only account has no password_hash — it can't be logged into with one.
     if user is None or user.password_hash is None or not verify_password(
         password, user.password_hash
     ):
+        return None
+    if user.is_disabled:
         return None
     return user
 
@@ -275,6 +281,8 @@ def login_with_google(db: Session, credential: str) -> User:
         select(User).where(User.google_sub == google_sub)
     ).scalar_one_or_none()
     if user is not None:
+        if user.is_disabled:
+            raise GoogleAuthError("account disabled")
         if not user.email_verified:
             user.email_verified = True
             db.commit()
@@ -283,6 +291,8 @@ def login_with_google(db: Session, credential: str) -> User:
 
     user = get_user_by_email(db, email)
     if user is not None:
+        if user.is_disabled:
+            raise GoogleAuthError("account disabled")
         user.google_sub = google_sub  # link the verified Google identity
         user.email_verified = True
         db.commit()
