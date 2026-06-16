@@ -11,5 +11,6 @@ pyjwt==2.10.1
 google-auth==2.37.0
 anthropic==0.109.1
 slowapi==0.1.9
+sentry-sdk[fastapi]==2.62.0
 pytest==8.3.4
 httpx==0.28.1

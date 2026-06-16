@@ -12,8 +12,17 @@ from slowapi.errors import RateLimitExceeded
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.observability import init_sentry
 from app.core.rate_limit import limiter
 from app.core.security_headers import SecurityHeadersMiddleware
+
+# Initialise Sentry before the app object is created so the SDK can instrument
+# all middleware and route handlers.  No-op when SENTRY_DSN is not configured.
+init_sentry(
+    dsn=settings.sentry_dsn,
+    environment=settings.environment,
+    traces_sample_rate=settings.sentry_traces_sample_rate,
+)
 
 app = FastAPI(title="MeditationOS API")
 

@@ -1,8 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Sentry } from '../lib/observability'
 
 /**
  * Catches render-time errors anywhere below it and shows a friendly fallback
  * instead of a white screen. (React error boundaries must be class components.)
+ *
+ * When Sentry is configured (VITE_SENTRY_DSN set), the error is forwarded to
+ * Sentry for monitoring.  With no DSN the import is a no-op stub.
  */
 export default class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -15,7 +19,8 @@ export default class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Surface it for debugging; a real deploy would forward this to error tracking.
+    // Forward to Sentry if configured; falls back to console in dev/no-DSN.
+    Sentry.captureException(error, { extra: { componentStack: info.componentStack } })
     console.error('Unhandled UI error:', error, info)
   }
 
