@@ -1857,6 +1857,147 @@ textarea:focus-visible,
   font-size: 0.78rem;
 }
 
+/* --- Sanctuary personalization: variants + mix-and-match customizations --- */
+.sanctuary-variant {
+  font-weight: 400;
+}
+
+.sanctuary-customize-toggle {
+  background: #f0fdf4;
+  color: #047857;
+  border: 1px solid #bbf7d0;
+}
+
+.sanctuary-customize-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  text-align: left;
+}
+
+.sanctuary-slot {
+  border: 1px solid #e5e5ea;
+  border-radius: 10px;
+  padding: 0.4rem 0.55rem 0.55rem;
+  margin: 0;
+}
+
+.sanctuary-slot legend {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7280;
+  padding: 0 0.3rem;
+}
+
+.sanctuary-slot-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.sanctuary-option {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #fff;
+  color: #047857;
+  border: 1px solid #bbf7d0;
+  cursor: pointer;
+}
+
+.sanctuary-option.applied {
+  background: #059669;
+  color: #fff;
+  border-color: #059669;
+}
+
+.sanctuary-option:disabled:not(.applied) {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+/* Variant picker modal (buy-time). */
+.sanctuary-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.sanctuary-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem;
+  max-width: 24rem;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+
+.sanctuary-modal h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  text-transform: capitalize;
+}
+
+.sanctuary-variant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.sanctuary-variant-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.4rem;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.sanctuary-variant-pick:hover:not(:disabled) {
+  border-color: #34d399;
+}
+
+.sanctuary-variant-pick:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sanctuary-variant-pick .sanctuary-svg {
+  width: 3rem;
+  height: 3rem;
+}
+
+.sanctuary-variant-name {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.sanctuary-modal-cancel {
+  margin-top: 0.9rem;
+  width: 100%;
+  padding: 0.45rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .reward-overlay {
   position: fixed;
   inset: 0;

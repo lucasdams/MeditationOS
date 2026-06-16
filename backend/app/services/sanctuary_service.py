@@ -1,20 +1,36 @@
-"""Sanctuary spend economy — earn coins by levelling up, spend them to buy and upgrade
-items. See docs/design/sanctuary.md and ADR-0011 (supersedes ADR-0010's cultivation).
+"""Sanctuary spend economy — earn coins by levelling up, spend them to buy items, pick a
+**variant** at purchase, and mix-and-match **customizations** over time. See
+docs/design/sanctuary.md and ADR-0011 (derived balance) + ADR-0012 (personalization).
 
-Stored state is only *what you own* and each item's `tier`. The coin balance is computed
-on read: coins earned from levels (a level computed from **earned XP** — total XP minus
-the volatile streak bonus, so coins never decrease) minus coins spent on owned items.
+Stored state is only *what you own*: each row's `item_key`, an optional `variant`, and a
+`customizations` map of `{slot: option}`. The coin balance is computed on read — coins
+earned from levels (a level computed from **earned XP**, total XP minus the volatile
+streak bonus, so coins never decrease) minus coins spent on owned items. There is no
+wallet row and no transaction ledger; the holdings *are* the ledger (ADR-0011).
+
+Spend of one owned item = buy cost + variant cost delta + Σ (cost of each purchased
+customization option). Costs (buy, variants, customization options) are all in-code
+constants — retuning needs no migration.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.sanctuary import SanctuaryPlanting
-from app.schemas.sanctuary import BuyRequest, OwnedItem, SanctuaryScene, ShopItem
+from app.schemas.sanctuary import (
+    AvailableSlot,
+    BuyRequest,
+    CustomizeRequest,
+    OwnedItem,
+    SanctuaryScene,
+    ShopItem,
+    SlotOption,
+    VariantOption,
+)
 from app.services import dashboard_service
 
 # Coins granted per level reached. The garden is paced against this (see catalog costs).
@@ -22,56 +38,247 @@ COINS_PER_LEVEL = 50
 
 
 @dataclass(frozen=True)
+class Variant:
+    """A base form chosen at purchase (e.g. a dog breed, a tree species)."""
+
+    key: str
+    cost_delta: int = 0  # extra coins over the buy cost for this form
+    unlock_level: int = 1  # min level before this variant can be chosen
+
+
+@dataclass(frozen=True)
+class Option:
+    """One named choice inside a customization slot (independent of other slots)."""
+
+    key: str
+    cost: int
+    unlock_level: int = 1  # min level before this option can be applied
+
+
+@dataclass(frozen=True)
+class Slot:
+    """A customization axis with named options; slots are independent (mix-and-match)."""
+
+    key: str
+    options: tuple[Option, ...]
+
+    def option(self, option_key: str) -> Option | None:
+        return next((o for o in self.options if o.key == option_key), None)
+
+
+@dataclass(frozen=True)
 class CatalogItem:
     key: str
     track: str  # "nature" | "structure" | "companion"
-    cost: int  # coins to buy (tier 0)
+    cost: int  # coins to buy (the default variant, no customizations)
     unlock_level: int = 1  # min level before it appears in the shop
-    upgrade_costs: tuple[int, ...] = ()  # coins to reach tier 1, 2, …
+    variants: tuple[Variant, ...] = ()  # selectable base forms; () = single fixed form
+    slots: tuple[Slot, ...] = ()  # mix-and-match customization axes
 
     @property
-    def max_tier(self) -> int:
-        return len(self.upgrade_costs)
+    def default_variant(self) -> str | None:
+        return self.variants[0].key if self.variants else None
 
-    def spent_at(self, tier: int) -> int:
-        """Coins sunk into one of these owned at `tier` — the buy cost plus each upgrade."""
-        return self.cost + sum(self.upgrade_costs[: max(0, tier)])
+    def variant(self, variant_key: str | None) -> Variant | None:
+        """The Variant for a key. `None`/absent resolves to the default variant (if any)."""
+        if not self.variants:
+            return None
+        if variant_key is None:
+            return self.variants[0]
+        return next((v for v in self.variants if v.key == variant_key), None)
 
-    def next_upgrade_cost(self, tier: int) -> int | None:
-        return self.upgrade_costs[tier] if 0 <= tier < self.max_tier else None
+    def slot(self, slot_key: str) -> Slot | None:
+        return next((s for s in self.slots if s.key == slot_key), None)
+
+    def variant_cost_delta(self, variant_key: str | None) -> int:
+        v = self.variant(variant_key)
+        return v.cost_delta if v is not None else 0
+
+    def customizations_cost(self, customizations: dict[str, str]) -> int:
+        """Σ cost of each purchased customization option (unknown slots/options ignored)."""
+        total = 0
+        for slot_key, option_key in customizations.items():
+            slot = self.slot(slot_key)
+            if slot is None:
+                continue
+            opt = slot.option(option_key)
+            if opt is not None:
+                total += opt.cost
+        return total
+
+    def spent(self, variant_key: str | None, customizations: dict[str, str]) -> int:
+        """Coins sunk into one owned instance — buy + variant delta + customizations."""
+        return (
+            self.cost
+            + self.variant_cost_delta(variant_key)
+            + self.customizations_cost(customizations)
+        )
 
 
-def _item(key: str, track: str, cost: int, unlock_level: int = 1) -> CatalogItem:
-    """Two upgrade tiers per item, priced off the buy cost (×1.5 then ×3)."""
-    return CatalogItem(
-        key=key,
-        track=track,
-        cost=cost,
-        unlock_level=unlock_level,
-        upgrade_costs=(round(cost * 1.5), round(cost * 3)),
-    )
+# --- Catalog builders -------------------------------------------------------------------
+#
+# Costs are tunable constants. A terse fluent builder keeps the catalog readable; variant
+# and option costs are explicit so retuning stays a one-line edit (no migration).
 
 
-# In-code catalog — the single source of truth for what's buyable and what it costs.
+@dataclass
+class _Build:
+    """Mutable helper to assemble a CatalogItem fluently."""
+
+    key: str
+    track: str
+    cost: int
+    unlock_level: int = 1
+    _variants: list[Variant] = field(default_factory=list)
+    _slots: list[Slot] = field(default_factory=list)
+
+    def variants(self, *keys: str) -> "_Build":
+        # Variants are free by default (they change the base form, not the value); the
+        # first listed is the default applied to existing/legacy rows.
+        self._variants = [Variant(key=k) for k in keys]
+        return self
+
+    def slot(self, key: str, *opts: tuple[str, int]) -> "_Build":
+        self._slots.append(Slot(key=key, options=tuple(Option(o, c) for o, c in opts)))
+        return self
+
+    def build(self) -> CatalogItem:
+        return CatalogItem(
+            key=self.key,
+            track=self.track,
+            cost=self.cost,
+            unlock_level=self.unlock_level,
+            variants=tuple(self._variants),
+            slots=tuple(self._slots),
+        )
+
+
+def _grown(cost: int) -> tuple[str, int]:
+    # The "grown" / bigger size — successor to the old tier ladder (preserves spend; the
+    # tier-1 upgrade cost was round(cost * 1.5)).
+    return ("grown", round(cost * 1.5))
+
+
+# In-code catalog — the single source of truth for what's buyable, its forms, and costs.
 SANCTUARY_CATALOG: dict[str, CatalogItem] = {
-    # Nature
-    "tree": _item("tree", "nature", 40),
-    "flower": _item("flower", "nature", 25),
-    "pond": _item("pond", "nature", 80, unlock_level=4),
-    # Structures
-    "hut": _item("hut", "structure", 60, unlock_level=2),
-    "cottage": _item("cottage", "structure", 90, unlock_level=3),
-    "barn": _item("barn", "structure", 120, unlock_level=4),
-    "car": _item("car", "structure", 130, unlock_level=5),
-    "beach_house": _item("beach_house", "structure", 150, unlock_level=6),
-    "boat": _item("boat", "structure", 170, unlock_level=8),
-    # Companions
-    "goldfish": _item("goldfish", "companion", 30),
-    "bird": _item("bird", "companion", 35, unlock_level=2),
-    "cat": _item("cat", "companion", 50, unlock_level=3),
-    "snake": _item("snake", "companion", 60, unlock_level=4),
-    "fox": _item("fox", "companion", 70, unlock_level=5),
-    "dog": _item("dog", "companion", 90, unlock_level=6),
+    # --- Nature -----------------------------------------------------------------------
+    "tree": (
+        _Build("tree", "nature", 40)
+        .variants("oak", "pine", "cherry", "willow")
+        .slot("grown", _grown(40))
+        .slot("foliage", ("fruit", 30), ("blossom", 30), ("autumn", 30))
+        .slot("swing", ("swing", 25))
+        .slot("birdhouse", ("birdhouse", 20))
+        .build()
+    ),
+    "flower": (
+        _Build("flower", "nature", 25)
+        .variants("rose", "tulip", "sunflower", "daisy")
+        .slot("grown", _grown(25))
+        .slot("bloom", ("double", 18))
+        .slot("butterfly", ("butterfly", 20))
+        .build()
+    ),
+    "pond": (
+        _Build("pond", "nature", 80, unlock_level=4)
+        .slot("grown", _grown(80))
+        .slot("lilies", ("lilies", 40))
+        .slot("koi", ("koi", 50))
+        .slot("bridge", ("bridge", 60))
+        .build()
+    ),
+    # --- Structures -------------------------------------------------------------------
+    "hut": (
+        _Build("hut", "structure", 60, unlock_level=2)
+        .variants("straw", "wood")
+        .slot("grown", _grown(60))
+        .slot("chimney_smoke", ("smoke", 30))
+        .slot("garden", ("garden", 35))
+        .slot("lights", ("lights", 25))
+        .build()
+    ),
+    "cottage": (
+        _Build("cottage", "structure", 90, unlock_level=3)
+        .variants("cream", "stone")
+        .slot("grown", _grown(90))
+        .slot("chimney_smoke", ("smoke", 40))
+        .slot("garden", ("garden", 45))
+        .slot("lights", ("lights", 35))
+        .build()
+    ),
+    "barn": (
+        _Build("barn", "structure", 120, unlock_level=4)
+        .variants("red", "gray")
+        .slot("grown", _grown(120))
+        .slot("chimney_smoke", ("smoke", 50))
+        .slot("garden", ("garden", 55))
+        .slot("lights", ("lights", 45))
+        .build()
+    ),
+    "car": (
+        _Build("car", "structure", 130, unlock_level=5)
+        .variants("red", "blue", "yellow")
+        .slot("grown", _grown(130))
+        .slot("lights", ("lights", 45))
+        .build()
+    ),
+    "beach_house": (
+        _Build("beach_house", "structure", 150, unlock_level=6)
+        .variants("white", "teal")
+        .slot("grown", _grown(150))
+        .slot("garden", ("garden", 60))
+        .slot("lights", ("lights", 55))
+        .build()
+    ),
+    "boat": (
+        _Build("boat", "structure", 170, unlock_level=8)
+        .variants("wood", "white")
+        .slot("grown", _grown(170))
+        .slot("lights", ("lights", 60))
+        .build()
+    ),
+    # --- Companions -------------------------------------------------------------------
+    "goldfish": (
+        _Build("goldfish", "companion", 30)
+        .variants("orange", "white", "black")
+        .slot("grown", _grown(30))
+        .build()
+    ),
+    "bird": (
+        _Build("bird", "companion", 35, unlock_level=2)
+        .variants("bluebird", "robin", "canary")
+        .slot("grown", _grown(35))
+        .slot("accessory", ("hat", 25))
+        .build()
+    ),
+    "cat": (
+        _Build("cat", "companion", 50, unlock_level=3)
+        .variants("gray", "ginger", "black", "white")
+        .slot("grown", _grown(50))
+        .slot("accessory", ("collar", 25), ("bandana", 25), ("hat", 30))
+        .build()
+    ),
+    "snake": (
+        _Build("snake", "companion", 60, unlock_level=4)
+        .variants("green", "amber", "blue")
+        .slot("grown", _grown(60))
+        .slot("accessory", ("hat", 30))
+        .build()
+    ),
+    "fox": (
+        _Build("fox", "companion", 70, unlock_level=5)
+        .variants("red", "arctic")
+        .slot("grown", _grown(70))
+        .slot("accessory", ("collar", 30), ("bandana", 30))
+        .build()
+    ),
+    "dog": (
+        _Build("dog", "companion", 90, unlock_level=6)
+        .variants("corgi", "husky", "shiba", "dalmatian")
+        .slot("grown", _grown(90))
+        .slot("accessory", ("collar", 30), ("bandana", 35), ("hat", 40))
+        .build()
+    ),
 }
 
 
@@ -79,16 +286,24 @@ class UnknownItem(Exception):
     """The requested item_key is not in the catalog."""
 
 
+class UnknownVariant(Exception):
+    """The requested variant is not offered for this item."""
+
+
+class UnknownSlotOption(Exception):
+    """The requested customization slot or option is not offered for this item."""
+
+
 class ItemLocked(Exception):
-    """The item's level requirement isn't met yet."""
+    """A level requirement (item, variant, or option) isn't met yet."""
 
 
 class InsufficientCoins(Exception):
-    """Not enough coins for this purchase/upgrade."""
+    """Not enough coins for this purchase/customization."""
 
 
-class MaxTier(Exception):
-    """The item is already at its highest tier."""
+class AlreadyApplied(Exception):
+    """The item already has that exact option in that slot — no-op."""
 
 
 def _vitality(streak: int) -> str:
@@ -119,33 +334,72 @@ def _load(db: DBSession, user_id: uuid.UUID) -> list[SanctuaryPlanting]:
     return list(db.execute(stmt).scalars().all())
 
 
+def _customizations(row: SanctuaryPlanting) -> dict[str, str]:
+    """The row's purchased customizations, defensively normalized to {str: str}.
+
+    Legacy rows (created before personalization) have no customizations → {} → no extra
+    spend, exactly the base form. Coins never retroactively rise (ADR-0011 monotonicity).
+    """
+    raw = row.customizations or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(k): str(v) for k, v in raw.items() if isinstance(v, (str, int))}
+
+
 def _spent(plantings: list[SanctuaryPlanting]) -> int:
     total = 0
     for p in plantings:
         item = SANCTUARY_CATALOG.get(p.item_key)
         if item is not None:
-            total += item.spent_at(p.tier)
+            total += item.spent(p.variant, _customizations(p))
     return total
+
+
+def _available_slots(
+    item: CatalogItem, customizations: dict[str, str], balance: int, level: int
+) -> list[AvailableSlot]:
+    """Slots/options still applicable: each option with its cost + locked/affordable/applied
+    hints. Calm, not pushy — the UI uses these to gently offer the next touch."""
+    out: list[AvailableSlot] = []
+    for slot in item.slots:
+        applied = customizations.get(slot.key)
+        opts: list[SlotOption] = []
+        for o in slot.options:
+            opts.append(
+                SlotOption(
+                    option=o.key,
+                    cost=o.cost,
+                    unlocked=level >= o.unlock_level,
+                    unlock_hint=None
+                    if level >= o.unlock_level
+                    else f"Reach level {o.unlock_level}",
+                    affordable=balance >= o.cost,
+                    applied=applied == o.key,
+                )
+            )
+        out.append(AvailableSlot(slot=slot.key, applied=applied, options=opts))
+    return out
 
 
 def _build_scene(
     plantings: list[SanctuaryPlanting], coins_earned: int, level: int, streak: int
 ) -> SanctuaryScene:
-    balance = coins_earned - _spent(plantings)
+    balance = max(0, coins_earned - _spent(plantings))
     owned: list[OwnedItem] = []
     for p in plantings:
         item = SANCTUARY_CATALOG.get(p.item_key)
         if item is None:
             continue
+        customizations = _customizations(p)
         owned.append(
             OwnedItem(
                 id=str(p.id),
                 item_key=p.item_key,
                 track=item.track,
                 position=p.position,
-                tier=p.tier,
-                max_tier=item.max_tier,
-                next_upgrade_cost=item.next_upgrade_cost(p.tier),
+                variant=p.variant if p.variant is not None else item.default_variant,
+                customizations=customizations,
+                available=_available_slots(item, customizations, balance, level),
             )
         )
     shop = [
@@ -155,11 +409,22 @@ def _build_scene(
             cost=item.cost,
             unlocked=level >= item.unlock_level,
             hint=None if level >= item.unlock_level else f"Reach level {item.unlock_level}",
+            variants=[
+                VariantOption(
+                    variant=v.key,
+                    cost_delta=v.cost_delta,
+                    unlocked=level >= v.unlock_level,
+                    unlock_hint=None
+                    if level >= v.unlock_level
+                    else f"Reach level {v.unlock_level}",
+                )
+                for v in item.variants
+            ],
         )
         for item in SANCTUARY_CATALOG.values()
     ]
     return SanctuaryScene(
-        coins=max(0, balance),
+        coins=balance,
         level=level,
         owned=owned,
         shop=shop,
@@ -178,32 +443,50 @@ def get_scene(
 def buy(
     db: DBSession, user_id: uuid.UUID, data: BuyRequest, *, today: date, tz: str = "UTC"
 ) -> SanctuaryScene:
-    """Buy a catalog item (a fresh tier-0 instance). Validates: known, unlocked by level,
-    and affordable."""
+    """Buy a catalog item with an optional chosen variant. Validates: known item, known +
+    unlocked variant, item unlocked by level, and affordable (buy cost + variant delta)."""
     item = SANCTUARY_CATALOG.get(data.item_key)
     if item is None:
         raise UnknownItem(data.item_key)
+    variant = item.variant(data.variant)  # None when item has no variants
+    if data.variant is not None and variant is None:
+        raise UnknownVariant(data.variant)
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     if level < item.unlock_level:
         raise ItemLocked(data.item_key)
+    if variant is not None and level < variant.unlock_level:
+        raise ItemLocked(variant.key)
     plantings = _load(db, user_id)
-    if coins_earned - _spent(plantings) < item.cost:
+    price = item.cost + (variant.cost_delta if variant is not None else 0)
+    if coins_earned - _spent(plantings) < price:
         raise InsufficientCoins(data.item_key)
     next_position = (max((p.position for p in plantings), default=-1)) + 1
     db.add(
         SanctuaryPlanting(
-            user_id=user_id, item_key=item.key, position=next_position, tier=0
+            user_id=user_id,
+            item_key=item.key,
+            position=next_position,
+            variant=variant.key if variant is not None else None,
+            customizations={},
         )
     )
     db.commit()
     return _build_scene(_load(db, user_id), coins_earned, level, streak)
 
 
-def upgrade(
-    db: DBSession, user_id: uuid.UUID, planting_id: uuid.UUID, *, today: date, tz: str = "UTC"
+def customize(
+    db: DBSession,
+    user_id: uuid.UUID,
+    planting_id: uuid.UUID,
+    data: CustomizeRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
 ) -> SanctuaryScene | None:
-    """Upgrade an owned item one tier. None if not the caller's; raises on max-tier or
-    insufficient coins."""
+    """Apply a customization (slot → option) to an owned item. Returns None if the item
+    isn't the caller's. Raises on unknown slot/option, locked option, already-applied, or
+    insufficient coins. Each customization costs coins (deducted via the derived balance).
+    """
     row = db.execute(
         select(SanctuaryPlanting).where(
             SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
@@ -212,13 +495,33 @@ def upgrade(
     if row is None:
         return None
     item = SANCTUARY_CATALOG.get(row.item_key)
-    if item is None or row.tier >= item.max_tier:
-        raise MaxTier(row.item_key)
-    cost = item.upgrade_costs[row.tier]
+    if item is None:
+        return None
+    slot = item.slot(data.slot)
+    if slot is None:
+        raise UnknownSlotOption(data.slot)
+    option = slot.option(data.option)
+    if option is None:
+        raise UnknownSlotOption(data.option)
+    current = _customizations(row)
+    if current.get(slot.key) == option.key:
+        raise AlreadyApplied(data.option)
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
+    if level < option.unlock_level:
+        raise ItemLocked(option.key)
     plantings = _load(db, user_id)
-    if coins_earned - _spent(plantings) < cost:
+    # Charge the difference: switching options within a slot costs only the new option's
+    # cost over what's already sunk into that slot, so a swap is never punishing and the
+    # balance stays consistent with `spent()`.
+    already_in_slot = 0
+    if slot.key in current:
+        prev = slot.option(current[slot.key])
+        already_in_slot = prev.cost if prev is not None else 0
+    net_cost = option.cost - already_in_slot
+    if coins_earned - _spent(plantings) < net_cost:
         raise InsufficientCoins(row.item_key)
-    row.tier += 1
+    updated = dict(current)
+    updated[slot.key] = option.key
+    row.customizations = updated
     db.commit()
     return _build_scene(_load(db, user_id), coins_earned, level, streak)

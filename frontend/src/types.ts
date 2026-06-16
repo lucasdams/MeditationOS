@@ -206,15 +206,40 @@ export interface GratitudeSuggestions {
   options: string[]
 }
 
-// An item the user owns, at a given upgrade tier.
+// One option inside a customization slot, with its cost and current state.
+export interface SlotOption {
+  option: string
+  cost: number
+  unlocked: boolean
+  unlock_hint: string | null
+  affordable: boolean
+  applied: boolean
+}
+
+// A customization axis for an owned item: the options to mix and match.
+export interface AvailableSlot {
+  slot: string
+  applied: string | null // option currently applied (null if none)
+  options: SlotOption[]
+}
+
+// An item the user owns, with its chosen variant and purchased customizations.
 export interface OwnedItem {
   id: string
   item_key: string
   track: string
   position: number
-  tier: number // 0 = base
-  max_tier: number
-  next_upgrade_cost: number | null // coins to upgrade once more; null if maxed
+  variant: string | null // chosen base form (default when the item has variants)
+  customizations: Record<string, string> // {slot: option} purchased
+  available: AvailableSlot[] // slots/options still applicable, with hints
+}
+
+// A base form selectable at purchase time.
+export interface VariantOption {
+  variant: string
+  cost_delta: number // extra coins over the buy cost (0 = free)
+  unlocked: boolean
+  unlock_hint: string | null
 }
 
 // A buyable catalog item (locked ones carry a hint).
@@ -224,6 +249,7 @@ export interface ShopItem {
   cost: number
   unlocked: boolean
   hint: string | null
+  variants: VariantOption[] // selectable base forms (empty for fixed-form items)
 }
 
 export type Vitality = 'dormant' | 'thriving' | 'flourishing'
