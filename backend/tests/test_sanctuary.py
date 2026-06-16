@@ -1027,6 +1027,86 @@ def test_buy_integrity_error_is_409_not_500(client, db_session, monkeypatch):
     assert res.status_code == 409
 
 
+def _lock_before_planting_read(db_session, monkeypatch):
+    """Spy on the session: record each executed statement's SQL so a test can assert the
+    advisory-lock statement runs BEFORE the first read of the target `sanctuary_plantings`
+    row. Returns the list of recorded SQL strings (lowercased)."""
+    sqls: list[str] = []
+    real_execute = db_session.execute
+
+    def spy(statement, *args, **kwargs):
+        try:
+            sqls.append(str(statement).lower())
+        except Exception:  # noqa: BLE001 — never let instrumentation break the call
+            sqls.append("")
+        return real_execute(statement, *args, **kwargs)
+
+    monkeypatch.setattr(db_session, "execute", spy)
+    return sqls
+
+
+def _assert_lock_precedes_row_read(sqls):
+    lock_idx = next(i for i, s in enumerate(sqls) if "pg_advisory_xact_lock" in s)
+    read_idx = next(i for i, s in enumerate(sqls) if "sanctuary_plantings" in s)
+    assert lock_idx < read_idx, (
+        "advisory lock must be taken BEFORE the target planting row is read, so the "
+        "post-lock write merges onto fresh state (not a stale pre-lock snapshot)"
+    )
+
+
+def test_customize_locks_before_reading_the_row(client, db_session, monkeypatch):
+    """customize() takes the per-user lock before SELECTing the planting, so the merge onto
+    `customizations` is computed under the lock (no last-writer-wins JSON clobber)."""
+    _auth(client, "lock-cust@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    planting_id = bought["owned"][0]["id"]
+    sqls = _lock_before_planting_read(db_session, monkeypatch)
+    res = client.post(
+        f"/api/v1/sanctuary/items/{planting_id}/customize",
+        json={"slot": "foliage", "option": "blossom"},
+    )
+    assert res.status_code == 200
+    _assert_lock_precedes_row_read(sqls)
+
+
+def test_move_locks_before_reading_the_row(client, db_session, monkeypatch):
+    """move() takes the per-user lock before SELECTing the row, so the swap reads a fresh
+    source cell (no uq(user_id, cell) collision from a stale snapshot)."""
+    _auth(client, "lock-move@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    planting_id = bought["owned"][0]["id"]
+    sqls = _lock_before_planting_read(db_session, monkeypatch)
+    res = client.post(f"/api/v1/sanctuary/items/{planting_id}/move", json={"cell": 5})
+    assert res.status_code == 200
+    _assert_lock_precedes_row_read(sqls)
+
+
+def test_personalize_locks_before_reading_the_row(client, db_session, monkeypatch):
+    """personalize() takes the per-user lock before SELECTing the row (consistent with the
+    other mutators), so the partial update merges onto fresh state."""
+    _auth(client, "lock-pers@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    planting_id = bought["owned"][0]["id"]
+    sqls = _lock_before_planting_read(db_session, monkeypatch)
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{planting_id}", json={"name": "Buddy"}
+    )
+    assert res.status_code == 200
+    _assert_lock_precedes_row_read(sqls)
+
+
+def test_personalize_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """A collision while saving a cosmetic personalization surfaces as 409, never a 500."""
+    _auth(client, "conflict-pers@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    planting_id = bought["owned"][0]["id"]
+    _commit_raises_once(db_session, monkeypatch)
+    res = client.patch(
+        f"/api/v1/sanctuary/items/{planting_id}", json={"name": "Buddy"}
+    )
+    assert res.status_code == 409
+
+
 def test_customize_integrity_error_is_409_not_500(client, db_session, monkeypatch):
     """A collision while applying a customization surfaces as 409, never a 500."""
     _auth(client, "conflict-cust@example.com")

@@ -53,7 +53,11 @@ def set_username(db: Session, user: User, username: str) -> User:
     if existing is not None and existing.id != user.id:
         raise UsernameTakenError(username)
     user.username = username
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:  # lost a race to the unique username constraint
+        db.rollback()
+        raise UsernameTakenError(username) from None
     db.refresh(user)
     return user
 
@@ -385,7 +389,11 @@ def claim_account(db: Session, user: User, email: str, password: str) -> User:
     user.password_hash = hash_password(password)
     user.is_guest = False
     user.email_verified = False
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:  # lost a race to the unique email constraint (concurrent claim)
+        db.rollback()
+        raise EmailAlreadyExistsError(email) from None
     db.refresh(user)
     send_verification_email(db, user)
     return user

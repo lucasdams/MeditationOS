@@ -10,6 +10,7 @@ import logging
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.config import settings
@@ -27,12 +28,7 @@ def subscribe(
     db: DBSession, user_id: uuid.UUID, data: PushSubscriptionCreate
 ) -> PushSubscription:
     """Store (or refresh) a browser push subscription. Upserts on (user, endpoint)."""
-    existing = db.execute(
-        select(PushSubscription).where(
-            PushSubscription.user_id == user_id,
-            PushSubscription.endpoint == data.endpoint,
-        )
-    ).scalar_one_or_none()
+    existing = _find_subscription(db, user_id, data.endpoint)
     if existing is not None:
         existing.p256dh = data.keys.p256dh
         existing.auth = data.keys.auth
@@ -46,9 +42,33 @@ def subscribe(
         auth=data.keys.auth,
     )
     db.add(sub)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent subscribe inserted the same (user, endpoint) first. Roll back and
+        # update that now-existing row instead of 500-ing — an idempotent upsert.
+        db.rollback()
+        existing = _find_subscription(db, user_id, data.endpoint)
+        if existing is None:  # the racing row vanished between rollback and re-read
+            raise
+        existing.p256dh = data.keys.p256dh
+        existing.auth = data.keys.auth
+        db.commit()
+        db.refresh(existing)
+        return existing
     db.refresh(sub)
     return sub
+
+
+def _find_subscription(
+    db: DBSession, user_id: uuid.UUID, endpoint: str
+) -> PushSubscription | None:
+    return db.execute(
+        select(PushSubscription).where(
+            PushSubscription.user_id == user_id,
+            PushSubscription.endpoint == endpoint,
+        )
+    ).scalar_one_or_none()
 
 
 def unsubscribe(db: DBSession, user_id: uuid.UUID, endpoint: str) -> bool:
