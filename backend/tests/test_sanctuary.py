@@ -154,7 +154,9 @@ def test_customize_applies_and_deducts_balance(client):
 def test_customizations_are_independent_slots(client):
     _auth(client, "mixmatch@example.com")
     _practice(client, 200)  # plenty of coins
-    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "dog", "variant": "corgi"}).json()
+    bought = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "dog", "variant": "corgi"}
+    ).json()
     dog = next(o for o in bought["owned"] if o["item_key"] == "dog")
     client.post(
         f"/api/v1/sanctuary/items/{dog['id']}/customize",
