@@ -138,19 +138,24 @@ def test_stats_gratitude_adds_xp(client):
     assert after["gratitude_count"] == 1
     # 5 (the gratitude entry) + today's gratitude quest XP if this one entry completed
     # it (the base "write a gratitude" variant is done by one; "write three" is not).
-    gq = next(q for q in after["daily_quests"] if q["key"] == "gratitude")
-    assert after["xp"] == 5 + (gq["xp"] if gq["done"] else 0)
+    # The gratitude quest is only surfaced on days the rotation picks it, so it may be
+    # absent — in which case no quest XP applies and only the entry's 5 XP counts.
+    gq = next((q for q in after["daily_quests"] if q["key"] == "gratitude"), None)
+    assert after["xp"] == 5 + (gq["xp"] if gq and gq["done"] else 0)
 
 
 def test_stats_journal_adds_xp(client):
     _auth(client, "journal_xp@example.com")
     client.post("/api/v1/journals", json={"body": "A clear, quiet sit.", "mood": "calm"})
     body = client.get("/api/v1/dashboard/stats").json()
-    # 5 (the journal entry) + today's journal quest XP. The entry carries a mood, so it
-    # completes whichever variant is up ("write a journal entry" or "journal with a mood").
-    jq = next(q for q in body["daily_quests"] if q["key"] == "journal")
-    assert jq["done"] is True
-    assert body["xp"] == 5 + jq["xp"]
+    # 5 (the journal entry) + today's journal quest XP. The journal quest is only surfaced
+    # on days the rotation picks it; when it is, the mood-carrying entry completes whichever
+    # variant is up ("write a journal entry" or "journal with a mood"). When it isn't
+    # surfaced, no quest XP applies and only the entry's 5 XP counts.
+    jq = next((q for q in body["daily_quests"] if q["key"] == "journal"), None)
+    if jq is not None:
+        assert jq["done"] is True
+    assert body["xp"] == 5 + (jq["xp"] if jq else 0)
 
 
 def test_meditation_earns_two_xp_per_minute(client):

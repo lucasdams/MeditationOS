@@ -32,6 +32,27 @@ def _practice(client, minutes, *, day="2026-01-01"):
     )
 
 
+# Non-consecutive January days, so earning lots of coins never accrues a streak
+# (streak-bonus XP is excluded from the earned XP that funds coins) and never
+# depends on the current date (avoids daily-quest date coupling).
+_EARN_DAYS = [
+    "2026-01-01", "2026-01-05", "2026-01-09", "2026-01-13", "2026-01-17",
+    "2026-01-21", "2026-01-25", "2026-01-29", "2026-02-02", "2026-02-06",
+]
+
+
+def _earn_coins(client, sessions):
+    """Earn coins the front-loaded-curve way: many short, full-rate sits on separate days.
+
+    The XP curve front-loads each session (the first 20 min pay full rate), so several
+    20-minute sits across different days earn far more than one long sit. Returns the
+    scene's reported coin balance.
+    """
+    for day in _EARN_DAYS[:sessions]:
+        _practice(client, 20, day=day)
+    return _scene(client)["coins"]
+
+
 def _scene(client):
     return client.get("/api/v1/sanctuary").json()
 
@@ -168,8 +189,12 @@ def test_customize_applies_and_deducts_balance(client):
 
 def test_customizations_are_independent_slots(client):
     _auth(client, "mixmatch@example.com")
-    _practice(client, 200)  # plenty of coins
-    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "dog", "variant": "corgi"}).json()
+    # Dog unlocks at level 6 and corgi + grown + hat cost 90 + 135 + 40 = 265; earn well
+    # past that with short sits across separate days (front-loaded curve, no streak bonus).
+    _earn_coins(client, 8)
+    bought = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "dog", "variant": "corgi"}
+    ).json()
     dog = next(o for o in bought["owned"] if o["item_key"] == "dog")
     client.post(
         f"/api/v1/sanctuary/items/{dog['id']}/customize",

@@ -26,10 +26,67 @@ from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
 from app.services.quest_pool import categories_for_day, quest_for
 
-# XP per minute of meditation (non-breathing). Breathing — the harder, signature
-# practice — earns BREATHING_XP_MULTIPLIER× this.
+# XP per *effective* minute of practice. Meditation (non-breathing) pays
+# MEDITATION_XP_PER_MIN; resonance breathing — the harder, signature practice — pays the
+# higher BREATHING_XP_MULTIPLIER per effective minute (kept strictly above meditation).
+# "Effective" minutes apply a front-loaded, concave curve PER SESSION (see XP_TIER_*
+# below), so the first minutes of a sit are worth the most and each extra minute less.
 MEDITATION_XP_PER_MIN = 2
-BREATHING_XP_MULTIPLIER = 3
+BREATHING_XP_MULTIPLIER = 3  # XP per effective minute of resonance breathing
+
+# Front-loaded practice-XP curve (per session). A session's raw whole minutes are mapped
+# to a smaller number of "effective minutes" via a concave, piecewise-tiered rate, so a
+# single very long sit earns much less than the same time split across several sits.
+# Marginal value strictly decreases as a session lengthens. The two breakpoints and the
+# two reduced rates are the tunable knobs; the first tier is always full value.
+#
+#   minutes in [0, XP_TIER1_MINUTES)                -> 1.0  eff min / raw min (full)
+#   minutes in [XP_TIER1_MINUTES, XP_TIER2_MINUTES) -> XP_TIER2_RATE   (e.g. 0.5)
+#   minutes >= XP_TIER2_MINUTES                     -> XP_TIER3_RATE   (e.g. 0.25)
+#
+# Worked single-session examples (meditation @2/eff-min, breathing @3/eff-min):
+#   10 min  -> 10.0 eff -> 20 XP med / 30 XP breath   (unchanged vs the old linear curve)
+#   30 min  -> 25.0 eff -> 50 XP med / 75 XP breath
+#   60 min  -> 35.0 eff -> 70 XP med / 105 XP breath
+#  120 min  -> 50.0 eff -> 100 XP med / 150 XP breath  (< 2× the 60-min value)
+# Splitting practice across sessions beats one giant sit: e.g. two 30-min meditations
+# earn 2×50 = 100 XP, where a single 60-min sit earns only 70 XP.
+XP_TIER1_MINUTES = 20  # full-value minutes per session
+XP_TIER2_MINUTES = 40  # end of the half-rate band; beyond this is the lowest rate
+XP_TIER2_RATE = 0.5  # effective minutes per raw minute in the second band
+XP_TIER3_RATE = 0.25  # effective minutes per raw minute beyond the second band
+
+
+def _effective_minutes(minutes: int) -> float:
+    """Concave (front-loaded) map of raw whole minutes -> effective minutes, per session.
+
+    Monotonic non-decreasing, with a strictly decreasing marginal rate across the tier
+    boundaries: more time never lowers XP, but each extra minute is worth less.
+    """
+    eff = float(min(minutes, XP_TIER1_MINUTES))
+    if minutes > XP_TIER1_MINUTES:
+        eff += min(minutes - XP_TIER1_MINUTES, XP_TIER2_MINUTES - XP_TIER1_MINUTES) * XP_TIER2_RATE
+    if minutes > XP_TIER2_MINUTES:
+        eff += (minutes - XP_TIER2_MINUTES) * XP_TIER3_RATE
+    return eff
+
+
+def _practice_xp(sessions: list[tuple[int, bool]]) -> int:
+    """Total practice XP across a user's sessions, front-loaded PER SESSION.
+
+    `sessions` is a list of (duration_seconds, is_breathing). Each session is floored to
+    whole minutes (a sub-minute sit earns 0), run through the concave `_effective_minutes`
+    curve, then paid at the meditation or breathing rate. Summed across sessions and
+    floored to a non-negative integer.
+    """
+    total = 0.0
+    for duration_seconds, is_breathing in sessions:
+        minutes = int(duration_seconds) // 60
+        if minutes <= 0:
+            continue
+        rate = BREATHING_XP_MULTIPLIER if is_breathing else MEDITATION_XP_PER_MIN
+        total += _effective_minutes(minutes) * rate
+    return int(total)
 # Bonus XP per day of your current streak (grows as you keep it up, falls if it lapses).
 STREAK_BONUS_PER_DAY = 10
 # A meditation only "counts" for the meditate quest once the day's total reaches this,
@@ -148,13 +205,12 @@ def get_stats(
         ).where(Session.user_id == user_id)
     ).one()
 
-    # Resonance breathing earns extra XP (it's the harder, signature practice).
-    breathing_seconds = db.execute(
-        select(func.coalesce(func.sum(Session.duration_seconds), 0)).where(
-            Session.user_id == user_id,
-            Session.type == "resonance_breathing",
-        )
-    ).scalar_one()
+    # Practice XP is computed PER SESSION (front-loaded curve), so we need each session's
+    # duration and whether it's resonance breathing — not a single SUM. Resonance
+    # breathing earns extra XP per minute (it's the harder, signature practice).
+    practice_rows = db.execute(
+        select(Session.duration_seconds, Session.type).where(Session.user_id == user_id)
+    ).all()
 
     # Last 7 calendar days, zero-filled, oldest → today.
     week_start = today - timedelta(days=6)
@@ -348,13 +404,16 @@ def get_stats(
         db, Journal, user_id=user_id, tz=tz, cap=JOURNAL_XP_DAILY_CAP
     )
 
-    # MEDITATION_XP_PER_MIN per minute of meditation (so a sub-minute sit earns 0);
-    # resonance breathing counts BREATHING_XP_MULTIPLIER×; plus GRATITUDE_XP/JOURNAL_XP
-    # per (capped) reflection, the daily-quest bonus, and the streak bonus.
-    non_breathing_seconds = int(total_seconds) - int(breathing_seconds)
+    # Practice XP: each session is run through the front-loaded curve (sub-minute sits
+    # earn 0; resonance breathing counts BREATHING_XP_MULTIPLIER×), then summed across
+    # sessions — so a long sit is worth progressively less per minute and splitting
+    # practice across sessions beats one giant sit. Plus GRATITUDE_XP/JOURNAL_XP per
+    # (capped) reflection, the daily-quest bonus, and the streak bonus.
+    practice_xp = _practice_xp(
+        [(secs, type_ == "resonance_breathing") for secs, type_ in practice_rows]
+    )
     xp = (
-        non_breathing_seconds // 60 * MEDITATION_XP_PER_MIN
-        + int(breathing_seconds) // 60 * BREATHING_XP_MULTIPLIER
+        practice_xp
         + gratitude_xp_units * GRATITUDE_XP
         + journal_xp_units * JOURNAL_XP
         + quest_bonus_xp
