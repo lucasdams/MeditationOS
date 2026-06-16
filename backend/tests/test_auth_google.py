@@ -6,7 +6,7 @@ exercise the account create / link / reuse logic and error handling.
 
 from unittest.mock import patch
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 GOOGLE_VERIFY = "app.services.user_service.verify_id_token"
 
