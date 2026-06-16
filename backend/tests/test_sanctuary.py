@@ -353,6 +353,35 @@ def test_buy_rejected_when_surcharge_exceeds_balance(client):
     assert res.status_code == 409
 
 
+def test_shop_cost_includes_next_progressive_surcharge(client):
+    """The shop's displayed `cost` is what `buy()` will actually charge: base + the next
+    item's progressive surcharge. Empty garden → bare base; after buying N items the listed
+    cost rises by the surcharge for ordinal N, so the client's affordability gate and the
+    buy charge stay in lock-step (ADR-0013)."""
+    _auth(client, "shopcost@example.com")
+    _practice(client, 200)  # plenty of coins so items stay unlocked/affordable
+
+    # Empty garden: the next ordinal is 0, which carries no surcharge — bare base cost.
+    shop = {s["item_key"]: s for s in _scene(client)["shop"]}
+    assert shop["flower"]["cost"] == SANCTUARY_CATALOG["flower"].cost
+
+    # After N purchases, the next ordinal is N: every shop item shows base + surcharge(N).
+    n = 3
+    for _ in range(n):
+        client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+    shop = {s["item_key"]: s for s in _scene(client)["shop"]}
+    surcharge = progressive_surcharge(n)
+    assert surcharge > 0  # guard: a non-empty garden actually surcharges
+    assert shop["flower"]["cost"] == SANCTUARY_CATALOG["flower"].cost + surcharge
+    assert shop["tree"]["cost"] == SANCTUARY_CATALOG["tree"].cost + surcharge
+
+    # The displayed cost equals the real charge: balance drops by exactly shop cost on buy.
+    before = _scene(client)["coins"]
+    listed = {s["item_key"]: s for s in _scene(client)["shop"]}["flower"]["cost"]
+    after = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()["coins"]
+    assert before - after == listed
+
+
 def test_small_garden_spend_not_above_flat_pricing(client):
     """A small/typical garden's *spend* under the new (cheaper base + surcharge) economy must
     not exceed its spend under the old flat pricing for a representative item — so nobody

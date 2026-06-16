@@ -54,7 +54,7 @@ class ShopItem(BaseModel):
 
     item_key: str
     track: str
-    cost: int  # coins to buy (default variant, no customizations)
+    cost: int  # coins to buy now: default-variant base + the next-item progressive surcharge
     unlocked: bool  # level requirement met
     hint: str | None  # what's needed to unlock (None when unlocked)
     variants: list[VariantOption]  # selectable base forms (empty for fixed-form items)

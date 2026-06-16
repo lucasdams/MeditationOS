@@ -430,11 +430,17 @@ def _build_scene(
                 available=_available_slots(item, customizations, balance, level),
             )
         )
+    # Every shop item, if bought next, lands at the same ordinal and so carries the same
+    # progressive surcharge that `buy()` will actually charge. Surface that surcharge-inclusive
+    # cost (not the bare base) so the displayed price and the client's affordability gate match
+    # what `buy()` deducts — otherwise a large garden shows a cheap, "affordable" price and the
+    # purchase 409s (ADR-0013).
+    next_surcharge = progressive_surcharge((max((p.position for p in plantings), default=-1)) + 1)
     shop = [
         ShopItem(
             item_key=item.key,
             track=item.track,
-            cost=item.cost,
+            cost=item.cost + next_surcharge,
             unlocked=level >= item.unlock_level,
             hint=None if level >= item.unlock_level else f"Reach level {item.unlock_level}",
             variants=[
