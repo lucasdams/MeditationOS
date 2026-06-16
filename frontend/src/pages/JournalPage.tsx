@@ -293,6 +293,7 @@ export default function JournalPage() {
             aria-label="Reflection"
             rows={composerOpen ? 4 : 2}
             value={body}
+            maxLength={5000}
             onFocus={() => setComposing(true)}
             onChange={(e) => setBody(e.target.value)}
             placeholder="What's on your mind?"
@@ -478,6 +479,7 @@ export default function JournalPage() {
                   <textarea
                     rows={4}
                     value={editBody}
+                    maxLength={5000}
                     onChange={(e) => setEditBody(e.target.value)}
                     aria-label="Edit reflection"
                   />

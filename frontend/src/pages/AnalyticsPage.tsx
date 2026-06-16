@@ -191,16 +191,16 @@ function BiometricTrend() {
   // Oldest → newest for a left-to-right trend (the API returns newest first).
   const ordered = [...readings].reverse()
   const bpms = ordered.map((r) => r.bpm)
-  const minBpm = Math.min(...bpms)
-  const maxBpm = Math.max(...bpms)
+  const minBpm = bpms.reduce((a, b) => Math.min(a, b), bpms[0])
+  const maxBpm = bpms.reduce((a, b) => Math.max(a, b), bpms[0])
   const bpmRange = Math.max(1, maxBpm - minBpm)
   // Height as a share of the band, with a floor so a flat line stays visible.
   const barHeight = (v: number) => 15 + ((v - minBpm) / bpmRange) * 85
 
   const hrvReadings = ordered.filter((r) => r.hrv_ms != null)
   const hrvVals = hrvReadings.map((r) => r.hrv_ms as number)
-  const minHrv = hrvVals.length ? Math.min(...hrvVals) : 0
-  const maxHrv = hrvVals.length ? Math.max(...hrvVals) : 1
+  const minHrv = hrvVals.length ? hrvVals.reduce((a, b) => Math.min(a, b), hrvVals[0]) : 0
+  const maxHrv = hrvVals.length ? hrvVals.reduce((a, b) => Math.max(a, b), hrvVals[0]) : 1
   const hrvRange = Math.max(1, maxHrv - minHrv)
 
   const sentence = delta ? deltaSentence(delta) : null

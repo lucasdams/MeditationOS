@@ -52,6 +52,8 @@ export default function ActivityHeatmap() {
   const rangeStart = parse(cal.start)
   const end = parse(cal.end)
 
+  if (isNaN(rangeStart.getTime()) || isNaN(end.getTime())) return null
+
   // Start the grid on the Sunday on/before the range start, so every column is a full week.
   const gridStart = parse(cal.start)
   gridStart.setDate(gridStart.getDate() - gridStart.getDay())

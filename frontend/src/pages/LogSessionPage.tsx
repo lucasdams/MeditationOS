@@ -219,6 +219,7 @@ export default function LogSessionPage() {
           id="notes"
           value={notes}
           rows={3}
+          maxLength={2000}
           placeholder="Anything notable about this sit…"
           onChange={(e) => setNotes(e.target.value)}
         />
