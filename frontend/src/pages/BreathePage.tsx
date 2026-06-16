@@ -157,6 +157,9 @@ const DRAFT_PAGE = 'breathe'
 export default function BreathePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  // Respect the OS reduced-motion preference: when on, keep the circle static so the
+  // JS rAF scale animation doesn't override what the global CSS reset can't catch.
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const [bpm, setBpm] = useState<number>(loadBpm)
   const [boxCount, setBoxCount] = useState<number>(loadBox)
   const [presetKey, setPresetKey] = useState<string>(loadPreset)
@@ -359,7 +362,9 @@ export default function BreathePage() {
         lastPersistRef.current = sec
         persistDraft(total)
       }
-      setScale(scaleAt(runSec % cycle, p))
+      // When reduced-motion is on, hold the circle static — the CSS global reset can't
+      // catch JS inline transform updates, so we skip them here instead.
+      if (!prefersReducedMotion) setScale(scaleAt(runSec % cycle, p))
       setCycles(Math.floor(total / cycle))
       const seg = segmentAt(runSec % cycle, p)
       if (seg !== phaseRef.current) {
@@ -591,7 +596,7 @@ export default function BreathePage() {
   }
 
   return (
-    <main className="breathe">
+    <main id="main-content" className="breathe">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Breathe</h1>
@@ -619,12 +624,18 @@ export default function BreathePage() {
             className={`breathe-circle ${running ? phase : 'idle'}`}
             style={{ transform: `scale(${scale})` }}
           />
-          <div className="breathe-phase">{running ? SEGMENT_LABEL[phase] : 'Ready'}</div>
+          {/* aria-live="polite" announces phase changes (inhale / hold / exhale) to SR
+              users — the primary cue when audio is off or headphones aren't in use. */}
+          <div className="breathe-phase" aria-live="polite" aria-atomic="true">
+            {running ? SEGMENT_LABEL[phase] : 'Ready'}
+          </div>
         </div>
       )}
 
+      {/* aria-live="off" — the numeric countdown updates every second and would be
+          extremely noisy for screen readers; phase changes above carry the cue. */}
       {(running || elapsed > 0) && (
-        <div className="breathe-stats">
+      <div className="breathe-stats" aria-live="off">
           <span>
             {mmss(elapsed)}
             {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}

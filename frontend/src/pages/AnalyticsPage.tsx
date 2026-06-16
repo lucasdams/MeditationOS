@@ -37,7 +37,8 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const typeLabel = (t: string) => TYPE_LABELS[t as MeditationType] ?? cap(t)
 
 // A labelled horizontal bar: label + value on the left, the bar fills to the right.
-// `max` normalizes the widths across the group.
+// `max` normalizes the widths across the group. The visual bar is decorative; the
+// text label + value already convey the data to screen readers.
 function Bar({
   label,
   value,
@@ -59,7 +60,7 @@ function Bar({
         {value}
         {suffix}
       </span>
-      <span className="bar-track">
+      <span className="bar-track" aria-hidden="true">
         <span className="bar-fill" style={{ width: `${pct}%`, background: color }} />
       </span>
     </div>
@@ -286,7 +287,7 @@ export default function AnalyticsPage() {
   }, [])
 
   return (
-    <main className="dashboard">
+    <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Analytics</h1>
@@ -329,7 +330,13 @@ export default function AnalyticsPage() {
 
           <section className="analytics-section">
             <h2>Minutes per week</h2>
-            <div className="weeks">
+            {/* sr-only text alternative for the color-coded bar chart */}
+            <ul className="sr-only">
+              {data.minutes_by_week.map((w) => (
+                <li key={w.week_start}>{w.week_start}: {w.minutes} min</li>
+              ))}
+            </ul>
+            <div className="weeks" aria-hidden="true">
               {(() => {
                 const max = Math.max(1, ...data.minutes_by_week.map((w) => w.minutes))
                 return data.minutes_by_week.map((w) => (
@@ -342,7 +349,7 @@ export default function AnalyticsPage() {
                 ))
               })()}
             </div>
-            <div className="muted analytics-axis">
+            <div className="muted analytics-axis" aria-hidden="true">
               <span>{data.minutes_by_week[0]?.week_start}</span>
               <span>this week</span>
             </div>
@@ -439,7 +446,19 @@ export default function AnalyticsPage() {
                   .filter((m) => data.mood_by_week.some((w) => w.counts[m]))
                 return (
                   <>
-                    <div className="weeks">
+                    {/* sr-only text alternative for the color-coded mood-over-time chart */}
+                    <ul className="sr-only">
+                      {data.mood_by_week.map((w) => {
+                        const breakdown = present
+                          .filter((m) => w.counts[m])
+                          .map((m) => `${cap(m)}: ${w.counts[m]}`)
+                          .join(', ')
+                        return (
+                          <li key={w.week_start}>{w.week_start}: {breakdown || 'no entries'}</li>
+                        )
+                      })}
+                    </ul>
+                    <div className="weeks" aria-hidden="true">
                       {data.mood_by_week.map((w, i) => (
                         <div
                           key={w.week_start}
@@ -463,11 +482,11 @@ export default function AnalyticsPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="muted analytics-axis">
+                    <div className="muted analytics-axis" aria-hidden="true">
                       <span>{data.mood_by_week[0]?.week_start}</span>
                       <span>this week</span>
                     </div>
-                    <div className="mood-legend">
+                    <div className="mood-legend" aria-hidden="true">
                       {present.map((m) => (
                         <span key={m} className="mood-legend-item">
                           <span

@@ -40,11 +40,12 @@ export default function Achievements({ stats }: { stats: DashboardStats }) {
             key={b.label}
             className={b.earned ? 'badge earned' : 'badge'}
             title={b.earned ? b.label : `Locked — ${b.hint}`}
+            aria-label={b.earned ? `${b.label} (earned)` : `${b.label} — locked. ${b.hint}`}
           >
             <span className="badge-emoji" aria-hidden="true">
               {b.emoji}
             </span>
-            <span className="badge-label">{b.label}</span>
+            <span className="badge-label" aria-hidden="true">{b.label}</span>
           </li>
         ))}
       </ul>

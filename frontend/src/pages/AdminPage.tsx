@@ -404,6 +404,7 @@ function UsersView({ selfId }: { selfId: string | undefined }) {
                     <button
                       type="button"
                       className="admin-user-row"
+                      aria-label={`View details for ${u.username || u.email}`}
                       onClick={() => open(u.id)}
                     >
                       <span className="admin-user-row-main">
@@ -513,7 +514,7 @@ export default function AdminPage() {
   if (user && !isAdmin) return <Navigate to="/" replace />
 
   return (
-    <main className="dashboard">
+    <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">
         ← Dashboard
       </Link>
@@ -525,9 +526,13 @@ export default function AdminPage() {
         </p>
       </header>
 
-      <nav className="admin-tabs" aria-label="Admin sections">
+      <div role="tablist" className="admin-tabs" aria-label="Admin sections">
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === 'metrics'}
+          aria-controls="admin-panel-metrics"
+          id="admin-tab-metrics"
           className={tab === 'metrics' ? 'admin-tab is-active' : 'admin-tab'}
           onClick={() => setTab('metrics')}
         >
@@ -535,6 +540,10 @@ export default function AdminPage() {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === 'users'}
+          aria-controls="admin-panel-users"
+          id="admin-tab-users"
           className={tab === 'users' ? 'admin-tab is-active' : 'admin-tab'}
           onClick={() => setTab('users')}
         >
@@ -542,16 +551,32 @@ export default function AdminPage() {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === 'audit'}
+          aria-controls="admin-panel-audit"
+          id="admin-tab-audit"
           className={tab === 'audit' ? 'admin-tab is-active' : 'admin-tab'}
           onClick={() => setTab('audit')}
         >
           Audit log
         </button>
-      </nav>
+      </div>
 
-      {tab === 'metrics' && <MetricsView />}
-      {tab === 'users' && <UsersView selfId={user?.id} />}
-      {tab === 'audit' && <AuditView />}
+      {tab === 'metrics' && (
+        <div role="tabpanel" id="admin-panel-metrics" aria-labelledby="admin-tab-metrics">
+          <MetricsView />
+        </div>
+      )}
+      {tab === 'users' && (
+        <div role="tabpanel" id="admin-panel-users" aria-labelledby="admin-tab-users">
+          <UsersView selfId={user?.id} />
+        </div>
+      )}
+      {tab === 'audit' && (
+        <div role="tabpanel" id="admin-panel-audit" aria-labelledby="admin-tab-audit">
+          <AuditView />
+        </div>
+      )}
     </main>
   )
 }

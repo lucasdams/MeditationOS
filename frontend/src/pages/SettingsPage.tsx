@@ -315,7 +315,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="settings">
+    <main id="main-content" className="settings">
       <Link to="/" className="back-link">← Dashboard</Link>
       <h1>Settings</h1>
 
@@ -500,6 +500,7 @@ export default function SettingsPage() {
         </p>
         <form onSubmit={handleQuests} noValidate>
           <fieldset className="quest-picker">
+            <legend className="sr-only">Daily quest practices</legend>
             {QUEST_FEATURES.map((f) => (
               <label key={f.key} className="settings-check">
                 <input

@@ -472,7 +472,7 @@ export default function MeditatePage() {
   const intentionPlaceholder = dailySuggestion(new Date())
 
   return (
-    <main className="breathe">
+    <main id="main-content" className="breathe">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Meditate</h1>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
@@ -17,6 +17,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -24,10 +26,12 @@ export default function RegisterPage() {
 
     if (!EMAIL_RE.test(email)) {
       setError('Please enter a valid email address.')
+      emailRef.current?.focus()
       return
     }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.')
+      passwordRef.current?.focus()
       return
     }
 
@@ -50,30 +54,36 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="auth-card">
+    <main id="main-content" className="auth-card">
       <AuthBrand />
       <h1>Create your account</h1>
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="email">Email</label>
         <input
+          ref={emailRef}
           id="email"
           type="email"
           autoComplete="email"
+          required
+          aria-describedby={error ? 'register-error' : undefined}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <label htmlFor="password">Password</label>
         <input
+          ref={passwordRef}
           id="password"
           type="password"
           autoComplete="new-password"
+          required
+          aria-describedby={`register-pw-hint${error ? ' register-error' : ''}`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <small>At least 8 characters.</small>
+        <small id="register-pw-hint">At least 8 characters.</small>
 
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} id="register-error" />
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Creating…' : 'Create account'}

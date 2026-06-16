@@ -176,7 +176,7 @@ export default function GratitudePage() {
   }
 
   return (
-    <main className="gratitude">
+    <main id="main-content" className="gratitude">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Gratitude</h1>

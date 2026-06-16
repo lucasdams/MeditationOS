@@ -57,7 +57,7 @@ export default function RewardOverlay({
   const pct = Math.min(100, Math.round((prog.xpIntoLevel / prog.xpForNextLevel) * 100))
 
   return (
-    <Modal ariaLabel="Session reward" cardClassName="reward-card">
+    <Modal ariaLabel="Session reward" cardClassName="reward-card" onClose={onClose}>
       <div className="level-badge level-badge--reward" aria-hidden="true">
           <span className="level-badge-mark">◆</span>
           <span className="level-badge-num">{prog.level}</span>

@@ -103,17 +103,20 @@ export default function ActivityHeatmap() {
           <div className="heatmap-grid">
             {weeks.map((week) => (
               <div key={week[0].iso} className="heatmap-week">
-                {week.map((cell) => (
-                  <div
-                    key={cell.iso}
-                    className={`heatmap-cell lvl-${cell.level}${cell.inRange ? '' : ' out'}`}
-                    title={
-                      cell.inRange
-                        ? `${cell.minutes} min${cell.allQuests ? ' · all quests ✓' : ''} · ${cell.iso}`
-                        : undefined
-                    }
-                  />
-                ))}
+                {week.map((cell) => {
+                  const cellLabel = cell.inRange
+                    ? `${cell.iso}: ${cell.minutes} min${cell.allQuests ? ', all quests completed' : ''}`
+                    : undefined
+                  return (
+                    <div
+                      key={cell.iso}
+                      role={cell.inRange ? 'img' : undefined}
+                      aria-label={cellLabel}
+                      className={`heatmap-cell lvl-${cell.level}${cell.inRange ? '' : ' out'}`}
+                      title={cellLabel}
+                    />
+                  )
+                })}
               </div>
             ))}
           </div>
@@ -124,7 +127,7 @@ export default function ActivityHeatmap() {
           {totalMin} min in the last month · {perfectDays} all-quest{' '}
           {perfectDays === 1 ? 'day' : 'days'}
         </span>
-        <span className="heatmap-key">
+        <span className="heatmap-key" aria-hidden="true">
           <i className="heatmap-cell lvl-0" /> None
           <i className="heatmap-cell lvl-1" /> Active
           <i className="heatmap-cell lvl-2" /> All quests

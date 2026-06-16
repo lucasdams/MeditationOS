@@ -218,7 +218,7 @@ export default function TimelinePage() {
   const hasSession = !!items?.some((it) => it.kind === 'session')
 
   return (
-    <main className="dashboard">
+    <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">
         ← Dashboard
       </Link>

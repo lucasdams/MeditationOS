@@ -15,10 +15,11 @@ export function Loading({ label = 'Loading…' }: { label?: string }) {
 
 // An accessible error banner — the `<p role="alert" className="error">` that
 // appeared across the app. Renders nothing when there's no message.
-export function ErrorBanner({ message }: { message?: string | null }) {
+// `id` is optional: pass it when inputs need `aria-describedby` pointing here.
+export function ErrorBanner({ message, id }: { message?: string | null; id?: string }) {
   if (!message) return null
   return (
-    <p role="alert" className="error">
+    <p role="alert" id={id} className="error">
       {message}
     </p>
   )
