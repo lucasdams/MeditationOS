@@ -18,6 +18,7 @@ import {
   writeDraft,
   type SessionDraft,
 } from '../lib/sessionDraft'
+import { dailySuggestion } from '../lib/intentionPrompts'
 import type { MeditationType, SessionCreate } from '../types'
 
 const DRAFT_PAGE = 'meditate'
@@ -58,6 +59,44 @@ const mmss = (totalSec: number) => {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
+// Rating chip row — reuse the same chip pattern as LogSessionPage.
+function RatingRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="session-reflect-row">
+      <span className="session-reflect-label">{label}</span>
+      <div className="log-session-rating" role="group" aria-label={label}>
+        <button
+          type="button"
+          className={`chip${value === '' ? ' chip-active' : ''}`}
+          aria-pressed={value === ''}
+          onClick={() => onChange('')}
+        >
+          —
+        </button>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={`chip${value === String(n) ? ' chip-active' : ''}`}
+            aria-pressed={value === String(n)}
+            onClick={() => onChange(String(n))}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MeditatePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -74,10 +113,23 @@ export default function MeditatePage() {
     xpGained: number
     breakdown: XpLine[]
   } | null>(null)
-  // The id of the just-saved sit, so an optional post-session reading can link to it.
+
+  // Pre-session intention — optional, skippable, max 140 chars.
+  const [intention, setIntention] = useState('')
+
+  // Post-session reflection — shown after the reward overlay closes.
+  const [showReflection, setShowReflection] = useState(false)
+  const [reflectFocus, setReflectFocus] = useState('')
+  const [reflectCalm, setReflectCalm] = useState('')
+  const [reflectNotes, setReflectNotes] = useState('')
+  const [reflectSaving, setReflectSaving] = useState(false)
+  const [reflectError, setReflectError] = useState<string | null>(null)
+
+  // The id of the just-saved sit, so the reflection and optional reading can link to it.
   const savedSessionIdRef = useRef<string | null>(null)
-  // After the reward overlay closes, offer a skippable "log a quick reading?".
+  // After the reflection step, offer a skippable "log a quick reading?".
   const [showReading, setShowReading] = useState(false)
+
   // Recovery for an unsaved sit: a leftover draft to offer on load, plus the live
   // bits the draft/beacon read at tab-close time (kept in refs so listeners see fresh
   // values). `tokenRef` ties a manual save and the auto-save to one row (idempotent).
@@ -220,11 +272,13 @@ export default function MeditatePage() {
     tokenRef.current = null
     clearDraft(DRAFT_PAGE)
     setError(null)
+    setIntention('')
   }
 
   async function saveSession(durationSec: number) {
     setError(null)
     setSaving(true)
+    const trimmedIntention = intention.trim() || undefined
     try {
       const before = await dashboardService.getStats()
       const saved = await sessionService.create({
@@ -232,6 +286,9 @@ export default function MeditatePage() {
         duration_seconds: Math.floor(durationSec), // floor — never inflate the logged time
         occurred_at: startedAtRef.current || new Date().toISOString(),
         client_token: tokenRef.current ?? undefined,
+        // Include intention when set; beacon path doesn't carry it (fine — it's
+        // optional and the reflection step can patch it via PATCH later if needed).
+        intention: trimmedIntention ?? null,
       })
       savedSessionIdRef.current = saved.id
       // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
@@ -279,6 +336,42 @@ export default function MeditatePage() {
     setRestorable(null)
   }
 
+  // Patch the already-saved session with reflection data, then move to biometric offer.
+  async function saveReflection() {
+    const sid = savedSessionIdRef.current
+    if (!sid) {
+      advanceToReading()
+      return
+    }
+    const payload: Record<string, unknown> = {}
+    if (reflectFocus) payload.focus = Number(reflectFocus)
+    if (reflectCalm) payload.calm = Number(reflectCalm)
+    const trimmedNotes = reflectNotes.trim()
+    if (trimmedNotes) payload.notes = trimmedNotes
+    // Nothing to patch — skip straight to the reading offer.
+    if (Object.keys(payload).length === 0) {
+      advanceToReading()
+      return
+    }
+    setReflectSaving(true)
+    setReflectError(null)
+    try {
+      await sessionService.update(sid, payload)
+      advanceToReading()
+    } catch (err) {
+      setReflectError(
+        err instanceof ApiError ? 'Could not save reflection.' : 'Something went wrong.',
+      )
+      setReflectSaving(false)
+    }
+  }
+
+  function advanceToReading() {
+    setShowReflection(false)
+    if (savedSessionIdRef.current) setShowReading(true)
+    else navigate('/')
+  }
+
   const targetSec = targetMin * 60
   const remaining = targetSec > 0 ? Math.max(0, targetSec - elapsed) : elapsed
   // A sit is "underway" once started (running) or partway (paused). Before that, the
@@ -297,6 +390,9 @@ export default function MeditatePage() {
     setIntervalMin(value === 'every5' ? 5 : value === 'every10' ? 10 : 0)
     playBell(volume) // preview the bell you just enabled
   }
+
+  // Stable daily suggestion for the intention placeholder.
+  const intentionPlaceholder = dailySuggestion(new Date())
 
   return (
     <main className="breathe">
@@ -327,7 +423,17 @@ export default function MeditatePage() {
           {started && <span className="meditate-time">{mmss(remaining)}</span>}
         </div>
         <div className="breathe-phase">
-          {running ? 'Be here' : elapsed > 0 ? 'Paused' : 'Ready when you are'}
+          {running ? (
+            intention.trim() ? (
+              <span className="breathe-phase-intention">{intention.trim()}</span>
+            ) : (
+              'Be here'
+            )
+          ) : elapsed > 0 ? (
+            'Paused'
+          ) : (
+            'Ready when you are'
+          )}
         </div>
       </div>
 
@@ -369,6 +475,36 @@ export default function MeditatePage() {
         onChange={(e) => setVolume(Number(e.target.value))}
       />
 
+      {/* Pre-session intention — optional, skippable, hidden once the sit has started. */}
+      {!started && (
+        <div className="session-intention">
+          <label htmlFor="intention" className="session-intention-label">
+            Intention <span className="session-intention-opt">(optional)</span>
+          </label>
+          <textarea
+            id="intention"
+            className="session-intention-input"
+            rows={2}
+            maxLength={140}
+            placeholder={intentionPlaceholder}
+            value={intention}
+            onChange={(e) => setIntention(e.target.value)}
+            aria-describedby="intention-hint"
+          />
+          <p id="intention-hint" className="session-intention-hint">
+            A quiet phrase to carry into your sit.
+          </p>
+        </div>
+      )}
+
+      {/* Show the locked-in intention quietly during the sit. */}
+      {started && intention.trim() && (
+        <p className="session-intention-locked" aria-label="Your intention for this sit">
+          <span className="session-intention-locked-icon" aria-hidden="true">✦</span>{' '}
+          {intention.trim()}
+        </p>
+      )}
+
       {error && (
         <p role="alert" className="error">
           {error}
@@ -405,11 +541,63 @@ export default function MeditatePage() {
           breakdown={reward.breakdown}
           onClose={() => {
             setReward(null)
-            // Offer the optional reading once the reward is dismissed — never blocks.
-            if (savedSessionIdRef.current) setShowReading(true)
+            // After XP is shown, offer the optional reflection — never blocks.
+            if (savedSessionIdRef.current) setShowReflection(true)
             else navigate('/')
           }}
         />
+      )}
+
+      {/* Post-session reflection — shown after the reward overlay, before biometrics.
+          Patches focus/calm/notes onto the already-saved session (no double-save). */}
+      {showReflection && (
+        <div className="biometric-capture" role="dialog" aria-modal="true" aria-label="Reflect on your sit">
+          <div className="biometric-card session-reflect-card">
+            <h2>How was that?</h2>
+            {intention.trim() && (
+              <p className="session-reflect-intention">
+                Your intention: <em>{intention.trim()}</em>
+              </p>
+            )}
+            <p className="biometric-intro">
+              Optional — rate how your sit felt, or jot a quick note.
+            </p>
+
+            <RatingRow label="Focus" value={reflectFocus} onChange={setReflectFocus} />
+            <RatingRow label="Calm" value={reflectCalm} onChange={setReflectCalm} />
+
+            <label htmlFor="reflect-notes" className="session-reflect-notes-label">
+              Notes (optional)
+            </label>
+            <textarea
+              id="reflect-notes"
+              rows={3}
+              placeholder="Anything that arose…"
+              value={reflectNotes}
+              onChange={(e) => setReflectNotes(e.target.value)}
+            />
+
+            {reflectError && (
+              <p role="alert" className="error">
+                {reflectError}
+              </p>
+            )}
+
+            <div className="biometric-actions">
+              <button type="button" onClick={saveReflection} disabled={reflectSaving}>
+                {reflectSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                className="link-neutral"
+                onClick={advanceToReading}
+                disabled={reflectSaving}
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showReading && savedSessionIdRef.current && (

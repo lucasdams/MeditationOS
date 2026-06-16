@@ -156,3 +156,43 @@ def test_list_filters_by_type(client):
     assert walking.status_code == 200
     assert len(walking.json()) == 1
     assert walking.json()[0]["type"] == "walking"
+
+
+# ── Intention field ──────────────────────────────────────────────────────────
+
+def test_create_with_intention(client):
+    _auth(client, "intent@example.com")
+    resp = client.post("/api/v1/sessions", json={**MINDFUL, "intention": "Stay present"})
+    assert resp.status_code == 201
+    assert resp.json()["intention"] == "Stay present"
+
+
+def test_intention_over_140_chars_rejected(client):
+    _auth(client, "intent2@example.com")
+    assert client.post(
+        "/api/v1/sessions", json={**MINDFUL, "intention": "x" * 141}
+    ).status_code == 422
+
+
+def test_intention_is_null_by_default(client):
+    _auth(client, "intent3@example.com")
+    resp = client.post("/api/v1/sessions", json=MINDFUL)
+    assert resp.status_code == 201
+    assert resp.json()["intention"] is None
+
+
+def test_patch_adds_intention_to_saved_session(client):
+    """Reflection step: update focus/calm/intention on an already-saved session."""
+    _auth(client, "patch-intent@example.com")
+    created = client.post("/api/v1/sessions", json=MINDFUL)
+    assert created.status_code == 201
+    sid = created.json()["id"]
+
+    patched = client.patch(
+        f"/api/v1/sessions/{sid}",
+        json={"focus": 4, "calm": 5, "intention": "Be here"},
+    )
+    assert patched.status_code == 200
+    body = patched.json()
+    assert body["intention"] == "Be here"
+    assert body["focus"] == 4 and body["calm"] == 5

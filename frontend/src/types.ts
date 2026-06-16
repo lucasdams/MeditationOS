@@ -51,6 +51,7 @@ export interface Session {
   exhale_seconds: number | null
   cycles_completed: number | null
   breaths_per_minute: number | null
+  intention: string | null // pre-session intention (≤ 140 chars)
   created_at: string
 }
 
@@ -64,6 +65,7 @@ export interface SessionCreate {
   inhale_seconds?: number | null
   exhale_seconds?: number | null
   cycles_completed?: number | null
+  intention?: string | null
   // Client idempotency key so an auto-save (tab close) + manual save collapse to one row.
   client_token?: string
 }

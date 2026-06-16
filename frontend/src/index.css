@@ -3605,6 +3605,111 @@ textarea:focus-visible,
   padding: 0.35rem 0.9rem;
 }
 
+/* Pre-session intention (optional text field shown before starting). */
+.session-intention {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.session-intention-label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.3rem;
+}
+
+.session-intention-opt {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.session-intention-input {
+  width: 100%;
+  resize: none;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+}
+
+.session-intention-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.session-intention-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Locked-in intention shown quietly during the sit. */
+.session-intention-locked {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0.1rem 0 0.65rem;
+  font-style: italic;
+}
+
+.session-intention-locked-icon {
+  color: var(--accent);
+  font-style: normal;
+}
+
+/* Phase label variant when an intention is set. */
+.breathe-phase-intention {
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+/* Post-session reflection card — wider than the default biometric card, more rows. */
+.session-reflect-card {
+  width: 28rem;
+}
+
+.session-reflect-intention {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.session-reflect-intention em {
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+/* Label + chip row for focus/calm ratings inside the reflection card. */
+.session-reflect-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.65rem;
+}
+
+.session-reflect-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Rating chips inside the reflect card use the same .log-session-rating layout. */
+.session-reflect-card .log-session-rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.session-reflect-notes-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
 /* Schedule page. */
 .schedule-form,
 .log-session form {
