@@ -19,6 +19,15 @@ const QUEST_LINKS: Record<string, string> = {
   journal: '/journal',
 }
 
+// Quick-action tiles — one tap to the five main features from the dashboard.
+const FEATURE_TILES = [
+  { label: 'Meditate', emoji: '🧘', to: '/meditate', activity: 'meditate' as const },
+  { label: 'Breathe',  emoji: '🫁', to: '/breathe',  activity: 'breathe'  as const },
+  { label: 'Gratitude',emoji: '🙏', to: '/gratitude',activity: 'gratitude'as const },
+  { label: 'Journal',  emoji: '📓', to: '/journal',  activity: 'journal'  as const },
+  { label: 'Sanctuary',emoji: '🌱', to: '/sanctuary',activity: null },
+] as const
+
 const formatTotal = (seconds: number) => {
   const h = Math.floor(seconds / 3600)
   const m = Math.round((seconds % 3600) / 60)
@@ -77,7 +86,23 @@ export default function DashboardPage() {
 
       {stats && <LevelCard stats={stats} />}
 
-      <WeeklyReview />
+      {/* Quick-access tiles — one tap to every main feature. */}
+      <nav className="feature-tiles" aria-label="Quick access">
+        {FEATURE_TILES.map(({ label, emoji, to, activity }) => {
+          const accent = activity ? ACTIVITY_COLORS[activity] : '#6b6b70'
+          return (
+            <Link
+              key={to}
+              to={to}
+              className="feature-tile"
+              style={{ ['--tile-accent' as string]: accent }}
+            >
+              <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
+              <span className="feature-tile-label">{label}</span>
+            </Link>
+          )
+        })}
+      </nav>
 
       <MoodCheckin />
 
@@ -99,17 +124,20 @@ export default function DashboardPage() {
                   className={q.done ? 'quest done' : 'quest'}
                   style={accent ? { ['--activity-accent' as string]: accent } : undefined}
                 >
-                  <span className="quest-check" aria-hidden="true">
-                    {q.done ? '✓' : '○'}
-                  </span>
-                  <Link to={to} className="quest-label">
-                    {q.label}
-                  </Link>
-                  {q.target > 1 && !q.done && (
-                    <span className="quest-progress">
-                      {q.progress}/{q.target}
+                  <Link to={to} className="quest-row-link" aria-label={`${q.label} — open feature`}>
+                    <span className="quest-check" aria-hidden="true">
+                      {q.done ? '✓' : '○'}
                     </span>
-                  )}
+                    <span className="quest-label">
+                      {q.label}
+                    </span>
+                    {q.target > 1 && !q.done && (
+                      <span className="quest-progress">
+                        {q.progress}/{q.target}
+                      </span>
+                    )}
+                    <span className="quest-arrow" aria-hidden="true">→</span>
+                  </Link>
                 </li>
               )
             })}
@@ -178,6 +206,9 @@ export default function DashboardPage() {
           )}
         </section>
       )}
+
+      {/* Weekly retrospective closes the page — today's practice leads, history follows. */}
+      <WeeklyReview />
     </main>
   )
 }
