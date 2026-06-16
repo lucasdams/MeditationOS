@@ -31,9 +31,11 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.biometric_reading import BiometricReading
 from app.models.goal import Goal
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
+from app.models.mood_log import MoodLog
 from app.models.sanctuary import SanctuaryPlanting
 from app.models.session import Session as PracticeSession
 from app.models.user import QUEST_FEATURES, User
@@ -423,8 +425,10 @@ def export_user_data(db: Session, user: User) -> dict:
         "sessions": owned(PracticeSession),
         "gratitude": owned(GratitudeEntry),
         "journals": owned(Journal),
+        "mood_logs": owned(MoodLog),
         "goals": owned(Goal),
         "sanctuary": owned(SanctuaryPlanting),
+        "biometric_readings": owned(BiometricReading),
     }
 
 

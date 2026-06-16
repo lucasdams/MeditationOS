@@ -24,12 +24,17 @@ def test_export_includes_account_and_owned_data(client):
     _auth(client, "exp@example.com")
     _session(client)
     client.post("/api/v1/gratitude", json={"category": "people", "text": "thanks"})
+    client.post("/api/v1/mood-logs", json={"mood": "calm"})
     body = client.get("/api/v1/auth/export").json()
     assert body["account"]["email"] == "exp@example.com"
     assert "password_hash" not in body["account"]  # never exported
     assert len(body["sessions"]) == 1
     assert len(body["gratitude"]) == 1
-    assert set(body) >= {"account", "sessions", "gratitude", "journals", "goals", "sanctuary"}
+    assert len(body["mood_logs"]) == 1
+    assert set(body) >= {
+        "account", "sessions", "gratitude", "journals", "goals", "sanctuary",
+        "mood_logs", "biometric_readings",
+    }
 
 
 def test_export_is_user_scoped(client):

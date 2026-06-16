@@ -77,6 +77,7 @@ export interface DailyTotal {
 
 export interface DailyQuest {
   key: string
+  variant: string
   label: string
   xp: number
   done: boolean
