@@ -50,6 +50,8 @@ GratitudeCategory = Literal[
 class GratitudeCreate(BaseModel):
     """A new gratitude moment."""
 
+    model_config = ConfigDict(extra="forbid")
+
     category: GratitudeCategory
     text: str = Field(min_length=1, max_length=500)
 

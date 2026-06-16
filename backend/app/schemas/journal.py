@@ -28,6 +28,8 @@ Mood = Literal[
 class JournalCreate(BaseModel):
     """A new reflection. Optionally tagged with a mood and tied to a session."""
 
+    model_config = ConfigDict(extra="forbid")
+
     body: str = Field(min_length=1, max_length=5000)
     mood: Mood | None = None
     session_id: uuid.UUID | None = None
@@ -35,6 +37,8 @@ class JournalCreate(BaseModel):
 
 class JournalUpdate(BaseModel):
     """Edit a reflection. Only provided fields change."""
+
+    model_config = ConfigDict(extra="forbid")
 
     body: str | None = Field(default=None, min_length=1, max_length=5000)
     mood: Mood | None = None

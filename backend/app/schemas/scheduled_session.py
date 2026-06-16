@@ -11,6 +11,8 @@ from app.schemas.session import SessionType
 class ScheduledSessionCreate(BaseModel):
     """Plan a future practice."""
 
+    model_config = ConfigDict(extra="forbid")
+
     type: SessionType
     scheduled_at: datetime
     duration_minutes: int | None = Field(default=None, gt=0, le=600)

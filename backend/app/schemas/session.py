@@ -21,8 +21,12 @@ SessionType = Literal[
 
 
 class SessionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: SessionType
-    duration_seconds: int = Field(gt=0)
+    # Capped at 24h: an unbounded value would inflate XP→level→coins and break the
+    # sanctuary economy.
+    duration_seconds: int = Field(gt=0, le=86_400)
     occurred_at: datetime
     notes: str | None = Field(default=None, max_length=2000)
     focus: int | None = Field(default=None, ge=1, le=5)
@@ -38,8 +42,10 @@ class SessionCreate(BaseModel):
 class SessionUpdate(BaseModel):
     """All fields optional — only provided fields are changed."""
 
+    model_config = ConfigDict(extra="forbid")
+
     type: SessionType | None = None
-    duration_seconds: int | None = Field(default=None, gt=0)
+    duration_seconds: int | None = Field(default=None, gt=0, le=86_400)
     occurred_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=2000)
     focus: int | None = Field(default=None, ge=1, le=5)

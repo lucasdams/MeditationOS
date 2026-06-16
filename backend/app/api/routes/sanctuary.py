@@ -7,11 +7,13 @@ import uuid
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api.deps import get_current_user, require_verified_email
+from app.core.config import settings
 from app.core.db import get_db
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.schemas.sanctuary import (
     BuyRequest,
@@ -61,7 +63,9 @@ def get_sanctuary(
 
 
 @router.post("/buy", response_model=SanctuaryScene, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.write_rate_limit)
 def buy_item(
+    request: Request,  # required by the rate limiter
     body: BuyRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -80,7 +84,9 @@ def buy_item(
 
 
 @router.post("/items/{planting_id}/customize", response_model=SanctuaryScene)
+@limiter.limit(settings.write_rate_limit)
 def customize_item(
+    request: Request,  # required by the rate limiter
     planting_id: uuid.UUID,
     body: CustomizeRequest,
     db: DBSession = Depends(get_db),
@@ -111,7 +117,9 @@ def customize_item(
 
 
 @router.patch("/items/{planting_id}", response_model=SanctuaryScene)
+@limiter.limit(settings.write_rate_limit)
 def personalize_item(
+    request: Request,  # required by the rate limiter
     planting_id: uuid.UUID,
     body: PersonalizeRequest,
     db: DBSession = Depends(get_db),
@@ -132,7 +140,9 @@ def personalize_item(
 
 
 @router.post("/items/{planting_id}/move", response_model=SanctuaryScene)
+@limiter.limit(settings.write_rate_limit)
 def move_item(
+    request: Request,  # required by the rate limiter
     planting_id: uuid.UUID,
     body: MoveRequest,
     db: DBSession = Depends(get_db),

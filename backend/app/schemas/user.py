@@ -12,12 +12,16 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 class UserCreate(BaseModel):
     """Registration input."""
 
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
 
 
 class ClaimAccount(BaseModel):
     """Convert a guest account into a real one — give it an email + password."""
+
+    model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
@@ -26,6 +30,8 @@ class ClaimAccount(BaseModel):
 class UserLogin(BaseModel):
     """Login input."""
 
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     password: str
 
@@ -33,11 +39,15 @@ class UserLogin(BaseModel):
 class UsernameUpdate(BaseModel):
     """Set / change the public username."""
 
+    model_config = ConfigDict(extra="forbid")
+
     username: str = Field(min_length=3, max_length=20, pattern=r"^[a-zA-Z0-9_]+$")
 
 
 class GoogleLogin(BaseModel):
     """Sign in with Google — the ID token (JWT) from Google Identity Services."""
+
+    model_config = ConfigDict(extra="forbid")
 
     credential: str = Field(min_length=1)
 
@@ -45,12 +55,16 @@ class GoogleLogin(BaseModel):
 class TimezoneUpdate(BaseModel):
     """Set the user's IANA timezone (e.g. "Asia/Tokyo")."""
 
+    model_config = ConfigDict(extra="forbid")
+
     timezone: str = Field(min_length=1, max_length=64)
 
 
 class QuestFeaturesUpdate(BaseModel):
     """Choose which daily-activity quests to receive (validated in the service:
     each must be a known feature and at least 3 must be selected)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     features: list[str]
 
@@ -62,6 +76,8 @@ class PasswordUpdate(BaseModel):
     omitted when a Google-only account is setting a password for the first time.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     current_password: str | None = None
     new_password: str = Field(min_length=8, max_length=128)
 
@@ -70,6 +86,8 @@ class EmailUpdate(BaseModel):
     """Change the account email. Re-authenticates with the current password; the
     new address must be re-verified before it's trusted."""
 
+    model_config = ConfigDict(extra="forbid")
+
     new_email: EmailStr
     current_password: str
 
@@ -77,11 +95,15 @@ class EmailUpdate(BaseModel):
 class PasswordResetRequest(BaseModel):
     """Ask for a reset link to be emailed."""
 
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
 
 
 class PasswordResetConfirm(BaseModel):
     """Complete a reset using the emailed token."""
+
+    model_config = ConfigDict(extra="forbid")
 
     token: str = Field(min_length=1)
     new_password: str = Field(min_length=8, max_length=128)
@@ -90,11 +112,15 @@ class PasswordResetConfirm(BaseModel):
 class EmailVerify(BaseModel):
     """Confirm an email address using the emailed token."""
 
+    model_config = ConfigDict(extra="forbid")
+
     token: str = Field(min_length=1)
 
 
 class ReminderUpdate(BaseModel):
     """Enable/disable the daily practice reminder and set its local hour (0–23)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool
     hour: int | None = Field(default=None, ge=0, le=23)
@@ -108,6 +134,8 @@ class ReminderUpdate(BaseModel):
 
 class WeeklySummaryUpdate(BaseModel):
     """Enable/disable the weekly summary email and set its local send day (0=Mon…6=Sun)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool
     day: int | None = Field(default=None, ge=0, le=6)

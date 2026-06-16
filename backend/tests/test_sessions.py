@@ -21,6 +21,26 @@ def test_create_session(client):
     assert "id" in body
 
 
+def test_duration_over_cap_rejected(client):
+    # Security audit fix #3: an unbounded duration would inflate XP→level→coins.
+    _auth(client, "huge@example.com")
+    payload = {**MINDFUL, "duration_seconds": 86_401}  # > 24h cap
+    assert client.post("/api/v1/sessions", json=payload).status_code == 422
+
+
+def test_duration_at_cap_accepted(client):
+    _auth(client, "atcap@example.com")
+    payload = {**MINDFUL, "duration_seconds": 86_400}  # exactly 24h
+    assert client.post("/api/v1/sessions", json=payload).status_code == 201
+
+
+def test_unexpected_field_rejected(client):
+    # extra="forbid" parity (audit fix #7).
+    _auth(client, "extra@example.com")
+    payload = {**MINDFUL, "surprise": "nope"}
+    assert client.post("/api/v1/sessions", json=payload).status_code == 422
+
+
 def test_client_token_makes_create_idempotent(client):
     _auth(client, "idem@example.com")
     payload = {**MINDFUL, "client_token": "abc-123"}
