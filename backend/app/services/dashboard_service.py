@@ -337,9 +337,12 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     #
     # The quest the user faces in each category rotates by date (quest_pool.quest_for),
     # and each variant pays its own XP. Earning is independent of which quests the user
-    # surfaced — doing the day's activity for any of the four categories earns that
-    # day's variant's XP. We sum over every day with any activity.
-    all_active_days = session_days | gratitude_days | journal_days
+    # surfaced — doing the day's activity for any category earns that day's variant's XP.
+    # We sum over every day that satisfies ANY quest condition: a day can complete a quest
+    # (e.g. a sub-60s slow-breath) without reaching MIN_PRACTICE_SECONDS, so it would be
+    # missing from session_days; unioning the cond_days value-sets ensures every such day
+    # is scanned for its bonus.
+    all_active_days: set[date] = set().union(*cond_days.values())
     quest_bonus_xp = 0
     for day in all_active_days:
         for category in QUEST_FEATURES:

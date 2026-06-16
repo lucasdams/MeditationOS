@@ -1,6 +1,8 @@
 """Streak calculation via GET /api/v1/dashboard/stats."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+
+from app.services.time_utils import compute_streaks
 
 
 def _auth(client, email):
@@ -112,3 +114,35 @@ def test_same_day_counts_once(client):
     _log(client, 0)
     _log(client, 0)  # second session same day
     assert _streaks(client) == (1, 1)
+
+
+# --- compute_streaks: the `longest` rule (rest bridges excluded) -------------------
+# Documented rule: `longest` is the longest STRICTLY-consecutive run; rest-day bridges
+# never extend it. They only ever extend the *current* streak, and the only time a
+# bridge shows up in `longest` is the invariant guard that keeps current ≤ longest.
+
+
+def test_longest_excludes_rest_bridge_in_a_past_run():
+    # A past run of 3 days that contains a single-day gap (a bridge): days 10,9 then a
+    # skipped day 8, then day 7. The current streak has long lapsed (today is much
+    # later), so the bridge is NOT the current streak. `longest` must report the longest
+    # strictly-consecutive sub-run (2), not 3 — the bridge is excluded consistently.
+    today = date(2025, 1, 30)
+    dates = {date(2025, 1, 20), date(2025, 1, 21), date(2025, 1, 23)}
+    current, longest, rest_used = compute_streaks(dates, today)
+    assert current == 0  # lapsed long ago
+    assert longest == 2  # the 20–21 run; the 21→23 bridge is not folded in
+    assert rest_used is False
+
+
+def test_longest_at_least_current_invariant():
+    # The current streak (with its bridge) can exceed any strictly-consecutive run.
+    # `longest` is raised to it only to keep current ≤ longest.
+    today = date(2025, 1, 30)
+    # today, yesterday skipped (bridged), then 28th — current streak counts 2 real days
+    # across a bridge; the longest strictly-consecutive run here is just 1.
+    dates = {date(2025, 1, 30), date(2025, 1, 28)}
+    current, longest, rest_used = compute_streaks(dates, today)
+    assert current == 2
+    assert rest_used is True
+    assert longest >= current  # invariant holds; longest is bumped to 2

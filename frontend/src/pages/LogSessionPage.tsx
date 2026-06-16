@@ -93,7 +93,10 @@ export default function LogSessionPage() {
       await sessionService.create({
         type,
         duration_seconds: Math.round(mins * 60),
-        occurred_at: occurredAt,
+        // The picker holds a tz-naive local "YYYY-MM-DDThh:mm"; send a tz-aware ISO
+        // string so the backend (which treats naive as UTC) buckets the session on the
+        // user's local day, matching MeditatePage / BiometricCapture.
+        occurred_at: new Date(occurredAt).toISOString(),
         notes: notes.trim() || null,
         focus: focus ? Number(focus) : null,
         calm: calm ? Number(calm) : null,

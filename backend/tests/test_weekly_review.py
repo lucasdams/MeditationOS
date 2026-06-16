@@ -65,6 +65,21 @@ def test_top_mood_combines_checkins_and_journals(client):
     assert body["mood_counts"]["focused"] == 1
 
 
+def test_top_mood_tie_break_is_deterministic(client):
+    # Two moods tie on count. The tie-break must be deterministic (alphabetical), not
+    # dependent on DB row / insertion order, so repeated calls always agree.
+    _auth(client, "wr_tie@example.com")
+    client.post("/api/v1/mood-logs", json={"mood": "restless"})
+    client.post("/api/v1/mood-logs", json={"mood": "calm"})
+    body = client.get("/api/v1/dashboard/weekly-review").json()
+    assert body["mood_counts"]["calm"] == 1
+    assert body["mood_counts"]["restless"] == 1
+    # "calm" < "restless" alphabetically → calm wins the tie, every time.
+    assert body["top_mood"] == "calm"
+    # Stable across repeated reads.
+    assert client.get("/api/v1/dashboard/weekly-review").json()["top_mood"] == "calm"
+
+
 def test_user_scoped(client):
     _auth(client, "wr_owner@example.com")
     _session(client, 0)

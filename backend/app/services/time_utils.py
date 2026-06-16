@@ -32,7 +32,12 @@ def zone(tz: str | None) -> ZoneInfo:
 def compute_streaks(dates: set[date], today: date) -> tuple[int, int, bool]:
     """Return (current_streak_days, longest_streak_days, rest_day_used).
 
-    - longest: the longest run of consecutive days ever (at least the current streak).
+    - longest: the longest run of strictly consecutive practice days ever. Rest-day
+      bridges are NEVER folded into `longest` (the rule is applied consistently to every
+      run, not just the current one) — they only ever extend the *current* streak. The
+      one exception is purely an invariant guard: if the insured current streak happens to
+      exceed the longest consecutive run, `longest` is raised to it so `current ≤ longest`
+      always holds.
     - current: the run ending today OR yesterday (grace through end of today), allowing
       up to REST_DAYS_PER_STREAK single-day gaps to be bridged; 0 if it has lapsed.
     - rest_day_used: whether the current streak is currently leaning on a rest day.
@@ -63,5 +68,6 @@ def compute_streaks(dates: set[date], today: date) -> tuple[int, int, bool]:
         else:
             break
 
-    # The insured current streak counts toward "longest" too (so current ≤ longest).
+    # `longest` is the longest strictly-consecutive run (rest bridges excluded). The
+    # max() only enforces the invariant that the current streak can't exceed it.
     return current, max(longest, current), rest_used
