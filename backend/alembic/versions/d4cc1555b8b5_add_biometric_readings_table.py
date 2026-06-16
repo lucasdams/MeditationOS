@@ -6,7 +6,7 @@ column distinguishes manual/estimated now and camera/wearable later. Optional
 supports the calming-delta pairing. One logical change; reversible.
 
 Revision ID: d4cc1555b8b5
-Revises: b1c2d3e4f5a6
+Revises: c3d4e5f6a7b8
 Create Date: 2026-06-16 16:00:00.000000
 
 """
@@ -17,7 +17,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'd4cc1555b8b5'
-down_revision: Union[str, None] = 'b1c2d3e4f5a6'
+down_revision: Union[str, None] = 'c3d4e5f6a7b8'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
