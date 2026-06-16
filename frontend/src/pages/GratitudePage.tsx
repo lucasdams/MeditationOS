@@ -255,6 +255,7 @@ export default function GratitudePage() {
           <textarea
             rows={3}
             value={text}
+            maxLength={500}
             placeholder={category === 'custom' ? 'Write your own…' : "I'm grateful for…"}
             onChange={(e) => setText(e.target.value)}
           />

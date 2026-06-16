@@ -7,6 +7,7 @@ import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { MOOD_COLORS, MOOD_META, gratitudeColor, tint } from '../lib/colors'
+import { csvEscape } from '../lib/csvEscape'
 import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import type { MeditationType, Mood, Session } from '../types'
 
@@ -29,8 +30,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
 const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
 
-// CSV export (sessions only) — quote per RFC 4180.
-const csvEscape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+// CSV export (sessions only) — quote per RFC 4180; injection-safe via csvEscape.
 function toCsv(rows: Session[]): string {
   const header = ['type', 'duration_minutes', 'occurred_at', 'focus', 'calm', 'breaths_per_minute', 'notes']
   const lines = rows.map((s) =>
@@ -313,7 +313,7 @@ export default function TimelinePage() {
                     </label>
                     <label>
                       Notes
-                      <textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                      <textarea rows={2} value={editNotes} maxLength={2000} onChange={(e) => setEditNotes(e.target.value)} />
                     </label>
                     <div className="session-edit-actions">
                       <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
