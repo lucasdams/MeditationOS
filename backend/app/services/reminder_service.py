@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -54,40 +54,50 @@ def update_settings(db: Session, user: User, *, enabled: bool, hour: int | None)
     return user
 
 
-def _practice_days(db: Session, user_id: uuid.UUID, tz: str) -> set[date]:
-    """Return the set of local dates on which the user has at least MIN_PRACTICE_SECONDS
-    of recorded sessions. Mirrors the streak logic in dashboard_service."""
+# How far back the streak/grace computation can possibly reach. A streak walk only ever
+# steps back one local day at a time (bridging at most REST_DAYS_PER_STREAK single-day
+# gaps), so for the at-risk / current-length decision it never needs days older than a
+# couple of months. We bound the scan to this window so the query never reads a user's
+# entire session history; the streak result for any realistic streak is unchanged.
+_STREAK_HISTORY_DAYS = 60
+
+
+def _practice_days(db: Session, user_id: uuid.UUID, tz: str, *, today: date) -> set[date]:
+    """Return the set of recent local dates (within the last `_STREAK_HISTORY_DAYS`) on
+    which the user has at least MIN_PRACTICE_SECONDS of recorded sessions. Mirrors the
+    streak logic in dashboard_service. Bounded to the recent window because the streak /
+    grace computation only walks back day-by-day and never reaches older history."""
     from app.services.dashboard_service import MIN_PRACTICE_SECONDS
 
+    window_start = today - timedelta(days=_STREAK_HISTORY_DAYS)
     local_day = local_date(tz, PracticeSession.occurred_at)
     rows = db.execute(
         select(local_day)
-        .where(PracticeSession.user_id == user_id)
+        .where(PracticeSession.user_id == user_id, local_day >= window_start)
         .group_by(local_day)
         .having(func.sum(PracticeSession.duration_seconds) >= MIN_PRACTICE_SECONDS)
     ).all()
     return {row[0] for row in rows}
 
 
-def _streak_at_risk(days: set[date], today: date) -> bool:
-    """Return True when the user's active streak would break without practice today.
+def _at_risk_streak(days: set[date], today: date) -> int:
+    """Return the active streak length when it would break without practice today, else 0.
 
-    Accepts a pre-computed ``days`` set so the caller can reuse it (avoids a
-    duplicate DB query when the streak length is also needed for email copy).
-
-    False when:
+    Accepts a pre-computed ``days`` set and computes the streak exactly once, returning
+    its length so the caller can reuse it for the email/push copy (avoids a duplicate
+    `compute_streaks` call). Returns 0 — meaning "not at risk, don't nudge" — when:
     - the user has already practiced today (streak is safe);
     - the streak is 0 (nothing to protect);
     - the streak is leaning on the rest-day allowance for today's gap (still safe today).
     """
     if today in days:
-        return False  # already practiced today
+        return 0  # already practiced today
     current, _, rest_day_used = compute_streaks(days, today)
     if current == 0:
-        return False  # no active streak to protect
+        return 0  # no active streak to protect
     if rest_day_used:
-        return False  # rest-day insurance is covering today; streak is safe
-    return True
+        return 0  # rest-day insurance is covering today; streak is safe
+    return current
 
 
 def _practiced_today(db: Session, user_id: uuid.UUID, today: date, tz: str) -> bool:
@@ -205,14 +215,13 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
         tz = user.timezone or "UTC"
         today = local_now.date()
 
-        # Fetch practice days once; pass into both the risk check and streak copy.
-        days = _practice_days(db, user.id, tz)
+        # Fetch recent practice days once; the at-risk check computes the streak a single
+        # time and hands back its length for the copy (no duplicate compute_streaks).
+        days = _practice_days(db, user.id, tz, today=today)
 
-        if not _streak_at_risk(days, today):
+        current_streak = _at_risk_streak(days, today)
+        if current_streak == 0:
             continue  # already practiced, no streak, or rest-day is covering today
-
-        # Compute current streak length for personalised copy.
-        current_streak, _, _ = compute_streaks(days, today)
 
         # Mark as handled for the day NOW — crash-safe; gates the push send below.
         user.streak_save_last_sent_at = now_utc

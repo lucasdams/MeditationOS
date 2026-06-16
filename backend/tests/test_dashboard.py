@@ -2,6 +2,11 @@
 
 from datetime import UTC, date, datetime, timedelta
 
+from app.models.gratitude import GratitudeEntry
+from app.models.journal import Journal
+from app.models.session import Session as PracticeSession
+from app.models.user import User
+from app.services import dashboard_service
 from app.services.quest_pool import quest_for
 
 
@@ -271,3 +276,107 @@ def test_activity_partial_quests_not_flagged(client):
     days = client.get("/api/v1/dashboard/activity").json()["days"]
     day = next(d for d in days if d["date"] == today)
     assert day["all_quests"] is False
+
+
+# --- wallet basis ↔ dashboard parity ----------------------------------------
+# get_wallet_basis is the lightweight path the sanctuary wallet reads; it must return
+# the SAME earned XP, earned-XP level, and current streak that the full dashboard
+# (get_stats) computes, across many session shapes — otherwise coins would drift.
+
+
+def _seed_varied_history(db_session, user_id, *, base: date):
+    """A messy-but-realistic history: a multi-day streak, breathing + meditation of
+    several lengths, multiple sessions per day, sub-minute sits, plus gratitude and
+    journal entries — exercising every XP term the wallet depends on."""
+    def at(d, hour=8, minute=0):
+        return datetime(d.year, d.month, d.day, hour, minute, tzinfo=UTC)
+
+    rows = [
+        # A 5-day consecutive streak ending on `base` (drives streak + streak bonus).
+        (base - timedelta(days=4), 600, "mindfulness", None, None),
+        (base - timedelta(days=3), 1800, "mindfulness", None, None),       # long sit
+        (base - timedelta(days=2), 120, "resonance_breathing", 5, 7),      # slow breathe
+        (base - timedelta(days=1), 4000, "mindfulness", None, None),       # past tier 3
+        (base, 600, "mindfulness", None, None),
+        (base, 600, "mindfulness", None, None),                            # double sit
+        (base, 360, "resonance_breathing", 6, 6),                          # deep breathe
+        (base, 30, "mindfulness", None, None),                             # sub-minute → 0 XP
+    ]
+    for d, secs, type_, inhale, exhale in rows:
+        db_session.add(
+            PracticeSession(
+                user_id=user_id,
+                type=type_,
+                duration_seconds=secs,
+                occurred_at=at(d),
+                inhale_seconds=inhale,
+                exhale_seconds=exhale,
+            )
+        )
+    # Gratitude: more than the daily cap on one day (anti-farm), one on another.
+    for i in range(7):
+        db_session.add(
+            GratitudeEntry(
+                user_id=user_id, category="people", text=f"g{i}",
+                created_at=datetime(base.year, base.month, base.day, 9, i, tzinfo=UTC),
+            )
+        )
+    db_session.add(
+        GratitudeEntry(
+            user_id=user_id, category="people", text="earlier",
+            created_at=at(base - timedelta(days=2), 10),
+        )
+    )
+    # Journals: one with a mood, one without, both same day.
+    db_session.add(
+        Journal(
+            user_id=user_id, body="reflected", mood="calm",
+            created_at=at(base - timedelta(days=1), 21),
+        )
+    )
+    db_session.add(
+        Journal(
+            user_id=user_id, body="more",
+            created_at=at(base - timedelta(days=1), 22),
+        )
+    )
+    db_session.commit()
+
+
+def test_get_wallet_basis_matches_get_stats(db_session):
+    user = User(email="walletparity@example.com", password_hash="x")
+    db_session.add(user)
+    db_session.commit()
+    base = date(2026, 6, 16)
+    _seed_varied_history(db_session, user.id, base=base)
+
+    # Check across multiple "today"s and timezones — the day rollover shifts which days
+    # count, so this exercises many distinct XP/streak shapes from one seeded history.
+    cases = [
+        (base, "UTC"),
+        (base, "Asia/Tokyo"),
+        (base, "America/Los_Angeles"),
+        (base + timedelta(days=1), "UTC"),   # streak lapses → streak bonus drops, coins don't
+        (base + timedelta(days=3), "UTC"),   # well after the streak ended
+    ]
+    for today, tz in cases:
+        stats = dashboard_service.get_stats(db_session, user.id, today=today, tz=tz)
+        wallet = dashboard_service.get_wallet_basis(db_session, user.id, today=today, tz=tz)
+
+        expected_earned = stats.xp - stats.streak_bonus_xp
+        expected_level, _, _ = dashboard_service._level_progress(expected_earned)
+        assert wallet.earned_xp == expected_earned, (today, tz)
+        assert wallet.level == expected_level, (today, tz)
+        assert wallet.current_streak == stats.current_streak_days, (today, tz)
+
+
+def test_get_wallet_basis_empty_user(db_session):
+    user = User(email="walletempty@example.com", password_hash="x")
+    db_session.add(user)
+    db_session.commit()
+    wallet = dashboard_service.get_wallet_basis(
+        db_session, user.id, today=date(2026, 6, 16), tz="UTC"
+    )
+    assert wallet.earned_xp == 0
+    assert wallet.level == 1  # _level_progress(0) → level 1
+    assert wallet.current_streak == 0
