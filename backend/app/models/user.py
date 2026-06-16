@@ -100,5 +100,15 @@ class User(Base):
         env-config ethos. Surfaced to clients so the UI can gate admin nav/routes,
         and enforced server-side by the `require_admin` dependency. Guests have a
         synthetic email that won't be in the allowlist, so they can never be admins.
+
+        Email verification is required regardless of the global
+        REQUIRE_EMAIL_VERIFICATION flag: an unverified registrant of an allowlisted
+        address must not gain admin access before proving ownership of that address.
+        Google sign-ins arrive pre-verified (email_verified=True), so they are not
+        affected.
         """
-        return bool(self.email) and self.email.lower() in settings.admin_emails_set
+        return (
+            bool(self.email)
+            and self.email_verified
+            and self.email.lower() in settings.admin_emails_set
+        )

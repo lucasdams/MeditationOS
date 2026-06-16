@@ -3,11 +3,16 @@
 Admins are designated via the ADMIN_EMAILS allowlist. Tests set it by monkeypatching
 `settings.admin_emails` (the env value); `is_admin` is derived from it on the fly, so no
 DB column or migration is involved.
+
+Email verification is required for admin access regardless of the global
+REQUIRE_EMAIL_VERIFICATION flag.  The helpers below use `db_session` to set
+`email_verified=True` directly rather than sending a real verification email.
 """
 
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import text
 
 from app.core.config import settings
 
@@ -23,6 +28,15 @@ def _login(client, email):
 def _auth(client, email):
     _register(client, email)
     _login(client, email)
+
+
+def _verify_email(db_session, email: str) -> None:
+    """Directly mark an email address as verified in the test DB."""
+    db_session.execute(
+        text("UPDATE users SET email_verified = TRUE WHERE email = :email"),
+        {"email": email},
+    )
+    db_session.commit()
 
 
 @pytest.fixture
@@ -44,16 +58,18 @@ def test_me_reports_non_admin(client):
     assert body["is_admin"] is False
 
 
-def test_me_reports_admin(client, as_admin):
+def test_me_reports_admin(client, db_session, as_admin):
     as_admin("boss@example.com")
     _auth(client, "boss@example.com")
+    _verify_email(db_session, "boss@example.com")
     body = client.get("/api/v1/auth/me").json()
     assert body["is_admin"] is True
 
 
-def test_admin_match_is_case_insensitive(client, as_admin):
+def test_admin_match_is_case_insensitive(client, db_session, as_admin):
     as_admin("Boss@Example.com")
     _auth(client, "boss@example.com")
+    _verify_email(db_session, "boss@example.com")
     assert client.get("/api/v1/auth/me").json()["is_admin"] is True
 
 
@@ -70,9 +86,10 @@ def test_metrics_forbidden_for_non_admin(client):
     assert client.get("/api/v1/admin/metrics").status_code == 403
 
 
-def test_metrics_allowed_for_admin(client, as_admin):
+def test_metrics_allowed_for_admin(client, db_session, as_admin):
     as_admin("boss@example.com")
     _auth(client, "boss@example.com")
+    _verify_email(db_session, "boss@example.com")
     assert client.get("/api/v1/admin/metrics").status_code == 200
 
 
@@ -84,13 +101,36 @@ def test_non_admin_cannot_reach_any_admin_route(client):
         assert getattr(client, method)(path).status_code == 403
 
 
+# ── unverified allowlisted email must NOT grant admin (escalation guard) ──
+
+
+def test_unverified_admin_email_is_blocked(client, as_admin):
+    """Privilege-escalation guard: registering an allowlisted email without verifying
+    it must NOT grant admin access.  `is_admin` must be False for an unverified user,
+    and the admin endpoint must return 403 — not 200."""
+    as_admin("ops@example.com")
+    # Register with the allowlisted email but do NOT verify it.
+    _auth(client, "ops@example.com")
+
+    # is_admin must be False for an unverified account.
+    me = client.get("/api/v1/auth/me").json()
+    assert me["is_admin"] is False, (
+        "is_admin must be False when email is unverified, "
+        "even if the address is in ADMIN_EMAILS"
+    )
+
+    # The admin endpoint must deny the request.
+    assert client.get("/api/v1/admin/metrics").status_code == 403
+
+
 # ── metrics aggregates are sane ────────────────────────────────────────────
 
 
-def test_metrics_aggregates(client, as_admin):
+def test_metrics_aggregates(client, db_session, as_admin):
     as_admin("boss@example.com")
     # A registered admin who practices, plus a separate guest.
     _auth(client, "boss@example.com")
+    _verify_email(db_session, "boss@example.com")
     today = datetime.now(UTC).date()
     client.post(
         "/api/v1/sessions",
@@ -113,8 +153,6 @@ def test_metrics_aggregates(client, as_admin):
     assert body["users"]["total"] >= 2
     assert body["users"]["guests"] >= 1
     assert body["users"]["registered"] == body["users"]["total"] - body["users"]["guests"]
-    # The admin registered via email/password (unverified) → unverified ≥ 1.
-    assert body["users"]["email_unverified"] >= 1
     assert (
         body["users"]["email_verified"] + body["users"]["email_unverified"]
         == body["users"]["total"]
@@ -132,10 +170,11 @@ def test_metrics_aggregates(client, as_admin):
     assert body["content"]["gratitude_entries"] >= 1
 
 
-def test_metrics_payload_has_no_content_fields(client, as_admin):
+def test_metrics_payload_has_no_content_fields(client, db_session, as_admin):
     """Guard against accidental private-content leakage: the payload is numbers only."""
     as_admin("boss@example.com")
     _auth(client, "boss@example.com")
+    _verify_email(db_session, "boss@example.com")
     client.post("/api/v1/journals", json={"body": "a private secret", "mood": "calm"})
 
     body = client.get("/api/v1/admin/metrics").json()
