@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { sanctuaryService, type PersonalizePatch } from '../services/sanctuary'
 import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
-import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY } from '../lib/sanctuaryArt'
+import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY, TRACK_META } from '../lib/sanctuaryArt'
 import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
 
@@ -447,64 +447,92 @@ export default function SanctuaryPage() {
           )}
 
           <h2 className="sanctuary-section-title">Shop</h2>
-          <div className="sanctuary-grid">
-            {scene.shop.map((s) => {
-              const affordable = scene.coins >= s.cost
+          {/* Group shop items by track, preserving within-track order from the catalog. */}
+          {(() => {
+            // Collect tracks in the order they first appear (catalog order → stable groups).
+            const trackOrder: string[] = []
+            const byTrack: Record<string, typeof scene.shop> = {}
+            for (const s of scene.shop) {
+              if (!byTrack[s.track]) {
+                trackOrder.push(s.track)
+                byTrack[s.track] = []
+              }
+              byTrack[s.track].push(s)
+            }
+            return trackOrder.map((track) => {
+              const meta = TRACK_META[track]
+              const label = meta ? `${meta.emoji} ${meta.label}` : track
+              const accent = meta?.accent ?? '#9ca3af'
               return (
-                <div
-                  key={s.item_key}
-                  className={`sanctuary-card${s.unlocked ? '' : ' locked'}`}
-                  title={s.blurb || undefined}
-                >
-                  <SanctuaryPlant itemKey={s.item_key} variant={s.variants[0]?.variant ?? null} />
-                  <div className="sanctuary-card-name">{itemLabel(s.item_key)}</div>
-                  {/* A quiet line of character (ADR-0016) — a small smile, never shouty. */}
-                  {s.blurb && <p className="muted sanctuary-card-blurb">{s.blurb}</p>}
-                  {s.unlocked ? (
-                    s.variants.length > 1 ? (
-                      <button
-                        type="button"
-                        className="sanctuary-buy"
-                        disabled={busy != null || !affordable}
-                        onClick={() => {
-                          setBuyName('')
-                          setPicking(s)
-                        }}
-                      >
-                        Choose · 🪙 {s.cost}
-                      </button>
-                    ) : (
-                      <div className="sanctuary-buy-row">
-                        <button
-                          type="button"
-                          className="sanctuary-buy"
-                          disabled={busy != null || !affordable}
-                          onClick={() => buy(s.item_key, null)}
+                <section key={track} className="sanctuary-track-section">
+                  <h3
+                    className="sanctuary-track-header"
+                    style={{ '--track-accent': accent } as React.CSSProperties}
+                  >
+                    {label}
+                  </h3>
+                  <div className="sanctuary-grid">
+                    {byTrack[track].map((s) => {
+                      const affordable = scene.coins >= s.cost
+                      return (
+                        <div
+                          key={s.item_key}
+                          className={`sanctuary-card${s.unlocked ? '' : ' locked'}`}
+                          title={s.blurb || undefined}
                         >
-                          {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
-                        </button>
-                        {/* Quiet, optional: name it at purchase. The one-tap Buy stays the
-                            default so naming never nags. */}
-                        <button
-                          type="button"
-                          className="sanctuary-name-it"
-                          disabled={busy != null || !affordable}
-                          onClick={() => {
-                            setBuyName('')
-                            setPicking(s)
-                          }}
-                        >
-                          name it…
-                        </button>
-                      </div>
-                    )
-                  ) : (
-                    <span className="muted sanctuary-locked-hint">🔒 {s.hint}</span>
-                  )}
-                </div>
+                          <SanctuaryPlant itemKey={s.item_key} variant={s.variants[0]?.variant ?? null} />
+                          <div className="sanctuary-card-name">{itemLabel(s.item_key)}</div>
+                          {/* A quiet line of character (ADR-0016) — a small smile, never shouty. */}
+                          {s.blurb && <p className="muted sanctuary-card-blurb">{s.blurb}</p>}
+                          {s.unlocked ? (
+                            s.variants.length > 1 ? (
+                              <button
+                                type="button"
+                                className="sanctuary-buy"
+                                disabled={busy != null || !affordable}
+                                onClick={() => {
+                                  setBuyName('')
+                                  setPicking(s)
+                                }}
+                              >
+                                Choose · 🪙 {s.cost}
+                              </button>
+                            ) : (
+                              <div className="sanctuary-buy-row">
+                                <button
+                                  type="button"
+                                  className="sanctuary-buy"
+                                  disabled={busy != null || !affordable}
+                                  onClick={() => buy(s.item_key, null)}
+                                >
+                                  {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
+                                </button>
+                                {/* Quiet, optional: name it at purchase. The one-tap Buy stays the
+                                    default so naming never nags. */}
+                                <button
+                                  type="button"
+                                  className="sanctuary-name-it"
+                                  disabled={busy != null || !affordable}
+                                  onClick={() => {
+                                    setBuyName('')
+                                    setPicking(s)
+                                  }}
+                                >
+                                  name it…
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <span className="muted sanctuary-locked-hint">🔒 {s.hint}</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
               )
-            })}
-          </div>
+            })
+          })()}
         </>
       )}
 

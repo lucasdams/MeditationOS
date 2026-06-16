@@ -210,6 +210,38 @@ describe('SanctuaryPage naming (ADR-0015)', () => {
   })
 })
 
+describe('SanctuaryPage shop — track grouping', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+  })
+
+  it('renders one section header per track, in catalog order', async () => {
+    const multiTrackScene: SanctuaryScene = {
+      coins: 200,
+      level: 5,
+      owned: [],
+      vitality: 'thriving',
+      current_streak: 3,
+      shop: [
+        { item_key: 'tree',         track: 'nature',    cost: 30, unlocked: true,  hint: null, variants: [], blurb: '' },
+        { item_key: 'flower',       track: 'nature',    cost: 20, unlocked: true,  hint: null, variants: [], blurb: '' },
+        { item_key: 'hut',          track: 'structure', cost: 45, unlocked: true,  hint: null, variants: [], blurb: '' },
+        { item_key: 'garden_gnome', track: 'whimsy',    cost: 26, unlocked: false, hint: 'Reach level 2', variants: [], blurb: '' },
+      ],
+    }
+    getScene.mockResolvedValue(multiTrackScene)
+    renderPage()
+
+    // Track headers appear with the correct emoji + label.
+    await screen.findByRole('heading', { name: /🌿 Nature/i,     level: 3 })
+    screen.getByRole('heading',        { name: /🏡 Structure/i,  level: 3 })
+    screen.getByRole('heading',        { name: /✨ Whimsy/i,     level: 3 })
+
+    // Companion track is absent — no header rendered for it.
+    expect(screen.queryByRole('heading', { name: /🐾 Companions/i, level: 3 })).toBeNull()
+  })
+})
+
 describe('SanctuaryPage move (grid layout)', () => {
   beforeEach(() => {
     getScene.mockReset()

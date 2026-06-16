@@ -3757,3 +3757,117 @@ textarea:focus-visible,
   font-size: 0.78rem;
   color: #6b6b70;
 }
+
+/* Gentle journaling prompt nudge (see JournalPage.tsx). */
+.journal-nudge {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  color: #45454a;
+}
+
+.journal-nudge-label {
+  font-weight: 500;
+  color: #6b6b70;
+  white-space: nowrap;
+}
+
+.journal-nudge-text {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: inherit;
+  color: #1c1c1e;
+  text-align: left;
+  cursor: pointer;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.journal-nudge-text:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.journal-nudge-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.journal-nudge-shuffle {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: #4f46e5;
+  cursor: pointer;
+}
+
+.journal-nudge-shuffle:hover {
+  text-decoration: underline;
+}
+
+.journal-nudge-dismiss {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  color: #aeaeb2;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.journal-nudge-dismiss:hover {
+  color: #6b6b70;
+}
+
+/* ── Sanctuary shop — track grouping ────────────────────────────────────────
+   Quiet section headers, one per track (nature / structure / companion / whimsy).
+   Uses a per-track CSS custom property (--track-accent) set inline by the component.
+   Additive — these classes are all scoped and don't touch existing rules.
+ ─────────────────────────────────────────────────────────────────────────── */
+.sanctuary-track-section {
+  /* Breathing room between track groups */
+  margin-bottom: 0.25rem;
+}
+
+.sanctuary-track-section + .sanctuary-track-section {
+  margin-top: 1.25rem;
+}
+
+.sanctuary-track-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  /* Accent via the inline custom property; falls back to a neutral muted tone */
+  color: var(--track-accent, #9ca3af);
+  margin: 0 0 0.6rem 0;
+  padding: 0;
+  /* A fine underline drawn from the accent rather than a bold divider */
+  border-bottom: 1.5px solid color-mix(in srgb, var(--track-accent, #9ca3af) 30%, transparent);
+  padding-bottom: 0.3rem;
+  width: 100%;
+}
