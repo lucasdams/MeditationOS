@@ -5,9 +5,15 @@ import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
-import { SEASON_PREFS, SEASONS } from '../lib/theme'
+import { SEASON_PREFS, SEASONS, type ColorModePref } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
+
+const COLOR_MODE_OPTIONS: { value: ColorModePref; label: string }[] = [
+  { value: 'system', label: 'System (auto)' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
@@ -28,7 +34,7 @@ function formatHour(h: number): string {
 
 export default function SettingsPage() {
   const { user, refresh, logout } = useAuth()
-  const { pref: seasonPref, setPref: setSeasonPref, season, dayPhase } = useTheme()
+  const { pref: seasonPref, setPref: setSeasonPref, season, dayPhase, colorMode, setColorMode } = useTheme()
   const navigate = useNavigate()
 
   // Username section.
@@ -628,9 +634,24 @@ export default function SettingsPage() {
 
       <section className="settings-section">
         <h2>Appearance</h2>
-        <p className="muted">
-          A seasonal tint colors the app, and the light shifts with your local time of
-          day. Pick a season, or let it follow the calendar.
+
+        <label htmlFor="color-mode">Color mode</label>
+        <select
+          id="color-mode"
+          value={colorMode}
+          onChange={(e) => setColorMode(e.target.value as ColorModePref)}
+          style={{ maxWidth: '14rem' }}
+        >
+          {COLOR_MODE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+
+        <p className="muted" style={{ marginTop: '1.25rem', marginBottom: '0.1rem' }}>
+          A seasonal tint colors the background, and the light shifts with your local
+          time of day. Pick a season, or let it follow the calendar.
         </p>
         <label htmlFor="season">Season</label>
         <select

@@ -7,10 +7,14 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  applyColorMode,
   dayPhaseFor,
+  readColorModePref,
   readSeasonPref,
   resolveSeason,
+  writeColorModePref,
   writeSeasonPref,
+  type ColorModePref,
   type DayPhase,
   type Season,
   type SeasonPref,
@@ -22,6 +26,8 @@ interface ThemeValue {
   season: Season
   dayPhase: DayPhase
   now: Date
+  colorMode: ColorModePref
+  setColorMode: (mode: ColorModePref) => void
 }
 
 const ThemeContext = createContext<ThemeValue | undefined>(undefined)
@@ -33,6 +39,7 @@ const TICK_MS = 60_000
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [pref, setPrefState] = useState<SeasonPref>(() => readSeasonPref())
   const [now, setNow] = useState(() => new Date())
+  const [colorMode, setColorModeState] = useState<ColorModePref>(() => readColorModePref())
 
   // Keep the clock fresh: tick every minute, and snap to the current time whenever
   // the tab regains focus (it may have been backgrounded across a phase boundary).
@@ -58,14 +65,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.dataset.dayphase = dayPhase
   }, [season, dayPhase])
 
+  // Apply color mode on mount and whenever it changes.
+  useEffect(() => {
+    applyColorMode(colorMode)
+  }, [colorMode])
+
   function setPref(next: SeasonPref) {
     setPrefState(next)
     writeSeasonPref(next)
   }
 
+  function setColorMode(next: ColorModePref) {
+    setColorModeState(next)
+    writeColorModePref(next)
+    applyColorMode(next) // apply immediately (no waiting for the next render)
+  }
+
   const value = useMemo(
-    () => ({ pref, setPref, season, dayPhase, now }),
-    [pref, season, dayPhase, now],
+    () => ({ pref, setPref, season, dayPhase, now, colorMode, setColorMode }),
+    [pref, season, dayPhase, now, colorMode],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

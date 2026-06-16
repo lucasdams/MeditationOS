@@ -71,3 +71,49 @@ export function writeSeasonPref(pref: SeasonPref): void {
     // ignore — the preference simply won't persist
   }
 }
+
+// ── Color mode (light / dark / system) ────────────────────────────────────
+// "system" means: follow the OS prefers-color-scheme (no data-theme attribute,
+// the CSS @media handles it). "light" / "dark" pin an explicit data-theme.
+
+export type ColorModePref = 'system' | 'light' | 'dark'
+
+const COLOR_MODE_KEY = 'theme:color-mode'
+
+export function readColorModePref(): ColorModePref {
+  try {
+    const v = localStorage.getItem(COLOR_MODE_KEY)
+    if (v === 'system' || v === 'light' || v === 'dark') return v
+  } catch {
+    // private mode / unavailable — default to system
+  }
+  return 'system'
+}
+
+export function writeColorModePref(pref: ColorModePref): void {
+  try {
+    localStorage.setItem(COLOR_MODE_KEY, pref)
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Apply the color mode preference to <html data-theme>.
+ * - "light"  → data-theme="light"
+ * - "dark"   → data-theme="dark"
+ * - "system" → attribute removed (CSS @media prefers-color-scheme takes over)
+ *
+ * Call this early (before React renders) to avoid a flash, and again whenever
+ * the preference changes.
+ */
+export function applyColorMode(pref: ColorModePref): void {
+  const root = document.documentElement
+  if (pref === 'light') {
+    root.dataset.theme = 'light'
+  } else if (pref === 'dark') {
+    root.dataset.theme = 'dark'
+  } else {
+    delete root.dataset.theme
+  }
+}
