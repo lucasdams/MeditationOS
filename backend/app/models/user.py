@@ -41,7 +41,7 @@ class User(Base):
     # Admin-controlled account suspension. A disabled account is blocked at
     # authentication (get_current_user → 403) so the user can neither log in nor use an
     # existing session, without losing their data. Toggled only by admin support
-    # tooling (see admin_service.set_user_disabled); every change is audited.
+    # tooling (see admin_users_service.set_user_disabled); every change is audited.
     is_disabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false", default=False
     )
