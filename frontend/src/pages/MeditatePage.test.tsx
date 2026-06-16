@@ -3,13 +3,26 @@
  * Full timer/bell integration is not exercised here (tested manually / E2E).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockCreate = vi.fn()
 const mockUpdate = vi.fn()
 const mockGetStats = vi.fn()
 const mockNavigate = vi.fn()
+
+// Shared mutable state for the RewardOverlay mock so tests can fire onClose manually.
+// Must be a plain object (not a `let` binding) so the vi.mock factory closure captures
+// a stable reference that survives hoisting.
+const rewardOverlayState = { onClose: null as (() => void) | null }
+
+vi.mock('../components/RewardOverlay', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  default: (props: any) => {
+    rewardOverlayState.onClose = props.onClose ?? null
+    return null
+  },
+}))
 
 vi.mock('../services/sessions', () => ({
   sessionService: {
@@ -24,15 +37,14 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return { ...actual, useNavigate: () => mockNavigate }
 })
-vi.mock('../components/RewardOverlay', () => ({ default: () => null }))
 vi.mock('../components/BiometricCapture', () => ({ default: () => null }))
 vi.mock('../lib/sfx', () => ({ playBell: vi.fn() }))
 vi.mock('../context/ToastContext', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }))
-// Mock sessionDraft so sessionService.create can be called without localStorage.
+// Mock sessionDraft with MIN_DRAFT_SECONDS=0 so elapsed>0 is enough to save.
 vi.mock('../lib/sessionDraft', () => ({
-  MIN_DRAFT_SECONDS: 60,
+  MIN_DRAFT_SECONDS: 0,
   beaconSave: vi.fn(),
   clearDraft: vi.fn(),
   newClientToken: () => 'test-token',
@@ -52,14 +64,23 @@ function renderPage() {
   )
 }
 
+// Full stats shape expected by buildXpBreakdown (daily_quests + streak_bonus_xp required).
+const BASE_STATS = {
+  xp: 0,
+  level: 1,
+  xp_for_next_level: 100,
+  current_streak_days: 0,
+  streak_bonus_xp: 0,
+  daily_quests: [],
+}
+
 describe('MeditatePage — pre-session intention', () => {
   beforeEach(() => {
     mockCreate.mockReset()
     mockUpdate.mockReset()
     mockGetStats.mockReset()
     mockNavigate.mockReset()
-    const stats = { xp: 0, level: 1, xp_for_next_level: 100, current_streak_days: 0 }
-    mockGetStats.mockResolvedValue(stats)
+    mockGetStats.mockResolvedValue(BASE_STATS)
     mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
   })
   afterEach(cleanup)
@@ -98,15 +119,35 @@ describe('MeditatePage — pre-session intention', () => {
     expect((textarea as HTMLTextAreaElement).value).toBe('Stay present')
   })
 
-  it('session create is not double-called when finish is clicked once', async () => {
+  it('session create is called exactly once when finish is clicked twice rapidly', async () => {
+    // Use fake timers so we can advance elapsed > 0 without real wall-clock waiting.
+    vi.useFakeTimers()
     renderPage()
+
+    // Start the sit — this sets running=true and schedules the 250ms interval.
     fireEvent.click(screen.getByRole('button', { name: /start/i }))
-    const finishBtn = await screen.findByRole('button', { name: /finish/i })
-    // elapsed is ~0 in jsdom so finish() navigates — we just verify no double-call.
+
+    // Advance 2 seconds so the interval fires and elapsed > 1 (past the save guard).
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    // Finish & save button is now visible (started=true).
+    const finishBtn = screen.getByRole('button', { name: /finish/i })
+
+    // Click finish twice in rapid succession — only one save must be triggered.
     fireEvent.click(finishBtn)
-    // mockCreate should not have been called (elapsed < 1 guard) or called once.
-    await new Promise((r) => setTimeout(r, 50))
-    expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(1)
+    fireEvent.click(finishBtn)
+
+    // Let any pending promises (the async saveSession) resolve.
+    await act(async () => {
+      vi.runAllTimers()
+    })
+    await vi.waitFor(() => expect(mockCreate).toHaveBeenCalled())
+
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+
+    vi.useRealTimers()
   })
 })
 
@@ -153,5 +194,86 @@ describe('MeditatePage — Sound & bells disclosure', () => {
     fireEvent.click(summary) // close
     const disclosure = document.querySelector('details.meditate-disclosure') as HTMLDetailsElement
     expect(disclosure.open).toBe(false)
+  })
+})
+
+// ── Reflection PATCH coverage ────────────────────────────────────────────────
+// After the sit is saved (RewardOverlay shown), closing the overlay reveals the
+// reflection Modal. Submitting it PATCHes the saved session via sessionService.update;
+// skipping it skips the update entirely.
+
+describe('MeditatePage — post-session reflection', () => {
+  beforeEach(() => {
+    rewardOverlayState.onClose = null
+    mockCreate.mockReset()
+    mockUpdate.mockReset()
+    mockGetStats.mockReset()
+    mockNavigate.mockReset()
+    mockGetStats.mockResolvedValue(BASE_STATS)
+    mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
+    mockUpdate.mockResolvedValue({ id: SAVED_SESSION_ID })
+  })
+  afterEach(cleanup)
+
+  /** Helper: start → advance elapsed → finish and wait for create to complete,
+   *  then fire the captured RewardOverlay onClose to open the reflection modal. */
+  async function driveToReflection() {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    // Advance 2 seconds so elapsed > 0 (past the save guard).
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
+
+    // Switch back to real timers so Promise resolution works normally.
+    vi.useRealTimers()
+
+    // Wait for saveSession to complete (mockCreate must have been called).
+    await vi.waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1))
+
+    // Wait for RewardOverlay to be rendered (reward state set → onClose captured).
+    await vi.waitFor(() => expect(rewardOverlayState.onClose).not.toBeNull())
+
+    // Fire the RewardOverlay onClose so the reflection modal appears.
+    await act(async () => {
+      rewardOverlayState.onClose!()
+    })
+    await screen.findByText(/how was that/i)
+  }
+
+  it('submitting reflection calls sessionService.update with the saved session id', async () => {
+    await driveToReflection()
+
+    // Rate focus = 4 via the Focus chip group.
+    const focusChips = screen.getAllByRole('group', { name: /focus/i })[0]
+    const chip4 = Array.from(focusChips.querySelectorAll('button')).find(
+      (b) => b.textContent === '4',
+    )!
+    fireEvent.click(chip4)
+
+    // Submit.
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    await vi.waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1))
+
+    // Must PATCH the already-saved session — not create a new one.
+    expect(mockUpdate).toHaveBeenCalledWith(
+      SAVED_SESSION_ID,
+      expect.objectContaining({ focus: 4 }),
+    )
+    expect(mockCreate).toHaveBeenCalledTimes(1) // no second create
+  })
+
+  it('skipping reflection does not call sessionService.update', async () => {
+    await driveToReflection()
+
+    fireEvent.click(screen.getByRole('button', { name: /skip/i }))
+    // Give any async effects a tick to settle.
+    await act(async () => {})
+
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockCreate).toHaveBeenCalledTimes(1) // still only the one save
   })
 })

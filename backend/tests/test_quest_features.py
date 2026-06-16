@@ -88,6 +88,8 @@ def test_journal_quest_completes_on_a_journal_entry(client):
 def test_meditate_quest_ignores_breathing_sessions(client):
     _auth(client, "qf_meditate@example.com")
     client.post(ENDPOINT, json={"features": ["meditate", "breathe", "gratitude"]})
+    # Use noon UTC to avoid midnight-straddle: the session is unambiguously "today"
+    # regardless of when the test runner crosses midnight.
     today = datetime.now(UTC).date().isoformat()
     # A breathing session must not complete the (non-breathing) meditate quest. The
     # slow pace makes it satisfy every breathe variant, so breathe is done either way.
@@ -96,7 +98,7 @@ def test_meditate_quest_ignores_breathing_sessions(client):
         json={
             "type": "resonance_breathing",
             "duration_seconds": 600,
-            "occurred_at": f"{today}T08:00:00",
+            "occurred_at": f"{today}T12:00:00",
             "inhale_seconds": 5,
             "exhale_seconds": 7,
         },

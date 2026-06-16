@@ -1,6 +1,10 @@
 """Tests for GET /api/v1/analytics/insights — gentle pattern observations."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import date, timedelta
+
+# Fixed anchor: all session dates are relative to this past date so the test
+# is deterministic regardless of when (or at what UTC time) it runs.
+_ANCHOR = date(2025, 1, 15)
 
 
 def _auth(client, email):
@@ -9,7 +13,7 @@ def _auth(client, email):
 
 
 def _session(client, *, hour=8, type="mindfulness", calm=None, focus=None, days_ago=0):
-    day = (datetime.now(UTC) - timedelta(days=days_ago)).date()
+    day = _ANCHOR - timedelta(days=days_ago)
     payload = {
         "type": type,
         "duration_seconds": 600,

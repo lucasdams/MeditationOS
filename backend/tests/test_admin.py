@@ -93,12 +93,35 @@ def test_metrics_allowed_for_admin(client, db_session, as_admin):
     assert client.get("/api/v1/admin/metrics").status_code == 200
 
 
-def test_non_admin_cannot_reach_any_admin_route(client):
-    # Every matched route on the admin router carries the router-level require_admin
-    # dependency, so a logged-in non-admin is denied (403) on each — never served data.
-    _auth(client, "normal@example.com")
-    for method, path in [("get", "/api/v1/admin/metrics")]:
-        assert getattr(client, method)(path).status_code == 403
+# All 8 admin routes — method + concrete path (placeholder IDs never exist, but the
+# admin gating fires before the handler even tries to look them up).
+_ADMIN_ROUTES = [
+    ("get",    "/api/v1/admin/metrics"),
+    ("get",    "/api/v1/admin/users"),
+    ("get",    "/api/v1/admin/users/00000000-0000-0000-0000-000000000001"),
+    ("post",   "/api/v1/admin/users/00000000-0000-0000-0000-000000000001/resend-verification"),
+    ("post",   "/api/v1/admin/users/00000000-0000-0000-0000-000000000001/disable"),
+    ("post",   "/api/v1/admin/users/00000000-0000-0000-0000-000000000001/enable"),
+    ("delete", "/api/v1/admin/users/00000000-0000-0000-0000-000000000001"),
+    ("get",    "/api/v1/admin/audit"),
+]
+
+
+@pytest.mark.parametrize("method,path", _ADMIN_ROUTES)
+def test_admin_route_requires_auth(client, method, path):
+    """Unauthenticated request to any admin route → 401."""
+    assert getattr(client, method)(path).status_code == 401
+
+
+@pytest.mark.parametrize("method,path", _ADMIN_ROUTES)
+def test_admin_route_forbidden_for_non_admin(client, method, path):
+    """Authenticated non-admin request to any admin route → 403.
+
+    A future ungated admin route would return 200/404/422 here, failing the test
+    and catching the access-control omission immediately.
+    """
+    _auth(client, "nonadmin_route_test@example.com")
+    assert getattr(client, method)(path).status_code == 403
 
 
 # ── unverified allowlisted email must NOT grant admin (escalation guard) ──
