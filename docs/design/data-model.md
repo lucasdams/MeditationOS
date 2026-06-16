@@ -122,15 +122,17 @@ The user's garden as a **spend economy** ([ADR-0011](../decisions/0011-sanctuary
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
 | `item_key` | text | NOT NULL — references the in-code `SANCTUARY_CATALOG` (`tree`, `flower`, `cat`, `boat`, …); not a DB enum so the catalog can evolve without a migration |
-| `position` | int | NOT NULL — display order (0, 1, 2, …) |
+| `position` | int | NOT NULL — immutable acquisition order (0, 1, 2, …); the progressive-pricing economy key, never reordered ([ADR-0013](../decisions/0013-sanctuary-progressive-pricing.md)) |
+| `cell` | int | NOT NULL, default `0` — grid layout slot (row-major index) the user rearranges freely; layout-only, never affects cost ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)) |
 | `variant` | text | NULL — chosen base form (e.g. dog breed, tree species); `NULL` = the item's default variant |
 | `customizations` | jsonb | NOT NULL, default `'{}'` — `{slot: option}` of purchased mix-and-match customizations |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
-**Constraint:** `UNIQUE(user_id, position)`. **Index:** `user_id`.
+**Constraints:** `UNIQUE(user_id, position)`, `UNIQUE(user_id, cell)`. **Index:** `user_id`.
 
-- **No wallet or transaction log** — the holdings *are* the ledger. `coins_spent` = Σ over owned items of `buy_cost + variant_cost_delta + Σ (customization option costs)`; `coins_earned = level × COINS_PER_LEVEL` (the level from *earned* XP, so coins never decrease); balance = earned − spent. All in `sanctuary_service`.
-- Buying inserts a row at the next `position` (with the chosen variant); customizing sets a key in the row's `customizations`. The earlier `tier` column was folded into the `grown` customization and dropped (legacy spend preserved).
+- **No wallet or transaction log** — the holdings *are* the ledger. `coins_spent` = Σ over owned items of `buy_cost + variant_cost_delta + Σ (customization option costs) + progressive_surcharge(position)`; `coins_earned = level × COINS_PER_LEVEL` (the level from *earned* XP, so coins never decrease); balance = earned − spent. All in `sanctuary_service`.
+- Buying inserts a row at the next `position` and the **lowest free `cell`** (with the chosen variant); customizing sets a key in the row's `customizations`; moving updates only `cell` (swapping with any occupant). The earlier `tier` column was folded into the `grown` customization and dropped (legacy spend preserved).
+- `position` and `cell` are deliberately separate ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)): `position` is the immutable economy key, `cell` is the rearrangeable layout. Moving an item never changes the balance.
 
 ### `journals`
 

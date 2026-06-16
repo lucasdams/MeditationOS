@@ -8,7 +8,7 @@ item's variant and its customizations — is the only stored state; the balance 
 on read as coins earned − coins spent. Each request model forbids unexpected fields.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SlotOption(BaseModel):
@@ -31,10 +31,11 @@ class AvailableSlot(BaseModel):
 
 
 class OwnedItem(BaseModel):
-    id: str  # the planting row id (for customize requests)
+    id: str  # the planting row id (for customize / move requests)
     item_key: str
     track: str
-    position: int  # display order
+    position: int  # immutable acquisition order (economy key — NOT the grid layout)
+    cell: int  # grid layout slot (row-major index); the user rearranges this freely
     variant: str | None  # the chosen base form (the item's default when it has variants)
     customizations: dict[str, str]  # {slot: option} of what's purchased
     available: list[AvailableSlot]  # slots/options that can still be applied, with hints
@@ -81,3 +82,11 @@ class CustomizeRequest(BaseModel):
 
     slot: str
     option: str
+
+
+class MoveRequest(BaseModel):
+    """Move an owned item to a grid cell (layout-only; never touches the economy)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cell: int = Field(ge=0)  # target grid cell, row-major; must be a non-negative index

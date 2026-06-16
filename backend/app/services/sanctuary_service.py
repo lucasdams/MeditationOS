@@ -29,6 +29,7 @@ from app.schemas.sanctuary import (
     AvailableSlot,
     BuyRequest,
     CustomizeRequest,
+    MoveRequest,
     OwnedItem,
     SanctuaryScene,
     ShopItem,
@@ -59,6 +60,29 @@ def progressive_surcharge(ordinal: int) -> int:
     wallet/ledger). `ordinal` is the item's rank in the user's acquisition order.
     """
     return round(PROGRESSIVE_STEP * max(0, ordinal))
+
+
+# --- Grid layout (ADR-0014) -------------------------------------------------------------
+#
+# The garden is laid out on a fixed-width, row-major grid the user rearranges by dragging.
+# A `cell` is the flat index (row * GRID_COLUMNS + col). Layout is independent of the
+# economy: cells never affect price (that is keyed off `position`). Both keys are tunable
+# constants here so the grid can grow without a migration. GRID_CELLS caps the addressable
+# layout space (move targets are validated against it); it is comfortably larger than any
+# realistic garden so a buy always finds a free cell.
+GRID_COLUMNS = 4
+GRID_ROWS = 32
+GRID_CELLS = GRID_COLUMNS * GRID_ROWS
+
+
+def _lowest_free_cell(plantings: list[SanctuaryPlanting]) -> int:
+    """The smallest non-negative cell not already used by this user's items — where a newly
+    bought item lands (filling gaps left by rearrangements before extending the grid)."""
+    used = {p.cell for p in plantings}
+    cell = 0
+    while cell in used:
+        cell += 1
+    return cell
 
 
 @dataclass(frozen=True)
@@ -330,6 +354,10 @@ class AlreadyApplied(Exception):
     """The item already has that exact option in that slot — no-op."""
 
 
+class CellOutOfBounds(Exception):
+    """The requested grid cell is outside the addressable layout (0 ≤ cell < GRID_CELLS)."""
+
+
 def _vitality(streak: int) -> str:
     """Visual-only health of the garden — never destructive (owned items persist)."""
     if streak == 0:
@@ -414,7 +442,8 @@ def _build_scene(
 ) -> SanctuaryScene:
     balance = max(0, coins_earned - _spent(plantings))
     owned: list[OwnedItem] = []
-    for p in plantings:
+    # Present the garden in grid order (by `cell`); `position` stays the economy key only.
+    for p in sorted(plantings, key=lambda p: p.cell):
         item = SANCTUARY_CATALOG.get(p.item_key)
         if item is None:
             continue
@@ -425,6 +454,7 @@ def _build_scene(
                 item_key=p.item_key,
                 track=item.track,
                 position=p.position,
+                cell=p.cell,
                 variant=p.variant if p.variant is not None else item.default_variant,
                 customizations=customizations,
                 available=_available_slots(item, customizations, balance, level),
@@ -506,6 +536,9 @@ def buy(
             user_id=user_id,
             item_key=item.key,
             position=next_position,
+            # Layout-only: the new item lands in the lowest free grid cell (ADR-0014). This
+            # is independent of `position` and never affects price.
+            cell=_lowest_free_cell(plantings),
             variant=variant.key if variant is not None else None,
             customizations={},
         )
@@ -564,4 +597,56 @@ def customize(
     updated[slot.key] = option.key
     row.customizations = updated
     db.commit()
+    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+
+
+def move(
+    db: DBSession,
+    user_id: uuid.UUID,
+    planting_id: uuid.UUID,
+    data: MoveRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SanctuaryScene | None:
+    """Move an owned item to a grid `cell` (layout only — never touches `position` or the
+    economy). Returns None if the item isn't the caller's. Raises CellOutOfBounds if the
+    target is outside the grid.
+
+    If another of the user's items already sits in the target cell, the two swap cells;
+    otherwise the item simply takes the empty cell. The swap is done in one transaction,
+    staging the moving row to a temporary out-of-range sentinel cell first so the
+    UNIQUE(user_id, cell) constraint is never momentarily violated.
+    """
+    if data.cell < 0 or data.cell >= GRID_CELLS:
+        raise CellOutOfBounds(data.cell)
+    row = db.execute(
+        select(SanctuaryPlanting).where(
+            SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+
+    if row.cell != data.cell:
+        occupant = db.execute(
+            select(SanctuaryPlanting).where(
+                SanctuaryPlanting.user_id == user_id,
+                SanctuaryPlanting.cell == data.cell,
+            )
+        ).scalar_one_or_none()
+        source_cell = row.cell
+        if occupant is None:
+            row.cell = data.cell
+        else:
+            # Swap: park the moving row on a temporary sentinel cell (out of the addressable
+            # range, so it can never collide with a real cell), flush, then place both.
+            row.cell = -1
+            db.flush()
+            occupant.cell = source_cell
+            db.flush()
+            row.cell = data.cell
+        db.commit()
+
+    coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
     return _build_scene(_load(db, user_id), coins_earned, level, streak)

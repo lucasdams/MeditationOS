@@ -383,6 +383,7 @@ A small spend economy: earn coins by levelling, spend them to buy items (picking
 | GET | `/sanctuary` | ✓ | Coins, level, owned items (variant + customizations + available slots), and the shop (with variants) |
 | POST | `/sanctuary/buy` | ✓ | Buy a fresh item `{ item_key, variant? }` → updated scene; `404` unknown item/variant · `409` level-locked or too few coins · `422` bad shape |
 | POST | `/sanctuary/items/{id}/customize` | ✓ | Apply a customization `{ slot, option }` → updated scene; `404` not the caller's / unknown slot+option · `409` locked, already-applied, or too few coins · `422` bad shape |
+| POST | `/sanctuary/items/{id}/move` | ✓ | Move to a grid cell `{ cell }` (layout only — never touches pricing); swaps with any occupant → updated scene; `404` not the caller's · `422` bad shape / out-of-bounds cell |
 
 ```
 GET /api/v1/sanctuary
@@ -391,7 +392,7 @@ GET /api/v1/sanctuary
   "coins": 130,
   "level": 5,
   "owned": [
-    { "id": "…", "item_key": "tree", "track": "nature", "position": 0,
+    { "id": "…", "item_key": "tree", "track": "nature", "position": 0, "cell": 0,
       "variant": "cherry", "customizations": { "foliage": "blossom" },
       "available": [
         { "slot": "grown", "applied": null,
@@ -413,6 +414,7 @@ GET /api/v1/sanctuary
 ```
 POST /api/v1/sanctuary/buy                  { "item_key": "tree", "variant": "cherry" }   → 201 (updated scene)
 POST /api/v1/sanctuary/items/{id}/customize { "slot": "foliage", "option": "blossom" }    → 200 (updated scene)
+POST /api/v1/sanctuary/items/{id}/move      { "cell": 5 }                                 → 200 (updated scene; layout only)
 ```
 
 Only the holdings (`sanctuary_plantings`, with `variant` + `customizations`) are stored;

@@ -13,10 +13,16 @@ from sqlalchemy.orm import Session as DBSession
 from app.api.deps import get_current_user
 from app.core.db import get_db
 from app.models.user import User
-from app.schemas.sanctuary import BuyRequest, CustomizeRequest, SanctuaryScene
+from app.schemas.sanctuary import (
+    BuyRequest,
+    CustomizeRequest,
+    MoveRequest,
+    SanctuaryScene,
+)
 from app.services import sanctuary_service
 from app.services.sanctuary_service import (
     AlreadyApplied,
+    CellOutOfBounds,
     InsufficientCoins,
     ItemLocked,
     UnknownItem,
@@ -94,6 +100,30 @@ def customize_item(
         ) from None
     except InsufficientCoins:
         raise _BROKE from None
+    if scene is None:
+        raise _NOT_FOUND
+    return scene
+
+
+@router.post("/items/{planting_id}/move", response_model=SanctuaryScene)
+def move_item(
+    planting_id: uuid.UUID,
+    body: MoveRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SanctuaryScene:
+    """Move an owned item to a grid cell (layout only — never touches pricing). Swaps with
+    whatever item already sits there. Out-of-bounds cells are rejected as 422."""
+    today, tz = _today_for(current_user)
+    try:
+        scene = sanctuary_service.move(
+            db, current_user.id, planting_id, body, today=today, tz=tz
+        )
+    except CellOutOfBounds:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="That cell is outside the garden grid",
+        ) from None
     if scene is None:
         raise _NOT_FOUND
     return scene

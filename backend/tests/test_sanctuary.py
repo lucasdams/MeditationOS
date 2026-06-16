@@ -11,6 +11,7 @@ import uuid
 
 from app.services.sanctuary_service import (
     COINS_PER_LEVEL,
+    GRID_CELLS,
     SANCTUARY_CATALOG,
     progressive_surcharge,
 )
@@ -444,3 +445,121 @@ def test_small_garden_balance_not_reduced_vs_old_economy(client):
         old_balance = max(0, level * OLD_CPL - OLD_FLOWER * (k + 1))
         assert new_balance >= old_balance, f"k={k}: {new_balance} < {old_balance}"
     assert before > 0
+
+
+# --- Grid layout / move (ADR-0014) ------------------------------------------------------
+
+
+def _by_id(scene, planting_id):
+    return next(o for o in scene["owned"] if o["id"] == planting_id)
+
+
+def test_move_requires_auth(client):
+    assert (
+        client.post(
+            f"/api/v1/sanctuary/items/{uuid.uuid4()}/move", json={"cell": 0}
+        ).status_code
+        == 401
+    )
+
+
+def test_buy_assigns_lowest_free_cell(client):
+    """Each bought item lands in the lowest free grid cell (layout), independent of its
+    acquisition `position` (the economy key)."""
+    _auth(client, "cells@example.com")
+    _practice(client, 120)  # plenty of coins
+    cells = []
+    for _ in range(3):
+        scene = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+        # The newest item is the one with the highest position; check its cell.
+        newest = max(scene["owned"], key=lambda o: o["position"])
+        cells.append(newest["cell"])
+    assert cells == [0, 1, 2]  # consecutive, lowest-free
+    # `position` and `cell` coincide initially but are distinct fields.
+    for o in scene["owned"]:
+        assert "position" in o and "cell" in o
+
+
+def test_move_to_empty_cell(client):
+    _auth(client, "moveempty@example.com")
+    _practice(client, 120)
+    scene = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    item_id = scene["owned"][0]["id"]
+    position_before = scene["owned"][0]["position"]
+    coins_before = scene["coins"]
+
+    res = client.post(f"/api/v1/sanctuary/items/{item_id}/move", json={"cell": 5})
+    assert res.status_code == 200
+    moved = _by_id(res.json(), item_id)
+    assert moved["cell"] == 5
+    # Layout-only: position (the economy key) and the balance are untouched.
+    assert moved["position"] == position_before
+    assert res.json()["coins"] == coins_before
+
+
+def test_move_onto_occupied_cell_swaps(client):
+    _auth(client, "moveswap@example.com")
+    _practice(client, 200)
+    a = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    a_id = a["owned"][0]["id"]  # cell 0
+    b = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    b_id = max(b["owned"], key=lambda o: o["position"])["id"]  # cell 1
+
+    coins_before = _scene(client)["coins"]
+    # Move A (cell 0) onto B's cell (1) → the two swap cells.
+    res = client.post(f"/api/v1/sanctuary/items/{a_id}/move", json={"cell": 1})
+    assert res.status_code == 200
+    scene = res.json()
+    assert _by_id(scene, a_id)["cell"] == 1
+    assert _by_id(scene, b_id)["cell"] == 0
+    # No item lost, no cell collision, balance unchanged.
+    assert len(scene["owned"]) == 2
+    assert scene["coins"] == coins_before
+
+
+def test_move_to_own_current_cell_is_noop(client):
+    _auth(client, "movenoop@example.com")
+    _practice(client, 60)
+    scene = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    item_id = scene["owned"][0]["id"]
+    res = client.post(f"/api/v1/sanctuary/items/{item_id}/move", json={"cell": 0})
+    assert res.status_code == 200
+    assert _by_id(res.json(), item_id)["cell"] == 0
+
+
+def test_move_someone_elses_item_is_404(client):
+    _auth(client, "owner-move@example.com")
+    client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"})
+    _auth(client, "other-move@example.com")  # switch users
+    res = client.post(
+        f"/api/v1/sanctuary/items/{uuid.uuid4()}/move", json={"cell": 0}
+    )
+    assert res.status_code == 404
+
+
+def test_move_negative_cell_is_422(client):
+    _auth(client, "moveneg@example.com")
+    scene = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    item_id = scene["owned"][0]["id"]
+    res = client.post(f"/api/v1/sanctuary/items/{item_id}/move", json={"cell": -1})
+    assert res.status_code == 422
+
+
+def test_move_out_of_bounds_cell_is_422(client):
+    _auth(client, "moveoob@example.com")
+    scene = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    item_id = scene["owned"][0]["id"]
+    res = client.post(
+        f"/api/v1/sanctuary/items/{item_id}/move", json={"cell": GRID_CELLS}
+    )
+    assert res.status_code == 422
+
+
+def test_move_rejects_unexpected_fields(client):
+    _auth(client, "moveextra@example.com")
+    scene = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    item_id = scene["owned"][0]["id"]
+    res = client.post(
+        f"/api/v1/sanctuary/items/{item_id}/move", json={"cell": 1, "position": 9}
+    )
+    assert res.status_code == 422
