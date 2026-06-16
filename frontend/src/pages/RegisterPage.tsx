@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import AuthBrand from '../components/AuthBrand'
 import GuestButton from '../components/GuestButton'
+import { ErrorBanner } from '../components/StateViews'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -72,11 +73,7 @@ export default function RegisterPage() {
         />
         <small>At least 8 characters.</small>
 
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={error} />
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Creating…' : 'Create account'}

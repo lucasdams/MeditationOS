@@ -2420,7 +2420,10 @@ textarea:focus-visible,
   width: 100%;
 }
 
-.reward-overlay {
+/* ── Shared modal scaffold (used by the <Modal> primitive) ──
+   A centered card over a dark, fading overlay. Per-modal variants below add their
+   own width / padding / text-align on top of this base. */
+.modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -2429,6 +2432,7 @@ textarea:focus-visible,
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   animation: fade-in 0.2s ease;
+  padding: 1rem;
 }
 
 @keyframes fade-in {
@@ -2437,14 +2441,17 @@ textarea:focus-visible,
   }
 }
 
-.reward-card {
+.modal-card {
   width: 22rem;
   max-width: calc(100vw - 2rem);
   background: var(--bg-surface);
   border-radius: 16px;
   padding: 2rem;
-  text-align: center;
   box-shadow: 0 10px 40px var(--shadow-modal);
+}
+
+.reward-card {
+  text-align: center;
 }
 
 .level-badge--reward {
@@ -2475,27 +2482,23 @@ textarea:focus-visible,
   margin-top: 1.5rem;
 }
 
-/* ── Biometric capture (post-session prompt + standalone) ── */
-.biometric-capture {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
-  animation: fade-in 0.2s ease;
-  padding: 1rem;
-}
-
+/* ── Biometric capture (post-session prompt + standalone) ──
+   The post-session prompt is a <Modal> (.modal-card); this only tunes the card's
+   width / padding / border on top of the shared base. */
 .biometric-card {
   width: 24rem;
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+}
+
+/* The standalone reading page (LogReadingPage) renders the capture inline, not as
+   an overlay — a plain card in the page flow. */
+.biometric-card.biometric-card--inline {
+  width: 100%;
   max-width: calc(100vw - 2rem);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 10px 40px var(--shadow-modal);
+  box-shadow: 0 1px 3px var(--shadow-card);
 }
 
 .biometric-card h2 {
@@ -2521,21 +2524,6 @@ textarea:focus-visible,
   align-items: center;
   gap: 1rem;
   margin-top: 0.5rem;
-}
-
-/* The standalone reading page mounts the capture inline (not over an overlay). */
-.log-session .biometric-capture {
-  position: static;
-  inset: auto;
-  background: transparent;
-  padding: 0;
-  display: block;
-  animation: none;
-}
-
-.log-session .biometric-card {
-  width: 100%;
-  box-shadow: 0 1px 3px var(--shadow-card);
 }
 
 /* ── Biometric trend (Analytics) ── */
@@ -2985,6 +2973,14 @@ textarea:focus-visible,
   border-color: var(--chip-soft-border);
   color: var(--chip-soft-text);
   font-weight: 400;
+}
+
+/* Shared selected-state for the pickable chips/cards (mood, pattern, soundscape,
+   onboarding). The accent border + ring is the common base; each variant keeps its
+   own extras (an inset ring, an accent text/background) by layering on top. */
+.selectable.selected {
+  border-color: var(--accent-var, #4f46e5);
+  box-shadow: 0 0 0 1px var(--accent-var, #4f46e5);
 }
 
 .grat-compose {
@@ -3983,8 +3979,8 @@ details[open] .meditate-disclosure-summary::before {
   border-color: var(--accent-var, #4f46e5);
 }
 
+/* Border-color comes from .selectable.selected; this choice uses an inset ring. */
 .onboarding-choice.selected {
-  border-color: var(--accent-var, #4f46e5);
   box-shadow: 0 0 0 1px var(--accent-var, #4f46e5) inset;
 }
 
@@ -4115,8 +4111,8 @@ details[open] .meditate-disclosure-summary::before {
   transform: translateY(-2px);
 }
 
+/* Border-color comes from .selectable.selected; the mood chip uses an inset ring. */
 .mood-chip.selected {
-  border-color: var(--accent-var, #4f46e5);
   box-shadow: 0 0 0 1px var(--accent-var, #4f46e5) inset;
 }
 
@@ -4173,10 +4169,7 @@ details[open] .meditate-disclosure-summary::before {
   border-color: var(--accent-var, #4f46e5);
 }
 
-.pattern-card.selected {
-  border-color: var(--accent-var, #4f46e5);
-  box-shadow: 0 0 0 1px var(--accent-var, #4f46e5); /* a clear selected ring */
-}
+/* .pattern-card.selected — accent border + ring come from .selectable.selected. */
 
 .pattern-card:disabled {
   opacity: 0.55;
@@ -4619,9 +4612,9 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-primary);
 }
 
+/* Accent border + ring come from .selectable.selected; these add the accent
+   text + subtle background unique to the soundscape chip. */
 .soundscape-chip.selected {
-  border-color: var(--accent-var, #4f46e5);
-  box-shadow: 0 0 0 1px var(--accent-var, #4f46e5);
   color: var(--accent, #4f46e5);
   background: var(--accent-subtle, #eef2ff);
 }

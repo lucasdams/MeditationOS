@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { authService } from '../services/auth'
 import AuthBrand from '../components/AuthBrand'
+import { ErrorBanner } from '../components/StateViews'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -60,11 +61,7 @@ export default function ForgotPasswordPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={error} />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Sending…' : 'Send reset link'}
         </button>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
+import { ErrorBanner } from '../components/StateViews'
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams()
@@ -55,9 +56,7 @@ export default function ResetPasswordPage() {
     return (
       <main className="auth-card">
         <h1>Reset your password</h1>
-        <p role="alert" className="error">
-          This reset link is missing its token. Request a new one.
-        </p>
+        <ErrorBanner message="This reset link is missing its token. Request a new one." />
         <p className="auth-aux">
           <Link to="/forgot-password">Request a reset link</Link>
         </p>
@@ -86,11 +85,7 @@ export default function ResetPasswordPage() {
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
         />
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={error} />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving…' : 'Reset password'}
         </button>

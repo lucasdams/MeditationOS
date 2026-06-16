@@ -6,6 +6,7 @@ import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor, tint } from '../lib/colors'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import type { Gratitude, GratitudeCategory } from '../types'
 
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
@@ -263,17 +264,13 @@ export default function GratitudePage() {
         </section>
       )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorBanner message={error} />
 
       <section className="grat-journal">
         <h2>Recent</h2>
-        {!entries && !error && <p>Loading…</p>}
+        {!entries && !error && <Loading />}
         {entries && entries.length === 0 && (
-          <p className="muted">No entries yet — your first grateful moment starts here.</p>
+          <EmptyState>No entries yet — your first grateful moment starts here.</EmptyState>
         )}
         {entries && entries.length > 0 && (
           <ul className="journal-list grat-log">

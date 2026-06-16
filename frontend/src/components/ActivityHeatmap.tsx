@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { dashboardService } from '../services/dashboard'
+import { DAY_MS, localYMD } from '../lib/format'
 import type { ActivityCalendar } from '../types'
 
-const DAY_MS = 86_400_000
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-// Parse/format "YYYY-MM-DD" in local time (avoids a UTC off-by-one).
+// Parse "YYYY-MM-DD" in local time (avoids a UTC off-by-one); `localYMD` formats.
 const parse = (iso: string) => {
   const [y, mo, d] = iso.split('-').map(Number)
   return new Date(y, mo - 1, d)
 }
-const fmt = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const fmt = localYMD
 
 // Three states: 0 inactive · 1 active (practiced) · 2 all daily quests completed.
 type DayInfo = { seconds: number; allQuests: boolean }

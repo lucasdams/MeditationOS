@@ -1,21 +1,25 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { goalService } from '../services/goals'
-import { ACTIVITY_COLORS } from '../lib/colors'
+import { ACTIVITY_COLORS, ACTIVITY_META } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
-const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = [
-  { key: 'meditate', label: 'Meditate', emoji: '🧘' },
-  { key: 'breathe', label: 'Breathe', emoji: '🫁' },
-  { key: 'gratitude', label: 'Write gratitude', emoji: '🙏' },
-  { key: 'journal', label: 'Journal', emoji: '📓' },
-  { key: 'custom', label: 'Custom habit…', emoji: '⭐' },
-]
-const ACTIVITY_META: Record<GoalActivity, { label: string; emoji: string }> = Object.fromEntries(
-  ACTIVITIES.map((a) => [a.key, { label: a.label, emoji: a.emoji }]),
-) as Record<GoalActivity, { label: string; emoji: string }>
+// Goal-form labels differ from the shared canonical ones where the goals context
+// reads better ("Write gratitude", "Custom habit…"); the emoji/colour come from
+// the shared ACTIVITY_META so they never drift.
+const GOAL_LABELS: Record<GoalActivity, string> = {
+  meditate: 'Meditate',
+  breathe: 'Breathe',
+  gratitude: 'Write gratitude',
+  journal: 'Journal',
+  custom: 'Custom habit…',
+}
+const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = (
+  ['meditate', 'breathe', 'gratitude', 'journal', 'custom'] as const
+).map((key) => ({ key, label: GOAL_LABELS[key], emoji: ACTIVITY_META[key].emoji }))
 
 // Cadence presets — the only "target" is how often, not a number to type.
 const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
@@ -173,11 +177,7 @@ export default function GoalsPage() {
               ))}
             </select>
 
-            {error && (
-              <p role="alert" className="error">
-                {error}
-              </p>
-            )}
+            <ErrorBanner message={error} />
             <button type="submit" disabled={submitting}>
               {submitting ? 'Adding…' : 'Add goal'}
             </button>
@@ -203,18 +203,20 @@ export default function GoalsPage() {
       </div>
 
       <section className="goal-list">
-        {goals === null && !error && <p>Loading…</p>}
+        {goals === null && !error && <Loading />}
         {goals && goals.length === 0 && (
-          <p className="muted">
+          <EmptyState>
             {view === 'active'
               ? 'No active goals yet. Pick an activity and how often to build a habit.'
               : 'No archived goals.'}
-          </p>
+          </EmptyState>
         )}
         {goals?.map((g) => {
           const meta = ACTIVITY_META[g.activity]
           const when = g.period === 'day' ? 'today' : g.period === 'week' ? 'this week' : 'all-time'
           const isCustomGoal = g.activity === 'custom'
+          // Goal cards use the goals-context label ("Write gratitude") for the canonical
+          // activities; a custom goal shows the user's own label instead.
           return (
             <article
               key={g.id}
@@ -223,7 +225,7 @@ export default function GoalsPage() {
             >
               <div className="goal-card-head">
                 <strong>
-                  {meta.emoji} {isCustomGoal ? g.label : meta.label}
+                  {meta.emoji} {isCustomGoal ? g.label : GOAL_LABELS[g.activity]}
                 </strong>
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
                 {g.achieved && <span className="goal-achieved">✓ Done</span>}

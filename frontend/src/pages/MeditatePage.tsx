@@ -7,6 +7,10 @@ import { playBell } from '../lib/sfx'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
+import Modal from '../components/Modal'
+import RatingChips from '../components/RatingChips'
+import { ErrorBanner } from '../components/StateViews'
+import { mmss } from '../lib/format'
 import GuidedCues from '../components/GuidedCues'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
@@ -101,49 +105,6 @@ function writeGuidedChoice(choice: GuidedChoice) {
   } catch {
     // ignore — preference simply won't persist
   }
-}
-
-const mmss = (totalSec: number) => {
-  const s = Math.max(0, Math.floor(totalSec))
-  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
-}
-
-// Rating chip row — reuse the same chip pattern as LogSessionPage.
-function RatingRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="session-reflect-row">
-      <span className="session-reflect-label">{label}</span>
-      <div className="log-session-rating" role="group" aria-label={label}>
-        <button
-          type="button"
-          className={`chip${value === '' ? ' chip-active' : ''}`}
-          aria-pressed={value === ''}
-          onClick={() => onChange('')}
-        >
-          —
-        </button>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={`chip${value === String(n) ? ' chip-active' : ''}`}
-            aria-pressed={value === String(n)}
-            onClick={() => onChange(String(n))}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 export default function MeditatePage() {
@@ -665,11 +626,7 @@ export default function MeditatePage() {
         </p>
       )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorBanner message={error} />
 
       <div className="breathe-controls">
         {!running ? (
@@ -711,53 +668,63 @@ export default function MeditatePage() {
       {/* Post-session reflection — shown after the reward overlay, before biometrics.
           Patches focus/calm/notes onto the already-saved session (no double-save). */}
       {showReflection && (
-        <div className="biometric-capture" role="dialog" aria-modal="true" aria-label="Reflect on your sit">
-          <div className="biometric-card session-reflect-card">
-            <h2>How was that?</h2>
-            {intention.trim() && (
-              <p className="session-reflect-intention">
-                Your intention: <em>{intention.trim()}</em>
-              </p>
-            )}
-            <p className="biometric-intro">
-              Optional — rate how your sit felt, or jot a quick note.
+        <Modal ariaLabel="Reflect on your sit" cardClassName="biometric-card session-reflect-card">
+          <h2>How was that?</h2>
+          {intention.trim() && (
+            <p className="session-reflect-intention">
+              Your intention: <em>{intention.trim()}</em>
             </p>
+          )}
+          <p className="biometric-intro">
+            Optional — rate how your sit felt, or jot a quick note.
+          </p>
 
-            <RatingRow label="Focus" value={reflectFocus} onChange={setReflectFocus} />
-            <RatingRow label="Calm" value={reflectCalm} onChange={setReflectCalm} />
-
-            <label htmlFor="reflect-notes" className="session-reflect-notes-label">
-              Notes (optional)
-            </label>
-            <textarea
-              id="reflect-notes"
-              rows={3}
-              placeholder="Anything that arose…"
-              value={reflectNotes}
-              onChange={(e) => setReflectNotes(e.target.value)}
+          <div className="session-reflect-row">
+            <span className="session-reflect-label">Focus</span>
+            <RatingChips
+              ariaLabel="Focus"
+              notRatedLabel="—"
+              value={reflectFocus}
+              onChange={setReflectFocus}
             />
-
-            {reflectError && (
-              <p role="alert" className="error">
-                {reflectError}
-              </p>
-            )}
-
-            <div className="biometric-actions">
-              <button type="button" onClick={saveReflection} disabled={reflectSaving}>
-                {reflectSaving ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                type="button"
-                className="link-neutral"
-                onClick={advanceToReading}
-                disabled={reflectSaving}
-              >
-                Skip
-              </button>
-            </div>
           </div>
-        </div>
+          <div className="session-reflect-row">
+            <span className="session-reflect-label">Calm</span>
+            <RatingChips
+              ariaLabel="Calm"
+              notRatedLabel="—"
+              value={reflectCalm}
+              onChange={setReflectCalm}
+            />
+          </div>
+
+          <label htmlFor="reflect-notes" className="session-reflect-notes-label">
+            Notes (optional)
+          </label>
+          <textarea
+            id="reflect-notes"
+            rows={3}
+            placeholder="Anything that arose…"
+            value={reflectNotes}
+            onChange={(e) => setReflectNotes(e.target.value)}
+          />
+
+          <ErrorBanner message={reflectError} />
+
+          <div className="biometric-actions">
+            <button type="button" onClick={saveReflection} disabled={reflectSaving}>
+              {reflectSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="link-neutral"
+              onClick={advanceToReading}
+              disabled={reflectSaving}
+            >
+              Skip
+            </button>
+          </div>
+        </Modal>
       )}
 
       {showReading && savedSessionIdRef.current && (

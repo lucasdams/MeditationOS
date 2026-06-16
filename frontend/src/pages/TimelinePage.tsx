@@ -7,6 +7,7 @@ import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { MOOD_COLORS, MOOD_META, gratitudeColor, tint } from '../lib/colors'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import type { MeditationType, Mood, Session } from '../types'
 
 // One unified, chronological feed of everything you log — reflections (journal),
@@ -226,20 +227,16 @@ export default function TimelinePage() {
         <p className="page-subtitle">Everything you've logged, in one place.</p>
       </header>
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorBanner message={error} />
 
-      {items === null && !error && <p>Loading…</p>}
+      {items === null && !error && <Loading />}
 
       {items && items.length === 0 && (
-        <p className="muted">
+        <EmptyState>
           Nothing logged yet. <Link to="/meditate">Meditate</Link>,{' '}
           <Link to="/journal">journal</Link>, or <Link to="/gratitude">add a gratitude</Link> to
           begin.
-        </p>
+        </EmptyState>
       )}
 
       {items && items.length > 0 && (

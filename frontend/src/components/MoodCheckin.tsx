@@ -36,7 +36,7 @@ export default function MoodCheckin() {
           <button
             key={m.mood}
             type="button"
-            className={`mood-chip${logged === m.mood ? ' selected' : ''}`}
+            className={`selectable mood-chip${logged === m.mood ? ' selected' : ''}`}
             onClick={() => pick(m.mood)}
             disabled={saving !== null}
             aria-pressed={logged === m.mood}

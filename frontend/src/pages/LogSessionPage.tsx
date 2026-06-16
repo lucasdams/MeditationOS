@@ -5,6 +5,8 @@ import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
+import RatingChips from '../components/RatingChips'
+import { ErrorBanner } from '../components/StateViews'
 import type { MeditationType } from '../types'
 
 // The meditation style picker was dropped; only the structural meditation-vs-breathing
@@ -113,7 +115,7 @@ export default function LogSessionPage() {
             <button
               key={t.value}
               type="button"
-              className={`pattern-card${type === t.value ? ' selected' : ''}`}
+              className={`selectable pattern-card${type === t.value ? ' selected' : ''}`}
               aria-pressed={type === t.value}
               onClick={() => setType(t.value)}
             >
@@ -181,51 +183,11 @@ export default function LogSessionPage() {
 
         {/* Focus rating — inline 1–5 buttons instead of a dropdown */}
         <label>Focus (optional)</label>
-        <div className="log-session-rating" role="group" aria-label="Focus rating">
-          <button
-            type="button"
-            className={`chip${focus === '' ? ' chip-active' : ''}`}
-            aria-pressed={focus === ''}
-            onClick={() => setFocus('')}
-          >
-            Not rated
-          </button>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`chip${focus === String(n) ? ' chip-active' : ''}`}
-              aria-pressed={focus === String(n)}
-              onClick={() => setFocus(String(n))}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+        <RatingChips ariaLabel="Focus rating" value={focus} onChange={setFocus} />
 
         {/* Calm rating — inline 1–5 buttons instead of a dropdown */}
         <label>Calm (optional)</label>
-        <div className="log-session-rating" role="group" aria-label="Calm rating">
-          <button
-            type="button"
-            className={`chip${calm === '' ? ' chip-active' : ''}`}
-            aria-pressed={calm === ''}
-            onClick={() => setCalm('')}
-          >
-            Not rated
-          </button>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`chip${calm === String(n) ? ' chip-active' : ''}`}
-              aria-pressed={calm === String(n)}
-              onClick={() => setCalm(String(n))}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+        <RatingChips ariaLabel="Calm rating" value={calm} onChange={setCalm} />
 
         {/* Notes */}
         <label htmlFor="notes">Notes (optional)</label>
@@ -237,11 +199,7 @@ export default function LogSessionPage() {
           onChange={(e) => setNotes(e.target.value)}
         />
 
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={error} />
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving…' : 'Save session'}

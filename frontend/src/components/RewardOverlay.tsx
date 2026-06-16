@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { levelProgress } from '../lib/level'
 import { playLevelUp, playReward } from '../lib/sfx'
+import Modal from './Modal'
 import type { XpLine } from '../lib/xpBreakdown'
 
 /**
@@ -56,9 +57,8 @@ export default function RewardOverlay({
   const pct = Math.min(100, Math.round((prog.xpIntoLevel / prog.xpForNextLevel) * 100))
 
   return (
-    <div className="reward-overlay" role="dialog" aria-modal="true" aria-label="Session reward">
-      <div className="reward-card">
-        <div className="level-badge level-badge--reward" aria-hidden="true">
+    <Modal ariaLabel="Session reward" cardClassName="reward-card">
+      <div className="level-badge level-badge--reward" aria-hidden="true">
           <span className="level-badge-mark">◆</span>
           <span className="level-badge-num">{prog.level}</span>
         </div>
@@ -85,10 +85,9 @@ export default function RewardOverlay({
             ))}
           </ul>
         )}
-        <button type="button" onClick={onClose}>
-          Continue
-        </button>
-      </div>
-    </div>
+      <button type="button" onClick={onClose}>
+        Continue
+      </button>
+    </Modal>
   )
 }

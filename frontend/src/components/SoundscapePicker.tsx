@@ -27,7 +27,7 @@ export default function SoundscapePicker({
           <button
             key={s.value}
             type="button"
-            className={`soundscape-chip${value === s.value ? ' selected' : ''}`}
+            className={`selectable soundscape-chip${value === s.value ? ' selected' : ''}`}
             aria-pressed={value === s.value}
             disabled={disabled}
             onClick={() => handleSelect(s.value)}
