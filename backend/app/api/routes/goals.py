@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import DailyLimitError, GoalNotCheckableError
@@ -18,7 +18,7 @@ from app.models.user import User
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
 from app.services import goal_service
 
-router = APIRouter(prefix="/goals", tags=["goals"])
+router = APIRouter(prefix="/goals", tags=["goals"], dependencies=[Depends(require_verified_email)])
 
 _NOT_FOUND = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
 _DAILY_LIMIT = HTTPException(

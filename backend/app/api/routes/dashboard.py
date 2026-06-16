@@ -6,14 +6,18 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.dashboard import ActivityCalendar, DashboardStats
 from app.schemas.weekly_review import WeeklyReview
 from app.services import dashboard_service, weekly_review_service
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(require_verified_email)],
+)
 
 
 def _today_for(user: User) -> tuple[date, str]:

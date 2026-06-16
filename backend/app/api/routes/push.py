@@ -4,14 +4,14 @@ Thin handlers; logic in push_service; subscriptions scoped to the user."""
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.config import settings
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.push import PushConfig, PushSubscriptionCreate, PushUnsubscribe
 from app.services import push_service
 
-router = APIRouter(prefix="/push", tags=["push"])
+router = APIRouter(prefix="/push", tags=["push"], dependencies=[Depends(require_verified_email)])
 
 
 @router.get("/config", response_model=PushConfig)

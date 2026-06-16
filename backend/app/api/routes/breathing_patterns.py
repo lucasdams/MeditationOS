@@ -5,13 +5,17 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_email
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.breathing_pattern import BreathingPatternCreate, BreathingPatternRead
 from app.services import breathing_pattern_service
 
-router = APIRouter(prefix="/breathing-patterns", tags=["breathing-patterns"])
+router = APIRouter(
+    prefix="/breathing-patterns",
+    tags=["breathing-patterns"],
+    dependencies=[Depends(require_verified_email)],
+)
 
 
 @router.get("", response_model=list[BreathingPatternRead])
