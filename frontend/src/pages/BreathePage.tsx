@@ -9,7 +9,13 @@ import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
 import Stepper, { type StepperOption } from '../components/Stepper'
+import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
+import {
+  SoundscapeEngine,
+  loadSoundscapePref,
+  type SoundscapeName,
+} from '../lib/soundscapes'
 import {
   MIN_DRAFT_SECONDS,
   beaconSave,
@@ -178,6 +184,11 @@ export default function BreathePage() {
   const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
   const [volume, setVolume] = useState(() => loadPrefs().volume)
   const [targetMin, setTargetMin] = useState(() => loadPrefs().targetMin)
+  const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
+  const [soundscapeVol, setSoundscapeVol] = useState(0.4)
+  const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
+  const soundscapeRef = useRef(soundscape)
+  const soundscapeVolRef = useRef(soundscapeVol)
   // Unsaved-sit recovery (see lib/sessionDraft): a leftover draft to offer on load, plus
   // refs the draft/beacon read at tab-close time.
   const [restorable, setRestorable] = useState<SessionDraft | null>(() =>
@@ -304,6 +315,19 @@ export default function BreathePage() {
     ambientRef.current = ambient
   }, [audioOn, chimeOn, volume, ambient])
 
+  useEffect(() => {
+    soundscapeRef.current = soundscape
+    soundscapeVolRef.current = soundscapeVol
+  }, [soundscape, soundscapeVol])
+
+  useEffect(() => {
+    soundscapeEngineRef.current?.setVolume(soundscapeVol)
+  }, [soundscapeVol])
+
+  useEffect(() => {
+    return () => { soundscapeEngineRef.current?.stop() }
+  }, [])
+
   const targetRef = useRef(targetMin)
   useEffect(() => {
     targetRef.current = targetMin
@@ -370,6 +394,7 @@ export default function BreathePage() {
       if (targetRef.current > 0 && total >= targetRef.current * 60) {
         setRunning(false)
         a.stop()
+        stopBreathSoundscape()
         void saveSession(targetRef.current * 60)
         return
       }
@@ -416,6 +441,17 @@ export default function BreathePage() {
     }
   }, [running])
 
+  function startBreathSoundscape() {
+    const name = soundscapeRef.current
+    if (name === 'silent') return
+    if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
+    soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+  }
+
+  function stopBreathSoundscape() {
+    soundscapeEngineRef.current?.stop()
+  }
+
   function start() {
     // Restart the breath at the inhale, carrying total elapsed forward. Anchor both
     // clocks (visual = performance.now, audio = the audio clock) to "now" so the cues
@@ -429,6 +465,7 @@ export default function BreathePage() {
     phaseRef.current = 'inhale'
     setPhase('inhale')
     setRunning(true)
+    startBreathSoundscape()
     if (elapsed < 1) {
       // Fresh sit: new idempotency token + start time; drop any stale restore offer.
       tokenRef.current = newClientToken()
@@ -442,6 +479,7 @@ export default function BreathePage() {
   function pause() {
     setRunning(false)
     audioRef.current?.stop()
+    stopBreathSoundscape()
     persistDraft(elapsedRef.current)
   }
 
@@ -507,6 +545,7 @@ export default function BreathePage() {
   function finish() {
     setRunning(false)
     audioRef.current?.stop()
+    stopBreathSoundscape()
     if (elapsed < 1) {
       reset()
       navigate('/')
@@ -723,6 +762,23 @@ export default function BreathePage() {
         value={volume}
         disabled={!audioOn && !chimeOn}
         onChange={(e) => setVolume(Number(e.target.value))}
+      />
+
+      <label>Ambient soundscape</label>
+      <SoundscapePicker
+        value={soundscape}
+        volume={soundscapeVol}
+        onSoundscapeChange={(name) => {
+          setSoundscape(name)
+          if (running) {
+            soundscapeEngineRef.current?.stop()
+            if (name !== 'silent') {
+              if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
+              soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+            }
+          }
+        }}
+        onVolumeChange={setSoundscapeVol}
       />
 
       {error && (
