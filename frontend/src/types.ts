@@ -144,6 +144,18 @@ export interface AnalyticsSummary {
   mood_by_week: WeekMoods[]
 }
 
+export interface Insight {
+  kind: string
+  title: string
+  detail: string
+  basis: string
+}
+
+export interface InsightsResponse {
+  insights: Insight[]
+  needs_more_data: boolean
+}
+
 export interface ActivityCalendar {
   start: string
   end: string

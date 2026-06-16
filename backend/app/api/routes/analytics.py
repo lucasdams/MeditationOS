@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session as DBSession
 from app.api.deps import get_current_user, require_verified_email
 from app.core.db import get_db
 from app.models.user import User
-from app.schemas.analytics import AnalyticsSummary
-from app.services import analytics_service
+from app.schemas.analytics import AnalyticsSummary, InsightsResponse
+from app.services import analytics_service, insights_service
 
 router = APIRouter(
     prefix="/analytics",
@@ -35,3 +35,12 @@ def get_analytics(
 ) -> AnalyticsSummary:
     today, tz = _today_for(current_user)
     return analytics_service.get_analytics(db, current_user.id, today=today, tz=tz)
+
+
+@router.get("/insights", response_model=InsightsResponse)
+def get_insights(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> InsightsResponse:
+    today, tz = _today_for(current_user)
+    return insights_service.get_insights(db, current_user.id, today=today, tz=tz)
