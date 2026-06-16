@@ -9,6 +9,7 @@ service via `audit_service.record_audit`.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session as DBSession
 
+from app.api._http import not_found
 from app.api.deps import require_admin
 from app.core.db import get_db
 from app.core.exceptions import AdminSelfActionError, UserNotFoundError
@@ -25,9 +26,7 @@ router = APIRouter(
 )
 
 # Reused not-found mapping — return 404 for unknown user ids.
-_USER_NOT_FOUND = HTTPException(
-    status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-)
+_USER_NOT_FOUND = not_found("User not found")
 
 
 @router.get("/metrics", response_model=AdminMetrics)

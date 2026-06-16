@@ -11,6 +11,7 @@ from app.core.limits import enforce_daily_create_cap
 from app.models.journal import Journal
 from app.models.session import Session as PracticeSession
 from app.schemas.journal import JournalCreate, JournalUpdate
+from app.services._ownership import delete_owned, get_owned
 
 # 5 XP per journal reflection — parity with a gratitude moment (see dashboard_service).
 JOURNAL_XP = 5
@@ -58,8 +59,7 @@ def list_entries(
 
 def get_entry(db: DBSession, user_id: uuid.UUID, entry_id: uuid.UUID) -> Journal | None:
     """Fetch one entry owned by the user. None if missing or not theirs."""
-    stmt = select(Journal).where(Journal.id == entry_id, Journal.user_id == user_id)
-    return db.execute(stmt).scalar_one_or_none()
+    return get_owned(db, Journal, user_id, entry_id)
 
 
 def random_entry(db: DBSession, user_id: uuid.UUID) -> Journal | None:
@@ -90,9 +90,4 @@ def update_entry(
 
 def delete_entry(db: DBSession, user_id: uuid.UUID, entry_id: uuid.UUID) -> bool:
     """Delete one entry owned by the user. Returns False if it wasn't found."""
-    entry = get_entry(db, user_id, entry_id)
-    if entry is None:
-        return False
-    db.delete(entry)
-    db.commit()
-    return True
+    return delete_owned(db, Journal, user_id, entry_id)

@@ -17,6 +17,7 @@ from app.core.limits import enforce_daily_create_cap
 from app.models.biometric_reading import BiometricReading
 from app.models.session import Session
 from app.schemas.biometric_reading import BiometricDelta, BiometricReadingCreate
+from app.services._ownership import delete_owned, get_owned
 
 
 def _session_owned(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> bool:
@@ -68,20 +69,12 @@ def get_reading(
     db: DBSession, user_id: uuid.UUID, reading_id: uuid.UUID
 ) -> BiometricReading | None:
     """Fetch one reading owned by the user. None if missing or not theirs."""
-    stmt = select(BiometricReading).where(
-        BiometricReading.id == reading_id, BiometricReading.user_id == user_id
-    )
-    return db.execute(stmt).scalar_one_or_none()
+    return get_owned(db, BiometricReading, user_id, reading_id)
 
 
 def delete_reading(db: DBSession, user_id: uuid.UUID, reading_id: uuid.UUID) -> bool:
     """Delete one reading owned by the user. Returns False if it wasn't found."""
-    reading = get_reading(db, user_id, reading_id)
-    if reading is None:
-        return False
-    db.delete(reading)
-    db.commit()
-    return True
+    return delete_owned(db, BiometricReading, user_id, reading_id)
 
 
 def pre_post_delta(

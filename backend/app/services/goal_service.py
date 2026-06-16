@@ -17,6 +17,8 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.session import Session as PracticeSession
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
+from app.services._ownership import delete_owned, get_owned
+from app.services.time_utils import local_date
 
 
 def _period_start(period: str, today: date) -> date:
@@ -27,10 +29,6 @@ def _period_start(period: str, today: date) -> date:
     if period == "week":
         return today - timedelta(days=6)
     return today
-
-
-def _local_date(tz: str, column):
-    return func.date(func.timezone(tz, column))
 
 
 def _done_count(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, tz: str) -> int:
@@ -53,7 +51,7 @@ def _done_count(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, t
         return db.execute(stmt).scalar_one()
 
     if goal.activity in ("meditate", "breathe"):
-        local = _local_date(tz, PracticeSession.occurred_at)
+        local = local_date(tz, PracticeSession.occurred_at)
         stmt = (
             select(func.count())
             .select_from(PracticeSession)
@@ -62,14 +60,14 @@ def _done_count(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, t
         if goal.activity == "breathe":
             stmt = stmt.where(PracticeSession.type == "resonance_breathing")
     elif goal.activity == "gratitude":
-        local = _local_date(tz, GratitudeEntry.created_at)
+        local = local_date(tz, GratitudeEntry.created_at)
         stmt = (
             select(func.count())
             .select_from(GratitudeEntry)
             .where(GratitudeEntry.user_id == user_id, local >= start, local <= today)
         )
     else:  # journal
-        local = _local_date(tz, Journal.created_at)
+        local = local_date(tz, Journal.created_at)
         stmt = (
             select(func.count())
             .select_from(Journal)
@@ -107,9 +105,7 @@ def _to_read(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, tz: 
 
 
 def _get(db: DBSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> Goal | None:
-    return db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == user_id)
-    ).scalar_one_or_none()
+    return get_owned(db, Goal, user_id, goal_id)
 
 
 def create_goal(
@@ -173,12 +169,7 @@ def update_goal(
 
 
 def delete_goal(db: DBSession, user_id: uuid.UUID, goal_id: uuid.UUID) -> bool:
-    goal = _get(db, user_id, goal_id)
-    if goal is None:
-        return False
-    db.delete(goal)
-    db.commit()
-    return True
+    return delete_owned(db, Goal, user_id, goal_id)
 
 
 def add_checkin(

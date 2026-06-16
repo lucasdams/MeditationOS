@@ -5,13 +5,15 @@ and mounts the v1 router. Routes live in `app/api/routes/`; business logic and D
 access go in services — see docs/decisions/0006-layered-architecture.md.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.exceptions import DAILY_LIMIT_DETAIL, DailyLimitError
 from app.core.observability import init_sentry
 from app.core.rate_limit import limiter
 from app.core.security_headers import SecurityHeadersMiddleware
@@ -29,6 +31,16 @@ app = FastAPI(title="MeditationOS API")
 # Rate limiting (slowapi): expose the limiter and map breaches to HTTP 429.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(DailyLimitError)
+async def _daily_limit_handler(request: Request, exc: DailyLimitError) -> JSONResponse:
+    """Map the per-day creation cap (raised in services) to HTTP 429 app-wide, so
+    individual route handlers don't each catch and re-raise it."""
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": DAILY_LIMIT_DETAIL},
+    )
 
 # Standard security response headers on every response (see security_headers.py).
 app.add_middleware(SecurityHeadersMiddleware)

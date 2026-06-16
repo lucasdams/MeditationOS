@@ -2,9 +2,10 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session as DBSession
 
+from app.api._http import not_found
 from app.api.deps import get_current_user, require_verified_email
 from app.core.db import get_db
 from app.models.user import User
@@ -42,6 +43,4 @@ def delete_pattern(
     current_user: User = Depends(get_current_user),
 ) -> None:
     if not breathing_pattern_service.delete_pattern(db, current_user.id, pattern_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Pattern not found"
-        )
+        raise not_found("Pattern not found")

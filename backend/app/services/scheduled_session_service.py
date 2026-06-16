@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.core.limits import enforce_daily_create_cap
 from app.models.scheduled_session import ScheduledSession
 from app.schemas.scheduled_session import ScheduledSessionCreate
+from app.services._ownership import delete_owned, get_owned
 
 # Calendar block length when a scheduled session carries no explicit duration.
 DEFAULT_ICS_MINUTES = 15
@@ -54,19 +55,11 @@ def get(
     db: DBSession, user_id: uuid.UUID, sched_id: uuid.UUID
 ) -> ScheduledSession | None:
     """Fetch one scheduled session owned by the user. None if missing or not theirs."""
-    stmt = select(ScheduledSession).where(
-        ScheduledSession.id == sched_id, ScheduledSession.user_id == user_id
-    )
-    return db.execute(stmt).scalar_one_or_none()
+    return get_owned(db, ScheduledSession, user_id, sched_id)
 
 
 def delete(db: DBSession, user_id: uuid.UUID, sched_id: uuid.UUID) -> bool:
-    row = get(db, user_id, sched_id)
-    if row is None:
-        return False
-    db.delete(row)
-    db.commit()
-    return True
+    return delete_owned(db, ScheduledSession, user_id, sched_id)
 
 
 def _ics_dt(dt: datetime) -> str:

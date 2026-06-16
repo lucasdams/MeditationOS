@@ -24,7 +24,6 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, date, datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -34,6 +33,7 @@ from app.models.session import Session as PracticeSession
 from app.models.user import User
 from app.services import push_service
 from app.services.notifications import email
+from app.services.time_utils import compute_streaks, local_date, zone
 
 logger = logging.getLogger("meditationos.reminders")
 
@@ -42,13 +42,6 @@ REMINDER_SUBJECT = "Time for your meditation 🧘"
 # Local hour at which the streak-save nudge becomes eligible. Late enough that the
 # user has had all day to practice; early enough to still act before midnight.
 STREAK_SAVE_HOUR = 20
-
-
-def _zone(tz: str | None) -> ZoneInfo:
-    try:
-        return ZoneInfo(tz or "UTC")
-    except ZoneInfoNotFoundError:
-        return ZoneInfo("UTC")
 
 
 def update_settings(db: Session, user: User, *, enabled: bool, hour: int | None) -> User:
@@ -66,7 +59,7 @@ def _practice_days(db: Session, user_id: uuid.UUID, tz: str) -> set[date]:
     of recorded sessions. Mirrors the streak logic in dashboard_service."""
     from app.services.dashboard_service import MIN_PRACTICE_SECONDS
 
-    local_day = func.date(func.timezone(tz, PracticeSession.occurred_at))
+    local_day = local_date(tz, PracticeSession.occurred_at)
     rows = db.execute(
         select(local_day)
         .where(PracticeSession.user_id == user_id)
@@ -87,11 +80,9 @@ def _streak_at_risk(days: set[date], today: date) -> bool:
     - the streak is 0 (nothing to protect);
     - the streak is leaning on the rest-day allowance for today's gap (still safe today).
     """
-    from app.services.dashboard_service import _compute_streaks
-
     if today in days:
         return False  # already practiced today
-    current, _, rest_day_used = _compute_streaks(days, today)
+    current, _, rest_day_used = compute_streaks(days, today)
     if current == 0:
         return False  # no active streak to protect
     if rest_day_used:
@@ -100,7 +91,7 @@ def _streak_at_risk(days: set[date], today: date) -> bool:
 
 
 def _practiced_today(db: Session, user_id: uuid.UUID, today: date, tz: str) -> bool:
-    local_day = func.date(func.timezone(tz, PracticeSession.occurred_at))
+    local_day = local_date(tz, PracticeSession.occurred_at)
     row = db.execute(
         select(PracticeSession.id)
         .where(PracticeSession.user_id == user_id, local_day == today)
@@ -138,12 +129,12 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
 
     sent = 0
     for user in candidates:
-        zone = _zone(user.timezone)
-        local_now = now_utc.astimezone(zone)
+        tz_zone = zone(user.timezone)
+        local_now = now_utc.astimezone(tz_zone)
         if local_now.hour < user.reminder_hour:
             continue  # their hour hasn't arrived yet today
         if user.reminder_last_sent_at is not None:
-            last_local = user.reminder_last_sent_at.astimezone(zone).date()
+            last_local = user.reminder_last_sent_at.astimezone(tz_zone).date()
             if last_local >= local_now.date():
                 continue  # already reminded today
         if _practiced_today(db, user.id, local_now.date(), user.timezone or "UTC"):
@@ -199,15 +190,15 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
 
     sent = 0
     for user in candidates:
-        zone = _zone(user.timezone)
-        local_now = now_utc.astimezone(zone)
+        tz_zone = zone(user.timezone)
+        local_now = now_utc.astimezone(tz_zone)
 
         if local_now.hour < STREAK_SAVE_HOUR:
             continue  # too early in the day
 
         # At most one streak-save nudge per local day.
         if user.streak_save_last_sent_at is not None:
-            last_local = user.streak_save_last_sent_at.astimezone(zone).date()
+            last_local = user.streak_save_last_sent_at.astimezone(tz_zone).date()
             if last_local >= local_now.date():
                 continue
 
@@ -215,15 +206,13 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
         today = local_now.date()
 
         # Fetch practice days once; pass into both the risk check and streak copy.
-        from app.services.dashboard_service import _compute_streaks
-
         days = _practice_days(db, user.id, tz)
 
         if not _streak_at_risk(days, today):
             continue  # already practiced, no streak, or rest-day is covering today
 
         # Compute current streak length for personalised copy.
-        current_streak, _, _ = _compute_streaks(days, today)
+        current_streak, _, _ = compute_streaks(days, today)
 
         # Mark as handled for the day NOW — crash-safe; gates the push send below.
         user.streak_save_last_sent_at = now_utc
