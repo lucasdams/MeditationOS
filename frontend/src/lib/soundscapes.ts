@@ -324,6 +324,12 @@ function startWind(ctx: AudioContext, out: GainNode): StopFn {
 function startDrone(ctx: AudioContext, out: GainNode): StopFn {
   const stops: StopFn[] = []
 
+  // Dedicated tremolo gain sits between the drone mix and master so the LFO
+  // only modulates this node — leaving master free for setVolume/stop writes.
+  const tremoloNode = ctx.createGain()
+  tremoloNode.gain.value = 1
+  tremoloNode.connect(out)
+
   // Base partials: root (110 Hz ≈ A2), fifth (165), octave (220), soft upper
   const partials: { freq: number; gain: number }[] = [
     { freq: 110, gain: 0.5 },
@@ -339,20 +345,18 @@ function startDrone(ctx: AudioContext, out: GainNode): StopFn {
     osc.frequency.value = freq
     const g = ctx.createGain()
     g.gain.value = gain
-    osc.connect(g).connect(out)
+    osc.connect(g).connect(tremoloNode)
     osc.start()
     stops.push(() => { try { osc.stop() } catch { /* already stopped */ } })
   })
 
-  // Very slow tremolo for organic life
+  // Very slow tremolo for organic life — modulates the dedicated tremoloNode, not master
   const tremOsc = ctx.createOscillator()
   tremOsc.type = 'sine'
   tremOsc.frequency.value = 0.03
   const tremGain = ctx.createGain()
   tremGain.gain.value = 0.04
-  // Modulate the output gain — connect to the out node's gain AudioParam indirectly
-  // by inserting a wrapper gain
-  tremOsc.connect(tremGain).connect(out.gain)
+  tremOsc.connect(tremGain).connect(tremoloNode.gain)
   tremOsc.start()
   stops.push(() => { try { tremOsc.stop() } catch { /* already stopped */ } })
 
@@ -402,20 +406,25 @@ export class SoundscapeEngine {
   }
 
   stop(): void {
-    if (this.stopNodes) {
-      this.stopNodes()
-      this.stopNodes = null
-    }
+    const stopNodes = this.stopNodes
+    this.stopNodes = null
+    this.current = null
+
     if (this.masterGain && this.ctx) {
       const now = this.ctx.currentTime
       this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now)
       this.masterGain.gain.linearRampToValueAtTime(0, now + 0.15)
-      // Disconnect after fade
       const mg = this.masterGain
-      setTimeout(() => { try { mg.disconnect() } catch { /* already disconnected */ } }, 250)
+      this.masterGain = null
+      setTimeout(() => {
+        // Stop source nodes after the fade so the cut isn't abrupt
+        if (stopNodes) stopNodes()
+        try { mg.disconnect() } catch { /* already disconnected */ }
+      }, 250)
+    } else {
+      if (stopNodes) stopNodes()
+      this.masterGain = null
     }
-    this.masterGain = null
-    this.current = null
   }
 
   setVolume(vol: number): void {

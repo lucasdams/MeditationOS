@@ -112,10 +112,12 @@ export default function SanctuaryPage() {
   const [selected, setSelected] = useState<string | null>(null)
 
   useEffect(() => {
+    let ignore = false
     sanctuaryService
       .getScene()
-      .then(setScene)
-      .catch(() => setError(true))
+      .then((s) => { if (!ignore) setScene(s) })
+      .catch(() => { if (!ignore) setError(true) })
+    return () => { ignore = true }
   }, [])
 
   // Clear the just-bought marker once its pop/glow has played, so the animation

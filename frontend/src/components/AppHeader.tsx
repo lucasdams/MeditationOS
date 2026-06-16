@@ -29,10 +29,12 @@ export default function AppHeader() {
 
   // Refetch on every navigation so the level stays live after earning XP.
   useEffect(() => {
+    let ignore = false
     dashboardService
       .getStats()
-      .then((s) => setLevel(s.level))
+      .then((s) => { if (!ignore) setLevel(s.level) })
       .catch(() => {})
+    return () => { ignore = true }
   }, [location.pathname])
 
   // Close the "More" menu and the mobile nav on navigation.
