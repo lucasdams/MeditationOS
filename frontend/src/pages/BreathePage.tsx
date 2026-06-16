@@ -6,6 +6,7 @@ import { ApiError } from '../services/api'
 import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAudio'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
+import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import { useToast } from '../context/ToastContext'
@@ -168,6 +169,10 @@ export default function BreathePage() {
     xpGained: number
     breakdown: XpLine[]
   } | null>(null)
+  // The id of the just-saved sit, so an optional post-session reading can link to it.
+  const savedSessionIdRef = useRef<string | null>(null)
+  // After the reward overlay closes, offer a skippable "log a quick reading?".
+  const [showReading, setShowReading] = useState(false)
   const [audioOn, setAudioOn] = useState(() => loadPrefs().audioOn) // ambient wash on by default
   const [ambient, setAmbient] = useState<AmbientSound>(() => loadPrefs().ambient)
   const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
@@ -472,7 +477,7 @@ export default function BreathePage() {
     setSaving(true)
     try {
       const before = await dashboardService.getStats()
-      await sessionService.create({
+      const saved = await sessionService.create({
         type: 'resonance_breathing',
         // Floor, never round up — a sub-minute breath must not count as the
         // "breathe a minute" quest (which needs a true ≥60s).
@@ -485,6 +490,7 @@ export default function BreathePage() {
         cycles_completed: Math.floor(durationSec / cycleLength(pattern)),
         client_token: tokenRef.current ?? undefined,
       })
+      savedSessionIdRef.current = saved.id
       // Saved — drop the recovery draft and stop the tab-close beacon from re-firing.
       savedRef.current = true
       clearDraft(DRAFT_PAGE)
@@ -749,7 +755,26 @@ export default function BreathePage() {
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
           breakdown={reward.breakdown}
-          onClose={() => navigate('/')}
+          onClose={() => {
+            setReward(null)
+            // Offer the optional reading once the reward is dismissed — never blocks.
+            if (savedSessionIdRef.current) setShowReading(true)
+            else navigate('/')
+          }}
+        />
+      )}
+
+      {showReading && savedSessionIdRef.current && (
+        <BiometricCapture
+          context="post"
+          sessionId={savedSessionIdRef.current}
+          title="Log a quick reading?"
+          intro="Optional: your heart rate now, to see how a breathing sit settles you."
+          onDone={() => {
+            showToast('Reading saved.')
+            navigate('/')
+          }}
+          onSkip={() => navigate('/')}
         />
       )}
     </main>

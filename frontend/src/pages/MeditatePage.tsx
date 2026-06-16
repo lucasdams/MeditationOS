@@ -6,6 +6,7 @@ import { ApiError } from '../services/api'
 import { playBell } from '../lib/sfx'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
+import BiometricCapture from '../components/BiometricCapture'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import { useToast } from '../context/ToastContext'
 import {
@@ -73,6 +74,10 @@ export default function MeditatePage() {
     xpGained: number
     breakdown: XpLine[]
   } | null>(null)
+  // The id of the just-saved sit, so an optional post-session reading can link to it.
+  const savedSessionIdRef = useRef<string | null>(null)
+  // After the reward overlay closes, offer a skippable "log a quick reading?".
+  const [showReading, setShowReading] = useState(false)
   // Recovery for an unsaved sit: a leftover draft to offer on load, plus the live
   // bits the draft/beacon read at tab-close time (kept in refs so listeners see fresh
   // values). `tokenRef` ties a manual save and the auto-save to one row (idempotent).
@@ -222,12 +227,13 @@ export default function MeditatePage() {
     setSaving(true)
     try {
       const before = await dashboardService.getStats()
-      await sessionService.create({
+      const saved = await sessionService.create({
         type: MEDITATION_TYPE,
         duration_seconds: Math.floor(durationSec), // floor — never inflate the logged time
         occurred_at: startedAtRef.current || new Date().toISOString(),
         client_token: tokenRef.current ?? undefined,
       })
+      savedSessionIdRef.current = saved.id
       // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
       savedRef.current = true
       clearDraft(DRAFT_PAGE)
@@ -397,7 +403,26 @@ export default function MeditatePage() {
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
           breakdown={reward.breakdown}
-          onClose={() => navigate('/')}
+          onClose={() => {
+            setReward(null)
+            // Offer the optional reading once the reward is dismissed — never blocks.
+            if (savedSessionIdRef.current) setShowReading(true)
+            else navigate('/')
+          }}
+        />
+      )}
+
+      {showReading && savedSessionIdRef.current && (
+        <BiometricCapture
+          context="post"
+          sessionId={savedSessionIdRef.current}
+          title="Log a quick reading?"
+          intro="Optional: your heart rate now, to see how a sit settles you over time."
+          onDone={() => {
+            showToast('Reading saved.')
+            navigate('/')
+          }}
+          onSkip={() => navigate('/')}
         />
       )}
     </main>

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     analytics,
     auth,
+    biometric_readings,
     breathing_patterns,
     dashboard,
     goals,
@@ -22,6 +23,7 @@ api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(auth.router)
 api_router.include_router(sessions.router)
+api_router.include_router(biometric_readings.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(analytics.router)
 api_router.include_router(breathing_patterns.router)
