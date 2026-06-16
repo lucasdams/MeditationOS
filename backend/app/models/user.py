@@ -7,6 +7,7 @@ from sqlalchemy import Boolean, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import settings
 from app.core.db import Base
 
 # The daily activities a user can opt into receiving quests for (they choose ≥3).
@@ -90,3 +91,14 @@ class User(Base):
         password" for password accounts and "set a password" for Google-only ones.
         """
         return self.password_hash is not None
+
+    @property
+    def is_admin(self) -> bool:
+        """Whether this account is an admin, derived from the ADMIN_EMAILS allowlist.
+
+        Computed (not stored): a migration-free designation matching the app's
+        env-config ethos. Surfaced to clients so the UI can gate admin nav/routes,
+        and enforced server-side by the `require_admin` dependency. Guests have a
+        synthetic email that won't be in the allowlist, so they can never be admins.
+        """
+        return bool(self.email) and self.email.lower() in settings.admin_emails_set

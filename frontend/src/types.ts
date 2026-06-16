@@ -6,6 +6,9 @@ export interface User {
   has_password: boolean
   email_verified: boolean
   is_guest: boolean
+  // Derived server-side from the ADMIN_EMAILS allowlist. Gates the /admin route + nav;
+  // the backend still enforces admin access on every /admin/* endpoint.
+  is_admin: boolean
   reminder_enabled: boolean
   reminder_hour: number | null
   weekly_summary_enabled: boolean
@@ -413,4 +416,43 @@ export interface GoalCreate {
   period: GoalPeriod
   count: number
   label?: string // required for custom goals only
+}
+
+// ── Admin metrics (aggregate, business-wide; counts/sums only) ───────────────
+export interface DailyCount {
+  day: string // ISO date
+  count: number
+}
+
+export interface AdminMetrics {
+  generated_at: string // ISO date the snapshot was computed (UTC)
+  users: {
+    total: number
+    guests: number
+    registered: number
+    email_verified: number
+    email_unverified: number
+    with_active_streak: number
+    signups_last_30_days: DailyCount[]
+  }
+  active_users: {
+    dau: number
+    wau: number
+    mau: number
+  }
+  practice: {
+    total_sessions: number
+    total_minutes: number
+  }
+  content: {
+    gratitude_entries: number
+    journal_entries: number
+    mood_logs: number
+  }
+  adoption: {
+    sanctuary_users: number
+    goal_users: number
+    reminder_users: number
+    push_users: number
+  }
 }
