@@ -3718,3 +3718,35 @@ textarea:focus-visible,
     opacity: 0;
   }
 }
+
+/* ── Sanctuary shop — track grouping ────────────────────────────────────────
+   Quiet section headers, one per track (nature / structure / companion / whimsy).
+   Uses a per-track CSS custom property (--track-accent) set inline by the component.
+   Additive — these classes are all scoped and don't touch existing rules.
+ ─────────────────────────────────────────────────────────────────────────── */
+.sanctuary-track-section {
+  /* Breathing room between track groups */
+  margin-bottom: 0.25rem;
+}
+
+.sanctuary-track-section + .sanctuary-track-section {
+  margin-top: 1.25rem;
+}
+
+.sanctuary-track-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  /* Accent via the inline custom property; falls back to a neutral muted tone */
+  color: var(--track-accent, #9ca3af);
+  margin: 0 0 0.6rem 0;
+  padding: 0;
+  /* A fine underline drawn from the accent rather than a bold divider */
+  border-bottom: 1.5px solid color-mix(in srgb, var(--track-accent, #9ca3af) 30%, transparent);
+  padding-bottom: 0.3rem;
+  width: 100%;
+}
