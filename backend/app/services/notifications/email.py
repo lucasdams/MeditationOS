@@ -40,17 +40,26 @@ def send_email(to: str, subject: str, body: str) -> bool:
     """Send (or, with no SMTP configured, log) an email. Returns whether it was
     handed off successfully. Never raises."""
     if not settings.smtp_host:
-        # Dev / no-provider mode: log instead of delivering so flows still work.
-        logger.info(
-            "email (not sent — no SMTP configured) to=%s subject=%s\n%s",
-            to,
-            subject,
-            body,
-        )
+        if settings.environment == "production":
+            # Never log the recipient (PII) or body (carries live reset/verify tokens)
+            # to stdout/CloudWatch in production.
+            logger.info("email queued (no SMTP configured) subject=%s", subject)
+        else:
+            # Dev / no-provider mode: log the full message so flows still work locally.
+            logger.info(
+                "email (not sent — no SMTP configured) to=%s subject=%s\n%s",
+                to,
+                subject,
+                body,
+            )
         return True
 
     try:
         return _deliver_smtp(to, subject, body)
     except Exception:  # noqa: BLE001 — never let email delivery break the caller
-        logger.exception("email delivery failed to=%s subject=%s", to, subject)
+        if settings.environment == "production":
+            # Don't log the recipient address (PII) in production.
+            logger.exception("email delivery failed subject=%s", subject)
+        else:
+            logger.exception("email delivery failed to=%s subject=%s", to, subject)
         return False

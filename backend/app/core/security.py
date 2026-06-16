@@ -23,19 +23,31 @@ def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
 
 
+ACCESS_TOKEN_TYPE = "access"
+
+
 def create_access_token(subject: str) -> str:
-    """Sign a short-lived JWT carrying the user id in `sub`."""
+    """Sign a short-lived JWT carrying the user id in `sub`. The `type` claim pins
+    it as an access token so a reset/verify token (same key, same `sub`) can't be
+    swapped in as the auth cookie."""
     expire = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
-    return jwt.encode({"sub": subject, "exp": expire}, settings.secret_key, algorithm=ALGORITHM)
+    return jwt.encode(
+        {"sub": subject, "type": ACCESS_TOKEN_TYPE, "exp": expire},
+        settings.secret_key,
+        algorithm=ALGORITHM,
+    )
 
 
 def decode_access_token(token: str) -> str | None:
-    """Return the `sub` (user id) if the token is valid, else None."""
+    """Return the `sub` (user id) if the token is a valid access token, else None.
+    Rejects tokens of another type (reset/verify) to prevent token confusion."""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
     except jwt.PyJWTError:
+        return None
+    if payload.get("type") != ACCESS_TOKEN_TYPE:
         return None
     return payload.get("sub")
 

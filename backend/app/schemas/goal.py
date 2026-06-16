@@ -15,6 +15,8 @@ class GoalCreate(BaseModel):
     """A new habit goal: do `activity` `count` times per `period`. A `custom` goal
     additionally carries a `label` (its name) and is tracked via manual check-ins."""
 
+    model_config = ConfigDict(extra="forbid")
+
     activity: GoalActivity
     period: GoalPeriod
     # Up to 1000 to accommodate cumulative "total" targets (e.g. 100 times); the
@@ -39,6 +41,8 @@ class GoalCreate(BaseModel):
 
 class GoalUpdate(BaseModel):
     """Edit a goal's cadence or archive/reactivate it."""
+
+    model_config = ConfigDict(extra="forbid")
 
     count: int | None = Field(default=None, gt=0, le=1000)
     period: GoalPeriod | None = None

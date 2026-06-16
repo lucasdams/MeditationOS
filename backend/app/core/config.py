@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # window (resists distributed brute force, which per-IP limiting misses).
     login_max_failures: int = 10
     login_failure_window_minutes: int = 15
+    # Per-email cooldown between transactional sends (reset-request / verify-resend).
+    # Complements the per-IP limiter so IP rotation can't inbox-bomb one address.
+    email_send_cooldown_seconds: int = 60
     # Trust X-Forwarded-For for client IP (rate limiting). Only enable behind a
     # trusted reverse proxy — otherwise clients can spoof it to dodge limits.
     trust_proxy: bool = False

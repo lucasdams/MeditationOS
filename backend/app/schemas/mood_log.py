@@ -11,6 +11,8 @@ from app.schemas.journal import Mood
 class MoodLogCreate(BaseModel):
     """A quick "how do you feel?" check-in — just a mood from the fixed palette."""
 
+    model_config = ConfigDict(extra="forbid")
+
     mood: Mood
 
 

@@ -9,7 +9,7 @@ from app.models.user import User
 from app.schemas.push import PushKeys, PushSubscriptionCreate
 from app.services import push_service
 
-SUB = {"endpoint": "https://push.example/abc", "keys": {"p256dh": "key1", "auth": "auth1"}}
+SUB = {"endpoint": "https://fcm.googleapis.com/abc", "keys": {"p256dh": "key1", "auth": "auth1"}}
 
 
 def _auth(client, email):
@@ -51,6 +51,30 @@ def test_subscribe_requires_auth(client):
     assert client.post("/api/v1/push/subscribe", json=SUB).status_code == 401
 
 
+# --- SSRF allowlist (audit fix #4) ------------------------------------------
+
+
+def test_subscribe_rejects_non_https_endpoint(client):
+    _auth(client, "ssrf1@example.com")
+    bad = {"endpoint": "http://fcm.googleapis.com/x", "keys": SUB["keys"]}
+    assert client.post("/api/v1/push/subscribe", json=bad).status_code == 422
+
+
+def test_subscribe_rejects_internal_host_endpoint(client):
+    _auth(client, "ssrf2@example.com")
+    bad = {"endpoint": "https://169.254.169.254/latest/meta-data", "keys": SUB["keys"]}
+    assert client.post("/api/v1/push/subscribe", json=bad).status_code == 422
+
+
+def test_subscribe_accepts_known_push_service(client):
+    _auth(client, "ssrf3@example.com")
+    ok = {
+        "endpoint": "https://updates.push.services.mozilla.com/wpush/v2/abc",
+        "keys": SUB["keys"],
+    }
+    assert client.post("/api/v1/push/subscribe", json=ok).status_code == 204
+
+
 # --- service ----------------------------------------------------------------
 
 
@@ -61,7 +85,7 @@ def _user(db_session, email):
     return u
 
 
-def _create(endpoint="https://push.example/x"):
+def _create(endpoint="https://fcm.googleapis.com/x"):
     return PushSubscriptionCreate(endpoint=endpoint, keys=PushKeys(p256dh="p", auth="a"))
 
 

@@ -52,3 +52,12 @@ def test_register_short_password_422(client):
         json={"email": "shortpw@example.com", "password": "x"},
     )
     assert resp.status_code == 422
+
+
+def test_register_rejects_unexpected_field(client):
+    # extra="forbid" parity (audit fix #7) on the auth request schemas.
+    resp = client.post(
+        "/api/v1/auth/register",
+        json={"email": "extra@example.com", "password": "correct horse", "is_admin": True},
+    )
+    assert resp.status_code == 422

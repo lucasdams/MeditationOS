@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core import login_guard
+from app.core import login_guard, send_guard
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import (
@@ -275,6 +275,14 @@ def request_password_reset(
     data: PasswordResetRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    # Per-email cooldown (on top of the per-IP limiter) so IP rotation can't inbox-bomb
+    # one address. Checked before lookup, so it leaks nothing about account existence.
+    if send_guard.is_throttled(data.email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="A link was just sent. Please wait a moment before trying again.",
+        )
+    send_guard.record_sent(data.email)
     # Always the same response, sent or not — no account enumeration.
     user_service.request_password_reset(db, data.email)
     return {"detail": "If that email has an account, a reset link is on its way."}
@@ -309,6 +317,14 @@ def resend_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
+    # Per-email cooldown (on top of the per-IP limiter) so IP rotation can't inbox-bomb
+    # the target address.
+    if send_guard.is_throttled(current_user.email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="A link was just sent. Please wait a moment before trying again.",
+        )
+    send_guard.record_sent(current_user.email)
     user_service.send_verification_email(db, current_user)
     return {"detail": "If your email isn't verified yet, a new link is on its way."}
 
