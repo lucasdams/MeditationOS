@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.core.limits import enforce_daily_create_cap
 from app.models.session import Session
 from app.schemas.session import SessionCreate, SessionUpdate
+from app.services._ownership import delete_owned, get_owned
 
 
 def _by_client_token(db: DBSession, user_id: uuid.UUID, token: str) -> Session | None:
@@ -48,8 +49,7 @@ def create_session(db: DBSession, user_id: uuid.UUID, data: SessionCreate) -> Se
 
 def get_session(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> Session | None:
     """Fetch one session owned by the user. None if missing or not theirs."""
-    stmt = select(Session).where(Session.id == session_id, Session.user_id == user_id)
-    return db.execute(stmt).scalar_one_or_none()
+    return get_owned(db, Session, user_id, session_id)
 
 
 def update_session(
@@ -67,12 +67,7 @@ def update_session(
 
 
 def delete_session(db: DBSession, user_id: uuid.UUID, session_id: uuid.UUID) -> bool:
-    session = get_session(db, user_id, session_id)
-    if session is None:
-        return False
-    db.delete(session)
-    db.commit()
-    return True
+    return delete_owned(db, Session, user_id, session_id)
 
 
 def list_sessions(

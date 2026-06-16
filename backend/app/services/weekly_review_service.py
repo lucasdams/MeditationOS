@@ -6,7 +6,6 @@ import logging
 import uuid
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DBSession
@@ -17,8 +16,8 @@ from app.models.mood_log import MoodLog
 from app.models.session import Session
 from app.models.user import User
 from app.schemas.weekly_review import WeeklyReview
-from app.services.dashboard_service import _compute_streaks, _local_date
 from app.services.notifications import email
+from app.services.time_utils import compute_streaks, local_date, zone
 
 logger = logging.getLogger("meditationos.weekly_summary")
 
@@ -34,7 +33,7 @@ def get_weekly_review(
     week_start = today - timedelta(days=6)  # last 7 local days, inclusive
     prev_start = today - timedelta(days=13)
     prev_end = today - timedelta(days=7)
-    sday = _local_date(tz, Session.occurred_at)
+    sday = local_date(tz, Session.occurred_at)
 
     total, count, longest = db.execute(
         select(
@@ -62,18 +61,18 @@ def get_weekly_review(
             select(sday).where(Session.user_id == user_id).distinct()
         ).all()
     }
-    current_streak, _longest, _rest = _compute_streaks(all_days, today)
+    current_streak, _longest, _rest = compute_streaks(all_days, today)
 
     # Moods this week: combine standalone check-ins and journal-tagged moods.
     counts: Counter[str] = Counter()
-    mday = _local_date(tz, MoodLog.created_at)
+    mday = local_date(tz, MoodLog.created_at)
     for mood, n in db.execute(
         select(MoodLog.mood, func.count(MoodLog.id))
         .where(MoodLog.user_id == user_id, mday >= week_start, mday <= today)
         .group_by(MoodLog.mood)
     ).all():
         counts[mood] += int(n)
-    jday = _local_date(tz, Journal.created_at)
+    jday = local_date(tz, Journal.created_at)
     for mood, n in db.execute(
         select(Journal.mood, func.count(Journal.id))
         .where(
@@ -102,13 +101,6 @@ def get_weekly_review(
 
 
 # --- Weekly summary email (opt-in) -----------------------------------------------
-
-
-def _zone(tz: str | None) -> ZoneInfo:
-    try:
-        return ZoneInfo(tz or "UTC")
-    except ZoneInfoNotFoundError:
-        return ZoneInfo("UTC")
 
 
 def update_summary_settings(
@@ -166,14 +158,14 @@ def send_due_weekly_summaries(db: DBSession, *, now_utc: datetime | None = None)
 
     sent = 0
     for user in candidates:
-        zone = _zone(user.timezone)
-        local_now = now_utc.astimezone(zone)
+        tz_zone = zone(user.timezone)
+        local_now = now_utc.astimezone(tz_zone)
         if local_now.weekday() != user.weekly_summary_day:
             continue
         if local_now.hour < SUMMARY_SEND_HOUR:
             continue
         if user.weekly_summary_last_sent_at is not None:
-            last_local = user.weekly_summary_last_sent_at.astimezone(zone)
+            last_local = user.weekly_summary_last_sent_at.astimezone(tz_zone)
             if last_local.isocalendar()[:2] >= local_now.isocalendar()[:2]:
                 continue  # already sent this ISO week
         review = get_weekly_review(

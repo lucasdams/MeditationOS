@@ -21,6 +21,7 @@ from app.schemas.analytics import (
     WeekMinutes,
     WeekMoods,
 )
+from app.services.time_utils import local_date
 
 _BUCKETS = ("morning", "afternoon", "evening", "night")
 
@@ -39,7 +40,7 @@ def get_analytics(
     db: DBSession, user_id: uuid.UUID, *, today: date, tz: str, weeks: int = 12
 ) -> AnalyticsSummary:
     local_ts = func.timezone(tz, Session.occurred_at)
-    local_day = func.date(local_ts)
+    local_day = local_date(tz, Session.occurred_at)
     owned = Session.user_id == user_id
 
     # Totals.
@@ -110,7 +111,7 @@ def get_analytics(
     # Mood over time — per-week journal mood counts, over the same weeks window.
     j_local_ts = func.timezone(tz, Journal.created_at)
     j_week = func.date(func.date_trunc("week", j_local_ts))
-    j_day = func.date(j_local_ts)
+    j_day = local_date(tz, Journal.created_at)
     week_mood_counts: dict[date, dict[str, int]] = {}
     for w, m, c in db.execute(
         select(j_week, Journal.mood, func.count())

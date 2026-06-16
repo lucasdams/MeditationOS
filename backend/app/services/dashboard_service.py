@@ -25,6 +25,12 @@ from app.schemas.dashboard import (
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
 from app.services.quest_pool import categories_for_day, quest_for
+from app.services.time_utils import compute_streaks, local_date
+
+# Back-compat aliases: streak/local-day logic now lives in `time_utils`; other
+# modules historically import these names from here.
+_compute_streaks = compute_streaks
+_local_date = local_date
 
 # XP per *effective* minute of practice. Meditation (non-breathing) pays
 # MEDITATION_XP_PER_MIN; resonance breathing — the harder, signature practice — pays the
@@ -112,50 +118,6 @@ LONG_SIT_SECONDS = 600
 SLOW_BREATH_SECONDS = 12
 
 
-# Streak insurance ("rest day"): the current streak tolerates ONE skipped day — a
-# single-day gap is bridged so a missed day doesn't reset progress (wellness: a nudge,
-# not shame). Two missed days in a row still ends it. Computed, nothing stored.
-REST_DAYS_PER_STREAK = 1
-
-
-def _compute_streaks(dates: set[date], today: date) -> tuple[int, int, bool]:
-    """Return (current_streak_days, longest_streak_days, rest_day_used).
-
-    - longest: the longest run of consecutive days ever (at least the current streak).
-    - current: the run ending today OR yesterday (grace through end of today), allowing
-      up to REST_DAYS_PER_STREAK single-day gaps to be bridged; 0 if it has lapsed.
-    - rest_day_used: whether the current streak is currently leaning on a rest day.
-    """
-    if not dates:
-        return 0, 0, False
-
-    ordered = sorted(dates)
-    longest = run = 1
-    for prev, cur in zip(ordered, ordered[1:], strict=False):
-        run = run + 1 if (cur - prev).days == 1 else 1
-        longest = max(longest, run)
-
-    # Walk back from today (a missing today is free — grace), bridging a single skipped
-    # day with the rest-day allowance. The bridged day isn't counted toward the length.
-    current = 0
-    rest_budget = REST_DAYS_PER_STREAK
-    rest_used = False
-    day = today if today in dates else today - timedelta(days=1)
-    while True:
-        if day in dates:
-            current += 1
-            day -= timedelta(days=1)
-        elif rest_budget > 0 and (day - timedelta(days=1)) in dates:
-            rest_budget -= 1
-            rest_used = True
-            day -= timedelta(days=1)
-        else:
-            break
-
-    # The insured current streak counts toward "longest" too (so current ≤ longest).
-    return current, max(longest, current), rest_used
-
-
 def _level_progress(xp: int) -> tuple[int, int, int]:
     """Pokémon-style rising curve. XP = minutes practiced.
 
@@ -169,11 +131,6 @@ def _level_progress(xp: int) -> tuple[int, int, int]:
     xp_into_level = xp - 10 * level * (level - 1)
     xp_for_next_level = 20 * level
     return level, xp_into_level, xp_for_next_level
-
-
-def _local_date(tz: str, column):
-    """The calendar date of a timestamptz column in the given IANA timezone."""
-    return func.date(func.timezone(tz, column))
 
 
 def _capped_daily_xp_units(db: DBSession, model, *, user_id: uuid.UUID, tz: str, cap: int) -> int:

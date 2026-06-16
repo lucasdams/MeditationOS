@@ -6,9 +6,11 @@ never stored (see docs/design/data-model.md).
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, computed_field
+
+from app.schemas._validators import _capped_blank_to_none
 
 SessionType = Literal[
     "mindfulness",
@@ -17,6 +19,12 @@ SessionType = Literal[
     "loving_kindness",
     "resonance_breathing",
     "other",
+]
+
+# Optional pre-session intention: trimmed, blank → None, capped at 140 chars (422 if over).
+INTENTION_MAX_LENGTH = 140
+Intention = Annotated[
+    str | None, BeforeValidator(_capped_blank_to_none(INTENTION_MAX_LENGTH))
 ]
 
 
@@ -35,18 +43,10 @@ class SessionCreate(BaseModel):
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
     # Optional pre-session intention, trimmed and coerced to null when blank.
-    intention: str | None = Field(default=None, max_length=140)
+    intention: Intention = None
     # Optional client idempotency key — a save with a token already seen for this user
     # returns the existing session instead of creating a duplicate (auto-save + manual).
     client_token: str | None = Field(default=None, max_length=64)
-
-    @field_validator("intention", mode="before")
-    @classmethod
-    def _trim_intention(cls, v: object) -> object:
-        if isinstance(v, str):
-            v = v.strip()
-            return v if v else None
-        return v
 
 
 class SessionUpdate(BaseModel):
@@ -63,15 +63,7 @@ class SessionUpdate(BaseModel):
     inhale_seconds: int | None = Field(default=None, gt=0)
     exhale_seconds: int | None = Field(default=None, gt=0)
     cycles_completed: int | None = Field(default=None, ge=0)
-    intention: str | None = Field(default=None, max_length=140)
-
-    @field_validator("intention", mode="before")
-    @classmethod
-    def _trim_intention(cls, v: object) -> object:
-        if isinstance(v, str):
-            v = v.strip()
-            return v if v else None
-        return v
+    intention: Intention = None
 
 
 class SessionRead(BaseModel):

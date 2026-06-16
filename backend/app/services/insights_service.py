@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.session import Session
 from app.schemas.analytics import Insight, InsightsResponse
+from app.services.time_utils import local_date
 
 # Minimum samples before a pattern is honest enough to surface.
 _MIN_RATED = 8  # rated sessions (focus or calm) for rating-based observations
@@ -61,7 +62,7 @@ def get_insights(
     owned = Session.user_id == user_id
     local_ts = func.timezone(tz, Session.occurred_at)
     local_hour = func.extract("hour", local_ts)
-    local_day = func.date(local_ts)
+    local_day = local_date(tz, Session.occurred_at)
 
     insights: list[Insight] = []
 
