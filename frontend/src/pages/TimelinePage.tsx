@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
+import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { MOOD_COLORS, gratitudeColor, tint } from '../lib/colors'
+import { MOOD_COLORS, MOOD_META, gratitudeColor, tint } from '../lib/colors'
 import type { MeditationType, Mood, Session } from '../types'
 
 // One unified, chronological feed of everything you log — reflections (journal),
@@ -50,6 +51,7 @@ function toCsv(rows: Session[]): string {
 type TimelineItem =
   | { kind: 'journal'; id: string; when: string; text: string; mood: Mood | null }
   | { kind: 'gratitude'; id: string; when: string; text: string; category: string }
+  | { kind: 'mood'; id: string; when: string; mood: Mood }
   | { kind: 'session'; id: string; when: string; session: Session }
 
 const sortByWhenDesc = (a: TimelineItem, b: TimelineItem) => (a.when < b.when ? 1 : -1)
@@ -78,8 +80,9 @@ export default function TimelinePage() {
       journalService.list({ limit: PER_SOURCE }).catch(() => []),
       gratitudeService.list({ limit: PER_SOURCE }).catch(() => []),
       sessionService.list({ limit: PER_SOURCE }).catch(() => []),
+      moodLogService.list({ limit: PER_SOURCE }).catch(() => []),
     ])
-      .then(([journals, gratitudes, sessions]) => {
+      .then(([journals, gratitudes, sessions, moods]) => {
         const merged: TimelineItem[] = [
           ...journals.map((j) => ({
             kind: 'journal' as const,
@@ -100,6 +103,12 @@ export default function TimelinePage() {
             id: s.id,
             when: s.occurred_at,
             session: s,
+          })),
+          ...moods.map((m) => ({
+            kind: 'mood' as const,
+            id: m.id,
+            when: m.created_at,
+            mood: m.mood,
           })),
         ]
         merged.sort(sortByWhenDesc)
@@ -151,13 +160,26 @@ export default function TimelinePage() {
     }
   }
 
-  // Only session rows expose a Delete; journal/gratitude are managed on their own pages.
+  // Sessions and one-tap mood check-ins expose a Delete here (mood logs have no other
+  // home); journal/gratitude are managed on their own pages.
   const handleDelete = useUndoableDelete<TimelineItem>({
     list: items,
     setList: setItems,
     getId: (it) => it.id,
     remove: (id) => sessionService.remove(id),
     messages: { success: 'Session deleted.', error: 'Could not delete that session.' },
+    onStart: () => {
+      setMenuId(null)
+      setError(null)
+    },
+  })
+
+  const handleDeleteMood = useUndoableDelete<TimelineItem>({
+    list: items,
+    setList: setItems,
+    getId: (it) => it.id,
+    remove: (id) => moodLogService.remove(id),
+    messages: { success: 'Mood check-in removed.', error: 'Could not remove that check-in.' },
     onStart: () => {
       setMenuId(null)
       setError(null)
@@ -223,9 +245,11 @@ export default function TimelinePage() {
             const accent =
               item.kind === 'gratitude'
                 ? gratitudeColor(item.category)
-                : item.kind === 'journal' && item.mood
+                : item.kind === 'mood'
                   ? MOOD_COLORS[item.mood]
-                  : undefined
+                  : item.kind === 'journal' && item.mood
+                    ? MOOD_COLORS[item.mood]
+                    : undefined
             const emoji =
               item.kind === 'session'
                 ? item.session.type === 'resonance_breathing'
@@ -233,7 +257,9 @@ export default function TimelinePage() {
                   : '🧘'
                 : item.kind === 'journal'
                   ? '📓'
-                  : '🙏'
+                  : item.kind === 'mood'
+                    ? MOOD_META[item.mood].emoji
+                    : '🙏'
 
             // Sessions: editable inline (the folded-in History). Edit form replaces the row.
             if (item.kind === 'session' && editingId === item.id) {
@@ -317,6 +343,8 @@ export default function TimelinePage() {
                       <span className="timeline-text">
                         {TYPE_LABELS[item.session.type]} · {minutes(item.session.duration_seconds)}
                       </span>
+                    ) : item.kind === 'mood' ? (
+                      <span className="timeline-text">Felt {MOOD_META[item.mood].label.toLowerCase()}</span>
                     ) : (
                       <span className="timeline-text">{item.text}</span>
                     )}
@@ -328,18 +356,26 @@ export default function TimelinePage() {
                         {cap(item.mood)}
                       </span>
                     )}
-                    {item.kind === 'session' && (
+                    {(item.kind === 'session' || item.kind === 'mood') && (
                       <span className="journal-entry-actions">
                         {menuId === item.id && (
                           <>
+                            {item.kind === 'session' && (
+                              <button
+                                type="button"
+                                className="link-neutral"
+                                onClick={() => startEdit(item.session)}
+                              >
+                                Edit
+                              </button>
+                            )}
                             <button
                               type="button"
-                              className="link-neutral"
-                              onClick={() => startEdit(item.session)}
+                              className="link-danger"
+                              onClick={() =>
+                                item.kind === 'mood' ? handleDeleteMood(item.id) : handleDelete(item.id)
+                              }
                             >
-                              Edit
-                            </button>
-                            <button type="button" className="link-danger" onClick={() => handleDelete(item.id)}>
                               Delete
                             </button>
                           </>
@@ -347,7 +383,7 @@ export default function TimelinePage() {
                         <button
                           type="button"
                           className="journal-entry-menu"
-                          aria-label="Session actions"
+                          aria-label={item.kind === 'mood' ? 'Mood actions' : 'Session actions'}
                           aria-haspopup="true"
                           aria-expanded={menuId === item.id}
                           onClick={() => setMenuId(menuId === item.id ? null : item.id)}
@@ -358,7 +394,13 @@ export default function TimelinePage() {
                     )}
                   </div>
                   <span className="timeline-meta muted">
-                    {item.kind === 'session' ? 'Practice' : item.kind === 'journal' ? 'Journal' : 'Gratitude'}
+                    {item.kind === 'session'
+                      ? 'Practice'
+                      : item.kind === 'journal'
+                        ? 'Journal'
+                        : item.kind === 'mood'
+                          ? 'Mood'
+                          : 'Gratitude'}
                     {' · '}
                     {formatWhen(item.when)}
                   </span>

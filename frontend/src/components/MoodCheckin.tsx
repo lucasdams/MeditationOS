@@ -1,22 +1,13 @@
 import { useState } from 'react'
 import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
+import { MOOD_META } from '../lib/colors'
 import type { Mood } from '../types'
 
 // A one-tap "how do you feel?" — the low-friction counterpart to a written journal.
-// Feeds the same mood analytics; nothing to type.
-const MOODS: { mood: Mood; emoji: string; label: string }[] = [
-  { mood: 'calm', emoji: '😌', label: 'Calm' },
-  { mood: 'content', emoji: '🙂', label: 'Content' },
-  { mood: 'focused', emoji: '🎯', label: 'Focused' },
-  { mood: 'energized', emoji: '⚡', label: 'Energized' },
-  { mood: 'grateful', emoji: '🙏', label: 'Grateful' },
-  { mood: 'neutral', emoji: '😐', label: 'Neutral' },
-  { mood: 'restless', emoji: '😣', label: 'Restless' },
-  { mood: 'anxious', emoji: '😰', label: 'Anxious' },
-  { mood: 'tired', emoji: '😴', label: 'Tired' },
-  { mood: 'low', emoji: '😔', label: 'Low' },
-]
+// Feeds the same mood analytics; nothing to type. Emoji/label come from the shared
+// MOOD_META so the check-in and the timeline read a mood identically.
+const MOODS = (Object.keys(MOOD_META) as Mood[]).map((mood) => ({ mood, ...MOOD_META[mood] }))
 
 export default function MoodCheckin() {
   const { showToast } = useToast()

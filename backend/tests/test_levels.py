@@ -1,8 +1,14 @@
-"""XP / level curve (dashboard_service._level_progress)."""
+"""XP / level curve (dashboard_service._level_progress) and the front-loaded practice
+curve (_practice_xp / _effective_minutes)."""
 
 from datetime import date
 
-from app.services.dashboard_service import _level_progress
+from app.services.dashboard_service import (
+    BREATHING_XP_MULTIPLIER,
+    MEDITATION_XP_PER_MIN,
+    _level_progress,
+    _practice_xp,
+)
 from app.services.quest_pool import quest_for
 
 
@@ -29,11 +35,79 @@ def test_levels_are_monotonic():
         last = level
 
 
+# --- Front-loaded practice-XP curve --------------------------------------------------
+
+
+def _med(minutes):
+    return _practice_xp([(minutes * 60, False)])
+
+
+def _breath(minutes):
+    return _practice_xp([(minutes * 60, True)])
+
+
+def test_sub_minute_session_earns_zero():
+    assert _practice_xp([(59, False)]) == 0
+    assert _practice_xp([(59, True)]) == 0
+    assert _practice_xp([(0, False)]) == 0
+
+
+def test_worked_example_values():
+    # The reviewable curve from the docstring (meditation @2/eff-min).
+    assert _med(10) == 20
+    assert _med(30) == 50
+    assert _med(60) == 70
+    assert _med(120) == 100
+    # Breathing is the same effective minutes paid at BREATHING_XP_MULTIPLIER×.
+    assert _breath(10) == 30
+    assert _breath(60) == 105
+    assert _breath(120) == 150
+
+
+def test_breathing_beats_meditation_for_equal_minutes():
+    for minutes in (5, 10, 30, 60, 120):
+        assert _breath(minutes) > _med(minutes)
+    # Both share the same effective-minutes curve; breathing is just paid at the higher
+    # per-effective-minute rate, so its XP is that ratio of meditation's.
+    assert _breath(10) * MEDITATION_XP_PER_MIN == _med(10) * BREATHING_XP_MULTIPLIER
+    assert MEDITATION_XP_PER_MIN == 2 and BREATHING_XP_MULTIPLIER == 3
+
+
+def test_curve_is_front_loaded_within_a_session():
+    # Doubling one session's length gives strictly LESS than double its XP.
+    assert _med(120) < 2 * _med(60)
+    assert _breath(120) < 2 * _breath(60)
+    # Marginal XP per minute strictly decreases: the XP gained going 60→120 is less than
+    # the XP gained going 0→60.
+    assert (_med(120) - _med(60)) < (_med(60) - _med(0))
+
+
+def test_splitting_beats_one_giant_session():
+    # Two sessions of half the length (summing to the same minutes) earn strictly more
+    # than one giant session — because the giant session pushes minutes into the reduced
+    # tiers while each shorter sit stays nearer full rate.
+    one_giant = _practice_xp([(120 * 60, False)])
+    split = _practice_xp([(60 * 60, False), (60 * 60, False)])
+    assert split > one_giant
+    # Same for breathing.
+    assert _practice_xp([(60 * 60, True), (60 * 60, True)]) > _practice_xp([(120 * 60, True)])
+
+
+def test_practice_xp_is_monotonic_non_decreasing():
+    last = 0
+    for minutes in range(0, 300):
+        xp = _med(minutes)
+        assert xp >= last
+        last = xp
+
+
 def test_stats_endpoint_reports_xp_and_level(client):
     creds = {"email": "xp@example.com", "password": "correct horse"}
     client.post("/api/v1/auth/register", json=creds)
     client.post("/api/v1/auth/login", json=creds)
-    # 60 minutes of meditation → 120 XP (2/min)
+    # 60 minutes of meditation in a single session. Under the front-loaded curve a 60-min
+    # sit is worth 35 effective minutes → 70 practice XP (not the old linear 120), because
+    # the back half of a long sit pays less per minute.
     client.post(
         "/api/v1/sessions",
         json={
@@ -43,11 +117,14 @@ def test_stats_endpoint_reports_xp_and_level(client):
         },
     )
     body = client.get("/api/v1/dashboard/stats").json()
-    # 120 practice + that day's meditate quest (a single 60-min session completes every
-    # variant except "meditate twice") + 0 streak (the session is back in January). All
-    # variants land XP in [120, 200) → level 4, with 80 XP to the next level regardless.
+    # 70 practice + that day's meditate quest (a single 60-min session completes every
+    # variant except "meditate twice") + 0 streak (the session is back in January). The
+    # level is derived from the exact XP rather than hardcoded, since the quest XP varies
+    # by the date's rotation.
     quest = quest_for("meditate", date(2026, 1, 1))
     quest_xp = 0 if quest.variant == "double_sit" else quest.xp
-    assert body["xp"] == 120 + quest_xp
-    assert body["level"] == 4
-    assert body["xp_for_next_level"] == 80
+    expected_xp = 70 + quest_xp
+    assert body["xp"] == expected_xp
+    expected_level, _, expected_next = _level_progress(expected_xp)
+    assert body["level"] == expected_level
+    assert body["xp_for_next_level"] == expected_next
