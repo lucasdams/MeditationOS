@@ -360,8 +360,11 @@ export interface BiometricReadingCreate {
 
 // Average pre→post change around sits, with the sample basis. Nulls until there
 // are enough paired readings to say anything.
+// sample_size: sessions with both pre+post BPM.
+// hrv_sample_size: subset that also have HRV on both ends (may be smaller).
 export interface BiometricDelta {
   sample_size: number
+  hrv_sample_size: number
   avg_bpm_delta: number | null
   avg_hrv_ms_delta: number | null
 }

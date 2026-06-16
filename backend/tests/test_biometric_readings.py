@@ -151,3 +151,34 @@ def test_daily_create_cap(client, monkeypatch):
     assert _reading(client).status_code == 201
     assert _reading(client).status_code == 201
     assert _reading(client).status_code == 429  # over the per-day cap
+
+
+def test_delta_distinct_sample_sizes(client):
+    """A dataset where some sessions lack HRV readings must report separate sizes.
+
+    Two sessions: both have BPM readings (sample_size=2), but only one has HRV on
+    both ends (hrv_sample_size=1). Before the fix both used len(bpm_deltas) which
+    would mis-label the HRV figure.
+    """
+    _auth(client, "split-delta@example.com")
+    # Session 1: BPM + HRV on both sides.
+    s1 = _session(client).json()["id"]
+    _reading(client, context="pre", bpm=72, hrv_ms=40.0, session_id=s1)
+    _reading(client, context="post", bpm=66, hrv_ms=52.0, session_id=s1)
+    # Session 2: BPM only (no HRV readings).
+    s2 = _session(client, occurred_at="2026-06-16T09:00:00Z").json()["id"]
+    _reading(client, context="pre", bpm=80, measured_at="2026-06-16T09:00:00Z", session_id=s2)
+    _reading(client, context="post", bpm=76, measured_at="2026-06-16T09:05:00Z", session_id=s2)
+
+    delta = client.get("/api/v1/biometric-readings/delta").json()
+    assert delta["sample_size"] == 2       # both sessions have BPM pairs
+    assert delta["hrv_sample_size"] == 1   # only the first has HRV pairs
+    assert delta["avg_hrv_ms_delta"] == 12.0  # correct: (52 - 40) / 1
+
+
+def test_delta_includes_hrv_sample_size_field(client):
+    """The delta response always includes hrv_sample_size (even when 0)."""
+    _auth(client, "delta-field@example.com")
+    delta = client.get("/api/v1/biometric-readings/delta").json()
+    assert "hrv_sample_size" in delta
+    assert delta["hrv_sample_size"] == 0

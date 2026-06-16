@@ -43,8 +43,14 @@ class BiometricReadingRead(BaseModel):
 
 class BiometricDelta(BaseModel):
     """Average pre→post change around sits, with the sample basis. None when there
-    aren't enough paired readings to say anything (framed gently in the UI)."""
+    aren't enough paired readings to say anything (framed gently in the UI).
+
+    ``sample_size`` is the number of sessions with both a pre and post BPM reading.
+    ``hrv_sample_size`` is the (smaller or equal) subset that also have HRV on both
+    ends — kept separate so the UI can be honest about each figure's own basis.
+    """
 
     sample_size: int
+    hrv_sample_size: int = 0
     avg_bpm_delta: float | None = None
     avg_hrv_ms_delta: float | None = None
