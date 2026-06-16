@@ -131,6 +131,7 @@ def resend_verification(db: DBSession, actor: User, user_id: str) -> None:
         target=target,
         detail={"already_verified": target.email_verified},
     )
+    db.commit()
 
 
 def set_user_disabled(
@@ -147,8 +148,6 @@ def set_user_disabled(
         raise AdminSelfActionError()
     was_disabled = target.is_disabled
     target.is_disabled = disabled
-    db.commit()
-    db.refresh(target)
     audit_service.record_audit(
         db,
         actor,
@@ -156,6 +155,8 @@ def set_user_disabled(
         target=target,
         detail={"was_disabled": was_disabled, "target_is_admin": target.is_admin},
     )
+    db.commit()
+    db.refresh(target)
     return get_user_detail(db, str(target.id))
 
 
@@ -170,8 +171,9 @@ def delete_user(db: DBSession, actor: User, user_id: str) -> None:
     target = _get_user_or_404(db, user_id)
     if target.id == actor.id:
         raise AdminSelfActionError()
-    # Capture identifying metadata for the trail, then record, then delete. The audit's
-    # target FK becomes NULL on cascade, so the detail preserves who was deleted.
+    # Capture identifying metadata before staging the delete, since ORM expiry after
+    # db.delete may clear attributes.  The audit FK becomes NULL on cascade (ON DELETE
+    # SET NULL), so the detail preserves who was deleted even after the row is gone.
     deleted_id = str(target.id)
     audit_service.record_audit(
         db,
@@ -184,4 +186,8 @@ def delete_user(db: DBSession, actor: User, user_id: str) -> None:
             "target_is_guest": target.is_guest,
         },
     )
-    user_service.delete_user(db, target)
+    # Stage the delete alongside the audit row, then commit both atomically.  Using
+    # db.delete directly (rather than user_service.delete_user) avoids a second commit
+    # that would break the single-transaction guarantee.
+    db.delete(target)
+    db.commit()

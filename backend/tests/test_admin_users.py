@@ -303,3 +303,123 @@ def test_audit_endpoint_is_admin_gated(client):
     assert client.get("/api/v1/admin/audit").status_code == 401
     _auth(client, "normal@example.com")
     assert client.get("/api/v1/admin/audit").status_code == 403
+
+
+# ── Atomicity: action + audit row commit together ──────────────────────────
+
+
+def test_disable_rolls_back_if_audit_raises(db_session, as_admin, monkeypatch):
+    """If record_audit raises after the flag is mutated, the disable must not persist.
+
+    Uses raise_server_exceptions=False so the TestClient returns the 500 response
+    instead of re-raising the server exception, letting us inspect the DB state.
+    """
+    from fastapi.testclient import TestClient
+
+    from app.core.db import get_db
+    from app.main import app as _app
+
+    _app.dependency_overrides[get_db] = lambda: db_session
+    try:
+        with TestClient(_app, raise_server_exceptions=False) as tolerant_client:
+            as_admin("boss_atomd@example.com")
+            tolerant_client.post(
+                "/api/v1/auth/register",
+                json={"email": "boss_atomd@example.com", "password": "correct horse"},
+            )
+            tolerant_client.post(
+                "/api/v1/auth/login",
+                json={"email": "boss_atomd@example.com", "password": "correct horse"},
+            )
+            db_session.execute(
+                text("UPDATE users SET email_verified = TRUE WHERE email = :e"),
+                {"e": "boss_atomd@example.com"},
+            )
+            db_session.commit()
+            tolerant_client.post(
+                "/api/v1/auth/login",
+                json={"email": "boss_atomd@example.com", "password": "correct horse"},
+            )
+
+            tolerant_client.post(
+                "/api/v1/auth/register",
+                json={"email": "atomic_disable@example.com", "password": "correct horse"},
+            )
+            target_id = _user_id(db_session, "atomic_disable@example.com")
+
+            # Monkeypatch record_audit to raise, simulating an audit-insert failure.
+            import app.services.audit_service as _audit_mod
+
+            def _failing_record_audit(*args, **kwargs):
+                raise RuntimeError("simulated audit failure")
+
+            monkeypatch.setattr(_audit_mod, "record_audit", _failing_record_audit)
+
+            r = tolerant_client.post(f"/api/v1/admin/users/{target_id}/disable")
+            assert r.status_code == 500
+
+            # Verify the flag rolled back: query the DB directly (no API call needed).
+            is_disabled = db_session.execute(
+                text("SELECT is_disabled FROM users WHERE id = :id"), {"id": target_id}
+            ).scalar_one()
+            assert is_disabled is False
+    finally:
+        _app.dependency_overrides.clear()
+
+
+def test_delete_rolls_back_if_audit_raises(db_session, as_admin, monkeypatch):
+    """If record_audit raises before the delete, the user must still exist.
+
+    Uses raise_server_exceptions=False so the TestClient returns the 500 response.
+    """
+    from fastapi.testclient import TestClient
+
+    from app.core.db import get_db
+    from app.main import app as _app
+
+    _app.dependency_overrides[get_db] = lambda: db_session
+    try:
+        with TestClient(_app, raise_server_exceptions=False) as tolerant_client:
+            as_admin("boss_atomdel@example.com")
+            tolerant_client.post(
+                "/api/v1/auth/register",
+                json={"email": "boss_atomdel@example.com", "password": "correct horse"},
+            )
+            tolerant_client.post(
+                "/api/v1/auth/login",
+                json={"email": "boss_atomdel@example.com", "password": "correct horse"},
+            )
+            db_session.execute(
+                text("UPDATE users SET email_verified = TRUE WHERE email = :e"),
+                {"e": "boss_atomdel@example.com"},
+            )
+            db_session.commit()
+            tolerant_client.post(
+                "/api/v1/auth/login",
+                json={"email": "boss_atomdel@example.com", "password": "correct horse"},
+            )
+
+            tolerant_client.post(
+                "/api/v1/auth/register",
+                json={"email": "atomic_delete@example.com", "password": "correct horse"},
+            )
+            target_id = _user_id(db_session, "atomic_delete@example.com")
+
+            import app.services.audit_service as _audit_mod
+
+            def _failing_record_audit(*args, **kwargs):
+                raise RuntimeError("simulated audit failure")
+
+            monkeypatch.setattr(_audit_mod, "record_audit", _failing_record_audit)
+
+            r = tolerant_client.delete(f"/api/v1/admin/users/{target_id}")
+            assert r.status_code == 500
+
+            # The user must still exist — the delete rolled back with the audit failure.
+            monkeypatch.undo()
+            count = db_session.execute(
+                text("SELECT count(*) FROM users WHERE id = :id"), {"id": target_id}
+            ).scalar_one()
+            assert count == 1
+    finally:
+        _app.dependency_overrides.clear()

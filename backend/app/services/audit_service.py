@@ -1,7 +1,7 @@
 """Audit trail for privileged admin actions.
 
 `record_audit` appends one row describing an action an admin took. It is the single
-write path for the audit log, called from `admin_service` on every privileged action.
+write path for the audit log, called from `admin_users_service` on every privileged action.
 
 PRIVACY: `detail` must hold only ids/flags/state (e.g. {"was_disabled": False}) — never
 private user CONTENT (journal/gratitude/mood body text, biometric values). The read
@@ -32,10 +32,12 @@ def record_audit(
     target: User | None = None,
     detail: dict[str, Any] | None = None,
 ) -> AuditLog:
-    """Append an audit entry for `action` performed by `actor` (optionally on `target`).
+    """Stage an audit entry for `action` performed by `actor` (optionally on `target`).
 
-    Adds the row to the session and commits so the trail is durable on its own. Callers
-    record the audit AFTER the action they are logging has been applied.
+    Adds the row to the session WITHOUT committing — the caller is responsible for
+    committing so that the audit row and the action it records land in a single
+    transaction. If the commit raises, both the action and the audit row are rolled back
+    together, preventing an unaudited privileged action or a phantom audit entry.
     """
     entry = AuditLog(
         actor_user_id=actor.id,
@@ -44,8 +46,6 @@ def record_audit(
         detail=detail,
     )
     db.add(entry)
-    db.commit()
-    db.refresh(entry)
     return entry
 
 
