@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
+import { ErrorBanner } from '../components/StateViews'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 // First-run activation flow, shown by ProtectedRoute while quest_features is null
@@ -124,7 +125,7 @@ export default function Onboarding() {
               <button
                 key={g.key}
                 type="button"
-                className={`onboarding-choice${goal === g.key ? ' selected' : ''}`}
+                className={`selectable onboarding-choice${goal === g.key ? ' selected' : ''}`}
                 onClick={() => pickGoal(g.key)}
               >
                 <span className="onboarding-emoji">{g.emoji}</span> {g.label}
@@ -143,7 +144,7 @@ export default function Onboarding() {
               <button
                 key={e.key}
                 type="button"
-                className={`onboarding-choice${experience === e.key ? ' selected' : ''}`}
+                className={`selectable onboarding-choice${experience === e.key ? ' selected' : ''}`}
                 onClick={() => {
                   setExperience(e.key)
                   go('time')
@@ -168,7 +169,7 @@ export default function Onboarding() {
               <button
                 key={t.key}
                 type="button"
-                className={`onboarding-choice${time === t.key ? ' selected' : ''}`}
+                className={`selectable onboarding-choice${time === t.key ? ' selected' : ''}`}
                 onClick={() => {
                   setTime(t.key)
                   go('quests')
@@ -203,11 +204,7 @@ export default function Onboarding() {
               </label>
             ))}
           </fieldset>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
+          <ErrorBanner message={error} />
           <button type="button" onClick={finish} disabled={submitting}>
             {submitting ? 'Setting up…' : 'Start practicing'}
           </button>

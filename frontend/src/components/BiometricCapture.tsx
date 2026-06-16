@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
+import Modal from './Modal'
+import { ErrorBanner } from './StateViews'
 import type { BiometricReading, ReadingContext } from '../types'
 
 /**
@@ -18,6 +20,7 @@ export default function BiometricCapture({
   intro,
   onDone,
   onSkip,
+  inline = false,
 }: {
   context: ReadingContext
   sessionId?: string | null
@@ -28,6 +31,8 @@ export default function BiometricCapture({
   onDone: (reading?: BiometricReading) => void
   // Shown as a "Skip" affordance for the post-session prompt; omit for standalone.
   onSkip?: () => void
+  // Render as a plain in-page card (LogReadingPage) rather than a modal overlay.
+  inline?: boolean
 }) {
   const [bpm, setBpm] = useState('')
   const [hrv, setHrv] = useState('')
@@ -73,65 +78,71 @@ export default function BiometricCapture({
     }
   }
 
-  return (
-    <div className="biometric-capture" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="biometric-card">
-        <h2>{title}</h2>
-        <p className="biometric-intro">{intro}</p>
+  const body = (
+    <>
+      <h2>{title}</h2>
+      <p className="biometric-intro">{intro}</p>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <label htmlFor="bio-bpm">Heart rate (bpm)</label>
-          <input
-            id="bio-bpm"
-            type="number"
-            inputMode="numeric"
-            min="30"
-            max="220"
-            placeholder="e.g. 68"
-            value={bpm}
-            onChange={(e) => setBpm(e.target.value)}
-            autoFocus
-          />
+      <form onSubmit={handleSubmit} noValidate>
+        <label htmlFor="bio-bpm">Heart rate (bpm)</label>
+        <input
+          id="bio-bpm"
+          type="number"
+          inputMode="numeric"
+          min="30"
+          max="220"
+          placeholder="e.g. 68"
+          value={bpm}
+          onChange={(e) => setBpm(e.target.value)}
+          autoFocus
+        />
 
-          <label htmlFor="bio-hrv">HRV in ms (optional, if you know it)</label>
-          <input
-            id="bio-hrv"
-            type="number"
-            inputMode="numeric"
-            min="0"
-            placeholder="e.g. 45"
-            value={hrv}
-            onChange={(e) => setHrv(e.target.value)}
-          />
+        <label htmlFor="bio-hrv">HRV in ms (optional, if you know it)</label>
+        <input
+          id="bio-hrv"
+          type="number"
+          inputMode="numeric"
+          min="0"
+          placeholder="e.g. 45"
+          value={hrv}
+          onChange={(e) => setHrv(e.target.value)}
+        />
 
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
+        <ErrorBanner message={error} />
 
-          <p className="biometric-disclaimer">
-            A personal wellness signal you enter yourself — not a medical measurement
-            or diagnosis.
-          </p>
+        <p className="biometric-disclaimer">
+          A personal wellness signal you enter yourself — not a medical measurement
+          or diagnosis.
+        </p>
 
-          <div className="biometric-actions">
-            <button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save reading'}
+        <div className="biometric-actions">
+          <button type="submit" disabled={saving}>
+            {saving ? 'Saving…' : 'Save reading'}
+          </button>
+          {onSkip && (
+            <button
+              type="button"
+              className="link-neutral"
+              onClick={onSkip}
+              disabled={saving}
+            >
+              Skip
             </button>
-            {onSkip && (
-              <button
-                type="button"
-                className="link-neutral"
-                onClick={onSkip}
-                disabled={saving}
-              >
-                Skip
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-    </div>
+          )}
+        </div>
+      </form>
+    </>
+  )
+
+  // Standalone (LogReadingPage): a plain in-page card, not a modal overlay.
+  if (inline) {
+    return <div className="biometric-card biometric-card--inline">{body}</div>
+  }
+
+  // Post-session prompt: a focus-trapped modal overlay.
+  return (
+    <Modal ariaLabel={title} cardClassName="biometric-card">
+      {body}
+    </Modal>
   )
 }

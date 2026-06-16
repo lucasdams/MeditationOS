@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { sanctuaryService, type PersonalizePatch } from '../services/sanctuary'
 import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
+import Modal from '../components/Modal'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY, TRACK_META } from '../lib/sanctuaryArt'
 import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
@@ -246,12 +248,8 @@ export default function SanctuaryPage() {
         </p>
       </header>
 
-      {!scene && !error && <p>Loading…</p>}
-      {error && (
-        <p role="alert" className="error">
-          Could not load your sanctuary.
-        </p>
-      )}
+      {!scene && !error && <Loading />}
+      {error && <ErrorBanner message="Could not load your sanctuary." />}
 
       {scene && (
         <>
@@ -265,10 +263,10 @@ export default function SanctuaryPage() {
 
           <h2 className="sanctuary-section-title">Your garden</h2>
           {scene.owned.length === 0 ? (
-            <p className="muted">
+            <EmptyState>
               A quiet, empty patch — for now. Pick your first little friend from the shop
               below and watch your garden begin.
-            </p>
+            </EmptyState>
           ) : (
             (() => {
               // Lay items out on a row-major grid by `cell`. Show every occupied cell plus a
@@ -548,14 +546,12 @@ export default function SanctuaryPage() {
           setBuyName('')
         }
         return (
-          <div
-            className="sanctuary-modal-backdrop"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Buy a ${itemLabel(picking.item_key)}`}
-            onClick={closeModal}
+          <Modal
+            ariaLabel={`Buy a ${itemLabel(picking.item_key)}`}
+            cardClassName="sanctuary-modal"
+            onClose={closeModal}
+            closeOnBackdrop
           >
-            <div className="sanctuary-modal" onClick={(e) => e.stopPropagation()}>
               <h3>
                 {hasVariants ? 'Choose a' : 'Name your'}{' '}
                 {itemLabel(picking.item_key).toLowerCase()}
@@ -613,8 +609,7 @@ export default function SanctuaryPage() {
               >
                 Cancel
               </button>
-            </div>
-          </div>
+          </Modal>
         )
       })()}
     </main>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { analyticsService } from '../services/analytics'
 import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import type {
   AnalyticsSummary,
   BiometricDelta,
@@ -292,18 +293,14 @@ export default function AnalyticsPage() {
         <p className="page-subtitle">Patterns in your practice, computed from your activity.</p>
       </header>
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      {!data && !error && <p>Loading…</p>}
+      <ErrorBanner message={error} />
+      {!data && !error && <Loading />}
 
       {data && data.total_sessions === 0 && data.moods.length === 0 && (
         <>
-          <p className="muted">
+          <EmptyState>
             No practice data yet — practice a little and your trends will appear here.
-          </p>
+          </EmptyState>
           {/* Readings can exist independently of sessions, so still offer the trend. */}
           <BiometricTrend />
         </>

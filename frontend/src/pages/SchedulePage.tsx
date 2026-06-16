@@ -4,6 +4,8 @@ import { scheduledSessionService } from '../services/scheduledSessions'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { TYPE_COLORS } from '../lib/colors'
+import { localYMD } from '../lib/format'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import type { MeditationType, ScheduledSession } from '../types'
 
 const TYPES: { value: MeditationType; label: string }[] = [
@@ -24,7 +26,7 @@ function defaultWhen(): string {
   d.setDate(d.getDate() + 1)
   d.setHours(8, 0, 0, 0)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${localYMD(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function formatWhen(iso: string): string {
@@ -143,20 +145,16 @@ export default function SchedulePage() {
           placeholder="e.g. morning sit before work"
         />
 
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={error} />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Scheduling…' : 'Schedule it'}
         </button>
       </form>
 
       <h2 className="schedule-upcoming-title">Upcoming</h2>
-      {!items && !error && <p>Loading…</p>}
+      {!items && !error && <Loading />}
       {items && items.length === 0 && (
-        <p className="muted">Nothing planned yet — schedule your first session above. 🗓️</p>
+        <EmptyState>Nothing planned yet — schedule your first session above. 🗓️</EmptyState>
       )}
       {items && items.length > 0 && (
         <ul className="schedule-list">

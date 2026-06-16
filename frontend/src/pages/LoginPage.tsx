@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import GuestButton from '../components/GuestButton'
 import AuthBrand from '../components/AuthBrand'
+import { ErrorBanner } from '../components/StateViews'
 
 export default function LoginPage() {
   const { refresh } = useAuth()
@@ -75,11 +76,7 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorBanner message={error} />
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}

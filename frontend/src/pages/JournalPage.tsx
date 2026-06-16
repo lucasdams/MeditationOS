@@ -7,6 +7,7 @@ import { dashboardService } from '../services/dashboard'
 import { MOOD_COLORS, tint } from '../lib/colors'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
+import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
@@ -355,11 +356,7 @@ export default function JournalPage() {
                 )}
               </div>
 
-              {error && (
-                <p role="alert" className="error">
-                  {error}
-                </p>
-              )}
+              <ErrorBanner message={error} />
               <button type="submit" disabled={submitting || !body.trim()}>
                 {submitting ? 'Saving…' : 'Save reflection'}
               </button>
@@ -412,11 +409,11 @@ export default function JournalPage() {
           aria-label="Search reflections"
           onChange={(e) => setQuery(e.target.value)}
         />
-        {entries === null && !error && <p>Loading…</p>}
+        {entries === null && !error && <Loading />}
         {entries && entries.length === 0 && (
-          <p className="muted">
+          <EmptyState>
             {query ? `No reflections match “${query}”.` : 'No reflections yet. Write your first one above.'}
-          </p>
+          </EmptyState>
         )}
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined

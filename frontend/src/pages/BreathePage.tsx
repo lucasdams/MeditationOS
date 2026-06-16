@@ -5,9 +5,11 @@ import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAudio'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
+import { mmss } from '../lib/format'
 import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
+import { ErrorBanner } from '../components/StateViews'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
@@ -148,11 +150,6 @@ const loadPrefs = (): BreathePrefs => {
     // malformed or unavailable storage — fall back to defaults.
   }
   return DEFAULT_PREFS
-}
-
-const mmss = (totalSec: number) => {
-  const s = Math.max(0, Math.floor(totalSec))
-  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 }
 
 const DRAFT_PAGE = 'breathe'
@@ -651,7 +648,7 @@ export default function BreathePage() {
             <button
               key={p.key}
               type="button"
-              className={`pattern-card${selected ? ' selected' : ''}`}
+              className={`selectable pattern-card${selected ? ' selected' : ''}`}
               disabled={running}
               aria-pressed={selected}
               onClick={() => selectPreset(p.key)}
@@ -781,11 +778,7 @@ export default function BreathePage() {
         onVolumeChange={setSoundscapeVol}
       />
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorBanner message={error} />
 
       <div className="breathe-controls">
         {!running ? (

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { ErrorBanner } from '../components/StateViews'
 
 type Status = 'verifying' | 'ok' | 'error' | 'missing'
 type ResendState = 'idle' | 'sending' | 'sent' | 'throttled' | 'error'
@@ -58,16 +59,12 @@ export default function VerifyEmailPage() {
       {status === 'ok' && <p>Email confirmed — you’re all set.</p>}
 
       {status === 'missing' && (
-        <p role="alert" className="error">
-          This verification link is missing its token.
-        </p>
+        <ErrorBanner message="This verification link is missing its token." />
       )}
 
       {status === 'error' && (
         <>
-          <p role="alert" className="error">
-            This link is invalid or has expired.
-          </p>
+          <ErrorBanner message="This link is invalid or has expired." />
           {user ? (
             <>
               <p>We can send a fresh confirmation link to {user.email}.</p>
@@ -84,9 +81,7 @@ export default function VerifyEmailPage() {
                 </p>
               )}
               {resend === 'error' && (
-                <p role="alert" className="error">
-                  Couldn’t send the link. Please try again shortly.
-                </p>
+                <ErrorBanner message="Couldn’t send the link. Please try again shortly." />
               )}
             </>
           ) : (

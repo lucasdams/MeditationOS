@@ -24,6 +24,7 @@ export default function LogReadingPage() {
         context="resting"
         title="Resting reading"
         intro="A baseline measure, taken while calm and still."
+        inline
         onDone={() => {
           showToast('Reading saved.')
           navigate('/analytics')

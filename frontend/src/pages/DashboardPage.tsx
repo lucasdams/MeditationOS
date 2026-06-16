@@ -7,7 +7,8 @@ import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import Achievements from '../components/Achievements'
-import { ACTIVITY_COLORS, type Activity } from '../lib/colors'
+import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
+import { ErrorBanner } from '../components/StateViews'
 import { GREETINGS, LOADING, dailyOf, randomOf } from '../lib/zen'
 import type { DashboardStats } from '../types'
 
@@ -20,12 +21,14 @@ const QUEST_LINKS: Record<string, string> = {
 }
 
 // Quick-action tiles — one tap to the five main features from the dashboard.
+// The four activity tiles read their emoji/label from the shared ACTIVITY_META;
+// Sanctuary isn't a tracked activity, so it carries its own emoji/label.
 const FEATURE_TILES = [
-  { label: 'Meditate', emoji: '🧘', to: '/meditate', activity: 'meditate' as const },
-  { label: 'Breathe',  emoji: '🫁', to: '/breathe',  activity: 'breathe'  as const },
-  { label: 'Gratitude',emoji: '🙏', to: '/gratitude',activity: 'gratitude'as const },
-  { label: 'Journal',  emoji: '📓', to: '/journal',  activity: 'journal'  as const },
-  { label: 'Sanctuary',emoji: '🌱', to: '/sanctuary',activity: null },
+  { ...ACTIVITY_META.meditate, to: '/meditate', activity: 'meditate' as const },
+  { ...ACTIVITY_META.breathe, to: '/breathe', activity: 'breathe' as const },
+  { ...ACTIVITY_META.gratitude, to: '/gratitude', activity: 'gratitude' as const },
+  { ...ACTIVITY_META.journal, to: '/journal', activity: 'journal' as const },
+  { label: 'Sanctuary', emoji: '🌱', to: '/sanctuary', activity: null },
 ] as const
 
 const formatTotal = (seconds: number) => {
@@ -76,11 +79,7 @@ export default function DashboardPage() {
       <h1>Your practice</h1>
       <p className="zen-greeting muted">{greeting}</p>
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorBanner message={error} />
 
       {!stats && !error && <p>{loadingLine}</p>}
 

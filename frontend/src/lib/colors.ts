@@ -15,6 +15,18 @@ export const ACTIVITY_COLORS: Record<Activity, string> = {
   custom: '#6366f1', // indigo — user-defined habits
 }
 
+// The single source of truth for how an activity reads: emoji + label + colour.
+// (Colour mirrors ACTIVITY_COLORS so the two never drift.) Pages that need a
+// context-specific label — e.g. "Write gratitude" on the goals form — override
+// the label locally; the emoji/colour stay shared.
+export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; color: string }> = {
+  meditate: { emoji: '🧘', label: 'Meditate', color: ACTIVITY_COLORS.meditate },
+  breathe: { emoji: '🫁', label: 'Breathe', color: ACTIVITY_COLORS.breathe },
+  gratitude: { emoji: '🙏', label: 'Gratitude', color: ACTIVITY_COLORS.gratitude },
+  journal: { emoji: '📓', label: 'Journal', color: ACTIVITY_COLORS.journal },
+  custom: { emoji: '⭐', label: 'Custom', color: ACTIVITY_COLORS.custom },
+}
+
 // Meditation session types — same palette used by the session-log cards.
 export const TYPE_COLORS: Record<MeditationType, string> = {
   mindfulness: '#14b8a6',
