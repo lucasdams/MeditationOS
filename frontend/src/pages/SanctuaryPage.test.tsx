@@ -8,6 +8,7 @@ const getScene = vi.fn()
 const buy = vi.fn()
 const customize = vi.fn()
 const move = vi.fn()
+const personalize = vi.fn()
 const playReward = vi.fn()
 
 vi.mock('../services/sanctuary', () => ({
@@ -16,6 +17,7 @@ vi.mock('../services/sanctuary', () => ({
     buy: (...a: unknown[]) => buy(...a),
     customize: (...a: unknown[]) => customize(...a),
     move: (...a: unknown[]) => move(...a),
+    personalize: (...a: unknown[]) => personalize(...a),
   },
 }))
 vi.mock('../lib/sfx', () => ({ playReward: (...a: unknown[]) => playReward(...a) }))
@@ -54,6 +56,9 @@ const after = sceneWith(40, [
     variant: null,
     customizations: {},
     available: [],
+    name: null,
+    note: null,
+    favorite: false,
   },
 ])
 
@@ -67,6 +72,9 @@ function ownedItem(id: string, cell: number): SanctuaryScene['owned'][number] {
     variant: null,
     customizations: {},
     available: [],
+    name: null,
+    note: null,
+    favorite: false,
   }
 }
 
@@ -103,7 +111,8 @@ describe('SanctuaryPage buy feedback', () => {
     await waitFor(() =>
       expect(screen.getByText(/Tree added · 30 🪙 spent, 40 left/)).toBeInTheDocument(),
     )
-    expect(buy).toHaveBeenCalledWith('tree', null)
+    // No name typed → buys with a null variant and a null name.
+    expect(buy).toHaveBeenCalledWith('tree', null, null)
     // Sound cue fired through the shared sfx module (honours the user's setting).
     expect(playReward).toHaveBeenCalledTimes(1)
 
@@ -123,6 +132,69 @@ describe('SanctuaryPage buy feedback', () => {
 
     await waitFor(() => expect(screen.getByText(/Could not buy that/)).toBeInTheDocument())
     expect(playReward).not.toHaveBeenCalled()
+  })
+})
+
+describe('SanctuaryPage naming (ADR-0015)', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+    buy.mockReset()
+    personalize.mockReset()
+    playReward.mockReset()
+  })
+
+  it('names an item at purchase via the "name it…" modal', async () => {
+    const named = sceneWith(40, [{ ...ownedItem('new-1', 0), name: "Grandpa's Oak" }])
+    getScene.mockResolvedValue(before)
+    buy.mockResolvedValue(named)
+
+    renderPage()
+
+    // Open the optional name modal for a single-variant item.
+    fireEvent.click(await screen.findByRole('button', { name: /name it/ }))
+    const dialog = within(await screen.findByRole('dialog'))
+    const input = dialog.getByPlaceholderText(/Grandpa's Oak/)
+    fireEvent.change(input, { target: { value: "Grandpa's Oak" } })
+    fireEvent.click(dialog.getByRole('button', { name: /Buy · 🪙 30/ }))
+
+    // The typed name is plumbed through; the toast quotes the user's name.
+    await waitFor(() => expect(buy).toHaveBeenCalledWith('tree', null, "Grandpa's Oak"))
+    await waitFor(() =>
+      expect(screen.getByText(/“Grandpa's Oak” added/)).toBeInTheDocument(),
+    )
+  })
+
+  it('renames an owned item from the personalize panel', async () => {
+    const start = sceneWith(40, [ownedItem('a', 0)])
+    const renamed = sceneWith(40, [{ ...ownedItem('a', 0), name: 'Willow' }])
+    getScene.mockResolvedValue(start)
+    personalize.mockResolvedValue(renamed)
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+    const nameInput = view.getByPlaceholderText(/Give it a name/)
+    fireEvent.change(nameInput, { target: { value: 'Willow' } })
+    fireEvent.blur(nameInput)
+
+    await waitFor(() => expect(personalize).toHaveBeenCalledWith('a', { name: 'Willow' }))
+  })
+
+  it('toggles the favourite flag from the personalize panel', async () => {
+    const start = sceneWith(40, [ownedItem('a', 0)])
+    getScene.mockResolvedValue(start)
+    personalize.mockResolvedValue(
+      sceneWith(40, [{ ...ownedItem('a', 0), favorite: true }]),
+    )
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+    fireEvent.click(view.getByRole('button', { name: /Mark favourite/ }))
+
+    await waitFor(() => expect(personalize).toHaveBeenCalledWith('a', { favorite: true }))
   })
 })
 

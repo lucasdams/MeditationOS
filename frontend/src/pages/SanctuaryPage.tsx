@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { sanctuaryService } from '../services/sanctuary'
+import { sanctuaryService, type PersonalizePatch } from '../services/sanctuary'
 import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
 import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY } from '../lib/sanctuaryArt'
@@ -11,13 +11,95 @@ import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
 // row-major: cell = row * GRID_COLUMNS + col. One tunable constant maps cell ↔ (row, col).
 const GRID_COLUMNS = 4
 
+// Length caps, mirroring the backend schema (NAME_MAX_LENGTH / NOTE_MAX_LENGTH). The form
+// soft-limits input client-side; the server trims + rejects over-length regardless.
+const NAME_MAX = 40
+const NOTE_MAX = 140
+
+// A calm name/note/favourite editor inside an owned item's personalize panel (ADR-0015).
+// Local input state, committed on blur / explicit save so a rename is one quiet action.
+// All optional and default-off — a user who ignores it sees nothing change.
+function SanctuaryNameNote({
+  item,
+  busy,
+  onSave,
+}: {
+  item: OwnedItem
+  busy: boolean
+  onSave: (item: OwnedItem, patch: PersonalizePatch, okMessage?: string) => void
+}) {
+  const [name, setName] = useState(item.name ?? '')
+  const [note, setNote] = useState(item.note ?? '')
+
+  // Commit a text field only when it actually changed, sending null to clear it.
+  const commitName = () => {
+    const next = name.trim()
+    if (next === (item.name ?? '')) return
+    onSave(item, { name: next || null }, next ? 'Name saved.' : 'Name cleared.')
+  }
+  const commitNote = () => {
+    const next = note.trim()
+    if (next === (item.note ?? '')) return
+    onSave(item, { note: next || null }, next ? 'Note saved.' : 'Note cleared.')
+  }
+
+  return (
+    <div className="sanctuary-personal">
+      <label className="sanctuary-field">
+        <span>Name</span>
+        <input
+          type="text"
+          value={name}
+          maxLength={NAME_MAX}
+          placeholder="Give it a name (optional)"
+          disabled={busy}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+      </label>
+      <label className="sanctuary-field">
+        <span>Note</span>
+        <input
+          type="text"
+          value={note}
+          maxLength={NOTE_MAX}
+          placeholder="A short note (optional)"
+          disabled={busy}
+          onChange={(e) => setNote(e.target.value)}
+          onBlur={commitNote}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+      </label>
+      <button
+        type="button"
+        className={`sanctuary-fav-toggle${item.favorite ? ' on' : ''}`}
+        aria-pressed={item.favorite}
+        disabled={busy}
+        onClick={() =>
+          onSave(
+            item,
+            { favorite: !item.favorite },
+            item.favorite ? 'Unfavourited.' : 'Favourited. ★',
+          )
+        }
+      >
+        {item.favorite ? '★ Favourite' : '☆ Mark favourite'}
+      </button>
+    </div>
+  )
+}
+
 export default function SanctuaryPage() {
   const { showToast } = useToast()
   const [scene, setScene] = useState<Scene | null>(null)
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
-  // The shop item whose variant picker is open (null = none).
+  // The shop item whose buy modal is open (null = none). The modal lets the user pick a
+  // variant (multi-variant items) and/or type an optional name before buying.
   const [picking, setPicking] = useState<ShopItem | null>(null)
+  // The optional name typed in the open buy modal (carried into the purchase).
+  const [buyName, setBuyName] = useState('')
   // The owned item whose customization panel is open.
   const [editing, setEditing] = useState<string | null>(null)
   // The id of the item just bought, so only it pops/glows into the garden (cleared
@@ -49,10 +131,13 @@ export default function SanctuaryPage() {
     // Snapshot before the buy so we can compute what was spent and spot the new item.
     const before = scene
     const beforeIds = new Set(before?.owned.map((o) => o.id) ?? [])
+    // An optional name the user typed in the buy modal (trimmed; blank → no name).
+    const chosenName = buyName.trim() || null
     try {
-      const next = await sanctuaryService.buy(key, variant)
+      const next = await sanctuaryService.buy(key, variant, chosenName)
       setScene(next)
       setPicking(null)
+      setBuyName('')
 
       // The newly added item is the one whose id wasn't owned before (fall back to the
       // highest position if ids can't be diffed — e.g. a missing prior scene).
@@ -67,9 +152,13 @@ export default function SanctuaryPage() {
       // Gentle audio cue (honours the user's sound setting via the shared sfx module).
       playReward()
 
-      // Rich feedback: what it's called, what it cost, what's left. Keep the variant
-      // name in the label when one was chosen (e.g. "Oak tree added · …").
-      const name = variant ? `${variantLabel(variant)} ${itemLabel(key).toLowerCase()}` : itemLabel(key)
+      // Rich feedback: what it's called, what it cost, what's left. Prefer the user's own
+      // name when they gave one ("“Grandpa's Oak” added · …"); else the variant label.
+      const name = chosenName
+        ? `“${chosenName}”`
+        : variant
+          ? `${variantLabel(variant)} ${itemLabel(key).toLowerCase()}`
+          : itemLabel(key)
       const spent = before ? before.coins - next.coins : null
       const detail =
         spent != null ? ` · ${spent} 🪙 spent, ${next.coins} left` : ` · ${next.coins} 🪙 left`
@@ -90,6 +179,20 @@ export default function SanctuaryPage() {
       )
     } catch {
       showToast('Could not apply that yet.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Set/clear an owned item's cosmetic personalization (name, note, favourite). Purely
+  // cosmetic — never costs coins. Partial: only the given fields change.
+  async function personalize(item: OwnedItem, patch: PersonalizePatch, okMessage?: string) {
+    setBusy(`personalize:${item.id}`)
+    try {
+      setScene(await sanctuaryService.personalize(item.id, patch))
+      if (okMessage) showToast(okMessage)
+    } catch {
+      showToast('Could not save that — please try again.', 'error')
     } finally {
       setBusy(null)
     }
@@ -242,32 +345,56 @@ export default function SanctuaryPage() {
                             />
                           </button>
                           <div className="sanctuary-card-name">
-                            {itemLabel(o.item_key)}
-                            {o.variant && (
-                              <span className="muted sanctuary-variant">
-                                {' '}
-                                · {variantLabel(o.variant)}
+                            {o.favorite && (
+                              <span className="sanctuary-fav-star" aria-label="Favourite" title="Favourite">
+                                ★{' '}
                               </span>
                             )}
+                            {o.name ? (
+                              // The user's own plaque takes the lead; the item/variant is a
+                              // quiet subtitle so the personal name reads first.
+                              <span className="sanctuary-plaque">{o.name}</span>
+                            ) : (
+                              <>
+                                {itemLabel(o.item_key)}
+                                {o.variant && (
+                                  <span className="muted sanctuary-variant">
+                                    {' '}
+                                    · {variantLabel(o.variant)}
+                                  </span>
+                                )}
+                              </>
+                            )}
                           </div>
-                          {o.available.length > 0 ? (
-                            <button
-                              type="button"
-                              className="sanctuary-buy sanctuary-customize-toggle"
-                              aria-expanded={open}
-                              onClick={() => setEditing(open ? null : o.id)}
-                            >
-                              {open
-                                ? 'Done'
-                                : customCount > 0
-                                  ? `Personalize (${customCount})`
-                                  : 'Personalize'}
-                            </button>
-                          ) : (
-                            <span className="muted sanctuary-maxed">No add-ons</span>
+                          {o.name && (
+                            <div className="muted sanctuary-card-sub">
+                              {itemLabel(o.item_key)}
+                              {o.variant && ` · ${variantLabel(o.variant)}`}
+                            </div>
                           )}
+                          {o.note && <p className="muted sanctuary-card-note">{o.note}</p>}
+                          <button
+                            type="button"
+                            className="sanctuary-buy sanctuary-customize-toggle"
+                            aria-expanded={open}
+                            onClick={() => setEditing(open ? null : o.id)}
+                          >
+                            {open
+                              ? 'Done'
+                              : customCount > 0
+                                ? `Personalize (${customCount})`
+                                : 'Personalize'}
+                          </button>
                           {open && (
                             <div className="sanctuary-customize-panel">
+                              <SanctuaryNameNote
+                                item={o}
+                                busy={busy != null}
+                                onSave={personalize}
+                              />
+                              {o.available.length === 0 && (
+                                <p className="muted sanctuary-maxed">No add-ons for this one.</p>
+                              )}
                               {o.available.map((s) => (
                                 <fieldset key={s.slot} className="sanctuary-slot">
                                   <legend>{slotLabel(s.slot)}</legend>
@@ -329,19 +456,37 @@ export default function SanctuaryPage() {
                         type="button"
                         className="sanctuary-buy"
                         disabled={busy != null || !affordable}
-                        onClick={() => setPicking(s)}
+                        onClick={() => {
+                          setBuyName('')
+                          setPicking(s)
+                        }}
                       >
                         Choose · 🪙 {s.cost}
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        className="sanctuary-buy"
-                        disabled={busy != null || !affordable}
-                        onClick={() => buy(s.item_key, null)}
-                      >
-                        {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
-                      </button>
+                      <div className="sanctuary-buy-row">
+                        <button
+                          type="button"
+                          className="sanctuary-buy"
+                          disabled={busy != null || !affordable}
+                          onClick={() => buy(s.item_key, null)}
+                        >
+                          {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
+                        </button>
+                        {/* Quiet, optional: name it at purchase. The one-tap Buy stays the
+                            default so naming never nags. */}
+                        <button
+                          type="button"
+                          className="sanctuary-name-it"
+                          disabled={busy != null || !affordable}
+                          onClick={() => {
+                            setBuyName('')
+                            setPicking(s)
+                          }}
+                        >
+                          name it…
+                        </button>
+                      </div>
                     )
                   ) : (
                     <span className="muted sanctuary-locked-hint">🔒 {s.hint}</span>
@@ -353,48 +498,85 @@ export default function SanctuaryPage() {
         </>
       )}
 
-      {picking && scene && (
-        <div
-          className="sanctuary-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Choose a ${itemLabel(picking.item_key)}`}
-          onClick={() => setPicking(null)}
-        >
-          <div className="sanctuary-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Choose a {itemLabel(picking.item_key).toLowerCase()}</h3>
-            <div className="sanctuary-variant-grid">
-              {picking.variants.map((v) => {
-                const tooPoor = scene.coins < picking.cost + v.cost_delta
-                return (
-                  <button
-                    key={v.variant}
-                    type="button"
-                    className="sanctuary-variant-pick"
-                    disabled={busy != null || !v.unlocked || tooPoor}
-                    title={!v.unlocked ? (v.unlock_hint ?? 'Locked') : undefined}
-                    onClick={() => buy(picking.item_key, v.variant)}
-                  >
-                    <SanctuaryPlant itemKey={picking.item_key} variant={v.variant} />
-                    <span className="sanctuary-variant-name">
-                      {!v.unlocked ? '🔒 ' : ''}
-                      {variantLabel(v.variant)}
-                      {v.cost_delta > 0 && <span className="muted"> +{v.cost_delta}</span>}
-                    </span>
-                  </button>
-                )
-              })}
+      {picking && scene && (() => {
+        // The modal serves both buy paths: multi-variant items show the variant grid (a
+        // pick buys immediately, carrying the typed name); single-variant items opened via
+        // "name it…" show just the name field + a Buy button. Naming is always optional.
+        const hasVariants = picking.variants.length > 1
+        const closeModal = () => {
+          setPicking(null)
+          setBuyName('')
+        }
+        return (
+          <div
+            className="sanctuary-modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Buy a ${itemLabel(picking.item_key)}`}
+            onClick={closeModal}
+          >
+            <div className="sanctuary-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>
+                {hasVariants ? 'Choose a' : 'Name your'}{' '}
+                {itemLabel(picking.item_key).toLowerCase()}
+              </h3>
+              {/* Optional name (a quiet personal touch). Empty = unnamed. */}
+              <label className="sanctuary-field sanctuary-modal-name">
+                <span>Name (optional)</span>
+                <input
+                  type="text"
+                  value={buyName}
+                  maxLength={NAME_MAX}
+                  placeholder="e.g. Grandpa's Oak"
+                  disabled={busy != null}
+                  autoFocus={!hasVariants}
+                  onChange={(e) => setBuyName(e.target.value)}
+                />
+              </label>
+              {hasVariants ? (
+                <div className="sanctuary-variant-grid">
+                  {picking.variants.map((v) => {
+                    const tooPoor = scene.coins < picking.cost + v.cost_delta
+                    return (
+                      <button
+                        key={v.variant}
+                        type="button"
+                        className="sanctuary-variant-pick"
+                        disabled={busy != null || !v.unlocked || tooPoor}
+                        title={!v.unlocked ? (v.unlock_hint ?? 'Locked') : undefined}
+                        onClick={() => buy(picking.item_key, v.variant)}
+                      >
+                        <SanctuaryPlant itemKey={picking.item_key} variant={v.variant} />
+                        <span className="sanctuary-variant-name">
+                          {!v.unlocked ? '🔒 ' : ''}
+                          {variantLabel(v.variant)}
+                          {v.cost_delta > 0 && <span className="muted"> +{v.cost_delta}</span>}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="sanctuary-buy sanctuary-modal-buy"
+                  disabled={busy != null || scene.coins < picking.cost}
+                  onClick={() => buy(picking.item_key, null)}
+                >
+                  {busy === `buy:${picking.item_key}` ? 'Adding…' : `Buy · 🪙 ${picking.cost}`}
+                </button>
+              )}
+              <button
+                type="button"
+                className="sanctuary-modal-cancel"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
             </div>
-            <button
-              type="button"
-              className="sanctuary-modal-cancel"
-              onClick={() => setPicking(null)}
-            >
-              Cancel
-            </button>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </main>
   )
 }

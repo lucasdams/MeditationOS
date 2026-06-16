@@ -8,7 +8,51 @@ item's variant and its customizations — is the only stored state; the balance 
 on read as coins earned − coins spent. Each request model forbids unexpected fields.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
+
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+
+# Length caps for the optional cosmetic text touches (ADR-0015). A name is a short plaque;
+# a note is a one-line caption. Over-length input is rejected as 422 (enforced server-side
+# regardless of any client cap).
+NAME_MAX_LENGTH = 40
+NOTE_MAX_LENGTH = 140
+
+
+def _capped_blank_to_none(max_length: int):
+    """A BeforeValidator that trims whitespace, maps empty/whitespace-only → None, and
+    rejects over-length input as a 422.
+
+    Doing the cap here (rather than via Field(max_length=...)) lets the field stay
+    `str | None`: the constraint applies only when a real string is present, so an explicit
+    `null` (used to clear the plaque/note) passes straight through instead of tripping a
+    length validator that can't handle None.
+    """
+
+    def _validate(value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            trimmed = value.strip()
+            if not trimmed:
+                return None
+            if len(trimmed) > max_length:
+                raise ValueError(f"must be at most {max_length} characters")
+            return trimmed
+        return value
+
+    return _validate
+
+
+# A trimmed, length-capped optional name. Empty/whitespace → None (clears the plaque);
+# over-length → 422.
+SanctuaryName = Annotated[
+    str | None, BeforeValidator(_capped_blank_to_none(NAME_MAX_LENGTH))
+]
+# A trimmed, length-capped optional free-text note/caption. Empty/whitespace → None.
+SanctuaryNote = Annotated[
+    str | None, BeforeValidator(_capped_blank_to_none(NOTE_MAX_LENGTH))
+]
 
 
 class SlotOption(BaseModel):
@@ -39,6 +83,10 @@ class OwnedItem(BaseModel):
     variant: str | None  # the chosen base form (the item's default when it has variants)
     customizations: dict[str, str]  # {slot: option} of what's purchased
     available: list[AvailableSlot]  # slots/options that can still be applied, with hints
+    # Optional cosmetic personalization (ADR-0015) — all default-off, never affect coins.
+    name: str | None  # user-chosen plaque/nickname (None = unnamed)
+    note: str | None  # short free-text caption/memory (None = none)
+    favorite: bool  # pinned/favourited (subtle star); default False
 
 
 class VariantOption(BaseModel):
@@ -75,6 +123,25 @@ class BuyRequest(BaseModel):
 
     item_key: str
     variant: str | None = None  # chosen base form; None = the item's default
+    # Optional plaque set at purchase time — a quiet personal touch (ADR-0015). Trimmed,
+    # capped at NAME_MAX_LENGTH; empty/whitespace stored as None. Default None = unnamed.
+    name: SanctuaryName = None
+
+
+class PersonalizeRequest(BaseModel):
+    """Set/clear the cosmetic personalization of an owned item (ADR-0015): its name, note,
+    and favourite flag. All fields are optional; only the fields *present* in the request
+    are changed (a partial update), so the UI can rename without touching the note. Passing
+    an explicit `null` (or an empty/whitespace string) for `name`/`note` clears it.
+
+    These touches are purely cosmetic — they never cost coins or move the item.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: SanctuaryName = None
+    note: SanctuaryNote = None
+    favorite: bool | None = None
 
 
 class CustomizeRequest(BaseModel):

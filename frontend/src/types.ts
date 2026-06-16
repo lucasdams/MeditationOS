@@ -233,6 +233,10 @@ export interface OwnedItem {
   variant: string | null // chosen base form (default when the item has variants)
   customizations: Record<string, string> // {slot: option} purchased
   available: AvailableSlot[] // slots/options still applicable, with hints
+  // Optional cosmetic personalization (ADR-0015) — all default-off, never affect coins.
+  name: string | null // user-chosen plaque/nickname (null = unnamed)
+  note: string | null // short free-text caption/memory (null = none)
+  favorite: boolean // pinned/favourited (subtle star)
 }
 
 // A base form selectable at purchase time.
