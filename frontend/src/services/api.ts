@@ -3,6 +3,10 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 
+// How long before we give up on a request. 15 s is generous for mobile; short enough
+// that a stuck save doesn't leave the UI spinning forever.
+const REQUEST_TIMEOUT_MS = 15_000
+
 export class ApiError extends Error {
   status: number
   detail?: string
@@ -15,12 +19,36 @@ export class ApiError extends Error {
   }
 }
 
+export class TimeoutError extends Error {
+  timeout: true = true
+  constructor() {
+    super('Request timed out')
+    this.name = 'TimeoutError'
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
+  const controller = new AbortController()
+  const timerId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    clearTimeout(timerId)
+    // AbortError is thrown by fetch when the signal fires — surface it as TimeoutError
+    // so callers' catch blocks get a typed, recognisable error instead of a raw DOMException.
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new TimeoutError()
+    }
+    throw err
+  }
+  clearTimeout(timerId)
 
   if (!res.ok) {
     let detail: string | undefined

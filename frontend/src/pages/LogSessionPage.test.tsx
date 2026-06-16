@@ -11,6 +11,9 @@ const mockCreate = vi.fn()
 const mockGetStats = vi.fn()
 const mockNavigate = vi.fn()
 
+// Shared mutable state for the RewardOverlay mock so tests can detect when it is shown.
+const rewardOverlayState = { shown: false }
+
 vi.mock('../services/sessions', () => ({
   sessionService: { create: (...a: unknown[]) => mockCreate(...a) },
 }))
@@ -21,7 +24,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return { ...actual, useNavigate: () => mockNavigate }
 })
-vi.mock('../components/RewardOverlay', () => ({ default: () => null }))
+vi.mock('../components/RewardOverlay', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  default: (_props: any) => {
+    rewardOverlayState.shown = true
+    return null
+  },
+}))
 
 import LogSessionPage from './LogSessionPage'
 
@@ -33,14 +42,21 @@ function renderPage() {
   )
 }
 
+// Full stats shape expected by buildXpBreakdown (daily_quests + streak_bonus_xp required).
+const BASE_STATS = {
+  xp: 0, level: 1, xp_into_level: 0, xp_for_next_level: 100,
+  current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
+  streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
+  gratitude_count: 0, this_week: [], daily_quests: [],
+}
+
 describe('LogSessionPage', () => {
   beforeEach(() => {
+    rewardOverlayState.shown = false
     mockCreate.mockReset()
     mockGetStats.mockReset()
     mockNavigate.mockReset()
-    // Default stats response — enough to satisfy buildXpBreakdown.
-    const stats = { xp: 0, level: 1, xp_for_next_level: 100, streak: 0, coins: 0 }
-    mockGetStats.mockResolvedValue(stats)
+    mockGetStats.mockResolvedValue(BASE_STATS)
     mockCreate.mockResolvedValue({})
   })
   afterEach(cleanup)
@@ -146,5 +162,70 @@ describe('LogSessionPage', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(/positive number/i),
     )
     expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('sends a client_token in the create payload', async () => {
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+
+    const payload = mockCreate.mock.calls[0][0]
+    expect(typeof payload.client_token).toBe('string')
+    expect(payload.client_token.length).toBeGreaterThan(0)
+  })
+
+  it('sends the same client_token on retry (no duplicate session)', async () => {
+    // First call fails, second succeeds.
+    mockCreate
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({})
+
+    renderPage()
+
+    // First submit — should fail.
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+
+    const firstToken = mockCreate.mock.calls[0][0].client_token
+
+    // Retry.
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(2))
+
+    const secondToken = mockCreate.mock.calls[1][0].client_token
+    expect(secondToken).toBe(firstToken)
+  })
+})
+
+// ── Best-effort post-save stats ──────────────────────────────────────────────
+// If getStats throws AFTER the session is saved, the reward overlay must still
+// appear. The UI must NOT show "Could not save the session."
+
+describe('LogSessionPage — best-effort post-save stats', () => {
+  beforeEach(() => {
+    rewardOverlayState.shown = false
+    mockCreate.mockReset()
+    mockGetStats.mockReset()
+    mockNavigate.mockReset()
+    mockCreate.mockResolvedValue({})
+  })
+  afterEach(cleanup)
+
+  it('shows the reward overlay even when after-getStats throws', async () => {
+    // First getStats (before) succeeds; second (after) throws.
+    mockGetStats
+      .mockResolvedValueOnce(BASE_STATS)
+      .mockRejectedValueOnce(new Error('network error'))
+
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(rewardOverlayState.shown).toBe(true))
+
+    // No error banner should be shown.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

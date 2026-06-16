@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
@@ -7,7 +7,16 @@ import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import RatingChips from '../components/RatingChips'
 import { ErrorBanner } from '../components/StateViews'
-import type { MeditationType } from '../types'
+import { newClientToken } from '../lib/sessionDraft'
+import type { DashboardStats, MeditationType } from '../types'
+
+// Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
+const ZERO_STATS: DashboardStats = {
+  xp: 0, level: 1, xp_into_level: 0, xp_for_next_level: 100,
+  current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
+  streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
+  gratitude_count: 0, this_week: [], daily_quests: [],
+}
 
 // The meditation style picker was dropped; only the structural meditation-vs-breathing
 // distinction remains, so a past breathing session can still be logged here.
@@ -43,6 +52,10 @@ export default function LogSessionPage() {
     breakdown: XpLine[]
   } | null>(null)
 
+  // Stable per-form-load token so retries after a transient error de-dupe server-side
+  // (the backend collapses duplicate client_token values to a single session).
+  const clientTokenRef = useRef<string>(newClientToken())
+
   // Whether the user is entering a custom duration (not one of the preset chips).
   const isCustom = !DURATION_CHIPS.map(String).includes(minutes)
 
@@ -71,8 +84,12 @@ export default function LogSessionPage() {
     }
 
     setSubmitting(true)
+
+    // Pre-save stats are best-effort; a failure here should not block the save.
+    const before = await dashboardService.getStats().catch(() => ZERO_STATS)
+
+    // The save itself — this must succeed.
     try {
-      const before = await dashboardService.getStats()
       await sessionService.create({
         type,
         duration_seconds: Math.round(mins * 60),
@@ -80,21 +97,28 @@ export default function LogSessionPage() {
         notes: notes.trim() || null,
         focus: focus ? Number(focus) : null,
         calm: calm ? Number(calm) : null,
+        // Stable per-load token so a retry after a transient error won't create a
+        // duplicate session (the backend collapses by client_token).
+        client_token: clientTokenRef.current,
       })
-      const after = await dashboardService.getStats()
-      // True gain from the server, itemized (the session + any quest/streak bonus).
-      const label = type === 'resonance_breathing' ? '🫁 Breathing' : '🧘 Meditation'
-      const bd = buildXpBreakdown(before, after, label)
-      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
       setError(
         err instanceof ApiError
           ? 'Could not save the session. Please try again.'
           : 'Something went wrong.',
       )
-    } finally {
       setSubmitting(false)
+      return
     }
+
+    // Post-save stats are best-effort: the session is already saved, so a getStats
+    // failure must not report a save error or skip the reward overlay.
+    const after = await dashboardService.getStats().catch(() => before)
+    // True gain from the server, itemized (the session + any quest/streak bonus).
+    const label = type === 'resonance_breathing' ? '🫁 Breathing' : '🧘 Meditation'
+    const bd = buildXpBreakdown(before, after, label)
+    setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
+    setSubmitting(false)
   }
 
   return (
