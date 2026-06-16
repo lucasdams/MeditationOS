@@ -107,5 +107,9 @@ def send_to_user(db: DBSession, user_id: uuid.UUID, title: str, body: str) -> in
                 db.delete(sub)
             else:
                 logger.warning("push send failed: %s", err)
+        except Exception as err:  # noqa: BLE001
+            # Non-WebPush transport errors (e.g. network failures) must not skip the
+            # commit below — log and continue so dead-subscription pruning still applies.
+            logger.warning("push send unexpected error: %s", err)
     db.commit()
     return sent

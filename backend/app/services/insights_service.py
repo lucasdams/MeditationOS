@@ -167,7 +167,7 @@ def _calm_trend(db: DBSession, owned, local_day, today: date, weeks: int) -> lis
 
     recent_avg, recent_n = db.execute(
         select(func.avg(cast(Session.calm, Float)), func.count(Session.calm)).where(
-            owned, Session.calm.is_not(None), local_day >= midpoint
+            owned, Session.calm.is_not(None), local_day >= midpoint, local_day <= today
         )
     ).one()
     earlier_avg, earlier_n = db.execute(

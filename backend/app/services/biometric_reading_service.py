@@ -122,6 +122,7 @@ def pre_post_delta(
 
     return BiometricDelta(
         sample_size=len(bpm_deltas),
+        hrv_sample_size=len(hrv_deltas),
         avg_bpm_delta=(
             round(sum(bpm_deltas) / len(bpm_deltas), 1) if bpm_deltas else None
         ),

@@ -284,3 +284,86 @@ def test_streak_save_does_not_block_morning_reminder(monkeypatch, db_session):
 def test_console_email_sender_returns_true():
     # With no SMTP configured the sender logs and reports success.
     assert email.send_email("x@example.com", "subject", "body") is True
+
+
+# --- push-spam / dedup correctness -------------------------------------------
+
+
+def _failing_email(monkeypatch):
+    """Patch send_email to always fail (return False). Returns a call-counter list."""
+    calls: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        email, "send_email", lambda to, subject, body: calls.append((to, subject, body)) or False
+    )
+    return calls
+
+
+def _push_calls(monkeypatch):
+    """Intercept push_service.send_to_user so it records calls and returns 0."""
+    from app.services import push_service
+
+    calls: list[tuple] = []
+
+    def _fake(db, user_id, title, body):
+        calls.append((user_id, title, body))
+        return 0
+
+    monkeypatch.setattr(push_service, "send_to_user", _fake)
+    return calls
+
+
+def test_push_does_not_refire_when_email_fails(monkeypatch, db_session):
+    """When email.send_email returns False, push must still fire at most once per day.
+
+    Before the fix: reminder_last_sent_at was only set on email success, so push
+    fired on every hourly run. After the fix: the timestamp is advanced before the
+    send attempt, so a second run sees 'already sent today' and skips push too.
+    """
+    _failing_email(monkeypatch)
+    push_calls = _push_calls(monkeypatch)
+    _user(db_session, "nopush@example.com", reminder_enabled=True, reminder_hour=8)
+
+    # First run: email fails, but the user is still marked as handled and push fires once.
+    count = reminder_service.send_due_reminders(db_session, now_utc=NOON_UTC)
+    assert count == 1  # counted — the user was processed regardless of email outcome
+    assert len(push_calls) == 1
+
+    # Second run (one hour later): user is already marked for today — push must NOT re-fire.
+    later = datetime(2026, 6, 12, 13, 0, tzinfo=UTC)
+    count2 = reminder_service.send_due_reminders(db_session, now_utc=later)
+    assert count2 == 0
+    assert len(push_calls) == 1  # still only one push call total
+
+
+def test_reminder_dedup_persists_across_runs(monkeypatch, db_session):
+    """reminder_last_sent_at is committed per-user, not once after the whole loop.
+
+    Verifies that after the first run sets the timestamp, the second run
+    detects it and sends nothing — the commit happens before the send attempt.
+    """
+    _capture(monkeypatch)
+    _user(db_session, "persist@example.com", reminder_enabled=True, reminder_hour=8)
+
+    reminder_service.send_due_reminders(db_session, now_utc=NOON_UTC)
+    # Simulate a fresh session by expiring the identity map.
+    db_session.expire_all()
+    later = datetime(2026, 6, 12, 14, 0, tzinfo=UTC)
+    assert reminder_service.send_due_reminders(db_session, now_utc=later) == 0
+
+
+def test_streak_save_push_does_not_refire_when_email_fails(monkeypatch, db_session):
+    """Same crash-safe dedup fix applied to send_streak_save_nudges."""
+    _failing_email(monkeypatch)
+    push_calls = _push_calls(monkeypatch)
+    user = _user(db_session, "sspush@example.com", reminder_enabled=True, reminder_hour=8)
+    _add_session(db_session, user.id, EVENING_UTC - timedelta(days=1))
+
+    count = reminder_service.send_streak_save_nudges(db_session, now_utc=EVENING_UTC)
+    assert count == 1
+    assert len(push_calls) == 1
+
+    # Second pass: already handled — push must not re-fire.
+    later = EVENING_UTC + timedelta(hours=1)
+    count2 = reminder_service.send_streak_save_nudges(db_session, now_utc=later)
+    assert count2 == 0
+    assert len(push_calls) == 1

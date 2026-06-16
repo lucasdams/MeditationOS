@@ -41,7 +41,8 @@ SIGNUP_WINDOW_DAYS = 30
 def _signups_last_30_days(db: DBSession, *, today: date) -> list[DailyCount]:
     """New-user counts per UTC day over the trailing 30 days, zero-filled oldest→newest."""
     start = today - timedelta(days=SIGNUP_WINDOW_DAYS - 1)
-    signup_day = func.date(User.created_at)
+    # Pin to UTC so the bucketing is consistent regardless of the DB session timezone.
+    signup_day = func.date(func.timezone("UTC", User.created_at))
     counts = {
         d: c
         for d, c in db.execute(

@@ -116,15 +116,28 @@ function Insights() {
 function deltaSentence(delta: BiometricDelta): string | null {
   if (delta.sample_size < 1 || delta.avg_bpm_delta == null) return null
   const n = delta.sample_size
-  const basis = `based on ${n} ${n === 1 ? 'sit' : 'sits'} with a pre- and post-reading`
+  const bpmBasis = `based on ${n} ${n === 1 ? 'sit' : 'sits'} with a pre- and post-reading`
   const bpm = delta.avg_bpm_delta
+  let sentence: string
   if (bpm < 0) {
-    return `Your heart rate settles about ${Math.abs(bpm)} bpm over a sit, ${basis}.`
+    sentence = `Your heart rate settles about ${Math.abs(bpm)} bpm over a sit, ${bpmBasis}.`
+  } else if (bpm > 0) {
+    sentence = `Your heart rate is about ${bpm} bpm higher after a sit, ${bpmBasis}.`
+  } else {
+    sentence = `Your heart rate is about the same before and after a sit, ${bpmBasis}.`
   }
-  if (bpm > 0) {
-    return `Your heart rate is about ${bpm} bpm higher after a sit, ${basis}.`
+  // Append HRV delta when available, using its own honest sample basis.
+  if (delta.avg_hrv_ms_delta != null && delta.hrv_sample_size > 0) {
+    const hn = delta.hrv_sample_size
+    const hrvBasis = `${hn} ${hn === 1 ? 'sit' : 'sits'}`
+    const hrv = delta.avg_hrv_ms_delta
+    if (hrv > 0) {
+      sentence += ` HRV rises about ${hrv} ms (based on ${hrvBasis} with HRV readings).`
+    } else if (hrv < 0) {
+      sentence += ` HRV dips about ${Math.abs(hrv)} ms (based on ${hrvBasis} with HRV readings).`
+    }
   }
-  return `Your heart rate is about the same before and after a sit, ${basis}.`
+  return sentence
 }
 
 // A heart-rate (and optional HRV) trend over recent readings. Loads independently so
