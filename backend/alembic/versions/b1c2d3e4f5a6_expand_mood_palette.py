@@ -5,7 +5,7 @@ constraints on journals and mood_logs. Mood is stored as a plain String column
 (not a DB enum type), so only the CHECK constraints need updating.
 
 Revision ID: b1c2d3e4f5a6
-Revises: a3b4c5d6e7f8
+Revises: e4f5a6b7c8d9
 Create Date: 2026-06-16 00:00:00.000000
 
 """
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'b1c2d3e4f5a6'
-down_revision: Union[str, None] = 'a3b4c5d6e7f8'
+down_revision: Union[str, None] = 'e4f5a6b7c8d9'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
