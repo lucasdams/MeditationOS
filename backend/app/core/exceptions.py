@@ -52,3 +52,12 @@ class DailyLimitError(Exception):
 class GoalNotCheckableError(Exception):
     """Raised when checking in on a non-custom goal — built-in activities derive
     their progress and can't be manually marked done."""
+
+
+class UserNotFoundError(Exception):
+    """Raised when an admin support action targets a user id that doesn't exist."""
+
+
+class AdminSelfActionError(Exception):
+    """Raised when an admin tries to disable or delete their OWN account via the
+    admin support endpoints — a lockout foot-gun; use account self-service instead."""
