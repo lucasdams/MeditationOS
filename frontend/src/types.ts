@@ -135,7 +135,14 @@ export interface MoodCount {
 
 export interface WeekMoods {
   week_start: string
-  counts: Record<string, number> // mood -> count that week
+  counts: Record<string, number> // mood -> count that week (check-ins + journal)
+}
+
+export interface WeekRatings {
+  week_start: string
+  calm: number | null // weekly average calm self-rating (1–5), null if none
+  focus: number | null // weekly average focus self-rating (1–5), null if none
+  rated_sessions: number // sessions with at least one rating that week
 }
 
 export interface AnalyticsSummary {
@@ -148,6 +155,7 @@ export interface AnalyticsSummary {
   minutes_by_week: WeekMinutes[]
   moods: MoodCount[]
   mood_by_week: WeekMoods[]
+  ratings_by_week: WeekRatings[] // only weeks with rated sessions
 }
 
 export interface Insight {
