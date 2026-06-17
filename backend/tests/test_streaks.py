@@ -1,6 +1,7 @@
 """Streak calculation via GET /api/v1/dashboard/stats."""
 
 from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.services.time_utils import compute_streaks
 
@@ -146,3 +147,63 @@ def test_longest_at_least_current_invariant():
     assert current == 2
     assert rest_used is True
     assert longest >= current  # invariant holds; longest is bumped to 2
+
+
+# --- DST + break transitions (lock in the audited time logic) ------------------------
+
+
+def test_streak_across_dst_transition(client):
+    """Sessions straddling the spring-forward gap bucket to the right LOCAL day.
+
+    On 2026-03-08 America/New_York springs forward: 01:59 EST jumps to 03:00 EDT, so
+    02:00–02:59 local never happens. Two UTC instants on either side of that gap
+    (06:30Z → 01:30 EST and 07:30Z → 03:30 EDT) both fall on Mar 8 *local*; a third the
+    next day is Mar 9. The local-day SQL (`local_date`) must collapse the first two into
+    one day and chain Mar 8 → Mar 9 as a 2-day consecutive run (longest == 2).
+    """
+    _auth(client, "dst_spring@example.com")
+    client.post("/api/v1/auth/timezone", json={"timezone": "America/New_York"})
+    ny = ZoneInfo("America/New_York")
+
+    for occurred_at in (
+        "2026-03-08T06:30:00+00:00",  # 01:30 EST, before the gap
+        "2026-03-08T07:30:00+00:00",  # 03:30 EDT, after the gap (same local day)
+        "2026-03-09T06:30:00+00:00",  # 02:30 EDT next day
+    ):
+        # Sanity: the chosen instants land on the local days the test asserts.
+        local_d = datetime.fromisoformat(occurred_at).astimezone(ny).date()
+        assert local_d in (date(2026, 3, 8), date(2026, 3, 9))
+        client.post(
+            "/api/v1/sessions",
+            json={
+                "type": "mindfulness",
+                "duration_seconds": 600,
+                "occurred_at": occurred_at,
+            },
+        )
+
+    days = [d["date"] for d in client.get("/api/v1/dashboard/activity?days=366").json()["days"]]
+    # The two Mar-8 instants (either side of the DST gap) collapse to one local day.
+    assert days == ["2026-03-08", "2026-03-09"]
+
+    # And those two consecutive local days form a 2-day run. `current` is 0 (the run is
+    # long in the past relative to today — date-robust), but `longest` locks the bucketing.
+    _, longest = _streaks(client)
+    assert longest == 2
+
+
+def test_streak_restarts_after_break():
+    """A [day, skip, skip, day, day] pattern must reset, not bridge two gaps.
+
+    The rest day bridges at most ONE skipped day. Two consecutive misses sever the run,
+    so the trailing two-day block stands alone — the current streak is that block (2),
+    not the whole five-day span. Uses fixed dates so it's independent of today's date.
+    """
+    base = date(2025, 4, 1)
+    # Practice on day 0, skip days 1 and 2, practice days 3 and 4. "today" is day 4.
+    dates = {base, base + timedelta(days=3), base + timedelta(days=4)}
+    today = base + timedelta(days=4)
+    current, longest, rest_used = compute_streaks(dates, today)
+    assert current == 2  # only the day-3/day-4 block; the double gap is not bridged
+    assert longest == 2  # the longest strictly-consecutive run is also that 2-day block
+    assert rest_used is False  # no single-skip bridge in play for the current streak

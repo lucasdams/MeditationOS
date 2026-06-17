@@ -25,7 +25,9 @@ def _pg_dow(d) -> int:
 
 
 def test_requires_auth(client):
-    assert client.get("/api/v1/analytics").status_code == 401
+    resp = client.get("/api/v1/analytics")
+    assert resp.status_code == 401
+    assert "detail" in resp.json()
 
 
 def test_empty_user(client):

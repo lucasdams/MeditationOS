@@ -292,11 +292,13 @@ export default function SanctuaryPage() {
               const rows = Math.floor(maxCell / GRID_COLUMNS) + 2 // occupied rows + one spare
               const cellCount = rows * GRID_COLUMNS
 
+              const selectedItem = selected ? scene.owned.find((o) => o.id === selected) : null
+
               return (
                 <>
-                  <p className="muted sanctuary-move-hint">
-                    {selected
-                      ? 'Now tap a spot to place it (or tap it again to cancel).'
+                  <p className="muted sanctuary-move-hint" aria-live="polite">
+                    {selectedItem
+                      ? `Picked up ${itemLabel(selectedItem.item_key)}. Now tap a spot to place it (or tap it again to cancel).`
                       : 'Drag an item — or tap to pick it up, then tap a spot — to rearrange your garden.'}
                   </p>
                   <div

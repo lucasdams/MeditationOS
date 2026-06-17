@@ -54,20 +54,28 @@ export default function GoalsPage() {
   const [cadenceIdx, setCadenceIdx] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
-  function load(status: GoalStatus) {
+  function load(status: GoalStatus, ignored?: () => boolean) {
     setGoals(null)
     goalService
       .list(status)
       .then((g) => {
+        if (ignored?.()) return
         setGoals(g)
         setLoadError(null)
       })
-      .catch((err) => setLoadError(messageForError(err, 'Could not load your goals.')))
-      .finally(() => setRetrying(false))
+      .catch((err) => {
+        if (!ignored?.()) setLoadError(messageForError(err, 'Could not load your goals.'))
+      })
+      .finally(() => {
+        if (!ignored?.()) setRetrying(false)
+      })
   }
 
   useEffect(() => {
-    load(view)
+    // Guard against a previous tab's response landing under the current tab.
+    let ignore = false
+    load(view, () => ignore)
+    return () => { ignore = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view])
 
@@ -243,7 +251,14 @@ export default function GoalsPage() {
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
                 {g.achieved && <span className="goal-achieved">✓ Done</span>}
               </div>
-              <div className="goal-bar">
+              <div
+                className="goal-bar"
+                role="progressbar"
+                aria-label="Goal progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(g.progress * 100)}
+              >
                 <div
                   className={g.achieved ? 'goal-bar-fill done' : 'goal-bar-fill'}
                   style={{ width: `${Math.round(g.progress * 100)}%` }}

@@ -15,7 +15,7 @@ export default function LegalPage({
   children: ReactNode
 }) {
   return (
-    <main className="legal">
+    <main id="main-content" className="legal">
       <AuthBrand />
       <h1>{title}</h1>
       <p className="legal-meta muted">Last updated: {updated}</p>
