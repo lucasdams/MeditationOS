@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = 30
     email_verification_expire_minutes: int = 1440  # 24h
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
+    # SQLAlchemy connection-pool sizing. Tune against the RDS `max_connections`
+    # ceiling when scaling web workers: total connections ≈ WEB_CONCURRENCY *
+    # (db_pool_size + db_max_overflow). pool_recycle guards against stale
+    # connections being culled server-side (e.g. by RDS/idle timeouts).
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_timeout: int = 30
+    db_pool_recycle: int = 1800
     login_rate_limit: str = "5/minute"
     # Per-IP burst limit on data-creation endpoints (complements the daily cap).
     write_rate_limit: str = "60/minute"
