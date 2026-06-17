@@ -3,9 +3,9 @@ import LegalPage from '../components/LegalPage'
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="June 13, 2026">
+    <LegalPage title="Terms of Service" updated="June 17, 2026">
       <p>
-        These Terms govern your use of MeditationOS (operated by [Company / individual]).
+        These Terms govern your use of MeditationOS (operated by an individual, not a registered company).
         By creating an account or using the service, you agree to these Terms.
       </p>
 
@@ -21,7 +21,7 @@ export default function TermsPage() {
       </p>
 
       <h2>Eligibility</h2>
-      <p>You must be at least [13/16/18] years old to use MeditationOS.</p>
+      <p>You must be at least 13 years old to use MeditationOS.</p>
 
       <h2>Your account</h2>
       <p>
