@@ -15,6 +15,13 @@ from sqlalchemy import func
 # not shame). Two missed days in a row still ends it. Computed, nothing stored.
 REST_DAYS_PER_STREAK = 1
 
+# A day only counts as practice (for streaks + the activity heatmap) once its total
+# session time reaches this, so daily 1-second sits can't prop up a streak or light the
+# calendar. Short sessions still save and show their real time in the weekly view. Lives
+# here (next to the streak/local-day primitives) so both dashboard_service and
+# reminder_service can import it at module level without a circular dependency.
+MIN_PRACTICE_SECONDS = 60
+
 
 def local_date(tz: str, column):
     """The calendar date of a timestamptz column in the given IANA timezone."""

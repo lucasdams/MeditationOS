@@ -199,3 +199,11 @@ Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side
 - [x] **User data export and account deletion** (privacy) — `GET /auth/export` (full JSON) and `DELETE /auth/me` (cascade delete), surfaced in Settings
 - [x] **Admin metrics dashboard** — aggregate-only product health metrics (`/admin`), gated on `ADMIN_EMAILS` env-var allowlist + verified email; never exposes individual user content
 - [x] **Sentry error monitoring** — provider-optional (`SENTRY_DSN` env var); PII-scrubbed before events leave the process; performance tracing at low sample rate; no-op when DSN is absent
+- [ ] **i18n / localization (Tier L)** — the app is currently English-only (all UI copy is hard-coded in components). Future work: extract user-facing strings into a message catalogue, adopt a locale framework (e.g. a lightweight i18n library), wire a language selector + per-user locale preference, localize dates/numbers, and account for **RTL** layout (Arabic/Hebrew) in the CSS. Subsumes and generalizes the Japanese-only item under *Platform & Product* above. Large, cross-cutting; deferred.
+
+### Maintainability — large page refactors
+
+Two of the biggest frontend/UI modules have grown past comfortable review size. These are **internal refactors only** (no behaviour change), deferred until touched for a feature.
+
+- [ ] **Decompose `MeditatePage`** — extract its timer and audio logic into focused hooks (`useSessionTimer` for the countdown/interval/bell scheduling, `useSoundscapeSession` for ambient-sound + chime lifecycle) so the page component stays presentational and the logic is unit-testable in isolation.
+- [ ] **Split the sanctuary catalog** out of its monolithic module — the item/variant/customization catalogue should live in its own data module(s) separate from rendering and shop logic, so adding sanctuary items doesn't mean editing one oversized file.

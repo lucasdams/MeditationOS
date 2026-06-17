@@ -26,10 +26,11 @@ from app.schemas.dashboard import (
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
 from app.services.quest_pool import categories_for_day, quest_for
-from app.services.time_utils import compute_streaks, local_date
+from app.services.time_utils import MIN_PRACTICE_SECONDS, compute_streaks, local_date
 
-# Back-compat aliases: streak/local-day logic now lives in `time_utils`; other
-# modules historically import these names from here.
+# Back-compat aliases: streak/local-day logic (and MIN_PRACTICE_SECONDS) now live in
+# `time_utils`; other modules historically import these names from here. Re-exported so
+# those imports keep working.
 _compute_streaks = compute_streaks
 _local_date = local_date
 
@@ -99,10 +100,8 @@ STREAK_BONUS_PER_DAY = 10
 # A meditation only "counts" for the meditate quest once the day's total reaches this,
 # so a spammed 1-second sit earns nothing (mirrors BREATHE_QUEST_SECONDS).
 MEDITATE_QUEST_SECONDS = 60
-# A day only counts as practice (for streaks + the activity heatmap) once its total
-# session time reaches this, so daily 1-second sits can't prop up a streak or light the
-# calendar. Short sessions still save and show their real time in the weekly view.
-MIN_PRACTICE_SECONDS = 60
+# MIN_PRACTICE_SECONDS (the minimum daily session time that counts as practice) lives in
+# `time_utils` and is imported at the top of this module — see the import there.
 # Anti-spam: only the first N gratitude / journal entries on any local day earn XP, so
 # you can't farm XP by posting a flood of trivial entries. Genuine daily use is well
 # under these; beyond them the entries still save, they just stop paying XP.

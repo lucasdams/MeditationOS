@@ -4,14 +4,13 @@ user (default-deny via get_current_user).
 """
 
 import uuid
-from datetime import date, datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api._http import not_found
-from app.api.deps import get_current_user, require_verified_email
+from app.api.deps import get_current_user, require_verified_email, today_for_user
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.rate_limit import limiter
@@ -49,22 +48,13 @@ _CONFLICT = HTTPException(
 )
 
 
-def _today_for(user: User) -> tuple[date, str]:
-    """The user's current local date + timezone (falls back to UTC) — for the streak."""
-    tz = user.timezone or "UTC"
-    try:
-        zone = ZoneInfo(tz)
-    except ZoneInfoNotFoundError:
-        tz, zone = "UTC", ZoneInfo("UTC")
-    return datetime.now(zone).date(), tz
-
-
 @router.get("", response_model=SanctuaryScene)
 def get_sanctuary(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SanctuaryScene:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return sanctuary_service.get_scene(db, current_user.id, today=today, tz=tz)
 
 
@@ -75,8 +65,9 @@ def buy_item(
     body: BuyRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SanctuaryScene:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     try:
         return sanctuary_service.buy(db, current_user.id, body, today=today, tz=tz)
     except (UnknownItem, UnknownVariant):
@@ -99,10 +90,11 @@ def customize_item(
     body: CustomizeRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SanctuaryScene:
     """Apply a customization (slot → option) to an owned item. Each customization costs
     coins (deducted from the derived balance)."""
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     try:
         scene = sanctuary_service.customize(
             db, current_user.id, planting_id, body, today=today, tz=tz
@@ -134,13 +126,14 @@ def personalize_item(
     body: PersonalizeRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SanctuaryScene:
     """Set or clear an owned item's cosmetic personalization — name (plaque), note, and
     favourite flag (ADR-0015). Partial update: only fields present in the body change; an
     empty/whitespace/null name or note clears it. Purely cosmetic — never changes coins.
     Over-length name/note is rejected as 422 by the schema; another user's item is 404.
     """
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     try:
         scene = sanctuary_service.personalize(
             db, current_user.id, planting_id, body, today=today, tz=tz
@@ -160,10 +153,11 @@ def move_item(
     body: MoveRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SanctuaryScene:
     """Move an owned item to a grid cell (layout only — never touches pricing). Swaps with
     whatever item already sits there. Out-of-bounds cells are rejected as 422."""
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     try:
         scene = sanctuary_service.move(
             db, current_user.id, planting_id, body, today=today, tz=tz

@@ -29,10 +29,13 @@ def _user(db_session, email_addr, **kwargs):
 
 
 def _capture(monkeypatch):
-    sent: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(
-        email, "send_email", lambda to, subject, body: sent.append((to, subject, body)) or True
-    )
+    sent: list[tuple[str, str, str, dict | None]] = []
+
+    def _stub(to, subject, body, headers=None):
+        sent.append((to, subject, body, headers))
+        return True
+
+    monkeypatch.setattr(email, "send_email", _stub)
     return sent
 
 
@@ -83,7 +86,7 @@ def test_due_reminder_error_on_one_user_does_not_abort_batch(monkeypatch, db_ses
 
     calls: list[str] = []
 
-    def _selective_send(to, subject, body):
+    def _selective_send(to, subject, body, headers=None):
         if to == "bad@example.com":
             raise RuntimeError("SMTP timeout")
         calls.append(to)
@@ -133,7 +136,7 @@ def test_streak_save_error_on_one_user_does_not_abort_batch(monkeypatch, db_sess
 
     calls: list[str] = []
 
-    def _selective_send(to, subject, body):
+    def _selective_send(to, subject, body, headers=None):
         if to == "sbad@example.com":
             raise RuntimeError("SMTP timeout")
         calls.append(to)

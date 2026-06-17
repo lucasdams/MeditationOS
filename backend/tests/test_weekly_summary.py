@@ -58,10 +58,13 @@ def _user(db_session, email_addr, **kwargs):
 
 
 def _capture(monkeypatch):
-    sent: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(
-        email, "send_email", lambda to, subject, body: sent.append((to, subject, body)) or True
-    )
+    sent: list[tuple[str, str, str, dict | None]] = []
+
+    def _stub(to, subject, body, headers=None):
+        sent.append((to, subject, body, headers))
+        return True
+
+    monkeypatch.setattr(email, "send_email", _stub)
     return sent
 
 
@@ -72,6 +75,8 @@ def test_due_user_gets_summary(monkeypatch, db_session):
     )
     assert weekly_review_service.send_due_weekly_summaries(db_session, now_utc=SEND_TIME) == 1
     assert sent and sent[0][0] == "due@example.com"
+    # Opt-in bulk mail carries a List-Unsubscribe header.
+    assert sent[0][3] is not None and "List-Unsubscribe" in sent[0][3]
     db_session.refresh(user)
     assert user.weekly_summary_last_sent_at is not None
 

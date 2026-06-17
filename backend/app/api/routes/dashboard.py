@@ -1,12 +1,11 @@
 """Dashboard routes. Thin handler — delegates aggregation to the service."""
 
-from datetime import date, datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user, require_verified_email
+from app.api.deps import get_current_user, require_verified_email, today_for_user
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.dashboard import ActivityCalendar, DashboardStats
@@ -20,22 +19,13 @@ router = APIRouter(
 )
 
 
-def _today_for(user: User) -> tuple[date, str]:
-    """The user's current local date + their timezone (falls back to UTC)."""
-    tz = user.timezone or "UTC"
-    try:
-        zone = ZoneInfo(tz)
-    except ZoneInfoNotFoundError:
-        tz, zone = "UTC", ZoneInfo("UTC")
-    return datetime.now(zone).date(), tz
-
-
 @router.get("/stats", response_model=DashboardStats)
 def get_stats(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> DashboardStats:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return dashboard_service.get_stats(
         db,
         current_user.id,
@@ -49,8 +39,9 @@ def get_stats(
 def get_weekly_review(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> WeeklyReview:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return weekly_review_service.get_weekly_review(db, current_user.id, today=today, tz=tz)
 
 
@@ -59,6 +50,7 @@ def get_activity(
     days: int = Query(365, ge=1, le=366),
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> ActivityCalendar:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return dashboard_service.get_activity(db, current_user.id, today=today, days=days, tz=tz)

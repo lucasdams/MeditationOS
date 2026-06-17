@@ -33,7 +33,12 @@ from app.models.session import Session as PracticeSession
 from app.models.user import User
 from app.services import push_service
 from app.services.notifications import email
-from app.services.time_utils import compute_streaks, local_date, zone
+from app.services.time_utils import (
+    MIN_PRACTICE_SECONDS,
+    compute_streaks,
+    local_date,
+    zone,
+)
 
 logger = logging.getLogger("meditationos.reminders")
 
@@ -67,8 +72,6 @@ def _practice_days(db: Session, user_id: uuid.UUID, tz: str, *, today: date) -> 
     which the user has at least MIN_PRACTICE_SECONDS of recorded sessions. Mirrors the
     streak logic in dashboard_service. Bounded to the recent window because the streak /
     grace computation only walks back day-by-day and never reaches older history."""
-    from app.services.dashboard_service import MIN_PRACTICE_SECONDS
-
     window_start = today - timedelta(days=_STREAK_HISTORY_DAYS)
     local_day = local_date(tz, PracticeSession.occurred_at)
     rows = db.execute(
@@ -154,7 +157,12 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
             # and so the push gate below sees the updated timestamp.
             user.reminder_last_sent_at = now_utc
             db.commit()  # per-user commit — crash-safe
-            email.send_email(user.email, REMINDER_SUBJECT, _reminder_body(user))
+            email.send_email(
+                user.email,
+                REMINDER_SUBJECT,
+                _reminder_body(user),
+                email.list_unsubscribe_headers(),
+            )
             # Also nudge via push if they've granted it (best-effort; no-op without VAPID).
             # Gated on the same per-day dedup: reminder_last_sent_at was just set above.
             push_service.send_to_user(
@@ -234,7 +242,12 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
             user.streak_save_last_sent_at = now_utc
             db.commit()  # per-user commit
             body = _streak_save_body(user, current_streak)
-            email.send_email(user.email, STREAK_SAVE_SUBJECT, body)
+            email.send_email(
+                user.email,
+                STREAK_SAVE_SUBJECT,
+                body,
+                email.list_unsubscribe_headers(),
+            )
             # Best-effort push alongside email (no-op without VAPID keys).
             # Gated on the same per-day dedup: streak_save_last_sent_at was just set above.
             push_service.send_to_user(

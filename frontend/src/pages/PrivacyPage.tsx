@@ -3,7 +3,7 @@ import LegalPage from '../components/LegalPage'
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="June 13, 2026">
+    <LegalPage title="Privacy Policy" updated="June 17, 2026">
       <p>
         This Privacy Policy explains how MeditationOS (“we”, “us” — operated by
         [Company / individual]) collects, uses, and protects your information when you
@@ -23,6 +23,15 @@ export default function PrivacyPage() {
           goals. Journal and gratitude text can be personal; you control what you write.
         </li>
         <li>
+          <strong>Biometric / HRV data you record</strong> — optional heart-rate and
+          heart-rate-variability (HRV) readings you choose to log, each with its context
+          (before/after a session, or resting) and how it was captured (manual or
+          estimated). These readings are stored against your account only, used to show
+          you your own HRV and pre/post-session trends, and are treated as a personal
+          wellness signal — never a medical measurement or diagnosis. You choose whether
+          to capture them; sessions and breathing work fully without them.
+        </li>
+        <li>
           <strong>Preferences</strong> — your timezone (synced from your browser so dates
           roll over at your local midnight), reminder settings, and quest selection.
         </li>
@@ -36,7 +45,8 @@ export default function PrivacyPage() {
       <h2>How we use it</h2>
       <ul>
         <li>To provide the service — your account, practice tracking, streaks, and stats.</li>
-        <li>To send transactional email (verification, password reset, and opt-in practice reminders).</li>
+        <li>To show you your own HRV / heart-rate trends and pre/post-session changes, if you log readings.</li>
+        <li>To send transactional and opt-in email (verification, password reset, practice reminders, and weekly summaries).</li>
         <li>To keep the service secure and prevent abuse.</li>
       </ul>
       <p>We do not sell your personal information.</p>
@@ -56,13 +66,29 @@ export default function PrivacyPage() {
           <strong>AI provider</strong> — gratitude prompt suggestions use [Anthropic];
           we send only the chosen category, never your journal text, in production.
         </li>
+        <li>
+          <strong>Web push delivery</strong> — if you opt in to browser push
+          notifications, your browser's push service (e.g. Google, Mozilla, or Apple,
+          depending on your browser) and our push library receive the encrypted
+          notification payload and the push endpoint your browser issued. We send the
+          reminder content; the push service delivers it to your device. No push data is
+          sent unless you enable notifications.
+        </li>
+        <li>
+          <strong>Error monitoring</strong> — [Sentry] receives application error and
+          performance diagnostics so we can fix problems. Events are scrubbed of personal
+          information before they leave our servers, and this is active only when error
+          monitoring is configured.
+        </li>
       </ul>
 
       <h2>Data retention</h2>
       <p>
         We keep your data while your account is active. When you delete your account, all
-        of your data is permanently removed (see “Your rights” below). [Specify any
-        backup-retention window.]
+        of your data is permanently removed (see “Your rights” below). Residual copies may
+        persist in encrypted operational backups for up to <strong>30 days</strong> after
+        deletion, after which they are overwritten on the normal backup rotation; this is
+        our operational backup-retention window.
       </p>
 
       <h2>Your rights</h2>
