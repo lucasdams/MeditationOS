@@ -243,7 +243,14 @@ export default function GoalsPage() {
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
                 {g.achieved && <span className="goal-achieved">✓ Done</span>}
               </div>
-              <div className="goal-bar">
+              <div
+                className="goal-bar"
+                role="progressbar"
+                aria-label="Goal progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(g.progress * 100)}
+              >
                 <div
                   className={g.achieved ? 'goal-bar-fill done' : 'goal-bar-fill'}
                   style={{ width: `${Math.round(g.progress * 100)}%` }}

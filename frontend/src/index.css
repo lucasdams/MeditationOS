@@ -2668,7 +2668,9 @@ textarea:focus-visible,
 }
 
 .heatmap-cell.lvl-1 {
-  background: #818cf8; /* active — practiced that day */
+  /* Indigo darkened from #818cf8 so the active cell clears the WCAG 1.4.11
+     non-text 3:1 contrast against the empty cell / card behind it. */
+  background: #4f46e5; /* active — practiced that day */
 }
 
 .heatmap-cell.lvl-2 {
@@ -2821,11 +2823,14 @@ textarea:focus-visible,
 }
 
 .chip-active {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  border-color: #b45309;
+  /* Amber darkened so white text clears WCAG 1.4.3 (4.5:1) — white on the
+     lightest gradient stop #b45309 is 5:1. Keeps the same warm accent in
+     both themes. */
+  background: linear-gradient(135deg, #b45309, #92400e);
+  border-color: #7c2d12;
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.3);
 }
 
 .chip-soft {
@@ -3239,7 +3244,7 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-primary);
 }
 
-.breathe-info h3 {
+.breathe-info h2 {
   font-size: 0.95rem;
   margin: 1rem 0 0.25rem;
 }

@@ -65,7 +65,7 @@ export default function ChooseUsername() {
   }
 
   return (
-    <main className="auth-card">
+    <main id="main-content" className="auth-card">
       <AuthBrand />
       <h1>Pick a username</h1>
       <p className="muted">
@@ -79,13 +79,13 @@ export default function ChooseUsername() {
           autoFocus
           value={username}
           onChange={(e) => handleChange(e.target.value)}
-          aria-describedby="username-hint"
+          aria-describedby={error ? 'username-hint username-error' : 'username-hint'}
           placeholder="e.g. calm_otter"
         />
         <p id="username-hint" className="muted field-hint">
           {MIN_LEN}–{MAX_LEN} characters · letters, numbers, and underscores
         </p>
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} id="username-error" />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving…' : 'Continue'}
         </button>

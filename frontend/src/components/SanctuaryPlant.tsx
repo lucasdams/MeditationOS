@@ -5,6 +5,7 @@
 // was bought; this owns rendering. viewBox is 0 0 80 80, in the existing flat style.
 
 import { memo } from 'react'
+import { itemLabel, variantLabel } from '../lib/sanctuaryArt'
 
 const GROUND = 70
 
@@ -991,7 +992,7 @@ function SanctuaryPlant({
   const Render = RENDERERS[itemKey]
   const cust = customizations ?? {}
   const grown = cust.grown === 'grown'
-  const label = `${itemKey}${variant ? ` (${variant})` : ''}`
+  const label = `${itemLabel(itemKey)}${variant ? ` (${variantLabel(variant)})` : ''}`
   return (
     <svg className="sanctuary-svg" viewBox="0 0 80 80" role="img" aria-label={label}>
       <ellipse cx={40} cy={72} rx={24} ry={4} fill="#dcfce7" />

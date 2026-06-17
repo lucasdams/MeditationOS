@@ -450,7 +450,7 @@ export default function JournalPage() {
                   </span>
                 )}
                 {!editing && (
-                  <span className="journal-entry-actions">
+                  <span className="journal-entry-actions" id={`menu-${j.id}`}>
                     {menuId === j.id && (
                       <>
                         <button
@@ -481,6 +481,7 @@ export default function JournalPage() {
                       aria-label="Entry actions"
                       aria-haspopup="true"
                       aria-expanded={menuId === j.id}
+                      aria-controls={`menu-${j.id}`}
                       onClick={() => setMenuId(menuId === j.id ? null : j.id)}
                     >
                       ⋯
