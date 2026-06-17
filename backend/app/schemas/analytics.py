@@ -33,7 +33,17 @@ class MoodCount(BaseModel):
 
 class WeekMoods(BaseModel):
     week_start: date  # Monday of the week (user's local week)
-    counts: dict[str, int]  # mood -> number of journal entries that week
+    counts: dict[str, int]  # mood -> number of mood logs + journal entries that week
+
+
+class WeekRatings(BaseModel):
+    week_start: date  # Monday of the week (user's local week)
+    # Weekly averages of session self-ratings (1–5), rounded to one decimal, or None
+    # when no rated session contributed that rating. Only weeks with at least one
+    # rated session are emitted, so the chart stays honest about thin data.
+    calm: float | None
+    focus: float | None
+    rated_sessions: int  # sessions with at least one of calm/focus that week
 
 
 class Insight(BaseModel):
@@ -65,5 +75,7 @@ class AnalyticsSummary(BaseModel):
     by_weekday: list[WeekdayCount]  # 7 entries, zero-filled (Sun → Sat)
     by_time_of_day: list[TimeBucketCount]  # 4 entries, ordered
     minutes_by_week: list[WeekMinutes]  # last N weeks, zero-filled, oldest → newest
-    moods: list[MoodCount]  # journal mood distribution
-    mood_by_week: list[WeekMoods]  # last N weeks of journal moods, oldest → newest
+    moods: list[MoodCount]  # mood distribution (mood check-ins + journal moods)
+    mood_by_week: list[WeekMoods]  # last N weeks of moods (check-ins + journal)
+    # Weekly calm/focus self-rating averages — only weeks with rated sessions.
+    ratings_by_week: list[WeekRatings]

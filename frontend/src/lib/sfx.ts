@@ -3,11 +3,13 @@
 
 import { getAudioContext } from './audioContext'
 
-// Interface-sounds preference (the stepper tick and any future UI ticks). Kept as a
-// module-level flag, read once from localStorage at load and updated from the
-// Settings toggle, so non-React callers like playClick() can honour it without
-// plumbing through context. Default on. The meditation bell / reward / level-up cues
-// are *meaningful moments*, not interface chrome, so they ignore this flag.
+// Interface-sounds preference (the stepper tick, the reward / level-up fanfare, and
+// any future UI ticks). Kept as a module-level flag, read once from localStorage at
+// load and updated from the Settings toggle, so non-React callers like playClick() can
+// honour it without plumbing through context. Default on. Turning the toggle off
+// silences the celebration sounds too, so a user can mute the post-session fanfare
+// without muting their whole device. The meditation bell is the one exception: it's a
+// practice cue the user deliberately starts, not interface chrome, so it ignores this flag.
 const INTERFACE_SOUNDS_KEY = 'sfx:interface'
 
 function readInterfaceSounds(): boolean {
@@ -140,6 +142,7 @@ export function playBell(volume = 0.6, sound: BellSound = 'bowl'): void {
  * the level-up fanfare, which still plays on a level crossing.
  */
 export function playReward(): void {
+  if (!interfaceSoundsEnabled) return
   try {
     const ctx = getAudioContext()
     if (ctx.state !== 'running') {
@@ -166,6 +169,7 @@ export function playReward(): void {
 }
 
 export function playLevelUp(): void {
+  if (!interfaceSoundsEnabled) return
   try {
     const ctx = getAudioContext()
     // Safari drops sound scheduled while suspended — resume, then retry when ready.

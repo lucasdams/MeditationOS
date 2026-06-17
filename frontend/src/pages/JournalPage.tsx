@@ -4,7 +4,7 @@ import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
-import { MOOD_COLORS, tint } from '../lib/colors'
+import { MOOD_COLORS, MOOD_META, tint } from '../lib/colors'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
@@ -22,18 +22,9 @@ const ZERO_STATS: DashboardStats = {
   gratitude_count: 0, this_week: [], daily_quests: [],
 }
 
-const MOODS: Mood[] = [
-  'calm',
-  'content',
-  'focused',
-  'energized',
-  'grateful',
-  'neutral',
-  'restless',
-  'anxious',
-  'tired',
-  'low',
-]
+// Derive the journal mood palette from the shared MOOD_META so the composer, the
+// one-tap check-in, and the timeline always offer the identical canonical 15 moods.
+const MOODS = Object.keys(MOOD_META) as Mood[]
 
 const TYPE_LABELS: Record<MeditationType, string> = {
   mindfulness: 'Mindfulness',
@@ -66,6 +57,7 @@ export default function JournalPage() {
   const [submitting, setSubmitting] = useState(false)
   const [composing, setComposing] = useState(false) // expand the composer on focus/typing
   const [query, setQuery] = useState('') // text search over reflections
+  const [moodFilter, setMoodFilter] = useState<Mood | ''>('') // filter the list by mood
 
   // Journaling prompt nudge — stable daily default, shuffleable, dismissible.
   const todayPrompt = useMemo(() => dailyPrompt(new Date()), [])
@@ -106,9 +98,9 @@ export default function JournalPage() {
 
   // Entries — refetched (debounced) whenever the text search changes. Drop any
   // in-progress edit, since the edited entry may fall out of the new results.
-  function loadInitial(q: string, ignored?: () => boolean) {
+  function loadInitial(q: string, mood: Mood | '', ignored?: () => boolean) {
     journalService
-      .list({ q: q || undefined, limit: PAGE, offset: 0 })
+      .list({ q: q || undefined, mood: mood || undefined, limit: PAGE, offset: 0 })
       .then((rows) => {
         if (ignored?.()) return
         setEntries(rows)
@@ -129,19 +121,19 @@ export default function JournalPage() {
     // Guard against an older search's response landing after a newer one.
     let ignore = false
     const t = setTimeout(
-      () => loadInitial(query, () => ignore),
-      query ? 300 : 0, // debounce typing; load immediately on mount/clear
+      () => loadInitial(query, moodFilter, () => ignore),
+      query ? 300 : 0, // debounce typing; load immediately on mount/clear/mood change
     )
     return () => {
       ignore = true
       clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
+  }, [query, moodFilter])
 
   function retryLoad() {
     setRetrying(true)
-    loadInitial(query)
+    loadInitial(query, moodFilter)
   }
 
   async function loadMore() {
@@ -151,6 +143,7 @@ export default function JournalPage() {
     try {
       const rows = await journalService.list({
         q: query || undefined,
+        mood: moodFilter || undefined,
         limit: PAGE,
         offset: entries.length,
       })
@@ -445,11 +438,46 @@ export default function JournalPage() {
           aria-label="Search reflections"
           onChange={(e) => setQuery(e.target.value)}
         />
+
+        {/* Quiet mood filter — chips toggle the existing ?mood= list filter. */}
+        <div
+          className="journal-mood-filter"
+          role="group"
+          aria-label="Filter reflections by mood"
+        >
+          {MOODS.map((m) => {
+            const active = moodFilter === m
+            return (
+              <button
+                key={m}
+                type="button"
+                className={`selectable mood-filter-chip${active ? ' selected' : ''}`}
+                aria-pressed={active}
+                style={
+                  active
+                    ? { background: tint(MOOD_COLORS[m]), color: MOOD_COLORS[m], borderColor: MOOD_COLORS[m] }
+                    : undefined
+                }
+                onClick={() => setMoodFilter(active ? '' : m)}
+              >
+                <span aria-hidden="true">{MOOD_META[m].emoji}</span> {MOOD_META[m].label}
+              </button>
+            )
+          })}
+        </div>
+
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         {entries === null && !loadError && <Loading />}
         {entries && entries.length === 0 && (
           <EmptyState>
-            {query ? `No reflections match “${query}”.` : 'No reflections yet. Write your first one above.'}
+            {query || moodFilter
+              ? `No reflections match ${[
+                  query && `“${query}”`,
+                  moodFilter && `mood ${MOOD_META[moodFilter].label}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}.`
+              : 'No reflections yet. Write your first one above.'}
           </EmptyState>
         )}
         {entries?.map((j) => {

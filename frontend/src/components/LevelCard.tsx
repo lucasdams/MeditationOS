@@ -10,10 +10,11 @@ function nextUnlock(shop: ShopItem[]): ShopItem | null {
   return locked.reduce((best, s) => (levelOf(s) < levelOf(best) ? s : best))
 }
 
-// Your level is the coin/unlock track — not a thing you grow. It shows the level, the
-// coins it has earned you to spend in the sanctuary, and what the next level unlocks.
+// Your level is the coin/unlock track — not a thing you grow. It shows the level, the XP
+// progress to the next one, and what that next level unlocks. The coin balance lives on
+// the SanctuaryScene card (the spend surface) so it isn't restated here.
 // `scene` is fetched once by DashboardPage and passed down; when used standalone (outside
-// the dashboard) the prop may be omitted and the coins/unlock row simply won't appear.
+// the dashboard) the prop may be omitted and the unlock row simply won't appear.
 export default function LevelCard({ stats, scene = null }: { stats: DashboardStats; scene?: SanctuaryScene | null }) {
   const pct = Math.min(100, Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100))
 
@@ -28,7 +29,6 @@ export default function LevelCard({ stats, scene = null }: { stats: DashboardSta
       <div className="level-meta">
         <div className="level-title">
           <span>Level {stats.level}</span>
-          {scene && <span className="level-coins">🪙 {scene.coins} coins</span>}
         </div>
         <div
           className="xp-bar"
