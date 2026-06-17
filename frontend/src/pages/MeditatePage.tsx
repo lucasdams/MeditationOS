@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
+import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
 import { messageForError } from '../lib/errors'
 import { playBell } from '../lib/sfx'
@@ -156,6 +157,12 @@ export default function MeditatePage() {
   const savedSessionIdRef = useRef<string | null>(null)
   // After the reflection step, offer a skippable "log a quick reading?".
   const [showReading, setShowReading] = useState(false)
+
+  // Optional pre-session HRV reading: captured before the sit (so it has no session
+  // yet), then linked to the saved session afterwards so the pre/post delta can pair
+  // them. `showPreReading` toggles the capture modal; the ref holds the saved id.
+  const [showPreReading, setShowPreReading] = useState(false)
+  const preReadingIdRef = useRef<string | null>(null)
 
   // Recovery for an unsaved sit: a leftover draft to offer on load, plus the live
   // bits the draft/beacon read at tab-close time (kept in refs so listeners see fresh
@@ -332,6 +339,8 @@ export default function MeditatePage() {
     clearDraft(DRAFT_PAGE)
     setError(null)
     setIntention('')
+    // Drop any captured-but-unlinked pre-reading reference for the abandoned sit.
+    preReadingIdRef.current = null
   }
 
   async function saveSession(durationSec: number) {
@@ -366,6 +375,17 @@ export default function MeditatePage() {
     // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
     savedRef.current = true
     clearDraft(DRAFT_PAGE)
+
+    // If a pre-session reading was captured, link it to the sit now that we have an
+    // id — best-effort, so a link failure never blocks the reward/flow.
+    if (preReadingIdRef.current) {
+      try {
+        await biometricsService.linkSession(preReadingIdRef.current, saved.id)
+      } catch {
+        // Leave the reading unlinked rather than failing the save; it stays in history.
+      }
+      preReadingIdRef.current = null
+    }
 
     // Post-save stats are best-effort: if getStats throws the session is still saved
     // and the reward overlay still fires (with a zero/minimal breakdown). The user
@@ -580,6 +600,26 @@ export default function MeditatePage() {
         </div>
       )}
 
+      {/* Optional pre-session reading — calm, skippable; captured now and linked to the
+          sit afterwards so the pre/post calming delta can pair them. */}
+      {!started && (
+        <div className="session-prereading">
+          {preReadingIdRef.current ? (
+            <p className="session-prereading-done" aria-live="polite">
+              <span aria-hidden="true">✓</span> Pre-sit reading logged.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="link-neutral session-prereading-btn"
+              onClick={() => setShowPreReading(true)}
+            >
+              Log a reading first (optional)
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Secondary: Sound & bells — tucked behind a quiet disclosure ───────── */}
       {/* Soundscape stays live-adjustable during a sit (open the disclosure to change). */}
       <details
@@ -672,6 +712,23 @@ export default function MeditatePage() {
         <button type="button" className="meditate-reset" onClick={reset}>
           Reset
         </button>
+      )}
+
+      {/* Optional pre-session reading capture — shown before the sit starts. Saved with
+          no session id; linked to the sit in saveSession once the session exists. */}
+      {showPreReading && (
+        <BiometricCapture
+          context="pre"
+          sessionId={null}
+          title="Log a reading first?"
+          intro="Optional: your heart rate now, so you can see how a sit settles you over time."
+          onDone={(reading) => {
+            if (reading) preReadingIdRef.current = reading.id
+            setShowPreReading(false)
+            showToast('Reading saved.')
+          }}
+          onSkip={() => setShowPreReading(false)}
+        />
       )}
 
       {reward && (

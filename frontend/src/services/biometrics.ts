@@ -17,5 +17,11 @@ export const biometricsService = {
     const qs = p.toString()
     return api.get<BiometricDelta>(`/biometric-readings/delta${qs ? `?${qs}` : ''}`)
   },
+  // Backfill a pre-session reading's session link once the sit has been saved, so
+  // the pre/post calming delta can pair them.
+  linkSession: (id: string, sessionId: string) =>
+    api.patch<BiometricReading>(`/biometric-readings/${id}/session`, {
+      session_id: sessionId,
+    }),
   remove: (id: string) => api.del<void>(`/biometric-readings/${id}`),
 }

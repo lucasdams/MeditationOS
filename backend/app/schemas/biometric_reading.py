@@ -39,6 +39,18 @@ class BiometricReadingCreate(BaseModel):
     client_token: str | None = Field(default=None, max_length=64)
 
 
+class BiometricReadingLink(BaseModel):
+    """Backfill the `session_id` on an already-saved reading.
+
+    Used to attach a pre-session reading (captured before the sit existed) to the
+    sit once it's been created, so the pre/post calming delta can pair them.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: uuid.UUID
+
+
 class BiometricReadingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

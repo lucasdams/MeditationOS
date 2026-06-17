@@ -10,10 +10,14 @@ import { mmss } from '../lib/format'
 import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
+import Modal from '../components/Modal'
+import RatingChips from '../components/RatingChips'
 import { ErrorBanner } from '../components/StateViews'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
+import { biometricsService } from '../services/biometrics'
+import { dailySuggestion } from '../lib/intentionPrompts'
 import {
   SoundscapeEngine,
   loadSoundscapePref,
@@ -180,6 +184,23 @@ export default function BreathePage() {
   const savedSessionIdRef = useRef<string | null>(null)
   // After the reward overlay closes, offer a skippable "log a quick reading?".
   const [showReading, setShowReading] = useState(false)
+
+  // Pre-session intention — optional, skippable, max 140 chars (mirrors MeditatePage).
+  const [intention, setIntention] = useState('')
+
+  // Optional pre-session HRV reading: captured before the sit (so it has no session
+  // yet), then linked to the saved session afterwards so the pre/post delta can pair
+  // them. `showPreReading` toggles the capture modal; the ref holds the saved id.
+  const [showPreReading, setShowPreReading] = useState(false)
+  const preReadingIdRef = useRef<string | null>(null)
+
+  // Post-session reflection — shown after the reward overlay, before the post reading.
+  const [showReflection, setShowReflection] = useState(false)
+  const [reflectFocus, setReflectFocus] = useState('')
+  const [reflectCalm, setReflectCalm] = useState('')
+  const [reflectNotes, setReflectNotes] = useState('')
+  const [reflectSaving, setReflectSaving] = useState(false)
+  const [reflectError, setReflectError] = useState<string | null>(null)
   const [audioOn, setAudioOn] = useState(() => loadPrefs().audioOn) // ambient wash on by default
   const [ambient, setAmbient] = useState<AmbientSound>(() => loadPrefs().ambient)
   const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
@@ -276,6 +297,8 @@ export default function BreathePage() {
       exhale_seconds: p.exhale,
       cycles_completed: Math.floor(elapsedSec / cycleLength(p)),
       client_token: tokenRef.current,
+      // Include the intention when set; the beacon path drops it (fine — optional).
+      intention: intention.trim() || undefined,
     }
   }
 
@@ -530,11 +553,23 @@ export default function BreathePage() {
         // even if the tab was backgrounded and the visual counter was frozen).
         cycles_completed: Math.floor(durationSec / cycleLength(pattern)),
         client_token: tokenRef.current ?? undefined,
+        // Carry the optional pre-session intention onto the saved sit.
+        intention: intention.trim() || null,
       })
       savedSessionIdRef.current = saved.id
       // Saved — drop the recovery draft and stop the tab-close beacon from re-firing.
       savedRef.current = true
       clearDraft(DRAFT_PAGE)
+      // If a pre-session reading was captured, link it to the sit now that we have an
+      // id — best-effort, so a link failure never blocks the reward/flow.
+      if (preReadingIdRef.current) {
+        try {
+          await biometricsService.linkSession(preReadingIdRef.current, saved.id)
+        } catch {
+          // Leave the reading unlinked rather than failing the save; it stays in history.
+        }
+        preReadingIdRef.current = null
+      }
       const after = await dashboardService.getStats()
       // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
       const bd = buildXpBreakdown(before, after, '🫁 Breathing')
@@ -579,6 +614,42 @@ export default function BreathePage() {
     setRestorable(null)
   }
 
+  // Patch the already-saved sit with reflection data, then move to the post reading.
+  async function saveReflection() {
+    const sid = savedSessionIdRef.current
+    if (!sid) {
+      advanceToReading()
+      return
+    }
+    const payload: Record<string, unknown> = {}
+    if (reflectFocus) payload.focus = Number(reflectFocus)
+    if (reflectCalm) payload.calm = Number(reflectCalm)
+    const trimmedNotes = reflectNotes.trim()
+    if (trimmedNotes) payload.notes = trimmedNotes
+    // Nothing to patch — skip straight to the reading offer.
+    if (Object.keys(payload).length === 0) {
+      advanceToReading()
+      return
+    }
+    setReflectSaving(true)
+    setReflectError(null)
+    try {
+      await sessionService.update(sid, payload)
+      advanceToReading()
+    } catch (err) {
+      setReflectError(
+        err instanceof ApiError ? 'Could not save reflection.' : messageForError(err),
+      )
+      setReflectSaving(false)
+    }
+  }
+
+  function advanceToReading() {
+    setShowReflection(false)
+    if (savedSessionIdRef.current) setShowReading(true)
+    else navigate('/')
+  }
+
   // Changing the pace restarts the breath so the new rate begins cleanly.
   function selectBpm(next: number) {
     setBpm(next)
@@ -595,6 +666,9 @@ export default function BreathePage() {
     setPresetKey(key)
     reset()
   }
+
+  // Stable daily suggestion for the intention placeholder (matches MeditatePage).
+  const intentionPlaceholder = dailySuggestion(new Date())
 
   return (
     <main id="main-content" className="breathe">
@@ -646,6 +720,14 @@ export default function BreathePage() {
             {preset.pattern === null ? `${bpm} breaths per minute` : patternSummary(pattern)}
           </span>
         </div>
+      )}
+
+      {/* Show the locked-in intention quietly during the sit. */}
+      {(running || elapsed > 0) && intention.trim() && (
+        <p className="session-intention-locked" aria-label="Your intention for this sit">
+          <span className="session-intention-locked-icon" aria-hidden="true">✦</span>{' '}
+          {intention.trim()}
+        </p>
       )}
 
       {/* Setup (pattern, pace, duration, sound) shows before/while paused; during a
@@ -724,6 +806,48 @@ export default function BreathePage() {
         ariaLabel="Duration"
         onChange={setTargetMin}
       />
+
+      {/* Pre-session intention — optional, skippable; hidden once a sit is underway. */}
+      {elapsed === 0 && (
+        <div className="session-intention">
+          <label htmlFor="breathe-intention" className="session-intention-label">
+            Intention <span className="session-intention-opt">(optional)</span>
+          </label>
+          <textarea
+            id="breathe-intention"
+            className="session-intention-input"
+            rows={2}
+            maxLength={140}
+            placeholder={intentionPlaceholder}
+            value={intention}
+            onChange={(e) => setIntention(e.target.value)}
+            aria-describedby="breathe-intention-hint"
+          />
+          <p id="breathe-intention-hint" className="session-intention-hint">
+            A quiet phrase to carry into your breathing.
+          </p>
+        </div>
+      )}
+
+      {/* Optional pre-session reading — calm, skippable; captured now and linked to the
+          sit afterwards so the pre/post calming delta can pair them. */}
+      {elapsed === 0 && (
+        <div className="session-prereading">
+          {preReadingIdRef.current ? (
+            <p className="session-prereading-done" aria-live="polite">
+              <span aria-hidden="true">✓</span> Pre-breathing reading logged.
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="link-neutral session-prereading-btn"
+              onClick={() => setShowPreReading(true)}
+            >
+              Log a reading first (optional)
+            </button>
+          )}
+        </div>
+      )}
         </>
       )}
 
@@ -818,11 +942,90 @@ export default function BreathePage() {
           breakdown={reward.breakdown}
           onClose={() => {
             setReward(null)
-            // Offer the optional reading once the reward is dismissed — never blocks.
-            if (savedSessionIdRef.current) setShowReading(true)
+            // After XP, offer the optional reflection — never blocks.
+            if (savedSessionIdRef.current) setShowReflection(true)
             else navigate('/')
           }}
         />
+      )}
+
+      {/* Optional pre-session reading capture — shown before the sit starts. Saved with
+          no session id; linked to the sit in saveSession once the session exists. */}
+      {showPreReading && (
+        <BiometricCapture
+          context="pre"
+          sessionId={null}
+          title="Log a reading first?"
+          intro="Optional: your heart rate now, so you can see how a breathing sit settles you."
+          onDone={(reading) => {
+            if (reading) preReadingIdRef.current = reading.id
+            setShowPreReading(false)
+            showToast('Reading saved.')
+          }}
+          onSkip={() => setShowPreReading(false)}
+        />
+      )}
+
+      {/* Post-session reflection — after the reward overlay, before the post reading.
+          Patches focus/calm/notes onto the already-saved sit (no double-save). */}
+      {showReflection && (
+        <Modal ariaLabel="Reflect on your breathing" cardClassName="biometric-card session-reflect-card">
+          <h2>How was that?</h2>
+          {intention.trim() && (
+            <p className="session-reflect-intention">
+              Your intention: <em>{intention.trim()}</em>
+            </p>
+          )}
+          <p className="biometric-intro">
+            Optional — rate how your breathing felt, or jot a quick note.
+          </p>
+
+          <div className="session-reflect-row">
+            <span className="session-reflect-label">Focus</span>
+            <RatingChips
+              ariaLabel="Focus"
+              notRatedLabel="—"
+              value={reflectFocus}
+              onChange={setReflectFocus}
+            />
+          </div>
+          <div className="session-reflect-row">
+            <span className="session-reflect-label">Calm</span>
+            <RatingChips
+              ariaLabel="Calm"
+              notRatedLabel="—"
+              value={reflectCalm}
+              onChange={setReflectCalm}
+            />
+          </div>
+
+          <label htmlFor="breathe-reflect-notes" className="session-reflect-notes-label">
+            Notes (optional)
+          </label>
+          <textarea
+            id="breathe-reflect-notes"
+            rows={3}
+            placeholder="Anything that arose…"
+            value={reflectNotes}
+            onChange={(e) => setReflectNotes(e.target.value)}
+          />
+
+          <ErrorBanner message={reflectError} />
+
+          <div className="biometric-actions">
+            <button type="button" onClick={saveReflection} disabled={reflectSaving}>
+              {reflectSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="link-neutral"
+              onClick={advanceToReading}
+              disabled={reflectSaving}
+            >
+              Skip
+            </button>
+          </div>
+        </Modal>
       )}
 
       {showReading && savedSessionIdRef.current && (

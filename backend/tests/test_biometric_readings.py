@@ -153,6 +153,95 @@ def test_link_foreign_session_is_404(client):
     assert _reading(client, session_id=session_id).status_code == 404
 
 
+def test_link_session_backfills_session_id(client):
+    # A pre reading captured before the sit existed is saved with no session, then
+    # linked once the session is created — so the pre/post delta can pair them.
+    _auth(client, "b-link@example.com")
+    reading_id = _reading(client, context="pre", bpm=74).json()["id"]
+    assert client.get("/api/v1/biometric-readings").json()[0]["session_id"] is None
+
+    session_id = _session(client).json()["id"]
+    res = client.patch(
+        f"/api/v1/biometric-readings/{reading_id}/session",
+        json={"session_id": session_id},
+    )
+    assert res.status_code == 200
+    assert res.json()["session_id"] == session_id
+
+
+def test_link_session_then_post_pairs_in_delta(client):
+    # The end-to-end pre-link flow: pre saved standalone, linked after the sit, post
+    # saved against the sit — the delta then sees a complete pair.
+    _auth(client, "b-link-delta@example.com")
+    reading_id = _reading(client, context="pre", bpm=74).json()["id"]
+    session_id = _session(client).json()["id"]
+    client.patch(
+        f"/api/v1/biometric-readings/{reading_id}/session",
+        json={"session_id": session_id},
+    )
+    _reading(client, context="post", bpm=66, session_id=session_id)
+
+    delta = client.get("/api/v1/biometric-readings/delta").json()
+    assert delta["sample_size"] == 1
+    assert delta["avg_bpm_delta"] == -8.0
+
+
+def test_link_requires_auth(client):
+    assert (
+        client.patch(
+            "/api/v1/biometric-readings/00000000-0000-0000-0000-000000000000/session",
+            json={"session_id": "00000000-0000-0000-0000-000000000000"},
+        ).status_code
+        == 401
+    )
+
+
+def test_link_unknown_reading_is_404(client):
+    _auth(client, "b-link-404@example.com")
+    session_id = _session(client).json()["id"]
+    res = client.patch(
+        "/api/v1/biometric-readings/00000000-0000-0000-0000-000000000000/session",
+        json={"session_id": session_id},
+    )
+    assert res.status_code == 404
+
+
+def test_link_to_foreign_session_is_404(client):
+    _auth(client, "b-link-owner@example.com")
+    reading_id = _reading(client, context="pre").json()["id"]
+    _auth(client, "b-link-intruder@example.com")  # different user owns this session
+    session_id = _session(client).json()["id"]
+    _auth(client, "b-link-owner@example.com")  # back to the reading's owner
+    res = client.patch(
+        f"/api/v1/biometric-readings/{reading_id}/session",
+        json={"session_id": session_id},
+    )
+    assert res.status_code == 404
+
+
+def test_link_other_users_reading_is_404(client):
+    _auth(client, "b-link-r-owner@example.com")
+    reading_id = _reading(client, context="pre").json()["id"]
+    _auth(client, "b-link-r-intruder@example.com")  # different user
+    session_id = _session(client).json()["id"]
+    res = client.patch(
+        f"/api/v1/biometric-readings/{reading_id}/session",
+        json={"session_id": session_id},
+    )
+    assert res.status_code == 404
+
+
+def test_link_extra_field_rejected(client):
+    _auth(client, "b-link-extra@example.com")
+    reading_id = _reading(client, context="pre").json()["id"]
+    session_id = _session(client).json()["id"]
+    res = client.patch(
+        f"/api/v1/biometric-readings/{reading_id}/session",
+        json={"session_id": session_id, "smell": "lavender"},
+    )
+    assert res.status_code == 422
+
+
 def test_delete_own_and_404_for_others(client):
     _auth(client, "del-b@example.com")
     reading_id = _reading(client).json()["id"]
