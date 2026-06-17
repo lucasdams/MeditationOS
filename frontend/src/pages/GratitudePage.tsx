@@ -8,7 +8,15 @@ import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor, tint } from '../lib/colors'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import type { Gratitude, GratitudeCategory } from '../types'
+import type { DashboardStats, Gratitude, GratitudeCategory } from '../types'
+
+// Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
+const ZERO_STATS: DashboardStats = {
+  xp: 0, level: 1, xp_into_level: 0, xp_for_next_level: 100,
+  current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
+  streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
+  gratitude_count: 0, this_week: [], daily_quests: [],
+}
 
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
   { key: 'custom', label: 'Custom', emoji: '✏️' },
@@ -174,10 +182,15 @@ export default function GratitudePage() {
     setSaving(true)
     setError(null)
     try {
-      const before = await dashboardService.getStats()
+      // Stats are best-effort and sit outside the create: a getStats failure must not
+      // surface "could not save" for an entry that did save (which provokes a re-tap
+      // and a duplicate, since create carries no idempotency token).
+      const before = await dashboardService.getStats().catch(() => ZERO_STATS)
       const entry = await gratitudeService.create({ category, text: text.trim() })
       setEntries((prev) => [entry, ...(prev ?? [])])
-      const after = await dashboardService.getStats()
+      // Post-save stats are best-effort too: the entry is already saved, so fall back
+      // to `before` (zero gain) on failure rather than failing the whole save.
+      const after = await dashboardService.getStats().catch(() => before)
       // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
       const bd = buildXpBreakdown(before, after, '🙏 Gratitude')
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
