@@ -64,6 +64,9 @@
 
   /* Heatmap */
   --heatmap-cell-empty: #cdd0d6;
+  --heatmap-cell-active: #4f46e5; /* practiced — 4.05:1 vs empty (WCAG 1.4.11) */
+  --heatmap-cell-quests: #047857; /* all daily quests — 3.55:1 vs empty */
+  --heatmap-cell-edge: rgba(27, 27, 30, 0.08);
 
   /* Misc */
   --shadow-card: rgba(0, 0, 0, 0.05);
@@ -143,6 +146,9 @@
 
   /* Heatmap */
   --heatmap-cell-empty: #2e3250;
+  --heatmap-cell-active: #818cf8; /* practiced — 4.16:1 vs dark empty (WCAG 1.4.11) */
+  --heatmap-cell-quests: #34d399; /* all daily quests — bright vs dark empty */
+  --heatmap-cell-edge: rgba(255, 255, 255, 0.12);
 
   /* Shadows — lighter to avoid fully opaque blobs on dark */
   --shadow-card: rgba(0, 0, 0, 0.25);
@@ -196,6 +202,9 @@
     --chip-soft-text: #a5b4fc;
     --chip-soft-border: #3730a3;
     --heatmap-cell-empty: #2e3250;
+    --heatmap-cell-active: #818cf8;
+    --heatmap-cell-quests: #34d399;
+    --heatmap-cell-edge: rgba(255, 255, 255, 0.12);
     --shadow-card: rgba(0, 0, 0, 0.25);
     --shadow-modal: rgba(0, 0, 0, 0.5);
     --shadow-nav: rgba(0, 0, 0, 0.35);
@@ -2663,18 +2672,19 @@ textarea:focus-visible,
   height: 12px;
   border-radius: 2px;
   background: var(--heatmap-cell-empty); /* lvl-0 / no practice */
-  /* Hairline edge so every cell stays defined against the ambient gradient. */
-  box-shadow: inset 0 0 0 1px rgba(27, 27, 30, 0.08);
+  /* Hairline edge so every cell stays defined against the ambient gradient.
+     Themed per mode so the edge stays visible on dark backgrounds too. */
+  box-shadow: inset 0 0 0 1px var(--heatmap-cell-edge);
 }
 
 .heatmap-cell.lvl-1 {
-  /* Indigo darkened from #818cf8 so the active cell clears the WCAG 1.4.11
-     non-text 3:1 contrast against the empty cell / card behind it. */
-  background: #4f46e5; /* active — practiced that day */
+  /* Active cell. Themed per mode (dark indigo on light, bright indigo on dark)
+     so it clears WCAG 1.4.11 non-text 3:1 against the empty cell in BOTH themes. */
+  background: var(--heatmap-cell-active); /* active — practiced that day */
 }
 
 .heatmap-cell.lvl-2 {
-  background: #059669; /* completed all daily quests */
+  background: var(--heatmap-cell-quests); /* completed all daily quests */
 }
 
 .heatmap-cell.out {
