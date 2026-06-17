@@ -286,6 +286,7 @@ export default function GratitudePage() {
             rows={3}
             value={text}
             maxLength={500}
+            aria-label="What you're grateful for"
             placeholder={category === 'custom' ? 'Write your own…' : "I'm grateful for…"}
             onChange={(e) => setText(e.target.value)}
           />
@@ -319,7 +320,7 @@ export default function GratitudePage() {
                   <span className="journal-mood" style={{ background: tint(color), color }}>
                     {LABELS[e.category] ?? e.category}
                   </span>
-                  <span className="journal-entry-actions">
+                  <span className="journal-entry-actions" id={`menu-${e.id}`}>
                     {menuId === e.id && (
                       <button
                         type="button"
@@ -338,6 +339,7 @@ export default function GratitudePage() {
                       aria-label="Entry actions"
                       aria-haspopup="true"
                       aria-expanded={menuId === e.id}
+                      aria-controls={`menu-${e.id}`}
                       onClick={() => setMenuId(menuId === e.id ? null : e.id)}
                     >
                       ⋯

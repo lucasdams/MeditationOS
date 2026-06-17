@@ -150,7 +150,7 @@ export default function DashboardPage() {
           </ul>
           {stats.current_streak_days > 0 && (
             <p className="quest-streak muted">
-              🌱 {stats.current_streak_days}-day practice streak
+              <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
               {stats.rest_day_used
                 ? ' · 🛡️ rest day — skipping one is fine'
                 : ''}
@@ -172,13 +172,15 @@ export default function DashboardPage() {
             type="button"
             className="show-more-toggle"
             onClick={() => setShowMore((v) => !v)}
+            aria-label="Progress details"
             aria-expanded={showMore}
+            aria-controls="dashboard-progress"
           >
             {showMore ? 'Hide progress' : 'Show progress'}
           </button>
 
           {showMore && (
-            <>
+            <div id="dashboard-progress">
               <section className="stat-cards">
                 <div className="stat-card">
                   <div className="stat-value">{formatTotal(stats.total_seconds)}</div>
@@ -208,7 +210,7 @@ export default function DashboardPage() {
               <ActivityHeatmap />
 
               <Achievements stats={stats} />
-            </>
+            </div>
           )}
         </section>
       )}

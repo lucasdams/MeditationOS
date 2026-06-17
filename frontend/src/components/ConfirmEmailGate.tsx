@@ -49,7 +49,7 @@ export default function ConfirmEmailGate() {
   }
 
   return (
-    <main className="auth-card">
+    <main id="main-content" className="auth-card">
       <h1>Confirm your email</h1>
       <p>
         To keep your account secure, please confirm your email address before

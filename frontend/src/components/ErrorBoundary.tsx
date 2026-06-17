@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component<
   render(): ReactNode {
     if (!this.state.hasError) return this.props.children
     return (
-      <main className="auth-card">
+      <main id="main-content" className="auth-card">
         <h1>Something went wrong</h1>
         <p className="muted">
           An unexpected error broke this page. Reloading usually fixes it.

@@ -3,7 +3,7 @@ export default function BreathingInfo() {
     <details className="breathe-info">
       <summary>About resonance breathing</summary>
 
-      <h3>What it is</h3>
+      <h2>What it is</h2>
       <p>
         Resonance (or "coherence") breathing is slow, paced breathing — around 6 breaths a
         minute or slower. At this pace your heart rate and breath fall into sync, which
@@ -12,7 +12,7 @@ export default function BreathingInfo() {
         focused state.
       </p>
 
-      <h3>Why the 2:3 ratio</h3>
+      <h2>Why the 2:3 ratio</h2>
       <p>
         You breathe in for 2 counts and out for 3 — a slightly <strong>longer exhale</strong>. A
         longer out-breath gently stimulates the vagus nerve and deepens the relaxation response,
@@ -20,7 +20,7 @@ export default function BreathingInfo() {
         seconds out.
       </p>
 
-      <h3>Benefits</h3>
+      <h2>Benefits</h2>
       <ul>
         <li>Lower stress and anxiety in the moment</li>
         <li>Sharper focus and a steadier mind</li>
@@ -28,7 +28,7 @@ export default function BreathingInfo() {
         <li>Can support better sleep and emotional regulation</li>
       </ul>
 
-      <h3>How to do it</h3>
+      <h2>How to do it</h2>
       <ol>
         <li>Sit comfortably, shoulders relaxed.</li>
         <li>Breathe through your nose, down into your belly — not your chest.</li>
