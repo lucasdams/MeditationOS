@@ -11,6 +11,9 @@ export interface User {
   is_admin: boolean
   reminder_enabled: boolean
   reminder_hour: number | null
+  // Independent opt-out for the evening streak-save nudge (defaults true). Only meaningful
+  // when reminder_enabled is true — the nudge requires the daily reminder to be on.
+  streak_save_enabled: boolean
   weekly_summary_enabled: boolean
   weekly_summary_day: number | null
   // Daily-activity quests the user opted into (≥3 of QUEST_FEATURES). null until

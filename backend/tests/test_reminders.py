@@ -56,6 +56,34 @@ def test_hour_out_of_range_rejected(client):
     )
 
 
+def test_streak_save_requires_auth(client):
+    assert client.post("/api/v1/auth/streak-save", json={"enabled": False}).status_code == 401
+
+
+def test_streak_save_defaults_enabled(client):
+    _auth(client, "ss_default@example.com")
+    me = client.get("/api/v1/auth/me").json()
+    assert me["streak_save_enabled"] is True
+
+
+def test_toggle_streak_save_independent_of_reminder(client):
+    _auth(client, "ss_toggle@example.com")
+    # Keep the morning reminder on, but decline the evening streak-save nudge.
+    client.post("/api/v1/auth/reminders", json={"enabled": True, "hour": 8})
+    res = client.post("/api/v1/auth/streak-save", json={"enabled": False})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["streak_save_enabled"] is False
+    assert body["reminder_enabled"] is True  # morning reminder untouched
+    # And re-enable.
+    assert (
+        client.post("/api/v1/auth/streak-save", json={"enabled": True}).json()[
+            "streak_save_enabled"
+        ]
+        is True
+    )
+
+
 # --- send pass --------------------------------------------------------------
 
 
@@ -216,6 +244,26 @@ def test_disabled_reminders_no_streak_save_nudge(monkeypatch, db_session):
     _add_session(db_session, user.id, EVENING_UTC - timedelta(days=1))
     assert reminder_service.send_streak_save_nudges(db_session, now_utc=EVENING_UTC) == 0
     assert sent == []
+
+
+def test_streak_save_disabled_no_nudge_but_morning_still_fires(monkeypatch, db_session):
+    """A user who opted out of the streak-save nudge (but kept reminders on) gets no
+    evening nudge, while the morning reminder is unaffected."""
+    sent = _capture(monkeypatch)
+    user = _user(
+        db_session,
+        "ssoff@example.com",
+        reminder_enabled=True,
+        reminder_hour=8,
+        streak_save_enabled=False,
+    )
+    _add_session(db_session, user.id, EVENING_UTC - timedelta(days=1))  # at-risk streak
+    # Evening streak-save nudge is suppressed.
+    assert reminder_service.send_streak_save_nudges(db_session, now_utc=EVENING_UTC) == 0
+    assert sent == []
+    # The morning reminder still fires the next day (separate opt-in).
+    next_morning = datetime(2026, 6, 13, 9, 0, tzinfo=UTC)
+    assert reminder_service.send_due_reminders(db_session, now_utc=next_morning) == 1
 
 
 def test_no_streak_no_nudge(monkeypatch, db_session):
