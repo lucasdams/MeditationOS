@@ -7,7 +7,8 @@ import { dashboardService } from '../services/dashboard'
 import { MOOD_COLORS, tint } from '../lib/colors'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
@@ -45,7 +46,9 @@ export default function JournalPage() {
   const { showToast } = useToast()
   const [entries, setEntries] = useState<Journal[] | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // save / load-more action errors
+  const [loadError, setLoadError] = useState<string | null>(null) // the list query failing
+  const [retrying, setRetrying] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
 
@@ -95,23 +98,33 @@ export default function JournalPage() {
 
   // Entries — refetched (debounced) whenever the text search changes. Drop any
   // in-progress edit, since the edited entry may fall out of the new results.
+  function loadInitial(q: string) {
+    journalService
+      .list({ q: q || undefined, limit: PAGE, offset: 0 })
+      .then((rows) => {
+        setEntries(rows)
+        setHasMore(rows.length === PAGE)
+        setLoadError(null)
+      })
+      .catch((err) => setLoadError(messageForError(err, 'Could not load your journal.')))
+      .finally(() => setRetrying(false))
+  }
+
   useEffect(() => {
     setEditingId(null)
     setMenuId(null)
     const t = setTimeout(
-      () => {
-        journalService
-          .list({ q: query || undefined, limit: PAGE, offset: 0 })
-          .then((rows) => {
-            setEntries(rows)
-            setHasMore(rows.length === PAGE)
-          })
-          .catch(() => setError('Could not load your journal.'))
-      },
+      () => loadInitial(query),
       query ? 300 : 0, // debounce typing; load immediately on mount/clear
     )
     return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
+
+  function retryLoad() {
+    setRetrying(true)
+    loadInitial(query)
+  }
 
   async function loadMore() {
     if (!entries) return
@@ -410,7 +423,8 @@ export default function JournalPage() {
           aria-label="Search reflections"
           onChange={(e) => setQuery(e.target.value)}
         />
-        {entries === null && !error && <Loading />}
+        <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
+        {entries === null && !loadError && <Loading />}
         {entries && entries.length === 0 && (
           <EmptyState>
             {query ? `No reflections match “${query}”.` : 'No reflections yet. Write your first one above.'}

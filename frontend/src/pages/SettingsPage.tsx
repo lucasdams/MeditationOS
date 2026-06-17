@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
@@ -118,7 +119,7 @@ export default function SettingsPage() {
       setUsernameError(
         err instanceof ApiError && err.status === 409
           ? 'That username is taken.'
-          : 'Something went wrong. Please try again.',
+          : messageForError(err),
       )
     } finally {
       setSavingUsername(false)
@@ -153,7 +154,7 @@ export default function SettingsPage() {
       setPasswordError(
         err instanceof ApiError && err.status === 401
           ? 'Your current password is incorrect.'
-          : 'Something went wrong. Please try again.',
+          : messageForError(err),
       )
     } finally {
       setSavingPassword(false)
@@ -189,7 +190,7 @@ export default function SettingsPage() {
           ? 'That email already has an account.'
           : err instanceof ApiError && err.status === 401
             ? 'Your password is incorrect.'
-            : 'Something went wrong. Please try again.',
+            : messageForError(err),
       )
     } finally {
       setSavingEmail(false)
@@ -219,7 +220,7 @@ export default function SettingsPage() {
       setClaimError(
         err instanceof ApiError && err.status === 409
           ? 'That email already has an account.'
-          : 'Something went wrong. Please try again.',
+          : messageForError(err),
       )
       setSavingClaim(false)
     }
@@ -275,8 +276,8 @@ export default function SettingsPage() {
       await authService.setQuestFeatures(questFeatures)
       await refresh()
       setQuestOk(true)
-    } catch {
-      setQuestError('Something went wrong. Please try again.')
+    } catch (err) {
+      setQuestError(messageForError(err))
     } finally {
       setSavingQuests(false)
     }
@@ -291,8 +292,8 @@ export default function SettingsPage() {
       await authService.setReminders(remindersEnabled, remindersEnabled ? reminderHour : null)
       await refresh()
       setReminderOk(true)
-    } catch {
-      setReminderError('Something went wrong. Please try again.')
+    } catch (err) {
+      setReminderError(messageForError(err))
     } finally {
       setSavingReminder(false)
     }
@@ -307,8 +308,8 @@ export default function SettingsPage() {
       await authService.setWeeklySummary(summaryEnabled, summaryEnabled ? summaryDay : null)
       await refresh()
       setSummaryOk(true)
-    } catch {
-      setSummaryError('Something went wrong. Please try again.')
+    } catch (err) {
+      setSummaryError(messageForError(err))
     } finally {
       setSavingSummary(false)
     }

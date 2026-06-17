@@ -1470,6 +1470,49 @@ textarea:focus-visible,
   font-size: 0.9rem;
 }
 
+/* A quiet helper line under a form field (e.g. the username rules). */
+.field-hint {
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* Load-error banner with an inline "Try again" action (StateViews RetryableError). */
+.error-retry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.9rem;
+  margin: 0.5rem 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.retry-btn {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: var(--chip-soft-bg);
+}
+
+.retry-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .dashboard {
   max-width: 40rem;
   margin: 2rem auto;

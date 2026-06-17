@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import AuthBrand from '../components/AuthBrand'
@@ -46,7 +47,7 @@ export default function RegisterPage() {
       if (err instanceof ApiError && err.status === 409) {
         setError('That email is already registered.')
       } else {
-        setError('Something went wrong. Please try again.')
+        setError(messageForError(err))
       }
     } finally {
       setSubmitting(false)

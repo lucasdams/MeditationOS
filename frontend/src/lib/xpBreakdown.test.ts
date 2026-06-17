@@ -57,7 +57,7 @@ describe('buildXpBreakdown', () => {
     const { lines } = buildXpBreakdown(before, after, '🧘 Meditation')
     expect(lines).toEqual([
       { label: '🧘 Meditation', xp: 12 },
-      { label: '🔥 Streak bonus', xp: 10 },
+      { label: '🌱 Streak bonus', xp: 10 },
     ])
   })
 

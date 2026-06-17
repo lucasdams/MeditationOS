@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { playBell } from '../lib/sfx'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
@@ -356,7 +357,7 @@ export default function MeditatePage() {
         intention: trimmedIntention ?? null,
       })
     } catch (err) {
-      setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
+      setError(err instanceof ApiError ? 'Could not save the session.' : messageForError(err))
       setSaving(false)
       return
     }
@@ -432,7 +433,7 @@ export default function MeditatePage() {
       advanceToReading()
     } catch (err) {
       setReflectError(
-        err instanceof ApiError ? 'Could not save reflection.' : 'Something went wrong.',
+        err instanceof ApiError ? 'Could not save reflection.' : messageForError(err),
       )
       setReflectSaving(false)
     }

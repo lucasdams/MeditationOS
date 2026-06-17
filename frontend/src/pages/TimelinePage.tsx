@@ -8,7 +8,8 @@ import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { MOOD_COLORS, MOOD_META, gratitudeColor, tint } from '../lib/colors'
 import { csvEscape } from '../lib/csvEscape'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import type { MeditationType, Mood, Session } from '../types'
 
 // One unified, chronological feed of everything you log — reflections (journal),
@@ -60,7 +61,9 @@ const sortByWhenDesc = (a: TimelineItem, b: TimelineItem) => (a.when < b.when ? 
 export default function TimelinePage() {
   const { showToast } = useToast()
   const [items, setItems] = useState<TimelineItem[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // inline action errors (edit/export)
+  const [loadError, setLoadError] = useState<string | null>(null) // the timeline read failing
+  const [retrying, setRetrying] = useState(false)
   const [menuId, setMenuId] = useState<string | null>(null) // session whose actions are revealed
   const [exporting, setExporting] = useState(false)
 
@@ -74,18 +77,17 @@ export default function TimelinePage() {
   const [editCalm, setEditCalm] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
 
-  useEffect(() => {
-    let ignore = false
+  function load(ignored?: () => boolean) {
     // Each source is non-critical on its own; fail quietly per-source and merge whatever
     // loaded, so one failing endpoint never blanks the whole timeline.
-    Promise.all([
+    return Promise.all([
       journalService.list({ limit: PER_SOURCE }).catch(() => []),
       gratitudeService.list({ limit: PER_SOURCE }).catch(() => []),
       sessionService.list({ limit: PER_SOURCE }).catch(() => []),
       moodLogService.list({ limit: PER_SOURCE }).catch(() => []),
     ])
       .then(([journals, gratitudes, sessions, moods]) => {
-        if (ignore) return
+        if (ignored?.()) return
         const merged: TimelineItem[] = [
           ...journals.map((j) => ({
             kind: 'journal' as const,
@@ -116,10 +118,25 @@ export default function TimelinePage() {
         ]
         merged.sort(sortByWhenDesc)
         setItems(merged)
+        setLoadError(null)
       })
-      .catch(() => { if (!ignore) setError('Could not load your timeline.') })
+      .catch((err) => {
+        if (!ignored?.()) setLoadError(messageForError(err, 'Could not load your timeline.'))
+      })
+      .finally(() => setRetrying(false))
+  }
+
+  useEffect(() => {
+    let ignore = false
+    load(() => ignore)
     return () => { ignore = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function retryLoad() {
+    setRetrying(true)
+    load()
+  }
 
   function startEdit(s: Session) {
     setEditingId(s.id)
@@ -227,9 +244,10 @@ export default function TimelinePage() {
         <p className="page-subtitle">Everything you've logged, in one place.</p>
       </header>
 
+      <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
       <ErrorBanner message={error} />
 
-      {items === null && !error && <Loading />}
+      {items === null && !loadError && <Loading />}
 
       {items && items.length === 0 && (
         <EmptyState>

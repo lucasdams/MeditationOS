@@ -6,7 +6,8 @@ import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor, tint } from '../lib/colors'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import type { Gratitude, GratitudeCategory } from '../types'
 
 const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
@@ -83,7 +84,9 @@ export default function GratitudePage() {
   const [loadingOptions, setLoadingOptions] = useState(false)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // save / load-more action errors
+  const [loadError, setLoadError] = useState<string | null>(null) // the initial list failing
+  const [retrying, setRetrying] = useState(false)
   const [entries, setEntries] = useState<Gratitude[] | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null) // entry whose Delete is revealed
   const [hasMore, setHasMore] = useState(false)
@@ -103,15 +106,29 @@ export default function GratitudePage() {
     onStart: () => setError(null),
   })
 
-  useEffect(() => {
+  function loadInitial() {
     gratitudeService
       .list({ limit: GRAT_PAGE, offset: 0 })
       .then((rows) => {
         setEntries(rows)
         setHasMore(rows.length === GRAT_PAGE)
+        setLoadError(null)
       })
-      .catch(() => setError('Could not load your gratitude journal.'))
+      .catch((err) =>
+        setLoadError(messageForError(err, 'Could not load your gratitude journal.')),
+      )
+      .finally(() => setRetrying(false))
+  }
+
+  useEffect(() => {
+    loadInitial()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function retryLoad() {
+    setRetrying(true)
+    loadInitial()
+  }
 
   async function loadMore() {
     if (!entries) return
@@ -269,7 +286,8 @@ export default function GratitudePage() {
 
       <section className="grat-journal">
         <h2>Recent</h2>
-        {!entries && !error && <Loading />}
+        <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
+        {!entries && !loadError && <Loading />}
         {entries && entries.length === 0 && (
           <EmptyState>No entries yet — your first grateful moment starts here.</EmptyState>
         )}

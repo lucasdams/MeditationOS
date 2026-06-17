@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { analyticsService } from '../services/analytics'
 import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, RetryableError, EmptyState } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import type {
   AnalyticsSummary,
   BiometricDelta,
@@ -276,15 +277,28 @@ function BiometricTrend() {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
+
+  function load() {
+    return analyticsService
+      .get()
+      .then((d) => {
+        setData(d)
+        setError(null)
+      })
+      .catch((err) => setError(messageForError(err, 'Could not load your analytics.')))
+      .finally(() => setRetrying(false))
+  }
 
   useEffect(() => {
-    let ignore = false
-    analyticsService
-      .get()
-      .then((d) => { if (!ignore) setData(d) })
-      .catch(() => { if (!ignore) setError('Could not load your analytics.') })
-    return () => { ignore = true }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function retry() {
+    setRetrying(true)
+    load()
+  }
 
   return (
     <main id="main-content" className="dashboard">
@@ -294,7 +308,7 @@ export default function AnalyticsPage() {
         <p className="page-subtitle">Patterns in your practice, computed from your activity.</p>
       </header>
 
-      <ErrorBanner message={error} />
+      <RetryableError message={error} onRetry={retry} retrying={retrying} />
       {!data && !error && <Loading />}
 
       {data && data.total_sessions === 0 && data.moods.length === 0 && (

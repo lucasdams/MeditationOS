@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { authService } from '../services/auth'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -23,8 +24,8 @@ export default function ForgotPasswordPage() {
       // The API never reveals whether the address exists — show the same
       // confirmation either way.
       setSent(true)
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      setError(messageForError(err))
     } finally {
       setSubmitting(false)
     }

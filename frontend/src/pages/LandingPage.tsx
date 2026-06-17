@@ -10,7 +10,7 @@ const FEATURES = [
   { emoji: '🎯', title: 'Goals', body: 'Set recurring habits — meditate, breathe, journal — and watch progress fill in automatically from your activity.' },
   { emoji: '🌳', title: 'Sanctuary', body: 'Earn coins as you level up, then buy and upgrade a garden of plants, pets, and places.' },
   { emoji: '📊', title: 'Dashboard & analytics', body: 'Streaks, levels, a weekly breakdown, an activity heatmap, and trends across type, day, and time.' },
-  { emoji: '🔥', title: 'Streaks, XP & quests', body: 'Rotating daily quests, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
+  { emoji: '🌱', title: 'Streaks, XP & quests', body: 'Rotating daily quests, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
 ]
 
 export default function LandingPage() {
