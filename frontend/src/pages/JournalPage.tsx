@@ -594,6 +594,8 @@ export default function JournalPage() {
           afterXp={reward.afterXp}
           xpGained={reward.xpGained}
           breakdown={reward.breakdown}
+          // No follow-up step here — let the quiet reward fade on its own.
+          autoDismissMs={6000}
           onClose={() => setReward(null)}
         />
       )}
