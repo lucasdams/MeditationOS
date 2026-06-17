@@ -132,6 +132,15 @@ class ReminderUpdate(BaseModel):
         return self
 
 
+class StreakSaveUpdate(BaseModel):
+    """Enable/disable the evening streak-save nudge, independent of the morning
+    reminder. (The nudge still only fires when the daily reminder is also enabled.)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+
+
 class WeeklySummaryUpdate(BaseModel):
     """Enable/disable the weekly summary email and set its local send day (0=Mon…6=Sun)."""
 
@@ -186,6 +195,7 @@ class UserRead(BaseModel):
     is_admin: bool
     reminder_enabled: bool
     reminder_hour: int | None
+    streak_save_enabled: bool
     weekly_summary_enabled: bool
     weekly_summary_day: int | None
     quest_features: list[str] | None

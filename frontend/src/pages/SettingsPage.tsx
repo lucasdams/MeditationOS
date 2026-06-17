@@ -70,6 +70,7 @@ export default function SettingsPage() {
 
   // Reminders section.
   const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
+  const [streakSaveEnabled, setStreakSaveEnabled] = useState(user?.streak_save_enabled ?? true)
   const [soundsEnabled, setSoundsEnabled] = useState(getInterfaceSounds)
   const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
   const [reminderError, setReminderError] = useState<string | null>(null)
@@ -290,6 +291,8 @@ export default function SettingsPage() {
     setSavingReminder(true)
     try {
       await authService.setReminders(remindersEnabled, remindersEnabled ? reminderHour : null)
+      // The streak-save nudge only fires when reminders are on; persist its toggle too.
+      await authService.setStreakSave(streakSaveEnabled)
       await refresh()
       setReminderOk(true)
     } catch (err) {
@@ -528,8 +531,8 @@ export default function SettingsPage() {
       <section className="settings-section">
         <h2>Practice reminders</h2>
         <p className="muted">
-          A daily email nudge to keep your practice — and your sanctuary — alive. Sent at
-          your local time; skipped on days you’ve already practiced.
+          A gentle daily email inviting you to take a few quiet minutes for yourself. Sent
+          at your local time; skipped on days you’ve already practiced.
         </p>
         <form onSubmit={handleReminders} noValidate>
           <label className="settings-check">
@@ -560,6 +563,17 @@ export default function SettingsPage() {
                   </option>
                 ))}
               </select>
+              <label className="settings-check">
+                <input
+                  type="checkbox"
+                  checked={streakSaveEnabled}
+                  onChange={(e) => {
+                    setStreakSaveEnabled(e.target.checked)
+                    setReminderOk(false)
+                  }}
+                />
+                Also send a gentle evening nudge if my streak is at risk
+              </label>
             </>
           )}
           {reminderError && (

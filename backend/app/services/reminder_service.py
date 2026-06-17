@@ -59,6 +59,15 @@ def update_settings(db: Session, user: User, *, enabled: bool, hour: int | None)
     return user
 
 
+def update_streak_save_settings(db: Session, user: User, *, enabled: bool) -> User:
+    """Enable/disable the evening streak-save nudge, independent of the morning reminder.
+    The nudge still only fires when the daily reminder is also enabled."""
+    user.streak_save_enabled = enabled
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 # How far back the streak/grace computation can possibly reach. A streak walk only ever
 # steps back one local day at a time (bridging at most REST_DAYS_PER_STREAK single-day
 # gaps), so for the at-risk / current-length decision it never needs days older than a
@@ -117,9 +126,9 @@ def _reminder_body(user: User) -> str:
     name = user.username or "there"
     return (
         f"Hi {name},\n\n"
-        "This is your daily nudge to take a few minutes to practice. Even one "
-        "mindful breath keeps your streak — and your sanctuary — alive.\n\n"
-        f"Start now: {settings.app_base_url}\n\n"
+        "This is a gentle invitation to take a few quiet minutes for yourself "
+        "today — whenever it suits you.\n\n"
+        f"Begin when you're ready: {settings.app_base_url}\n\n"
         "— MeditationOS\n\n"
         "You can turn these off anytime in Settings."
     )
@@ -169,7 +178,7 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
                 db,
                 user.id,
                 REMINDER_SUBJECT,
-                "Take a few mindful minutes — your streak is waiting.",
+                "A few quiet minutes for yourself, whenever it suits you.",
             )
             sent += 1
         except Exception:
@@ -206,6 +215,7 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
         db.execute(
             select(User).where(
                 User.reminder_enabled.is_(True),
+                User.streak_save_enabled.is_(True),
             )
         )
         .scalars()
