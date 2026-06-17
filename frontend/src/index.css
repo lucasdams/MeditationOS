@@ -1224,6 +1224,35 @@ body {
   margin-bottom: 0.25rem;
 }
 
+/* Quiet mood-filter chip row under the search box. Small, low-contrast pills that
+   stay calm until selected, when they pick up the mood's own accent tint. */
+.journal-mood-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.1rem 0 0.6rem;
+}
+
+.mood-filter-chip {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-var, rgba(0, 0, 0, 0.12));
+  border-radius: 999px;
+  background: var(--card, rgba(255, 255, 255, 0.5));
+  color: var(--text-muted, #64748b); /* override the global white button text */
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.mood-filter-chip:hover {
+  color: inherit;
+}
+
+.mood-filter-chip.selected {
+  font-weight: 600;
+}
+
 .journal-edit {
   margin-top: 0.5rem;
 }
