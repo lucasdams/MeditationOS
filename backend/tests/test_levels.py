@@ -3,6 +3,8 @@ curve (_practice_xp / _effective_minutes)."""
 
 from datetime import date
 
+import pytest
+
 from app.services.dashboard_service import (
     BREATHING_XP_MULTIPLIER,
     MEDITATION_XP_PER_MIN,
@@ -91,6 +93,26 @@ def test_splitting_beats_one_giant_session():
     assert split > one_giant
     # Same for breathing.
     assert _practice_xp([(60 * 60, True), (60 * 60, True)]) > _practice_xp([(120 * 60, True)])
+
+
+@pytest.mark.parametrize(
+    ("minutes", "expected_med", "expected_breath"),
+    [
+        # Just past tier 1 (20 min). eff = 20.5 → med 20.5*2 = 41.0; breath 20.5*3 = 61.5
+        # which int()-truncates to 61 (NOT 62) — guards an off-by-one rounding-up bug.
+        (21, 41, 61),
+        # Just past tier 2 (40 min). eff = 30.25 → med 60.5 → int 60 (the .5 is dropped,
+        # NOT rounded to 61); breath 90.75 → int 90.
+        (41, 60, 90),
+        # Deep in tier 3 (60+ min). eff = 35.25 → med 70.5 → 70; breath 105.75 → 105.
+        (61, 70, 105),
+    ],
+)
+def test_practice_xp_rounding_at_tier_boundaries(minutes, expected_med, expected_breath):
+    # int() truncates toward zero, so fractional effective-minutes at a tier edge must
+    # floor — never round up. A single +1 here would slip past every other XP test.
+    assert _med(minutes) == expected_med
+    assert _breath(minutes) == expected_breath
 
 
 def test_practice_xp_is_monotonic_non_decreasing():

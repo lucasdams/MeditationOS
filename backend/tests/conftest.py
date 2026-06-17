@@ -17,6 +17,7 @@ from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 import app.models  # noqa: F401,E402  — register models on Base.metadata
+from app.core import login_guard, send_guard  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.db import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -53,6 +54,21 @@ def db_session(engine):
     session.close()
     transaction.rollback()
     connection.close()
+
+
+@pytest.fixture(autouse=True)
+def _reset_inmemory_guards():
+    """Clear the process-lifetime guard singletons after every test.
+
+    The DB rolls back per test, but `login_guard._failures` and
+    `send_guard._last_sent` are module-level dicts that persist for the whole
+    process. With `email_send_cooldown_seconds=60` and a suite that runs in well
+    under that window, a later test reusing an email would spuriously 429/lock.
+    Resetting both maps keeps tests isolated and date-independent.
+    """
+    yield
+    login_guard._failures.clear()
+    send_guard._last_sent.clear()
 
 
 @pytest.fixture
