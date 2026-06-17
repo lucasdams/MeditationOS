@@ -44,6 +44,11 @@ class ScheduledSession(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # Set once the "your scheduled session is coming up" reminder has fired, so each
+    # scheduled session reminds at most once (idempotent). Null until the reminder sends.
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         CheckConstraint(f"type IN ({_TYPE_LIST})", name="ck_scheduled_sessions_type"),

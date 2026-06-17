@@ -445,3 +445,148 @@ def test_streak_save_push_does_not_refire_when_email_fails(monkeypatch, db_sessi
     count2 = reminder_service.send_streak_save_nudges(db_session, now_utc=later)
     assert count2 == 0
     assert len(push_calls) == 1
+
+
+# --- scheduled-session reminder ----------------------------------------------
+#
+# A ScheduledSession is a "commit to a time" — when that time is at hand we send one
+# gentle "coming up" nudge (closing the show-up loop). Same opt-in (reminder_enabled),
+# idempotent per row (reminder_sent_at), skipped if already practiced today, tz-correct.
+
+
+def _schedule(db_session, user_id, scheduled_at, type="mindfulness", **extra):
+    from app.models.scheduled_session import ScheduledSession
+
+    row = ScheduledSession(
+        user_id=user_id, type=type, scheduled_at=scheduled_at, **extra
+    )
+    db_session.add(row)
+    db_session.commit()
+    return row
+
+
+def test_scheduled_reminder_fires_in_window(monkeypatch, db_session):
+    """A session scheduled at ~now nudges an opted-in user once, carrying List-Unsubscribe."""
+    sent = _capture(monkeypatch)
+    user = _user(db_session, "sched@example.com", reminder_enabled=True, reminder_hour=8)
+    # Scheduled for 10 minutes from now → inside the lead window.
+    row = _schedule(db_session, user.id, NOON_UTC + timedelta(minutes=10))
+    count = reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC)
+    assert count == 1
+    assert len(sent) == 1 and sent[0][0] == "sched@example.com"
+    headers = sent[0][3]
+    assert headers is not None and "List-Unsubscribe" in headers
+    db_session.refresh(row)
+    assert row.reminder_sent_at is not None
+
+
+def test_scheduled_reminder_not_sent_too_early(monkeypatch, db_session):
+    """A session well in the future (beyond the small lead) is not yet nudged."""
+    sent = _capture(monkeypatch)
+    user = _user(db_session, "early_sched@example.com", reminder_enabled=True, reminder_hour=8)
+    # Three hours out — far outside the 15-minute lead window.
+    _schedule(db_session, user.id, NOON_UTC + timedelta(hours=3))
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 0
+    assert sent == []
+
+
+def test_scheduled_reminder_not_sent_long_past(monkeypatch, db_session):
+    """A session whose time passed long ago (beyond the grace window) is not nudged."""
+    sent = _capture(monkeypatch)
+    user = _user(db_session, "stale_sched@example.com", reminder_enabled=True, reminder_hour=8)
+    # Three hours ago — beyond the 90-minute grace window.
+    _schedule(db_session, user.id, NOON_UTC - timedelta(hours=3))
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 0
+    assert sent == []
+
+
+def test_scheduled_reminder_idempotent(monkeypatch, db_session):
+    """The reminder fires at most once per scheduled session — a second pass sends nothing."""
+    _capture(monkeypatch)
+    user = _user(db_session, "once_sched@example.com", reminder_enabled=True, reminder_hour=8)
+    _schedule(db_session, user.id, NOON_UTC + timedelta(minutes=5))
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 1
+    # A second run a few minutes later (still in-window) must not re-nudge.
+    later = NOON_UTC + timedelta(minutes=3)
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=later) == 0
+
+
+def test_scheduled_reminder_skipped_when_reminders_disabled(monkeypatch, db_session):
+    """A user opted out of reminders gets no scheduled-session nudge (same opt-in gate)."""
+    sent = _capture(monkeypatch)
+    user = _user(
+        db_session, "off_sched@example.com", reminder_enabled=False, reminder_hour=None
+    )
+    _schedule(db_session, user.id, NOON_UTC + timedelta(minutes=10))
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 0
+    assert sent == []
+
+
+def test_scheduled_reminder_skipped_when_practiced_today(monkeypatch, db_session):
+    """If the user already practiced today, the scheduled nudge is suppressed — nudge, not nag."""
+    sent = _capture(monkeypatch)
+    user = _user(db_session, "did_sched@example.com", reminder_enabled=True, reminder_hour=8)
+    _schedule(db_session, user.id, NOON_UTC + timedelta(minutes=10))
+    db_session.add(
+        PracticeSession(
+            user_id=user.id,
+            type="mindfulness",
+            duration_seconds=600,
+            occurred_at=NOON_UTC - timedelta(hours=2),
+        )
+    )
+    db_session.commit()
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 0
+    assert sent == []
+
+
+def test_scheduled_reminder_respects_timezone(monkeypatch, db_session):
+    """The 'already practiced today' skip is evaluated in the user's local day.
+
+    Both users practiced at 15:00 UTC on 2026-06-11 and both have a session scheduled
+    at ~NOON_UTC (2026-06-12 12:00). For the UTC user that practice was *yesterday*
+    (06-11) → not practiced today → nudge. For the Tokyo user 15:00 UTC 06-11 is 00:00
+    Tokyo 06-12 — i.e. *today* in their local day → already practiced → skipped.
+    """
+    sent = _capture(monkeypatch)
+    user_utc = _user(
+        db_session, "tz_utc@example.com", reminder_enabled=True, reminder_hour=8, timezone="UTC"
+    )
+    user_tokyo = _user(
+        db_session,
+        "tz_tokyo@example.com",
+        reminder_enabled=True,
+        reminder_hour=8,
+        timezone="Asia/Tokyo",
+    )
+    _schedule(db_session, user_utc.id, NOON_UTC + timedelta(minutes=5))
+    _schedule(db_session, user_tokyo.id, NOON_UTC + timedelta(minutes=5))
+    # 15:00 UTC on 2026-06-11 → 00:00 Tokyo on 2026-06-12 (Tokyo today; UTC yesterday).
+    practiced_at = datetime(2026, 6, 11, 15, 0, tzinfo=UTC)
+    for uid in (user_utc.id, user_tokyo.id):
+        db_session.add(
+            PracticeSession(
+                user_id=uid, type="mindfulness", duration_seconds=600, occurred_at=practiced_at
+            )
+        )
+    db_session.commit()
+    count = reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC)
+    # Tokyo: practiced today → skipped. UTC: practiced yesterday → nudged.
+    assert count == 1
+    assert [c[0] for c in sent] == ["tz_utc@example.com"]
+
+
+def test_scheduled_reminder_push_not_refired_when_email_fails(monkeypatch, db_session):
+    """Email failure still marks the row sent, so push fires at most once per session."""
+    _failing_email(monkeypatch)
+    push_calls = _push_calls(monkeypatch)
+    user = _user(db_session, "sched_push@example.com", reminder_enabled=True, reminder_hour=8)
+    _schedule(db_session, user.id, NOON_UTC + timedelta(minutes=10))
+
+    count = reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC)
+    assert count == 1
+    assert len(push_calls) == 1
+
+    later = NOON_UTC + timedelta(minutes=5)
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=later) == 0
+    assert len(push_calls) == 1
