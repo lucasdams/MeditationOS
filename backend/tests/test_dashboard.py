@@ -157,10 +157,11 @@ def test_stats_journal_adds_xp(client):
     # on days the rotation picks it; when it is, the mood-carrying entry completes whichever
     # variant is up ("write a journal entry" or "journal with a mood"). When it isn't
     # surfaced, no quest XP applies and only the entry's 5 XP counts.
+    # When the journal quest is surfaced, the single mood-carrying entry completes the
+    # "write a journal entry"/"journal with a mood" variants but NOT "write three" — so
+    # gate the quest XP on `done` rather than assuming a single entry completes it.
     jq = next((q for q in body["daily_quests"] if q["key"] == "journal"), None)
-    if jq is not None:
-        assert jq["done"] is True
-    assert body["xp"] == 5 + (jq["xp"] if jq else 0)
+    assert body["xp"] == 5 + (jq["xp"] if jq and jq["done"] else 0)
 
 
 def test_meditation_earns_two_xp_per_minute(client):
