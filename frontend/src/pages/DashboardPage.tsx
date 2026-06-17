@@ -9,7 +9,8 @@ import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import Achievements from '../components/Achievements'
 import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
-import { ErrorBanner } from '../components/StateViews'
+import { RetryableError } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf } from '../lib/zen'
 import type { DashboardStats, SanctuaryScene as SanctuarySceneType } from '../types'
 
@@ -38,23 +39,10 @@ const formatTotal = (seconds: number) => {
   return h > 0 ? `${h}h ${m}m` : `${m} min`
 }
 
-// Quests reset at the user's local midnight (the backend keys them on the user's
-// timezone, which we sync to the browser's).
-const msUntilLocalMidnight = () => {
-  const now = new Date()
-  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-  return next.getTime() - now.getTime()
-}
-const formatReset = (ms: number) => {
-  const h = Math.floor(ms / 3_600_000)
-  const m = Math.floor((ms % 3_600_000) / 60_000)
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [resetIn, setResetIn] = useState(msUntilLocalMidnight())
+  const [retrying, setRetrying] = useState(false)
   // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
   // both LevelCard (coins + next unlock) and SanctuaryScene (garden preview).
   const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
@@ -65,11 +53,20 @@ export default function DashboardPage() {
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
   const [loadingLine] = useState(() => randomOf(LOADING))
 
-  useEffect(() => {
+  function loadStats() {
     dashboardService
       .getStats()
-      .then(setStats)
-      .catch(() => setError('Could not load your stats.'))
+      .then((s) => {
+        setStats(s)
+        setError(null)
+      })
+      .catch((err) => setError(messageForError(err, 'Could not load your stats.')))
+      .finally(() => setRetrying(false))
+  }
+
+  useEffect(() => {
+    loadStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -79,18 +76,17 @@ export default function DashboardPage() {
       .catch(() => {}) // non-critical; LevelCard and SanctuaryScene handle null gracefully
   }, [])
 
-  // Live countdown to the daily quest reset.
-  useEffect(() => {
-    const id = setInterval(() => setResetIn(msUntilLocalMidnight()), 30_000)
-    return () => clearInterval(id)
-  }, [])
+  function retryStats() {
+    setRetrying(true)
+    loadStats()
+  }
 
   return (
     <main id="main-content" className="dashboard">
       <h1>Your practice</h1>
       <p className="zen-greeting muted">{greeting}</p>
 
-      <ErrorBanner message={error} />
+      <RetryableError message={error} onRetry={retryStats} retrying={retrying} />
 
       {!stats && !error && <p>{loadingLine}</p>}
 
@@ -122,7 +118,7 @@ export default function DashboardPage() {
         <section className="quests">
           <div className="quests-head">
             <h2>Today you could…</h2>
-            <span className="quest-reset muted">new ideas in {formatReset(resetIn)}</span>
+            <span className="quest-reset muted">Fresh quests tomorrow</span>
           </div>
           <ul className="quest-list">
             {stats.daily_quests.map((q) => {

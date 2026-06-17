@@ -4,7 +4,8 @@ import { goalService } from '../services/goals'
 import { ACTIVITY_COLORS, ACTIVITY_META } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
 // Goal-form labels differ from the shared canonical ones where the goals context
@@ -43,7 +44,9 @@ function cadenceLabel(count: number, period: GoalPeriod): string {
 export default function GoalsPage() {
   const { showToast } = useToast()
   const [goals, setGoals] = useState<Goal[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // create/update action errors
+  const [loadError, setLoadError] = useState<string | null>(null) // the goals list failing
+  const [retrying, setRetrying] = useState(false)
   const [view, setView] = useState<GoalStatus>('active')
 
   const [activity, setActivity] = useState<GoalActivity>('meditate')
@@ -55,14 +58,23 @@ export default function GoalsPage() {
     setGoals(null)
     goalService
       .list(status)
-      .then(setGoals)
-      .catch(() => setError('Could not load your goals.'))
+      .then((g) => {
+        setGoals(g)
+        setLoadError(null)
+      })
+      .catch((err) => setLoadError(messageForError(err, 'Could not load your goals.')))
+      .finally(() => setRetrying(false))
   }
 
   useEffect(() => {
     load(view)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view])
+
+  function retryLoad() {
+    setRetrying(true)
+    load(view)
+  }
 
   const isCustom = activity === 'custom'
   const trimmedLabel = label.trim()
@@ -203,7 +215,8 @@ export default function GoalsPage() {
       </div>
 
       <section className="goal-list">
-        {goals === null && !error && <Loading />}
+        <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
+        {goals === null && !loadError && <Loading />}
         {goals && goals.length === 0 && (
           <EmptyState>
             {view === 'active'

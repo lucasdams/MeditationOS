@@ -4,7 +4,7 @@ import { sanctuaryService, type PersonalizePatch } from '../services/sanctuary'
 import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
 import Modal from '../components/Modal'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY, TRACK_META } from '../lib/sanctuaryArt'
 import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
@@ -96,6 +96,7 @@ export default function SanctuaryPage() {
   const { showToast } = useToast()
   const [scene, setScene] = useState<Scene | null>(null)
   const [error, setError] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   // The shop item whose buy modal is open (null = none). The modal lets the user pick a
   // variant (multi-variant items) and/or type an optional name before buying.
@@ -121,6 +122,16 @@ export default function SanctuaryPage() {
       .catch(() => { if (!ignore) setError(true) })
     return () => { ignore = true }
   }, [])
+
+  function retryLoad() {
+    setRetrying(true)
+    setError(false)
+    sanctuaryService
+      .getScene()
+      .then((s) => setScene(s))
+      .catch(() => setError(true))
+      .finally(() => setRetrying(false))
+  }
 
   // Clear the just-bought marker once its pop/glow has played, so the animation
   // fires only on the new item and never replays on later renders.
@@ -249,7 +260,11 @@ export default function SanctuaryPage() {
       </header>
 
       {!scene && !error && <Loading />}
-      {error && <ErrorBanner message="Could not load your sanctuary." />}
+      <RetryableError
+        message={error ? 'Could not load your sanctuary.' : null}
+        onRetry={retryLoad}
+        retrying={retrying}
+      />
 
       {scene && (
         <>

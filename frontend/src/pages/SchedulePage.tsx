@@ -5,7 +5,8 @@ import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { TYPE_COLORS } from '../lib/colors'
 import { localYMD } from '../lib/format'
-import { Loading, ErrorBanner, EmptyState } from '../components/StateViews'
+import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import type { MeditationType, ScheduledSession } from '../types'
 
 const TYPES: { value: MeditationType; label: string }[] = [
@@ -42,7 +43,9 @@ function formatWhen(iso: string): string {
 export default function SchedulePage() {
   const { showToast } = useToast()
   const [items, setItems] = useState<ScheduledSession[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // create/remove action errors
+  const [loadError, setLoadError] = useState<string | null>(null) // the schedule list failing
+  const [retrying, setRetrying] = useState(false)
   const [type, setType] = useState<MeditationType>('mindfulness')
   const [when, setWhen] = useState(defaultWhen)
   const [duration, setDuration] = useState(0)
@@ -61,12 +64,26 @@ export default function SchedulePage() {
     onStart: () => setError(null),
   })
 
-  useEffect(() => {
+  function load() {
     scheduledSessionService
       .list()
-      .then(setItems)
-      .catch(() => setError('Could not load your schedule.'))
+      .then((rows) => {
+        setItems(rows)
+        setLoadError(null)
+      })
+      .catch((err) => setLoadError(messageForError(err, 'Could not load your schedule.')))
+      .finally(() => setRetrying(false))
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function retryLoad() {
+    setRetrying(true)
+    load()
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -152,7 +169,8 @@ export default function SchedulePage() {
       </form>
 
       <h2 className="schedule-upcoming-title">Upcoming</h2>
-      {!items && !error && <Loading />}
+      <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
+      {!items && !loadError && <Loading />}
       {items && items.length === 0 && (
         <EmptyState>Nothing planned yet — schedule your first session above. 🗓️</EmptyState>
       )}
