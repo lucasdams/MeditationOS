@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <main className="auth-card">
+      <main id="main-content" className="auth-card">
         <AuthBrand />
         <h1>Check your email</h1>
         <p>
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="auth-card">
+    <main id="main-content" className="auth-card">
       <AuthBrand />
       <h1>Reset your password</h1>
       <p className="muted">Enter your email and we’ll send you a reset link.</p>
@@ -59,10 +59,11 @@ export default function ForgotPasswordPage() {
           type="email"
           autoComplete="email"
           autoFocus
+          aria-describedby={error ? 'forgot-error' : undefined}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} id="forgot-error" />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Sending…' : 'Send reset link'}
         </button>

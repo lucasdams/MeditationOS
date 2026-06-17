@@ -30,7 +30,14 @@ export default function LevelCard({ stats, scene = null }: { stats: DashboardSta
           <span>Level {stats.level}</span>
           {scene && <span className="level-coins">🪙 {scene.coins} coins</span>}
         </div>
-        <div className="xp-bar">
+        <div
+          className="xp-bar"
+          role="progressbar"
+          aria-label="XP progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={pct}
+        >
           <div className="xp-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="xp-text">

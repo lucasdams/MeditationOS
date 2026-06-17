@@ -98,10 +98,14 @@ export default function BiometricCapture({
           min="30"
           max="220"
           placeholder="e.g. 68"
+          aria-describedby="bio-bpm-hint"
           value={bpm}
           onChange={(e) => setBpm(e.target.value)}
           autoFocus
         />
+        <p id="bio-bpm-hint" className="muted field-hint">
+          Between 30 and 220 bpm
+        </p>
 
         <label htmlFor="bio-hrv">HRV in ms (optional, if you know it)</label>
         <input

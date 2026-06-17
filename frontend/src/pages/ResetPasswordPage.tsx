@@ -43,7 +43,7 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <main className="auth-card">
+      <main id="main-content" className="auth-card">
         <h1>Password reset</h1>
         <p>Your password has been changed. You can now log in with it.</p>
         <p className="auth-aux">
@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <main className="auth-card">
+      <main id="main-content" className="auth-card">
         <h1>Reset your password</h1>
         <ErrorBanner message="This reset link is missing its token. Request a new one." />
         <p className="auth-aux">
@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="auth-card">
+    <main id="main-content" className="auth-card">
       <h1>Choose a new password</h1>
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="new-password">New password</label>
@@ -75,6 +75,7 @@ export default function ResetPasswordPage() {
           type="password"
           autoComplete="new-password"
           autoFocus
+          aria-describedby={error ? 'reset-error' : undefined}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
@@ -83,10 +84,11 @@ export default function ResetPasswordPage() {
           id="confirm-password"
           type="password"
           autoComplete="new-password"
+          aria-describedby={error ? 'reset-error' : undefined}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
         />
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} id="reset-error" />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving…' : 'Reset password'}
         </button>
