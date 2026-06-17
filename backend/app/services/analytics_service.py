@@ -7,10 +7,11 @@ dashboard. Scoped to the user. Read-only — nothing is stored.
 import uuid
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import Float, cast, func, select
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.journal import Journal
+from app.models.mood_log import MoodLog
 from app.models.session import Session
 from app.schemas.analytics import (
     AnalyticsSummary,
@@ -20,6 +21,7 @@ from app.schemas.analytics import (
     WeekdayCount,
     WeekMinutes,
     WeekMoods,
+    WeekRatings,
 )
 from app.services.time_utils import local_date
 
@@ -97,22 +99,42 @@ def get_analytics(
         WeekMinutes(week_start=w, minutes=week_minutes.get(w, 0)) for w in week_starts
     ]
 
-    # Journal mood distribution.
+    # Mood distribution — combine standalone check-ins (MoodLog) and journal-tagged
+    # moods, exactly as the weekly review does, so the "feeds your trends" promise on
+    # the one-tap check-in holds. Both reuse the same canonical mood palette.
+    mood_totals: dict[str, int] = {}
+    for mood, c in db.execute(
+        select(MoodLog.mood, func.count())
+        .where(MoodLog.user_id == user_id)
+        .group_by(MoodLog.mood)
+    ):
+        mood_totals[mood] = mood_totals.get(mood, 0) + c
+    for mood, c in db.execute(
+        select(Journal.mood, func.count())
+        .where(Journal.user_id == user_id, Journal.mood.is_not(None))
+        .group_by(Journal.mood)
+    ):
+        mood_totals[mood] = mood_totals.get(mood, 0) + c
+    # Most common first; alphabetical tie-break for a stable, deterministic order.
     moods = [
         MoodCount(mood=m, count=c)
-        for m, c in db.execute(
-            select(Journal.mood, func.count())
-            .where(Journal.user_id == user_id, Journal.mood.is_not(None))
-            .group_by(Journal.mood)
-            .order_by(func.count().desc())
-        )
+        for m, c in sorted(mood_totals.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
 
-    # Mood over time — per-week journal mood counts, over the same weeks window.
-    j_local_ts = func.timezone(tz, Journal.created_at)
-    j_week = func.date(func.date_trunc("week", j_local_ts))
-    j_day = local_date(tz, Journal.created_at)
+    # Mood over time — per-week counts merging check-ins and journal moods, over the
+    # same weeks window, bucketed in the user's local week like everything else.
     week_mood_counts: dict[date, dict[str, int]] = {}
+    ml_week = func.date(func.date_trunc("week", func.timezone(tz, MoodLog.created_at)))
+    ml_day = local_date(tz, MoodLog.created_at)
+    for w, m, c in db.execute(
+        select(ml_week, MoodLog.mood, func.count())
+        .where(MoodLog.user_id == user_id, ml_day >= week_starts[0])
+        .group_by(ml_week, MoodLog.mood)
+    ):
+        bucket = week_mood_counts.setdefault(w, {})
+        bucket[m] = bucket.get(m, 0) + c
+    j_week = func.date(func.date_trunc("week", func.timezone(tz, Journal.created_at)))
+    j_day = local_date(tz, Journal.created_at)
     for w, m, c in db.execute(
         select(j_week, Journal.mood, func.count())
         .where(
@@ -122,10 +144,16 @@ def get_analytics(
         )
         .group_by(j_week, Journal.mood)
     ):
-        week_mood_counts.setdefault(w, {})[m] = c
+        bucket = week_mood_counts.setdefault(w, {})
+        bucket[m] = bucket.get(m, 0) + c
     mood_by_week = [
         WeekMoods(week_start=w, counts=week_mood_counts.get(w, {})) for w in week_starts
     ]
+
+    # Calm & focus over time — weekly averages of session self-ratings (1–5). Purely
+    # descriptive (not the statistical insight). Only weeks with at least one rated
+    # session are emitted, so the chart never implies data that isn't there.
+    ratings_by_week = _ratings_by_week(db, owned, local_ts, local_day, week_starts[0])
 
     return AnalyticsSummary(
         total_sessions=total_sessions,
@@ -137,4 +165,36 @@ def get_analytics(
         minutes_by_week=minutes_by_week,
         moods=moods,
         mood_by_week=mood_by_week,
+        ratings_by_week=ratings_by_week,
     )
+
+
+def _ratings_by_week(
+    db: DBSession, owned, local_ts, local_day, since: date
+) -> list[WeekRatings]:
+    """Weekly calm/focus averages over rated sessions since `since`. Each average is
+    over the sessions that carried *that* rating (a session may rate one and not the
+    other). Only weeks with at least one rated session are returned."""
+    week_col = func.date(func.date_trunc("week", local_ts))
+    rated = Session.calm.is_not(None) | Session.focus.is_not(None)
+    rows = db.execute(
+        select(
+            week_col,
+            func.avg(cast(Session.calm, Float)),
+            func.avg(cast(Session.focus, Float)),
+            func.count().filter(rated),
+        )
+        .where(owned, rated, local_day >= since)
+        .group_by(week_col)
+        .order_by(week_col)
+    )
+
+    def _round(v) -> float | None:
+        return round(float(v), 1) if v is not None else None
+
+    return [
+        WeekRatings(
+            week_start=w, calm=_round(calm), focus=_round(focus), rated_sessions=int(n)
+        )
+        for w, calm, focus, n in rows
+    ]
