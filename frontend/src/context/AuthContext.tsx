@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import type { User } from '../types'
@@ -21,6 +21,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [verificationRequired, setVerificationRequired] = useState(false)
+
+  // Mirror the current user so event handlers can read it without a side effect
+  // inside a state updater (updaters must be pure; StrictMode double-invokes them).
+  const userRef = useRef<User | null>(null)
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   async function refresh() {
     try {
@@ -79,21 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // page surfaces its own error as before and nothing is blocked.
   useEffect(() => {
     function onForbidden() {
-      // Only relevant while we think we're logged in.
-      setUser((current) => {
-        if (current) {
-          void authService
-            .me()
-            .then((me) => {
-              setUser(me)
-              setVerificationRequired(!me.email_verified)
-            })
-            .catch(() => {
-              // /auth/me failing (e.g. 401) is handled by its own event; don't gate.
-            })
-        }
-        return current
-      })
+      // Only relevant while we think we're logged in. Read the current user from a ref
+      // and perform the /auth/me fetch outside any state updater (updaters must be pure).
+      if (!userRef.current) return
+      void authService
+        .me()
+        .then((me) => {
+          setUser(me)
+          setVerificationRequired(!me.email_verified)
+        })
+        .catch(() => {
+          // /auth/me failing (e.g. 401) is handled by its own event; don't gate.
+        })
     }
     window.addEventListener('auth:forbidden', onForbidden)
     return () => window.removeEventListener('auth:forbidden', onForbidden)

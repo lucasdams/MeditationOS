@@ -25,7 +25,15 @@ export default function VerifyEmailPage() {
         setStatus('ok')
         // If the user is logged in, refresh so the banner clears and any hard
         // "confirm your email" gate lifts (refresh sees email_verified is now true).
-        if (user) await refresh()
+        // Non-critical UI sync: a failing refresh must not flip the confirmed status
+        // back to 'error' via the outer catch.
+        if (user) {
+          try {
+            await refresh()
+          } catch {
+            // best-effort — verification already succeeded
+          }
+        }
       })
       .catch(() => !cancelled && setStatus('error'))
     return () => {

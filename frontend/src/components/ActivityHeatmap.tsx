@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { dashboardService } from '../services/dashboard'
-import { DAY_MS, localYMD } from '../lib/format'
+import { localYMD } from '../lib/format'
 import type { ActivityCalendar } from '../types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -76,7 +76,9 @@ export default function ActivityHeatmap() {
         allQuests,
         inRange,
       })
-      cursor = new Date(cursor.getTime() + DAY_MS)
+      // Step by calendar day, not a fixed 24h: adding DAY_MS across a fall-back DST
+      // day lands twice on the same date (duplicate cell key / grid drift).
+      cursor.setDate(cursor.getDate() + 1)
     }
     weeks.push(week)
   }
