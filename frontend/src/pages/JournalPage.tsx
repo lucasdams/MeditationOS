@@ -12,7 +12,15 @@ import { messageForError } from '../lib/errors'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
-import type { Journal, MeditationType, Mood, Session } from '../types'
+import type { DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
+
+// Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
+const ZERO_STATS: DashboardStats = {
+  xp: 0, level: 1, xp_into_level: 0, xp_for_next_level: 100,
+  current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
+  streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
+  gratitude_count: 0, this_week: [], daily_quests: [],
+}
 
 const MOODS: Mood[] = [
   'calm',
@@ -98,26 +106,36 @@ export default function JournalPage() {
 
   // Entries — refetched (debounced) whenever the text search changes. Drop any
   // in-progress edit, since the edited entry may fall out of the new results.
-  function loadInitial(q: string) {
+  function loadInitial(q: string, ignored?: () => boolean) {
     journalService
       .list({ q: q || undefined, limit: PAGE, offset: 0 })
       .then((rows) => {
+        if (ignored?.()) return
         setEntries(rows)
         setHasMore(rows.length === PAGE)
         setLoadError(null)
       })
-      .catch((err) => setLoadError(messageForError(err, 'Could not load your journal.')))
-      .finally(() => setRetrying(false))
+      .catch((err) => {
+        if (!ignored?.()) setLoadError(messageForError(err, 'Could not load your journal.'))
+      })
+      .finally(() => {
+        if (!ignored?.()) setRetrying(false)
+      })
   }
 
   useEffect(() => {
     setEditingId(null)
     setMenuId(null)
+    // Guard against an older search's response landing after a newer one.
+    let ignore = false
     const t = setTimeout(
-      () => loadInitial(query),
+      () => loadInitial(query, () => ignore),
       query ? 300 : 0, // debounce typing; load immediately on mount/clear
     )
-    return () => clearTimeout(t)
+    return () => {
+      ignore = true
+      clearTimeout(t)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
@@ -157,7 +175,10 @@ export default function JournalPage() {
     if (!body.trim()) return
     setSubmitting(true)
     try {
-      const before = await dashboardService.getStats()
+      // Stats are best-effort and sit outside the create: a getStats failure must not
+      // surface "could not save" for an entry that did save (which provokes a re-tap
+      // and a duplicate, since create carries no idempotency token).
+      const before = await dashboardService.getStats().catch(() => ZERO_STATS)
       const created = await journalService.create({
         body: body.trim(),
         mood: mood || null,
@@ -169,8 +190,9 @@ export default function JournalPage() {
       setSessionId('')
       setComposing(false)
       // Itemized XP: the journal entry + any quest (write a journal / journal with a
-      // mood) and streak bonus it just completed.
-      const after = await dashboardService.getStats()
+      // mood) and streak bonus it just completed. Post-save stats are best-effort too:
+      // the entry is already saved, so fall back to `before` (zero gain) on failure.
+      const after = await dashboardService.getStats().catch(() => before)
       const bd = buildXpBreakdown(before, after, '📓 Journal entry')
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch {
