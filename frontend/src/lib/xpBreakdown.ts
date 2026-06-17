@@ -32,6 +32,6 @@ export function buildXpBreakdown(
   const lines: XpLine[] = []
   if (activityXp > 0) lines.push({ label: activityLabel, xp: activityXp })
   lines.push(...questLines)
-  if (streakDelta > 0) lines.push({ label: '🔥 Streak bonus', xp: streakDelta })
+  if (streakDelta > 0) lines.push({ label: '🌱 Streak bonus', xp: streakDelta })
   return { lines, total }
 }

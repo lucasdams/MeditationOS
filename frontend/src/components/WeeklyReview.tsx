@@ -62,7 +62,7 @@ export default function WeeklyReview() {
           <span className="weekly-label">days practiced</span>
         </div>
         <div className="weekly-stat">
-          <span className="weekly-value">{data.current_streak_days} 🔥</span>
+          <span className="weekly-value">{data.current_streak_days} 🌱</span>
           <span className="weekly-label">day streak</span>
         </div>
         <div className="weekly-stat">

@@ -17,9 +17,9 @@ function badgesFor(stats: DashboardStats): Badge[] {
     { emoji: '⏳', label: '1 hour', earned: hours >= 1, hint: 'Practice 1 hour total' },
     { emoji: '🕙', label: '10 hours', earned: hours >= 10, hint: 'Practice 10 hours total' },
     { emoji: '🧘', label: '50 hours', earned: hours >= 50, hint: 'Practice 50 hours total' },
-    { emoji: '🔥', label: '3-day streak', earned: streak >= 3, hint: 'Reach a 3-day streak' },
-    { emoji: '⚡', label: '7-day streak', earned: streak >= 7, hint: 'Reach a 7-day streak' },
-    { emoji: '🌟', label: '30-day streak', earned: streak >= 30, hint: 'Reach a 30-day streak' },
+    { emoji: '🌿', label: '3-day streak', earned: streak >= 3, hint: 'Reach a 3-day streak' },
+    { emoji: '🪴', label: '7-day streak', earned: streak >= 7, hint: 'Reach a 7-day streak' },
+    { emoji: '🌳', label: '30-day streak', earned: streak >= 30, hint: 'Reach a 30-day streak' },
   ]
 }
 
