@@ -4,6 +4,7 @@ import { authService } from '../services/auth'
 import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 // First-run activation flow, shown by ProtectedRoute while quest_features is null
@@ -86,8 +87,8 @@ export default function Onboarding() {
       await authService.setQuestFeatures(quests)
       await refresh()
       navigate(GOALS.find((g) => g.key === goal)?.starter ?? '/')
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      setError(messageForError(err))
       setSubmitting(false)
     }
   }

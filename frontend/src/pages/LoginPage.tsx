@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import GuestButton from '../components/GuestButton'
@@ -53,7 +54,7 @@ export default function LoginPage() {
       } else if (err instanceof ApiError && err.status === 429) {
         setError('Too many attempts. Please wait a moment and try again.')
       } else {
-        setError('Something went wrong. Please try again.')
+        setError(messageForError(err))
       }
     } finally {
       setSubmitting(false)

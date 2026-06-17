@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { newClientToken } from '../lib/sessionDraft'
 import Modal from './Modal'
 import { ErrorBanner } from './StateViews'
@@ -77,7 +78,7 @@ export default function BiometricCapture({
       setError(
         err instanceof ApiError
           ? 'Could not save the reading. Please try again.'
-          : 'Something went wrong.',
+          : messageForError(err),
       )
       setSaving(false)
     }

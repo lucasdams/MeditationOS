@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import RatingChips from '../components/RatingChips'
@@ -108,7 +109,7 @@ export default function LogSessionPage() {
       setError(
         err instanceof ApiError
           ? 'Could not save the session. Please try again.'
-          : 'Something went wrong.',
+          : messageForError(err),
       )
       setSubmitting(false)
       return

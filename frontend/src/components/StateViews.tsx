@@ -29,3 +29,27 @@ export function ErrorBanner({ message, id }: { message?: string | null; id?: str
 export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="muted">{children}</p>
 }
+
+// A load-error banner with a "Try again" action, for data-fetching views where a
+// failed read should offer to re-run rather than leaving a dead message. Renders
+// nothing when there's no message. `onRetry` re-runs the fetch; `retrying` disables
+// the button while the retry is in flight.
+export function RetryableError({
+  message,
+  onRetry,
+  retrying = false,
+}: {
+  message?: string | null
+  onRetry: () => void
+  retrying?: boolean
+}) {
+  if (!message) return null
+  return (
+    <div role="alert" className="error error-retry">
+      <span>{message}</span>
+      <button type="button" className="retry-btn" onClick={onRetry} disabled={retrying}>
+        {retrying ? 'Retrying…' : 'Try again'}
+      </button>
+    </div>
+  )
+}

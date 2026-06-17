@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { ErrorBanner } from '../components/StateViews'
+import { messageForError } from '../lib/errors'
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams()
@@ -33,7 +34,7 @@ export default function ResetPasswordPage() {
       setError(
         err instanceof ApiError && err.status === 400
           ? 'This reset link is invalid or has expired. Request a new one.'
-          : 'Something went wrong. Please try again.',
+          : messageForError(err),
       )
     } finally {
       setSubmitting(false)

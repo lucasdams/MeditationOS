@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
+import { messageForError } from '../lib/errors'
 import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAudio'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import { mmss } from '../lib/format'
@@ -539,7 +540,7 @@ export default function BreathePage() {
       const bd = buildXpBreakdown(before, after, '🫁 Breathing')
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
-      setError(err instanceof ApiError ? 'Could not save the session.' : 'Something went wrong.')
+      setError(err instanceof ApiError ? 'Could not save the session.' : messageForError(err))
       setSaving(false)
     }
   }
