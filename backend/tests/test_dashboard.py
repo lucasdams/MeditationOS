@@ -141,12 +141,13 @@ def test_stats_gratitude_adds_xp(client):
     client.post("/api/v1/gratitude", json={"category": "self", "text": "I showed up today"})
     after = client.get("/api/v1/dashboard/stats").json()
     assert after["gratitude_count"] == 1
-    # 5 (the gratitude entry) + today's gratitude quest XP if this one entry completed
-    # it (the base "write a gratitude" variant is done by one; "write three" is not).
-    # The gratitude quest is only surfaced on days the rotation picks it, so it may be
-    # absent — in which case no quest XP applies and only the entry's 5 XP counts.
-    gq = next((q for q in after["daily_quests"] if q["key"] == "gratitude"), None)
-    assert after["xp"] == 5 + (gq["xp"] if gq and gq["done"] else 0)
+    # 5 (the gratitude entry) + today's gratitude quest XP if this one entry completes it.
+    # The bonus is paid for the completed condition whether or not the gratitude quest is
+    # in today's surfaced rotation, so derive it from the pool: the base "Write a gratitude"
+    # variant is done by one entry; "Write three gratitudes" is not.
+    quest = quest_for("gratitude", datetime.now(UTC).date())
+    done = quest.variant != "gratitude_three"
+    assert after["xp"] == 5 + (quest.xp if done else 0)
 
 
 def test_stats_journal_adds_xp(client):
@@ -157,10 +158,14 @@ def test_stats_journal_adds_xp(client):
     # on days the rotation picks it; when it is, the mood-carrying entry completes whichever
     # variant is up ("write a journal entry" or "journal with a mood"). When it isn't
     # surfaced, no quest XP applies and only the entry's 5 XP counts.
-    jq = next((q for q in body["daily_quests"] if q["key"] == "journal"), None)
-    if jq is not None:
-        assert jq["done"] is True
-    assert body["xp"] == 5 + (jq["xp"] if jq else 0)
+    # 5 (the journal entry) + today's journal quest XP. Both journal variants ("Write a
+    # journal entry" and "Journal with a mood") are completed by this one mood-carrying
+    # entry, and the bonus is paid for the completed condition whether or not the journal
+    # quest is in today's surfaced rotation — so derive the amount from the pool, not the
+    # surfaced `daily_quests` list. (Journal/gratitude entries don't start a streak, so no
+    # streak bonus to account for here.)
+    quest = quest_for("journal", datetime.now(UTC).date())
+    assert body["xp"] == 5 + quest.xp
 
 
 def test_meditation_earns_two_xp_per_minute(client):
