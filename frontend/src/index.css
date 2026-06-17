@@ -1010,6 +1010,96 @@ body {
   color: var(--accent-hover);
 }
 
+/* First-run "start here" card — leads the dashboard for new users. Calm and quiet:
+   one tinted card, soft border, dismissible. Tokens auto-adapt to dark mode. */
+.first-run-card {
+  position: relative;
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  margin: 0 0 1.5rem;
+}
+
+.first-run-dismiss {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: auto;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.first-run-dismiss:hover {
+  color: var(--text-primary);
+}
+
+.first-run-title {
+  margin: 0 1.5rem 0.4rem 0;
+  font-size: 1.05rem;
+}
+
+.first-run-body {
+  margin: 0 0 0.9rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.first-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.first-run-action {
+  display: inline-block;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.first-run-action:hover {
+  background: var(--accent-hover);
+}
+
+.first-run-action-secondary {
+  background: var(--bg-surface);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+.first-run-action-secondary:hover {
+  background: var(--bg-surface);
+  border-color: var(--accent);
+}
+
+.first-run-gotit {
+  width: auto;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.first-run-gotit:hover {
+  color: var(--text-primary);
+}
+
 .guest-btn {
   width: 100%;
   background: var(--bg-surface);
