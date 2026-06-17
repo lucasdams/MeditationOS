@@ -33,6 +33,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       ENVIRONMENT: ${ENVIRONMENT}
+      DEV_RELOAD: "1" # local hot-reload; prod entrypoint runs gunicorn workers
     ports:
       - "8000:8000"
     volumes:
