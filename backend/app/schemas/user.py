@@ -162,8 +162,11 @@ class ExportData(BaseModel):
     journals: list[dict]
     mood_logs: list[dict]
     goals: list[dict]
+    goal_checkins: list[dict]
     sanctuary: list[dict]
     biometric_readings: list[dict]
+    scheduled_sessions: list[dict]
+    breathing_patterns: list[dict]
 
 
 class UserRead(BaseModel):

@@ -7,7 +7,7 @@ model. All queries are scoped to a `user_id`.
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
@@ -15,6 +15,7 @@ from app.core.limits import enforce_daily_create_cap
 from app.models.session import Session
 from app.schemas.session import SessionCreate, SessionUpdate
 from app.services._ownership import delete_owned, get_owned
+from app.services.time_utils import local_date
 
 
 def _by_client_token(db: DBSession, user_id: uuid.UUID, token: str) -> Session | None:
@@ -74,6 +75,7 @@ def list_sessions(
     db: DBSession,
     user_id: uuid.UUID,
     *,
+    tz: str = "UTC",
     date_from: date | None = None,
     date_to: date | None = None,
     type: str | None = None,
@@ -81,11 +83,14 @@ def list_sessions(
     offset: int = 0,
 ) -> list[Session]:
     stmt = select(Session).where(Session.user_id == user_id)
-    # `from`/`to` filter on the calendar date of occurrence (inclusive).
+    # `from`/`to` filter on the user's *local* calendar date of occurrence (inclusive),
+    # so the day boundary matches the rest of the day-bucketed service layer rather than
+    # shifting by the user's UTC offset.
+    occurred_local = local_date(tz, Session.occurred_at)
     if date_from is not None:
-        stmt = stmt.where(func.date(Session.occurred_at) >= date_from)
+        stmt = stmt.where(occurred_local >= date_from)
     if date_to is not None:
-        stmt = stmt.where(func.date(Session.occurred_at) <= date_to)
+        stmt = stmt.where(occurred_local <= date_to)
     if type is not None:
         stmt = stmt.where(Session.type == type)
     stmt = stmt.order_by(Session.occurred_at.desc()).limit(limit).offset(offset)

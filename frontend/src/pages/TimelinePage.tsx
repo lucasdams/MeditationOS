@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
@@ -28,8 +28,26 @@ const TYPE_LABELS: Record<MeditationType, string> = {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
+// The API serializes timestamps as UTC ISO (with `Z`); render them in the user's
+// local time, matching SchedulePage.
+const formatWhen = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
+
+// Convert a UTC ISO instant to the local "YYYY-MM-DDTHH:mm" a datetime-local input
+// expects (the input is interpreted in the browser's local zone).
+function toLocalInputValue(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`
+}
 
 // CSV export (sessions only) — quote per RFC 4180; injection-safe via csvEscape.
 function toCsv(rows: Session[]): string {
@@ -133,9 +151,13 @@ export default function TimelinePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Carries its own stale-response guard so a slow retry can't setState after unmount.
+  const retryIgnoreRef = useRef(false)
+  useEffect(() => () => { retryIgnoreRef.current = true }, [])
+
   function retryLoad() {
     setRetrying(true)
-    load()
+    load(() => retryIgnoreRef.current)
   }
 
   function startEdit(s: Session) {
@@ -143,7 +165,7 @@ export default function TimelinePage() {
     setMenuId(null)
     setEditType(s.type)
     setEditMin(Math.max(1, Math.round(s.duration_seconds / 60)))
-    setEditWhen(s.occurred_at.slice(0, 16))
+    setEditWhen(toLocalInputValue(s.occurred_at))
     setEditNotes(s.notes ?? '')
     setEditFocus(s.focus != null ? String(s.focus) : '')
     setEditCalm(s.calm != null ? String(s.calm) : '')
@@ -157,7 +179,9 @@ export default function TimelinePage() {
       const updated = await sessionService.update(id, {
         type: editType,
         duration_seconds: editMin * 60,
-        occurred_at: editWhen,
+        // `editWhen` is a local datetime-local value; send the UTC instant
+        // (mirrors LogSessionPage / MeditatePage).
+        occurred_at: new Date(editWhen).toISOString(),
         notes: editNotes.trim() || null,
         focus: editFocus ? Number(editFocus) : null,
         calm: editCalm ? Number(editCalm) : null,

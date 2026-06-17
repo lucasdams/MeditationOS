@@ -210,6 +210,28 @@ def test_list_filters_by_type(client):
     assert walking.json()[0]["type"] == "walking"
 
 
+def test_list_from_to_filter_uses_local_date(client):
+    """`from`/`to` filter on the user's LOCAL calendar date, not UTC. A session at
+    2026-01-01T16:00Z is 2026-01-02 01:00 in Asia/Tokyo (UTC+9), so it must appear for
+    `from=2026-01-02` (local) and be excluded by `to=2026-01-01` — the opposite of a
+    naive UTC-date filter."""
+    _auth(client, "tzfilter@example.com")
+    assert client.post("/api/v1/auth/timezone", json={"timezone": "Asia/Tokyo"}).status_code == 200
+    created = client.post(
+        "/api/v1/sessions", json={**MINDFUL, "occurred_at": "2026-01-01T16:00:00Z"}
+    )
+    assert created.status_code == 201
+
+    # Local date is Jan 2 → included from Jan 2 onward, excluded by a Jan 1 ceiling.
+    from_local = client.get("/api/v1/sessions?from=2026-01-02")
+    assert from_local.status_code == 200
+    assert len(from_local.json()) == 1
+
+    to_jan1 = client.get("/api/v1/sessions?to=2026-01-01")
+    assert to_jan1.status_code == 200
+    assert to_jan1.json() == []
+
+
 # ── Intention field ──────────────────────────────────────────────────────────
 
 def test_create_with_intention(client):
