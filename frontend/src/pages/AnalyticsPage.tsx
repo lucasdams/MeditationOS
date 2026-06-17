@@ -12,12 +12,15 @@ import type {
   InsightsResponse,
   MeditationType,
   Mood,
+  WeekRatings,
 } from '../types'
 
 // Trend window: recent weeks of readings feed the heart-rate (and HRV) chart.
 const TREND_DAYS = 84 // ~12 weeks
 const HR_COLOR = '#ef4444' // warm red for heart rate
 const HRV_COLOR = '#10b981' // green for HRV (higher generally = more recovered)
+const CALM_COLOR = '#6366f1' // indigo for calm (matches the default bar accent)
+const FOCUS_COLOR = '#f59e0b' // amber for focus
 
 const TYPE_LABELS: Record<string, string> = {
   mindfulness: 'Mindfulness',
@@ -274,6 +277,76 @@ function BiometricTrend() {
   )
 }
 
+// Calm & focus self-ratings (1–5) averaged per week. Purely descriptive — it just
+// charts the numbers you logged, not a statistical claim. Only weeks with at least
+// one rated session appear, so the trend never implies data that isn't there.
+function CalmFocusTrend({ weeks }: { weeks: WeekRatings[] }) {
+  if (weeks.length === 0) return null
+  // Map a 1–5 rating to a bar height, with a floor so a low rating stays visible.
+  const barHeight = (v: number) => 12 + ((v - 1) / 4) * 88
+
+  const row = (key: 'calm' | 'focus', color: string) => (
+    <div className="weeks" aria-hidden="true">
+      {weeks.map((w) => {
+        const v = w[key]
+        return (
+          <div
+            key={w.week_start}
+            className="week-col"
+            title={`${w.week_start}: ${key} ${v != null ? v.toFixed(1) : '—'}`}
+          >
+            {v != null && (
+              <div className="week-bar" style={{ height: `${barHeight(v)}%`, background: color }} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  return (
+    <section className="analytics-section">
+      <h2>Calm &amp; focus over time</h2>
+      <p className="muted">
+        Weekly averages of the calm and focus ratings you give your sits (1–5). Just
+        what you logged — weeks without a rated sit are left out.
+      </p>
+      {/* sr-only text alternative for the color-coded chart */}
+      <ul className="sr-only">
+        {weeks.map((w) => {
+          const parts = [
+            w.calm != null ? `calm ${w.calm.toFixed(1)}` : null,
+            w.focus != null ? `focus ${w.focus.toFixed(1)}` : null,
+          ].filter(Boolean)
+          return <li key={w.week_start}>{w.week_start}: {parts.join(', ')}</li>
+        })}
+      </ul>
+      {row('calm', CALM_COLOR)}
+      <div className="muted analytics-axis" aria-hidden="true">
+        <span>{weeks[0]?.week_start}</span>
+        <span>calm (1–5)</span>
+        <span>{weeks[weeks.length - 1]?.week_start}</span>
+      </div>
+      {row('focus', FOCUS_COLOR)}
+      <div className="muted analytics-axis" aria-hidden="true">
+        <span>{weeks[0]?.week_start}</span>
+        <span>focus (1–5)</span>
+        <span>{weeks[weeks.length - 1]?.week_start}</span>
+      </div>
+      <div className="mood-legend" aria-hidden="true">
+        <span className="mood-legend-item">
+          <span className="mood-legend-dot" style={{ background: CALM_COLOR }} />
+          Calm
+        </span>
+        <span className="mood-legend-item">
+          <span className="mood-legend-dot" style={{ background: FOCUS_COLOR }} />
+          Focus
+        </span>
+      </div>
+    </section>
+  )
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -516,6 +589,8 @@ export default function AnalyticsPage() {
               })()}
             </section>
           )}
+
+          <CalmFocusTrend weeks={data.ratings_by_week} />
         </>
       )}
     </main>

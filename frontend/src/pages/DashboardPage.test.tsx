@@ -38,7 +38,6 @@ vi.mock('../components/SanctuaryScene', () => ({
 vi.mock('../components/MoodCheckin', () => ({ default: () => null }))
 vi.mock('../components/WeeklyReview', () => ({ default: () => null }))
 vi.mock('../components/ActivityHeatmap', () => ({ default: () => null }))
-vi.mock('../components/Achievements', () => ({ default: () => null }))
 
 import DashboardPage from './DashboardPage'
 import type { SanctuaryScene } from '../types'

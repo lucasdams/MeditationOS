@@ -1224,6 +1224,35 @@ body {
   margin-bottom: 0.25rem;
 }
 
+/* Quiet mood-filter chip row under the search box. Small, low-contrast pills that
+   stay calm until selected, when they pick up the mood's own accent tint. */
+.journal-mood-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.1rem 0 0.6rem;
+}
+
+.mood-filter-chip {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-var, rgba(0, 0, 0, 0.12));
+  border-radius: 999px;
+  background: var(--card, rgba(255, 255, 255, 0.5));
+  color: var(--text-muted, #64748b); /* override the global white button text */
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.mood-filter-chip:hover {
+  color: inherit;
+}
+
+.mood-filter-chip.selected {
+  font-weight: 600;
+}
+
 .journal-edit {
   margin-top: 0.5rem;
 }
@@ -1745,11 +1774,6 @@ textarea:focus-visible,
   gap: 0.5rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-}
-
-.level-coins {
-  font-weight: 600;
-  color: #b45309;
 }
 
 .level-unlock {
@@ -3355,64 +3379,6 @@ details[open] .meditate-disclosure-summary::before {
 .settings-theme-now {
   margin-top: 0.6rem;
   text-transform: capitalize;
-}
-
-/* Achievements — milestone badges on the dashboard. */
-.achievements {
-  margin: 1.5rem 0;
-}
-
-.achievements-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.achievements-head h2 {
-  margin: 0 0 0.6rem;
-  font-size: 1.05rem;
-}
-
-.badge-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-  gap: 0.6rem;
-}
-
-.badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.6rem 0.3rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.badge-emoji {
-  font-size: 1.5rem;
-}
-
-.badge-label {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-
-/* Locked badges are greyed and faded until earned. */
-.badge:not(.earned) {
-  opacity: 0.45;
-  filter: grayscale(1);
-}
-
-.badge.earned {
-  border-color: #c7d2fe;
-  background: #f5f3ff;
 }
 
 /* Toasts — transient, bottom-centred confirmations. */
