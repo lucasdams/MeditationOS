@@ -29,6 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
 from app.models.user import User
 from app.services import push_service
@@ -270,4 +271,108 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
             sent += 1
         except Exception:
             logger.exception("reminder failed for user %s", user.id)
+    return sent
+
+
+# --- scheduled-session reminder ---------------------------------------------
+#
+# When a user has committed to a time via a ScheduledSession, send one gentle
+# "your scheduled session is coming up" nudge as that time arrives. This closes the
+# show-up loop: until now a scheduled session only produced an .ics export and nothing
+# actually reached the user at the planned time.
+#
+# Reuses the existing reminder machinery: same opt-in (`reminder_enabled`), the same
+# email + best-effort push helpers + List-Unsubscribe, per-row idempotency (a dedicated
+# `ScheduledSession.reminder_sent_at` timestamp), per-row try/except isolation, and the
+# "skip if already practiced" rule — nudge, not nag.
+
+SCHEDULED_SESSION_SUBJECT = "Your scheduled session is coming up 🧘"
+
+# How early, relative to scheduled_at, the nudge may fire — a small lead so the message
+# lands as "coming up", not "you're late".
+_SCHEDULE_LEAD = timedelta(minutes=15)
+# How long after scheduled_at the row is still eligible. The send job runs hourly, so a
+# session that comes due between runs must still be caught on the next run; this window
+# covers a full job interval (plus margin) while never nudging for long-past sessions.
+_SCHEDULE_GRACE = timedelta(minutes=90)
+
+
+def _scheduled_session_body(user: User, row: ScheduledSession) -> str:
+    # Imported lazily to avoid importing the schema-heavy scheduled_session_service at
+    # module load (and any chance of an import cycle).
+    from app.services.scheduled_session_service import _TYPE_LABELS
+
+    name = user.username or "there"
+    label = _TYPE_LABELS.get(row.type, "Meditation")
+    return (
+        f"Hi {name},\n\n"
+        f"Your scheduled {label.lower()} session is coming up — whenever you're ready. "
+        "No pressure; it's here for you when the moment feels right.\n\n"
+        f"Begin when you're ready: {settings.app_base_url}\n\n"
+        "— MeditationOS\n\n"
+        "You can turn these off anytime in Settings."
+    )
+
+
+def send_scheduled_session_reminders(
+    db: Session, *, now_utc: datetime | None = None
+) -> int:
+    """Send a gentle nudge for each upcoming ScheduledSession whose time is at hand.
+
+    A scheduled session is due when, for an opted-in user (`reminder_enabled`):
+      - now is within [scheduled_at - _SCHEDULE_LEAD, scheduled_at + _SCHEDULE_GRACE];
+      - the row hasn't already been reminded (`reminder_sent_at` is null); and
+      - the user hasn't already practiced today in their local timezone (nudge, not nag).
+
+    Idempotent per row: `reminder_sent_at` is committed before the send attempt, so a
+    crash or a re-run never double-nudges. Returns the number of reminders sent.
+    """
+    now_utc = now_utc or datetime.now(UTC)
+    window_start = now_utc - _SCHEDULE_GRACE
+    window_end = now_utc + _SCHEDULE_LEAD
+    # Candidate rows: due in-window, not yet reminded, owned by an opted-in user. Joining
+    # to User keeps the opt-in gate in the query and gives us the user for the copy/push.
+    rows = (
+        db.execute(
+            select(ScheduledSession, User)
+            .join(User, User.id == ScheduledSession.user_id)
+            .where(
+                User.reminder_enabled.is_(True),
+                ScheduledSession.reminder_sent_at.is_(None),
+                ScheduledSession.scheduled_at >= window_start,
+                ScheduledSession.scheduled_at <= window_end,
+            )
+        )
+        .all()
+    )
+
+    sent = 0
+    for row, user in rows:
+        try:
+            tz = user.timezone or "UTC"
+            local_today = now_utc.astimezone(zone(user.timezone)).date()
+            if _practiced_today(db, user.id, local_today, tz):
+                continue  # already practiced today — nudge, not nag
+            # Mark as reminded NOW so a crash mid-send never re-nudges, and so the push
+            # gate below is covered by the same per-row dedup.
+            row.reminder_sent_at = now_utc
+            db.commit()  # per-row commit — crash-safe
+            email.send_email(
+                user.email,
+                SCHEDULED_SESSION_SUBJECT,
+                _scheduled_session_body(user, row),
+                email.list_unsubscribe_headers(),
+            )
+            # Best-effort push alongside email (no-op without VAPID keys).
+            push_service.send_to_user(
+                db,
+                user.id,
+                SCHEDULED_SESSION_SUBJECT,
+                "Your scheduled session is coming up — whenever you're ready.",
+            )
+            sent += 1
+        except Exception:
+            logger.exception(
+                "scheduled-session reminder failed for session %s", row.id
+            )
     return sent

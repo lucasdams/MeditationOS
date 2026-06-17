@@ -1,4 +1,5 @@
-"""Send any due daily practice reminders and streak-save nudges.
+"""Send any due daily practice reminders, streak-save nudges, and scheduled-session
+reminders.
 
 Run from a scheduler (hourly cron / ECS scheduled task / k8s CronJob):
 
@@ -48,7 +49,11 @@ def main() -> int:
             _log.info("sent %d daily reminder(s)", count)
             streak_count = reminder_service.send_streak_save_nudges(db, now_utc=now_utc)
             _log.info("sent %d streak-save nudge(s)", streak_count)
-            return count + streak_count
+            sched_count = reminder_service.send_scheduled_session_reminders(
+                db, now_utc=now_utc
+            )
+            _log.info("sent %d scheduled-session reminder(s)", sched_count)
+            return count + streak_count + sched_count
         finally:
             db.execute(
                 text("SELECT pg_advisory_unlock(:key)"), {"key": _ADVISORY_LOCK_KEY}
