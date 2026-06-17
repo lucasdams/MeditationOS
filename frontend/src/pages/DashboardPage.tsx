@@ -7,7 +7,6 @@ import MoodCheckin from '../components/MoodCheckin'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
-import Achievements from '../components/Achievements'
 import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -44,10 +43,10 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
-  // both LevelCard (coins + next unlock) and SanctuaryScene (garden preview).
+  // both LevelCard (next unlock) and SanctuaryScene (coins + garden preview).
   const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
-  // Retrospective stats (totals, heatmap, achievements) start collapsed so the
-  // landing view stays calm — the day's practice first, history on request.
+  // Retrospective stats (totals, heatmap) start collapsed so the landing view
+  // stays calm — the day's practice first, history on request.
   const [showMore, setShowMore] = useState(false)
   // A gentle daily greeting (stable through the day) and a mindful loading line.
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
@@ -187,17 +186,6 @@ export default function DashboardPage() {
                   <div className="stat-label">Total practice</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-value">{stats.current_streak_days} 🌱</div>
-                  <div className="stat-label">
-                    Current streak (days)
-                    {stats.rest_day_used && (
-                      <span className="rest-day-badge" title="Rest day — one skipped day is fine.">
-                        {' '}🛡️ rest day
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="stat-card">
                   <div className="stat-value">{stats.session_count}</div>
                   <div className="stat-label">Sessions</div>
                 </div>
@@ -208,8 +196,6 @@ export default function DashboardPage() {
               </section>
 
               <ActivityHeatmap />
-
-              <Achievements stats={stats} />
             </div>
           )}
         </section>
