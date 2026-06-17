@@ -4,8 +4,12 @@ Field names map case-insensitively to env vars (e.g. `secret_key` ← `SECRET_KE
 matching the names documented in `.env.example`.
 """
 
+import logging
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_log = logging.getLogger(__name__)
 
 DEFAULT_SECRET_KEY = "change-me-to-a-random-secret"
 
@@ -87,17 +91,69 @@ class Settings(BaseSettings):
         return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
 
     @model_validator(mode="after")
-    def _require_secret_key_in_production(self) -> "Settings":
-        """Refuse to boot in production with the placeholder secret.
+    def _validate_production_config(self) -> "Settings":
+        """Refuse to boot in production with dangerous defaults or misconfigurations.
 
-        A default/known signing key means anyone can forge a valid JWT, so this
-        must never reach a deployed environment. Fail fast at startup instead.
+        Checks (production only):
+        - SECRET_KEY must not be the placeholder.
+        - CORS_ORIGINS must not be the localhost default and must not contain '*'.
+        - DATABASE_URL must not point at the local/default address.
+        - REQUIRE_EMAIL_VERIFICATION=True without a configured SMTP_HOST would
+          lock out every new signup immediately.
+
+        Warns (production, non-fatal):
+        - SENTRY_DSN empty means errors won't be captured in production.
         """
-        if self.environment == "production" and self.secret_key == DEFAULT_SECRET_KEY:
-            raise ValueError(
+        if self.environment != "production":
+            return self
+
+        errors: list[str] = []
+
+        if self.secret_key == DEFAULT_SECRET_KEY:
+            errors.append(
                 "SECRET_KEY must be set to a strong, non-default value when "
                 "ENVIRONMENT=production."
             )
+
+        _localhost_cors = "http://localhost:5173"
+        origins = self.cors_origins_list
+        if not origins or self.cors_origins.strip() == _localhost_cors:
+            errors.append(
+                "CORS_ORIGINS is still the localhost default in production. "
+                "Set it to the real frontend origin(s)."
+            )
+        if any(o.strip() == "*" for o in origins):
+            errors.append(
+                "CORS_ORIGINS must not contain '*' in production — "
+                "this allows any website to make credentialed requests."
+            )
+
+        _default_db = "postgresql://postgres:postgres@database:5432/meditationos"
+        if self.database_url.strip() == _default_db or "localhost" in self.database_url:
+            errors.append(
+                "DATABASE_URL still points at the local/default address in production. "
+                "Set it to the production database URL."
+            )
+
+        if self.require_email_verification and not self.smtp_host:
+            errors.append(
+                "REQUIRE_EMAIL_VERIFICATION is True but SMTP_HOST is empty — "
+                "every new email/password signup would be locked out immediately. "
+                "Either configure SMTP or set REQUIRE_EMAIL_VERIFICATION=false."
+            )
+
+        if errors:
+            raise ValueError(
+                "Production misconfiguration detected — refusing to start:\n"
+                + "\n".join(f"  • {e}" for e in errors)
+            )
+
+        if not self.sentry_dsn:
+            _log.warning(
+                "SENTRY_DSN is not set in production — errors will not be captured "
+                "in Sentry. Set SENTRY_DSN to enable error monitoring."
+            )
+
         return self
 
 

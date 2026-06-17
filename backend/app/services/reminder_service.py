@@ -139,27 +139,33 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
 
     sent = 0
     for user in candidates:
-        tz_zone = zone(user.timezone)
-        local_now = now_utc.astimezone(tz_zone)
-        if local_now.hour < user.reminder_hour:
-            continue  # their hour hasn't arrived yet today
-        if user.reminder_last_sent_at is not None:
-            last_local = user.reminder_last_sent_at.astimezone(tz_zone).date()
-            if last_local >= local_now.date():
-                continue  # already reminded today
-        if _practiced_today(db, user.id, local_now.date(), user.timezone or "UTC"):
-            continue  # nudge, not shame — they've already practiced
-        # Mark as handled for the day NOW so a crash mid-send never re-nudges the user,
-        # and so the push gate below sees the updated timestamp.
-        user.reminder_last_sent_at = now_utc
-        db.commit()  # per-user commit — crash-safe
-        email.send_email(user.email, REMINDER_SUBJECT, _reminder_body(user))
-        # Also nudge via push if they've granted it (best-effort; no-op without VAPID).
-        # Gated on the same per-day dedup: reminder_last_sent_at was just set above.
-        push_service.send_to_user(
-            db, user.id, REMINDER_SUBJECT, "Take a few mindful minutes — your streak is waiting."
-        )
-        sent += 1
+        try:
+            tz_zone = zone(user.timezone)
+            local_now = now_utc.astimezone(tz_zone)
+            if local_now.hour < user.reminder_hour:
+                continue  # their hour hasn't arrived yet today
+            if user.reminder_last_sent_at is not None:
+                last_local = user.reminder_last_sent_at.astimezone(tz_zone).date()
+                if last_local >= local_now.date():
+                    continue  # already reminded today
+            if _practiced_today(db, user.id, local_now.date(), user.timezone or "UTC"):
+                continue  # nudge, not shame — they've already practiced
+            # Mark as handled for the day NOW so a crash mid-send never re-nudges the user,
+            # and so the push gate below sees the updated timestamp.
+            user.reminder_last_sent_at = now_utc
+            db.commit()  # per-user commit — crash-safe
+            email.send_email(user.email, REMINDER_SUBJECT, _reminder_body(user))
+            # Also nudge via push if they've granted it (best-effort; no-op without VAPID).
+            # Gated on the same per-day dedup: reminder_last_sent_at was just set above.
+            push_service.send_to_user(
+                db,
+                user.id,
+                REMINDER_SUBJECT,
+                "Take a few mindful minutes — your streak is waiting.",
+            )
+            sent += 1
+        except Exception:
+            logger.exception("reminder failed for user %s", user.id)
     return sent
 
 
@@ -200,42 +206,45 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
 
     sent = 0
     for user in candidates:
-        tz_zone = zone(user.timezone)
-        local_now = now_utc.astimezone(tz_zone)
+        try:
+            tz_zone = zone(user.timezone)
+            local_now = now_utc.astimezone(tz_zone)
 
-        if local_now.hour < STREAK_SAVE_HOUR:
-            continue  # too early in the day
+            if local_now.hour < STREAK_SAVE_HOUR:
+                continue  # too early in the day
 
-        # At most one streak-save nudge per local day.
-        if user.streak_save_last_sent_at is not None:
-            last_local = user.streak_save_last_sent_at.astimezone(tz_zone).date()
-            if last_local >= local_now.date():
-                continue
+            # At most one streak-save nudge per local day.
+            if user.streak_save_last_sent_at is not None:
+                last_local = user.streak_save_last_sent_at.astimezone(tz_zone).date()
+                if last_local >= local_now.date():
+                    continue
 
-        tz = user.timezone or "UTC"
-        today = local_now.date()
+            tz = user.timezone or "UTC"
+            today = local_now.date()
 
-        # Fetch recent practice days once; the at-risk check computes the streak a single
-        # time and hands back its length for the copy (no duplicate compute_streaks).
-        days = _practice_days(db, user.id, tz, today=today)
+            # Fetch recent practice days once; the at-risk check computes the streak a single
+            # time and hands back its length for the copy (no duplicate compute_streaks).
+            days = _practice_days(db, user.id, tz, today=today)
 
-        current_streak = _at_risk_streak(days, today)
-        if current_streak == 0:
-            continue  # already practiced, no streak, or rest-day is covering today
+            current_streak = _at_risk_streak(days, today)
+            if current_streak == 0:
+                continue  # already practiced, no streak, or rest-day is covering today
 
-        # Mark as handled for the day NOW — crash-safe; gates the push send below.
-        user.streak_save_last_sent_at = now_utc
-        db.commit()  # per-user commit
-        body = _streak_save_body(user, current_streak)
-        email.send_email(user.email, STREAK_SAVE_SUBJECT, body)
-        # Best-effort push alongside email (no-op without VAPID keys).
-        # Gated on the same per-day dedup: streak_save_last_sent_at was just set above.
-        push_service.send_to_user(
-            db,
-            user.id,
-            STREAK_SAVE_SUBJECT,
-            f"Your {current_streak}-day streak is still alive "
-            "— a few mindful minutes keeps it going.",
-        )
-        sent += 1
+            # Mark as handled for the day NOW — crash-safe; gates the push send below.
+            user.streak_save_last_sent_at = now_utc
+            db.commit()  # per-user commit
+            body = _streak_save_body(user, current_streak)
+            email.send_email(user.email, STREAK_SAVE_SUBJECT, body)
+            # Best-effort push alongside email (no-op without VAPID keys).
+            # Gated on the same per-day dedup: streak_save_last_sent_at was just set above.
+            push_service.send_to_user(
+                db,
+                user.id,
+                STREAK_SAVE_SUBJECT,
+                f"Your {current_streak}-day streak is still alive "
+                "— a few mindful minutes keeps it going.",
+            )
+            sent += 1
+        except Exception:
+            logger.exception("reminder failed for user %s", user.id)
     return sent
