@@ -99,6 +99,32 @@ def get_reading(
     return get_owned(db, BiometricReading, user_id, reading_id)
 
 
+def link_reading_session(
+    db: DBSession,
+    user_id: uuid.UUID,
+    reading_id: uuid.UUID,
+    session_id: uuid.UUID,
+) -> BiometricReading | None:
+    """Attach a saved reading to a sit (backfilling `session_id`).
+
+    A pre-session reading is captured *before* the sit exists, so it's saved with
+    no `session_id` and linked here once the session has been created. Both the
+    reading and the target session must belong to the user; an unknown reading is a
+    not-found (None) and an unknown/foreign session raises (no enumeration of
+    foreign ids). Linking is what lets the pre/post delta pair it with the post
+    reading.
+    """
+    reading = get_owned(db, BiometricReading, user_id, reading_id)
+    if reading is None:
+        return None
+    if not _session_owned(db, user_id, session_id):
+        raise LinkedSessionNotFoundError()
+    reading.session_id = session_id
+    db.commit()
+    db.refresh(reading)
+    return reading
+
+
 def delete_reading(db: DBSession, user_id: uuid.UUID, reading_id: uuid.UUID) -> bool:
     """Delete one reading owned by the user. Returns False if it wasn't found."""
     return delete_owned(db, BiometricReading, user_id, reading_id)

@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.biometric_reading import (
     BiometricDelta,
     BiometricReadingCreate,
+    BiometricReadingLink,
     BiometricReadingRead,
 )
 from app.services import biometric_reading_service
@@ -63,6 +64,26 @@ def pre_post_delta(
 ) -> BiometricDelta:
     """Average pre→post change around sits — the immediate calming signal."""
     return biometric_reading_service.pre_post_delta(db, current_user.id, days=days)
+
+
+@router.patch("/{reading_id}/session", response_model=BiometricReadingRead)
+def link_reading_session(
+    reading_id: uuid.UUID,
+    data: BiometricReadingLink,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BiometricReadingRead:
+    """Attach a saved reading to a sit (backfilling a pre-session reading's
+    `session_id` once the sit has been created)."""
+    try:
+        reading = biometric_reading_service.link_reading_session(
+            db, current_user.id, reading_id, data.session_id
+        )
+    except LinkedSessionNotFoundError:
+        raise not_found("Linked session not found") from None
+    if reading is None:
+        raise not_found()
+    return reading
 
 
 @router.delete("/{reading_id}", status_code=status.HTTP_204_NO_CONTENT)

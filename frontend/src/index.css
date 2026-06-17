@@ -3529,6 +3529,21 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-muted);
 }
 
+/* Optional pre-session reading prompt — a quiet, skippable affordance in the setup. */
+.session-prereading {
+  margin: 0.35rem 0 0.25rem;
+}
+
+.session-prereading-btn {
+  font-size: 0.85rem;
+}
+
+.session-prereading-done {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 /* Locked-in intention shown quietly during the sit. */
 .session-intention-locked {
   font-size: 0.88rem;
