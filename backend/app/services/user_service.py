@@ -32,11 +32,13 @@ from app.core.security import (
     verify_password,
 )
 from app.models.biometric_reading import BiometricReading
-from app.models.goal import Goal
+from app.models.breathing_pattern import BreathingPattern
+from app.models.goal import Goal, GoalCheckin
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.mood_log import MoodLog
 from app.models.sanctuary import SanctuaryPlanting
+from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
 from app.models.user import QUEST_FEATURES, User
 from app.schemas.user import UserCreate
@@ -406,11 +408,21 @@ def _dump(rows: list) -> list[dict]:
     return [{c.name: getattr(r, c.name) for c in r.__table__.columns} for r in rows]
 
 
+# User-owned tables deliberately kept OUT of the portable export. `push_subscriptions`
+# holds browser push credentials (endpoint + keys) — device-bound credential material,
+# not portable content. `audit_logs` is operational/security record, not user content.
+# Listed explicitly so the drift-guard test (tests/test_export_drift.py) treats the
+# omission as intentional rather than an accidental gap.
+_EXPORT_EXCLUDED = {"push_subscriptions", "audit_logs"}
+
+
 def export_user_data(db: Session, user: User) -> dict:
     """A full, portable snapshot of everything the user owns (minus the password
     hash). FastAPI's encoder handles the UUID/datetime values."""
 
     def owned(model):
+        # `user_id == user.id` naturally excludes global presets (NULL user_id), e.g.
+        # the shared breathing patterns — only the user's own rows are exported.
         return _dump(
             db.execute(select(model).where(model.user_id == user.id)).scalars().all()
         )
@@ -427,8 +439,11 @@ def export_user_data(db: Session, user: User) -> dict:
         "journals": owned(Journal),
         "mood_logs": owned(MoodLog),
         "goals": owned(Goal),
+        "goal_checkins": owned(GoalCheckin),
         "sanctuary": owned(SanctuaryPlanting),
         "biometric_readings": owned(BiometricReading),
+        "scheduled_sessions": owned(ScheduledSession),
+        "breathing_patterns": owned(BreathingPattern),
     }
 
 

@@ -87,6 +87,7 @@ def list_sessions(
     return session_service.list_sessions(
         db,
         current_user.id,
+        tz=current_user.timezone or "UTC",
         date_from=date_from,
         date_to=date_to,
         type=type,
