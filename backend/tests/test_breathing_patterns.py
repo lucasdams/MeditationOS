@@ -21,7 +21,9 @@ def _add_global_preset(db_session):
 
 
 def test_list_requires_auth(client):
-    assert client.get("/api/v1/breathing-patterns").status_code == 401
+    resp = client.get("/api/v1/breathing-patterns")
+    assert resp.status_code == 401
+    assert "detail" in resp.json()
 
 
 def test_list_includes_global_presets(client, db_session):

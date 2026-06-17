@@ -23,7 +23,9 @@ def _session(client, occurred_at, seconds=600, type="mindfulness"):
 
 
 def test_stats_requires_auth(client):
-    assert client.get("/api/v1/dashboard/stats").status_code == 401
+    resp = client.get("/api/v1/dashboard/stats")
+    assert resp.status_code == 401
+    assert "detail" in resp.json()
 
 
 def test_stats_empty(client):
@@ -64,7 +66,9 @@ def test_stats_user_scoped(client):
 
 
 def test_activity_requires_auth(client):
-    assert client.get("/api/v1/dashboard/activity").status_code == 401
+    resp = client.get("/api/v1/dashboard/activity")
+    assert resp.status_code == 401
+    assert "detail" in resp.json()
 
 
 def test_activity_sparse_and_summed_per_day(client):

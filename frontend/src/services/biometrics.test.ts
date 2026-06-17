@@ -22,8 +22,8 @@ describe('biometricsService', () => {
     mockPost.mockResolvedValue({ id: 'r1' })
   })
 
-  it('posts a reading to the readings endpoint', async () => {
-    await biometricsService.create({
+  it('posts a reading to the readings endpoint and returns the created row', async () => {
+    const r = await biometricsService.create({
       context: 'resting',
       bpm: 64,
       measured_at: '2026-06-16T08:00:00Z',
@@ -33,6 +33,8 @@ describe('biometricsService', () => {
       bpm: 64,
       measured_at: '2026-06-16T08:00:00Z',
     })
+    // The service must hand back the client's response unmodified.
+    expect(r).toEqual({ id: 'r1' })
   })
 
   it('builds the list query string with days and limit', async () => {
@@ -45,9 +47,11 @@ describe('biometricsService', () => {
     expect(mockGet).toHaveBeenCalledWith('/biometric-readings')
   })
 
-  it('requests the pre/post delta with a window', async () => {
-    mockGet.mockResolvedValue({ sample_size: 0, avg_bpm_delta: null, avg_hrv_ms_delta: null })
-    await biometricsService.delta({ days: 84 })
+  it('requests the pre/post delta with a window and returns it', async () => {
+    const delta = { sample_size: 0, avg_bpm_delta: null, avg_hrv_ms_delta: null }
+    mockGet.mockResolvedValue(delta)
+    const r = await biometricsService.delta({ days: 84 })
     expect(mockGet).toHaveBeenCalledWith('/biometric-readings/delta?days=84')
+    expect(r).toEqual(delta)
   })
 })
