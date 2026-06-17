@@ -32,6 +32,7 @@ from app.schemas.user import (
     PasswordUpdate,
     QuestFeaturesUpdate,
     ReminderUpdate,
+    StreakSaveUpdate,
     TimezoneUpdate,
     UserCreate,
     UserLogin,
@@ -338,6 +339,17 @@ def set_reminders(
 ) -> UserRead:
     return reminder_service.update_settings(
         db, current_user, enabled=data.enabled, hour=data.hour
+    )
+
+
+@router.post("/streak-save", response_model=UserRead)
+def set_streak_save(
+    data: StreakSaveUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    return reminder_service.update_streak_save_settings(
+        db, current_user, enabled=data.enabled
     )
 
 

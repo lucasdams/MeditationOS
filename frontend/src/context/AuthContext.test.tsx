@@ -40,6 +40,7 @@ const baseUser = (over: Partial<User> = {}): User =>
     is_admin: false,
     reminder_enabled: false,
     reminder_hour: null,
+    streak_save_enabled: true,
     weekly_summary_enabled: false,
     weekly_summary_day: null,
     quest_features: ['meditate'],

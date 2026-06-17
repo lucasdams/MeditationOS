@@ -45,13 +45,43 @@ def test_nonpositive_duration_rejected(client):
     assert _schedule(client, duration_minutes=0).status_code == 422
 
 
-def test_upcoming_filter_hides_past(client):
+def test_past_scheduled_at_rejected(client):
+    """You can only plan a session in the future — past timestamps are rejected (422)."""
     _auth(client, "sc4@example.com")
-    _schedule(client, when=_future(2))  # future
-    _schedule(client, when=(datetime.now(UTC) - timedelta(days=1)).isoformat())  # past
-    upcoming = client.get("/api/v1/scheduled-sessions").json()
+    res = _schedule(client, when=(datetime.now(UTC) - timedelta(days=1)).isoformat())
+    assert res.status_code == 422
+
+
+def test_upcoming_filter_hides_past(db_session):
+    """The upcoming filter excludes rows whose scheduled_at has passed. Created rows must
+    be in the future (enforced at the API), but they age into the past over time — so we
+    exercise the service's `now`-based cutoff directly against a planted row."""
+    from app.models.scheduled_session import ScheduledSession
+    from app.models.user import User
+    from app.services import scheduled_session_service
+
+    user = User(email="sc4b@example.com", password_hash="x")
+    db_session.add(user)
+    db_session.commit()
+    base = datetime.now(UTC)
+    db_session.add_all(
+        [
+            ScheduledSession(
+                user_id=user.id, type="mindfulness",
+                scheduled_at=base + timedelta(days=2),
+            ),
+            ScheduledSession(
+                user_id=user.id, type="mindfulness",
+                scheduled_at=base - timedelta(days=1),
+            ),
+        ]
+    )
+    db_session.commit()
+    upcoming = scheduled_session_service.list_for_user(db_session, user.id, now=base)
     assert len(upcoming) == 1
-    all_rows = client.get("/api/v1/scheduled-sessions?upcoming=false").json()
+    all_rows = scheduled_session_service.list_for_user(
+        db_session, user.id, upcoming_only=False
+    )
     assert len(all_rows) == 2
 
 

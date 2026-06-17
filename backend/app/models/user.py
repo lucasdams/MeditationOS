@@ -63,6 +63,13 @@ class User(Base):
     # Late-day streak-save nudge: sent at most once per user per local day, only when an
     # active streak would break without practice and the local hour is ≥ 20:00.
     # Tracked separately from `reminder_last_sent_at` so the two channels are independent.
+    #
+    # Independent opt-out: gated on `reminder_enabled` (the overall notifications opt-in)
+    # AND this flag, so a user can keep the gentle morning invite while declining the
+    # evening streak-save nudge. Defaults true to preserve existing behaviour.
+    streak_save_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true", default=True
+    )
     streak_save_last_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

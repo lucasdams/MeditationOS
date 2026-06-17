@@ -46,6 +46,10 @@ export const authService = {
   setReminders: (enabled: boolean, hour: number | null) =>
     api.post<User>('/auth/reminders', { enabled, hour: enabled ? hour : null }),
 
+  // Independent opt-out for the evening streak-save nudge (only fires when reminders are on).
+  setStreakSave: (enabled: boolean) =>
+    api.post<User>('/auth/streak-save', { enabled }),
+
   // day (0=Mon … 6=Sun, local) is required when enabled; null when disabling.
   setWeeklySummary: (enabled: boolean, day: number | null) =>
     api.post<User>('/auth/weekly-summary', { enabled, day: enabled ? day : null }),
