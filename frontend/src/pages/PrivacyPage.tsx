@@ -5,9 +5,9 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="June 17, 2026">
       <p>
-        This Privacy Policy explains how MeditationOS (“we”, “us” — operated by
-        [Company / individual]) collects, uses, and protects your information when you
-        use our website and app. Questions: [contact@email].
+        This Privacy Policy explains how MeditationOS (“we”, “us” — operated by an
+        individual, not a registered company) collects, uses, and protects your
+        information when you use our website and app. Questions: [contact@email].
       </p>
 
       <h2>Information we collect</h2>
@@ -61,9 +61,9 @@ export default function PrivacyPage() {
       <ul>
         <li><strong>Google</strong> — only if you choose “Sign in with Google” (authentication).</li>
         <li><strong>Email provider</strong> — to deliver verification, reset, and reminder emails. [Provider, e.g. AWS SES]</li>
-        <li><strong>Hosting / infrastructure</strong> — [AWS] hosts the application and database.</li>
+        <li><strong>Hosting / infrastructure</strong> — Amazon Web Services (AWS) hosts the application and database.</li>
         <li>
-          <strong>AI provider</strong> — gratitude prompt suggestions use [Anthropic];
+          <strong>AI provider</strong> — gratitude prompt suggestions use Anthropic;
           we send only the chosen category, never your journal text, in production.
         </li>
         <li>
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
           sent unless you enable notifications.
         </li>
         <li>
-          <strong>Error monitoring</strong> — [Sentry] receives application error and
+          <strong>Error monitoring</strong> — Sentry receives application error and
           performance diagnostics so we can fix problems. Events are scrubbed of personal
           information before they leave our servers, and this is active only when error
           monitoring is configured.
@@ -109,7 +109,7 @@ export default function PrivacyPage() {
 
       <h2>Children</h2>
       <p>
-        MeditationOS is not directed to children under [13/16], and we do not knowingly
+        MeditationOS is not directed to children under 13, and we do not knowingly
         collect their personal information.
       </p>
 

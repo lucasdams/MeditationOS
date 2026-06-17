@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import { sanctuaryService } from '../services/sanctuary'
 import LevelCard from '../components/LevelCard'
+import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import MoodCheckin from '../components/MoodCheckin'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
@@ -51,6 +52,10 @@ export default function DashboardPage() {
   // A gentle daily greeting (stable through the day) and a mindful loading line.
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
   const [loadingLine] = useState(() => randomOf(LOADING))
+  // First-run "start here" card: track manual dismissal in component state (seeded
+  // from localStorage) so dismissing hides it immediately, and it stays hidden across
+  // visits. It also auto-retires once the user has logged a few sessions.
+  const [firstRunDismissed, setFirstRunDismissed] = useState(() => isFirstRunDismissed())
 
   function loadStats() {
     dashboardService
@@ -88,6 +93,12 @@ export default function DashboardPage() {
       <RetryableError message={error} onRetry={retryStats} retrying={retrying} />
 
       {!stats && !error && <p>{loadingLine}</p>}
+
+      {/* First-run orientation: leads the dashboard for genuinely new users, above the
+          denser progress surfaces. Hidden once dismissed or once they've practiced. */}
+      {stats && !firstRunDismissed && shouldShowFirstRun(stats.session_count) && (
+        <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
+      )}
 
       {stats && <LevelCard stats={stats} scene={sanctuaryScene} />}
 
@@ -158,12 +169,16 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {stats && stats.session_count === 0 && (
-        <p className="muted">
-          You're just getting started. <Link to="/sessions/new">Log a session</Link> or{' '}
-          <Link to="/breathe">breathe</Link> to earn your first coins.
-        </p>
-      )}
+      {/* Quiet fallback for the no-sessions state — only when the richer first-run card
+          isn't on screen (dismissed), so the user never sees two "get started" prompts. */}
+      {stats &&
+        stats.session_count === 0 &&
+        (firstRunDismissed || !shouldShowFirstRun(stats.session_count)) && (
+          <p className="muted">
+            You're just getting started. <Link to="/sessions/new">Log a session</Link> or{' '}
+            <Link to="/breathe">breathe</Link> to earn your first coins.
+          </p>
+        )}
 
       {stats && stats.session_count > 0 && (
         <section className="dashboard-more">
