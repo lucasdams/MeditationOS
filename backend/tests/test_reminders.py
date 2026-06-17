@@ -67,10 +67,13 @@ def _user(db_session, email_addr, **kwargs):
 
 
 def _capture(monkeypatch):
-    sent: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(
-        email, "send_email", lambda to, subject, body: sent.append((to, subject, body)) or True
-    )
+    sent: list[tuple[str, str, str, dict | None]] = []
+
+    def _stub(to, subject, body, headers=None):
+        sent.append((to, subject, body, headers))
+        return True
+
+    monkeypatch.setattr(email, "send_email", _stub)
     return sent
 
 
@@ -82,6 +85,30 @@ def test_due_user_is_reminded(monkeypatch, db_session):
     assert len(sent) == 1 and sent[0][0] == "due@example.com"
     db_session.refresh(user)
     assert user.reminder_last_sent_at is not None
+
+
+def test_reminder_carries_list_unsubscribe_header(monkeypatch, db_session):
+    """Opt-in reminder mail must advertise a List-Unsubscribe header so mail clients can
+    surface a one-tap unsubscribe (improves deliverability / sender reputation)."""
+    sent = _capture(monkeypatch)
+    _user(db_session, "due@example.com", reminder_enabled=True, reminder_hour=8)
+    reminder_service.send_due_reminders(db_session, now_utc=NOON_UTC)
+    headers = sent[0][3]
+    assert headers is not None
+    assert "List-Unsubscribe" in headers
+    # Points at the in-app settings (opt-out) page, with a mailto: fallback.
+    assert "/settings" in headers["List-Unsubscribe"]
+    assert "mailto:" in headers["List-Unsubscribe"]
+
+
+def test_streak_save_nudge_carries_list_unsubscribe_header(monkeypatch, db_session):
+    sent = _capture(monkeypatch)
+    user = _user(db_session, "streak2@example.com", reminder_enabled=True, reminder_hour=8)
+    _add_session(db_session, user.id, EVENING_UTC - timedelta(days=1))  # 1-day streak
+    reminder_service.send_streak_save_nudges(db_session, now_utc=EVENING_UTC)
+    assert sent, "expected a streak-save nudge to be sent"
+    headers = sent[0][3]
+    assert headers is not None and "List-Unsubscribe" in headers
 
 
 def test_disabled_user_not_reminded(monkeypatch, db_session):
@@ -138,7 +165,7 @@ def test_reminder_uses_user_timezone(monkeypatch, db_session):
         timezone="Asia/Tokyo",
     )
     assert reminder_service.send_due_reminders(db_session, now_utc=NOON_UTC) == 1
-    assert [to for to, _, _ in sent] == ["morning@example.com"]
+    assert [c[0] for c in sent] == ["morning@example.com"]
 
 
 # --- streak-save nudge -------------------------------------------------------
@@ -266,7 +293,7 @@ def test_streak_save_respects_timezone(monkeypatch, db_session):
     _add_session(db_session, user_utc.id, NOON_UTC - timedelta(days=1))
     count = reminder_service.send_streak_save_nudges(db_session, now_utc=NOON_UTC)
     assert count == 1
-    assert [to for to, _, _ in sent] == ["tokyo_ss@example.com"]
+    assert [c[0] for c in sent] == ["tokyo_ss@example.com"]
 
 
 def test_streak_save_does_not_block_morning_reminder(monkeypatch, db_session):
@@ -291,10 +318,13 @@ def test_console_email_sender_returns_true():
 
 def _failing_email(monkeypatch):
     """Patch send_email to always fail (return False). Returns a call-counter list."""
-    calls: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(
-        email, "send_email", lambda to, subject, body: calls.append((to, subject, body)) or False
-    )
+    calls: list[tuple[str, str, str, dict | None]] = []
+
+    def _stub(to, subject, body, headers=None):
+        calls.append((to, subject, body, headers))
+        return False
+
+    monkeypatch.setattr(email, "send_email", _stub)
     return calls
 
 

@@ -1,5 +1,8 @@
 """Shared route dependencies."""
 
+from datetime import date, datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -58,6 +61,19 @@ def require_verified_email(user: User = Depends(get_current_user)) -> None:
     get_current_user call the route uses, so it adds no extra DB hit."""
     if settings.require_email_verification and not user.email_verified:
         raise _EMAIL_UNVERIFIED
+
+
+def today_for_user(user: User = Depends(get_current_user)) -> tuple[date, str]:
+    """The authenticated user's current local date + their IANA timezone (falls back to
+    UTC for a missing/unknown zone). A single shared dependency for the day-bucketed
+    routes (dashboard, goals, sanctuary, analytics) that previously each carried their
+    own copy of this helper — behaviour is identical."""
+    tz = user.timezone or "UTC"
+    try:
+        zone = ZoneInfo(tz)
+    except ZoneInfoNotFoundError:
+        tz, zone = "UTC", ZoneInfo("UTC")
+    return datetime.now(zone).date(), tz
 
 
 def require_admin(user: User = Depends(get_current_user)) -> User:

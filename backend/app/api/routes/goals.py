@@ -3,14 +3,13 @@ to the authenticated user. Progress is computed on read (see goal_service).
 """
 
 import uuid
-from datetime import date, datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api._http import not_found
-from app.api.deps import get_current_user, require_verified_email
+from app.api.deps import get_current_user, require_verified_email, today_for_user
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import GoalNotCheckableError
@@ -28,16 +27,6 @@ _NOT_CUSTOM = HTTPException(
 )
 
 
-def _today_for(user: User) -> tuple[date, str]:
-    """The user's current local date + their timezone (falls back to UTC)."""
-    tz = user.timezone or "UTC"
-    try:
-        zone = ZoneInfo(tz)
-    except ZoneInfoNotFoundError:
-        tz, zone = "UTC", ZoneInfo("UTC")
-    return datetime.now(zone).date(), tz
-
-
 @router.post("", response_model=GoalRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.write_rate_limit)
 def create_goal(
@@ -45,8 +34,9 @@ def create_goal(
     data: GoalCreate,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> GoalRead:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     # DailyLimitError → 429 is mapped app-wide (see app/main.py).
     return goal_service.create_goal(db, current_user.id, data, today=today, tz=tz)
 
@@ -56,8 +46,9 @@ def list_goals(
     status: str | None = None,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> list[GoalRead]:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return goal_service.list_goals(db, current_user.id, today=today, tz=tz, status=status)
 
 
@@ -67,8 +58,9 @@ def get_goal(
     goal_id: uuid.UUID,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> GoalRead:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     goal = goal_service.get_goal(db, current_user.id, goal_id, today=today, tz=tz)
     if goal is None:
         raise _NOT_FOUND
@@ -81,8 +73,9 @@ def update_goal(
     data: GoalUpdate,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> GoalRead:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     goal = goal_service.update_goal(db, current_user.id, goal_id, data, today=today, tz=tz)
     if goal is None:
         raise _NOT_FOUND
@@ -109,8 +102,9 @@ def check_in(
     goal_id: uuid.UUID,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> GoalRead:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     # DailyLimitError → 429 is mapped app-wide (see app/main.py).
     try:
         goal = goal_service.add_checkin(db, current_user.id, goal_id, today=today, tz=tz)
@@ -128,8 +122,9 @@ def undo_check_in(
     goal_id: uuid.UUID,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> GoalRead:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     try:
         goal = goal_service.remove_checkin(db, current_user.id, goal_id, today=today, tz=tz)
     except GoalNotCheckableError:

@@ -174,7 +174,12 @@ def send_due_weekly_summaries(db: DBSession, *, now_utc: datetime | None = None)
         review = get_weekly_review(
             db, user.id, today=local_now.date(), tz=user.timezone or "UTC"
         )
-        if email.send_email(user.email, WEEKLY_SUMMARY_SUBJECT, _summary_body(user, review)):
+        if email.send_email(
+            user.email,
+            WEEKLY_SUMMARY_SUBJECT,
+            _summary_body(user, review),
+            email.list_unsubscribe_headers(),
+        ):
             user.weekly_summary_last_sent_at = now_utc
             sent += 1
     db.commit()

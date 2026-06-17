@@ -1,12 +1,11 @@
 """Analytics route. Thin handler — delegates aggregation to the service."""
 
-from datetime import date, datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import date
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session as DBSession
 
-from app.api.deps import get_current_user, require_verified_email
+from app.api.deps import get_current_user, require_verified_email, today_for_user
 from app.core.db import get_db
 from app.models.user import User
 from app.schemas.analytics import AnalyticsSummary, InsightsResponse
@@ -19,21 +18,13 @@ router = APIRouter(
 )
 
 
-def _today_for(user: User) -> tuple[date, str]:
-    tz = user.timezone or "UTC"
-    try:
-        zone = ZoneInfo(tz)
-    except ZoneInfoNotFoundError:
-        tz, zone = "UTC", ZoneInfo("UTC")
-    return datetime.now(zone).date(), tz
-
-
 @router.get("", response_model=AnalyticsSummary)
 def get_analytics(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> AnalyticsSummary:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return analytics_service.get_analytics(db, current_user.id, today=today, tz=tz)
 
 
@@ -41,6 +32,7 @@ def get_analytics(
 def get_insights(
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> InsightsResponse:
-    today, tz = _today_for(current_user)
+    today, tz = today_tz
     return insights_service.get_insights(db, current_user.id, today=today, tz=tz)
