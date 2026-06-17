@@ -8,7 +8,10 @@ export default function GuestBanner() {
 
   return (
     <div className="guest-banner" role="status">
-      <span>You're exploring as a guest — add an email &amp; password to keep your progress.</span>
+      <span>
+        You&rsquo;re a guest — your progress lives only in this browser and is lost for
+        good if cookies are cleared. Add an email so you don&rsquo;t lose it.
+      </span>
       <Link to="/settings">Save my account →</Link>
     </div>
   )
