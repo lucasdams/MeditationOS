@@ -384,6 +384,72 @@ describe('SanctuaryPage upgrade preview (see-it-before-you-buy)', () => {
     // Still view-only: focusing/blurring never bought anything.
     expect(customize).not.toHaveBeenCalled()
   })
+
+  // An owned tree offering a LOCKED (level-gated) and an UNAFFORDABLE fruit option, so we can
+  // assert both still preview (ADR-0021) yet never purchase when clicked.
+  const treeWithGatedFruit = (gate: 'locked' | 'poor') => ({
+    ...ownedItem('a', 0),
+    available: [
+      {
+        slot: 'foliage',
+        applied: null,
+        options: [
+          {
+            option: 'fruit',
+            cost: 999,
+            unlocked: gate !== 'locked',
+            unlock_hint: gate === 'locked' ? 'Reach level 9' : null,
+            affordable: gate !== 'poor',
+            applied: false,
+          },
+        ],
+      },
+    ],
+  })
+
+  it('previews a LOCKED option on hover but never buys it on click (ADR-0021)', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [treeWithGatedFruit('locked')]))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+    // The locked option is NOT a disabled button, so it emits hover/focus and previews.
+    const lockedBtn = view.getByRole('button', { name: /🔒/ })
+    expect(lockedBtn).not.toBeDisabled()
+
+    fireEvent.mouseEnter(lockedBtn)
+    expect(fruitInPreview()).toBeGreaterThan(0) // the goal look previews…
+    expect(view.getByText('Preview')).toBeInTheDocument()
+
+    // …but clicking a gated option never purchases (it would 409 server-side anyway).
+    fireEvent.click(lockedBtn)
+    expect(customize).not.toHaveBeenCalled()
+
+    fireEvent.mouseLeave(lockedBtn)
+    expect(fruitInPreview()).toBe(0)
+  })
+
+  it('previews an UNAFFORDABLE option on focus but never buys it on click (ADR-0021)', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [treeWithGatedFruit('poor')]))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+    const poorBtn = view.getByRole('button', { name: /earn more/i })
+    expect(poorBtn).not.toBeDisabled()
+
+    fireEvent.focus(poorBtn)
+    expect(fruitInPreview()).toBeGreaterThan(0)
+    expect(view.getByText('Preview')).toBeInTheDocument()
+
+    fireEvent.click(poorBtn)
+    expect(customize).not.toHaveBeenCalled()
+
+    fireEvent.blur(poorBtn)
+    expect(fruitInPreview()).toBe(0)
+  })
 })
 
 describe('SanctuaryPage shop — track grouping', () => {

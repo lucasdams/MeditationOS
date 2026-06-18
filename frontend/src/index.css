@@ -2420,6 +2420,16 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
+/* A locked (level-gated) or unaffordable option (ADR-0021). It is rendered NOT `disabled`
+   so it still emits hover/focus and can be previewed — the user sees what they're working
+   toward — but it reads as muted and its buy is a no-op (cursor signals it won't purchase). */
+.sanctuary-option.gated {
+  background: var(--chip-bg);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: help;
+}
+
 /* Reset upgrades (ADR-0019) — a calm, low-key action at the foot of the customize panel.
    The toggle is quiet (text-button) so it never competes with the upgrade options; the
    confirm states the fee before anything is charged. */

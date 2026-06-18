@@ -245,6 +245,26 @@ class _Build:
         )
         return self
 
+    def form(self, *forms: tuple[str, int, int]) -> "_Build":
+        # Adds the evolution-tree `form` fork (ADR-0021): a single mutually-exclusive slot
+        # whose options are named *evolved forms* of the item, each a late-game branching
+        # choice gated at or above the top of the growth ladder. Each form is
+        # (option_key, cost, unlock_level). Because the `form` slot is mutually-exclusive
+        # within (the existing slot semantics), choosing one form excludes the others — the
+        # "fork". A swap between forms charges only the difference, like any slot, so a player
+        # can re-route their tree's evolution without paying the full price again.
+        #
+        # The framework: declaring a fork is one `.form(...)` line per item. Tracks 2–4 add
+        # their forks the same way — no new slot machinery, since `form` is an ordinary
+        # mutually-exclusive slot routed through the generic customize/spend/preview paths.
+        self._slots.append(
+            Slot(
+                key="form",
+                options=tuple(Option(o, c, unlock_level=u) for o, c, u in forms),
+            )
+        )
+        return self
+
     def build(self) -> CatalogItem:
         return CatalogItem(
             key=self.key,
@@ -272,14 +292,27 @@ class _Build:
 # old tier-1 upgrade cost. So any legacy row whose customizations are {"grown": "grown"}
 # still resolves to a real option and its `spent()` is byte-for-byte unchanged. The new rungs
 # are pure additions above it and can only ever raise spend if a user chooses to advance.
-GROWTH_STAGES: tuple[str, ...] = ("grown", "flourishing", "mature", "ancient")
+#
+# Deepened to FIVE stages (ADR-0021): a `venerable` rung is appended above `ancient` so a
+# long-tended garden keeps deepening past the old four-step plateau. The existing four keys
+# are preserved exactly (same order, same costs, same unlock levels), so every legacy row
+# still resolves and re-prices identically; the new rung is a pure addition above the others
+# and can only raise spend if a user chooses to climb to it. The ladder is built by zipping
+# these three tuples (strict=True), so adding a stage is a one-token edit to each tuple.
+GROWTH_STAGES: tuple[str, ...] = ("grown", "flourishing", "mature", "ancient", "venerable")
 
 # Multipliers on the item's `base` cost for each ladder rung. The first (grown) is 1.5 — the
 # historical value — and each later rung costs progressively more. Tunable constants; no
 # migration. Unlock levels rise gently so later stages feel earned without gating the early
-# garden.
-_GROWTH_COST_MULT: tuple[float, ...] = (1.5, 2.4, 3.6, 5.0)
-_GROWTH_UNLOCK: tuple[int, ...] = (1, 3, 5, 8)
+# garden. The fifth rung (venerable) sits at the top of the level curve, the natural floor
+# the `form` evolution fork gates at/above (see _FORM_UNLOCK).
+_GROWTH_COST_MULT: tuple[float, ...] = (1.5, 2.4, 3.6, 5.0, 6.6)
+_GROWTH_UNLOCK: tuple[int, ...] = (1, 3, 5, 8, 11)
+
+# The top of the growth ladder — the unlock level a late-game `form` fork is gated at or
+# above (ADR-0021), so an evolved form is only ever chosen once a player has tended an item
+# all the way up. Derived from the ladder so the fork tracks any future re-tuning of it.
+TOP_GROWTH_UNLOCK: int = _GROWTH_UNLOCK[-1]
 
 
 def _growth_ladder(base: int) -> tuple[tuple[str, int, int], ...]:
@@ -294,6 +327,26 @@ def _growth_ladder(base: int) -> tuple[tuple[str, int, int], ...]:
         for stage, mult, unlock in zip(
             GROWTH_STAGES, _GROWTH_COST_MULT, _GROWTH_UNLOCK, strict=True
         )
+    )
+
+
+# --- Evolution fork (the `form` slot) ---------------------------------------------------
+#
+# A late-game *branching choice*: the `form` slot offers 2–3 named evolved forms of an item
+# (e.g. an oak → mighty / blossoming / hollow-ancient). Like every slot it is
+# mutually-exclusive-within, so choosing one form excludes the others — that within-slot
+# exclusivity *is* the fork. Forms are gated at or above TOP_GROWTH_UNLOCK (the top of the
+# growth ladder), so a player only forks an item they've already grown to the top.
+#
+# `_form_fork(base, *forms)` keeps fork declarations terse and consistent across tracks: each
+# `form` is (option_key, cost_multiplier, unlock_offset). The cost is round(base * mult); the
+# unlock is TOP_GROWTH_UNLOCK + offset (offset 0 = the top of the ladder, ≥1 = above it). The
+# next-track agents add a fork by calling `.form(*_form_fork(base, ...))` — no new machinery.
+def _form_fork(
+    base: int, *forms: tuple[str, float, int]
+) -> tuple[tuple[str, int, int], ...]:
+    return tuple(
+        (key, round(base * mult), TOP_GROWTH_UNLOCK + offset) for key, mult, offset in forms
     )
 
 
@@ -313,9 +366,19 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Old Oak", "Willowmere", "Evergreen", "Grandfather", "Mossbeard")
         .variants("oak", "pine", "cherry", "willow")
         .ladder(_growth_ladder(40))
+        # Evolution fork (ADR-0021): once grown to the top, a tree branches into one of three
+        # named final forms — a mighty broad-crowned giant, a blossom-laden bower, or a
+        # hollowed elder with a knot-hollow. Mutually-exclusive: a tree is one of these.
+        .form(
+            *_form_fork(
+                40, ("mighty", 4.0, 0), ("blossoming", 4.2, 1), ("hollow_ancient", 4.4, 2)
+            )
+        )
         .slot("foliage", ("fruit", 30), ("blossom", 30), ("autumn", 30))
         .slot("swing", ("swing", 25))
         .slot("birdhouse", ("birdhouse", 20))
+        # New additive nature slot (ADR-0021): a little critter in the branches.
+        .slot("critter", ("songbird", 22), ("squirrel", 24))
         .build()
     ),
     "flower": (
@@ -324,8 +387,12 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Petal", "Sunny", "Daisy", "Poppy", "Marigold")
         .variants("rose", "tulip", "sunflower", "daisy")
         .ladder(_growth_ladder(25))
+        # Evolution fork: a wild tangle, a tidy cultivated bloom, or a softly luminous one.
+        .form(*_form_fork(25, ("wildflower", 4.0, 0), ("cultivated", 4.3, 1), ("luminous", 4.6, 2)))
         .slot("bloom", ("double", 18))
         .slot("butterfly", ("butterfly", 20))
+        # New additive nature slot: a pollinator visiting the bloom.
+        .slot("pollinator", ("bee", 20), ("dragonfly", 22))
         .build()
     ),
     "mushroom_ring": (
@@ -334,8 +401,12 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Fairy Ring", "Toadstool Circle", "The Wee Folk", "Pixie Glen")
         .variants("ruby", "amber", "violet")
         .ladder(_growth_ladder(36))
+        # Evolution fork: a witch's circle of dark caps, or a pale moonlit ring.
+        .form(*_form_fork(36, ("witchs_circle", 4.2, 0), ("moonlit", 4.6, 2)))
         .slot("glow", ("glow", 24))
         .slot("sprite", ("sprite", 30))
+        # New additive nature slot: fireflies drifting over the ring.
+        .slot("firefly", ("fireflies", 24))
         .build()
     ),
     "pond": (
@@ -343,9 +414,13 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .blurb("Still water. Good for skipping stones and skipping worries.")
         .names("Still Waters", "The Mirror", "Mossbank", "Reflection Pool")
         .ladder(_growth_ladder(80))
+        # Evolution fork: a crisp mountain tarn, or a lotus-strewn pool.
+        .form(*_form_fork(80, ("mountain_tarn", 3.8, 0), ("lotus_pool", 4.2, 2)))
         .slot("lilies", ("lilies", 40))
         .slot("koi", ("koi", 50))
         .slot("bridge", ("bridge", 60))
+        # New additive nature slot: a waterfowl on the water.
+        .slot("waterfowl", ("duck", 42), ("swan", 50))
         .build()
     ),
     # --- Structures -------------------------------------------------------------------

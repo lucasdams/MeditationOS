@@ -106,6 +106,13 @@ const VARIANT_LABELS: Record<string, string> = {
 
 const SLOT_LABELS: Record<string, string> = {
   grown: 'Size',
+  // Evolution fork (ADR-0021): a late-game branching choice of final form.
+  form: 'Evolution',
+  // New additive nature slots (ADR-0021).
+  critter: 'Critter',
+  pollinator: 'Pollinator',
+  firefly: 'Fireflies',
+  waterfowl: 'Waterfowl',
   foliage: 'Foliage',
   swing: 'Swing',
   birdhouse: 'Birdhouse',
@@ -140,11 +147,31 @@ const SLOT_LABELS: Record<string, string> = {
 }
 
 const OPTION_LABELS: Record<string, string> = {
-  // Growth ladder (the `grown` slot) — sequential size stages (ADR-0019).
+  // Growth ladder (the `grown` slot) — sequential size stages (ADR-0019, deepened ADR-0021).
   grown: 'Grown',
   flourishing: 'Flourishing 🌱',
   mature: 'Mature 🌳',
   ancient: 'Ancient 🏔️',
+  venerable: 'Venerable 🌌',
+  // Evolution-fork forms (the `form` slot) — late-game final forms per nature item (ADR-0021).
+  mighty: 'Mighty oak 🌳',
+  blossoming: 'Blossoming bower 🌸',
+  hollow_ancient: 'Hollow elder 🕳️',
+  wildflower: 'Wildflower 🌾',
+  cultivated: 'Cultivated 🌹',
+  luminous: 'Luminous ✨',
+  witchs_circle: "Witch's circle 🔮",
+  moonlit: 'Moonlit 🌙',
+  mountain_tarn: 'Mountain tarn 🏔️',
+  lotus_pool: 'Lotus pool 🪷',
+  // New additive nature options (ADR-0021).
+  songbird: 'Songbird 🐦',
+  squirrel: 'Squirrel 🐿️',
+  bee: 'Bee 🐝',
+  dragonfly: 'Dragonfly',
+  fireflies: 'Fireflies ✨',
+  duck: 'Duck 🦆',
+  swan: 'Swan 🦢',
   fruit: 'Fruit 🍎',
   blossom: 'Blossom 🌸',
   autumn: 'Autumn 🍂',

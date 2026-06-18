@@ -74,6 +74,38 @@ gain additive **dress-up slots** — `headwear` (hat / flower crown / tiny crown
 (bandana / bow tie / bell), and `attire` (scarf / sunglasses) — independent of each other and
 of the legacy `accessory` slot. The catalog is in-code, so all of this needs no migration.
 
+### Evolution tree — form fork + deeper ladder (ADR-0021)
+
+Items also **evolve** late in their life. Three axes make the "evolution tree", all on the same
+in-code catalog (no migration, balance still derived):
+
+- **A branching `form` fork** — a *new mutually-exclusive slot* named `form` whose 2–3 options are
+  **named evolved forms** of the item (an oak → `mighty` / `blossoming` / `hollow_ancient`; a flower
+  → `wildflower` / `cultivated` / `luminous`). Within-slot exclusivity **is** the fork — a thing is
+  one of its forms. Every form is gated at/above the **top of the growth ladder**
+  (`TOP_GROWTH_UNLOCK`), so forking is strictly late-game; swapping forms charges only the
+  difference, like any slot.
+- **A deeper `grown` ladder** — the size ladder gains a fifth rung **`venerable`** above `ancient`
+  (`grown → flourishing → mature → ancient → venerable`), each costlier and gated higher. The
+  original four rungs are preserved exactly, so legacy `{"grown":"grown"}` rows re-price identically.
+- **A nature-appropriate additive slot** per item — independent of the fork and the ladder.
+
+This is a **framework** built so the remaining tracks are a clean follow-up. Declaring a fork is one
+builder line — `.form(*_form_fork(base, …))` — and a stage is a one-token edit to three tuples.
+**Applied to the nature track only** in the first pass (structure/companion/whimsy follow in later
+PRs, with no framework churn):
+
+| item | `form` fork | extra growth stage | additive slot |
+|------|-------------|--------------------|---------------|
+| `tree` | mighty · blossoming · hollow-ancient | `venerable` | `critter` (songbird · squirrel) |
+| `flower` | wildflower · cultivated · luminous | `venerable` | `pollinator` (bee · dragonfly) |
+| `mushroom_ring` | witch's-circle · moonlit | `venerable` | `firefly` (fireflies) |
+| `pond` | mountain-tarn · lotus-pool | `venerable` | `waterfowl` (duck · swan) |
+
+Every new form, the `venerable` stage, and every additive option has distinct SVG art in
+`SanctuaryPlant.tsx`. The customize panel iterates slots generically, so the fork surfaces and is
+buyable with no bespoke UI ([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
+
 ### Character & whimsy (ADR-0016)
 
 Beyond the plants, structures, and pets, a **whimsy** track adds characterful garden friends
@@ -272,7 +304,13 @@ returns the updated scene.
   **name** plaque, a one-line **note**, and a **favourite** star — committed quietly on blur
   (an empty field clears it). Below, the slots and options with cost and `applied` / `locked`
   / `affordable` state — mix and match over time. Validate (affordable + unlocked) before
-  submit; server errors surface as a toast.
+  submit; server errors surface as a toast. A live **see-it-before-you-buy preview** at the head
+  of the panel re-renders the item with whatever option you hover/keyboard-focus merged in. As of
+  [ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md), **locked and
+  unaffordable options preview too** — they're rendered non-`disabled` (so they still emit
+  hover/focus) but stay functionally gated (`aria-disabled`, muted style, lock/level hint, the buy
+  click is a no-op), so you can see what you're working toward (e.g. an evolved `form`) without
+  ever buying a gated option.
 - **Name once owned:** naming is an **owned-item action**, not a purchase step (amended
   2026-06-18, [ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)). The buy
   modal is just a variant picker ("Choose a …") or a simple confirmation ("Add a …?" → Buy /
@@ -333,6 +371,13 @@ Each step is independently shippable.
     `attire` slots. The first rung stays keyed `"grown"` at the unchanged cost, so legacy
     rows are preserved exactly; the catalog is in-code, so no migration
     ([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)).
+11. ✅ **Evolution-tree framework + nature track + preview locked** — a late-game **`form` evolution
+    fork** (a mutually-exclusive slot of named evolved forms gated at/above the ladder top), a fifth
+    growth rung (`venerable`), and a nature-appropriate additive slot per item — built as a reusable
+    framework (`.form(*_form_fork(…))`) and **applied to the nature track only** (structure/companion/
+    whimsy follow in later PRs). Locked & unaffordable customize options now **preview** (non-disabled
+    but still gated). Legacy `{"grown":"grown"}` preserved; no migration
+    ([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
 
 ## Out of scope (here)
 

@@ -542,26 +542,36 @@ export default function SanctuaryPage() {
                                   <legend>{slotLabel(s.slot)}</legend>
                                   <div className="sanctuary-slot-options">
                                     {s.options.map((opt) => {
-                                      const cantApply =
-                                        busy != null ||
-                                        opt.applied ||
-                                        !opt.unlocked ||
-                                        !opt.affordable
-                                      // Only unbought options preview (an already-applied option
-                                      // would just redraw the current look). Works on hover AND
-                                      // keyboard focus so it isn't pointer-only. (Disabled
-                                      // locked/too-dear buttons don't emit hover/focus, so they
-                                      // simply don't preview — which is fine.)
+                                      // A LOCKED (level-gated) or UNAFFORDABLE option stays
+                                      // *gated* — its buy is blocked — but is rendered NOT
+                                      // `disabled`, so it still emits hover/focus and can be
+                                      // PREVIEWED. The user can see what they're working toward
+                                      // (e.g. an evolved form they haven't reached) before
+                                      // earning it. Only an already-applied option, or an
+                                      // in-flight write, fully disables the button (nothing to
+                                      // preview / no double-charge). ADR-0021.
+                                      const gated = !opt.unlocked || !opt.affordable
+                                      const hardDisabled = busy != null || opt.applied
+                                      // Every not-yet-owned option previews (including gated
+                                      // ones now) — on hover AND keyboard focus, so the preview
+                                      // shows the goal look without spending a coin.
                                       const canPreview = !opt.applied
                                       const showPreview = () =>
                                         canPreview && setPreview({ slot: s.slot, option: opt.option })
                                       const clearPreview = () => setPreview(null)
+                                      // The click still buys only when the option is actually
+                                      // applicable; a gated click is a no-op (the server would
+                                      // 409 anyway), so a gated option can never purchase.
+                                      const buyable = !opt.applied && opt.unlocked && opt.affordable
                                       return (
                                         <button
                                           key={opt.option}
                                           type="button"
-                                          className={`sanctuary-option${opt.applied ? ' applied' : ''}`}
-                                          disabled={cantApply}
+                                          className={`sanctuary-option${opt.applied ? ' applied' : ''}${
+                                            gated && !opt.applied ? ' gated' : ''
+                                          }`}
+                                          disabled={hardDisabled}
+                                          aria-disabled={gated || undefined}
                                           title={
                                             !opt.unlocked
                                               ? (opt.unlock_hint ?? 'Locked')
@@ -573,13 +583,15 @@ export default function SanctuaryPage() {
                                           onMouseLeave={clearPreview}
                                           onFocus={showPreview}
                                           onBlur={clearPreview}
-                                          onClick={() => customize(o, s.slot, opt.option)}
+                                          onClick={() => buyable && customize(o, s.slot, opt.option)}
                                         >
                                           {opt.applied
                                             ? `✓ ${optionLabel(opt.option)}`
                                             : !opt.unlocked
                                               ? `🔒 ${optionLabel(opt.option)}`
-                                              : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
+                                              : !opt.affordable
+                                                ? `🪙 ${opt.cost} (earn more)`
+                                                : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
                                         </button>
                                       )
                                     })}

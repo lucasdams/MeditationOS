@@ -1553,3 +1553,223 @@ def test_accessory_slots_are_independent_and_charge_each_option(client):
         "attire": "sunglasses",
     }
     assert _scene(client)["coins"] == coins - spent
+
+
+# --- Evolution-tree framework + nature track (ADR-0021) ----------------------------------
+#
+# The framework adds a `form` evolution fork (a mutually-exclusive slot of named evolved
+# forms, gated at/above the top of the growth ladder), deepens the `grown` ladder by one
+# stage (venerable), and adds a nature-appropriate additive slot per nature item. All in-code:
+# no migration, derived balance, legacy {"grown":"grown"} preserved exactly.
+
+from app.services.sanctuary_service import TOP_GROWTH_UNLOCK  # noqa: E402
+
+# The nature items the evolution tree was applied to in this pass (structure/companion/whimsy
+# come in later PRs). Each gains a `form` fork + the extra growth stage + an additive slot.
+_NATURE_FORK_ITEMS = ("tree", "flower", "mushroom_ring", "pond")
+
+# The additive nature slot each nature item gained (key → at least one of its option keys).
+_NATURE_ADDITIVE_SLOT = {
+    "tree": "critter",
+    "flower": "pollinator",
+    "mushroom_ring": "firefly",
+    "pond": "waterfowl",
+}
+
+
+def test_growth_ladder_deepened_to_five_stages_with_venerable_on_top():
+    """The `grown` ladder gained a 5th rung `venerable` above `ancient`; the original four
+    keys/order are preserved exactly so legacy rows are untouched (ADR-0021)."""
+    assert GROWTH_STAGES == ("grown", "flourishing", "mature", "ancient", "venerable")
+    # Every item's grown slot is the full deepened ladder, in order.
+    for key, item in SANCTUARY_CATALOG.items():
+        keys = [o.key for o in item.slot("grown").options]
+        assert keys == list(GROWTH_STAGES), f"{key}: {keys}"
+
+
+def test_grown_first_rung_cost_is_unchanged_for_legacy_compat():
+    """The first ladder rung is still keyed 'grown' at round(base_size * 1.5) — byte-for-byte
+    the historical value — so no legacy {"grown":"grown"} row's spend shifts (ADR-0021)."""
+    # tree base_size is 40 → the historical grown cost is round(40 * 1.5) = 60.
+    assert SANCTUARY_CATALOG["tree"].slot("grown").option("grown").cost == round(40 * 1.5)
+    assert SANCTUARY_CATALOG["flower"].slot("grown").option("grown").cost == round(25 * 1.5)
+
+
+def test_only_nature_items_have_a_form_fork_in_this_pass():
+    """The evolution fork was applied to the NATURE track only this PR. Every nature item has
+    a `form` slot; no structure/companion/whimsy item does (those land in later PRs)."""
+    for key, item in SANCTUARY_CATALOG.items():
+        has_form = item.slot("form") is not None
+        if item.track == "nature":
+            assert has_form, f"nature item {key} is missing its form fork"
+        else:
+            assert not has_form, f"non-nature item {key} should not have a form fork yet"
+
+
+def test_form_fork_is_one_mutually_exclusive_slot_gated_high():
+    """Each nature item's `form` is a single slot of 2–3 named forms (the fork = within-slot
+    mutual exclusivity), every form gated at or above the top of the growth ladder."""
+    for key in _NATURE_FORK_ITEMS:
+        form = SANCTUARY_CATALOG[key].slot("form")
+        assert form is not None, key
+        opts = form.options
+        assert 2 <= len(opts) <= 3, f"{key}: a fork should offer 2–3 forms, got {len(opts)}"
+        # Distinct option keys + distinct costs (a clean, unambiguous fork).
+        assert len({o.key for o in opts}) == len(opts), key
+        assert len({o.cost for o in opts}) == len(opts), f"{key}: form costs not distinct"
+        # Every form is a late-game choice: gated at/above the top of the growth ladder.
+        for o in opts:
+            assert o.cost > 0, (key, o.key)
+            assert o.unlock_level >= TOP_GROWTH_UNLOCK, (
+                f"{key}.{o.key}: form unlock {o.unlock_level} below ladder top {TOP_GROWTH_UNLOCK}"
+            )
+
+
+def test_form_fork_is_mutually_exclusive_at_runtime(client):
+    """Choosing a second form *replaces* the first (mutually-exclusive within the one `form`
+    slot) and charges only the difference — the fork, end to end."""
+    _auth(client, "fork-runtime@example.com")
+    _earn_to_level(client, 12)  # high enough that the late-game forms unlock + afford
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = next(o for o in bought["owned"] if o["item_key"] == "tree")["id"]
+    form = SANCTUARY_CATALOG["tree"].slot("form")
+    mighty = form.option("mighty").cost
+    blossoming = form.option("blossoming").cost
+
+    coins0 = _scene(client)["coins"]
+    r1 = client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "form", "option": "mighty"},
+    )
+    assert r1.status_code == 200, r1.json()
+    assert r1.json()["coins"] == coins0 - mighty
+    # Switch forms: only ONE form is ever recorded (mutually-exclusive), charge = difference.
+    r2 = client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "form", "option": "blossoming"},
+    )
+    assert r2.status_code == 200, r2.json()
+    only = next(o for o in r2.json()["owned"] if o["item_key"] == "tree")
+    assert only["customizations"] == {"form": "blossoming"}  # mighty replaced, not added
+    assert r2.json()["coins"] == coins0 - mighty - (blossoming - mighty)  # == coins0 - blossoming
+
+
+def test_form_fork_is_level_gated_for_a_fresh_user(client):
+    """A fresh level-1 user sees every nature form locked (gated at/above the ladder top) and
+    cannot apply one — the fork is strictly late-game (ADR-0021)."""
+    _auth(client, "fork-gate@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    flower = bought["owned"][0]
+    flower_id = flower["id"]
+    form_slot = next(s for s in flower["available"] if s["slot"] == "form")
+    for o in form_slot["options"]:
+        assert o["unlocked"] is False, o["option"]
+        assert "level" in (o["unlock_hint"] or "")
+    # Applying a locked form is rejected (409), so a gated fork can't be bought.
+    res = client.post(
+        f"/api/v1/sanctuary/items/{flower_id}/customize",
+        json={"slot": "form", "option": form_slot["options"][0]["option"]},
+    )
+    assert res.status_code == 409
+
+
+def test_venerable_stage_is_buyable_and_charges_the_difference(client):
+    """The new top growth rung `venerable` unlocks at level 11 and, advancing from `ancient`,
+    charges only the rung difference (a within-slot swap)."""
+    _auth(client, "venerable@example.com")
+    _earn_to_level(client, 12)
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = next(o for o in bought["owned"] if o["item_key"] == "tree")["id"]
+    grown = SANCTUARY_CATALOG["tree"].slot("grown")
+    ancient = grown.option("ancient").cost
+    venerable = grown.option("venerable").cost
+    assert venerable > ancient  # the new rung is the costliest
+
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "ancient"},
+    )
+    coins = _scene(client)["coins"]
+    res = client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "venerable"},
+    )
+    assert res.status_code == 200, res.json()
+    only = next(o for o in res.json()["owned"] if o["item_key"] == "tree")
+    assert only["customizations"] == {"grown": "venerable"}
+    assert res.json()["coins"] == coins - (venerable - ancient)
+
+
+def test_every_nature_item_gained_an_additive_slot(client):
+    """Each nature item gained one nature-appropriate ADDITIVE slot (critter / pollinator /
+    firefly / waterfowl) — independent of the form fork and the growth ladder (ADR-0021)."""
+    _auth(client, "nature-additive@example.com")
+    _earn_to_level(client, 6)
+    for key, slot_key in _NATURE_ADDITIVE_SLOT.items():
+        item = SANCTUARY_CATALOG[key]
+        slot = item.slot(slot_key)
+        assert slot is not None and slot.options, f"{key} missing additive slot {slot_key}"
+        # It's a plain additive slot, not the fork or the ladder.
+        assert slot_key not in ("form", "grown"), key
+
+
+def test_nature_additive_slot_is_independent_of_form_and_grown(client):
+    """A tree can carry a growth stage AND an evolved form AND a critter all at once — three
+    independent slots, each charged its own option cost (ADR-0021)."""
+    _auth(client, "nature-independent@example.com")
+    _earn_to_level(client, 12)
+    item = SANCTUARY_CATALOG["tree"]
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = next(o for o in bought["owned"] if o["item_key"] == "tree")["id"]
+
+    coins = _scene(client)["coins"]
+    picks = [("grown", "mature"), ("form", "mighty"), ("critter", "songbird")]
+    spent = 0
+    for slot, option in picks:
+        res = client.post(
+            f"/api/v1/sanctuary/items/{tree_id}/customize",
+            json={"slot": slot, "option": option},
+        )
+        assert res.status_code == 200, (slot, option, res.json())
+        spent += item.slot(slot).option(option).cost
+    only = next(o for o in _scene(client)["owned"] if o["item_key"] == "tree")
+    assert only["customizations"] == {"grown": "mature", "form": "mighty", "critter": "songbird"}
+    assert _scene(client)["coins"] == coins - spent
+
+
+def test_legacy_grown_grown_row_still_unchanged_after_deepening(client, db_session):
+    """Re-assert the ADR-0020 backward-compat guarantee survives the ladder-deepening +
+    fork additions: a legacy {"grown":"grown"} row resolves to stage 1 and its spend is
+    exactly base + round(base_size * 1.5), unchanged (ADR-0021)."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "legacy-after-fork@example.com")
+    _practice(client, 60)
+    before = _scene(client)["coins"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "legacy-after-fork@example.com")
+    ).scalar_one()
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="tree",
+            position=0,
+            cell=0,
+            variant="oak",
+            customizations={"grown": "grown"},
+        )
+    )
+    db_session.commit()
+
+    scene = _scene(client)
+    tree = next(o for o in scene["owned"] if o["item_key"] == "tree")
+    assert tree["customizations"] == {"grown": "grown"}
+    grown_slot = next(s for s in tree["available"] if s["slot"] == "grown")
+    assert grown_slot["applied"] == "grown"
+    tree_item = SANCTUARY_CATALOG["tree"]
+    grown_cost = tree_item.slot("grown").option("grown").cost
+    assert grown_cost == round(40 * 1.5)
+    assert scene["coins"] == before - (tree_item.cost + grown_cost)
