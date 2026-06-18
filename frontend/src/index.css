@@ -3028,9 +3028,134 @@ textarea:focus-visible,
   margin: 0.6rem 0 0;
 }
 
-/* Collapsible "Show more" drawer — keeps everything beyond the primary "start a
-   practice" surface (quests, sanctuary, level detail, totals, heatmap, weekly review)
-   off the default landing view so it stays calm. */
+/* Compact quests on the calm default home — a quiet "Today you could…" lead over a row of
+   small, tappable quest chips. Low-chrome by design: no card, no descriptions, no XP. */
+.quests-compact {
+  margin: 1.25rem 0;
+}
+
+.quests-compact-lead {
+  margin: 0 0 0.5rem;
+}
+
+.quest-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* A single quest chip: emoji + short label, the whole thing a link to its feature. Quiet
+   border tinted by the activity accent; brightens gently on hover/focus. */
+.quest-chip {
+  --activity-accent: #c4c4c9;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: var(--bg-surface);
+  border: 1px solid color-mix(in srgb, var(--activity-accent) 30%, var(--border));
+  border-radius: 999px;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.quest-chip:hover,
+.quest-chip:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--activity-accent) 8%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--activity-accent) 55%, var(--border));
+}
+
+.quest-chip-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Done state: muted and struck through, with a check — a subtle "already did this" cue
+   rather than a loud reward. */
+.quest-chip.done {
+  color: var(--text-muted);
+  background: transparent;
+  border-color: var(--border-light);
+}
+
+.quest-chip.done .quest-chip-label {
+  text-decoration: line-through;
+}
+
+.quest-chip.done .quest-chip-emoji {
+  opacity: 0.6;
+}
+
+.quest-chip-check {
+  font-weight: 700;
+  color: var(--success-text);
+}
+
+/* Compact sanctuary teaser — a slim strip linking to the full garden. A couple of plant
+   thumbnails + a label + a "tend it" cue. Deliberately shows no coin count (the level chip
+   above already does). */
+.sanctuary-teaser {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.25rem 0;
+  padding: 0.55rem 0.85rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.sanctuary-teaser:hover,
+.sanctuary-teaser:focus-visible {
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
+  border-color: var(--accent-border);
+}
+
+.sanctuary-teaser-plants {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.sanctuary-teaser-plant .sanctuary-svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.sanctuary-teaser-empty {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.sanctuary-teaser-text {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.sanctuary-teaser-cta {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Collapsible "Show more" drawer — keeps the heavier retrospective/progress detail (full
+   level card, totals, heatmap, weekly review) off the calm default home. Quests and the
+   garden now live on the default view above in compact form. */
 .dashboard-more {
   margin-top: 1.5rem;
 }
