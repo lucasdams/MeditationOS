@@ -23,3 +23,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0015](0015-sanctuary-personalization-touches.md) | Sanctuary — naming and personal touches (name, note, favourite) | Accepted |
 | [0016](0016-sanctuary-shop-expansion-and-retune.md) | Sanctuary — shop expansion (whimsy track) + economy retune | Accepted |
 | [0017](0017-biometric-readings-data-model.md) | Source-agnostic biometric-readings data model | Accepted |
+| [0018](0018-trataka-flame-gazing-practice.md) | Trataka flame-gazing focus practice (reuse `mindfulness`, no migration) | Accepted |

@@ -20,6 +20,7 @@ import CookieNotice from './components/CookieNotice'
 import ZenEgg from './components/ZenEgg'
 
 // --- Lazily-loaded routes (heavy pages unlikely to be the first URL visited) ---
+const TratakaPage     = lazy(() => import('./pages/TratakaPage'))
 const LogSessionPage  = lazy(() => import('./pages/LogSessionPage'))
 const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
 const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
@@ -61,6 +62,10 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/breathe" element={<BreathePage />} />
           <Route path="/meditate" element={<MeditatePage />} />
+          <Route
+            path="/trataka"
+            element={<Suspense fallback={<PageFallback />}><TratakaPage /></Suspense>}
+          />
           <Route path="/gratitude" element={<GratitudePage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route
