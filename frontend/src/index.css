@@ -3569,6 +3569,29 @@ details[open] .meditate-disclosure-summary::before {
 
 .breathe-controls .secondary {
   background: var(--text-primary);
+  /* Invert the label against the light dark-mode fill (same as the logout button) —
+     otherwise it inherits the base button's white text and is unreadable. */
+  color: var(--bg-surface);
+}
+
+/* Start-of-practice focus cue: a one-line "where to look" prompt that fades out a few
+   seconds into the gaze, then leaves the flame alone. */
+.trataka-guide {
+  position: absolute;
+  bottom: 16%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 0 1rem;
+  color: rgba(255, 244, 214, 0.78);
+  font-size: 1rem;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 1.4s ease;
+}
+
+.trataka-guide.is-hidden {
+  opacity: 0;
 }
 
 .breathe-info {

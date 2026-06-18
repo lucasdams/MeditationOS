@@ -74,6 +74,8 @@ export default function TratakaPage() {
   const [running, setRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // A brief "where to look" cue shown at the start of a gaze, then faded out.
+  const [guideVisible, setGuideVisible] = useState(false)
   const [saving, setSaving] = useState(false)
   const [reward, setReward] = useState<{
     afterXp: number
@@ -122,6 +124,18 @@ export default function TratakaPage() {
       soundscapeEngineRef.current?.stop()
     }
   }, [])
+
+  // Surface the focus cue when a gaze begins, then fade it after a few seconds so only
+  // the flame remains. Re-shows on each start/resume; cleared on pause and unmount.
+  useEffect(() => {
+    if (!running) {
+      setGuideVisible(false)
+      return
+    }
+    setGuideVisible(true)
+    const id = setTimeout(() => setGuideVisible(false), 5000)
+    return () => clearTimeout(id)
+  }, [running])
 
   function draftPayload(elapsedSec: number): SessionCreate | null {
     if (!tokenRef.current || elapsedSec < MIN_DRAFT_SECONDS) return null
@@ -350,6 +364,11 @@ export default function TratakaPage() {
 
       <div className="breathe-stage trataka-stage">
         <Flame intensity={flameIntensity} size={running ? 360 : 220} />
+        {running && (
+          <p className={`trataka-guide${guideVisible ? '' : ' is-hidden'}`}>
+            Rest your gaze softly on the flame
+          </p>
+        )}
         {started && <span className="trataka-time">{mmss(remaining)}</span>}
         <div className="breathe-phase">
           {running ? 'Rest your gaze on the flame' : elapsed > 0 ? 'Paused' : 'Eyes open · gaze softly'}
