@@ -3,7 +3,6 @@ import {
   PRESETS,
   boxPatternForCount,
   breathEventAt,
-  coherencePatternForBpm,
   cycleLength,
   patternForBpm,
   patternSummary,
@@ -19,16 +18,6 @@ describe('patternForBpm', () => {
     // 6 bpm → 10s total → 4 in / 6 out.
     expect(patternForBpm(6)).toEqual({ inhale: 4, holdFull: 1, exhale: 6, holdEmpty: 1 })
     expect(patternForBpm(3).exhale).toBeGreaterThan(patternForBpm(3).inhale)
-  })
-})
-
-describe('coherencePatternForBpm', () => {
-  it('splits the breath evenly (1:1) with no holds', () => {
-    expect(coherencePatternForBpm(6)).toEqual({ inhale: 5, holdFull: 0, exhale: 5, holdEmpty: 0 })
-    const p = coherencePatternForBpm(5)
-    expect(p.inhale).toBe(p.exhale)
-    expect(p.holdFull).toBe(0)
-    expect(p.holdEmpty).toBe(0)
   })
 })
 
@@ -90,7 +79,7 @@ describe('breathEventAt', () => {
 describe('PRESETS', () => {
   it('classifies presets by control, and adjustable ones derive from their control value', () => {
     const byControl = (c: string) => PRESETS.filter((x) => x.control === c).map((x) => x.key)
-    expect(byControl('bpm')).toEqual(expect.arrayContaining(['resonance', 'coherence']))
+    expect(byControl('bpm')).toEqual(['resonance'])
     expect(byControl('count')).toEqual(['box'])
     expect(byControl('none')).toEqual(['478'])
     // adjustable presets (bpm/count) carry a derive fn + null pattern; 'none' carries a pattern
