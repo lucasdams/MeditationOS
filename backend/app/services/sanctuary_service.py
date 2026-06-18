@@ -523,12 +523,23 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     # --- Companions -------------------------------------------------------------------
+    # Evolution trees applied to the COMPANION track (ADR-0021, part 3 of the per-track
+    # rollout). Each companion gains a late-game `form` fork of fitting personality/pose/
+    # markings forms (gated at/above the ladder top via _form_fork) and one companion-
+    # appropriate additive slot — a `toy` (ball / yarn / stick / …) that doesn't duplicate the
+    # existing headwear / collar / attire dress-up slots (ADR-0020). Same framework as the
+    # nature/structure tracks — no new machinery, no migration; the `venerable` 5th growth rung
+    # is shared globally.
     "goldfish": (
         _Build("goldfish", "companion", 20)
         .blurb("Three-second memory, infinite serenity. We could learn a lot.")
         .names("Bubbles", "Goldie", "Finn", "Splash", "Marigold")
         .variants("orange", "white", "black")
         .ladder(_growth_ladder(30))
+        # Evolution fork: a flowing fantail show-fish, or a deep koi-kissed pond dweller.
+        .form(*_form_fork(30, ("fantail", 4.0, 0), ("koi_kissed", 4.4, 2)))
+        # New additive companion slot (ADR-0021): a little plaything in the bowl.
+        .slot("toy", ("bubble_ring", 18), ("treasure", 22))
         .build()
     ),
     "bird": (
@@ -537,9 +548,14 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Pip", "Chirp", "Sunny", "Bluebell", "Wren")
         .variants("bluebird", "robin", "canary")
         .ladder(_growth_ladder(35))
+        # Evolution fork: a full-throated songful form, a showy plumed crest, or a far-ranging
+        # migratory traveller.
+        .form(*_form_fork(35, ("songful", 4.0, 0), ("plumed", 4.3, 1), ("migratory", 4.6, 2)))
         .slot("accessory", ("hat", 25))
         .slot("headwear", ("hat", 25), ("flower_crown", 26), ("tiny_crown", 30))
         .slot("attire", ("scarf", 24), ("sunglasses", 26))
+        # New additive companion slot (ADR-0021): a perch toy to play with.
+        .slot("toy", ("bell_toy", 20), ("mirror", 22))
         .build()
     ),
     "cat": (
@@ -555,6 +571,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .slot("headwear", ("hat", 28), ("flower_crown", 30), ("tiny_crown", 34))
         .slot("collar", ("bandana", 24), ("bowtie", 26), ("bell", 28))
         .slot("attire", ("scarf", 24), ("sunglasses", 28))
+        # Evolution fork: a curled-up cosy lap-cat, a lithe sleek hunter, or a wise mystic.
+        .form(*_form_fork(50, ("lap_cat", 4.0, 0), ("sleek_hunter", 4.3, 1), ("mystic", 4.6, 2)))
+        # New additive companion slot (ADR-0021): a cat's plaything.
+        .slot("toy", ("yarn", 24), ("feather", 22))
         .build()
     ),
     "snake": (
@@ -565,6 +585,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(60))
         .slot("accessory", ("hat", 30))
         .slot("headwear", ("hat", 30), ("tiny_crown", 34))
+        # Evolution fork: a neatly-coiled rester, or a regal diamond-patterned form.
+        .form(*_form_fork(60, ("coiled", 4.0, 0), ("patterned", 4.4, 2)))
+        # New additive companion slot (ADR-0021): a basking stone to curl around.
+        .slot("toy", ("basking_stone", 26))
         .build()
     ),
     "fox": (
@@ -577,6 +601,14 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .slot("headwear", ("hat", 30), ("flower_crown", 32), ("tiny_crown", 36))
         .slot("collar", ("bandana", 28), ("bowtie", 30), ("bell", 32))
         .slot("attire", ("scarf", 28), ("sunglasses", 30))
+        # Evolution fork: a leaf-dappled woodland fox, a snowy arctic form, or a fire-kissed one.
+        .form(
+            *_form_fork(
+                70, ("woodland", 4.0, 0), ("arctic_form", 4.3, 1), ("fire_kissed", 4.6, 2)
+            )
+        )
+        # New additive companion slot (ADR-0021): a fox at play with a found toy.
+        .slot("toy", ("ball", 28), ("stick", 26))
         .build()
     ),
     "hedgehog": (
@@ -587,6 +619,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(48))
         .slot("accessory", ("scarf", 26), ("leaf", 22))
         .slot("headwear", ("hat", 26), ("flower_crown", 28))
+        # Evolution fork: a snug curled-up form, or a woodland forager dressed in autumn leaves.
+        .form(*_form_fork(48, ("snug", 4.0, 0), ("forager", 4.4, 2)))
+        # New additive companion slot (ADR-0021): an apple to roll home on its spines.
+        .slot("toy", ("apple", 22))
         .build()
     ),
     "snail": (
@@ -596,6 +632,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .variants("amber", "minty", "rosy")
         .ladder(_growth_ladder(28))
         .slot("accessory", ("hat", 24))
+        # Evolution fork: a tidy mossy garden snail, or a jewel-shelled treasure.
+        .form(*_form_fork(28, ("mossy_garden", 4.0, 0), ("jeweled", 4.4, 2)))
+        # New additive companion slot (ADR-0021): a tiny leaf the snail nibbles on.
+        .slot("toy", ("leaf_toy", 18))
         .build()
     ),
     "dog": (
@@ -608,6 +648,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .slot("headwear", ("hat", 30), ("flower_crown", 32), ("tiny_crown", 38))
         .slot("collar", ("bandana", 28), ("bowtie", 30), ("bell", 32))
         .slot("attire", ("scarf", 28), ("sunglasses", 32))
+        # Evolution fork: a bouncy playful pup, a noble regal hound, or a steadfast guardian.
+        .form(*_form_fork(90, ("playful", 4.0, 0), ("regal", 4.3, 1), ("guardian", 4.6, 2)))
+        # New additive companion slot (ADR-0021): a dog's favourite plaything.
+        .slot("toy", ("ball", 30), ("stick", 28), ("bone", 30))
         .build()
     ),
     # --- Whimsy -----------------------------------------------------------------------
