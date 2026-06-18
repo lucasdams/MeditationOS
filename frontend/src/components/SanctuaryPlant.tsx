@@ -416,33 +416,129 @@ function Building({
   roof,
   baseW,
 }: DrawProps & { defaultColor: string; roof: string; baseX?: number; baseW: number }) {
-  const color = (variant && WALL_COLORS[variant]) || defaultColor
+  const form = cust.form
+  // The evolution fork (ADR-0021) reshapes the home's silhouette and palette. `grand_manor` /
+  // `heritage` read as a broader, statelier building; `enchanted` / `festival` recolour it.
+  const grand = form === 'grand_manor' || form === 'heritage'
+  const color =
+    form === 'enchanted'
+      ? '#a78bfa'
+      : form === 'festival'
+        ? '#fb7185'
+        : (variant && WALL_COLORS[variant]) || defaultColor
+  const roofColor =
+    form === 'enchanted' ? '#7c3aed' : form === 'festival' ? '#be185d' : roof
   // The footprint widens a little and the walls climb with each stage, so a "mature" home
   // reads as a taller, broader cottage — an added upper window appears from `flourishing`.
   const k = 0.92 + 0.1 * stage
   const wallH = (22 + 2 * stage) * Math.min(k, 1.2)
   const wallY = GROUND - wallH
-  const w = baseW * (0.92 + 0.05 * stage)
+  const w = baseW * (0.92 + 0.05 * stage) * (grand ? 1.18 : 1)
   const x = 40 - w / 2
   const cx = 40
   const litWindow = has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd'
+  const roofPeak = wallY - (grand ? 20 : 16)
   return (
     <g>
       {has(cust, 'garden', 'garden') && <Garden y={GROUND - 3} />}
+      {/* treehouse form: a stout trunk + bough the cabin perches on */}
+      {form === 'treehouse' && (
+        <g>
+          <rect x={37} y={wallY} width={6} height={GROUND - wallY} fill="#8b5a2b" />
+          <path d={`M40 ${wallY + 4} q-9 -2 -13 -7`} stroke="#15803d" strokeWidth={4} fill="none" strokeLinecap="round" />
+          <circle cx={26} cy={wallY - 5} r={6} fill="#22c55e" />
+        </g>
+      )}
       <rect x={x} y={wallY} width={w} height={wallH} fill={color} />
-      <polygon points={`${x - 2},${wallY} ${x + w + 2},${wallY} ${cx},${wallY - 16}`} fill={roof} />
+      <polygon points={`${x - 2},${wallY} ${x + w + 2},${wallY} ${cx},${roofPeak}`} fill={roofColor} />
+      {/* enchanted form: a toadstool-cap roof with white spots */}
+      {form === 'enchanted' && (
+        <g fill="#fff">
+          <circle cx={cx - 4} cy={wallY - 5} r={1.1} />
+          <circle cx={cx + 4} cy={wallY - 5} r={1.1} />
+          <circle cx={cx} cy={wallY - 9} r={1} />
+        </g>
+      )}
+      {/* heritage / grand_manor: a stately second gable wing */}
+      {grand && (
+        <polygon
+          points={`${x + w - 8},${wallY} ${x + w + 4},${wallY} ${x + w - 2},${wallY - 9}`}
+          fill={roofColor}
+        />
+      )}
+      {/* festival form: a string of bright pennant flags along the ridge */}
+      {form === 'festival' &&
+        [-8, -3, 2, 7].map((dx, i) => (
+          <polygon
+            key={dx}
+            points={`${cx + dx},${roofPeak + (Math.abs(dx) / 2)} ${cx + dx + 3},${roofPeak + (Math.abs(dx) / 2)} ${cx + dx + 1.5},${roofPeak + 3 + (Math.abs(dx) / 2)}`}
+            fill={['#fbbf24', '#34d399', '#60a5fa', '#f472b6'][i % 4]}
+          />
+        ))}
       {/* door */}
-      <rect x={cx - 3} y={GROUND - 11} width={6} height={11} fill={roof} />
+      <rect x={cx - 3} y={GROUND - 11} width={6} height={11} fill={roofColor} />
       {/* window */}
       <rect x={x + 4} y={wallY + 5} width={6} height={6} fill={litWindow} />
       {/* a second ground-floor window appears once the home has grown a bit wider */}
       {stage >= 2 && <rect x={x + w - 10} y={wallY + 5} width={6} height={6} fill={litWindow} />}
       {/* an upper-storey window in the gable on the maturest stages */}
       {stage >= 3 && <rect x={cx - 2.5} y={wallY - 11} width={5} height={5} fill={litWindow} />}
+      {/* venerable (stage 5): a grown-over, ivy-creased home — a moss-streaked roof, a third
+          dormer window, and a weathered cornerstone — reads distinctly older than `ancient`. */}
+      {stage >= 5 && (
+        <g>
+          <path d={`M${x - 2} ${wallY} q${w / 2 + 2} 5 ${w + 4} 0`} stroke="#4d7c0f" strokeWidth={1.4} fill="none" opacity={0.7} />
+          <rect x={cx + 5} y={wallY + 5} width={5} height={5} fill={litWindow} />
+          <rect x={x} y={GROUND - 7} width={2.5} height={7} fill="#94a3b8" opacity={0.8} />
+        </g>
+      )}
       {has(cust, 'chimney_smoke', 'smoke') && (
         <g>
-          <rect x={x + w - 7} y={wallY - 12} width={4} height={8} fill={roof} />
+          <rect x={x + w - 7} y={wallY - 12} width={4} height={8} fill={roofColor} />
           <Smoke x={x + w - 5} y={wallY - 14} />
+        </g>
+      )}
+      {/* window_box slot (ADR-0021): a planter of flowers or herbs under the front window */}
+      {has(cust, 'window_box', 'flowers') && (
+        <g>
+          <rect x={x + 3} y={wallY + 11} width={8} height={2.4} rx={0.6} fill="#7c5210" />
+          <circle cx={x + 4.5} cy={wallY + 11} r={1.4} fill="#f472b6" />
+          <circle cx={x + 7} cy={wallY + 10.5} r={1.4} fill="#fbbf24" />
+          <circle cx={x + 9.5} cy={wallY + 11} r={1.4} fill="#a78bfa" />
+        </g>
+      )}
+      {has(cust, 'window_box', 'herbs') && (
+        <g>
+          <rect x={x + 3} y={wallY + 11} width={8} height={2.4} rx={0.6} fill="#7c5210" />
+          {[4.5, 7, 9.5].map((dx) => (
+            <path key={dx} d={`M${x + dx} ${wallY + 11} q-1 -3 0 -4 q1 1 0 4`} fill="#4ade80" />
+          ))}
+        </g>
+      )}
+      {/* ivy slot: climbing vines up one wall */}
+      {has(cust, 'ivy', 'ivy') && (
+        <g>
+          <path
+            d={`M${x + 2} ${GROUND} q3 -${wallH * 0.5} 1 -${wallH}`}
+            stroke="#15803d"
+            strokeWidth={1.4}
+            fill="none"
+          />
+          {[0.25, 0.5, 0.75].map((f) => (
+            <circle key={f} cx={x + 2 + 2 * Math.sin(f * 9)} cy={GROUND - wallH * f} r={1.8} fill="#22c55e" />
+          ))}
+        </g>
+      )}
+      {/* weathervane slot: a little rooster vane on the ridge */}
+      {has(cust, 'weathervane', 'rooster') && (
+        <g stroke="#475569" strokeWidth={0.7}>
+          <line x1={cx} y1={roofPeak} x2={cx} y2={roofPeak - 7} />
+          <g transform={`translate(${cx} ${roofPeak - 7})`} fill="#1f2937" stroke="none">
+            <ellipse cx={1} cy={0} rx={2.4} ry={1.6} />
+            <circle cx={3} cy={-1.2} r={1.2} />
+            <polygon points="4,-1.2 5.6,-0.8 4,-0.4" fill="#ef4444" />
+            <polygon points="-1.4,0.4 -3.6,1.4 -1.4,1.6" />
+          </g>
         </g>
       )}
       {has(cust, 'lights', 'lights') && <Lights y={wallY - 1} x={x} w={w} />}
@@ -453,16 +549,56 @@ function Building({
 const CAR_COLORS: Record<string, string> = { red: '#ef4444', blue: '#3b82f6', yellow: '#eab308' }
 
 function Car({ variant, cust, stage }: DrawProps) {
-  const color = (variant && CAR_COLORS[variant]) || '#ef4444'
+  const form = cust.form
+  // Evolution fork (ADR-0021): `vintage` is a sleeker, deeper-toned roadster; `camper` is a
+  // taller boxy van with a pop-top — each reshapes the body silhouette.
+  const color =
+    form === 'vintage' ? '#7f1d1d' : (variant && CAR_COLORS[variant]) || '#ef4444'
   const k = 0.9 + 0.08 * stage
   const w = 36 * k
   const x = 40 - w / 2
   const bodyY = 58
+  if (form === 'camper') {
+    // A boxy camper van: a tall body with a window band and a pop-top roof.
+    const vanH = 18
+    const vanY = 64 - vanH
+    return (
+      <g>
+        <rect x={x} y={vanY} width={w} height={vanH} rx={3} fill={(variant && CAR_COLORS[variant]) || '#f1f5f9'} />
+        <rect x={x} y={vanY + 5} width={w} height={4} fill="#bfdbfe" />
+        {/* pop-top */}
+        <rect x={x + 4} y={vanY - 4} width={w - 8} height={4.5} rx={1.5} fill="#e2e8f0" />
+        <rect x={x + 6} y={vanY + 11} width={5} height={5} fill="#fbbf24" />
+        <circle cx={x + w * 0.25} cy={66} r={3.5} fill="#1f2937" />
+        <circle cx={x + w * 0.75} cy={66} r={3.5} fill="#1f2937" />
+        {stage >= 5 && <path d={`M${x} ${vanY - 1} h${w}`} stroke="#4d7c0f" strokeWidth={1.2} opacity={0.6} />}
+        {has(cust, 'flag', 'pennant') && (
+          <g>
+            <line x1={x + w} y1={vanY - 4} x2={x + w} y2={vanY - 12} stroke="#475569" strokeWidth={0.7} />
+            <polygon points={`${x + w},${vanY - 12} ${x + w + 6},${vanY - 10.5} ${x + w},${vanY - 9}`} fill="#f472b6" />
+          </g>
+        )}
+        {has(cust, 'lights', 'lights') && (
+          <>
+            <circle cx={x + w - 1} cy={62} r={1.6} fill="#fde68a" />
+            <circle cx={x + 1} cy={62} r={1.6} fill="#f87171" />
+          </>
+        )}
+      </g>
+    )
+  }
   return (
     <g>
       <path d={`M${x + 8} ${bodyY} q4 -9 12 -9 q8 0 10 9 z`} fill={color} />
       <path d={`M${x + 11} ${bodyY - 1} q3 -5 8 -5 q5 0 7 5 z`} fill="#bfdbfe" />
       <rect x={x} y={bodyY} width={w} height={8} rx={3} fill={color} />
+      {/* vintage form: a chrome running-board stripe + round headlamp */}
+      {form === 'vintage' && (
+        <g>
+          <rect x={x} y={bodyY + 5} width={w} height={1.4} fill="#e2e8f0" />
+          <circle cx={x + w - 2} cy={bodyY + 2} r={1.6} fill="#fde68a" stroke="#94a3b8" strokeWidth={0.4} />
+        </g>
+      )}
       {/* a roof rack with a little luggage appears as the car is "kitted out" over stages */}
       {stage >= 2 && (
         <g>
@@ -470,8 +606,28 @@ function Car({ variant, cust, stage }: DrawProps) {
           {stage >= 3 && <rect x={x + 13} y={bodyY - 14} width={9} height={3.4} rx={1} fill="#a16207" />}
         </g>
       )}
+      {/* venerable (stage 5): a roof-top travel trunk + a curl of road dust — well-travelled */}
+      {stage >= 5 && (
+        <g>
+          <rect x={x + 13} y={bodyY - 18} width={9} height={4} rx={1} fill="#7c3f25" stroke="#5a3a1f" strokeWidth={0.5} />
+          <g fill="#cbd5e1" opacity={0.6}>
+            <circle cx={x - 2} cy={65} r={1.6} />
+            <circle cx={x - 5} cy={64} r={1.2} />
+          </g>
+        </g>
+      )}
       <circle cx={x + w * 0.25} cy={66} r={3.5} fill="#1f2937" />
       <circle cx={x + w * 0.75} cy={66} r={3.5} fill="#1f2937" />
+      {/* flag slot (ADR-0021): a pennant flag flying from the aerial */}
+      {has(cust, 'flag', 'pennant') && (
+        <g>
+          <line x1={x + w - 3} y1={bodyY - 9} x2={x + w - 3} y2={bodyY - 18} stroke="#475569" strokeWidth={0.7} />
+          <polygon
+            points={`${x + w - 3},${bodyY - 18} ${x + w + 4},${bodyY - 16.5} ${x + w - 3},${bodyY - 15}`}
+            fill="#f472b6"
+          />
+        </g>
+      )}
       {has(cust, 'lights', 'lights') && (
         <>
           <circle cx={x + w - 1} cy={bodyY + 4} r={1.6} fill="#fde68a" />
@@ -483,10 +639,16 @@ function Car({ variant, cust, stage }: DrawProps) {
 }
 
 function BeachHouse({ variant, cust, stage }: DrawProps) {
-  const color = (variant && WALL_COLORS[variant]) || '#f1f5f9'
+  const form = cust.form
+  // Evolution fork (ADR-0021): `lighthouse_keeper` raises a striped tower beside the cottage;
+  // `stilt_house` lifts the whole house on tall stilts over the sand; `cabana` lightens it to
+  // an airy striped beach hut.
+  const color =
+    form === 'cabana' ? '#fef9c3' : (variant && WALL_COLORS[variant]) || '#f1f5f9'
   const k = 0.92 + 0.09 * stage
   const wallH = (18 + 2 * stage) * Math.min(k, 1.18)
-  const deck = GROUND - 6
+  const stilt = form === 'stilt_house'
+  const deck = GROUND - 6 - (stilt ? 8 : 0)
   const wallY = deck - wallH
   const w = 22 + 2 * stage
   const x = 40 - w / 2
@@ -495,9 +657,34 @@ function BeachHouse({ variant, cust, stage }: DrawProps) {
   return (
     <g>
       {has(cust, 'garden', 'garden') && <Garden y={GROUND - 2} />}
-      <rect x={x + 2} y={deck} width={3} height={6} fill="#a87b50" />
-      <rect x={x + w - 5} y={deck} width={3} height={6} fill="#a87b50" />
+      {/* stilt_house form: tall stilts lift the house, with cross-bracing */}
+      {stilt ? (
+        <g stroke="#a87b50" strokeWidth={2.4}>
+          <line x1={x + 3} y1={deck} x2={x + 3} y2={GROUND} />
+          <line x1={x + w - 3} y1={deck} x2={x + w - 3} y2={GROUND} />
+          <line x1={x + 3} y1={deck + 4} x2={x + w - 3} y2={GROUND - 2} strokeWidth={1} />
+        </g>
+      ) : (
+        <>
+          <rect x={x + 2} y={deck} width={3} height={6} fill="#a87b50" />
+          <rect x={x + w - 5} y={deck} width={3} height={6} fill="#a87b50" />
+        </>
+      )}
+      {/* lighthouse_keeper form: a red-white banded tower with a lamp room */}
+      {form === 'lighthouse_keeper' && (
+        <g>
+          <rect x={x + w - 1} y={wallY - 14} width={7} height={wallH + 14} fill="#f1f5f9" />
+          <rect x={x + w - 1} y={wallY - 14} width={7} height={5} fill="#dc2626" />
+          <rect x={x + w - 1} y={wallY - 2} width={7} height={5} fill="#dc2626" />
+          <rect x={x + w - 1.5} y={wallY - 18} width={8} height={4} rx={1} fill="#fde68a" />
+        </g>
+      )}
       <rect x={x} y={wallY} width={w} height={wallH} fill={color} />
+      {/* cabana stripes */}
+      {form === 'cabana' &&
+        [0, 2, 4].map((i) => (
+          <rect key={i} x={x} y={wallY + 2 + i * (wallH / 3)} width={w} height={wallH / 6} fill="#38bdf8" opacity={0.5} />
+        ))}
       <polygon points={`${x - 2},${wallY} ${x + w + 2},${wallY} ${cx},${wallY - 14}`} fill="#0ea5e9" />
       <rect x={x + 4} y={wallY + 4} width={5} height={5} fill={litWindow} />
       {/* a second window + a railed sun-deck fill in as the beach house grows */}
@@ -509,15 +696,76 @@ function BeachHouse({ variant, cust, stage }: DrawProps) {
           <line x1={x + w - 6} y1={deck} x2={x + w - 6} y2={deck + 4} />
         </g>
       )}
+      {/* venerable (stage 5): a weathered, sun-bleached look — a driftwood gull-perch finial,
+          a third porthole window, and sea-grass tufts at the base — older than `ancient`. */}
+      {stage >= 5 && (
+        <g>
+          <circle cx={cx} cy={wallY + 9} r={2.4} fill="none" stroke="#0ea5e9" strokeWidth={1} />
+          <line x1={cx} y1={wallY - 14} x2={cx} y2={wallY - 18} stroke="#a87b50" strokeWidth={1} />
+          <g stroke="#65a30d" strokeWidth={1} strokeLinecap="round">
+            <line x1={x - 2} y1={GROUND} x2={x - 3} y2={GROUND - 4} />
+            <line x1={x} y1={GROUND} x2={x + 1} y2={GROUND - 5} />
+          </g>
+        </g>
+      )}
+      {/* bunting slot (ADR-0021): a string of triangular flags strung along the eave */}
+      {has(cust, 'bunting', 'bunting') && (
+        <g>
+          <path d={`M${x - 1} ${wallY + 1} q${w / 2} 4 ${w + 2} 0`} stroke="#94a3b8" strokeWidth={0.5} fill="none" />
+          {[0.15, 0.38, 0.62, 0.85].map((f, i) => {
+            const fx = x - 1 + f * (w + 2)
+            const fy = wallY + 1 + Math.sin(f * Math.PI) * 4
+            return (
+              <polygon
+                key={f}
+                points={`${fx - 1.6},${fy} ${fx + 1.6},${fy} ${fx},${fy + 3}`}
+                fill={['#f87171', '#fbbf24', '#34d399', '#60a5fa'][i % 4]}
+              />
+            )
+          })}
+        </g>
+      )}
       {has(cust, 'lights', 'lights') && <Lights y={wallY - 1} x={x} w={w} />}
     </g>
   )
 }
 
 function Boat({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const hull = variant === 'white' ? '#e2e8f0' : '#a16207'
   const k = 0.9 + 0.1 * stage
-  const sailH = 22 * k
+  // Evolution fork (ADR-0021): `sailboat` raises a tall second mast of full sails;
+  // `fishing_boat` is a stout trawler with a cabin + a hauling net instead of big sails.
+  const sailH = 22 * k * (form === 'sailboat' ? 1.25 : 1)
+  if (form === 'fishing_boat') {
+    return (
+      <g>
+        <ellipse cx={40} cy={68} rx={22} ry={5} fill="#bae6fd" />
+        <path d="M25 60 L55 60 L49 68 L31 68 Z" fill={hull} />
+        {/* wheelhouse cabin */}
+        <rect x={34} y={50} width={12} height={10} rx={1} fill="#f1f5f9" />
+        <rect x={36} y={52} width={3} height={3} fill="#bae6fd" />
+        <rect x={41} y={52} width={3} height={3} fill="#bae6fd" />
+        {/* a short mast with a hauling-net derrick */}
+        <rect x={47} y={42} width={1.6} height={18} fill="#7c5210" />
+        <line x1={47.8} y1={44} x2={56} y2={56} stroke="#7c5210" strokeWidth={1} />
+        <path d="M52 54 q2 4 4 2" stroke="#94a3b8" strokeWidth={0.6} fill="none" />
+        {stage >= 5 && <ellipse cx={28} cy={59} rx={2.4} ry={1} fill="#cbd5e1" opacity={0.7} />}
+        {has(cust, 'pennant', 'pennant') && (
+          <g>
+            <line x1={47.8} y1={42} x2={47.8} y2={36} stroke="#475569" strokeWidth={0.6} />
+            <polygon points="47.8,36 54,37.2 47.8,38.4" fill="#fb7185" />
+          </g>
+        )}
+        {has(cust, 'lights', 'lights') && (
+          <>
+            <circle cx={30} cy={58} r={1.3} fill="#fbbf24" />
+            <circle cx={50} cy={58} r={1.3} fill="#fbbf24" />
+          </>
+        )}
+      </g>
+    )
+  }
   return (
     <g>
       <ellipse cx={40} cy={68} rx={22} ry={5} fill="#bae6fd" />
@@ -528,6 +776,29 @@ function Boat({ variant, cust, stage }: DrawProps) {
       {stage >= 2 && <polygon points={`40,${61 - sailH + 4} 40,59 28,60`} fill="#e2e8f0" />}
       {stage >= 4 && (
         <polygon points={`41,${61 - sailH} 41,${61 - sailH + 4} 48,${61 - sailH + 2}`} fill="#fb7185" />
+      )}
+      {/* sailboat form: a second taller mast + full mainsail abaft, a proper tall ship */}
+      {form === 'sailboat' && (
+        <g>
+          <rect x={45} y={61 - sailH * 0.85} width={1.6} height={sailH * 0.85} fill="#7c5210" />
+          <polygon points={`45.8,${61 - sailH * 0.85 + 2} 45.8,60 36,60`} fill="#f8fafc" />
+        </g>
+      )}
+      {/* venerable (stage 5): a sun-faded sail (a patched seam) + a gentle wake — well-sailed */}
+      {stage >= 5 && (
+        <g>
+          <line x1={42} y1={61 - sailH + 8} x2={50} y2={59.6} stroke="#cbd5e1" strokeWidth={0.6} />
+          <path d="M18 67 q4 -2 8 0" stroke="#7dd3fc" strokeWidth={1} fill="none" opacity={0.7} />
+        </g>
+      )}
+      {/* pennant slot (ADR-0021): a pennant streaming from the masthead */}
+      {has(cust, 'pennant', 'pennant') && (
+        <g>
+          <polygon
+            points={`41,${61 - sailH} 48,${61 - sailH + 1.6} 41,${61 - sailH + 3.2}`}
+            fill="#f472b6"
+          />
+        </g>
       )}
       {has(cust, 'lights', 'lights') && (
         <>
