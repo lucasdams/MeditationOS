@@ -1595,13 +1595,13 @@ def test_grown_first_rung_cost_is_unchanged_for_legacy_compat():
     assert SANCTUARY_CATALOG["flower"].slot("grown").option("grown").cost == round(25 * 1.5)
 
 
-def test_forks_applied_to_nature_and_structure_tracks_only_so_far():
-    """The evolution fork has rolled out to the NATURE (ADR-0021 part 1) and STRUCTURE
-    (part 2) tracks. Every nature and structure item has a `form` slot; companion/whimsy
-    items don't yet (those land in later PRs)."""
+def test_forks_applied_to_nature_structure_and_companion_tracks_only_so_far():
+    """The evolution fork has rolled out to the NATURE (ADR-0021 part 1), STRUCTURE (part 2),
+    and COMPANION (part 3) tracks. Every nature, structure, and companion item has a `form`
+    slot; the whimsy track doesn't yet (that lands in a later PR)."""
     for key, item in SANCTUARY_CATALOG.items():
         has_form = item.slot("form") is not None
-        if item.track in ("nature", "structure"):
+        if item.track in ("nature", "structure", "companion"):
             assert has_form, f"{item.track} item {key} is missing its form fork"
         else:
             assert not has_form, f"{item.track} item {key} should not have a form fork yet"
@@ -1943,3 +1943,172 @@ def test_structure_legacy_grown_grown_row_spend_unchanged(client, db_session):
     grown_cost = hut_item.slot("grown").option("grown").cost
     assert grown_cost == round(60 * 1.5)  # hut base_size is 60
     assert scene["coins"] == before - (hut_item.cost + grown_cost)
+
+
+# --- Evolution-tree: COMPANION track (ADR-0021, part 3) -----------------------------------
+#
+# The same framework (the `form` evolution fork + the shared `venerable` growth rung + a
+# companion-appropriate additive slot) applied to the companion track. For companions the
+# forms read as personality/pose/markings (dog → playful / regal / guardian). The additive
+# slot is a `toy` that does NOT duplicate the existing headwear / collar / attire dress-up
+# slots (ADR-0020). Same guarantees: mutually-exclusive forms gated at/above the ladder top,
+# derived balance, no migration, and the legacy {"grown":"grown"} spend untouched.
+
+# The companion items the evolution tree was applied to in this pass. Each gains a `form`
+# fork + the shared extra growth stage + one additive `toy` slot.
+_COMPANION_FORK_ITEMS = (
+    "goldfish",
+    "bird",
+    "cat",
+    "snake",
+    "fox",
+    "hedgehog",
+    "snail",
+    "dog",
+)
+
+# The pre-existing companion dress-up slots (ADR-0020) the new additive slot must NOT duplicate.
+_COMPANION_EXISTING_SLOTS = ("accessory", "headwear", "collar", "attire", "grown", "form")
+
+
+def test_every_companion_item_has_a_form_fork():
+    """Every companion item gained a `form` fork; it's the complete companion track."""
+    companions = {k for k, i in SANCTUARY_CATALOG.items() if i.track == "companion"}
+    assert companions == set(_COMPANION_FORK_ITEMS)
+    for key in _COMPANION_FORK_ITEMS:
+        assert SANCTUARY_CATALOG[key].slot("form") is not None, key
+
+
+def test_companion_form_fork_is_one_mutually_exclusive_slot_gated_high():
+    """Each companion item's `form` is a single slot of 2–3 named forms (the fork = within-slot
+    mutual exclusivity), every form gated at or above the top of the growth ladder."""
+    for key in _COMPANION_FORK_ITEMS:
+        form = SANCTUARY_CATALOG[key].slot("form")
+        assert form is not None, key
+        opts = form.options
+        assert 2 <= len(opts) <= 3, f"{key}: a fork should offer 2–3 forms, got {len(opts)}"
+        # Distinct option keys + distinct costs (a clean, unambiguous fork).
+        assert len({o.key for o in opts}) == len(opts), key
+        assert len({o.cost for o in opts}) == len(opts), f"{key}: form costs not distinct"
+        # Every form is a late-game choice: gated at/above the top of the growth ladder.
+        for o in opts:
+            assert o.cost > 0, (key, o.key)
+            assert o.unlock_level >= TOP_GROWTH_UNLOCK, (
+                f"{key}.{o.key}: form unlock {o.unlock_level} below ladder top {TOP_GROWTH_UNLOCK}"
+            )
+
+
+def test_companion_form_fork_is_mutually_exclusive_at_runtime(client):
+    """Choosing a second companion form *replaces* the first (mutually-exclusive within the one
+    `form` slot) and charges only the difference — the fork, end to end."""
+    _auth(client, "comp-fork-runtime@example.com")
+    _earn_to_level(client, 12)  # high enough that the late-game forms unlock + afford
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "dog"}).json()
+    dog_id = next(o for o in bought["owned"] if o["item_key"] == "dog")["id"]
+    form = SANCTUARY_CATALOG["dog"].slot("form")
+    playful = form.option("playful").cost
+    regal = form.option("regal").cost
+
+    coins0 = _scene(client)["coins"]
+    r1 = client.post(
+        f"/api/v1/sanctuary/items/{dog_id}/customize",
+        json={"slot": "form", "option": "playful"},
+    )
+    assert r1.status_code == 200, r1.json()
+    assert r1.json()["coins"] == coins0 - playful
+    r2 = client.post(
+        f"/api/v1/sanctuary/items/{dog_id}/customize",
+        json={"slot": "form", "option": "regal"},
+    )
+    assert r2.status_code == 200, r2.json()
+    only = next(o for o in r2.json()["owned"] if o["item_key"] == "dog")
+    assert only["customizations"] == {"form": "regal"}  # playful replaced, not added
+    assert r2.json()["coins"] == coins0 - playful - (regal - playful)  # == coins0 - regal
+
+
+def test_companion_form_fork_is_level_gated_for_a_fresh_user(client):
+    """A fresh level-1 user sees every goldfish form locked (gated at/above the ladder top) and
+    cannot apply one — the companion fork is strictly late-game (ADR-0021)."""
+    _auth(client, "comp-fork-gate@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "goldfish"}).json()
+    fish = bought["owned"][0]
+    fish_id = fish["id"]
+    form_slot = next(s for s in fish["available"] if s["slot"] == "form")
+    for o in form_slot["options"]:
+        assert o["unlocked"] is False, o["option"]
+        assert "level" in (o["unlock_hint"] or "")
+    res = client.post(
+        f"/api/v1/sanctuary/items/{fish_id}/customize",
+        json={"slot": "form", "option": form_slot["options"][0]["option"]},
+    )
+    assert res.status_code == 409
+
+
+def test_every_companion_item_gained_a_new_additive_toy_slot(client):
+    """Each companion gained one additive `toy` slot — independent of the fork/ladder and NOT a
+    duplicate of the existing headwear / collar / attire dress-up slots (ADR-0020)."""
+    for key in _COMPANION_FORK_ITEMS:
+        item = SANCTUARY_CATALOG[key]
+        slot = item.slot("toy")
+        assert slot is not None and slot.options, f"{key} missing additive toy slot"
+        # The new slot is a genuinely new axis, not one of the pre-existing companion slots.
+        assert "toy" not in _COMPANION_EXISTING_SLOTS
+
+
+def test_companion_additive_slot_is_independent_of_form_and_grown(client):
+    """A dog can carry a growth stage AND an evolved form AND a toy all at once — three
+    independent slots, each charged its own option cost (ADR-0021)."""
+    _auth(client, "comp-independent@example.com")
+    _earn_to_level(client, 12)
+    item = SANCTUARY_CATALOG["dog"]
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "dog"}).json()
+    dog_id = next(o for o in bought["owned"] if o["item_key"] == "dog")["id"]
+
+    coins = _scene(client)["coins"]
+    picks = [("grown", "grown"), ("form", "playful"), ("toy", "ball")]
+    spent = 0
+    for slot, option in picks:
+        res = client.post(
+            f"/api/v1/sanctuary/items/{dog_id}/customize",
+            json={"slot": slot, "option": option},
+        )
+        assert res.status_code == 200, (slot, option, res.json())
+        spent += item.slot(slot).option(option).cost
+    only = next(o for o in _scene(client)["owned"] if o["item_key"] == "dog")
+    assert only["customizations"] == {"grown": "grown", "form": "playful", "toy": "ball"}
+    assert _scene(client)["coins"] == coins - spent
+
+
+def test_companion_legacy_grown_grown_row_spend_unchanged(client, db_session):
+    """A legacy {"grown":"grown"} row on a COMPANION item resolves to stage 1 and its spend is
+    exactly base + round(base_size * 1.5) — the companion forks/slots never shift it."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "comp-legacy@example.com")
+    _earn_to_level(client, 6)
+    before = _scene(client)["coins"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "comp-legacy@example.com")
+    ).scalar_one()
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="cat",
+            position=0,
+            cell=0,
+            variant="gray",
+            customizations={"grown": "grown"},
+        )
+    )
+    db_session.commit()
+
+    scene = _scene(client)
+    cat = next(o for o in scene["owned"] if o["item_key"] == "cat")
+    assert cat["customizations"] == {"grown": "grown"}
+    cat_item = SANCTUARY_CATALOG["cat"]
+    grown_cost = cat_item.slot("grown").option("grown").cost
+    assert grown_cost == round(50 * 1.5)  # cat base_size is 50
+    assert scene["coins"] == before - (cat_item.cost + grown_cost)

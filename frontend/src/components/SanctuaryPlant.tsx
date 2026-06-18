@@ -936,6 +936,111 @@ function Wearables({ cust, headX, headY }: { cust: Cust; headX: number; headY: n
   )
 }
 
+// The companion `toy` slot (ADR-0021): one small plaything set on the ground beside the
+// character at (x, y). Independent of the dress-up slots above, so a pet can wear a hat AND
+// have a ball. Each option draws a distinct little prop; unknown options draw nothing.
+function Toy({ cust, x, y }: { cust: Cust; x: number; y: number }) {
+  const toy = cust.toy
+  if (toy === 'ball') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={3} fill="#ef4444" />
+        <path d={`M${x - 3} ${y} q3 -2 6 0`} stroke="#fff" strokeWidth={0.6} fill="none" />
+        <path d={`M${x - 3} ${y} q3 2 6 0`} stroke="#fff" strokeWidth={0.6} fill="none" />
+      </g>
+    )
+  }
+  if (toy === 'stick') {
+    return <rect x={x - 4} y={y} width={9} height={2} rx={1} fill="#a16207" transform={`rotate(-12 ${x} ${y})`} />
+  }
+  if (toy === 'bone') {
+    return (
+      <g fill="#f1f5f9" stroke="#cbd5e1" strokeWidth={0.4}>
+        <circle cx={x - 3} cy={y - 1} r={1.4} />
+        <circle cx={x - 3} cy={y + 1} r={1.4} />
+        <circle cx={x + 3} cy={y - 1} r={1.4} />
+        <circle cx={x + 3} cy={y + 1} r={1.4} />
+        <rect x={x - 3} y={y - 1} width={6} height={2} />
+      </g>
+    )
+  }
+  if (toy === 'yarn') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={3} fill="#f472b6" />
+        <path d={`M${x - 2.6} ${y - 1.4} q5 1 5 2.8 M${x - 2.8} ${y + 1} q4 -1 5.4 -2.4`} stroke="#be185d" strokeWidth={0.5} fill="none" />
+        <path d={`M${x + 3} ${y} q3 1 1 3`} stroke="#be185d" strokeWidth={0.5} fill="none" />
+      </g>
+    )
+  }
+  if (toy === 'feather') {
+    return (
+      <g>
+        <line x1={x - 3} y1={y + 2} x2={x + 2} y2={y - 4} stroke="#a16207" strokeWidth={0.7} />
+        <ellipse cx={x + 3} cy={y - 5} rx={1.6} ry={3} fill="#34d399" transform={`rotate(35 ${x + 3} ${y - 5})`} />
+      </g>
+    )
+  }
+  if (toy === 'apple') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={2.6} fill="#dc2626" />
+        <rect x={x - 0.3} y={y - 4} width={0.8} height={2} fill="#7c5210" />
+        <ellipse cx={x + 1.6} cy={y - 3} rx={1.4} ry={0.8} fill="#16a34a" transform={`rotate(-30 ${x + 1.6} ${y - 3})`} />
+      </g>
+    )
+  }
+  if (toy === 'leaf_toy') {
+    return <path d={`M${x} ${y} q4 -5 8 -2 q-3 4 -8 2z`} fill="#65a30d" />
+  }
+  if (toy === 'basking_stone') {
+    return (
+      <g>
+        <ellipse cx={x} cy={y + 1} rx={5} ry={2.4} fill="#94a3b8" />
+        <ellipse cx={x - 1} cy={y} rx={3} ry={1.6} fill="#cbd5e1" />
+      </g>
+    )
+  }
+  if (toy === 'bell_toy') {
+    // A hanging perch-bell on a short string.
+    return (
+      <g>
+        <line x1={x} y1={y - 7} x2={x} y2={y - 2} stroke="#94a3b8" strokeWidth={0.6} />
+        <path d={`M${x - 2.4} ${y} q0 -3 2.4 -3 q2.4 0 2.4 3 z`} fill="#fbbf24" stroke="#b45309" strokeWidth={0.4} />
+        <circle cx={x} cy={y + 1} r={0.9} fill="#92400e" />
+      </g>
+    )
+  }
+  if (toy === 'mirror') {
+    return (
+      <g>
+        <circle cx={x} cy={y} r={3} fill="#bae6fd" stroke="#94a3b8" strokeWidth={1} />
+        <path d={`M${x - 1.4} ${y - 1.4} l1.6 1.6`} stroke="#fff" strokeWidth={0.8} />
+      </g>
+    )
+  }
+  if (toy === 'bubble_ring') {
+    return (
+      <g fill="none" stroke="#e0f2fe">
+        <circle cx={x} cy={y} r={2.4} strokeWidth={0.8} />
+        <circle cx={x + 4} cy={y - 3} r={1.4} strokeWidth={0.7} />
+        <circle cx={x - 3} cy={y - 4} r={1} strokeWidth={0.6} />
+      </g>
+    )
+  }
+  if (toy === 'treasure') {
+    // A tiny sunken treasure chest.
+    return (
+      <g>
+        <rect x={x - 3} y={y - 1} width={6} height={4} rx={0.6} fill="#a16207" />
+        <path d={`M${x - 3} ${y - 1} q3 -3 6 0z`} fill="#7c5210" />
+        <rect x={x - 0.6} y={y - 1} width={1.2} height={4} fill="#fbbf24" />
+      </g>
+    )
+  }
+  return null
+}
+
 const FUR: Record<string, string> = {
   gray: '#9ca3af',
   ginger: '#f59e0b',
@@ -957,69 +1062,170 @@ const FUR: Record<string, string> = {
 }
 
 function Bird({ variant, cust, stage }: DrawProps) {
-  const c = FUR[variant ?? 'bluebird'] ?? '#38bdf8'
+  const form = cust.form
+  // Evolution fork (ADR-0021): `songful` adds little song-notes; `plumed` raises a showy crest;
+  // `migratory` tints the plumage to a far-traveller's slate with a rust breast.
+  const base = FUR[variant ?? 'bluebird'] ?? '#38bdf8'
+  const c = form === 'migratory' ? '#64748b' : base
   const s = 1 + 0.1 * stage
   return (
     <g>
       <ellipse cx={40} cy={67} rx={12} ry={4} fill="#a16207" />
       <ellipse cx={39} cy={58} rx={9 * s} ry={7 * s} fill={c} />
+      {/* migratory form: a rust-coloured breast patch of the long-haul traveller */}
+      {form === 'migratory' && <ellipse cx={37} cy={60} rx={4} ry={3.4} fill="#c2410c" />}
       <circle cx={47} cy={53} r={4 * s} fill={c} />
+      {/* plumed form: a swept-back head crest */}
+      {form === 'plumed' && <polygon points="47,49 49,43 51,49" fill="#f59e0b" />}
       <polygon points="50,53 54,52 54,55" fill="#f59e0b" />
       <ellipse cx={37} cy={58} rx={5 * s} ry={4 * s} fill="#0ea5e9" opacity={0.5} />
       {/* a fuller tail fans out as the bird matures */}
       {stage >= 3 && <polygon points={`30,57 ${24 - stage},55 ${24 - stage},61`} fill={c} />}
+      {/* venerable (stage 5): a distinguished elder — a broad fanned tail with two long
+          tail-streamers, reading visibly grander than `ancient` */}
+      {stage >= 5 && (
+        <g>
+          <polygon points="30,57 19,52 19,62" fill={c} />
+          <path d="M22 60 q-6 2 -9 5" stroke={c} strokeWidth={1.2} fill="none" strokeLinecap="round" />
+          <path d="M22 62 q-6 3 -8 7" stroke={c} strokeWidth={1.2} fill="none" strokeLinecap="round" />
+        </g>
+      )}
+      {/* songful form: a couple of song-notes drifting from the beak */}
+      {form === 'songful' && (
+        <g fill="#fbbf24">
+          <circle cx={58} cy={49} r={1.2} />
+          <rect x={58.8} y={45} width={0.8} height={4} />
+          <circle cx={62} cy={46} r={1} />
+          <rect x={62.6} y={42.5} width={0.7} height={3.5} />
+        </g>
+      )}
       <circle cx={48} cy={52} r={1} fill="#1c1c1e" />
       <Wearables cust={cust} headX={47} headY={53} />
+      <Toy cust={cust} x={26} y={64} />
     </g>
   )
 }
 
 function Fox({ variant, cust, stage }: DrawProps) {
-  const c = FUR[variant ?? 'red'] ?? '#ea580c'
-  const belly = variant === 'arctic' ? '#f1f5f9' : '#fff'
+  const form = cust.form
+  // Evolution fork (ADR-0021): `woodland` recolours to a leaf-dappled forest russet, `arctic_form`
+  // to a snowy white coat, `fire_kissed` to a deep ember-orange. Each overrides the variant fur.
+  const c =
+    form === 'woodland'
+      ? '#7c5c1e'
+      : form === 'arctic_form'
+        ? '#e0f2fe'
+        : form === 'fire_kissed'
+          ? '#c2410c'
+          : FUR[variant ?? 'red'] ?? '#ea580c'
+  const belly = variant === 'arctic' || form === 'arctic_form' ? '#f1f5f9' : '#fff'
   const s = 1 + 0.1 * stage
   return (
     <g>
       <ellipse cx={40} cy={62} rx={11 * s} ry={8 * s} fill={c} />
       <ellipse cx={51} cy={64} rx={5 * s} ry={3 * s} fill={belly} />
+      {/* woodland form: a couple of fallen leaves dappling the coat */}
+      {form === 'woodland' &&
+        [
+          [36, 60],
+          [44, 63],
+        ].map(([lx, ly], i) => (
+          <path key={i} d={`M${lx} ${ly} q3 -3 5 -1 q-2 3 -5 1z`} fill={i ? '#ca8a04' : '#b45309'} />
+        ))}
+      {/* fire_kissed form: a couple of warm ember sparks rising from the brush */}
+      {form === 'fire_kissed' && (
+        <g fill="#fbbf24">
+          <circle cx={28} cy={58} r={1} />
+          <circle cx={26} cy={54} r={0.8} />
+        </g>
+      )}
       <circle cx={40} cy={50} r={6 * s} fill={c} />
       <polygon points="35,46 33,38 39,44" fill={c} />
       <polygon points="45,46 47,38 41,44" fill={c} />
       <polygon points="40,50 36,52 44,52" fill={belly} />
+      {/* venerable (stage 5): a grand silver-tipped brush sweeps out behind — visibly elder */}
+      {stage >= 5 && (
+        <g>
+          <path d="M30 64 q-12 -1 -16 -8" stroke={c} strokeWidth={5} fill="none" strokeLinecap="round" />
+          <circle cx={14} cy={56} r={2.4} fill="#f1f5f9" />
+        </g>
+      )}
       <circle cx={37} cy={49} r={1} fill="#1c1c1e" />
       <circle cx={43} cy={49} r={1} fill="#1c1c1e" />
       <Wearables cust={cust} headX={40} headY={50} />
+      <Toy cust={cust} x={58} y={66} />
     </g>
   )
 }
 
 function Cat({ variant, cust, stage }: DrawProps) {
-  const c = FUR[variant ?? 'gray'] ?? '#9ca3af'
+  const form = cust.form
+  // Evolution fork (ADR-0021): `mystic` recolours to a deep twilight purple; `lap_cat` and
+  // `sleek_hunter` keep the variant fur but reshape the pose (a curled-up loaf vs. a lithe
+  // crouch with a longer body).
+  const c = form === 'mystic' ? '#7c6aa8' : FUR[variant ?? 'gray'] ?? '#9ca3af'
   const s = 1 + 0.1 * stage
+  const bodyRx = (form === 'sleek_hunter' ? 12 : form === 'lap_cat' ? 11 : 10) * s
+  const bodyRy = (form === 'lap_cat' ? 7 : 8) * s
   return (
     <g>
       <path d="M50 64 q11 -1 6 -13" stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" />
-      <ellipse cx={40} cy={62} rx={10 * s} ry={8 * s} fill={c} />
+      <ellipse cx={40} cy={62} rx={bodyRx} ry={bodyRy} fill={c} />
+      {/* lap_cat form: a curled-up loaf — paws tucked, a soft tail wrapped round the front */}
+      {form === 'lap_cat' && (
+        <path d="M30 64 q-3 -6 4 -8" stroke={c} strokeWidth={2.4} fill="none" strokeLinecap="round" />
+      )}
       <circle cx={40} cy={50} r={6 * s} fill={c} />
       <polygon points="36,46 34,37 39,44" fill={c} />
       <polygon points="44,46 46,37 41,44" fill={c} />
       <polygon points="37,45 36,40 39,44" fill="#f9a8d4" />
       <polygon points="43,45 44,40 41,44" fill="#f9a8d4" />
       <polygon points="40,51 38,53 42,53" fill="#6b7280" />
+      {/* mystic form: a small third-eye gem on the brow + a faint aura */}
+      {form === 'mystic' && (
+        <g>
+          <circle cx={40} cy={50} r={8 * s} fill="#a78bfa" opacity={0.18} />
+          <polygon points="40,45 41.4,46.6 40,48.2 38.6,46.6" fill="#c4b5fd" />
+        </g>
+      )}
       <circle cx={37} cy={49} r={1} fill="#1c1c1e" />
       <circle cx={43} cy={49} r={1} fill="#1c1c1e" />
+      {/* venerable (stage 5): a grand elder cat — long whiskers + a luxuriant high-curled tail */}
+      {stage >= 5 && (
+        <g>
+          <path d="M50 64 q14 -2 7 -16" stroke={c} strokeWidth={3.4} fill="none" strokeLinecap="round" />
+          <g stroke="#cbd5e1" strokeWidth={0.5}>
+            <line x1={34} y1={50} x2={27} y2={48} />
+            <line x1={34} y1={52} x2={27} y2={53} />
+          </g>
+        </g>
+      )}
       <Wearables cust={cust} headX={40} headY={50} />
+      <Toy cust={cust} x={58} y={66} />
     </g>
   )
 }
 
 function Dog({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const c = FUR[variant ?? 'corgi'] ?? '#a16207'
   const ear = variant === 'husky' ? '#475569' : '#7c3f10'
   const s = 1 + 0.12 * stage
+  // Evolution fork (ADR-0021): `playful` lolls its tongue + a bouncy raised tail; `regal` adds a
+  // noble cape + a held-high posture; `guardian` adds an alert stance + a watchful collar-badge.
   return (
     <g>
-      <path d="M50 62 q9 -4 11 -10" stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" />
+      {/* regal form: a draped cape behind the shoulders */}
+      {form === 'regal' && (
+        <path d="M30 56 q-6 8 -3 14 q10 -2 13 -2 z" fill="#7c3aed" opacity={0.9} />
+      )}
+      <path
+        d={form === 'playful' ? 'M50 62 q11 -6 8 -16' : 'M50 62 q9 -4 11 -10'}
+        stroke={c}
+        strokeWidth={3}
+        fill="none"
+        strokeLinecap="round"
+      />
       <ellipse cx={40} cy={62} rx={11 * s} ry={8 * s} fill={c} />
       {variant === 'dalmatian' && (
         <g fill="#1f2937">
@@ -1033,38 +1239,102 @@ function Dog({ variant, cust, stage }: DrawProps) {
       <ellipse cx={47} cy={50} rx={2.5 * s} ry={5 * s} fill={ear} />
       <ellipse cx={40} cy={53} rx={4} ry={3} fill="#d4a373" />
       <circle cx={40} cy={52} r={1.4} fill="#1c1c1e" />
+      {/* playful form: a lolling pink tongue */}
+      {form === 'playful' && <ellipse cx={40} cy={56} rx={1.4} ry={2.4} fill="#f472b6" />}
       <circle cx={37} cy={48} r={1} fill="#1c1c1e" />
       <circle cx={43} cy={48} r={1} fill="#1c1c1e" />
+      {/* guardian form: a small watchful badge on the chest */}
+      {form === 'guardian' && (
+        <g>
+          <circle cx={40} cy={60} r={2} fill="#fbbf24" stroke="#b45309" strokeWidth={0.5} />
+          <polygon points="40,58.6 40.6,60 40,61.4 39.4,60" fill="#b45309" />
+        </g>
+      )}
+      {/* venerable (stage 5): a grand grey-muzzled elder — a wise greyed snout + bushy brows */}
+      {stage >= 5 && (
+        <g>
+          <ellipse cx={40} cy={53.5} rx={4} ry={2.4} fill="#e5e7eb" opacity={0.8} />
+          <path d="M35 47 q1.5 -1 3 0 M42 47 q1.5 -1 3 0" stroke="#e5e7eb" strokeWidth={1} fill="none" />
+        </g>
+      )}
       <Wearables cust={cust} headX={40} headY={50} />
+      <Toy cust={cust} x={58} y={66} />
     </g>
   )
 }
 
-function Goldfish({ variant, stage }: DrawProps) {
+function Goldfish({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const c = FUR[variant ?? 'orange'] ?? '#fb923c'
   const s = 1 + 0.12 * stage
+  // Evolution fork (ADR-0021): `fantail` flows a big trailing twin tail; `koi_kissed` adds bold
+  // koi blotches over the body.
+  const tail = form === 'fantail' ? '#fdba74' : '#f97316'
   return (
     <g>
       <ellipse cx={40} cy={66} rx={16} ry={5} fill="#bae6fd" />
-      <polygon points="33,60 25,56 25,64" fill="#f97316" />
+      {/* fantail form: a wide, flowing double tail-fin */}
+      {form === 'fantail' ? (
+        <g fill={tail} opacity={0.9}>
+          <path d="M33 60 q-12 -6 -10 0 q-3 4 10 2z" />
+          <path d="M33 61 q-12 2 -11 7 q5 1 11 -4z" />
+        </g>
+      ) : (
+        <polygon points="33,60 25,56 25,64" fill={tail} />
+      )}
       <ellipse cx={40} cy={60} rx={9 * s} ry={6 * s} fill={c} />
+      {/* koi_kissed form: a couple of bold koi blotches */}
+      {form === 'koi_kissed' && (
+        <g fill="#1c1c1e" opacity={0.85}>
+          <ellipse cx={38} cy={58} rx={2.4} ry={1.8} />
+          <ellipse cx={43} cy={62} rx={1.8} ry={1.4} fill="#dc2626" />
+        </g>
+      )}
       <polygon points="40,55 44,51 46,57" fill="#f97316" />
+      {/* venerable (stage 5): a grand old fish — long flowing whisker-barbels + a fuller dorsal */}
+      {stage >= 5 && (
+        <g>
+          <path d="M48 60 q5 1 7 4 M48 61 q5 3 6 6" stroke="#f59e0b" strokeWidth={0.6} fill="none" />
+          <path d="M37 54 q3 -4 6 0z" fill="#f97316" />
+        </g>
+      )}
       <circle cx={45} cy={59} r={1.2} fill="#1c1c1e" />
+      <Toy cust={cust} x={30} y={66} />
     </g>
   )
 }
 
 function Snake({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const c = FUR[variant ?? 'green'] ?? '#16a34a'
   const s = 1 + 0.13 * stage
   const headwear = cust.headwear ?? (cust.accessory === 'hat' ? 'hat' : undefined)
+  // Evolution fork (ADR-0021): `coiled` adds a second neat resting loop; `patterned` lays a row
+  // of regal diamond markings along the body.
   return (
     <g fill="none" stroke={c} strokeWidth={4 * s} strokeLinecap="round">
+      {/* coiled form: an extra resting loop beneath the body */}
+      {form === 'coiled' && <ellipse cx={40} cy={66} rx={15 * s} ry={3.4 * s} opacity={0.85} />}
       <ellipse cx={40} cy={63} rx={12 * s} ry={5 * s} />
       <path d="M40 60 q7 -9 2 -16" />
+      {/* patterned form: a line of diamond markings down the back */}
+      {form === 'patterned' && (
+        <g stroke="none" fill="#facc15">
+          {[59, 63, 67].map((cy, i) => (
+            <polygon key={i} points={`40,${cy - 2} 42,${cy} 40,${cy + 2} 38,${cy}`} />
+          ))}
+        </g>
+      )}
       <circle cx={41} cy={45} r={3.2 * s} fill={c} stroke="none" />
       <circle cx={42} cy={44} r={0.8} fill="#1c1c1e" stroke="none" />
       <path d="M41 42 L41 38 M41 38 l-1.5 -2 M41 38 l1.5 -2" stroke="#dc2626" strokeWidth={0.7} />
+      {/* venerable (stage 5): a venerable old serpent — a third deep coil + a wise brow ridge */}
+      {stage >= 5 && (
+        <g>
+          <ellipse cx={40} cy={68} rx={17 * s} ry={2.6 * s} opacity={0.6} />
+          <path d="M37 43 q4 -2 7 0" strokeWidth={1} />
+        </g>
+      )}
       {headwear === 'hat' && (
         <g stroke="none">
           <rect x={36} y={38} width={10} height={2.2} fill="#1f2937" />
@@ -1079,6 +1349,9 @@ function Snake({ variant, cust, stage }: DrawProps) {
           strokeWidth={0.5}
         />
       )}
+      <g stroke="none">
+        <Toy cust={cust} x={60} y={66} />
+      </g>
     </g>
   )
 }
@@ -1157,23 +1430,44 @@ function MushroomRing({ variant, cust, stage }: DrawProps) {
 const HEDGEHOG_BODY: Record<string, string> = { brown: '#92400e', cream: '#d6c1a8', salt: '#6b7280' }
 
 function Hedgehog({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const spine = HEDGEHOG_BODY[variant ?? 'brown'] ?? '#92400e'
   const s = 1 + 0.12 * stage
   const face = variant === 'cream' ? '#f5e6d3' : '#e9c9a3'
-  // More quills bristle out as the hedgehog grows up — visibly fuller each stage.
+  // Evolution fork (ADR-0021): `snug` rounds into a tucked-up ball with shorter quills; `forager`
+  // dresses the spines with carried autumn leaves.
+  const snug = form === 'snug'
+  // More quills bristle out as the hedgehog grows up — visibly fuller each stage; the snug ball
+  // pulls them shorter and rounder.
   const quillCount = 7 + stage
+  const quillTop = (snug ? 60 : 56) - 3 * s
   const spikes = Array.from({ length: quillCount }).map((_, i) => {
     const t = i / (quillCount - 1)
     const bx = 30 + t * 18
-    return <polygon key={i} points={`${bx},${64} ${bx + 2.4},${64} ${bx + 1.2},${56 - 3 * s}`} fill={spine} />
+    return <polygon key={i} points={`${bx},${64} ${bx + 2.4},${64} ${bx + 1.2},${quillTop}`} fill={spine} />
   })
   return (
     <g>
-      <ellipse cx={40} cy={64} rx={13 * s} ry={7 * s} fill={spine} />
+      <ellipse cx={40} cy={64} rx={(snug ? 11 : 13) * s} ry={(snug ? 8 : 7) * s} fill={spine} />
       {spikes}
+      {/* forager form: a couple of autumn leaves caught on the spines */}
+      {form === 'forager' &&
+        [
+          [34, 58, '#ca8a04'],
+          [42, 56, '#c2410c'],
+        ].map(([lx, ly, fill], i) => (
+          <path key={i} d={`M${lx} ${ly} q3 -4 6 -1 q-2 4 -6 1z`} fill={fill as string} />
+        ))}
       <ellipse cx={52} cy={64} rx={5 * s} ry={4 * s} fill={face} />
       <circle cx={56} cy={64} r={1.1} fill="#1c1c1e" />
       <circle cx={54} cy={62.5} r={0.9} fill="#1c1c1e" />
+      {/* venerable (stage 5): a wise elder — a couple of silvered quills + a brow tuft */}
+      {stage >= 5 && (
+        <g stroke="#e5e7eb" strokeWidth={0.9} strokeLinecap="round">
+          <line x1={36} y1={63} x2={35} y2={quillTop + 1} />
+          <line x1={44} y1={63} x2={45} y2={quillTop + 1} />
+        </g>
+      )}
       {has(cust, 'accessory', 'scarf') && (
         <g>
           <rect x={47} y={67} width={11} height={2.6} rx={1} fill="#ef4444" />
@@ -1185,6 +1479,7 @@ function Hedgehog({ variant, cust, stage }: DrawProps) {
       )}
       {/* new additive slots ride above the snout */}
       <Wearables cust={{ headwear: cust.headwear, attire: cust.attire }} headX={52} headY={60} />
+      <Toy cust={cust} x={24} y={66} />
     </g>
   )
 }
@@ -1192,23 +1487,48 @@ function Hedgehog({ variant, cust, stage }: DrawProps) {
 const SNAIL_SHELL: Record<string, string> = { amber: '#d97706', minty: '#34d399', rosy: '#fb7185' }
 
 function Snail({ variant, cust, stage }: DrawProps) {
-  const shell = SNAIL_SHELL[variant ?? 'amber'] ?? '#d97706'
+  const form = cust.form
+  // Evolution fork (ADR-0021): `garden` keeps a tidy mossy garden shell; `jeweled` turns the
+  // shell to a faceted gemstone.
+  const shell = form === 'jeweled' ? '#a855f7' : SNAIL_SHELL[variant ?? 'amber'] ?? '#d97706'
   const s = 1 + 0.13 * stage
   return (
     <g>
       <path d="M24 66 q4 4 14 3" stroke="#a3e635" strokeWidth={4 * s} fill="none" strokeLinecap="round" />
       <ellipse cx={48} cy={62} rx={9 * s} ry={9 * s} fill={shell} />
-      <ellipse cx={48} cy={62} rx={5.5 * s} ry={5.5 * s} fill="none" stroke="#fff7ed" strokeWidth={1.6} opacity={0.7} />
-      <circle cx={48} cy={62} r={2 * s} fill="#fff7ed" opacity={0.7} />
+      {form === 'jeweled' ? (
+        // a faceted gem shell: crossing highlight lines
+        <g stroke="#f5d0fe" strokeWidth={0.8} fill="none" opacity={0.9}>
+          <path d={`M48 ${62 - 8 * s} L48 ${62 + 8 * s} M${48 - 8 * s} 62 L${48 + 8 * s} 62`} />
+          <circle cx={48} cy={62} r={5.5 * s} />
+        </g>
+      ) : (
+        <>
+          <ellipse cx={48} cy={62} rx={5.5 * s} ry={5.5 * s} fill="none" stroke="#fff7ed" strokeWidth={1.6} opacity={0.7} />
+          <circle cx={48} cy={62} r={2 * s} fill="#fff7ed" opacity={0.7} />
+        </>
+      )}
+      {/* mossy_garden form: a tiny tuft of moss + a flower atop the shell */}
+      {form === 'mossy_garden' && (
+        <g>
+          <ellipse cx={48} cy={62 - 8 * s} rx={3} ry={1.6} fill="#65a30d" />
+          <circle cx={48} cy={62 - 9 * s} r={1.4} fill="#f472b6" />
+        </g>
+      )}
       <path d="M30 56 l-2 -6 M34 56 l1 -6" stroke="#a3e635" strokeWidth={1.4} strokeLinecap="round" />
       <circle cx={28} cy={49} r={1} fill="#1c1c1e" />
       <circle cx={35} cy={49} r={1} fill="#1c1c1e" />
+      {/* venerable (stage 5): a grand old shell — an extra outer spiral whorl ring */}
+      {stage >= 5 && (
+        <ellipse cx={48} cy={62} rx={8 * s} ry={8 * s} fill="none" stroke="#fff7ed" strokeWidth={1} opacity={0.5} />
+      )}
       {has(cust, 'accessory', 'hat') && (
         <g>
           <rect x={43} y={49} width={10} height={2.2} fill="#1f2937" />
           <rect x={45} y={44} width={6} height={5.5} fill="#1f2937" />
         </g>
       )}
+      <Toy cust={cust} x={20} y={67} />
     </g>
   )
 }

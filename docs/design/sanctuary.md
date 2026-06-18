@@ -93,7 +93,8 @@ in-code catalog (no migration, balance still derived):
 This is a **framework** built so the remaining tracks are a clean follow-up. Declaring a fork is one
 builder line — `.form(*_form_fork(base, …))` — and a stage is a one-token edit to three tuples.
 Rolled out **per track, one PR at a time**, with no framework churn. So far the **nature** track
-(part 1) and the **structure** track (part 2) have evolution trees; companion/whimsy follow next.
+(part 1), the **structure** track (part 2), and the **companion** track (part 3) have evolution
+trees; whimsy follows next.
 
 Nature track (part 1):
 
@@ -115,8 +116,23 @@ Structure track (part 2):
 | `beach_house` | cabana · lighthouse-keeper · stilt-house | `venerable` | `bunting` |
 | `boat` | sailboat · fishing-boat | `venerable` | `pennant` |
 
+Companion track (part 3) — for animals the forms read as personality / pose / markings, and the
+new additive slot is a `toy` (distinct from the existing headwear / collar / attire dress-up slots):
+
+| item | `form` fork | extra growth stage | additive slot |
+|------|-------------|--------------------|---------------|
+| `dog` | playful · regal · guardian | `venerable` | `toy` (ball · stick · bone) |
+| `cat` | lap-cat · sleek-hunter · mystic | `venerable` | `toy` (yarn · feather) |
+| `fox` | woodland · arctic · fire-kissed | `venerable` | `toy` (ball · stick) |
+| `bird` | songful · plumed · migratory | `venerable` | `toy` (bell-toy · mirror) |
+| `hedgehog` | snug · forager | `venerable` | `toy` (apple) |
+| `snake` | coiled · patterned | `venerable` | `toy` (basking-stone) |
+| `goldfish` | fantail · koi-kissed | `venerable` | `toy` (bubble-ring · treasure) |
+| `snail` | mossy-garden · jeweled | `venerable` | `toy` (leaf-toy) |
+
 Every new form, the `venerable` stage, and every additive option has distinct SVG art in
-`SanctuaryPlant.tsx` (the structure renderers reshape the silhouette per form and add a distinct
+`SanctuaryPlant.tsx` (the structure renderers reshape the silhouette per form, the companion
+renderers recolour/repose per form and add their `toy`, and each item gains a distinct
 `venerable`-stage look). The customize panel iterates slots generically, so each fork surfaces and is
 buyable with no bespoke UI ([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
 
