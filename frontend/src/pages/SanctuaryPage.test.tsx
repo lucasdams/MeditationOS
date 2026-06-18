@@ -314,6 +314,79 @@ describe('SanctuaryPage reset upgrades (ADR-0019)', () => {
   })
 })
 
+describe('SanctuaryPage upgrade preview (see-it-before-you-buy)', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+    customize.mockReset()
+  })
+
+  // An owned tree offering an unbought "fruit" foliage upgrade. When applied, the Tree renderer
+  // draws red fruit circles (fill #ef4444) — a stable marker that the preview merged the option.
+  const treeWithFoliage = (id: string) => ({
+    ...ownedItem(id, 0),
+    available: [
+      {
+        slot: 'foliage',
+        applied: null,
+        options: [
+          { option: 'fruit', cost: 8, unlocked: true, unlock_hint: null, affordable: true, applied: false },
+        ],
+      },
+    ],
+  })
+
+  // Count the fruit markers inside the dedicated preview stage only (not the garden card plant).
+  const fruitInPreview = () => {
+    const stage = document.querySelector('.sanctuary-preview-stage')
+    return stage ? stage.querySelectorAll('circle[fill="#ef4444"]').length : 0
+  }
+
+  it('previews an option on hover, then restores the current look on leave', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [treeWithFoliage('a')]))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+
+    // Before exploring: the preview shows the item as-is (no fruit, no "Preview" badge).
+    expect(fruitInPreview()).toBe(0)
+    expect(view.queryByText('Preview')).toBeNull()
+
+    // Hover the unbought fruit option → the preview redraws the tree WITH fruit, no purchase.
+    const fruitBtn = view.getByRole('button', { name: /Fruit/ })
+    fireEvent.mouseEnter(fruitBtn)
+    expect(fruitInPreview()).toBeGreaterThan(0)
+    expect(view.getByText('Preview')).toBeInTheDocument()
+    expect(customize).not.toHaveBeenCalled() // view-only — nothing bought
+
+    // Leaving the option restores the current (un-upgraded) look.
+    fireEvent.mouseLeave(fruitBtn)
+    expect(fruitInPreview()).toBe(0)
+    expect(view.queryByText('Preview')).toBeNull()
+  })
+
+  it('previews on keyboard focus too (not hover-only), and restores on blur', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [treeWithFoliage('a')]))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+    const fruitBtn = view.getByRole('button', { name: /Fruit/ })
+
+    fireEvent.focus(fruitBtn)
+    expect(fruitInPreview()).toBeGreaterThan(0)
+    expect(view.getByText('Preview')).toBeInTheDocument()
+
+    fireEvent.blur(fruitBtn)
+    expect(fruitInPreview()).toBe(0)
+    expect(view.queryByText('Preview')).toBeNull()
+    // Still view-only: focusing/blurring never bought anything.
+    expect(customize).not.toHaveBeenCalled()
+  })
+})
+
 describe('SanctuaryPage shop — track grouping', () => {
   beforeEach(() => {
     getScene.mockReset()
