@@ -308,7 +308,8 @@ Numbered, immutable records of significant choices — see [`docs/decisions/`](d
 | [0016](docs/decisions/0016-sanctuary-shop-expansion-and-retune.md) | Sanctuary — shop expansion (whimsy track) + economy retune |
 | [0017](docs/decisions/0017-biometric-readings-data-model.md) | Source-agnostic biometric-readings data model |
 | [0018](docs/decisions/0018-trataka-flame-gazing-practice.md) | Trataka flame-gazing focus practice (reuse `mindfulness`, no migration) |
-| [0019](docs/decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md) | Sanctuary — multi-stage growth ladder + additive accessory slots |
+| [0019](docs/decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) | Sanctuary — reset an item's upgrades for a fee (one stored per-user counter) |
+| [0020](docs/decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md) | Sanctuary — multi-stage growth ladder + additive accessory slots |
 
 ---
 

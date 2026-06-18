@@ -14,6 +14,7 @@ from app.services.sanctuary_service import (
     GRID_CELLS,
     GROWTH_STAGES,
     SANCTUARY_CATALOG,
+    SANCTUARY_RESET_FEE,
     progressive_surcharge,
 )
 
@@ -1133,7 +1134,228 @@ def test_move_integrity_error_is_409_not_500(client, db_session, monkeypatch):
     assert res.status_code == 409
 
 
-# --- Multi-stage growth ladder + accessory slots (ADR-0019) -----------------------------
+# --- Reset upgrades for a fee (ADR-0019) ------------------------------------------------
+#
+# Resetting clears an item's customizations (its variant/base form stays) and refunds the
+# sunk customization cost via the derived balance, minus a flat SANCTUARY_RESET_FEE that's
+# accumulated on the user so the fee persists in the no-ledger model. Net: a reset is a real,
+# fee-sized coin cost, so it can't be churned for free.
+
+
+def _grown_opt_cost(item_key):
+    return SANCTUARY_CATALOG[item_key].slot("grown").option("grown").cost
+
+
+def test_reset_requires_auth(client):
+    assert (
+        client.post(f"/api/v1/sanctuary/items/{uuid.uuid4()}/reset").status_code == 401
+    )
+
+
+def test_reset_clears_customizations_and_refunds_minus_fee(client):
+    """A reset clears the item's customizations and returns the sunk cost minus the flat fee;
+    the variant (base form) is preserved."""
+    _auth(client, "reset-basic@example.com")
+    _practice(client, 120)  # plenty of coins
+    bought = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "tree", "variant": "cherry"}
+    ).json()
+    tree_id = bought["owned"][0]["id"]
+    # Apply two independent customizations.
+    grown = _grown_opt_cost("tree")
+    foliage = SANCTUARY_CATALOG["tree"].slot("foliage").option("blossom").cost
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    after_cust = client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "foliage", "option": "blossom"},
+    ).json()
+    coins_with_upgrades = after_cust["coins"]
+
+    res = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset")
+    assert res.status_code == 200
+    scene = res.json()
+    tree = next(o for o in scene["owned"] if o["id"] == tree_id)
+    # Customizations cleared; the purchased variant (base form) is left intact.
+    assert tree["customizations"] == {}
+    assert tree["variant"] == "cherry"
+    # The two option costs are refunded, minus the flat fee.
+    assert scene["coins"] == coins_with_upgrades + grown + foliage - SANCTUARY_RESET_FEE
+
+
+def test_reset_fee_persists_across_a_second_reset(client):
+    """The fee is stored, so a second reset charges the fee again (not a free undo)."""
+    _auth(client, "reset-twice@example.com")
+    _practice(client, 120)
+    tree_id = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()[
+        "owned"
+    ][0]["id"]
+    grown = _grown_opt_cost("tree")
+
+    # First cycle: grow → reset.
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    coins_grown_1 = _scene(client)["coins"]
+    r1 = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset").json()
+    assert r1["coins"] == coins_grown_1 + grown - SANCTUARY_RESET_FEE
+
+    # Second cycle: grow again → reset again. The fee is charged a SECOND time, so the net
+    # effect of two grow+reset cycles is exactly two fees lost from the balance.
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    coins_grown_2 = _scene(client)["coins"]
+    r2 = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset").json()
+    assert r2["coins"] == coins_grown_2 + grown - SANCTUARY_RESET_FEE
+
+
+def test_reset_churn_is_coin_negative(client):
+    """A full buy → grow → reset → regrow cycle leaves the user strictly *poorer* by the fee
+    than just buying + growing once — so reset-churn can never mint free coins."""
+    _auth(client, "reset-churn@example.com")
+    _practice(client, 120)
+    before_any = _scene(client)["coins"]
+    tree_id = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()[
+        "owned"
+    ][0]["id"]
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    baseline = _scene(client)["coins"]  # bought + grown once, no resets
+
+    # Now churn: reset and regrow the SAME item. The customization cost nets out, but every
+    # reset still burns a fee, so the balance is strictly below the no-churn baseline.
+    client.post(f"/api/v1/sanctuary/items/{tree_id}/reset")
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    churned = _scene(client)["coins"]
+    assert churned == baseline - SANCTUARY_RESET_FEE
+    assert churned < baseline < before_any
+
+
+def test_reset_with_no_customizations_is_409_and_no_fee(client):
+    """Resetting an item with nothing applied is rejected (409) and charges no fee — a no-op
+    must not cost coins."""
+    _auth(client, "reset-empty@example.com")
+    _practice(client, 60)
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = bought["owned"][0]["id"]
+    coins_before = bought["coins"]
+    res = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset")
+    assert res.status_code == 409
+    # No fee charged — the balance is unchanged.
+    assert _scene(client)["coins"] == coins_before
+
+
+def test_reset_balance_never_goes_negative(client, db_session):
+    """A reset on a low-coins user never drives the reported balance below zero — it clamps."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "reset-clamp@example.com")  # fresh level-1 user (small wallet)
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "reset-clamp@example.com")
+    ).scalar_one()
+    # Seed a grown item directly so spend already dwarfs the level-1 wallet (balance 0).
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="barn",
+            position=0,
+            cell=0,
+            customizations={"grown": "grown"},
+        )
+    )
+    db_session.commit()
+    assert _scene(client)["coins"] == 0  # already clamped to 0
+
+    planting_id = _scene(client)["owned"][0]["id"]
+    res = client.post(f"/api/v1/sanctuary/items/{planting_id}/reset")
+    assert res.status_code == 200
+    assert res.json()["coins"] >= 0  # still clamped, never negative
+
+
+def test_reset_unowned_item_is_404(client):
+    _auth(client, "reset-notmine@example.com")
+    res = client.post(f"/api/v1/sanctuary/items/{uuid.uuid4()}/reset")
+    assert res.status_code == 404
+
+
+def test_reset_someone_elses_item_is_404(client):
+    """Another user cannot reset my real planting id (404, not a silent clear + fee)."""
+    _auth(client, "reset-owner@example.com")
+    _practice(client, 60)
+    victim = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = victim["owned"][0]["id"]
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    _auth(client, "reset-attacker@example.com")  # switch users
+    res = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset")
+    assert res.status_code == 404
+    # The victim's customization survives untouched.
+    _auth(client, "reset-owner@example.com")
+    assert _scene(client)["owned"][0]["customizations"] == {"grown": "grown"}
+
+
+def test_reset_locks_before_reading_the_row(client, db_session, monkeypatch):
+    """reset_upgrades() takes the per-user lock before SELECTing the planting, so the clear +
+    fee are computed under the lock (no double-charge on a concurrent reset)."""
+    _auth(client, "reset-lock@example.com")
+    _practice(client, 60)
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    planting_id = bought["owned"][0]["id"]
+    client.post(
+        f"/api/v1/sanctuary/items/{planting_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    sqls = _lock_before_planting_read(db_session, monkeypatch)
+    res = client.post(f"/api/v1/sanctuary/items/{planting_id}/reset")
+    assert res.status_code == 200
+    _assert_lock_precedes_row_read(sqls)
+
+
+def test_reset_integrity_error_is_409_not_500(client, db_session, monkeypatch):
+    """A unique-constraint collision while resetting surfaces as 409, never an unhandled 500."""
+    _auth(client, "reset-conflict@example.com")
+    _practice(client, 60)
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    planting_id = bought["owned"][0]["id"]
+    client.post(
+        f"/api/v1/sanctuary/items/{planting_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    _commit_raises_once(db_session, monkeypatch)
+    res = client.post(f"/api/v1/sanctuary/items/{planting_id}/reset")
+    assert res.status_code == 409
+
+
+def test_reset_rejects_unexpected_body(client):
+    """The reset endpoint takes no body; a stray JSON field is ignored (no body schema), but
+    the action still succeeds for an item with customizations."""
+    _auth(client, "reset-body@example.com")
+    _practice(client, 60)
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = bought["owned"][0]["id"]
+    client.post(
+        f"/api/v1/sanctuary/items/{tree_id}/customize",
+        json={"slot": "grown", "option": "grown"},
+    )
+    # No request body needed; the endpoint reads only the path param.
+    res = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset")
+    assert res.status_code == 200
+# --- Multi-stage growth ladder + accessory slots (ADR-0020) -----------------------------
 #
 # The `grown` slot became a sequential ladder of 4 stages (grown → flourishing → mature →
 # ancient) per item, and the companion/whimsy characters gained additive dress-up slots

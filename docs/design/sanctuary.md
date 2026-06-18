@@ -1,6 +1,6 @@
 # Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0019 (growth ladder + accessory slots)](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md) · [ADR-0016 (shop expansion + retune)](../decisions/0016-sanctuary-shop-expansion-and-retune.md) · [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0020 (growth ladder + accessory slots)](../decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md) · [ADR-0019 (reset upgrades for a fee)](../decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) · [ADR-0016 (shop expansion + retune)](../decisions/0016-sanctuary-shop-expansion-and-retune.md) · [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn
 **coins** as you level up and spend them to **buy** items (plants, structures, pets) and
@@ -19,14 +19,20 @@ streak never takes coins (or bought items) away, so the garden never regresses. 
 level rises with *all* XP-earning activity, meditation, breathing, gratitude, and journal
 all contribute to coins.
 
-The only stored state is **what you own and each item's tier**. Spending is *derived from
-holdings* — there's no wallet row or transaction log:
+The only stored state is **what you own and each item's tier** (plus one small economy
+counter, below). Spending is *derived from holdings* — there's no wallet row or transaction
+log:
 
 ```
 coins_earned = level × COINS_PER_LEVEL          (level from earned XP)
 coins_spent  = Σ owned (buy_cost + variant_delta + Σ customization_costs + progressive_surcharge(position))
-balance      = max(0, coins_earned − coins_spent)
+balance      = max(0, coins_earned − coins_spent − sanctuary_reset_fees)
 ```
+
+`sanctuary_reset_fees` is the **one stored coin figure** — a per-user counter of the flat
+fees paid to **reset** an item's upgrades ([ADR-0019](../decisions/0019-sanctuary-reset-upgrades-for-a-fee.md)).
+Everything else stays derived from holdings. It only ever increases (monotonic, like
+`coins_earned`), so it can never retroactively raise an existing garden's balance.
 
 The **progressive surcharge** ([ADR-0013](../decisions/0013-sanctuary-progressive-pricing.md))
 makes each *additional* item cost more: the k-th item a user acquires (0-indexed by its
@@ -239,6 +245,7 @@ Layered route → service → model, user-scoped, default-deny (the standard che
 | `POST` | `/api/v1/sanctuary/items/{id}/customize` | `{ slot, option }` → apply a customization · `404` not yours / unknown slot+option · `409` locked, already-applied, or too poor · `422` bad shape |
 | `PATCH` | `/api/v1/sanctuary/items/{id}` | `{ name?, note?, favorite? }` → set/clear cosmetic personalization (partial update; empty/null clears name/note); never changes coins · `404` not yours · `422` bad shape / over-length |
 | `POST` | `/api/v1/sanctuary/items/{id}/move` | `{ cell }` → move to a grid cell (layout only — never touches `position` or pricing); swaps with whatever occupies the cell · `404` not yours · `422` bad shape / out-of-bounds cell |
+| `POST` | `/api/v1/sanctuary/items/{id}/reset` | (no body) → clear the item's customizations back to its base form for a flat fee (ADR-0019); the sunk cost is refunded via the derived balance, minus the fee; the `variant` is kept · `404` not yours · `409` nothing to reset or concurrent conflict |
 
 The `customize` and `buy` writes validate the level requirement and the **balance** before
 committing; `move` is layout-only and never changes the balance. All request bodies reject

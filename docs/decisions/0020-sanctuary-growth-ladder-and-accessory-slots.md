@@ -1,4 +1,4 @@
-# ADR-0019: Sanctuary — multi-stage growth ladder + additive accessory slots
+# ADR-0020: Sanctuary — multi-stage growth ladder + additive accessory slots
 
 **Status:** Accepted · 2026-06 · Extends [ADR-0012](0012-sanctuary-personalization.md) (variants/customizations) + [ADR-0013](0013-sanctuary-progressive-pricing.md) (derived balance) · Detail: [Sanctuary design](../design/sanctuary.md)
 

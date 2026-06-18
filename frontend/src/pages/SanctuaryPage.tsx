@@ -18,6 +18,11 @@ const GRID_COLUMNS = 4
 const NAME_MAX = 40
 const NOTE_MAX = 140
 
+// The flat fee charged to reset an item's upgrades (mirrors the backend SANCTUARY_RESET_FEE,
+// ADR-0019). Shown in the confirm copy so the cost is always stated before committing.
+// Display-only; the server is the source of truth for what's actually charged.
+const RESET_FEE = 10
+
 // A calm name/note/favourite editor inside an owned item's personalize panel (ADR-0015).
 // Local input state, committed on blur / explicit save so a rename is one quiet action.
 // All optional and default-off — a user who ignores it sees nothing change.
@@ -105,6 +110,9 @@ export default function SanctuaryPage() {
   const [buyName, setBuyName] = useState('')
   // The owned item whose customization panel is open.
   const [editing, setEditing] = useState<string | null>(null)
+  // The owned item whose "reset upgrades" confirmation is showing (null = none). A two-step
+  // inline confirm that states the fee, so a reset is deliberate and never a surprise charge.
+  const [confirmReset, setConfirmReset] = useState<string | null>(null)
   // The id of the item just bought, so only it pops/glows into the garden (cleared
   // after the brief animation so it doesn't re-fire on later renders).
   const [justBought, setJustBought] = useState<string | null>(null)
@@ -194,6 +202,27 @@ export default function SanctuaryPage() {
       )
     } catch {
       showToast('Could not apply that yet.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Reset an owned item's upgrades for the flat fee. Clears its customizations back to the
+  // base form; the sunk cost is refunded (minus the fee). Disabled while in-flight so a
+  // double-tap can't double-charge; the inline confirm is dismissed on success or failure.
+  async function resetUpgrades(item: OwnedItem) {
+    const before = scene
+    setBusy(`reset:${item.id}`)
+    try {
+      const next = await sanctuaryService.resetUpgrades(item.id)
+      setScene(next)
+      setConfirmReset(null)
+      const refunded = before ? next.coins - before.coins : null
+      const detail =
+        refunded != null && refunded >= 0 ? ` ${refunded} 🪙 back.` : ` ${next.coins} 🪙 left.`
+      showToast(`Upgrades cleared from your ${itemLabel(item.item_key).toLowerCase()}.${detail}`)
+    } catch {
+      showToast('Could not reset that — please try again.', 'error')
     } finally {
       setBusy(null)
     }
@@ -398,7 +427,10 @@ export default function SanctuaryPage() {
                             type="button"
                             className="sanctuary-buy sanctuary-customize-toggle"
                             aria-expanded={open}
-                            onClick={() => setEditing(open ? null : o.id)}
+                            onClick={() => {
+                              if (open) setConfirmReset(null) // closing → drop any pending confirm
+                              setEditing(open ? null : o.id)
+                            }}
                           >
                             {open
                               ? 'Done'
@@ -452,6 +484,51 @@ export default function SanctuaryPage() {
                                   </div>
                                 </fieldset>
                               ))}
+                              {/* Reset upgrades for a flat fee (ADR-0019). Only offered when
+                                  there's something to clear; a two-step inline confirm states
+                                  the fee and that it clears this item's upgrades. */}
+                              {customCount > 0 && (
+                                <div className="sanctuary-reset">
+                                  {confirmReset === o.id ? (
+                                    <div className="sanctuary-reset-confirm" role="group">
+                                      <p className="muted sanctuary-reset-note">
+                                        Clear this {itemLabel(o.item_key).toLowerCase()}’s
+                                        upgrades back to its base form? You’ll get your coins
+                                        back, less a {RESET_FEE} 🪙 fee. Its name and form stay.
+                                      </p>
+                                      <div className="sanctuary-reset-actions">
+                                        <button
+                                          type="button"
+                                          className="sanctuary-reset-do"
+                                          disabled={busy != null}
+                                          onClick={() => resetUpgrades(o)}
+                                        >
+                                          {busy === `reset:${o.id}`
+                                            ? 'Resetting…'
+                                            : `Reset · −${RESET_FEE} 🪙`}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="sanctuary-reset-cancel"
+                                          disabled={busy === `reset:${o.id}`}
+                                          onClick={() => setConfirmReset(null)}
+                                        >
+                                          Keep them
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="sanctuary-reset-toggle"
+                                      disabled={busy != null}
+                                      onClick={() => setConfirmReset(o.id)}
+                                    >
+                                      Reset upgrades…
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

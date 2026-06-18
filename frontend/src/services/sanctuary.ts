@@ -22,6 +22,11 @@ export const sanctuaryService = {
   // Apply a mix-and-match customization (slot → option) to an owned item.
   customize: (id: string, slot: string, option: string) =>
     api.post<SanctuaryScene>(`/sanctuary/items/${id}/customize`, { slot, option }),
+  // Reset an owned item's customizations back to its base form for a flat fee (ADR-0019).
+  // The sunk customization cost is refunded via the derived balance, minus the fee; the
+  // variant (base form) is kept. 409 if the item has no upgrades to reset.
+  resetUpgrades: (id: string) =>
+    api.post<SanctuaryScene>(`/sanctuary/items/${id}/reset`),
   // Move an owned item to a grid cell (layout only — never affects the economy). Swaps
   // with whatever item already occupies the target cell.
   move: (id: string, cell: number) =>

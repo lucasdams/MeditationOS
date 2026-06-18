@@ -2277,6 +2277,80 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
+/* Reset upgrades (ADR-0019) — a calm, low-key action at the foot of the customize panel.
+   The toggle is quiet (text-button) so it never competes with the upgrade options; the
+   confirm states the fee before anything is charged. */
+.sanctuary-reset {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+
+.sanctuary-reset-toggle {
+  padding: 0.2rem 0.1rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+}
+
+.sanctuary-reset-toggle:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.sanctuary-reset-toggle:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.sanctuary-reset-note {
+  margin: 0 0 0.45rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.sanctuary-reset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sanctuary-reset-do {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--warning-text, #b45309);
+  border: 1px solid #fed7aa;
+  cursor: pointer;
+}
+
+.sanctuary-reset-do:disabled {
+  background: var(--chip-bg);
+  color: #94a3b8;
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.sanctuary-reset-cancel {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted, #64748b);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.sanctuary-reset-cancel:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
 /* Variant picker modal (buy-time) — sizing override applied BELOW .modal-card
    (see the .modal-card.sanctuary-modal rule after the modal scaffold block) so
    the more-specific selector wins. The old .sanctuary-modal-backdrop and the
