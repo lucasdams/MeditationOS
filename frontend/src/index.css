@@ -1328,7 +1328,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
-  color: color-mix(in srgb, var(--pill, #444) 58%, #1c1c1e);
+  color: color-mix(in srgb, var(--pill, #444) 52%, #1c1c1e);
   font-weight: 600;
 }
 
@@ -1408,7 +1408,7 @@ a:hover { color: var(--accent-hover); }
 .mood-filter-chip.selected {
   font-weight: 600;
   background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
-  color: color-mix(in srgb, var(--pill, #444) 58%, #1c1c1e);
+  color: color-mix(in srgb, var(--pill, #444) 52%, #1c1c1e);
   border-color: var(--pill, var(--border-var));
 }
 
@@ -2098,7 +2098,7 @@ textarea:focus-visible,
    rule keeps the boundary obvious without a heavy divider. */
 .sanctuary-section-divider {
   height: 1px;
-  background: var(--border);
+  background: var(--border-strong);
   margin: 1.75rem 2.5rem;
 }
 
@@ -5134,12 +5134,4 @@ details[open] .meditate-disclosure-summary::before {
 :root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
   color: #34d399;
   background: #0f2a1e;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-customize-toggle {
-    background: #0f2a1e;
-    color: var(--success-text);
-    border-color: #1a3d2a;
-  }
 }
