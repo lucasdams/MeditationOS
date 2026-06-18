@@ -135,6 +135,13 @@ export default function DashboardPage() {
         </p>
       )}
 
+      {stats && stats.current_streak_days > 0 && (
+        <p className="quest-streak muted">
+          <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
+          {stats.rest_day_used ? ' · 🛡️ rest day — skipping one is fine' : ''}
+        </p>
+      )}
+
       {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
           a practice. Kept prominent and always visible. */}
       <nav className="feature-tiles" aria-label="Quick access">
@@ -230,13 +237,6 @@ export default function DashboardPage() {
 
           {showMore && (
             <div id="dashboard-more-panel">
-              {stats.current_streak_days > 0 && (
-                <p className="quest-streak muted">
-                  <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
-                  {stats.rest_day_used ? ' · 🛡️ rest day — skipping one is fine' : ''}
-                </p>
-              )}
-
               <LevelCard stats={stats} scene={sanctuaryScene} />
 
               <section className="stat-cards">
