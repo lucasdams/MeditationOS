@@ -56,7 +56,6 @@ const AUDIO_LOOKAHEAD = 2.5
 // A distinct icon + soft tint per pattern, so the cards read apart at a glance.
 const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
   resonance: { emoji: '🌊', tint: '#e0f2fe' }, // rolling, longer exhale
-  coherence: { emoji: '⚖️', tint: '#dcfce7' }, // even, balanced
   box: { emoji: '🟦', tint: '#e0e7ff' }, // four equal sides
   '478': { emoji: '🌙', tint: '#ede9fe' }, // calming, for winding down
 }

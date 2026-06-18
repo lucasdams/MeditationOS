@@ -31,13 +31,6 @@ export const patternForBpm = (bpm: number): Pattern => {
   return { inhale, holdFull: HOLD, exhale, holdEmpty: HOLD }
 }
 
-// Coherence pace → an even (1:1) breath, no holds. e.g. 6 bpm → 5 in · 5 out.
-export const coherencePatternForBpm = (bpm: number): Pattern => {
-  const total = Math.round(60 / bpm)
-  const inhale = Math.max(1, Math.round(total / 2))
-  return { inhale, holdFull: 0, exhale: total - inhale, holdEmpty: 0 }
-}
-
 // Box → an equal four-phase breath at `count` seconds each (in · hold · out · hold).
 export const boxPatternForCount = (count: number): Pattern => ({
   inhale: count,
@@ -101,7 +94,6 @@ export type Preset = {
 
 export const PRESETS: Preset[] = [
   { key: 'resonance', label: 'Resonance', control: 'bpm', pattern: null, derive: patternForBpm, hint: 'Longer exhale, at your pace' },
-  { key: 'coherence', label: 'Coherence', control: 'bpm', pattern: null, derive: coherencePatternForBpm, hint: 'Even in and out, at your pace' },
   { key: 'box', label: 'Box', control: 'count', pattern: null, derive: boxPatternForCount, hint: 'Equal in · hold · out · hold' },
   { key: '478', label: '4·7·8', control: 'none', pattern: { inhale: 4, holdFull: 7, exhale: 8, holdEmpty: 0 }, hint: 'Long hold and exhale — calming' },
 ]
