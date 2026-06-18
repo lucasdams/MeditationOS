@@ -118,6 +118,10 @@ const SLOT_LABELS: Record<string, string> = {
   garden: 'Garden',
   lights: 'Lights',
   accessory: 'Accessory',
+  // Additive dress-up slots (ADR-0019) on the companion + whimsy characters.
+  headwear: 'Headwear',
+  collar: 'Collar',
+  attire: 'Attire',
   // New slots (toadstool ring, hedgehog, whimsy)
   glow: 'Glow',
   sprite: 'Sprite',
@@ -136,7 +140,11 @@ const SLOT_LABELS: Record<string, string> = {
 }
 
 const OPTION_LABELS: Record<string, string> = {
+  // Growth ladder (the `grown` slot) — sequential size stages (ADR-0019).
   grown: 'Grown',
+  flourishing: 'Flourishing 🌱',
+  mature: 'Mature 🌳',
+  ancient: 'Ancient 🏔️',
   fruit: 'Fruit 🍎',
   blossom: 'Blossom 🌸',
   autumn: 'Autumn 🍂',
@@ -170,6 +178,11 @@ const OPTION_LABELS: Record<string, string> = {
   cat: 'Curled-up cat',
   scarf: 'Scarf 🧣',
   leaf: 'Leaf hat 🍂',
+  // Dress-up options (ADR-0019): headwear, collar, and attire slots.
+  flower_crown: 'Flower crown 🌸',
+  tiny_crown: 'Tiny crown 👑',
+  bowtie: 'Bow tie 🎀',
+  sunglasses: 'Sunglasses 🕶️',
 }
 
 // Track grouping: label, emoji, and a quiet accent tint for the shop section header.

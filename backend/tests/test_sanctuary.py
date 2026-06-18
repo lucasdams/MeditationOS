@@ -12,6 +12,7 @@ import uuid
 from app.services.sanctuary_service import (
     COINS_PER_LEVEL,
     GRID_CELLS,
+    GROWTH_STAGES,
     SANCTUARY_CATALOG,
     progressive_surcharge,
 )
@@ -1130,3 +1131,169 @@ def test_move_integrity_error_is_409_not_500(client, db_session, monkeypatch):
         f"/api/v1/sanctuary/items/{planting_id}/move", json={"cell": 5}
     )
     assert res.status_code == 409
+
+
+# --- Multi-stage growth ladder + accessory slots (ADR-0019) -----------------------------
+#
+# The `grown` slot became a sequential ladder of 4 stages (grown → flourishing → mature →
+# ancient) per item, and the companion/whimsy characters gained additive dress-up slots
+# (headwear / collar / attire). The catalog is in-code: no migration, derived balance.
+
+
+def test_every_grown_slot_is_a_four_stage_ladder(client):
+    """Every catalog item's `grown` slot is the full GROWTH_STAGES ladder, in order."""
+    for key, item in SANCTUARY_CATALOG.items():
+        grown = item.slot("grown")
+        assert grown is not None, f"{key} has no grown slot"
+        keys = [o.key for o in grown.options]
+        assert keys == list(GROWTH_STAGES), f"{key}: {keys}"
+
+
+def test_growth_ladder_costs_strictly_increase_and_unlocks_nondecreasing(client):
+    """Catalog integrity: along each item's growth ladder, cost strictly increases and the
+    unlock_level is non-decreasing — so advancing a stage always costs (a bit) more and is
+    gated at least as high as the prior stage."""
+    for key, item in SANCTUARY_CATALOG.items():
+        opts = item.slot("grown").options
+        costs = [o.cost for o in opts]
+        levels = [o.unlock_level for o in opts]
+        assert all(c > 0 for c in costs), f"{key}: non-positive cost {costs}"
+        assert costs == sorted(costs) and len(set(costs)) == len(costs), (
+            f"{key}: ladder costs not strictly increasing: {costs}"
+        )
+        assert levels == sorted(levels), f"{key}: unlock levels decrease: {levels}"
+
+
+def test_every_catalog_option_has_a_sane_cost(client):
+    """Catalog integrity: every customization option (every slot, including the new dress-up
+    slots) has a positive integer cost and a level-1+ unlock."""
+    for key, item in SANCTUARY_CATALOG.items():
+        for slot in item.slots:
+            assert slot.options, f"{key}.{slot.key} has no options"
+            for o in slot.options:
+                assert isinstance(o.cost, int) and o.cost > 0, (key, slot.key, o.key, o.cost)
+                assert o.unlock_level >= 1, (key, slot.key, o.key)
+
+
+def test_legacy_grown_grown_row_resolves_and_spend_unchanged(client, db_session):
+    """Backward-compat: a row whose customizations are the legacy {"grown": "grown"} still
+    resolves to the first ladder rung, and its spend is exactly base + round(base_size * 1.5)
+    — byte-for-byte what it cost before the ladder existed. No retroactive spend change."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "legacy-grown@example.com")
+    _practice(client, 60)  # level up so coins comfortably cover the legacy spend
+    before = _scene(client)["coins"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "legacy-grown@example.com")
+    ).scalar_one()
+    # A pre-ladder grown tree (the historical single "grown" option).
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="tree",
+            position=0,
+            cell=0,
+            variant="oak",
+            customizations={"grown": "grown"},
+        )
+    )
+    db_session.commit()
+
+    scene = _scene(client)
+    tree = next(o for o in scene["owned"] if o["item_key"] == "tree")
+    # The legacy option still resolves as an applied grown stage.
+    assert tree["customizations"] == {"grown": "grown"}
+    grown_slot = next(s for s in tree["available"] if s["slot"] == "grown")
+    assert grown_slot["applied"] == "grown"
+    # Spend == base + the unchanged "grown" rung cost (position 0 → no surcharge).
+    tree_item = SANCTUARY_CATALOG["tree"]
+    grown_cost = tree_item.slot("grown").option("grown").cost
+    assert grown_cost == round(40 * 1.5)  # the historical tier-1 cost, preserved
+    assert scene["coins"] == before - (tree_item.cost + grown_cost)
+
+
+def test_advancing_growth_stage_charges_only_the_difference(client):
+    """Advancing along the growth ladder (within the one `grown` slot) charges only the
+    difference between the new stage and the stage already applied — never the full price."""
+    _auth(client, "ladder-advance@example.com")
+    _earn_to_level(client, 8)  # high enough that every stage is unlocked + affordable
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree_id = next(o for o in bought["owned"] if o["item_key"] == "tree")["id"]
+    grown = SANCTUARY_CATALOG["tree"].slot("grown")
+    g, f, m = (grown.option(s).cost for s in ("grown", "flourishing", "mature"))
+
+    coins = _scene(client)["coins"]
+    for stage, prev_cost, this_cost in [
+        ("grown", 0, g),
+        ("flourishing", g, f),
+        ("mature", f, m),
+    ]:
+        res = client.post(
+            f"/api/v1/sanctuary/items/{tree_id}/customize",
+            json={"slot": "grown", "option": stage},
+        )
+        assert res.status_code == 200, (stage, res.json())
+        after = res.json()["coins"]
+        assert coins - after == this_cost - prev_cost, stage
+        coins = after
+    # Only the *current* stage is recorded — swaps replace, they don't accumulate.
+    only = next(o for o in _scene(client)["owned"] if o["item_key"] == "tree")
+    assert only["customizations"] == {"grown": "mature"}
+
+
+def test_later_growth_stages_are_level_gated(client):
+    """A fresh level-1 user can apply `grown` (unlock 1) but not `ancient` (unlock 8)."""
+    _auth(client, "ladder-gate@example.com")
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    flower_id = bought["owned"][0]["id"]
+    grown_slot = next(
+        s for s in bought["owned"][0]["available"] if s["slot"] == "grown"
+    )
+    by_opt = {o["option"]: o for o in grown_slot["options"]}
+    assert by_opt["grown"]["unlocked"] is True
+    assert by_opt["ancient"]["unlocked"] is False
+    assert "level 8" in by_opt["ancient"]["unlock_hint"]
+    # Applying the locked stage is rejected.
+    res = client.post(
+        f"/api/v1/sanctuary/items/{flower_id}/customize",
+        json={"slot": "grown", "option": "ancient"},
+    )
+    assert res.status_code == 409
+
+
+def test_accessory_slots_are_independent_and_charge_each_option(client):
+    """A cat can wear a headwear AND a collar AND attire all at once — independent additive
+    slots — and the spend is exactly the sum of the three chosen options."""
+    _auth(client, "dressup@example.com")
+    _earn_to_level(client, 6)
+    item = SANCTUARY_CATALOG["cat"]
+    bought = client.post(
+        "/api/v1/sanctuary/buy", json={"item_key": "cat", "variant": "ginger"}
+    ).json()
+    cat_id = next(o for o in bought["owned"] if o["item_key"] == "cat")["id"]
+
+    coins = _scene(client)["coins"]
+    picks = [
+        ("headwear", "flower_crown"),
+        ("collar", "bell"),
+        ("attire", "sunglasses"),
+    ]
+    spent = 0
+    for slot, option in picks:
+        res = client.post(
+            f"/api/v1/sanctuary/items/{cat_id}/customize",
+            json={"slot": slot, "option": option},
+        )
+        assert res.status_code == 200, (slot, option, res.json())
+        spent += item.slot(slot).option(option).cost
+    updated = next(o for o in _scene(client)["owned"] if o["item_key"] == "cat")
+    assert updated["customizations"] == {
+        "headwear": "flower_crown",
+        "collar": "bell",
+        "attire": "sunglasses",
+    }
+    assert _scene(client)["coins"] == coins - spent
