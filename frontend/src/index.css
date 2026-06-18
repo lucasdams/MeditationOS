@@ -1921,17 +1921,26 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
-/* Slim level/coins line — a quiet, secondary chip on the default dashboard view.
-   Intentionally muted (no card, no gradient, no progress bar) so the landing page
-   stays calm; the full LevelCard lives inside the "Show more" drawer. */
-.level-chip {
+/* Level + coins pinned to the top of the home — a clean, tidy top line. Calm and
+   uncluttered (no card, no gradient, no progress bar) but clearly present at the top:
+   reads a touch more present than a muted micro-chip, not a big gamified bar. The full
+   LevelCard (XP bar, next unlock) lives inside the "Show more" drawer. */
+.level-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+
+.level-topline-item {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin: 0.25rem 0 1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
 }
 
 .level-card {
@@ -3222,20 +3231,6 @@ textarea:focus-visible,
 .show-more-chevron {
   font-size: 0.9rem;
   line-height: 1;
-}
-
-.stat-cards {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-  margin: 1.25rem 0;
-}
-
-.stat-card {
-  background: var(--bg-surface);
-  border-radius: 10px;
-  padding: 1rem;
-  box-shadow: 0 1px 3px var(--shadow-card);
 }
 
 .stat-value {
