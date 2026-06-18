@@ -38,8 +38,16 @@ vi.mock('../components/SanctuaryScene', () => ({
     return <div data-testid="sanctuary-scene" />
   },
 }))
+// Mock MoodCheckin: render a marker plus a "pick" button that fires onLogged, so tests
+// can exercise the "picking a mood closes the modal" path without the real API call.
 vi.mock('../components/MoodCheckin', () => ({
-  default: () => <div data-testid="mood-checkin" />,
+  default: ({ onLogged }: { onLogged?: (m: string) => void }) => (
+    <div data-testid="mood-checkin">
+      <button type="button" onClick={() => onLogged?.('calm')}>
+        mock-pick-mood
+      </button>
+    </div>
+  ),
 }))
 vi.mock('../components/WeeklyReview', () => ({
   default: () => <div data-testid="weekly-review" />,
@@ -49,7 +57,12 @@ vi.mock('../components/ActivityHeatmap', () => ({
 }))
 
 import DashboardPage from './DashboardPage'
+import { localDateKey } from '../lib/zen'
 import type { DashboardStats, SanctuaryScene } from '../types'
+
+// The once-per-day mood prompt is keyed by the local date. Helpers to read/seed that gate.
+const moodPromptKey = () => `mood.prompted.${localDateKey()}`
+const seenMoodToday = () => localStorage.setItem(moodPromptKey(), '1')
 
 const fakeStats = {
   total_seconds: 3600,
@@ -124,6 +137,9 @@ describe('DashboardPage — quick-action feature tiles', () => {
 
 describe('DashboardPage — default (collapsed) calm view', () => {
   beforeEach(() => {
+    // Mark the mood prompt as already shown today so the on-open modal doesn't pop and
+    // interfere with the calm-home assertions (its own gating is tested separately).
+    seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
     getScene.mockResolvedValue(fakeScene)
   })
@@ -134,19 +150,20 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
   })
 
-  it('shows the feature tiles and mood check-in by default', async () => {
+  it('shows the feature tiles and a quiet "How do you feel?" entry point by default', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
     expect(screen.getByRole('navigation', { name: /quick access/i })).toBeInTheDocument()
-    expect(screen.getByTestId('mood-checkin')).toBeInTheDocument()
+    // The mood check-in is no longer an inline section — only a quiet entry-point link.
+    expect(screen.getByRole('button', { name: /how do you feel/i })).toBeInTheDocument()
   })
 
-  it('shows compact quests and the sanctuary teaser on the default home', async () => {
+  it('shows the day\'s quests as chips with no "Today you could…" lead', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The quiet "Today you could…" lead and the day's quests as chips are visible by default.
-    expect(screen.getByText(/Today you could/i)).toBeInTheDocument()
+    // The old imperative lead is gone; the chips render cleanly.
+    expect(screen.queryByText(/Today you could/i)).not.toBeInTheDocument()
     const questsSection = screen.getByRole('region', { name: /today's quests/i })
     expect(questsSection).toBeInTheDocument()
     expect(
@@ -168,7 +185,8 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     expect(screen.queryByTestId('activity-heatmap')).not.toBeInTheDocument()
     expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
 
-    // The toggle announces a collapsed state and points at the controlled panel.
+    // The toggle announces a collapsed state and points at the controlled panel — and is
+    // still a real, link-styled button (aria-expanded/aria-controls intact).
     const toggle = screen.getByRole('button', { name: /show more/i })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(toggle).toHaveAttribute('aria-controls', 'dashboard-more-panel')
@@ -177,6 +195,7 @@ describe('DashboardPage — default (collapsed) calm view', () => {
 
 describe('DashboardPage — expanding the "Show more" drawer', () => {
   beforeEach(() => {
+    seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
     getScene.mockResolvedValue(fakeScene)
   })
@@ -192,7 +211,7 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
     expect(screen.getByTestId('activity-heatmap')).toBeInTheDocument()
     expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /hide more/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument()
 
     expect(localStorage.getItem('dashboard.showMore')).toBe('1')
   })
@@ -204,7 +223,7 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
 
     // Drawer is open on first render — the heavier progress sections are visible without a click.
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /hide more/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /show less/i })).toHaveAttribute(
       'aria-expanded',
       'true',
     )
@@ -213,6 +232,7 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
 
 describe('DashboardPage — sanctuary scene single-fetch', () => {
   it('calls getScene exactly once and passes the scene to SanctuaryScene and LevelCard', async () => {
+    seenMoodToday()
     getScene.mockResolvedValue(fakeScene)
     getStats.mockResolvedValue(fakeStats)
     // The compact SanctuaryScene sits on the default home; LevelCard lives in the drawer —
@@ -232,5 +252,77 @@ describe('DashboardPage — sanctuary scene single-fetch', () => {
     // LevelCard (rendered inside the open drawer) also received the same scene.
     const lcLast = capturedLevelCardProps.at(-1)
     expect(lcLast?.scene).toEqual(fakeScene)
+  })
+})
+
+describe('DashboardPage — on-open mood check-in (once per day)', () => {
+  beforeEach(() => {
+    getScene.mockResolvedValue(fakeScene)
+  })
+
+  it('shows the mood modal on the first open of the day', async () => {
+    getStats.mockResolvedValue(fakeStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    // The modal (containing the mood check-in) and its Skip affordance are on screen.
+    expect(await screen.findByRole('dialog', { name: /how are you arriving/i })).toBeInTheDocument()
+    expect(screen.getByTestId('mood-checkin')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /skip for now/i })).toBeInTheDocument()
+  })
+
+  it('does not show the modal again the same day after it was dismissed', async () => {
+    getStats.mockResolvedValue(fakeStats)
+    const { unmount } = renderPage()
+    await screen.findByText(/Level 7/)
+
+    // Skip dismisses the modal and records today's prompt.
+    fireEvent.click(await screen.findByRole('button', { name: /skip for now/i }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument(),
+    )
+    expect(localStorage.getItem(moodPromptKey())).toBe('1')
+
+    // A fresh landing on the home the same day (remount) does not re-pop the modal.
+    unmount()
+    renderPage()
+    await screen.findByText(/Level 7/)
+    await waitFor(() => expect(screen.getByTestId('sanctuary-scene')).toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
+  })
+
+  it('closes the modal and records the day when a mood is picked', async () => {
+    getStats.mockResolvedValue(fakeStats)
+    renderPage()
+    await screen.findByRole('dialog', { name: /how are you arriving/i })
+
+    // The mock check-in fires onLogged when its button is clicked.
+    fireEvent.click(screen.getByRole('button', { name: /mock-pick-mood/i }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument(),
+    )
+    expect(localStorage.getItem(moodPromptKey())).toBe('1')
+  })
+
+  it('does not stack the modal on a brand-new user who still sees the first-run card', async () => {
+    // session_count 0 and first-run not dismissed → the first-run card leads the page, so
+    // the mood prompt waits for a later day rather than stacking on top of it.
+    getStats.mockResolvedValue({ ...fakeStats, session_count: 0 } as unknown as DashboardStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
+  })
+
+  it('reopens the modal from the quiet "How do you feel?" entry point after a skip', async () => {
+    seenMoodToday() // already prompted today → no auto-open
+    getStats.mockResolvedValue(fakeStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /how do you feel/i }))
+    expect(await screen.findByRole('dialog', { name: /how are you arriving/i })).toBeInTheDocument()
   })
 })

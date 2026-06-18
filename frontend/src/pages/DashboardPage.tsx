@@ -5,13 +5,14 @@ import { sanctuaryService } from '../services/sanctuary'
 import LevelCard from '../components/LevelCard'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import MoodCheckin from '../components/MoodCheckin'
+import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { GREETINGS, LOADING, dailyOf, randomOf } from '../lib/zen'
+import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
 import type { DashboardStats, SanctuaryScene as SanctuarySceneType } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
@@ -37,6 +38,28 @@ const formatTotal = (seconds: number) => {
   const h = Math.floor(seconds / 3600)
   const m = Math.round((seconds % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m} min`
+}
+
+// Once-per-day gate for the on-open mood check-in. We record the local date the prompt
+// was shown so it appears at most once per calendar day — not on every navigation or
+// refresh. Storage failures (private mode) degrade to "don't prompt" rather than nag.
+const MOOD_PROMPT_PREFIX = 'mood.prompted.'
+
+function moodPromptedToday(): boolean {
+  try {
+    return localStorage.getItem(MOOD_PROMPT_PREFIX + localDateKey()) === '1'
+  } catch {
+    // Can't read storage — assume already prompted so we never nag on every visit.
+    return true
+  }
+}
+
+function markMoodPromptedToday(): void {
+  try {
+    localStorage.setItem(MOOD_PROMPT_PREFIX + localDateKey(), '1')
+  } catch {
+    // ignore storage failures — worst case the modal shows again next visit
+  }
 }
 
 export default function DashboardPage() {
@@ -77,6 +100,18 @@ export default function DashboardPage() {
   // visits. It also auto-retires once the user has logged a few sessions.
   const [firstRunDismissed, setFirstRunDismissed] = useState(() => isFirstRunDismissed())
 
+  // On-open mood check-in: a calm, skippable modal that greets the user at most once per
+  // day. Opened by the effect below once stats have loaded (so we can tell whether the
+  // first-run card is leading the page — we don't stack the mood prompt on top of it).
+  const [moodModalOpen, setMoodModalOpen] = useState(false)
+
+  function closeMoodModal() {
+    // Record the prompt for today on dismissal so it won't reappear until tomorrow,
+    // whether the user picked a mood or skipped.
+    markMoodPromptedToday()
+    setMoodModalOpen(false)
+  }
+
   function loadStats() {
     dashboardService
       .getStats()
@@ -99,6 +134,21 @@ export default function DashboardPage() {
       .then(setSanctuaryScene)
       .catch(() => {}) // non-critical; LevelCard and SanctuaryScene handle null gracefully
   }, [])
+
+  // Decide whether to greet the user with the mood check-in. Runs once stats are in so we
+  // know if the first-run "start here" card is leading the page. Gating rules:
+  //  - at most once per local calendar day (localStorage `mood.prompted.<date>`),
+  //  - never stacked on top of the first-run card — a brand-new user gets the gentler
+  //    orientation card first; the mood prompt waits for a later day.
+  useEffect(() => {
+    if (!stats || moodModalOpen) return
+    if (moodPromptedToday()) return
+    const firstRunActive =
+      !firstRunDismissed && shouldShowFirstRun(stats.session_count)
+    if (firstRunActive) return
+    setMoodModalOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats, firstRunDismissed])
 
   function retryStats() {
     setRetrying(true)
@@ -161,16 +211,11 @@ export default function DashboardPage() {
         })}
       </nav>
 
-      <MoodCheckin />
-
-      {/* Compact quests — a quiet "Today you could…" nudge with the day's quests as small
-          tappable chips (emoji + short label), each deep-linking to its feature. Low-chrome
-          on purpose: no descriptions, no XP numbers; done quests read muted with a check.
-          The full quest detail used to live in the "Show more" drawer; this gentle version
-          now sits on the calm default home so quests are visible at a glance. */}
+      {/* Compact quests — the day's quests as small, tappable chips (emoji + short label),
+          each deep-linking to its feature. Low-chrome on purpose: no lead label, no
+          descriptions, no XP numbers; done quests read muted with a check. */}
       {stats && stats.daily_quests.length > 0 && (
         <section className="quests-compact" aria-label="Today's quests">
-          <p className="quests-compact-lead muted">Today you could…</p>
           <ul className="quest-chips">
             {stats.daily_quests.map((q) => {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
@@ -206,6 +251,17 @@ export default function DashboardPage() {
           Also moved out of the "Show more" drawer onto the calm default home. */}
       {stats && <SanctuaryScene scene={sanctuaryScene} compact />}
 
+      {/* Quiet, always-reachable way to log a mood — the calm fallback when the on-open
+          check-in modal was skipped (or already shown today). A plain text link, not a
+          button-styled control, so it stays unobtrusive on the calm home. */}
+      {stats && !moodModalOpen && (
+        <p className="mood-entry">
+          <button type="button" className="mood-entry-link" onClick={() => setMoodModalOpen(true)}>
+            How do you feel?
+          </button>
+        </p>
+      )}
+
       {/* Quiet fallback for the no-sessions state — only when the richer first-run card
           isn't on screen (dismissed), so the user never sees two "get started" prompts.
           Kept on the default view so a brand-new user always has a clear "start here". */}
@@ -225,6 +281,9 @@ export default function DashboardPage() {
           progress view. */}
       {stats && (
         <section className="dashboard-more">
+          {/* Subtle, link-style affordance for the progress drawer — a quiet centered text
+              link with a chevron, not a chunky button. Still a real <button> with
+              aria-expanded/aria-controls and full keyboard operation. */}
           <button
             type="button"
             className="show-more-toggle"
@@ -232,7 +291,10 @@ export default function DashboardPage() {
             aria-expanded={showMore}
             aria-controls="dashboard-more-panel"
           >
-            {showMore ? 'Hide more' : 'Show more'}
+            <span className="show-more-text">{showMore ? 'Show less' : 'Show more'}</span>
+            <span className="show-more-chevron" aria-hidden="true">
+              {showMore ? '⌃' : '⌄'}
+            </span>
           </button>
 
           {showMore && (
@@ -260,6 +322,32 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+      )}
+
+      {/* On-open mood check-in — a calm, skippable modal greeting the user at most once a
+          day (see the gating effect above). Reuses the inline MoodCheckin logic/API call;
+          picking a mood saves it and closes; "Skip" dismisses without pressure. Escape,
+          focus trap, and focus restoration come from <Modal>. */}
+      {moodModalOpen && (
+        <Modal
+          onClose={closeMoodModal}
+          ariaLabel="How are you arriving?"
+          cardClassName="mood-modal"
+          closeOnBackdrop
+        >
+          <p className="mood-modal-kicker muted">Take a breath</p>
+          <MoodCheckin
+            heading="How are you arriving?"
+            onLogged={closeMoodModal}
+          />
+          <button
+            type="button"
+            className="mood-modal-skip"
+            onClick={closeMoodModal}
+          >
+            Skip for now
+          </button>
+        </Modal>
       )}
     </main>
   )

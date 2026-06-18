@@ -41,3 +41,12 @@ export function dailyOf<T>(list: T[], date: Date): T {
 export function randomOf<T>(list: T[]): T {
   return list[Math.floor(Math.random() * list.length)]
 }
+
+// Local calendar date as a stable `YYYY-MM-DD` key — used to gate once-per-day UI
+// (e.g. the mood check-in prompt) by the user's own day, not UTC.
+export function localDateKey(date: Date = new Date()): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
