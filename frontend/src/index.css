@@ -1895,6 +1895,19 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
+/* Slim level/coins line — a quiet, secondary chip on the default dashboard view.
+   Intentionally muted (no card, no gradient, no progress bar) so the landing page
+   stays calm; the full LevelCard lives inside the "Show more" drawer. */
+.level-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
 .level-card {
   display: flex;
   align-items: center;
@@ -3015,8 +3028,9 @@ textarea:focus-visible,
   margin: 0.6rem 0 0;
 }
 
-/* Collapsible "progress" drawer — keeps totals, heatmap, and achievements off the
-   default landing view so it stays calm. */
+/* Collapsible "Show more" drawer — keeps everything beyond the primary "start a
+   practice" surface (quests, sanctuary, level detail, totals, heatmap, weekly review)
+   off the default landing view so it stays calm. */
 .dashboard-more {
   margin-top: 1.5rem;
 }
