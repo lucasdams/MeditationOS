@@ -96,7 +96,7 @@ The strongest retention loop in the product.
 
 > **Shipped in V1 and expanded through V2** — see **[Sanctuary design](design/sanctuary.md)**
 > and [ADR-0011](decisions/0011-sanctuary-spend-economy.md) through
-> [ADR-0019](decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md). The original
+> [ADR-0021](decisions/0021-sanctuary-evolution-tree-and-preview-locked.md). The original
 > cultivation model ([ADR-0010](decisions/0010-sanctuary-cultivation.md)) was superseded
 > by a **spend economy**: earn **coins** as you level up, **buy** items from the shop, and
 > personalize them over time. Plants, structures, companions, and a **whimsy** track render
@@ -110,6 +110,7 @@ The strongest retention loop in the product.
   - *Whimsy* ✅ — garden gnome, wind chime, lantern, frog on a lily, scarecrow, fairy door, hammock, tea cart; [ADR-0016](decisions/0016-sanctuary-shop-expansion-and-retune.md)
 - [x] **Variants + mix-and-match customizations** — choose a base form at purchase (e.g. oak/pine/cherry/willow tree, corgi/husky/shiba/dalmatian dog) and buy independent customization slots over time (swing, birdhouse, foliage type on a tree; collar/bandana/hat on a pet); [ADR-0012](decisions/0012-sanctuary-personalization.md)
 - [x] **Multi-stage growth ladder + dress-up slots** — the `grown` size axis is a four-stage ladder (grown → flourishing → mature → ancient), each stage costlier, level-gated, and visibly larger/lusher in SVG; the characters gain additive **headwear / collar / attire** slots (hat, flower crown, tiny crown, bandana, bow tie, bell, scarf, sunglasses). Legacy `{"grown":"grown"}` rows are preserved exactly; no migration; [ADR-0019](decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)
+- [x] **Evolution-tree framework + nature track + preview locked** — a late-game **`form` evolution fork** (a mutually-exclusive slot of named evolved forms — e.g. oak → mighty / blossoming / hollow-ancient — gated at/above the top of the growth ladder), a fifth growth rung **`venerable`**, and a nature-appropriate additive slot per item (critter / pollinator / firefly / waterfowl). Built as a reusable framework (`.form(*_form_fork(…))` + the generalised ladder) and **applied to the nature track only** — structure/companion/whimsy follow in later PRs. Locked & unaffordable customize options now **preview** (rendered non-disabled but still functionally gated), so the user can see what they're working toward. Legacy `{"grown":"grown"}` preserved; no migration; [ADR-0021](decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)
 - [x] **Progressive pricing** — each additional item carries a small surcharge (keyed to immutable acquisition order), a gentle anti-hoarding nudge; [ADR-0013](decisions/0013-sanctuary-progressive-pricing.md)
 - [x] **Movable grid layout** — items sit on a row-major grid the user rearranges by drag (desktop) or tap-to-place (touch); moving is layout-only and never changes the coin balance; [ADR-0014](decisions/0014-sanctuary-grid-layout.md)
 - [x] **Item naming + note + favourite** — optional name plaque, a one-line note, and a favourite star per item; all cosmetic and default-off; [ADR-0015](decisions/0015-sanctuary-personalization-touches.md)

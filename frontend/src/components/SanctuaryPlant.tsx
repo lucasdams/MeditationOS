@@ -13,17 +13,20 @@ type Cust = Record<string, string>
 
 // The `grown` slot is a sequential growth ladder (backend GROWTH_STAGES): each option keys a
 // stage that renders visibly larger and lusher than the last. Stage 0 is the un-grown base;
-// stages 1–4 are grown → flourishing → mature → ancient. The first rung is keyed literally
-// "grown" for backward-compat, so a legacy {"grown":"grown"} row maps to stage 1 exactly.
-const GROWTH_STAGES = ['grown', 'flourishing', 'mature', 'ancient'] as const
+// stages 1–5 are grown → flourishing → mature → ancient → venerable. The first rung is keyed
+// literally "grown" for backward-compat, so a legacy {"grown":"grown"} row maps to stage 1.
+// The fifth rung (venerable, ADR-0021) is a pure addition above the original four.
+const GROWTH_STAGES = ['grown', 'flourishing', 'mature', 'ancient', 'venerable'] as const
 
 function growthStage(cust: Cust): number {
   const i = GROWTH_STAGES.indexOf(cust.grown as (typeof GROWTH_STAGES)[number])
-  return i < 0 ? 0 : i + 1 // 0 = un-grown base; 1..4 = the ladder rungs
+  return i < 0 ? 0 : i + 1 // 0 = un-grown base; 1..5 = the ladder rungs
 }
 
-// Each renderer scales by `stage` (0 = un-grown base; 1..4 = the ladder rungs), growing
-// visibly larger and lusher each step while staying inside the 0 0 80 80 viewBox.
+// Each renderer scales by `stage` (0 = un-grown base; 1..5 = the ladder rungs), growing
+// visibly larger and lusher each step while staying inside the 0 0 80 80 viewBox. `cust.form`
+// (ADR-0021) is the late-game evolution fork — a named final form the renderer reads to draw
+// a distinct silhouette, routed through the same `cust` map as every other slot.
 type DrawProps = { variant: string | null; cust: Cust; stage: number }
 
 const has = (cust: Cust, slot: string, option: string) => cust[slot] === option
@@ -78,22 +81,30 @@ const TREE_LEAF: Record<string, string> = {
 
 function Tree({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'oak'
+  const form = cust.form
   // Trunk grows a touch with each stage; the canopy grows more, so a mature tree reads as a
   // big leafy crown over a sturdy trunk. Base scale stays 1 (un-grown), then climbs by stage.
-  const k = 0.9 + 0.22 * stage
-  const trunkH = (26 + 4 * stage) * Math.min(k, 1.2)
-  const trunkW = 5 + stage
+  // The `mighty` evolved form (ADR-0021) reads as an even broader, thicker giant.
+  const k = 0.9 + 0.22 * stage + (form === 'mighty' ? 0.25 : 0)
+  const trunkH = (26 + 4 * stage) * Math.min(k, 1.25)
+  const trunkW = 5 + stage + (form === 'mighty' ? 2 : form === 'hollow_ancient' ? 3 : 0)
   const trunkY = GROUND - trunkH
-  const r = 14 + 4.4 * stage
+  const r = (14 + 4.4 * stage) * (form === 'mighty' ? 1.15 : form === 'hollow_ancient' ? 0.82 : 1)
   const cy = trunkY - r * 0.3
-  const leaf = TREE_LEAF[v] ?? '#22c55e'
-  const isPine = v === 'pine'
-  const isWillow = v === 'willow'
+  // The hollow-ancient form keeps its dark knot-hollow; blossoming swaps in a pink crown.
+  const leaf =
+    form === 'blossoming' ? '#f9a8d4' : form === 'hollow_ancient' ? '#4d7c0f' : TREE_LEAF[v] ?? '#22c55e'
+  const isPine = v === 'pine' && !form // a forked tree adopts the form silhouette over the species
+  const isWillow = v === 'willow' && !form
   return (
     <g>
       <rect x={40 - trunkW / 2} y={trunkY} width={trunkW} height={trunkH} rx={2} fill="#8b5a2b" />
-      {/* a few roots/bark ridges appear on the oldest stages for a gnarled, ancient feel */}
-      {stage >= 3 && (
+      {/* the hollow-ancient form bears a dark knot-hollow in its broad trunk */}
+      {form === 'hollow_ancient' && (
+        <ellipse cx={40} cy={trunkY + trunkH * 0.55} rx={trunkW * 0.32} ry={trunkH * 0.22} fill="#2b1c10" />
+      )}
+      {/* a few roots/bark ridges appear on the oldest stages (and the gnarled forms) */}
+      {(stage >= 3 || form === 'hollow_ancient' || form === 'mighty') && (
         <g stroke="#6f4420" strokeWidth={1} fill="none" strokeLinecap="round">
           <path d={`M${40 - trunkW / 2} ${GROUND} q-3 -2 -5 0`} />
           <path d={`M${40 + trunkW / 2} ${GROUND} q3 -2 5 0`} />
@@ -124,8 +135,24 @@ function Tree({ variant, cust, stage }: DrawProps) {
           {stage >= 2 && <circle cx={40 - r * 0.7} cy={cy - r * 0.5} r={r * 0.55} />}
           {stage >= 2 && <circle cx={40 + r * 0.7} cy={cy - r * 0.5} r={r * 0.55} />}
           {stage >= 4 && <circle cx={40} cy={cy - r * 0.9} r={r * 0.6} />}
+          {/* venerable (stage 5) spreads two more low side-lobes for a vast, old crown */}
+          {stage >= 5 && <circle cx={40 - r} cy={cy + r * 0.3} r={r * 0.5} />}
+          {stage >= 5 && <circle cx={40 + r} cy={cy + r * 0.3} r={r * 0.5} />}
         </g>
       )}
+      {/* the blossoming evolved form dusts the whole crown with pink blossom */}
+      {form === 'blossoming' &&
+        [
+          [-9, -2],
+          [9, -2],
+          [0, -9],
+          [-5, 6],
+          [5, 6],
+          [-4, -5],
+          [4, -5],
+        ].map(([dx, dy], i) => (
+          <circle key={i} cx={40 + dx} cy={cy + dy} r={1.8} fill="#fce7f3" />
+        ))}
       {isWillow && (
         <g stroke={leaf} strokeWidth={1.2} opacity={0.8}>
           {[-10, -4, 4, 10].map((dx) => (
@@ -166,6 +193,23 @@ function Tree({ variant, cust, stage }: DrawProps) {
           <circle cx={50.5} cy={cy + 5.5} r={1.4} fill="#1c1c1e" />
         </g>
       )}
+      {/* critter slot (ADR-0021): a small friend perched in the branches */}
+      {has(cust, 'critter', 'songbird') && (
+        <g transform={`translate(${40 - r * 0.5} ${cy + 1})`}>
+          <ellipse cx={0} cy={0} rx={2.6} ry={2} fill="#38bdf8" />
+          <circle cx={2} cy={-1.4} r={1.4} fill="#38bdf8" />
+          <polygon points="3.2,-1.4 5,-1 3.2,-0.4" fill="#f59e0b" />
+          <circle cx={2.2} cy={-1.6} r={0.4} fill="#1c1c1e" />
+        </g>
+      )}
+      {has(cust, 'critter', 'squirrel') && (
+        <g transform={`translate(${40 + r * 0.4} ${cy + 4})`}>
+          <ellipse cx={0} cy={0} rx={2.6} ry={1.8} fill="#b45309" />
+          <circle cx={2.4} cy={-1.6} r={1.6} fill="#b45309" />
+          <path d="M-2 1 q-4 -1 -2 -5 q2 1 2 4z" fill="#92400e" />
+          <circle cx={2.8} cy={-1.9} r={0.4} fill="#1c1c1e" />
+        </g>
+      )}
     </g>
   )
 }
@@ -179,17 +223,27 @@ const FLOWER_PETAL: Record<string, string> = {
 
 function Flower({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'rose'
+  const form = cust.form
   const k = 1 + 0.13 * stage
   const stemH = (28 + 3 * stage) * Math.min(k, 1.35)
   const top = GROUND - stemH
-  const petal = FLOWER_PETAL[v] ?? '#f472b6'
-  const center = v === 'sunflower' ? '#92400e' : '#fbbf24'
+  // The luminous evolved form (ADR-0021) glows; cultivated reads as a deeper, richer petal.
+  const petal =
+    form === 'luminous' ? '#fef08a' : form === 'cultivated' ? '#db2777' : FLOWER_PETAL[v] ?? '#f472b6'
+  const center = form === 'luminous' ? '#fde68a' : v === 'sunflower' ? '#92400e' : '#fbbf24'
   const petalR = (v === 'tulip' ? 5 : 5.5) * (has(cust, 'bloom', 'double') ? 1.25 : 1) * (1 + 0.06 * stage)
   // Side leaves multiply as the plant matures, and from `mature` a small companion bud sprouts
-  // alongside — a fuller, lusher clump each stage.
-  const leafYs = [0.4, ...(stage >= 1 ? [0.62] : []), ...(stage >= 3 ? [0.8] : [])]
+  // alongside — a fuller, lusher clump each stage; venerable (stage 5) adds one more leaf.
+  const leafYs = [
+    0.4,
+    ...(stage >= 1 ? [0.62] : []),
+    ...(stage >= 3 ? [0.8] : []),
+    ...(stage >= 5 ? [0.92] : []),
+  ]
   return (
     <g>
+      {/* luminous form: a soft halo behind the bloom */}
+      {form === 'luminous' && <circle cx={40} cy={top} r={11} fill="#fef9c3" opacity={0.4} />}
       <rect x={39} y={top} width={2} height={stemH} rx={1} fill="#16a34a" />
       {leafYs.map((f, i) => (
         <ellipse
@@ -201,6 +255,19 @@ function Flower({ variant, cust, stage }: DrawProps) {
           fill={i % 2 ? '#22c55e' : '#4ade80'}
         />
       ))}
+      {/* wildflower form: a scatter of tiny companion blooms around the main stem */}
+      {form === 'wildflower' &&
+        [
+          [30, 0.5],
+          [50, 0.62],
+          [33, 0.78],
+        ].map(([cx, f], i) => (
+          <g key={i}>
+            <rect x={cx - 0.6} y={top + stemH * f} width={1.2} height={stemH * (1 - f)} fill="#16a34a" />
+            <circle cx={cx} cy={top + stemH * f} r={2.4} fill={i % 2 ? '#a78bfa' : '#f472b6'} />
+            <circle cx={cx} cy={top + stemH * f} r={1} fill="#fbbf24" />
+          </g>
+        ))}
       {stage >= 3 && (
         <g>
           <rect x={45} y={top + 6} width={1.6} height={stemH * 0.4} rx={1} fill="#16a34a" />
@@ -230,21 +297,61 @@ function Flower({ variant, cust, stage }: DrawProps) {
           <line x1={0} y1={-3} x2={0} y2={3} stroke="#1c1c1e" strokeWidth={0.8} />
         </g>
       )}
+      {/* pollinator slot (ADR-0021): a bee or a dragonfly hovering at the bloom */}
+      {has(cust, 'pollinator', 'bee') && (
+        <g transform={`translate(53 ${top - 4})`}>
+          <ellipse cx={0} cy={0} rx={2.6} ry={2} fill="#fbbf24" />
+          <line x1={-1.2} y1={-1.6} x2={-1.2} y2={1.6} stroke="#1c1c1e" strokeWidth={0.7} />
+          <line x1={1} y1={-1.6} x2={1} y2={1.6} stroke="#1c1c1e" strokeWidth={0.7} />
+          <ellipse cx={-0.5} cy={-2.4} rx={2} ry={1.2} fill="#e0f2fe" opacity={0.8} />
+        </g>
+      )}
+      {has(cust, 'pollinator', 'dragonfly') && (
+        <g transform={`translate(53 ${top - 5})`}>
+          <rect x={-0.6} y={-3} width={1.2} height={7} rx={0.6} fill="#0ea5e9" />
+          <ellipse cx={-3} cy={-1} rx={3} ry={1.2} fill="#bae6fd" opacity={0.85} />
+          <ellipse cx={3} cy={-1} rx={3} ry={1.2} fill="#bae6fd" opacity={0.85} />
+        </g>
+      )}
     </g>
   )
 }
 
 function Pond({ cust, stage }: DrawProps) {
-  const k = 0.82 + 0.11 * stage
+  const form = cust.form
+  const k = 0.82 + 0.11 * stage + (stage >= 5 ? 0.05 : 0)
   const rx = 20 * k
   const ry = 7.5 * k
+  // The mountain-tarn form is a crisp, cold deep blue; the lotus-pool a warmer green water.
+  const water = form === 'mountain_tarn' ? '#0369a1' : form === 'lotus_pool' ? '#0e7490' : '#38bdf8'
+  const rim = form === 'mountain_tarn' ? '#64748b' : '#94a3b8'
   return (
     <g>
-      <ellipse cx={40} cy={66} rx={rx + 2} ry={ry + 0.6} fill="none" stroke="#94a3b8" strokeWidth={2} />
-      <ellipse cx={40} cy={66} rx={rx} ry={ry} fill="#38bdf8" />
+      {/* mountain-tarn form: a small rocky rim cairn at the water's edge */}
+      {form === 'mountain_tarn' && (
+        <g fill="#94a3b8">
+          <ellipse cx={40 - rx * 0.8} cy={66 - ry} rx={3} ry={2} />
+          <ellipse cx={40 - rx * 0.8} cy={66 - ry - 2.4} rx={2} ry={1.4} />
+        </g>
+      )}
+      <ellipse cx={40} cy={66} rx={rx + 2} ry={ry + 0.6} fill="none" stroke={rim} strokeWidth={2} />
+      <ellipse cx={40} cy={66} rx={rx} ry={ry} fill={water} />
       {/* the water deepens with concentric ripples on the larger stages */}
       {stage >= 2 && <ellipse cx={40} cy={66} rx={rx * 0.62} ry={ry * 0.6} fill="none" stroke="#7dd3fc" strokeWidth={1} opacity={0.7} />}
       {stage >= 4 && <ellipse cx={40} cy={66} rx={rx * 0.35} ry={ry * 0.34} fill="none" stroke="#bae6fd" strokeWidth={0.8} opacity={0.7} />}
+      {/* lotus-pool form: pink lotus blooms floating on the surface */}
+      {form === 'lotus_pool' &&
+        [
+          [30, 66],
+          [48, 68],
+          [40, 64],
+        ].map(([cx, cy], i) => (
+          <g key={i}>
+            <ellipse cx={cx} cy={cy} rx={3} ry={1.4} fill="#15803d" />
+            <circle cx={cx} cy={cy - 0.6} r={1.6} fill="#f9a8d4" />
+            <circle cx={cx} cy={cy - 0.6} r={0.7} fill="#fbcfe8" />
+          </g>
+        ))}
       {has(cust, 'lilies', 'lilies') && (
         <g>
           <ellipse cx={32} cy={65} rx={4} ry={2} fill="#22c55e" />
@@ -264,6 +371,24 @@ function Pond({ cust, stage }: DrawProps) {
           <path d="M22 64 q18 -10 36 0" />
           <line x1={26} y1={62} x2={26} y2={67} />
           <line x1={54} y1={62} x2={54} y2={67} />
+        </g>
+      )}
+      {/* waterfowl slot (ADR-0021): a duck or a swan gliding on the pond */}
+      {has(cust, 'waterfowl', 'duck') && (
+        <g>
+          <ellipse cx={44} cy={64} rx={4.5} ry={2.6} fill="#facc15" />
+          <circle cx={48} cy={61.5} r={2.2} fill="#facc15" />
+          <polygon points="50,61.5 53,61 50,60.5" fill="#f97316" />
+          <circle cx={48.6} cy={61.2} r={0.5} fill="#1c1c1e" />
+        </g>
+      )}
+      {has(cust, 'waterfowl', 'swan') && (
+        <g>
+          <ellipse cx={42} cy={64} rx={5.5} ry={3} fill="#f8fafc" />
+          <path d="M47 64 q3 -2 1 -6 q-1 -2 -2 -1" stroke="#f8fafc" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+          <circle cx={46.2} cy={57} r={1.4} fill="#f8fafc" />
+          <polygon points="47.4,56.6 50,56.4 47.6,55.6" fill="#f97316" />
+          <circle cx={46.6} cy={56.6} r={0.4} fill="#1c1c1e" />
         </g>
       )}
     </g>
@@ -708,8 +833,11 @@ function Toadstool({ x, y, k, cap }: { x: number; y: number; k: number; cap: str
 }
 
 function MushroomRing({ variant, cust, stage }: DrawProps) {
-  const cap = MUSHROOM_CAP[variant ?? 'ruby'] ?? '#dc2626'
-  const k = 0.85 + 0.1 * stage
+  const form = cust.form
+  // The witch's-circle form darkens the caps; the moonlit form turns them pale silver-blue.
+  const cap =
+    form === 'witchs_circle' ? '#4c1d95' : form === 'moonlit' ? '#c7d2fe' : MUSHROOM_CAP[variant ?? 'ruby'] ?? '#dc2626'
+  const k = 0.85 + 0.1 * stage + (stage >= 5 ? 0.06 : 0)
   // A ring of toadstools around a grassy centre; extra toadstools sprout as the ring spreads.
   const ring: Array<[number, number]> = [
     [28, 64],
@@ -720,10 +848,13 @@ function MushroomRing({ variant, cust, stage }: DrawProps) {
     ...(stage >= 2 ? ([[22, 67]] as Array<[number, number]>) : []),
     ...(stage >= 3 ? ([[58, 67]] as Array<[number, number]>) : []),
     ...(stage >= 4 ? ([[40, 70]] as Array<[number, number]>) : []),
+    ...(stage >= 5 ? ([[40, 58], [26, 61]] as Array<[number, number]>) : []),
   ]
   return (
     <g>
-      <ellipse cx={40} cy={66} rx={20} ry={6} fill="#bbf7d0" opacity={0.7} />
+      <ellipse cx={40} cy={66} rx={20} ry={6} fill={form === 'witchs_circle' ? '#3f3f46' : '#bbf7d0'} opacity={0.7} />
+      {/* moonlit form: a cool pale glow over the whole ring */}
+      {form === 'moonlit' && <ellipse cx={40} cy={64} rx={21} ry={8} fill="#e0e7ff" opacity={0.4} />}
       {has(cust, 'glow', 'glow') && <ellipse cx={40} cy={64} rx={20} ry={7} fill="#fde68a" opacity={0.35} />}
       {ring.map(([x, y], i) => (
         <Toadstool key={i} x={x} y={y} k={k} cap={cap} />
@@ -735,6 +866,19 @@ function MushroomRing({ variant, cust, stage }: DrawProps) {
           <ellipse cx={3} cy={-1} rx={2.2} ry={3} fill="#fef3c7" opacity={0.8} />
         </g>
       )}
+      {/* firefly slot (ADR-0021): little drifting points of warm light over the ring */}
+      {has(cust, 'firefly', 'fireflies') &&
+        [
+          [30, 54],
+          [50, 50],
+          [42, 57],
+          [24, 58],
+        ].map(([cx, cy], i) => (
+          <g key={i}>
+            <circle cx={cx} cy={cy} r={2.4} fill="#fde68a" opacity={0.4} />
+            <circle cx={cx} cy={cy} r={1} fill="#fef08a" />
+          </g>
+        ))}
     </g>
   )
 }
