@@ -6,7 +6,7 @@ import { sessionService } from '../services/sessions'
 import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { MOOD_COLORS, MOOD_META, gratitudeColor, tint } from '../lib/colors'
+import { MOOD_COLORS, MOOD_META, gratitudeColor } from '../lib/colors'
 import { csvEscape } from '../lib/csvEscape'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -393,7 +393,7 @@ export default function TimelinePage() {
                     {item.kind === 'journal' && item.mood && (
                       <span
                         className="journal-mood"
-                        style={{ background: tint(MOOD_COLORS[item.mood]), color: MOOD_COLORS[item.mood] }}
+                        style={{ ['--pill' as any]: MOOD_COLORS[item.mood] }}
                       >
                         {cap(item.mood)}
                       </span>

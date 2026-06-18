@@ -53,8 +53,8 @@ export const MOOD_COLORS: Record<Mood, string> = {
   anxious: '#8b5cf6',
   frustrated: '#94a3b8', // slate — cool-muted, not alarm-red
   overwhelmed: '#6366f1', // indigo — heavy but not alarming
-  tired: '#64748b',
-  low: '#475569',
+  tired: '#94a3b8',
+  low: '#64748b',
 }
 
 // Mood emoji + label — the single source of truth for how a mood reads, shared by the

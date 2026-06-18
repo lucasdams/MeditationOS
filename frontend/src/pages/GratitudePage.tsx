@@ -5,7 +5,7 @@ import { dashboardService } from '../services/dashboard'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { gratitudeColor, tint } from '../lib/colors'
+import { gratitudeColor } from '../lib/colors'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import type { DashboardStats, Gratitude, GratitudeCategory } from '../types'
@@ -317,7 +317,7 @@ export default function GratitudePage() {
               >
                 <div className="journal-entry-head">
                   <span className="muted">{fmtDate(e.created_at)}</span>
-                  <span className="journal-mood" style={{ background: tint(color), color }}>
+                  <span className="journal-mood" style={{ ['--pill' as any]: color }}>
                     {LABELS[e.category] ?? e.category}
                   </span>
                   <span className="journal-entry-actions" id={`menu-${e.id}`}>
