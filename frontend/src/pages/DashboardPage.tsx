@@ -156,6 +156,49 @@ export default function DashboardPage() {
 
       <MoodCheckin />
 
+      {/* Compact quests — a quiet "Today you could…" nudge with the day's quests as small
+          tappable chips (emoji + short label), each deep-linking to its feature. Low-chrome
+          on purpose: no descriptions, no XP numbers; done quests read muted with a check.
+          The full quest detail used to live in the "Show more" drawer; this gentle version
+          now sits on the calm default home so quests are visible at a glance. */}
+      {stats && stats.daily_quests.length > 0 && (
+        <section className="quests-compact" aria-label="Today's quests">
+          <p className="quests-compact-lead muted">Today you could…</p>
+          <ul className="quest-chips">
+            {stats.daily_quests.map((q) => {
+              const to = QUEST_LINKS[q.key] ?? '/sessions/new'
+              const meta = ACTIVITY_META[q.key as Activity]
+              const accent = ACTIVITY_COLORS[q.key as Activity]
+              return (
+                <li key={q.key}>
+                  <Link
+                    to={to}
+                    className={q.done ? 'quest-chip done' : 'quest-chip'}
+                    style={accent ? { ['--activity-accent' as string]: accent } : undefined}
+                    aria-label={`${q.label}${q.done ? ' — done' : ''}`}
+                  >
+                    <span className="quest-chip-emoji" aria-hidden="true">
+                      {meta?.emoji ?? '⭐'}
+                    </span>
+                    <span className="quest-chip-label">{q.label}</span>
+                    {q.done && (
+                      <span className="quest-chip-check" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* Compact sanctuary — a slim garden teaser linking to the full /sanctuary page. No
+          coin count here (the slim level chip above already shows coins; don't show twice).
+          Also moved out of the "Show more" drawer onto the calm default home. */}
+      {stats && <SanctuaryScene scene={sanctuaryScene} compact />}
+
       {/* Quiet fallback for the no-sessions state — only when the richer first-run card
           isn't on screen (dismissed), so the user never sees two "get started" prompts.
           Kept on the default view so a brand-new user always has a clear "start here". */}
@@ -168,9 +211,11 @@ export default function DashboardPage() {
           </p>
         )}
 
-      {/* Everything beyond starting a practice folds into one calm, default-collapsed
-          drawer: today's quests, the sanctuary preview, the full level detail, totals,
-          the heatmap, and the weekly review — all still here, just one tap away. */}
+      {/* The heavier retrospective/progress detail folds into one calm, default-collapsed
+          drawer: the full level detail (XP bar, next unlock), totals, the heatmap, and the
+          weekly review — all still here, just one tap away. Quests and the garden now live
+          on the default home above (in compact form), so the drawer is purely the deeper
+          progress view. */}
       {stats && (
         <section className="dashboard-more">
           <button
@@ -185,50 +230,12 @@ export default function DashboardPage() {
 
           {showMore && (
             <div id="dashboard-more-panel">
-              <section className="quests">
-                <div className="quests-head">
-                  <h2>Today you could…</h2>
-                  <span className="quest-reset muted">Fresh quests tomorrow</span>
-                </div>
-                <ul className="quest-list">
-                  {stats.daily_quests.map((q) => {
-                    const to = QUEST_LINKS[q.key] ?? '/sessions/new'
-                    const accent = ACTIVITY_COLORS[q.key as Activity]
-                    return (
-                      <li
-                        key={q.key}
-                        className={q.done ? 'quest done' : 'quest'}
-                        style={accent ? { ['--activity-accent' as string]: accent } : undefined}
-                      >
-                        <Link to={to} className="quest-row-link" aria-label={`${q.label} — open feature`}>
-                          <span className="quest-check" aria-hidden="true">
-                            {q.done ? '✓' : '○'}
-                          </span>
-                          <span className="quest-label">
-                            {q.label}
-                          </span>
-                          {q.target > 1 && !q.done && (
-                            <span className="quest-progress">
-                              {q.progress}/{q.target}
-                            </span>
-                          )}
-                          <span className="quest-arrow" aria-hidden="true">→</span>
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-                {stats.current_streak_days > 0 && (
-                  <p className="quest-streak muted">
-                    <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
-                    {stats.rest_day_used
-                      ? ' · 🛡️ rest day — skipping one is fine'
-                      : ''}
-                  </p>
-                )}
-              </section>
-
-              <SanctuaryScene scene={sanctuaryScene} />
+              {stats.current_streak_days > 0 && (
+                <p className="quest-streak muted">
+                  <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
+                  {stats.rest_day_used ? ' · 🛡️ rest day — skipping one is fine' : ''}
+                </p>
+              )}
 
               <LevelCard stats={stats} scene={sanctuaryScene} />
 

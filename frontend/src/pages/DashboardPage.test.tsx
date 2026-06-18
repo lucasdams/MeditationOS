@@ -1,11 +1,12 @@
 /**
  * Light smoke tests for the DashboardPage.
  * Full integration coverage lives in E2E; these guard the quick-action tiles,
- * the slim level chip, the single-fetch sanctuary scene optimisation, and the
- * default-collapsed "Show more" drawer that keeps the landing view calm.
+ * the slim level chip, the compact quests + sanctuary teaser that sit on the calm
+ * default home, the single-fetch sanctuary scene optimisation, and the
+ * default-collapsed "Show more" drawer that holds the heavier progress detail.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const getStats = vi.fn()
@@ -140,13 +141,29 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     expect(screen.getByTestId('mood-checkin')).toBeInTheDocument()
   })
 
-  it('keeps quests, sanctuary, full level card, heatmap, and weekly review collapsed', async () => {
+  it('shows compact quests and the sanctuary teaser on the default home', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // Secondary surfaces are not rendered until the drawer is opened.
-    expect(screen.queryByText(/Today you could/i)).not.toBeInTheDocument()
-    expect(screen.queryByTestId('sanctuary-scene')).not.toBeInTheDocument()
+    // The quiet "Today you could…" lead and the day's quests as chips are visible by default.
+    expect(screen.getByText(/Today you could/i)).toBeInTheDocument()
+    const questsSection = screen.getByRole('region', { name: /today's quests/i })
+    expect(questsSection).toBeInTheDocument()
+    expect(
+      within(questsSection).getByRole('link', { name: /meditate/i }),
+    ).toHaveAttribute('href', '/meditate')
+
+    // The sanctuary teaser (compact variant) renders on the default view.
+    const teaser = screen.getByTestId('sanctuary-scene')
+    expect(teaser).toBeInTheDocument()
+    expect(capturedSanctuarySceneProps.at(-1)?.compact).toBe(true)
+  })
+
+  it('keeps the full level card, totals, heatmap, and weekly review collapsed', async () => {
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    // The heavier progress surfaces are not rendered until the drawer is opened.
     expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('activity-heatmap')).not.toBeInTheDocument()
     expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
@@ -164,7 +181,7 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
     getScene.mockResolvedValue(fakeScene)
   })
 
-  it('reveals the secondary sections and persists the open state to localStorage', async () => {
+  it('reveals the heavier progress sections and persists the open state to localStorage', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
@@ -172,8 +189,6 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
     fireEvent.click(toggle)
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText(/Today you could/i)).toBeInTheDocument()
-    expect(screen.getByTestId('sanctuary-scene')).toBeInTheDocument()
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
     expect(screen.getByTestId('activity-heatmap')).toBeInTheDocument()
     expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
@@ -187,8 +202,8 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // Drawer is open on first render — secondary sections visible without a click.
-    expect(screen.getByText(/Today you could/i)).toBeInTheDocument()
+    // Drawer is open on first render — the heavier progress sections are visible without a click.
+    expect(screen.getByTestId('level-card')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /hide more/i })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -200,7 +215,8 @@ describe('DashboardPage — sanctuary scene single-fetch', () => {
   it('calls getScene exactly once and passes the scene to SanctuaryScene and LevelCard', async () => {
     getScene.mockResolvedValue(fakeScene)
     getStats.mockResolvedValue(fakeStats)
-    // SanctuaryScene + LevelCard live inside the drawer; start it open to reach them.
+    // The compact SanctuaryScene sits on the default home; LevelCard lives in the drawer —
+    // open it so both children render and we can assert the shared scene reaches each.
     localStorage.setItem('dashboard.showMore', '1')
 
     renderPage()
