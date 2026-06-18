@@ -46,9 +46,29 @@ export default function DashboardPage() {
   // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
   // both LevelCard (next unlock) and SanctuaryScene (coins + garden preview).
   const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
-  // Retrospective stats (totals, heatmap) start collapsed so the landing view
-  // stays calm — the day's practice first, history on request.
-  const [showMore, setShowMore] = useState(false)
+  // Everything beyond the day's practice (quests, sanctuary, level detail, totals,
+  // heatmap, weekly review) starts collapsed so the landing view stays calm — the
+  // primary "start a practice" surface first, the rest one tap away. The open/closed
+  // choice persists across visits.
+  const [showMore, setShowMore] = useState(() => {
+    try {
+      return localStorage.getItem('dashboard.showMore') === '1'
+    } catch {
+      return false
+    }
+  })
+
+  function toggleShowMore() {
+    setShowMore((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('dashboard.showMore', next ? '1' : '0')
+      } catch {
+        // ignore storage failures (private mode, quota) — the toggle still works in-session
+      }
+      return next
+    })
+  }
   // A gentle daily greeting (stable through the day) and a mindful loading line.
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
   const [loadingLine] = useState(() => randomOf(LOADING))
@@ -100,9 +120,23 @@ export default function DashboardPage() {
         <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
       )}
 
-      {stats && <LevelCard stats={stats} scene={sanctuaryScene} />}
+      {/* Slim level/coins line — a quiet chip in place of the full LevelCard on the
+          default view. The detailed LevelCard (XP bar, next unlock) lives in the
+          collapse below so the landing view stays calm. */}
+      {stats && (
+        <p className="level-chip muted">
+          <span aria-hidden="true">◆</span> Level {stats.level}
+          {sanctuaryScene && (
+            <>
+              {' · '}
+              <span aria-hidden="true">🪙</span> {sanctuaryScene.coins}
+            </>
+          )}
+        </p>
+      )}
 
-      {/* Quick-access tiles — one tap to every main feature. */}
+      {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
+          a practice. Kept prominent and always visible. */}
       <nav className="feature-tiles" aria-label="Quick access">
         {FEATURE_TILES.map(({ label, emoji, to, activity }) => {
           const accent = activity ? ACTIVITY_COLORS[activity] : '#6b6b70'
@@ -122,55 +156,9 @@ export default function DashboardPage() {
 
       <MoodCheckin />
 
-      <SanctuaryScene scene={sanctuaryScene} />
-
-      {stats && (
-        <section className="quests">
-          <div className="quests-head">
-            <h2>Today you could…</h2>
-            <span className="quest-reset muted">Fresh quests tomorrow</span>
-          </div>
-          <ul className="quest-list">
-            {stats.daily_quests.map((q) => {
-              const to = QUEST_LINKS[q.key] ?? '/sessions/new'
-              const accent = ACTIVITY_COLORS[q.key as Activity]
-              return (
-                <li
-                  key={q.key}
-                  className={q.done ? 'quest done' : 'quest'}
-                  style={accent ? { ['--activity-accent' as string]: accent } : undefined}
-                >
-                  <Link to={to} className="quest-row-link" aria-label={`${q.label} — open feature`}>
-                    <span className="quest-check" aria-hidden="true">
-                      {q.done ? '✓' : '○'}
-                    </span>
-                    <span className="quest-label">
-                      {q.label}
-                    </span>
-                    {q.target > 1 && !q.done && (
-                      <span className="quest-progress">
-                        {q.progress}/{q.target}
-                      </span>
-                    )}
-                    <span className="quest-arrow" aria-hidden="true">→</span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-          {stats.current_streak_days > 0 && (
-            <p className="quest-streak muted">
-              <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
-              {stats.rest_day_used
-                ? ' · 🛡️ rest day — skipping one is fine'
-                : ''}
-            </p>
-          )}
-        </section>
-      )}
-
       {/* Quiet fallback for the no-sessions state — only when the richer first-run card
-          isn't on screen (dismissed), so the user never sees two "get started" prompts. */}
+          isn't on screen (dismissed), so the user never sees two "get started" prompts.
+          Kept on the default view so a brand-new user always has a clear "start here". */}
       {stats &&
         stats.session_count === 0 &&
         (firstRunDismissed || !shouldShowFirstRun(stats.session_count)) && (
@@ -180,21 +168,70 @@ export default function DashboardPage() {
           </p>
         )}
 
-      {stats && stats.session_count > 0 && (
+      {/* Everything beyond starting a practice folds into one calm, default-collapsed
+          drawer: today's quests, the sanctuary preview, the full level detail, totals,
+          the heatmap, and the weekly review — all still here, just one tap away. */}
+      {stats && (
         <section className="dashboard-more">
           <button
             type="button"
             className="show-more-toggle"
-            onClick={() => setShowMore((v) => !v)}
-            aria-label="Progress details"
+            onClick={toggleShowMore}
             aria-expanded={showMore}
-            aria-controls="dashboard-progress"
+            aria-controls="dashboard-more-panel"
           >
-            {showMore ? 'Hide progress' : 'Show progress'}
+            {showMore ? 'Hide more' : 'Show more'}
           </button>
 
           {showMore && (
-            <div id="dashboard-progress">
+            <div id="dashboard-more-panel">
+              <section className="quests">
+                <div className="quests-head">
+                  <h2>Today you could…</h2>
+                  <span className="quest-reset muted">Fresh quests tomorrow</span>
+                </div>
+                <ul className="quest-list">
+                  {stats.daily_quests.map((q) => {
+                    const to = QUEST_LINKS[q.key] ?? '/sessions/new'
+                    const accent = ACTIVITY_COLORS[q.key as Activity]
+                    return (
+                      <li
+                        key={q.key}
+                        className={q.done ? 'quest done' : 'quest'}
+                        style={accent ? { ['--activity-accent' as string]: accent } : undefined}
+                      >
+                        <Link to={to} className="quest-row-link" aria-label={`${q.label} — open feature`}>
+                          <span className="quest-check" aria-hidden="true">
+                            {q.done ? '✓' : '○'}
+                          </span>
+                          <span className="quest-label">
+                            {q.label}
+                          </span>
+                          {q.target > 1 && !q.done && (
+                            <span className="quest-progress">
+                              {q.progress}/{q.target}
+                            </span>
+                          )}
+                          <span className="quest-arrow" aria-hidden="true">→</span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {stats.current_streak_days > 0 && (
+                  <p className="quest-streak muted">
+                    <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
+                    {stats.rest_day_used
+                      ? ' · 🛡️ rest day — skipping one is fine'
+                      : ''}
+                  </p>
+                )}
+              </section>
+
+              <SanctuaryScene scene={sanctuaryScene} />
+
+              <LevelCard stats={stats} scene={sanctuaryScene} />
+
               <section className="stat-cards">
                 <div className="stat-card">
                   <div className="stat-value">{formatTotal(stats.total_seconds)}</div>
@@ -211,13 +248,12 @@ export default function DashboardPage() {
               </section>
 
               <ActivityHeatmap />
+
+              <WeeklyReview />
             </div>
           )}
         </section>
       )}
-
-      {/* Weekly retrospective closes the page — today's practice leads, history follows. */}
-      <WeeklyReview />
     </main>
   )
 }
