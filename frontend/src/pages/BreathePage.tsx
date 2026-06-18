@@ -57,7 +57,6 @@ const AUDIO_LOOKAHEAD = 2.5
 const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
   resonance: { emoji: '🌊', tint: '#e0f2fe' }, // rolling, longer exhale
   box: { emoji: '🟦', tint: '#e0e7ff' }, // four equal sides
-  '478': { emoji: '🌙', tint: '#ede9fe' }, // calming, for winding down
 }
 
 // Breaths-per-minute is the user's primary control for the Resonance preset: stepped
@@ -221,8 +220,8 @@ export default function BreathePage() {
   const savedRef = useRef(false)
   const lastPersistRef = useRef(-1)
 
-  // The active pattern: a fixed preset (4·7·8), or derived from its control value —
-  // the bpm pace (Resonance/Coherence) or the box count (Box).
+  // The active pattern: derived from its control value — the bpm pace (Resonance) or the
+  // box count (Box). A 'none'-control fixed preset (none ship today) would use `pattern`.
   const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0]
   const controlValue = preset.control === 'count' ? boxCount : bpm
   const pattern: Pattern =

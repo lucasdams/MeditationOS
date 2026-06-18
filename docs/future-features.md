@@ -23,10 +23,10 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 
 - [x] **Breaths-per-minute selector** (1–10, stepped) with the last pace remembered locally; inhale/exhale derived from the rate
 - [x] **Selectable ambient soundscape** (synthesized ocean / rain / stream) + a transition chime on the breathing pacer; the meditation timer rings a soft singing-bowl bell at start / interval / end
-- [x] **Named breathing presets** — Resonance (bpm-driven longer-exhale, the default), Box (4·4·4·4), and 4·7·8, selectable on the breathe page; the pacer was generalized to per-phase holds (`frontend/src/lib/breathPattern.ts`, unit-tested). Last preset remembered locally. (Coherence was removed 2026-06 as redundant with Resonance — both are slow even-paced breathing; `BreathingInfo` notes resonance is also called "coherence breathing".)
+- [x] **Named breathing presets** — Resonance (bpm-driven longer-exhale, the default) and Box (4·4·4·4), selectable on the breathe page; the pacer was generalized to per-phase holds (`frontend/src/lib/breathPattern.ts`, unit-tested). Last preset remembered locally. (Coherence and 4·7·8 were removed 2026-06 to keep the set small and distinct: Coherence was redundant with Resonance, and 4·7·8 trimmed for simplicity — the per-phase-hold pacer still supports fixed protocols if reintroduced.)
 - [ ] Breathing pattern library shared across devices
 - [ ] Session stats per pattern (which rates users practice most, time of day)
-- [x] **Optional breath holds between inhale and exhale** — supported via the preset patterns (box/4·7·8 carry their own holds); a fully custom hold editor remains open
+- [x] **Optional breath holds between inhale and exhale** — supported via the preset patterns (box carries its own holds; resonance keeps light 1s holds); a fully custom hold editor remains open
 - [ ] Haptic or audio-only breathing modes
 - [ ] Custom in:out ratio for resonance breathing (the bpm selector ships a **~2:3 longer-exhale** ratio by default; a user-adjustable ratio for advanced users with a known resonance frequency is the open item)
 

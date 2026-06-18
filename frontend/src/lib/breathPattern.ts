@@ -1,7 +1,8 @@
 // Pure breathing-pacer math, shared by BreathePage and its tests. A breath cycle is
 // inhale → hold-full → exhale → hold-empty, each phase its own length in seconds — so
-// named presets like box (4·4·4·4) or 4·7·8 work, not just the longer-exhale resonance
-// default. The visible circle scales MIN..MAX across inhale/exhale and holds at the turns.
+// named presets like box (4·4·4·4) work, not just the longer-exhale resonance default
+// (the model still supports fixed protocols). The visible circle scales MIN..MAX across
+// inhale/exhale and holds at the turns.
 
 export const MIN_SCALE = 0.35
 export const MAX_SCALE = 1
@@ -84,9 +85,9 @@ export type Preset = {
   label: string
   hint: string
   // Which control adjusts it: 'bpm' = the breaths/min pace (rate patterns), 'count' =
-  // seconds-per-phase (box), 'none' = fixed (a named protocol like 4·7·8). Adjustable
-  // presets carry `derive` (control value → pattern) and a null `pattern`; 'none' carries
-  // the fixed `pattern`.
+  // seconds-per-phase (box), 'none' = a fixed named protocol (none ship today, but the
+  // type stays so one can be reintroduced). Adjustable presets carry `derive` (control
+  // value → pattern) and a null `pattern`; 'none' carries the fixed `pattern`.
   control: 'bpm' | 'count' | 'none'
   pattern: Pattern | null
   derive?: (value: number) => Pattern
@@ -95,7 +96,6 @@ export type Preset = {
 export const PRESETS: Preset[] = [
   { key: 'resonance', label: 'Resonance', control: 'bpm', pattern: null, derive: patternForBpm, hint: 'Longer exhale, at your pace' },
   { key: 'box', label: 'Box', control: 'count', pattern: null, derive: boxPatternForCount, hint: 'Equal in · hold · out · hold' },
-  { key: '478', label: '4·7·8', control: 'none', pattern: { inhale: 4, holdFull: 7, exhale: 8, holdEmpty: 0 }, hint: 'Long hold and exhale — calming' },
 ]
 
 export const PRESET_STORAGE_KEY = 'breathe.preset'
