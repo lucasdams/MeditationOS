@@ -1,6 +1,6 @@
 # Sanctuary Design — a garden you build with coins
 
-[← Back to README](../../README.md) · Related: [ADR-0019 (reset upgrades for a fee)](../decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) · [ADR-0016 (shop expansion + retune)](../decisions/0016-sanctuary-shop-expansion-and-retune.md) · [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
+[← Back to README](../../README.md) · Related: [ADR-0020 (growth ladder + accessory slots)](../decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md) · [ADR-0019 (reset upgrades for a fee)](../decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) · [ADR-0016 (shop expansion + retune)](../decisions/0016-sanctuary-shop-expansion-and-retune.md) · [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn
 **coins** as you level up and spend them to **buy** items (plants, structures, pets) and
@@ -58,12 +58,21 @@ derived-balance principle of ADR-0011:
   The variant visibly changes the drawn SVG. `null` = the item's default (first) variant.
 - **Customizations** — independent, named **slots**, each with options, bought over time
   and mixed and matched: a tree can have `foliage` ∈ {fruit, blossom, autumn} *and* a
-  `swing` *and* a `birdhouse`; a dog can be `grown` *and* wear a `hat`. Slots are
-  independent — applying one never replaces another. Within a slot, switching the chosen
-  option charges only the difference, so it is never punishing.
+  `swing` *and* a `birdhouse`; a dog can be grown *and* wear a `tiny_crown` *and* a `bell`
+  collar *and* `sunglasses`. Slots are independent — applying one never replaces another.
+  Within a slot, switching the chosen option charges only the difference, so it is never
+  punishing.
 
-The old `tier` is folded into a `grown` customization (the size slot), so existing spend
-is preserved exactly with no break.
+The old `tier` is folded into the `grown` size slot, which is now a **multi-stage growth
+ladder** ([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)): four
+sequential, mutually-exclusive stages — `grown → flourishing → mature → ancient` — each
+costlier and gated at a higher level, and each visibly larger/lusher in the SVG. The first
+rung is keyed literally `"grown"` at the unchanged cost `round(base × 1.5)`, so existing rows
+(`customizations = {"grown": "grown"}`) resolve and their spend is preserved exactly with no
+break; advancing a stage charges only the difference (a within-slot swap). The characters also
+gain additive **dress-up slots** — `headwear` (hat / flower crown / tiny crown), `collar`
+(bandana / bow tie / bell), and `attire` (scarf / sunglasses) — independent of each other and
+of the legacy `accessory` slot. The catalog is in-code, so all of this needs no migration.
 
 ### Character & whimsy (ADR-0016)
 
@@ -165,8 +174,17 @@ couple of nature/companion additions were added in [ADR-0016](../decisions/0016-
 
 Variants are free in the shipped catalog (a per-variant `cost_delta` is supported for
 future tuning). All costs are tunable constants — retuning needs no migration.
-`COINS_PER_LEVEL = 80` ([ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md))
-and the `grown` size is `round(buy_cost × 1.5)`. Each item also carries a cosmetic `blurb`.
+`COINS_PER_LEVEL = 80` ([ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md)).
+Each item also carries a cosmetic `blurb`.
+
+The `grown·N` column above is the **first rung** of the `grown` slot's growth ladder
+([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)) — the
+unchanged `"grown"` stage at `round(base_size × 1.5)`. The slot continues into three further
+stages at rising cost (× `2.4 / 3.6 / 5.0` of `base_size`) and rising unlock level (`3 / 5 /
+8`): `grown → flourishing → mature → ancient`. The companion/whimsy characters also carry
+additive **`headwear`** (hat / flower crown / tiny crown), **`collar`** (bandana / bow tie /
+bell), and **`attire`** (scarf / sunglasses) slots alongside the legacy `accessory` slot — all
+in-code, no migration.
 
 ### Progressive pricing (ADR-0013, retuned in ADR-0016)
 
@@ -302,6 +320,12 @@ Each step is independently shippable.
    under the front-loaded XP curve. Both economy levers move in the safe (generous) direction,
    so no existing garden's derived balance can be driven negative
    ([ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md)).
+10. ✅ **Growth ladder + dress-up slots** — the `grown` size slot becomes a four-stage,
+    level-gated ladder (`grown → flourishing → mature → ancient`), each stage costlier and
+    visibly larger/lusher in SVG; the characters gain additive `headwear` / `collar` /
+    `attire` slots. The first rung stays keyed `"grown"` at the unchanged cost, so legacy
+    rows are preserved exactly; the catalog is in-code, so no migration
+    ([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)).
 
 ## Out of scope (here)
 

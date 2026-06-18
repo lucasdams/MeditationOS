@@ -214,6 +214,18 @@ class _Build:
         self._slots.append(Slot(key=key, options=tuple(Option(o, c) for o, c in opts)))
         return self
 
+    def ladder(self, rungs: tuple[tuple[str, int, int], ...]) -> "_Build":
+        # Adds the `grown` growth-ladder slot: each rung is (option_key, cost, unlock_level),
+        # rising in cost *and* unlock_level. Unlike a plain `slot`, options here carry their
+        # own level gate (later stages unlock as the user levels up).
+        self._slots.append(
+            Slot(
+                key="grown",
+                options=tuple(Option(o, c, unlock_level=u) for o, c, u in rungs),
+            )
+        )
+        return self
+
     def build(self) -> CatalogItem:
         return CatalogItem(
             key=self.key,
@@ -226,10 +238,43 @@ class _Build:
         )
 
 
-def _grown(cost: int) -> tuple[str, int]:
-    # The "grown" / bigger size — successor to the old tier ladder (preserves spend; the
-    # tier-1 upgrade cost was round(cost * 1.5)).
-    return ("grown", round(cost * 1.5))
+# --- Growth ladder (the `grown` slot) ---------------------------------------------------
+#
+# The size axis is a *sequential ladder* of stages, not a single on/off "grown" toggle. Each
+# stage is one mutually-exclusive option in the `grown` slot, with a strictly rising cost and
+# a non-decreasing unlock_level, so a plant visibly matures across four stages. Because slots
+# are mutually-exclusive-within and a swap charges only the *difference* (see `customize`),
+# advancing a stage charges incrementally and the total sunk into the slot is always exactly
+# the currently-applied stage's cost — the derived balance handles it (ADR-0011/0013).
+#
+# CRITICAL backward-compat: the first rung is keyed literally "grown" at the *unchanged* cost
+# round(base * 1.5) — the same value the old `_grown` helper returned and the same value the
+# old tier-1 upgrade cost. So any legacy row whose customizations are {"grown": "grown"}
+# still resolves to a real option and its `spent()` is byte-for-byte unchanged. The new rungs
+# are pure additions above it and can only ever raise spend if a user chooses to advance.
+GROWTH_STAGES: tuple[str, ...] = ("grown", "flourishing", "mature", "ancient")
+
+# Multipliers on the item's `base` cost for each ladder rung. The first (grown) is 1.5 — the
+# historical value — and each later rung costs progressively more. Tunable constants; no
+# migration. Unlock levels rise gently so later stages feel earned without gating the early
+# garden.
+_GROWTH_COST_MULT: tuple[float, ...] = (1.5, 2.4, 3.6, 5.0)
+_GROWTH_UNLOCK: tuple[int, ...] = (1, 3, 5, 8)
+
+
+def _growth_ladder(base: int) -> tuple[tuple[str, int, int], ...]:
+    """The `grown` slot's stage ladder for an item with the given `base` cost.
+
+    Returns a tuple of (option_key, cost, unlock_level) rungs: the first keyed literally
+    "grown" at round(base * 1.5) (legacy-preserving), each subsequent rung at a strictly
+    higher cost and a non-decreasing unlock_level. Fed to `_Build.ladder`.
+    """
+    return tuple(
+        (stage, round(base * mult), unlock)
+        for stage, mult, unlock in zip(
+            GROWTH_STAGES, _GROWTH_COST_MULT, _GROWTH_UNLOCK, strict=True
+        )
+    )
 
 
 # In-code catalog — the single source of truth for what's buyable, its forms, and costs.
@@ -246,7 +291,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("tree", "nature", 30)
         .blurb("A patient old soul. It was here before you, and it's in no hurry.")
         .variants("oak", "pine", "cherry", "willow")
-        .slot("grown", _grown(40))
+        .ladder(_growth_ladder(40))
         .slot("foliage", ("fruit", 30), ("blossom", 30), ("autumn", 30))
         .slot("swing", ("swing", 25))
         .slot("birdhouse", ("birdhouse", 20))
@@ -256,7 +301,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("flower", "nature", 20)
         .blurb("Small, bright, and quietly pleased with itself.")
         .variants("rose", "tulip", "sunflower", "daisy")
-        .slot("grown", _grown(25))
+        .ladder(_growth_ladder(25))
         .slot("bloom", ("double", 18))
         .slot("butterfly", ("butterfly", 20))
         .build()
@@ -265,7 +310,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("mushroom_ring", "nature", 28, unlock_level=2)
         .blurb("A fairy ring of toadstools. Don't step inside after dark — or do.")
         .variants("ruby", "amber", "violet")
-        .slot("grown", _grown(36))
+        .ladder(_growth_ladder(36))
         .slot("glow", ("glow", 24))
         .slot("sprite", ("sprite", 30))
         .build()
@@ -273,7 +318,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "pond": (
         _Build("pond", "nature", 60, unlock_level=4)
         .blurb("Still water. Good for skipping stones and skipping worries.")
-        .slot("grown", _grown(80))
+        .ladder(_growth_ladder(80))
         .slot("lilies", ("lilies", 40))
         .slot("koi", ("koi", 50))
         .slot("bridge", ("bridge", 60))
@@ -284,7 +329,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("hut", "structure", 45, unlock_level=2)
         .blurb("Cosy enough for one, with room for a kettle.")
         .variants("straw", "wood")
-        .slot("grown", _grown(60))
+        .ladder(_growth_ladder(60))
         .slot("chimney_smoke", ("smoke", 30))
         .slot("garden", ("garden", 35))
         .slot("lights", ("lights", 25))
@@ -294,7 +339,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("cottage", "structure", 70, unlock_level=3)
         .blurb("Crooked windows, warm light, the smell of something baking.")
         .variants("cream", "stone")
-        .slot("grown", _grown(90))
+        .ladder(_growth_ladder(90))
         .slot("chimney_smoke", ("smoke", 40))
         .slot("garden", ("garden", 45))
         .slot("lights", ("lights", 35))
@@ -304,7 +349,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("barn", "structure", 90, unlock_level=4)
         .blurb("Big doors, big yawns. The unofficial heart of the place.")
         .variants("red", "gray")
-        .slot("grown", _grown(120))
+        .ladder(_growth_ladder(120))
         .slot("chimney_smoke", ("smoke", 50))
         .slot("garden", ("garden", 55))
         .slot("lights", ("lights", 45))
@@ -314,7 +359,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("car", "structure", 100, unlock_level=5)
         .blurb("Always packed for a trip you keep meaning to take.")
         .variants("red", "blue", "yellow")
-        .slot("grown", _grown(130))
+        .ladder(_growth_ladder(130))
         .slot("lights", ("lights", 45))
         .build()
     ),
@@ -322,7 +367,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("beach_house", "structure", 110, unlock_level=6)
         .blurb("Salt air and a porch made for doing absolutely nothing.")
         .variants("white", "teal")
-        .slot("grown", _grown(150))
+        .ladder(_growth_ladder(150))
         .slot("garden", ("garden", 60))
         .slot("lights", ("lights", 55))
         .build()
@@ -331,7 +376,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("boat", "structure", 130, unlock_level=8)
         .blurb("A little vessel for a slow drift. Bring snacks.")
         .variants("wood", "white")
-        .slot("grown", _grown(170))
+        .ladder(_growth_ladder(170))
         .slot("lights", ("lights", 60))
         .build()
     ),
@@ -340,54 +385,67 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("goldfish", "companion", 20)
         .blurb("Three-second memory, infinite serenity. We could learn a lot.")
         .variants("orange", "white", "black")
-        .slot("grown", _grown(30))
+        .ladder(_growth_ladder(30))
         .build()
     ),
     "bird": (
         _Build("bird", "companion", 25, unlock_level=2)
         .blurb("Sings first thing, asks for nothing. A fine alarm clock.")
         .variants("bluebird", "robin", "canary")
-        .slot("grown", _grown(35))
+        .ladder(_growth_ladder(35))
         .slot("accessory", ("hat", 25))
+        .slot("headwear", ("hat", 25), ("flower_crown", 26), ("tiny_crown", 30))
+        .slot("attire", ("scarf", 24), ("sunglasses", 26))
         .build()
     ),
     "cat": (
         _Build("cat", "companion", 40, unlock_level=3)
         .blurb("Will sit with you. On its terms. Probably on your keyboard.")
         .variants("gray", "ginger", "black", "white")
-        .slot("grown", _grown(50))
+        .ladder(_growth_ladder(50))
         .slot("accessory", ("collar", 25), ("bandana", 25), ("hat", 30))
+        # New additive dress-up slots (ADR-0019): each independent of the others, so a cat can
+        # wear a flower crown AND a bell collar AND sunglasses all at once. Mutually-exclusive
+        # within each slot; switching options charges only the difference.
+        .slot("headwear", ("hat", 28), ("flower_crown", 30), ("tiny_crown", 34))
+        .slot("collar", ("bandana", 24), ("bowtie", 26), ("bell", 28))
+        .slot("attire", ("scarf", 24), ("sunglasses", 28))
         .build()
     ),
     "snake": (
         _Build("snake", "companion", 45, unlock_level=4)
         .blurb("A long, slow noodle. Surprisingly good company.")
         .variants("green", "amber", "blue")
-        .slot("grown", _grown(60))
+        .ladder(_growth_ladder(60))
         .slot("accessory", ("hat", 30))
+        .slot("headwear", ("hat", 30), ("tiny_crown", 34))
         .build()
     ),
     "fox": (
         _Build("fox", "companion", 50, unlock_level=5)
         .blurb("Clever, quiet, and up to something. You'll never know what.")
         .variants("red", "arctic")
-        .slot("grown", _grown(70))
+        .ladder(_growth_ladder(70))
         .slot("accessory", ("collar", 30), ("bandana", 30))
+        .slot("headwear", ("hat", 30), ("flower_crown", 32), ("tiny_crown", 36))
+        .slot("collar", ("bandana", 28), ("bowtie", 30), ("bell", 32))
+        .slot("attire", ("scarf", 28), ("sunglasses", 30))
         .build()
     ),
     "hedgehog": (
         _Build("hedgehog", "companion", 38, unlock_level=3)
         .blurb("Pointy on the outside, soft about everything on the inside.")
         .variants("brown", "cream", "salt")
-        .slot("grown", _grown(48))
+        .ladder(_growth_ladder(48))
         .slot("accessory", ("scarf", 26), ("leaf", 22))
+        .slot("headwear", ("hat", 26), ("flower_crown", 28))
         .build()
     ),
     "snail": (
         _Build("snail", "companion", 22, unlock_level=2)
         .blurb("The garden's slowest philosopher. Carries home everywhere.")
         .variants("amber", "minty", "rosy")
-        .slot("grown", _grown(28))
+        .ladder(_growth_ladder(28))
         .slot("accessory", ("hat", 24))
         .build()
     ),
@@ -395,8 +453,11 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("dog", "companion", 70, unlock_level=6)
         .blurb("Thinks today is the best day ever. Every single day.")
         .variants("corgi", "husky", "shiba", "dalmatian")
-        .slot("grown", _grown(90))
+        .ladder(_growth_ladder(90))
         .slot("accessory", ("collar", 30), ("bandana", 35), ("hat", 40))
+        .slot("headwear", ("hat", 30), ("flower_crown", 32), ("tiny_crown", 38))
+        .slot("collar", ("bandana", 28), ("bowtie", 30), ("bell", 32))
+        .slot("attire", ("scarf", 28), ("sunglasses", 32))
         .build()
     ),
     # --- Whimsy -----------------------------------------------------------------------
@@ -406,7 +467,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("garden_gnome", "whimsy", 26, unlock_level=2)
         .blurb("Stands guard with great seriousness over a patch of nothing in particular.")
         .variants("classic", "mossy", "sleepy")
-        .slot("grown", _grown(32))
+        .ladder(_growth_ladder(32))
         .slot("lantern", ("lantern", 24))
         .slot("companion", ("snail", 22))
         .build()
@@ -415,7 +476,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("wind_chime", "whimsy", 30, unlock_level=3)
         .blurb("Hung from a branch, it turns the breeze into something you can hear.")
         .variants("brass", "bamboo", "seaglass")
-        .slot("grown", _grown(38))
+        .ladder(_growth_ladder(38))
         .slot("ribbon", ("ribbon", 22))
         .slot("bell", ("bell", 26))
         .build()
@@ -424,7 +485,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("lantern", "whimsy", 34, unlock_level=3)
         .blurb("A small, steady glow for the evenings. It waits up for you.")
         .variants("paper", "iron", "stone")
-        .slot("grown", _grown(42))
+        .ladder(_growth_ladder(42))
         .slot("flame", ("warm", 24), ("blue", 28))
         .slot("moth", ("moth", 20))
         .build()
@@ -433,7 +494,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("frog_lily", "whimsy", 36, unlock_level=4)
         .blurb("A contented frog on a lily pad. The world's least urgent creature.")
         .variants("green", "golden", "blue")
-        .slot("grown", _grown(46))
+        .ladder(_growth_ladder(46))
         .slot("crown", ("crown", 30))
         .slot("hat", ("hat", 26))
         .build()
@@ -442,7 +503,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("scarecrow", "whimsy", 48, unlock_level=5)
         .blurb("Scares precisely no one. The crows bring it gifts.")
         .variants("straw", "patchwork", "pumpkin")
-        .slot("grown", _grown(60))
+        .ladder(_growth_ladder(60))
         .slot("crow", ("crow", 28))
         .slot("lights", ("lights", 32))
         .build()
@@ -451,7 +512,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("fairy_door", "whimsy", 54, unlock_level=6)
         .blurb("Set into the base of a tree. Knock gently; you might be expected.")
         .variants("acorn", "toadstool", "rosewood")
-        .slot("grown", _grown(66))
+        .ladder(_growth_ladder(66))
         .slot("glow", ("glow", 28))
         .slot("path", ("path", 30))
         .build()
@@ -460,7 +521,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("hammock", "whimsy", 64, unlock_level=7)
         .blurb("Strung between two posts for the fine art of doing nothing, beautifully.")
         .variants("striped", "canvas", "rainbow")
-        .slot("grown", _grown(80))
+        .ladder(_growth_ladder(80))
         .slot("occupant", ("cat", 30), ("napper", 34))
         .slot("lights", ("lights", 36))
         .build()
@@ -469,7 +530,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         _Build("tea_cart", "whimsy", 120, unlock_level=12)
         .blurb("A wandering little cart of tea and tiny cakes. The garden's quiet luxury.")
         .variants("rose", "mint", "midnight")
-        .slot("grown", _grown(150))
+        .ladder(_growth_ladder(150))
         .slot("lights", ("lights", 48))
         .slot("cat", ("cat", 40))
         .build()

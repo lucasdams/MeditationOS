@@ -10,7 +10,21 @@ import { itemLabel, variantLabel } from '../lib/sanctuaryArt'
 const GROUND = 70
 
 type Cust = Record<string, string>
-type DrawProps = { variant: string | null; cust: Cust; grown: boolean }
+
+// The `grown` slot is a sequential growth ladder (backend GROWTH_STAGES): each option keys a
+// stage that renders visibly larger and lusher than the last. Stage 0 is the un-grown base;
+// stages 1–4 are grown → flourishing → mature → ancient. The first rung is keyed literally
+// "grown" for backward-compat, so a legacy {"grown":"grown"} row maps to stage 1 exactly.
+const GROWTH_STAGES = ['grown', 'flourishing', 'mature', 'ancient'] as const
+
+function growthStage(cust: Cust): number {
+  const i = GROWTH_STAGES.indexOf(cust.grown as (typeof GROWTH_STAGES)[number])
+  return i < 0 ? 0 : i + 1 // 0 = un-grown base; 1..4 = the ladder rungs
+}
+
+// Each renderer scales by `stage` (0 = un-grown base; 1..4 = the ladder rungs), growing
+// visibly larger and lusher each step while staying inside the 0 0 80 80 viewBox.
+type DrawProps = { variant: string | null; cust: Cust; stage: number }
 
 const has = (cust: Cust, slot: string, option: string) => cust[slot] === option
 
@@ -62,19 +76,29 @@ const TREE_LEAF: Record<string, string> = {
   willow: '#65a30d',
 }
 
-function Tree({ variant, cust, grown }: DrawProps) {
+function Tree({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'oak'
-  const k = grown ? 1.12 : 1
-  const trunkH = 32 * k
+  // Trunk grows a touch with each stage; the canopy grows more, so a mature tree reads as a
+  // big leafy crown over a sturdy trunk. Base scale stays 1 (un-grown), then climbs by stage.
+  const k = 0.9 + 0.22 * stage
+  const trunkH = (26 + 4 * stage) * Math.min(k, 1.2)
+  const trunkW = 5 + stage
   const trunkY = GROUND - trunkH
-  const r = 20 * k
+  const r = 14 + 4.4 * stage
   const cy = trunkY - r * 0.3
   const leaf = TREE_LEAF[v] ?? '#22c55e'
   const isPine = v === 'pine'
   const isWillow = v === 'willow'
   return (
     <g>
-      <rect x={37} y={trunkY} width={6} height={trunkH} rx={2} fill="#8b5a2b" />
+      <rect x={40 - trunkW / 2} y={trunkY} width={trunkW} height={trunkH} rx={2} fill="#8b5a2b" />
+      {/* a few roots/bark ridges appear on the oldest stages for a gnarled, ancient feel */}
+      {stage >= 3 && (
+        <g stroke="#6f4420" strokeWidth={1} fill="none" strokeLinecap="round">
+          <path d={`M${40 - trunkW / 2} ${GROUND} q-3 -2 -5 0`} />
+          <path d={`M${40 + trunkW / 2} ${GROUND} q3 -2 5 0`} />
+        </g>
+      )}
       {has(cust, 'swing', 'swing') && (
         <g stroke="#7c5210" strokeWidth={1} fill="none">
           <line x1={46} y1={cy + r * 0.4} x2={49} y2={GROUND - 4} />
@@ -86,12 +110,20 @@ function Tree({ variant, cust, grown }: DrawProps) {
         <g fill={leaf}>
           <polygon points={`40,${cy - r} ${40 - r * 0.8},${cy + r * 0.2} ${40 + r * 0.8},${cy + r * 0.2}`} />
           <polygon points={`40,${cy - r * 1.6} ${40 - r * 0.6},${cy - r * 0.3} ${40 + r * 0.6},${cy - r * 0.3}`} />
+          {/* taller pines gain an extra upper tier as they mature */}
+          {stage >= 2 && (
+            <polygon points={`40,${cy - r * 2.1} ${40 - r * 0.45},${cy - r * 1.0} ${40 + r * 0.45},${cy - r * 1.0}`} />
+          )}
         </g>
       ) : (
         <g fill={leaf}>
           <circle cx={40 - r * 0.55} cy={cy + 3} r={r * 0.8} />
           <circle cx={40 + r * 0.55} cy={cy + 3} r={r * 0.8} />
           <circle cx={40} cy={cy} r={r} />
+          {/* extra canopy lobes fill in as the crown matures — fuller, lusher each stage */}
+          {stage >= 2 && <circle cx={40 - r * 0.7} cy={cy - r * 0.5} r={r * 0.55} />}
+          {stage >= 2 && <circle cx={40 + r * 0.7} cy={cy - r * 0.5} r={r * 0.55} />}
+          {stage >= 4 && <circle cx={40} cy={cy - r * 0.9} r={r * 0.6} />}
         </g>
       )}
       {isWillow && (
@@ -145,18 +177,37 @@ const FLOWER_PETAL: Record<string, string> = {
   daisy: '#f8fafc',
 }
 
-function Flower({ variant, cust, grown }: DrawProps) {
+function Flower({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'rose'
-  const k = grown ? 1.15 : 1
-  const stemH = 34 * k
+  const k = 1 + 0.13 * stage
+  const stemH = (28 + 3 * stage) * Math.min(k, 1.35)
   const top = GROUND - stemH
   const petal = FLOWER_PETAL[v] ?? '#f472b6'
   const center = v === 'sunflower' ? '#92400e' : '#fbbf24'
-  const petalR = (v === 'tulip' ? 5 : 5.5) * (has(cust, 'bloom', 'double') ? 1.25 : 1)
+  const petalR = (v === 'tulip' ? 5 : 5.5) * (has(cust, 'bloom', 'double') ? 1.25 : 1) * (1 + 0.06 * stage)
+  // Side leaves multiply as the plant matures, and from `mature` a small companion bud sprouts
+  // alongside — a fuller, lusher clump each stage.
+  const leafYs = [0.4, ...(stage >= 1 ? [0.62] : []), ...(stage >= 3 ? [0.8] : [])]
   return (
     <g>
       <rect x={39} y={top} width={2} height={stemH} rx={1} fill="#16a34a" />
-      <ellipse cx={34} cy={top + stemH * 0.4} rx={6} ry={3} fill="#4ade80" />
+      {leafYs.map((f, i) => (
+        <ellipse
+          key={i}
+          cx={i % 2 ? 46 : 34}
+          cy={top + stemH * f}
+          rx={6}
+          ry={3}
+          fill={i % 2 ? '#22c55e' : '#4ade80'}
+        />
+      ))}
+      {stage >= 3 && (
+        <g>
+          <rect x={45} y={top + 6} width={1.6} height={stemH * 0.4} rx={1} fill="#16a34a" />
+          <circle cx={46} cy={top + 6} r={3} fill={petal} />
+          <circle cx={46} cy={top + 6} r={1.4} fill={center} />
+        </g>
+      )}
       {v === 'tulip' ? (
         <g fill={petal}>
           <path d={`M40 ${top - 8} q-7 2 -6 9 q6 -3 6 -3 q0 0 6 3 q1 -7 -6 -9z`} />
@@ -183,14 +234,17 @@ function Flower({ variant, cust, grown }: DrawProps) {
   )
 }
 
-function Pond({ cust, grown }: DrawProps) {
-  const k = grown ? 1.18 : 1
+function Pond({ cust, stage }: DrawProps) {
+  const k = 0.82 + 0.11 * stage
   const rx = 20 * k
   const ry = 7.5 * k
   return (
     <g>
-      <ellipse cx={40} cy={66} rx={22} ry={8} fill="none" stroke="#94a3b8" strokeWidth={2} />
+      <ellipse cx={40} cy={66} rx={rx + 2} ry={ry + 0.6} fill="none" stroke="#94a3b8" strokeWidth={2} />
       <ellipse cx={40} cy={66} rx={rx} ry={ry} fill="#38bdf8" />
+      {/* the water deepens with concentric ripples on the larger stages */}
+      {stage >= 2 && <ellipse cx={40} cy={66} rx={rx * 0.62} ry={ry * 0.6} fill="none" stroke="#7dd3fc" strokeWidth={1} opacity={0.7} />}
+      {stage >= 4 && <ellipse cx={40} cy={66} rx={rx * 0.35} ry={ry * 0.34} fill="none" stroke="#bae6fd" strokeWidth={0.8} opacity={0.7} />}
       {has(cust, 'lilies', 'lilies') && (
         <g>
           <ellipse cx={32} cy={65} rx={4} ry={2} fill="#22c55e" />
@@ -232,18 +286,21 @@ const WALL_COLORS: Record<string, string> = {
 function Building({
   variant,
   cust,
-  grown,
+  stage,
   defaultColor,
   roof,
   baseW,
 }: DrawProps & { defaultColor: string; roof: string; baseX?: number; baseW: number }) {
   const color = (variant && WALL_COLORS[variant]) || defaultColor
-  const k = grown ? 1.12 : 1
-  const wallH = 26 * k
+  // The footprint widens a little and the walls climb with each stage, so a "mature" home
+  // reads as a taller, broader cottage — an added upper window appears from `flourishing`.
+  const k = 0.92 + 0.1 * stage
+  const wallH = (22 + 2 * stage) * Math.min(k, 1.2)
   const wallY = GROUND - wallH
-  const w = baseW
+  const w = baseW * (0.92 + 0.05 * stage)
   const x = 40 - w / 2
   const cx = 40
+  const litWindow = has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd'
   return (
     <g>
       {has(cust, 'garden', 'garden') && <Garden y={GROUND - 3} />}
@@ -252,13 +309,11 @@ function Building({
       {/* door */}
       <rect x={cx - 3} y={GROUND - 11} width={6} height={11} fill={roof} />
       {/* window */}
-      <rect
-        x={x + 4}
-        y={wallY + 5}
-        width={6}
-        height={6}
-        fill={has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd'}
-      />
+      <rect x={x + 4} y={wallY + 5} width={6} height={6} fill={litWindow} />
+      {/* a second ground-floor window appears once the home has grown a bit wider */}
+      {stage >= 2 && <rect x={x + w - 10} y={wallY + 5} width={6} height={6} fill={litWindow} />}
+      {/* an upper-storey window in the gable on the maturest stages */}
+      {stage >= 3 && <rect x={cx - 2.5} y={wallY - 11} width={5} height={5} fill={litWindow} />}
       {has(cust, 'chimney_smoke', 'smoke') && (
         <g>
           <rect x={x + w - 7} y={wallY - 12} width={4} height={8} fill={roof} />
@@ -272,9 +327,9 @@ function Building({
 
 const CAR_COLORS: Record<string, string> = { red: '#ef4444', blue: '#3b82f6', yellow: '#eab308' }
 
-function Car({ variant, cust, grown }: DrawProps) {
+function Car({ variant, cust, stage }: DrawProps) {
   const color = (variant && CAR_COLORS[variant]) || '#ef4444'
-  const k = grown ? 1.12 : 1
+  const k = 0.9 + 0.08 * stage
   const w = 36 * k
   const x = 40 - w / 2
   const bodyY = 58
@@ -283,6 +338,13 @@ function Car({ variant, cust, grown }: DrawProps) {
       <path d={`M${x + 8} ${bodyY} q4 -9 12 -9 q8 0 10 9 z`} fill={color} />
       <path d={`M${x + 11} ${bodyY - 1} q3 -5 8 -5 q5 0 7 5 z`} fill="#bfdbfe" />
       <rect x={x} y={bodyY} width={w} height={8} rx={3} fill={color} />
+      {/* a roof rack with a little luggage appears as the car is "kitted out" over stages */}
+      {stage >= 2 && (
+        <g>
+          <rect x={x + 11} y={bodyY - 11} width={14} height={1.6} rx={0.8} fill="#475569" />
+          {stage >= 3 && <rect x={x + 13} y={bodyY - 14} width={9} height={3.4} rx={1} fill="#a16207" />}
+        </g>
+      )}
       <circle cx={x + w * 0.25} cy={66} r={3.5} fill="#1f2937" />
       <circle cx={x + w * 0.75} cy={66} r={3.5} fill="#1f2937" />
       {has(cust, 'lights', 'lights') && (
@@ -295,15 +357,16 @@ function Car({ variant, cust, grown }: DrawProps) {
   )
 }
 
-function BeachHouse({ variant, cust, grown }: DrawProps) {
+function BeachHouse({ variant, cust, stage }: DrawProps) {
   const color = (variant && WALL_COLORS[variant]) || '#f1f5f9'
-  const k = grown ? 1.12 : 1
-  const wallH = 20 * k
+  const k = 0.92 + 0.09 * stage
+  const wallH = (18 + 2 * stage) * Math.min(k, 1.18)
   const deck = GROUND - 6
   const wallY = deck - wallH
-  const x = 28
-  const w = 24
+  const w = 22 + 2 * stage
+  const x = 40 - w / 2
   const cx = x + w / 2
+  const litWindow = has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd'
   return (
     <g>
       {has(cust, 'garden', 'garden') && <Garden y={GROUND - 2} />}
@@ -311,28 +374,36 @@ function BeachHouse({ variant, cust, grown }: DrawProps) {
       <rect x={x + w - 5} y={deck} width={3} height={6} fill="#a87b50" />
       <rect x={x} y={wallY} width={w} height={wallH} fill={color} />
       <polygon points={`${x - 2},${wallY} ${x + w + 2},${wallY} ${cx},${wallY - 14}`} fill="#0ea5e9" />
-      <rect
-        x={x + 4}
-        y={wallY + 4}
-        width={5}
-        height={5}
-        fill={has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd'}
-      />
+      <rect x={x + 4} y={wallY + 4} width={5} height={5} fill={litWindow} />
+      {/* a second window + a railed sun-deck fill in as the beach house grows */}
+      {stage >= 2 && <rect x={x + w - 9} y={wallY + 4} width={5} height={5} fill={litWindow} />}
+      {stage >= 3 && (
+        <g stroke="#a87b50" strokeWidth={1}>
+          <line x1={x} y1={deck} x2={x + w} y2={deck} />
+          <line x1={x + 6} y1={deck} x2={x + 6} y2={deck + 4} />
+          <line x1={x + w - 6} y1={deck} x2={x + w - 6} y2={deck + 4} />
+        </g>
+      )}
       {has(cust, 'lights', 'lights') && <Lights y={wallY - 1} x={x} w={w} />}
     </g>
   )
 }
 
-function Boat({ variant, cust, grown }: DrawProps) {
+function Boat({ variant, cust, stage }: DrawProps) {
   const hull = variant === 'white' ? '#e2e8f0' : '#a16207'
-  const k = grown ? 1.12 : 1
-  const sailH = 24 * k
+  const k = 0.9 + 0.1 * stage
+  const sailH = 22 * k
   return (
     <g>
       <ellipse cx={40} cy={68} rx={22} ry={5} fill="#bae6fd" />
       <path d="M27 61 L53 61 L48 68 L32 68 Z" fill={hull} />
       <rect x={39} y={61 - sailH} width={2} height={sailH} fill="#7c5210" />
       <polygon points={`40,${61 - sailH + 2} 40,59 54,60`} fill="#f8fafc" />
+      {/* a second jib sail unfurls, then a pennant flies, as the boat is rigged out by stage */}
+      {stage >= 2 && <polygon points={`40,${61 - sailH + 4} 40,59 28,60`} fill="#e2e8f0" />}
+      {stage >= 4 && (
+        <polygon points={`41,${61 - sailH} 41,${61 - sailH + 4} 48,${61 - sailH + 2}`} fill="#fb7185" />
+      )}
       {has(cust, 'lights', 'lights') && (
         <>
           <circle cx={30} cy={60} r={1.3} fill="#fbbf24" />
@@ -345,9 +416,14 @@ function Boat({ variant, cust, grown }: DrawProps) {
 
 // --- companions -------------------------------------------------------------------------
 
-function Accessory({ cust, headX, headY }: { cust: Cust; headX: number; headY: number }) {
-  const a = cust.accessory
-  if (a === 'hat') {
+// Wearables drawn on a character, positioned off the head centre (headX, headY). These cover
+// both the legacy `accessory` slot (collar/bandana/hat) AND the new additive slots — `headwear`
+// (hat / flower_crown / tiny_crown), `collar` (bandana / bowtie / bell), and `attire` (scarf /
+// sunglasses). Slots are independent, so a character can wear several at once (a tiny crown AND
+// a bowtie AND sunglasses) — each is drawn here if its option is set.
+
+function Headwear({ option, headX, headY }: { option: string; headX: number; headY: number }) {
+  if (option === 'hat') {
     return (
       <g>
         <rect x={headX - 5} y={headY - 8} width={10} height={2.5} fill="#1f2937" />
@@ -355,15 +431,36 @@ function Accessory({ cust, headX, headY }: { cust: Cust; headX: number; headY: n
       </g>
     )
   }
-  if (a === 'collar') {
+  if (option === 'flower_crown') {
     return (
       <g>
-        <rect x={headX - 6} y={headY + 6} width={12} height={2.5} rx={1} fill="#ef4444" />
-        <circle cx={headX} cy={headY + 8.5} r={1.2} fill="#fbbf24" />
+        <path
+          d={`M${headX - 6} ${headY - 6} q6 -4 12 0`}
+          fill="none"
+          stroke="#65a30d"
+          strokeWidth={1.4}
+        />
+        <circle cx={headX - 5} cy={headY - 7} r={1.6} fill="#f472b6" />
+        <circle cx={headX} cy={headY - 8.5} r={1.8} fill="#fbbf24" />
+        <circle cx={headX + 5} cy={headY - 7} r={1.6} fill="#a78bfa" />
       </g>
     )
   }
-  if (a === 'bandana') {
+  if (option === 'tiny_crown') {
+    return (
+      <polygon
+        points={`${headX - 5},${headY - 6} ${headX - 5},${headY - 9} ${headX - 2.5},${headY - 7} ${headX},${headY - 10} ${headX + 2.5},${headY - 7} ${headX + 5},${headY - 9} ${headX + 5},${headY - 6}`}
+        fill="#fbbf24"
+        stroke="#d97706"
+        strokeWidth={0.5}
+      />
+    )
+  }
+  return null
+}
+
+function CollarPiece({ option, headX, headY }: { option: string; headX: number; headY: number }) {
+  if (option === 'bandana') {
     return (
       <polygon
         points={`${headX - 6},${headY + 6} ${headX + 6},${headY + 6} ${headX},${headY + 13}`}
@@ -371,7 +468,76 @@ function Accessory({ cust, headX, headY }: { cust: Cust; headX: number; headY: n
       />
     )
   }
+  if (option === 'bowtie') {
+    return (
+      <g fill="#ef4444">
+        <polygon points={`${headX - 5},${headY + 6} ${headX - 1},${headY + 8.5} ${headX - 5},${headY + 11}`} />
+        <polygon points={`${headX + 5},${headY + 6} ${headX + 1},${headY + 8.5} ${headX + 5},${headY + 11}`} />
+        <circle cx={headX} cy={headY + 8.5} r={1.2} fill="#b91c1c" />
+      </g>
+    )
+  }
+  if (option === 'bell') {
+    return (
+      <g>
+        <rect x={headX - 6} y={headY + 6} width={12} height={2.5} rx={1} fill="#ef4444" />
+        <circle cx={headX} cy={headY + 9.5} r={1.8} fill="#fbbf24" stroke="#b45309" strokeWidth={0.4} />
+        <line x1={headX} y1={headY + 9} x2={headX} y2={headY + 11} stroke="#b45309" strokeWidth={0.4} />
+      </g>
+    )
+  }
+  // Legacy `collar` option (a plain bell-tagged band).
+  if (option === 'collar') {
+    return (
+      <g>
+        <rect x={headX - 6} y={headY + 6} width={12} height={2.5} rx={1} fill="#ef4444" />
+        <circle cx={headX} cy={headY + 8.5} r={1.2} fill="#fbbf24" />
+      </g>
+    )
+  }
   return null
+}
+
+function Attire({ option, headX, headY }: { option: string; headX: number; headY: number }) {
+  if (option === 'scarf') {
+    return (
+      <g fill="#3b82f6">
+        <rect x={headX - 6} y={headY + 6} width={12} height={3} rx={1.4} />
+        <rect x={headX + 3} y={headY + 8} width={3} height={5} rx={1} />
+      </g>
+    )
+  }
+  if (option === 'sunglasses') {
+    return (
+      <g fill="#1f2937">
+        <circle cx={headX - 2.4} cy={headY} r={1.9} />
+        <circle cx={headX + 2.4} cy={headY} r={1.9} />
+        <rect x={headX - 0.6} y={headY - 0.6} width={1.2} height={1} />
+      </g>
+    )
+  }
+  return null
+}
+
+// Draws every wearable a character currently has on, from whichever of the independent slots
+// is set. Legacy `accessory` values (collar/bandana/hat) are routed to the right piece so old
+// rows still render exactly as before.
+function Wearables({ cust, headX, headY }: { cust: Cust; headX: number; headY: number }) {
+  const legacy = cust.accessory
+  return (
+    <g>
+      {legacy === 'hat' && <Headwear option="hat" headX={headX} headY={headY} />}
+      {legacy === 'collar' && <CollarPiece option="collar" headX={headX} headY={headY} />}
+      {legacy === 'bandana' && <CollarPiece option="bandana" headX={headX} headY={headY} />}
+      {legacy === 'scarf' && <Attire option="scarf" headX={headX} headY={headY} />}
+      {legacy === 'leaf' && (
+        <path d={`M${headX} ${headY - 6} q4 -5 8 -2 q-3 4 -8 2z`} fill="#65a30d" />
+      )}
+      {cust.headwear && <Headwear option={cust.headwear} headX={headX} headY={headY} />}
+      {cust.collar && <CollarPiece option={cust.collar} headX={headX} headY={headY} />}
+      {cust.attire && <Attire option={cust.attire} headX={headX} headY={headY} />}
+    </g>
+  )
 }
 
 const FUR: Record<string, string> = {
@@ -394,9 +560,9 @@ const FUR: Record<string, string> = {
   blue: '#3b82f6',
 }
 
-function Bird({ variant, cust, grown }: DrawProps) {
+function Bird({ variant, cust, stage }: DrawProps) {
   const c = FUR[variant ?? 'bluebird'] ?? '#38bdf8'
-  const s = grown ? 1.15 : 1
+  const s = 1 + 0.1 * stage
   return (
     <g>
       <ellipse cx={40} cy={67} rx={12} ry={4} fill="#a16207" />
@@ -404,16 +570,18 @@ function Bird({ variant, cust, grown }: DrawProps) {
       <circle cx={47} cy={53} r={4 * s} fill={c} />
       <polygon points="50,53 54,52 54,55" fill="#f59e0b" />
       <ellipse cx={37} cy={58} rx={5 * s} ry={4 * s} fill="#0ea5e9" opacity={0.5} />
+      {/* a fuller tail fans out as the bird matures */}
+      {stage >= 3 && <polygon points={`30,57 ${24 - stage},55 ${24 - stage},61`} fill={c} />}
       <circle cx={48} cy={52} r={1} fill="#1c1c1e" />
-      <Accessory cust={cust} headX={47} headY={53} />
+      <Wearables cust={cust} headX={47} headY={53} />
     </g>
   )
 }
 
-function Fox({ variant, cust, grown }: DrawProps) {
+function Fox({ variant, cust, stage }: DrawProps) {
   const c = FUR[variant ?? 'red'] ?? '#ea580c'
   const belly = variant === 'arctic' ? '#f1f5f9' : '#fff'
-  const s = grown ? 1.15 : 1
+  const s = 1 + 0.1 * stage
   return (
     <g>
       <ellipse cx={40} cy={62} rx={11 * s} ry={8 * s} fill={c} />
@@ -424,14 +592,14 @@ function Fox({ variant, cust, grown }: DrawProps) {
       <polygon points="40,50 36,52 44,52" fill={belly} />
       <circle cx={37} cy={49} r={1} fill="#1c1c1e" />
       <circle cx={43} cy={49} r={1} fill="#1c1c1e" />
-      <Accessory cust={cust} headX={40} headY={50} />
+      <Wearables cust={cust} headX={40} headY={50} />
     </g>
   )
 }
 
-function Cat({ variant, cust, grown }: DrawProps) {
+function Cat({ variant, cust, stage }: DrawProps) {
   const c = FUR[variant ?? 'gray'] ?? '#9ca3af'
-  const s = grown ? 1.15 : 1
+  const s = 1 + 0.1 * stage
   return (
     <g>
       <path d="M50 64 q11 -1 6 -13" stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" />
@@ -444,15 +612,15 @@ function Cat({ variant, cust, grown }: DrawProps) {
       <polygon points="40,51 38,53 42,53" fill="#6b7280" />
       <circle cx={37} cy={49} r={1} fill="#1c1c1e" />
       <circle cx={43} cy={49} r={1} fill="#1c1c1e" />
-      <Accessory cust={cust} headX={40} headY={50} />
+      <Wearables cust={cust} headX={40} headY={50} />
     </g>
   )
 }
 
-function Dog({ variant, cust, grown }: DrawProps) {
+function Dog({ variant, cust, stage }: DrawProps) {
   const c = FUR[variant ?? 'corgi'] ?? '#a16207'
   const ear = variant === 'husky' ? '#475569' : '#7c3f10'
-  const s = grown ? 1.18 : 1
+  const s = 1 + 0.12 * stage
   return (
     <g>
       <path d="M50 62 q9 -4 11 -10" stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" />
@@ -471,14 +639,14 @@ function Dog({ variant, cust, grown }: DrawProps) {
       <circle cx={40} cy={52} r={1.4} fill="#1c1c1e" />
       <circle cx={37} cy={48} r={1} fill="#1c1c1e" />
       <circle cx={43} cy={48} r={1} fill="#1c1c1e" />
-      <Accessory cust={cust} headX={40} headY={50} />
+      <Wearables cust={cust} headX={40} headY={50} />
     </g>
   )
 }
 
-function Goldfish({ variant, grown }: DrawProps) {
+function Goldfish({ variant, stage }: DrawProps) {
   const c = FUR[variant ?? 'orange'] ?? '#fb923c'
-  const s = grown ? 1.2 : 1
+  const s = 1 + 0.12 * stage
   return (
     <g>
       <ellipse cx={40} cy={66} rx={16} ry={5} fill="#bae6fd" />
@@ -490,9 +658,10 @@ function Goldfish({ variant, grown }: DrawProps) {
   )
 }
 
-function Snake({ variant, cust, grown }: DrawProps) {
+function Snake({ variant, cust, stage }: DrawProps) {
   const c = FUR[variant ?? 'green'] ?? '#16a34a'
-  const s = grown ? 1.2 : 1
+  const s = 1 + 0.13 * stage
+  const headwear = cust.headwear ?? (cust.accessory === 'hat' ? 'hat' : undefined)
   return (
     <g fill="none" stroke={c} strokeWidth={4 * s} strokeLinecap="round">
       <ellipse cx={40} cy={63} rx={12 * s} ry={5 * s} />
@@ -500,11 +669,19 @@ function Snake({ variant, cust, grown }: DrawProps) {
       <circle cx={41} cy={45} r={3.2 * s} fill={c} stroke="none" />
       <circle cx={42} cy={44} r={0.8} fill="#1c1c1e" stroke="none" />
       <path d="M41 42 L41 38 M41 38 l-1.5 -2 M41 38 l1.5 -2" stroke="#dc2626" strokeWidth={0.7} />
-      {cust.accessory === 'hat' && (
+      {headwear === 'hat' && (
         <g stroke="none">
           <rect x={36} y={38} width={10} height={2.2} fill="#1f2937" />
           <rect x={38} y={33} width={6} height={5.5} fill="#1f2937" />
         </g>
+      )}
+      {cust.headwear === 'tiny_crown' && (
+        <polygon
+          points="36,38 36,35 38.5,37 41,34 43.5,37 46,35 46,38"
+          fill="#fbbf24"
+          stroke="#d97706"
+          strokeWidth={0.5}
+        />
       )}
     </g>
   )
@@ -530,16 +707,19 @@ function Toadstool({ x, y, k, cap }: { x: number; y: number; k: number; cap: str
   )
 }
 
-function MushroomRing({ variant, cust, grown }: DrawProps) {
+function MushroomRing({ variant, cust, stage }: DrawProps) {
   const cap = MUSHROOM_CAP[variant ?? 'ruby'] ?? '#dc2626'
-  const k = grown ? 1.18 : 1
-  // A ring of toadstools around a grassy centre.
+  const k = 0.85 + 0.1 * stage
+  // A ring of toadstools around a grassy centre; extra toadstools sprout as the ring spreads.
   const ring: Array<[number, number]> = [
     [28, 64],
     [40, 60],
     [52, 64],
     [34, 68],
     [46, 68],
+    ...(stage >= 2 ? ([[22, 67]] as Array<[number, number]>) : []),
+    ...(stage >= 3 ? ([[58, 67]] as Array<[number, number]>) : []),
+    ...(stage >= 4 ? ([[40, 70]] as Array<[number, number]>) : []),
   ]
   return (
     <g>
@@ -561,12 +741,14 @@ function MushroomRing({ variant, cust, grown }: DrawProps) {
 
 const HEDGEHOG_BODY: Record<string, string> = { brown: '#92400e', cream: '#d6c1a8', salt: '#6b7280' }
 
-function Hedgehog({ variant, cust, grown }: DrawProps) {
+function Hedgehog({ variant, cust, stage }: DrawProps) {
   const spine = HEDGEHOG_BODY[variant ?? 'brown'] ?? '#92400e'
-  const s = grown ? 1.18 : 1
+  const s = 1 + 0.12 * stage
   const face = variant === 'cream' ? '#f5e6d3' : '#e9c9a3'
-  const spikes = Array.from({ length: 7 }).map((_, i) => {
-    const t = i / 6
+  // More quills bristle out as the hedgehog grows up — visibly fuller each stage.
+  const quillCount = 7 + stage
+  const spikes = Array.from({ length: quillCount }).map((_, i) => {
+    const t = i / (quillCount - 1)
     const bx = 30 + t * 18
     return <polygon key={i} points={`${bx},${64} ${bx + 2.4},${64} ${bx + 1.2},${56 - 3 * s}`} fill={spine} />
   })
@@ -586,15 +768,17 @@ function Hedgehog({ variant, cust, grown }: DrawProps) {
       {has(cust, 'accessory', 'leaf') && (
         <path d="M40 57 q4 -5 8 -2 q-3 4 -8 2z" fill="#65a30d" />
       )}
+      {/* new additive slots ride above the snout */}
+      <Wearables cust={{ headwear: cust.headwear, attire: cust.attire }} headX={52} headY={60} />
     </g>
   )
 }
 
 const SNAIL_SHELL: Record<string, string> = { amber: '#d97706', minty: '#34d399', rosy: '#fb7185' }
 
-function Snail({ variant, cust, grown }: DrawProps) {
+function Snail({ variant, cust, stage }: DrawProps) {
   const shell = SNAIL_SHELL[variant ?? 'amber'] ?? '#d97706'
-  const s = grown ? 1.2 : 1
+  const s = 1 + 0.13 * stage
   return (
     <g>
       <path d="M24 66 q4 4 14 3" stroke="#a3e635" strokeWidth={4 * s} fill="none" strokeLinecap="round" />
@@ -616,10 +800,10 @@ function Snail({ variant, cust, grown }: DrawProps) {
 
 const GNOME_HAT: Record<string, string> = { classic: '#dc2626', mossy: '#4d7c0f', sleepy: '#3b82f6' }
 
-function Gnome({ variant, cust, grown }: DrawProps) {
+function Gnome({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'classic'
   const hat = GNOME_HAT[v] ?? '#dc2626'
-  const s = grown ? 1.18 : 1
+  const s = 1 + 0.12 * stage
   const cx = 40
   const bodyY = GROUND - 18 * s
   return (
@@ -654,9 +838,9 @@ function Gnome({ variant, cust, grown }: DrawProps) {
 
 const CHIME_TUBE: Record<string, string> = { brass: '#d4a017', bamboo: '#a3a847', seaglass: '#5eead4' }
 
-function WindChime({ variant, cust, grown }: DrawProps) {
+function WindChime({ variant, cust, stage }: DrawProps) {
   const tube = CHIME_TUBE[variant ?? 'brass'] ?? '#d4a017'
-  const s = grown ? 1.15 : 1
+  const s = 1 + 0.12 * stage
   const topY = 30
   const len = 18 * s
   const tubes = [-6, -2, 2, 6]
@@ -696,9 +880,9 @@ function WindChime({ variant, cust, grown }: DrawProps) {
 
 const LANTERN_FRAME: Record<string, string> = { paper: '#fcd34d', iron: '#4b5563', stone: '#9ca3af' }
 
-function Lantern({ variant, cust, grown }: DrawProps) {
+function Lantern({ variant, cust, stage }: DrawProps) {
   const frame = LANTERN_FRAME[variant ?? 'paper'] ?? '#fcd34d'
-  const s = grown ? 1.18 : 1
+  const s = 1 + 0.12 * stage
   const w = 14 * s
   const h = 20 * s
   const x = 40 - w / 2
@@ -731,9 +915,9 @@ function Lantern({ variant, cust, grown }: DrawProps) {
 
 const FROG_BODY: Record<string, string> = { green: '#22c55e', golden: '#eab308', blue: '#38bdf8' }
 
-function FrogLily({ variant, cust, grown }: DrawProps) {
+function FrogLily({ variant, cust, stage }: DrawProps) {
   const body = FROG_BODY[variant ?? 'green'] ?? '#22c55e'
-  const s = grown ? 1.18 : 1
+  const s = 1 + 0.12 * stage
   return (
     <g>
       {/* water + lily pad */}
@@ -771,10 +955,10 @@ const SCARECROW_SHIRT: Record<string, string> = {
   pumpkin: '#ea580c',
 }
 
-function Scarecrow({ variant, cust, grown }: DrawProps) {
+function Scarecrow({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'straw'
   const shirt = SCARECROW_SHIRT[v] ?? '#a16207'
-  const s = grown ? 1.15 : 1
+  const s = 1 + 0.12 * stage
   const headY = GROUND - 34 * s
   return (
     <g>
@@ -826,9 +1010,9 @@ function Scarecrow({ variant, cust, grown }: DrawProps) {
 
 const FAIRY_DOOR: Record<string, string> = { acorn: '#92400e', toadstool: '#dc2626', rosewood: '#9d174d' }
 
-function FairyDoor({ variant, cust, grown }: DrawProps) {
+function FairyDoor({ variant, cust, stage }: DrawProps) {
   const door = FAIRY_DOOR[variant ?? 'acorn'] ?? '#92400e'
-  const s = grown ? 1.18 : 1
+  const s = 1 + 0.12 * stage
   const w = 14 * s
   const h = 22 * s
   const x = 40 - w / 2
@@ -869,9 +1053,9 @@ function FairyDoor({ variant, cust, grown }: DrawProps) {
 
 const HAMMOCK_CLOTH: Record<string, string> = { striped: '#f97316', canvas: '#d6c1a8', rainbow: '#a855f7' }
 
-function Hammock({ variant, cust, grown }: DrawProps) {
+function Hammock({ variant, cust, stage }: DrawProps) {
   const cloth = HAMMOCK_CLOTH[variant ?? 'striped'] ?? '#f97316'
-  const s = grown ? 1.12 : 1
+  const s = 1 + 0.12 * stage
   const postY = GROUND - 26 * s
   const sag = GROUND - 8
   return (
@@ -911,9 +1095,9 @@ function Hammock({ variant, cust, grown }: DrawProps) {
 
 const TEACART_BODY: Record<string, string> = { rose: '#fb7185', mint: '#5eead4', midnight: '#475569' }
 
-function TeaCart({ variant, cust, grown }: DrawProps) {
+function TeaCart({ variant, cust, stage }: DrawProps) {
   const body = TEACART_BODY[variant ?? 'rose'] ?? '#fb7185'
-  const s = grown ? 1.12 : 1
+  const s = 1 + 0.12 * stage
   const w = 30 * s
   const x = 40 - w / 2
   const topY = GROUND - 22 * s
@@ -991,13 +1175,13 @@ function SanctuaryPlant({
 }) {
   const Render = RENDERERS[itemKey]
   const cust = customizations ?? {}
-  const grown = cust.grown === 'grown'
+  const stage = growthStage(cust)
   const label = `${itemLabel(itemKey)}${variant ? ` (${variantLabel(variant)})` : ''}`
   return (
     <svg className="sanctuary-svg" viewBox="0 0 80 80" role="img" aria-label={label}>
       <ellipse cx={40} cy={72} rx={24} ry={4} fill="#dcfce7" />
       {Render ? (
-        <Render variant={variant} cust={cust} grown={grown} />
+        <Render variant={variant} cust={cust} stage={stage} />
       ) : (
         <circle cx={40} cy={50} r={6} fill="#cbd5e1" />
       )}
