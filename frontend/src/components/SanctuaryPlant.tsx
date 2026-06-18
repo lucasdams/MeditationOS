@@ -425,9 +425,21 @@ function Building({
       ? '#a78bfa'
       : form === 'festival'
         ? '#fb7185'
-        : (variant && WALL_COLORS[variant]) || defaultColor
+        : form === 'hermitage'
+          ? '#b8b0a4' // austere stone walls
+          : (variant && WALL_COLORS[variant]) || defaultColor
   const roofColor =
-    form === 'enchanted' ? '#7c3aed' : form === 'festival' ? '#be185d' : roof
+    form === 'enchanted'
+      ? '#7c3aed'
+      : form === 'festival'
+        ? '#be185d'
+        : form === 'hermitage'
+          ? '#8a8175' // weathered slate
+          : form === 'thatched'
+            ? '#c79a45' // straw thatch
+            : roof
+  // `cosy` reads as a warm, lit home: its front window always glows even without the lights slot.
+  const cosyWindow = form === 'cosy' ? '#fde68a' : null
   // The footprint widens a little and the walls climb with each stage, so a "mature" home
   // reads as a taller, broader cottage — an added upper window appears from `flourishing`.
   const k = 0.92 + 0.1 * stage
@@ -436,7 +448,7 @@ function Building({
   const w = baseW * (0.92 + 0.05 * stage) * (grand ? 1.18 : 1)
   const x = 40 - w / 2
   const cx = 40
-  const litWindow = has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd'
+  const litWindow = cosyWindow ?? (has(cust, 'lights', 'lights') ? '#fde68a' : '#bae6fd')
   const roofPeak = wallY - (grand ? 20 : 16)
   return (
     <g>
@@ -451,6 +463,27 @@ function Building({
       )}
       <rect x={x} y={wallY} width={w} height={wallH} fill={color} />
       <polygon points={`${x - 2},${wallY} ${x + w + 2},${wallY} ${cx},${roofPeak}`} fill={roofColor} />
+      {/* thatched form: a rounded, overhanging straw roof drawn over the gable, with combed
+          thatch-texture lines so it reads as soft straw rather than a hard-edged roof */}
+      {form === 'thatched' && (
+        <g>
+          <path
+            d={`M${x - 3} ${wallY + 1} Q${cx} ${roofPeak - 5} ${x + w + 3} ${wallY + 1} Q${cx} ${wallY + 4} ${x - 3} ${wallY + 1} Z`}
+            fill={roofColor}
+          />
+          <g stroke="#9c7526" strokeWidth={0.6} opacity={0.6} strokeLinecap="round">
+            <path d={`M${x + 2} ${wallY} q${w / 2 - 2} -7 ${w - 4} 0`} fill="none" />
+            <path d={`M${x + 6} ${wallY - 2.5} q${w / 2 - 6} -5 ${w - 12} 0`} fill="none" />
+          </g>
+        </g>
+      )}
+      {/* hermitage form: an austere stone home — a single recessed window, no decorative trim */}
+      {form === 'hermitage' && (
+        <g stroke="#8a8175" strokeWidth={0.6} opacity={0.5}>
+          <line x1={x} y1={wallY + wallH / 2} x2={x + w} y2={wallY + wallH / 2} />
+          <line x1={cx} y1={wallY} x2={cx} y2={GROUND} />
+        </g>
+      )}
       {/* enchanted form: a toadstool-cap roof with white spots */}
       {form === 'enchanted' && (
         <g fill="#fff">
@@ -477,12 +510,47 @@ function Building({
         ))}
       {/* door */}
       <rect x={cx - 3} y={GROUND - 11} width={6} height={11} fill={roofColor} />
-      {/* window */}
+      {/* cosy form: a little evergreen wreath hung on the door + a curl of chimney smoke, so a
+          warm-lit cottage reads even before any slots are bought */}
+      {form === 'cosy' && (
+        <g>
+          <circle cx={cx} cy={GROUND - 8} r={2.2} fill="none" stroke="#15803d" strokeWidth={1.2} />
+          <circle cx={cx} cy={GROUND - 9.8} r={0.7} fill="#ef4444" />
+          <rect x={x + w - 7} y={wallY - 11} width={3.5} height={7} fill={roofColor} />
+          <Smoke x={x + w - 5.3} y={wallY - 13} />
+        </g>
+      )}
+      {/* window — hermitage keeps a single austere window; cosy's glows warm */}
       <rect x={x + 4} y={wallY + 5} width={6} height={6} fill={litWindow} />
-      {/* a second ground-floor window appears once the home has grown a bit wider */}
-      {stage >= 2 && <rect x={x + w - 10} y={wallY + 5} width={6} height={6} fill={litWindow} />}
+      {/* a second ground-floor window appears once the home has grown a bit wider (not the
+          austere hermitage, which stays single-windowed at every stage) */}
+      {stage >= 2 && form !== 'hermitage' && <rect x={x + w - 10} y={wallY + 5} width={6} height={6} fill={litWindow} />}
       {/* an upper-storey window in the gable on the maturest stages */}
-      {stage >= 3 && <rect x={cx - 2.5} y={wallY - 11} width={5} height={5} fill={litWindow} />}
+      {stage >= 3 && form !== 'hermitage' && <rect x={cx - 2.5} y={wallY - 11} width={5} height={5} fill={litWindow} />}
+      {/* working_farm form: an open barn door (dark interior + hay loft hatch), a round hay
+          bale, and a low paddock fence — a barn that's clearly in use */}
+      {form === 'working_farm' && (
+        <g>
+          {/* open hay-loft hatch in the gable */}
+          <rect x={cx - 2.5} y={wallY - 9} width={5} height={5} fill="#3f2d18" />
+          {/* open door — dark interior showing through the wide front opening */}
+          <rect x={cx - 4} y={GROUND - 13} width={8} height={13} fill="#2a1d10" />
+          <rect x={cx - 4} y={GROUND - 13} width={1.4} height={13} fill={roofColor} />
+          <rect x={cx + 2.6} y={GROUND - 13} width={1.4} height={13} fill={roofColor} />
+          {/* a round hay bale to one side */}
+          <g transform={`translate(${x + w + 5} ${GROUND - 4})`}>
+            <ellipse cx={0} cy={0} rx={4} ry={3.4} fill="#e0b35a" />
+            <path d="M-4 0 q4 -2 8 0" stroke="#b8862f" strokeWidth={0.6} fill="none" opacity={0.7} />
+          </g>
+          {/* low paddock fence */}
+          <g stroke="#a1672e" strokeWidth={1.3} strokeLinecap="round">
+            <line x1={x - 8} y1={GROUND} x2={x - 8} y2={GROUND - 6} />
+            <line x1={x - 2} y1={GROUND} x2={x - 2} y2={GROUND - 6} />
+            <line x1={x - 9} y1={GROUND - 5} x2={x - 1} y2={GROUND - 5} />
+            <line x1={x - 9} y1={GROUND - 2.5} x2={x - 1} y2={GROUND - 2.5} />
+          </g>
+        </g>
+      )}
       {/* venerable (stage 5): a grown-over, ivy-creased home — a moss-streaked roof, a third
           dormer window, and a weathered cornerstone — reads distinctly older than `ancient`. */}
       {stage >= 5 && (
@@ -1174,6 +1242,19 @@ function Cat({ variant, cust, stage }: DrawProps) {
       {/* lap_cat form: a curled-up loaf — paws tucked, a soft tail wrapped round the front */}
       {form === 'lap_cat' && (
         <path d="M30 64 q-3 -6 4 -8" stroke={c} strokeWidth={2.4} fill="none" strokeLinecap="round" />
+      )}
+      {/* sleek_hunter form: a low-crouch shoulder line and a long, low sweeping tail — a lithe,
+          ready-to-pounce silhouette rather than a plain seated cat */}
+      {form === 'sleek_hunter' && (
+        <g>
+          <g stroke={c} fill="none" strokeLinecap="round">
+            <path d="M50 66 q14 1 17 -5" strokeWidth={2.6} />
+            <path d="M31 60 q9 -4 18 0" strokeWidth={1.4} opacity={0.7} />
+          </g>
+          {/* tall, pricked, alert ears */}
+          <polygon points="36,45 33,34 39,43" fill={c} />
+          <polygon points="44,45 47,34 41,43" fill={c} />
+        </g>
       )}
       <circle cx={40} cy={50} r={6 * s} fill={c} />
       <polygon points="36,46 34,37 39,44" fill={c} />

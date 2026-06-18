@@ -278,7 +278,7 @@ const OPTION_LABELS: Record<string, string> = {
   songbird: 'Songbird 🐦',
   squirrel: 'Squirrel 🐿️',
   bee: 'Bee 🐝',
-  dragonfly: 'Dragonfly',
+  dragonfly: 'Dragonfly 🪲',
   fireflies: 'Fireflies ✨',
   duck: 'Duck 🦆',
   swan: 'Swan 🦢',
