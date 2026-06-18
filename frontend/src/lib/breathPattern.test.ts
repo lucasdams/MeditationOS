@@ -38,7 +38,7 @@ describe('segmentAt', () => {
     expect(cycleLength(box)).toBe(16)
   })
 
-  it('skips zero-length holds (4·7·8 has no empty-hold)', () => {
+  it('skips zero-length holds (a pattern with no empty-hold)', () => {
     const p: Pattern = { inhale: 4, holdFull: 7, exhale: 8, holdEmpty: 0 } // cycle 19
     expect(cycleLength(p)).toBe(19)
     expect(segmentAt(4, p)).toBe('hold-full')
@@ -81,7 +81,7 @@ describe('PRESETS', () => {
     const byControl = (c: string) => PRESETS.filter((x) => x.control === c).map((x) => x.key)
     expect(byControl('bpm')).toEqual(['resonance'])
     expect(byControl('count')).toEqual(['box'])
-    expect(byControl('none')).toEqual(['478'])
+    expect(byControl('none')).toEqual([])
     // adjustable presets (bpm/count) carry a derive fn + null pattern; 'none' carries a pattern
     for (const p of PRESETS) {
       if (p.control === 'none') {
