@@ -3215,6 +3215,67 @@ textarea:focus-visible,
   border: 1px solid var(--border);
 }
 
+/* ── Trataka (flame-gazing) ──────────────────────────────────────────────────
+   A calm, dark stage so the procedurally-drawn flame is the focal point. The
+   flame itself is a <canvas> (see components/Flame.tsx); these rules frame it. */
+.trataka-stage {
+  position: relative;
+  height: 320px;
+  border-radius: 1rem;
+  /* Deep, near-black backdrop regardless of light/dark theme — the flame needs
+     darkness to read as the single point of focus. */
+  background: radial-gradient(circle at 50% 60%, #15151f, #050507);
+}
+
+.trataka-flame {
+  display: block;
+}
+
+.trataka-time {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: rgba(255, 244, 214, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.trataka-stage .breathe-phase {
+  position: absolute;
+  bottom: 0.9rem;
+  color: rgba(255, 244, 214, 0.7);
+}
+
+/* About section — explanatory, low-key prose. Left-aligned for readability,
+   sitting below the practice controls. */
+.trataka-about {
+  margin: 2rem auto 1rem;
+  max-width: 32rem;
+  text-align: left;
+  color: var(--text-secondary, var(--text-muted));
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.trataka-about h2 {
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.trataka-about p {
+  margin: 0 0 0.75rem;
+}
+
+.trataka-about-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
 /* ── Sound & bells collapsible disclosure ────────────────────────────────────
    A quiet <details>/<summary> section that tucks secondary audio controls
    (soundscape, bells, volume) behind a single toggleable row. Collapsed by

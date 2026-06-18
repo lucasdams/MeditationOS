@@ -5,6 +5,7 @@ import { dashboardService } from '../services/dashboard'
 
 // Secondary destinations, tucked into the "More" menu.
 const MORE_LINKS = [
+  { to: '/trataka', label: '🕯️ Trataka (flame gaze)' },
   { to: '/sessions/new', label: '➕ Log a session' },
   { to: '/timeline', label: '🕒 Timeline' },
   { to: '/goals', label: '🎯 Goals' },
