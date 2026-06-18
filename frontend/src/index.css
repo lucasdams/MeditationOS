@@ -20,6 +20,9 @@
   /* Success text — green that passes AA on both light and dark surfaces */
   --success-text: #047857;
 
+  /* Warning text — amber that passes AA on light surfaces */
+  --warning-text: #b45309;
+
   /* Borders & dividers */
   --border: #e5e5ea;
   --border-strong: #d0d0d5;
@@ -101,14 +104,17 @@
   --text-primary: #e8e8f0;
   --text-secondary: #b4b4c8;
   --text-muted: #9494b4;
-  --text-faint: #8b8bb0;
+  --text-faint: #a0a0c8;
 
   /* Success text */
   --success-text: #34d399;
 
+  /* Warning text — amber that reads on dark surfaces */
+  --warning-text: #fbbf24;
+
   /* Borders */
-  --border: #2e3250;
-  --border-strong: #3a3f64;
+  --border: #4a5180;
+  --border-strong: #646aa0;
   --border-light: #252940;
 
   /* Accent — slightly lighter indigo so it pops against dark surfaces */
@@ -158,7 +164,7 @@
 
   /* Shared aliases */
   --card: rgba(30, 33, 48, 0.85);
-  --border-var: rgba(255, 255, 255, 0.1);
+  --border-var: rgba(255, 255, 255, 0.22);
   --accent-var: #818cf8;
 }
 
@@ -177,10 +183,11 @@
     --text-primary: #e8e8f0;
     --text-secondary: #b4b4c8;
     --text-muted: #9494b4;
-    --text-faint: #8b8bb0;
+    --text-faint: #a0a0c8;
     --success-text: #34d399;
-    --border: #2e3250;
-    --border-strong: #3a3f64;
+    --warning-text: #fbbf24;
+    --border: #4a5180;
+    --border-strong: #646aa0;
     --border-light: #252940;
     --accent: #818cf8;
     --accent-hover: #a5b4fc;
@@ -214,7 +221,7 @@
     --shadow-nav: rgba(0, 0, 0, 0.35);
     --overlay: rgba(0, 0, 0, 0.6);
     --card: rgba(30, 33, 48, 0.85);
-    --border-var: rgba(255, 255, 255, 0.1);
+    --border-var: rgba(255, 255, 255, 0.22);
     --accent-var: #818cf8;
   }
 }
@@ -299,6 +306,16 @@ body {
   min-height: 100vh;
   background: transparent; /* the gradient is on :root (covers the full canvas) */
 }
+
+/* Global link color — applies in BOTH themes. --accent resolves per theme
+   (#4f46e5 light / #818cf8 dark), both legible; replaces the browser default
+   blue/visited-purple on otherwise-unstyled <Link>/<a> elements. No global
+   text-decoration override so existing nav/button links are unaffected. */
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+
+/* Owner-flagged auth links: underline + weight at rest for prominence. */
+.auth-aux a, .auth-card p a, .auth-legal a { text-decoration: underline; font-weight: 600; }
 
 .centered {
   text-align: center;
@@ -957,7 +974,7 @@ body {
 .auth-brand-name {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #4f46e5;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -1303,12 +1320,22 @@ body {
   font-size: 0.78rem;
 }
 
+/* Mood/category pill — theme-aware. The mood colour is passed inline as the
+   --pill custom property; the chip is computed per theme here so dark gets a
+   dark-tinted chip with brightened text instead of a near-white blob. The light
+   branch reproduces the old tint() result (16% mood + white, mood-coloured text). */
 .journal-mood {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: #ede9fe;
-  color: #6d28d9;
+  background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
+  color: var(--pill, #444);
   font-weight: 600;
+}
+
+:root[data-theme='dark'] .journal-mood,
+:root:not([data-theme='light']):not([data-theme='dark']) .journal-mood {
+  background: color-mix(in srgb, var(--pill) 22%, #1e2130);
+  color: color-mix(in srgb, var(--pill) 65%, #fff);
 }
 
 .journal-entry-actions {
@@ -1376,8 +1403,20 @@ body {
   color: inherit;
 }
 
+/* Active filter chip — same theme-aware pill treatment as .journal-mood, driven
+   by the inline --pill custom property (was inline background/color/borderColor). */
 .mood-filter-chip.selected {
   font-weight: 600;
+  background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
+  color: var(--pill, #444);
+  border-color: var(--pill, var(--border-var));
+}
+
+:root[data-theme='dark'] .mood-filter-chip.selected,
+:root:not([data-theme='light']):not([data-theme='dark']) .mood-filter-chip.selected {
+  background: color-mix(in srgb, var(--pill) 22%, #1e2130);
+  color: color-mix(in srgb, var(--pill) 65%, #fff);
+  border-color: var(--pill);
 }
 
 .journal-edit {
@@ -3502,7 +3541,7 @@ details[open] .meditate-disclosure-summary::before {
 .breathe-phase {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #4f46e5;
+  color: var(--accent);
 }
 
 .breathe-stats {
@@ -4897,6 +4936,119 @@ details[open] .meditate-disclosure-summary::before {
 :root:not([data-theme='light']):not([data-theme='dark']) .legal-template {
   background: var(--bg-surface);
   border-color: var(--border);
+}
+
+/* ── Dark-mode visibility fixes for hardcoded light hexes ───────────────────
+   Each rule lists both dark selectors (explicit data-theme + system-pref).
+   Light mode is untouched.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root[data-theme='dark'] .error,
+:root:not([data-theme='light']):not([data-theme='dark']) .error {
+  color: #f87171;
+}
+
+:root[data-theme='dark'] .success,
+:root:not([data-theme='light']):not([data-theme='dark']) .success {
+  color: var(--success-text);
+}
+
+:root[data-theme='dark'] .pace-difficulty.d-gentle,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-gentle {
+  color: #34d399;
+}
+:root[data-theme='dark'] .pace-difficulty.d-moderate,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-moderate {
+  color: #a5b4fc;
+}
+:root[data-theme='dark'] .pace-difficulty.d-advanced,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-advanced {
+  color: #fbbf24;
+}
+:root[data-theme='dark'] .pace-difficulty.d-expert,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-expert {
+  color: #f87171;
+}
+
+:root[data-theme='dark'] .stepper-btn:disabled,
+:root:not([data-theme='light']):not([data-theme='dark']) .stepper-btn:disabled {
+  background: var(--bg-surface-raised);
+  color: var(--text-faint);
+}
+
+/* Beat the inline near-white tints set in BreathePage.tsx. */
+:root[data-theme='dark'] .pattern-card-icon,
+:root:not([data-theme='light']):not([data-theme='dark']) .pattern-card-icon {
+  background: var(--bg-surface-raised) !important;
+}
+
+:root[data-theme='dark'] .guided-cues-text,
+:root:not([data-theme='light']):not([data-theme='dark']) .guided-cues-text {
+  color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .sanctuary-wallet .sanctuary-coins,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-wallet .sanctuary-coins {
+  color: #fbbf24;
+}
+
+:root[data-theme='dark'] .sanctuary-buy:disabled,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-buy:disabled {
+  background: var(--chip-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+
+:root[data-theme='dark'] .sanctuary-fav-toggle,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-fav-toggle {
+  background: var(--chip-bg);
+  color: #fbbf24;
+  border-color: #b45309;
+}
+:root[data-theme='dark'] .sanctuary-fav-toggle.on,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-fav-toggle.on {
+  background: var(--accent-subtle);
+  border-color: #f59e0b;
+}
+
+:root[data-theme='dark'] .sanctuary-card-blurb,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-card-blurb {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+:root[data-theme='dark'] .xp-bar,
+:root:not([data-theme='light']):not([data-theme='dark']) .xp-bar {
+  background: #123a2b;
+}
+
+:root[data-theme='dark'] .quest.done .quest-check,
+:root:not([data-theme='light']):not([data-theme='dark']) .quest.done .quest-check {
+  color: var(--success-text);
+}
+
+:root[data-theme='dark'] .settings-danger,
+:root:not([data-theme='light']):not([data-theme='dark']) .settings-danger {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+:root[data-theme='dark'] .settings-danger:hover:not(:disabled),
+:root:not([data-theme='light']):not([data-theme='dark']) .settings-danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.12);
+}
+:root[data-theme='dark'] .settings-confirm p,
+:root:not([data-theme='light']):not([data-theme='dark']) .settings-confirm p {
+  color: #f87171;
+}
+
+:root[data-theme='dark'] .goal-achieved,
+:root:not([data-theme='light']):not([data-theme='dark']) .goal-achieved {
+  color: #34d399;
+  background: #0f2a1e;
+}
+:root[data-theme='dark'] .goal-checkin.done,
+:root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
+  color: #34d399;
+  background: #0f2a1e;
 }
 
 @media (prefers-color-scheme: dark) {

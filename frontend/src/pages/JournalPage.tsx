@@ -4,7 +4,7 @@ import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
-import { MOOD_COLORS, MOOD_META, tint } from '../lib/colors'
+import { MOOD_COLORS, MOOD_META } from '../lib/colors'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
@@ -453,11 +453,7 @@ export default function JournalPage() {
                 type="button"
                 className={`selectable mood-filter-chip${active ? ' selected' : ''}`}
                 aria-pressed={active}
-                style={
-                  active
-                    ? { background: tint(MOOD_COLORS[m]), color: MOOD_COLORS[m], borderColor: MOOD_COLORS[m] }
-                    : undefined
-                }
+                style={active ? { ['--pill' as any]: MOOD_COLORS[m] } : undefined}
                 onClick={() => setMoodFilter(active ? '' : m)}
               >
                 <span aria-hidden="true">{MOOD_META[m].emoji}</span> {MOOD_META[m].label}
@@ -494,7 +490,7 @@ export default function JournalPage() {
                 {!editing && j.mood && (
                   <span
                     className="journal-mood"
-                    style={{ background: tint(MOOD_COLORS[j.mood]), color: MOOD_COLORS[j.mood] }}
+                    style={{ ['--pill' as any]: MOOD_COLORS[j.mood] }}
                   >
                     {cap(j.mood)}
                   </span>
