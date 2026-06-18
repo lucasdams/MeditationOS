@@ -92,9 +92,10 @@ in-code catalog (no migration, balance still derived):
 
 This is a **framework** built so the remaining tracks are a clean follow-up. Declaring a fork is one
 builder line — `.form(*_form_fork(base, …))` — and a stage is a one-token edit to three tuples.
-Rolled out **per track, one PR at a time**, with no framework churn. So far the **nature** track
-(part 1), the **structure** track (part 2), and the **companion** track (part 3) have evolution
-trees; whimsy follows next.
+Rolled out **per track, one PR at a time**, with no framework churn: the **nature** track (part 1),
+the **structure** track (part 2), the **companion** track (part 3), and the **whimsy** track (part
+4). With the whimsy track the rollout is **COMPLETE — all four tracks now carry evolution trees**
+(a test asserts every catalog item has a `form` fork).
 
 Nature track (part 1):
 
@@ -130,11 +131,30 @@ new additive slot is a `toy` (distinct from the existing headwear / collar / att
 | `goldfish` | fantail · koi-kissed | `venerable` | `toy` (bubble-ring · treasure) |
 | `snail` | mossy-garden · jeweled | `venerable` | `toy` (leaf-toy) |
 
+Whimsy track (part 4 — the final track; with it the rollout is complete). The forms read as
+charming evolved *characters*, and the new additive slot is a themed extra per item (a critter, a
+glow, a seasonal touch). Keys are namespaced where a plain word would clash with an existing global
+form/option/variant key (e.g. the gnome's `dozing`, not the `sleepy` variant; the gnome's new
+toadstool option keyed `toadstool_cap`, not the `toadstool` variant) — the same care the companion
+track took with `lap_cat` / `mossy_garden`:
+
+| item | `form` fork | extra growth stage | additive slot |
+|------|-------------|--------------------|---------------|
+| `garden_gnome` | wandering · wizardly · dozing | `venerable` | `toadstool` (toadstool-cap) |
+| `wind_chime` | crystal-chime · pan-pipes | `venerable` | `perched_bird` (chickadee) |
+| `lantern` | firefly-lantern · star-lantern · spirit-lantern | `venerable` | `charm` (crystal-charm) |
+| `frog_lily` | frog-prince · zen-frog | `venerable` | `dragonfly_friend` (dragonfly) |
+| `scarecrow` | harvest-guard · spooky · dapper | `venerable` | `pumpkin_patch` (pumpkins) |
+| `fairy_door` | mossy-door · royal-door · starlit-door | `venerable` | `doorstep` (welcome-mat) |
+| `hammock` | garden-swing · canopy-hammock | `venerable` | `side_table` (lemonade) |
+| `tea_cart` | garden-party · patisserie · high-tea | `venerable` | `treats` (macarons) |
+
 Every new form, the `venerable` stage, and every additive option has distinct SVG art in
 `SanctuaryPlant.tsx` (the structure renderers reshape the silhouette per form, the companion
-renderers recolour/repose per form and add their `toy`, and each item gains a distinct
-`venerable`-stage look). The customize panel iterates slots generically, so each fork surfaces and is
-buyable with no bespoke UI ([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
+renderers recolour/repose per form and add their `toy`, the whimsy renderers reshape each character
+per form and add its themed extra, and each item gains a distinct `venerable`-stage look). The
+customize panel iterates slots generically, so each fork surfaces and is buyable with no bespoke UI
+([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
 
 ### Character & whimsy (ADR-0016)
 

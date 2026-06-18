@@ -657,6 +657,21 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     # --- Whimsy -----------------------------------------------------------------------
     # A delightful little troupe of garden friends and curios: characterful, low-stakes,
     # and threaded through the level ladder so there's a small smile to buy at most levels.
+    #
+    # Evolution trees applied to the WHIMSY track (ADR-0021, part 4 — the FINAL part of the
+    # per-track rollout; with this the framework is live on all four tracks). Each whimsy item
+    # gains a late-game `form` fork of fitting whimsical evolved forms (e.g. gnome → wandering /
+    # wizardly / dozing; fairy-door → mossy / royal / starlit; tea-cart → garden-party /
+    # patisserie / high-tea), gated at/above the ladder top via _form_fork, and ONE new themed
+    # additive slot that doesn't duplicate the item's own ADR-0016 slots (a glow / sparkle /
+    # critter / seasonal extra). Same framework as the other tracks — no new machinery, no
+    # migration; the shared `venerable` 5th growth rung is reused.
+    #
+    # Key-collision care (as the companion track did with `lap_cat` / `mossy_garden`): form
+    # and option keys are global label keys, so they're namespaced where a plain word would
+    # clash with an existing key (e.g. the gnome's `dozing`, not `sleepy` — `sleepy` is already
+    # a gnome *variant*; the new gnome slot `toadstool`'s option keyed `toadstool_cap`, not the
+    # `toadstool` variant key; the lantern's `star_lantern` / `spirit_lantern`, etc.).
     "garden_gnome": (
         _Build("garden_gnome", "whimsy", 26, unlock_level=2)
         .blurb("Stands guard with great seriousness over a patch of nothing in particular.")
@@ -665,6 +680,15 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(32))
         .slot("lantern", ("lantern", 24))
         .slot("companion", ("snail", 22))
+        # Evolution fork: a wandering pilgrim with a staff, a star-hatted wizardly sage, or a
+        # dozing gnome asleep on the job. (`dozing`, not `sleepy` — that's already a variant.)
+        .form(
+            *_form_fork(
+                32, ("wandering", 4.0, 0), ("wizardly", 4.3, 1), ("dozing", 4.6, 2)
+            )
+        )
+        # New themed additive whimsy slot (ADR-0021): a toadstool sprouting at the gnome's feet.
+        .slot("toadstool", ("toadstool_cap", 22))
         .build()
     ),
     "wind_chime": (
@@ -675,6 +699,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(38))
         .slot("ribbon", ("ribbon", 22))
         .slot("bell", ("bell", 26))
+        # Evolution fork: a faceted crystal chime catching the light, or a row of reedy pan-pipes.
+        .form(*_form_fork(38, ("crystal_chime", 4.0, 0), ("pan_pipes", 4.4, 2)))
+        # New themed additive whimsy slot: a little bird come to perch on the branch.
+        .slot("perched_bird", ("chickadee", 22))
         .build()
     ),
     "lantern": (
@@ -685,6 +713,15 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(42))
         .slot("flame", ("warm", 24), ("blue", 28))
         .slot("moth", ("moth", 20))
+        # Evolution fork: a firefly-filled jar, a hanging star-lantern, or a wisp-lit spirit lamp.
+        .form(
+            *_form_fork(
+                42, ("firefly_lantern", 4.0, 0), ("star_lantern", 4.3, 1),
+                ("spirit_lantern", 4.6, 2)
+            )
+        )
+        # New themed additive whimsy slot: a hanging charm dangling beneath the lantern.
+        .slot("charm", ("crystal_charm", 22))
         .build()
     ),
     "frog_lily": (
@@ -695,6 +732,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(46))
         .slot("crown", ("crown", 30))
         .slot("hat", ("hat", 26))
+        # Evolution fork: a fairy-tale frog prince with a crown, or a serene meditating zen frog.
+        .form(*_form_fork(46, ("frog_prince", 4.0, 0), ("zen_frog", 4.4, 2)))
+        # New themed additive whimsy slot: a dragonfly hovering over the lily pad.
+        .slot("dragonfly_friend", ("pond_dragonfly", 22))
         .build()
     ),
     "scarecrow": (
@@ -705,6 +746,15 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(60))
         .slot("crow", ("crow", 28))
         .slot("lights", ("lights", 32))
+        # Evolution fork: a bountiful harvest guardian, a spooky jack-o'-lantern one, or a
+        # dapper gentleman scarecrow in a top hat.
+        .form(
+            *_form_fork(
+                60, ("harvest_guard", 4.0, 0), ("spooky", 4.3, 1), ("dapper", 4.6, 2)
+            )
+        )
+        # New themed additive whimsy slot: a little pumpkin patch sprouting at its feet.
+        .slot("pumpkin_patch", ("pumpkins", 26))
         .build()
     ),
     "fairy_door": (
@@ -715,6 +765,14 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(66))
         .slot("glow", ("glow", 28))
         .slot("path", ("path", 30))
+        # Evolution fork: a moss-framed door, a gilded royal door, or a starlit threshold.
+        .form(
+            *_form_fork(
+                66, ("mossy_door", 4.0, 0), ("royal_door", 4.3, 1), ("starlit_door", 4.6, 2)
+            )
+        )
+        # New themed additive whimsy slot: a tiny welcome mat on the doorstep.
+        .slot("doorstep", ("welcome_mat", 26))
         .build()
     ),
     "hammock": (
@@ -725,6 +783,10 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(80))
         .slot("occupant", ("cat", 30), ("napper", 34))
         .slot("lights", ("lights", 36))
+        # Evolution fork: a gently-swinging garden swing seat, or a shaded canopy hammock.
+        .form(*_form_fork(80, ("garden_swing", 4.0, 0), ("canopy_hammock", 4.4, 2)))
+        # New themed additive whimsy slot: a little side table with a cool drink within reach.
+        .slot("side_table", ("lemonade", 28))
         .build()
     ),
     "tea_cart": (
@@ -735,6 +797,15 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .ladder(_growth_ladder(150))
         .slot("lights", ("lights", 48))
         .slot("cat", ("cat", 40))
+        # Evolution fork: a festive garden-party spread, a refined patisserie of pastries, or a
+        # tiered high-tea service.
+        .form(
+            *_form_fork(
+                150, ("garden_party", 3.8, 0), ("patisserie", 4.1, 1), ("high_tea", 4.4, 2)
+            )
+        )
+        # New themed additive whimsy slot: a plate of dainty macarons on the cart.
+        .slot("treats", ("macarons", 44))
         .build()
     ),
 }
