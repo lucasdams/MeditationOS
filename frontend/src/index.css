@@ -3274,9 +3274,13 @@ textarea:focus-visible,
 }
 
 .trataka-immersive .trataka-time {
-  opacity: 0.3;
+  opacity: 0; /* the clock stays out of the way; hovering the flame reveals it */
   z-index: 31;
   transition: opacity 0.4s ease;
+}
+
+.trataka-immersive .trataka-stage:hover .trataka-time {
+  opacity: 0.5;
 }
 
 .trataka-immersive .breathe-controls {

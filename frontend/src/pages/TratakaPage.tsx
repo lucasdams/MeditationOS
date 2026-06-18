@@ -349,7 +349,7 @@ export default function TratakaPage() {
       )}
 
       <div className="breathe-stage trataka-stage">
-        <Flame intensity={flameIntensity} />
+        <Flame intensity={flameIntensity} size={running ? 360 : 220} />
         {started && <span className="trataka-time">{mmss(remaining)}</span>}
         <div className="breathe-phase">
           {running ? 'Rest your gaze on the flame' : elapsed > 0 ? 'Paused' : 'Eyes open · gaze softly'}
