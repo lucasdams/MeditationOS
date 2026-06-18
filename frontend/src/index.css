@@ -357,6 +357,10 @@ body {
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 600;
+  /* Delineate the tile against the header surface. In dark mode the soft per-destination
+     fills are nearly the same value as the header, so without a border the buttons read
+     as floating coloured text with no edge. */
+  border: 1px solid var(--border-strong);
 }
 
 /* A distinct soft color per destination. */
@@ -617,6 +621,10 @@ body {
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
   background: var(--text-primary);
+  /* Invert against the high-contrast fill: the background is --text-primary (dark in
+     light mode, light in dark mode), so the label must be --bg-surface to stay readable
+     in both — the base button's white text was illegible on the light dark-mode fill. */
+  color: var(--bg-surface);
 }
 
 .settings {
