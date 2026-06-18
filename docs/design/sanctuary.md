@@ -64,7 +64,7 @@ derived-balance principle of ADR-0011:
   punishing.
 
 The old `tier` is folded into the `grown` size slot, which is now a **multi-stage growth
-ladder** ([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)): four
+ladder** ([ADR-0020](../decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md)): four
 sequential, mutually-exclusive stages — `grown → flourishing → mature → ancient` — each
 costlier and gated at a higher level, and each visibly larger/lusher in the SVG. The first
 rung is keyed literally `"grown"` at the unchanged cost `round(base × 1.5)`, so existing rows
@@ -261,7 +261,7 @@ future tuning). All costs are tunable constants — retuning needs no migration.
 Each item also carries a cosmetic `blurb`.
 
 The `grown·N` column above is the **first rung** of the `grown` slot's growth ladder
-([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)) — the
+([ADR-0020](../decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md)) — the
 unchanged `"grown"` stage at `round(base_size × 1.5)`. The slot continues into three further
 stages at rising cost (× `2.4 / 3.6 / 5.0` of `base_size`) and rising unlock level (`3 / 5 /
 8`): `grown → flourishing → mature → ancient`. The companion/whimsy characters also carry
@@ -420,13 +420,15 @@ Each step is independently shippable.
     visibly larger/lusher in SVG; the characters gain additive `headwear` / `collar` /
     `attire` slots. The first rung stays keyed `"grown"` at the unchanged cost, so legacy
     rows are preserved exactly; the catalog is in-code, so no migration
-    ([ADR-0019](../decisions/0019-sanctuary-growth-ladder-and-accessory-slots.md)).
-11. ✅ **Evolution-tree framework + nature track + preview locked** — a late-game **`form` evolution
+    ([ADR-0020](../decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md)).
+11. ✅ **Evolution trees (all four tracks) + preview locked** — a late-game **`form` evolution
     fork** (a mutually-exclusive slot of named evolved forms gated at/above the ladder top), a fifth
-    growth rung (`venerable`), and a nature-appropriate additive slot per item — built as a reusable
-    framework (`.form(*_form_fork(…))`) and **applied to the nature track only** (structure/companion/
-    whimsy follow in later PRs). Locked & unaffordable customize options now **preview** (non-disabled
-    but still gated). Legacy `{"grown":"grown"}` preserved; no migration
+    growth rung (`venerable`), and a track-appropriate additive slot per item — built as a reusable
+    framework (`.form(*_form_fork(…))`) and rolled out **per track, one PR at a time**: nature (part 1),
+    structure (part 2), companion (part 3), and whimsy (part 4). With the whimsy PR the rollout is
+    **COMPLETE — every catalog item across all four tracks now carries an evolution tree** (a test
+    asserts every item has a `form` fork). Locked & unaffordable customize options now **preview**
+    (non-disabled but still gated). Legacy `{"grown":"grown"}` preserved; no migration
     ([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
 
 ## Out of scope (here)

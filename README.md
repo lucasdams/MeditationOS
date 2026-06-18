@@ -310,7 +310,7 @@ Numbered, immutable records of significant choices — see [`docs/decisions/`](d
 | [0018](docs/decisions/0018-trataka-flame-gazing-practice.md) | Trataka flame-gazing focus practice (reuse `mindfulness`, no migration) |
 | [0019](docs/decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) | Sanctuary — reset an item's upgrades for a fee (one stored per-user counter) |
 | [0020](docs/decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md) | Sanctuary — multi-stage growth ladder + additive accessory slots |
-| [0021](docs/decisions/0021-sanctuary-evolution-tree-and-preview-locked.md) | Sanctuary — evolution-tree framework (form fork + deeper ladder), nature track, preview locked options |
+| [0021](docs/decisions/0021-sanctuary-evolution-tree-and-preview-locked.md) | Sanctuary — evolution-tree framework (form fork + deeper ladder) + preview locked options |
 
 ---
 
