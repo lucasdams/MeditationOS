@@ -1989,6 +1989,19 @@ textarea:focus-visible,
   height: 60px;
 }
 
+/* Dark mode: dark art details (faces, hats, roofs) lose their edge against the dark card.
+   The SVG is transparent, so (1) a soft light radial shows through as a gentle "ground"
+   behind the plant, and (2) a thin light rim via drop-shadow outlines every drawn shape —
+   together they restore definition without turning each plant into a light tile. Pure CSS,
+   no per-shape art changes. */
+:root[data-theme='dark'] .sanctuary-svg,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-svg {
+  background: radial-gradient(circle at 50% 54%, rgba(236, 240, 248, 0.16), transparent 70%);
+  border-radius: 10px;
+  filter: drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.55))
+    drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.4));
+}
+
 .sanctuary-grown-row {
   display: flex;
   flex-wrap: wrap;
