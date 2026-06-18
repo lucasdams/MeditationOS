@@ -26,6 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.sanctuary import SanctuaryPlanting
+from app.models.user import User
 from app.schemas.sanctuary import (
     AvailableSlot,
     BuyRequest,
@@ -57,6 +58,14 @@ COINS_PER_LEVEL = 80
 # rather than punitive, while still gently raising the stakes on each new acquisition.
 # Lowering it only ever *lowers* an existing garden's spend → raises its balance (safe).
 PROGRESSIVE_STEP = 6
+
+# Flat fee (coins) charged when a user **resets** an owned item's customizations back to its
+# base form (ADR-0019). Clearing the customizations refunds their sunk cost via the derived
+# balance, so a reset would otherwise be a free undo that could be churned (buy → reset →
+# rebuy) for no net cost. The fee — persisted in `users.sanctuary_reset_fees` and subtracted
+# from the derived balance — makes each reset cost real coins, so reset-churn is strictly
+# coin-negative. A tunable constant (no migration to retune).
+SANCTUARY_RESET_FEE = 10
 
 
 def progressive_surcharge(ordinal: int) -> int:
@@ -496,6 +505,10 @@ class CellOutOfBounds(Exception):
     """The requested grid cell is outside the addressable layout (0 ≤ cell < GRID_CELLS)."""
 
 
+class NothingToReset(Exception):
+    """The item has no customizations to reset — a no-op, so no fee is charged (ADR-0019)."""
+
+
 class SanctuaryConflictError(Exception):
     """A concurrent write to the same user's garden collided on a unique constraint
     (position/cell). The caller should retry; the route maps this to 409, not 500."""
@@ -536,6 +549,17 @@ def _wallet(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> tuple
     """
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
     return basis.level * COINS_PER_LEVEL, basis.level, basis.current_streak
+
+
+def _reset_fees(db: DBSession, user_id: uuid.UUID) -> int:
+    """The user's cumulative Sanctuary upgrade-reset fees (ADR-0019), subtracted from the
+    otherwise fully-derived balance so each reset costs real coins. The one stored economy
+    figure; 0 for users who've never reset (and the column's server_default for legacy rows).
+    """
+    fees = db.execute(
+        select(User.sanctuary_reset_fees).where(User.id == user_id)
+    ).scalar_one_or_none()
+    return int(fees or 0)
 
 
 def _load(db: DBSession, user_id: uuid.UUID) -> list[SanctuaryPlanting]:
@@ -599,9 +623,16 @@ def _available_slots(
 
 
 def _build_scene(
-    plantings: list[SanctuaryPlanting], coins_earned: int, level: int, streak: int
+    plantings: list[SanctuaryPlanting],
+    coins_earned: int,
+    level: int,
+    streak: int,
+    reset_fees: int = 0,
 ) -> SanctuaryScene:
-    balance = max(0, coins_earned - _spent(plantings))
+    # The balance is derived from holdings minus the one stored economy figure — the
+    # cumulative upgrade-reset fees (ADR-0019) — then clamped ≥ 0 (legacy/large gardens
+    # may show 0). reset_fees is monotonic, so it never retroactively raises the balance.
+    balance = max(0, coins_earned - _spent(plantings) - reset_fees)
     owned: list[OwnedItem] = []
     # Present the garden in grid order (by `cell`); `position` stays the economy key only.
     for p in sorted(plantings, key=lambda p: p.cell):
@@ -667,7 +698,9 @@ def get_scene(
     db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC"
 ) -> SanctuaryScene:
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+    return _build_scene(
+        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    )
 
 
 def buy(
@@ -698,7 +731,8 @@ def buy(
         + (variant.cost_delta if variant is not None else 0)
         + progressive_surcharge(next_position)
     )
-    if coins_earned - _spent(plantings) < price:
+    reset_fees = _reset_fees(db, user_id)
+    if coins_earned - _spent(plantings) - reset_fees < price:
         raise InsufficientCoins(data.item_key)
     db.add(
         SanctuaryPlanting(
@@ -720,7 +754,7 @@ def buy(
     except IntegrityError as err:  # lost a race on uq position/cell despite the lock
         db.rollback()
         raise SanctuaryConflictError(item.key) from err
-    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+    return _build_scene(_load(db, user_id), coins_earned, level, streak, reset_fees)
 
 
 def customize(
@@ -773,7 +807,8 @@ def customize(
         prev = slot.option(current[slot.key])
         already_in_slot = prev.cost if prev is not None else 0
     net_cost = option.cost - already_in_slot
-    if coins_earned - _spent(plantings) < net_cost:
+    reset_fees = _reset_fees(db, user_id)
+    if coins_earned - _spent(plantings) - reset_fees < net_cost:
         raise InsufficientCoins(row.item_key)
     updated = dict(current)
     updated[slot.key] = option.key
@@ -783,7 +818,7 @@ def customize(
     except IntegrityError as err:
         db.rollback()
         raise SanctuaryConflictError(row.item_key) from err
-    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+    return _build_scene(_load(db, user_id), coins_earned, level, streak, reset_fees)
 
 
 def personalize(
@@ -827,7 +862,9 @@ def personalize(
         db.rollback()
         raise SanctuaryConflictError(row.item_key) from err
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+    return _build_scene(
+        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    )
 
 
 def move(
@@ -889,4 +926,59 @@ def move(
             raise SanctuaryConflictError(row.item_key) from err
 
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(_load(db, user_id), coins_earned, level, streak)
+    return _build_scene(
+        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    )
+
+
+def reset_upgrades(
+    db: DBSession,
+    user_id: uuid.UUID,
+    planting_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SanctuaryScene | None:
+    """Reset an owned item's customizations back to its base form for a flat fee (ADR-0019).
+
+    Clears `row.customizations` to `{}` (the base form) but leaves the `variant` intact — a
+    variant is the *purchased base form*, not an "upgrade". The sunk customization cost is
+    refunded via the derived balance (the holding now spends only its buy + variant + its
+    progressive surcharge), minus a flat SANCTUARY_RESET_FEE accumulated on the user so the
+    fee persists in the no-ledger model (and reset-churn is strictly coin-negative).
+
+    Returns None if the item isn't the caller's (→ 404). Raises NothingToReset if the item
+    has no customizations (a no-op must not be charged a fee). On a unique-constraint
+    collision the commit rolls back and raises SanctuaryConflictError (→ 409), as the other
+    mutators do.
+    """
+    # Lock FIRST — before reading the target row — so the customizations check, the clear,
+    # and the fee increment all happen under the per-user, txn-scoped advisory lock. A
+    # concurrent reset of the same item otherwise reads a stale snapshot and could charge the
+    # fee twice for one clear. Consistent with customize()/move()/personalize().
+    _lock_user_garden(db, user_id)
+    row = db.execute(
+        select(SanctuaryPlanting).where(
+            SanctuaryPlanting.id == planting_id, SanctuaryPlanting.user_id == user_id
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    # Read the customizations UNDER the lock. Nothing to reset → no-op: do not charge a fee.
+    if not _customizations(row):
+        raise NothingToReset(str(planting_id))
+    user = db.execute(select(User).where(User.id == user_id)).scalar_one()
+    row.customizations = {}
+    # Persist the flat fee on the user (the one stored economy figure). Monotonic, so it
+    # never retroactively raises the balance; the cleared customizations' refund nets against
+    # it, leaving the reset a real, fee-sized coin cost.
+    user.sanctuary_reset_fees = (user.sanctuary_reset_fees or 0) + SANCTUARY_RESET_FEE
+    try:
+        db.commit()
+    except IntegrityError as err:
+        db.rollback()
+        raise SanctuaryConflictError(row.item_key) from err
+    coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
+    return _build_scene(
+        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    )

@@ -28,6 +28,7 @@ from app.services.sanctuary_service import (
     CellOutOfBounds,
     InsufficientCoins,
     ItemLocked,
+    NothingToReset,
     SanctuaryConflictError,
     UnknownItem,
     UnknownSlotOption,
@@ -111,6 +112,39 @@ def customize_item(
         ) from None
     except InsufficientCoins:
         raise _BROKE from None
+    except SanctuaryConflictError:
+        raise _CONFLICT from None
+    if scene is None:
+        raise _NOT_FOUND
+    return scene
+
+
+@router.post("/items/{planting_id}/reset", response_model=SanctuaryScene)
+@limiter.limit(settings.write_rate_limit)
+def reset_item_upgrades(
+    request: Request,  # required by the rate limiter
+    planting_id: uuid.UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
+) -> SanctuaryScene:
+    """Reset an owned item's customizations back to its base form for a flat fee (ADR-0019).
+
+    Clears the item's customizations (the variant/base form is kept); the sunk customization
+    cost is refunded via the derived balance, minus the flat reset fee. `404` if it isn't
+    yours; `409` if the item has nothing to reset (no free fee) or a concurrent write
+    collided.
+    """
+    today, tz = today_tz
+    try:
+        scene = sanctuary_service.reset_upgrades(
+            db, current_user.id, planting_id, today=today, tz=tz
+        )
+    except NothingToReset:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This item has no upgrades to reset",
+        ) from None
     except SanctuaryConflictError:
         raise _CONFLICT from None
     if scene is None:
