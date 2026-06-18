@@ -598,7 +598,7 @@ export default function SanctuaryPage() {
             return trackOrder.map((track) => {
               const meta = TRACK_META[track]
               const label = meta ? `${meta.emoji} ${meta.label}` : track
-              const accent = meta?.accent ?? '#9ca3af'
+              const accent = meta?.accent ?? '#6b7280'
               return (
                 <section key={track} className="sanctuary-track-section">
                   <h3
