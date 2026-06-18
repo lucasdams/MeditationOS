@@ -4,6 +4,7 @@ import { analyticsService } from '../services/analytics'
 import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
+import ActivityHeatmap from '../components/ActivityHeatmap'
 import { messageForError } from '../lib/errors'
 import type {
   AnalyticsSummary,
@@ -410,6 +411,11 @@ export default function AnalyticsPage() {
               <div className="stat-label">days practiced</div>
             </div>
           </section>
+
+          {/* Activity calendar — a month-at-a-glance heatmap of practice/all-quest days.
+              Lives here with the rest of the stats (moved off the calm home). Self-fetches
+              and carries its own loading/empty/error states. */}
+          <ActivityHeatmap />
 
           <Insights />
 

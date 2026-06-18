@@ -8,7 +8,6 @@ import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
-import ActivityHeatmap from '../components/ActivityHeatmap'
 import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -33,12 +32,6 @@ const FEATURE_TILES = [
   { ...ACTIVITY_META.journal, to: '/journal', activity: 'journal' as const },
   { label: 'Sanctuary', emoji: '🌱', to: '/sanctuary', activity: null },
 ] as const
-
-const formatTotal = (seconds: number) => {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.round((seconds % 3600) / 60)
-  return h > 0 ? `${h}h ${m}m` : `${m} min`
-}
 
 // Once-per-day gate for the on-open mood check-in. We record the local date the prompt
 // was shown so it appears at most once per calendar day — not on every navigation or
@@ -69,10 +62,9 @@ export default function DashboardPage() {
   // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
   // both LevelCard (next unlock) and SanctuaryScene (coins + garden preview).
   const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
-  // Everything beyond the day's practice (quests, sanctuary, level detail, totals,
-  // heatmap, weekly review) starts collapsed so the landing view stays calm — the
-  // primary "start a practice" surface first, the rest one tap away. The open/closed
-  // choice persists across visits.
+  // The deeper progress detail (full level detail, weekly review) starts collapsed so the
+  // landing view stays calm — the primary "start a practice" surface first, the rest one
+  // tap away. The open/closed choice persists across visits.
   const [showMore, setShowMore] = useState(() => {
     try {
       return localStorage.getItem('dashboard.showMore') === '1'
@@ -157,6 +149,23 @@ export default function DashboardPage() {
 
   return (
     <main id="main-content" className="dashboard">
+      {/* Level + coins pinned to the very top of the home — the first thing the user sees,
+          above the page title and the first-run card. A clean, tidy top line (not a big
+          gamified bar): calm but clearly present. Level comes from stats; coins from the
+          single sanctuary-scene fetch shared with LevelCard and the garden teaser. */}
+      {stats && (
+        <p className="level-topline" aria-label={`Level ${stats.level}`}>
+          <span className="level-topline-item">
+            <span aria-hidden="true">◆</span> Level {stats.level}
+          </span>
+          {sanctuaryScene && (
+            <span className="level-topline-item">
+              <span aria-hidden="true">🪙</span> {sanctuaryScene.coins}
+            </span>
+          )}
+        </p>
+      )}
+
       <h1>Your practice</h1>
       <p className="zen-greeting muted">{greeting}</p>
 
@@ -168,21 +177,6 @@ export default function DashboardPage() {
           denser progress surfaces. Hidden once dismissed or once they've practiced. */}
       {stats && !firstRunDismissed && shouldShowFirstRun(stats.session_count) && (
         <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
-      )}
-
-      {/* Slim level/coins line — a quiet chip in place of the full LevelCard on the
-          default view. The detailed LevelCard (XP bar, next unlock) lives in the
-          collapse below so the landing view stays calm. */}
-      {stats && (
-        <p className="level-chip muted">
-          <span aria-hidden="true">◆</span> Level {stats.level}
-          {sanctuaryScene && (
-            <>
-              {' · '}
-              <span aria-hidden="true">🪙</span> {sanctuaryScene.coins}
-            </>
-          )}
-        </p>
       )}
 
       {stats && stats.current_streak_days > 0 && (
@@ -275,10 +269,10 @@ export default function DashboardPage() {
         )}
 
       {/* The heavier retrospective/progress detail folds into one calm, default-collapsed
-          drawer: the full level detail (XP bar, next unlock), totals, the heatmap, and the
-          weekly review — all still here, just one tap away. Quests and the garden now live
-          on the default home above (in compact form), so the drawer is purely the deeper
-          progress view. */}
+          drawer: the full level detail (XP bar, next unlock) and the weekly review — both
+          still here, just one tap away. Totals and the activity calendar now live on the
+          Analytics page (alongside the rest of the stats); quests and the garden live on
+          the default home above (in compact form). */}
       {stats && (
         <section className="dashboard-more">
           {/* Subtle, link-style affordance for the progress drawer — a quiet centered text
@@ -300,23 +294,6 @@ export default function DashboardPage() {
           {showMore && (
             <div id="dashboard-more-panel">
               <LevelCard stats={stats} scene={sanctuaryScene} />
-
-              <section className="stat-cards">
-                <div className="stat-card">
-                  <div className="stat-value">{formatTotal(stats.total_seconds)}</div>
-                  <div className="stat-label">Total practice</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats.session_count}</div>
-                  <div className="stat-label">Sessions</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">{stats.gratitude_count} 🙏</div>
-                  <div className="stat-label">Gratitude moments</div>
-                </div>
-              </section>
-
-              <ActivityHeatmap />
 
               <WeeklyReview />
             </div>

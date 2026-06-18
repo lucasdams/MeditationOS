@@ -1,7 +1,7 @@
 /**
  * Light smoke tests for the DashboardPage.
  * Full integration coverage lives in E2E; these guard the quick-action tiles,
- * the slim level chip, the compact quests + sanctuary teaser that sit on the calm
+ * the level + coins top line, the compact quests + sanctuary teaser that sit on the calm
  * default home, the single-fetch sanctuary scene optimisation, and the
  * default-collapsed "Show more" drawer that holds the heavier progress detail.
  */
@@ -51,9 +51,6 @@ vi.mock('../components/MoodCheckin', () => ({
 }))
 vi.mock('../components/WeeklyReview', () => ({
   default: () => <div data-testid="weekly-review" />,
-}))
-vi.mock('../components/ActivityHeatmap', () => ({
-  default: () => <div data-testid="activity-heatmap" />,
 }))
 
 import DashboardPage from './DashboardPage'
@@ -144,10 +141,29 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     getScene.mockResolvedValue(fakeScene)
   })
 
-  it('shows the slim level + coins chip once stats and scene load', async () => {
+  it('shows the level + coins top line once stats and scene load', async () => {
     renderPage()
     expect(await screen.findByText(/Level 7/)).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
+  })
+
+  it('pins the level + coins line to the very top of the home, above the page title', async () => {
+    renderPage()
+    const main = await screen.findByRole('main')
+    await screen.findByText(/Level 7/)
+    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
+
+    // The level/coins line is the first element in <main> — ahead of the "Your practice"
+    // heading and everything else (including any first-run card).
+    const topline = main.querySelector('.level-topline')
+    expect(topline).not.toBeNull()
+    expect(main.firstElementChild).toBe(topline)
+
+    const heading = screen.getByRole('heading', { name: /your practice/i, level: 1 })
+    // The top line precedes the <h1> in document order.
+    expect(
+      topline!.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('shows the feature tiles and a quiet "How do you feel?" entry point by default', async () => {
@@ -176,13 +192,12 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     expect(capturedSanctuarySceneProps.at(-1)?.compact).toBe(true)
   })
 
-  it('keeps the full level card, totals, heatmap, and weekly review collapsed', async () => {
+  it('keeps the full level card and weekly review collapsed', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
     // The heavier progress surfaces are not rendered until the drawer is opened.
     expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('activity-heatmap')).not.toBeInTheDocument()
     expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
 
     // The toggle announces a collapsed state and points at the controlled panel — and is
@@ -190,6 +205,20 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     const toggle = screen.getByRole('button', { name: /show more/i })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(toggle).toHaveAttribute('aria-controls', 'dashboard-more-panel')
+  })
+
+  it('does not render the activity calendar or the totals stat cards on the home', async () => {
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    // The activity calendar moved to Analytics; open the drawer to confirm it isn't there either.
+    fireEvent.click(screen.getByRole('button', { name: /show more/i }))
+    expect(screen.getByTestId('level-card')).toBeInTheDocument()
+    expect(document.querySelector('.calendar')).toBeNull()
+    expect(document.querySelector('.stat-cards')).toBeNull()
+    // The home no longer shows the "Total practice" / "Gratitude moments" totals.
+    expect(screen.queryByText(/total practice/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/gratitude moments/i)).not.toBeInTheDocument()
   })
 })
 
@@ -209,7 +238,6 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
-    expect(screen.getByTestId('activity-heatmap')).toBeInTheDocument()
     expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument()
 
