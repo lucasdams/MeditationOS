@@ -14,8 +14,8 @@
   /* Text */
   --text-primary: #1c1c1e;
   --text-secondary: #45454a;
-  --text-muted: #6b6b70;
-  --text-faint: #76767c;
+  --text-muted: #5f5f65;
+  --text-faint: #5f5f64;
 
   /* Success text — green that passes AA on both light and dark surfaces */
   --success-text: #047857;
@@ -25,7 +25,7 @@
 
   /* Borders & dividers */
   --border: #e5e5ea;
-  --border-strong: #d0d0d5;
+  --border-strong: #94949c;
   --border-light: #ececf0;
 
   /* Accent — indigo */
@@ -79,7 +79,7 @@
 
   /* Shared: card / border / accent aliases used by onboarding + breathe selectors */
   --card: rgba(255, 255, 255, 0.6);
-  --border-var: rgba(0, 0, 0, 0.14);
+  --border-var: rgba(0, 0, 0, 0.28);
   --accent-var: #4f46e5;
 }
 
@@ -1328,7 +1328,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
-  color: var(--pill, #444);
+  color: color-mix(in srgb, var(--pill, #444) 58%, #1c1c1e);
   font-weight: 600;
 }
 
@@ -1356,7 +1356,7 @@ a:hover { color: var(--accent-hover); }
   background: none;
   border: none;
   border-radius: 6px;
-  color: #9ca3af;
+  color: #6b7280;
   cursor: pointer;
 }
 
@@ -1408,7 +1408,7 @@ a:hover { color: var(--accent-hover); }
 .mood-filter-chip.selected {
   font-weight: 600;
   background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
-  color: var(--pill, #444);
+  color: color-mix(in srgb, var(--pill, #444) 58%, #1c1c1e);
   border-color: var(--pill, var(--border-var));
 }
 
@@ -1498,7 +1498,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   background: #dcfce7;
-  color: #15803d;
+  color: #166534;
   font-weight: 600;
   font-size: 0.8rem;
 }
@@ -1540,7 +1540,7 @@ a:hover { color: var(--accent-hover); }
 }
 
 .goal-checkin.done {
-  color: #15803d;
+  color: #166534;
   background: #dcfce7;
 }
 
@@ -1562,7 +1562,7 @@ a:hover { color: var(--accent-hover); }
 .auth-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
 }
 
 .auth-divider span {
@@ -2195,7 +2195,7 @@ textarea:focus-visible,
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 999px;
-  background: #059669;
+  background: #047857;
   color: #fff;
   border: none;
   cursor: pointer;
@@ -2317,14 +2317,14 @@ textarea:focus-visible,
 }
 
 .sanctuary-option.applied {
-  background: #059669;
+  background: #047857;
   color: #fff;
-  border-color: #059669;
+  border-color: #047857;
 }
 
 .sanctuary-option:disabled:not(.applied) {
   background: var(--chip-bg);
-  color: #94a3b8;
+  color: var(--text-muted);
   border-color: var(--border);
   cursor: not-allowed;
 }
@@ -2382,7 +2382,7 @@ textarea:focus-visible,
 
 .sanctuary-reset-do:disabled {
   background: var(--chip-bg);
-  color: #94a3b8;
+  color: var(--text-muted);
   border-color: var(--border);
   cursor: not-allowed;
 }
@@ -2473,7 +2473,7 @@ textarea:focus-visible,
 }
 
 .sanctuary-fav-star {
-  color: #f59e0b;
+  color: #b45309;
 }
 
 .sanctuary-card-sub {
@@ -2496,7 +2496,6 @@ textarea:focus-visible,
   font-style: italic;
   line-height: 1.3;
   margin: 0.15rem 0 0.35rem;
-  opacity: 0.85;
 }
 
 /* The calm name/note/favourite editor inside the personalize panel. */
@@ -2880,7 +2879,7 @@ textarea:focus-visible,
 }
 
 .quest.done .quest-check {
-  color: #059669;
+  color: var(--success-text);
 }
 
 /* The entire quest row is now a single link — clear affordance, full keyboard target. */
@@ -2920,7 +2919,7 @@ textarea:focus-visible,
 .quest-arrow {
   flex-shrink: 0;
   font-size: 0.85rem;
-  color: var(--activity-accent, #9ca3af);
+  color: var(--activity-accent, #6b7280);
   opacity: 0.45;
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
@@ -3199,7 +3198,7 @@ textarea:focus-visible,
   font-weight: 500;
   color: var(--text-primary);
   background: var(--chip-bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   cursor: pointer;
 }
@@ -3371,7 +3370,7 @@ textarea:focus-visible,
   margin: 0.75rem 0 0;
   background: transparent;
   color: var(--text-muted);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
 }
 
 /* ── Trataka (flame-gazing) ──────────────────────────────────────────────────
@@ -3618,7 +3617,7 @@ details[open] .meditate-disclosure-summary::before {
   flex: 1;
   height: 3px;
   border-radius: 2px;
-  background: var(--border);
+  background: var(--border-strong);
   overflow: hidden;
 }
 
@@ -3677,7 +3676,7 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .stepper-btn:disabled {
-  background: #c7c7cc;
+  background: #a8a8b0;
   cursor: default;
 }
 
@@ -3901,7 +3900,7 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .toast--success {
-  background: #059669;
+  background: #047857;
 }
 
 .toast--error {
@@ -4646,11 +4645,11 @@ details[open] .meditate-disclosure-summary::before {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   /* Accent via the inline custom property; falls back to a neutral muted tone */
-  color: var(--track-accent, #9ca3af);
+  color: var(--track-accent, #6b7280);
   margin: 0 0 0.6rem 0;
   padding: 0;
   /* A fine underline drawn from the accent rather than a bold divider */
-  border-bottom: 1.5px solid color-mix(in srgb, var(--track-accent, #9ca3af) 30%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--track-accent, #6b7280) 30%, transparent);
   padding-bottom: 0.3rem;
   width: 100%;
 }

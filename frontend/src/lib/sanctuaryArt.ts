@@ -189,10 +189,10 @@ const OPTION_LABELS: Record<string, string> = {
 // Unknown tracks fall back to titleCase + no accent. Keeps the catalog extensible without
 // touching the page component.
 export const TRACK_META: Record<string, { label: string; emoji: string; accent: string }> = {
-  nature:    { label: 'Nature',     emoji: '🌿', accent: '#14b8a6' }, // teal
+  nature:    { label: 'Nature',     emoji: '🌿', accent: '#0d9488' }, // teal
   structure: { label: 'Structure',  emoji: '🏡', accent: '#8b5cf6' }, // violet
-  companion: { label: 'Companions', emoji: '🐾', accent: '#f59e0b' }, // amber
-  whimsy:    { label: 'Whimsy',     emoji: '✨', accent: '#ec4899' }, // pink
+  companion: { label: 'Companions', emoji: '🐾', accent: '#d97706' }, // amber
+  whimsy:    { label: 'Whimsy',     emoji: '✨', accent: '#db2777' }, // pink
 }
 
 function titleCase(key: string): string {
