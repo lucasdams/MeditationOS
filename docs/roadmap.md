@@ -114,14 +114,18 @@ toward the V3 AI features below.
 A garden built through a small **spend economy**: earn **coins** as you level up, then
 **buy** procedural **SVG** items across four tracks (nature · structures · companions ·
 whimsy) with **variants** chosen at purchase and independent mix-and-match
-**customizations** bought over time. Items sit on a **movable grid layout** (drag on
-desktop, tap-to-place on touch). Each item can carry an optional **name plaque**, a
-short **note**, and a **favourite** star. The coin balance is **computed on read** from
-holdings with a **progressive surcharge** (each additional item costs a little more),
-with the level taken from *earned XP* so coins never decrease. See
+**customizations** bought over time. Items mature through a five-stage **growth ladder**
+(`grown → flourishing → mature → ancient → venerable`) and, late-game, branch on a
+mutually-exclusive **`form` evolution fork** (an oak → mighty / blossoming / hollow elder)
+— every catalog item across all four tracks carries one. Items sit on a **movable grid
+layout** (drag on desktop, tap-to-place on touch). Each item can carry an optional **name
+plaque** (set once owned), a short **note**, and a **favourite** star. Upgrades can be
+**reset for a flat fee**. The coin balance is **computed on read** from holdings with a
+**progressive surcharge** (each additional item costs a little more), with the level taken
+from *earned XP* so coins never decrease. See
 [sanctuary design](design/sanctuary.md),
 [ADR-0011](decisions/0011-sanctuary-spend-economy.md) through
-[ADR-0016](decisions/0016-sanctuary-shop-expansion-and-retune.md) (which collectively
+[ADR-0021](decisions/0021-sanctuary-evolution-tree-and-preview-locked.md) (which collectively
 superseded the original cultivation model, [ADR-0010](decisions/0010-sanctuary-cultivation.md)).
 
 **Demonstrates:** an in-app economy with a derived balance and a minimal data footprint
@@ -156,7 +160,10 @@ with no backend or data-model footprint
 **Light / Dark / System** colour-scheme toggle in **Settings → Appearance**, built on
 the existing CSS custom-properties theme system. `System` follows the OS preference
 (`prefers-color-scheme`). The chosen mode persists locally. All new feature CSS
-(insights observations, journaling prompts) is dark-mode-aware from day one.
+(insights observations, journaling prompts) is dark-mode-aware from day one. A subsequent
+**high-visibility pass across both light and dark** tightened contrast on borders, links,
+mood pills, toasts, nav tiles, the Sanctuary canvas/plant art, and heatmap/quest cells,
+alongside a small accessibility pass (form-error association, skip targets, ARIA labels).
 
 **Demonstrates:** OS-integrated theming via CSS custom properties
 

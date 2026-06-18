@@ -26,3 +26,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0018](0018-trataka-flame-gazing-practice.md) | Trataka flame-gazing focus practice (reuse `mindfulness`, no migration) | Accepted |
 | [0019](0019-sanctuary-reset-upgrades-for-a-fee.md) | Sanctuary — reset an item's upgrades for a fee (one stored per-user counter) | Accepted |
 | [0020](0020-sanctuary-growth-ladder-and-accessory-slots.md) | Sanctuary — multi-stage growth ladder + additive accessory slots | Accepted |
+| [0021](0021-sanctuary-evolution-tree-and-preview-locked.md) | Sanctuary — evolution-tree framework (form fork + deeper ladder) + preview locked options | Accepted |
