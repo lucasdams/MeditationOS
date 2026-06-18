@@ -273,15 +273,16 @@ returns the updated scene.
   (an empty field clears it). Below, the slots and options with cost and `applied` / `locked`
   / `affordable` state — mix and match over time. Validate (affordable + unlocked) before
   submit; server errors surface as a toast.
-- **Name at purchase:** the buy modal (multi-variant items) carries an optional name field;
-  single-variant items keep their one-tap Buy with a quiet, optional "name it…" affordance, so
-  naming is always available but never a nag. A named item shows its plaque first (the item /
-  variant becomes a quiet subtitle) and a small star when favourited. The name field starts
+- **Name once owned:** naming is an **owned-item action**, not a purchase step (amended
+  2026-06-18, [ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)). The buy
+  modal is just a variant picker ("Choose a …") or a simple confirmation ("Add a …?" → Buy /
+  Cancel) — no name field — and single-variant items are a one-tap Buy. You name (and note,
+  and favourite) an item afterwards in its **personalize panel**, where the name field starts
   blank but offers each item's own **suggested example name** — an on-character placeholder
   ("e.g. Bramblewick" for the gnome) plus a 🎲 "suggest a name" shuffle that fills a random
-  one from the item's pool ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)).
-  It's a suggestion, never a default — nothing is auto-assigned. The same hint + shuffle
-  appears when renaming an owned item in the personalize panel.
+  one from the item's pool. It's a suggestion, never a default — nothing is auto-assigned. A
+  named item shows its plaque first (the item / variant becomes a quiet subtitle) and a small
+  star when favourited.
 - **Arrange:** the garden renders on a row-major **grid** (`GRID_COLUMNS = 4`, mirroring
   the backend) ordered by `cell`, so each user lays their garden out where they want it
   ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)). Desktop supports **drag-to-move**
@@ -316,7 +317,7 @@ Each step is independently shippable.
    + the `/move` endpoint let users arrange items on a grid by drag (desktop) or
    tap-to-place (touch). Layout-only; the economy is untouched
    ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)).
-8. ✅ **Naming + personal touches** — an optional `name` plaque (set at purchase or anytime),
+8. ✅ **Naming + personal touches** — an optional `name` plaque (set once the item is owned),
    a short `note`, and a `favourite` star, via a `PATCH /items/{id}` endpoint. All cosmetic,
    optional, and default-off — the derived balance is untouched
    ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)).
