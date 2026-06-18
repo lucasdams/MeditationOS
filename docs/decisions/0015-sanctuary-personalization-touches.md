@@ -48,6 +48,30 @@ colours, no descriptions — and all three ride one additive migration and one e
   enforced regardless of any client cap. React escapes the text on render, so there is no
   HTML-injection vector; the caps bound storage and layout.
 
+### Suggested names per item (amendment, 2026-06-18)
+
+Naming above started from a blank field, so it sat quiet but uninviting. To make it feel
+personal and *charming* without ever nagging, each catalog item now carries a small pool of
+**suggested example names** that fit *that* item — gnome names for the gnome ("Bramblewick"),
+breed-appropriate pet names ("Biscuit" for the dog), nature names for the plants/trees, and
+whimsical names for the curios (the tea cart, the wind chime).
+
+- **Static per item type, in code beside `blurb` — no DB change, no migration.** The
+  `CatalogItem` dataclass gains `suggested_names: tuple[str, ...] = ()` (built via a fluent
+  `.names(...)` helper), exactly mirroring how `blurb` is defined. It is **cosmetic only** and
+  never enters the spend computation, like the rest of the personal layer.
+- **Surfaced as a *suggestion*, never a default.** The naming field starts **blank**; the
+  item's first suggested name is shown only as the input **placeholder** ("e.g. Bramblewick"),
+  and a quiet **"suggest a name" 🎲** button fills a random name from the pool so the user can
+  shuffle until one fits. Nothing is auto-assigned — the chosen name still saves through the
+  unchanged buy / `PATCH` flow, so storage and validation are untouched.
+- **Exposed to the client on the existing scene payload.** `ShopItem` (the shop entry the
+  buy UI already reads) gains `suggested_names: list[str]`, the same path `blurb` travels. The
+  rename panel for an owned item looks the pool up from that shop entry by `item_key`, so both
+  the buy modal and the rename field offer the placeholder + 🎲 shuffle.
+- Names are short (≤ the 40-char cap), warm, and family-friendly; a catalog-integrity test
+  asserts every item has at least one non-empty suggestion.
+
 ## Consequences
 
 - The garden gains a sentimental layer with no economic surface area — the derived-balance,

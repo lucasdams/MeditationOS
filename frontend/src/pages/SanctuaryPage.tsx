@@ -18,6 +18,17 @@ const GRID_COLUMNS = 4
 const NAME_MAX = 40
 const NOTE_MAX = 140
 
+// Pick a random example name from an item's suggested pool, avoiding `avoid` (the name
+// already shown) when there's more than one so the shuffle visibly changes. Returns null
+// when the pool is empty. The suggestion is never auto-assigned — the user types/keeps it.
+function pickSuggestedName(pool: string[], avoid?: string): string | null {
+  if (pool.length === 0) return null
+  if (pool.length === 1) return pool[0]
+  const choices = avoid ? pool.filter((n) => n !== avoid) : pool
+  const from = choices.length > 0 ? choices : pool
+  return from[Math.floor(Math.random() * from.length)]
+}
+
 // The flat fee charged to reset an item's upgrades (mirrors the backend SANCTUARY_RESET_FEE,
 // ADR-0019). Shown in the confirm copy so the cost is always stated before committing.
 // Display-only; the server is the source of truth for what's actually charged.
@@ -29,10 +40,14 @@ const RESET_FEE = 10
 function SanctuaryNameNote({
   item,
   busy,
+  suggestions,
   onSave,
 }: {
   item: OwnedItem
   busy: boolean
+  // The item type's pool of charming example names (ADR-0015): a placeholder hint + a 🎲
+  // shuffle to fill the field. Optional suggestion only — never auto-applied.
+  suggestions: string[]
   onSave: (item: OwnedItem, patch: PersonalizePatch, okMessage?: string) => void
 }) {
   const [name, setName] = useState(item.name ?? '')
@@ -54,16 +69,35 @@ function SanctuaryNameNote({
     <div className="sanctuary-personal">
       <label className="sanctuary-field">
         <span>Name</span>
-        <input
-          type="text"
-          value={name}
-          maxLength={NAME_MAX}
-          placeholder="Give it a name (optional)"
-          disabled={busy}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-        />
+        <div className="sanctuary-name-input-row">
+          <input
+            type="text"
+            value={name}
+            maxLength={NAME_MAX}
+            placeholder={
+              suggestions[0] ? `e.g. ${suggestions[0]}` : 'Give it a name (optional)'
+            }
+            disabled={busy}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+          {suggestions.length > 0 && (
+            <button
+              type="button"
+              className="sanctuary-suggest-name"
+              disabled={busy}
+              title="Suggest a name"
+              aria-label="Suggest a name"
+              onClick={() => {
+                const next = pickSuggestedName(suggestions, name.trim())
+                if (next) setName(next)
+              }}
+            >
+              🎲
+            </button>
+          )}
+        </div>
       </label>
       <label className="sanctuary-field">
         <span>Note</span>
@@ -240,6 +274,13 @@ export default function SanctuaryPage() {
     } finally {
       setBusy(null)
     }
+  }
+
+  // The pool of example names for an item type (ADR-0015), looked up from the shop entry
+  // in the current scene (the shop carries every catalog item's `suggested_names`). Used to
+  // offer a naming suggestion when renaming an owned item; [] if the item isn't found.
+  function suggestionsFor(itemKey: string): string[] {
+    return scene?.shop.find((s) => s.item_key === itemKey)?.suggested_names ?? []
   }
 
   // Move an owned item to a grid cell. Optimistically reorders locally (swapping with any
@@ -443,6 +484,7 @@ export default function SanctuaryPage() {
                               <SanctuaryNameNote
                                 item={o}
                                 busy={busy != null}
+                                suggestions={suggestionsFor(o.item_key)}
                                 onSave={personalize}
                               />
                               {o.available.length === 0 && (
@@ -639,6 +681,11 @@ export default function SanctuaryPage() {
           setPicking(null)
           setBuyName('')
         }
+        // The item's pool of charming example names (ADR-0015). The first is a quiet
+        // placeholder hint; the 🎲 button shuffles a random one into the field. Always an
+        // optional suggestion — nothing is auto-assigned, and the field starts blank.
+        const suggestions = picking.suggested_names
+        const placeholder = suggestions[0] ? `e.g. ${suggestions[0]}` : "e.g. Grandpa's Oak"
         return (
           <Modal
             ariaLabel={`Buy a ${itemLabel(picking.item_key)}`}
@@ -650,18 +697,36 @@ export default function SanctuaryPage() {
                 {hasVariants ? 'Choose a' : 'Name your'}{' '}
                 {itemLabel(picking.item_key).toLowerCase()}
               </h3>
-              {/* Optional name (a quiet personal touch). Empty = unnamed. */}
+              {/* Optional name (a quiet personal touch). Empty = unnamed. The placeholder
+                  hints an on-character example, and 🎲 shuffles one in to try on. */}
               <label className="sanctuary-field sanctuary-modal-name">
                 <span>Name (optional)</span>
-                <input
-                  type="text"
-                  value={buyName}
-                  maxLength={NAME_MAX}
-                  placeholder="e.g. Grandpa's Oak"
-                  disabled={busy != null}
-                  autoFocus={!hasVariants}
-                  onChange={(e) => setBuyName(e.target.value)}
-                />
+                <div className="sanctuary-name-input-row">
+                  <input
+                    type="text"
+                    value={buyName}
+                    maxLength={NAME_MAX}
+                    placeholder={placeholder}
+                    disabled={busy != null}
+                    autoFocus={!hasVariants}
+                    onChange={(e) => setBuyName(e.target.value)}
+                  />
+                  {suggestions.length > 0 && (
+                    <button
+                      type="button"
+                      className="sanctuary-suggest-name"
+                      disabled={busy != null}
+                      title="Suggest a name"
+                      aria-label="Suggest a name"
+                      onClick={() => {
+                        const next = pickSuggestedName(suggestions, buyName.trim())
+                        if (next) setBuyName(next)
+                      }}
+                    >
+                      🎲
+                    </button>
+                  )}
+                </div>
               </label>
               {hasVariants ? (
                 <div className="sanctuary-variant-grid">

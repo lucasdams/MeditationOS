@@ -35,6 +35,7 @@ const treeShop = {
   hint: null,
   variants: [],
   blurb: 'A patient old soul.',
+  suggested_names: [],
 }
 
 function sceneWith(coins: number, owned: SanctuaryScene['owned']): SanctuaryScene {
@@ -178,6 +179,28 @@ describe('SanctuaryPage naming (ADR-0015)', () => {
     )
   })
 
+  it('hints an example name as placeholder and shuffles one in with 🎲', async () => {
+    // A tree with a suggested-name pool; the buy modal should hint the first as a
+    // placeholder and fill a name from the pool when the 🎲 button is clicked.
+    const sceneWithNames: SanctuaryScene = {
+      ...before,
+      shop: [{ ...treeShop, suggested_names: ['Bramblewick'] }],
+    }
+    getScene.mockResolvedValue(sceneWithNames)
+
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /name it/ }))
+    const dialog = within(await screen.findByRole('dialog'))
+
+    // The placeholder hints the item's example name.
+    const input = dialog.getByPlaceholderText(/e\.g\. Bramblewick/) as HTMLInputElement
+    expect(input.value).toBe('') // never auto-assigned — starts blank
+
+    // 🎲 fills a name from the pool (here, the single suggestion).
+    fireEvent.click(dialog.getByRole('button', { name: /Suggest a name/ }))
+    expect(input.value).toBe('Bramblewick')
+  })
+
   it('renames an owned item from the personalize panel', async () => {
     const start = sceneWith(40, [ownedItem('a', 0)])
     const renamed = sceneWith(40, [{ ...ownedItem('a', 0), name: 'Willow' }])
@@ -304,10 +327,10 @@ describe('SanctuaryPage shop — track grouping', () => {
       vitality: 'thriving',
       current_streak: 3,
       shop: [
-        { item_key: 'tree',         track: 'nature',    cost: 30, unlocked: true,  hint: null, variants: [], blurb: '' },
-        { item_key: 'flower',       track: 'nature',    cost: 20, unlocked: true,  hint: null, variants: [], blurb: '' },
-        { item_key: 'hut',          track: 'structure', cost: 45, unlocked: true,  hint: null, variants: [], blurb: '' },
-        { item_key: 'garden_gnome', track: 'whimsy',    cost: 26, unlocked: false, hint: 'Reach level 2', variants: [], blurb: '' },
+        { item_key: 'tree',         track: 'nature',    cost: 30, unlocked: true,  hint: null, variants: [], blurb: '', suggested_names: [] },
+        { item_key: 'flower',       track: 'nature',    cost: 20, unlocked: true,  hint: null, variants: [], blurb: '', suggested_names: [] },
+        { item_key: 'hut',          track: 'structure', cost: 45, unlocked: true,  hint: null, variants: [], blurb: '', suggested_names: [] },
+        { item_key: 'garden_gnome', track: 'whimsy',    cost: 26, unlocked: false, hint: 'Reach level 2', variants: [], blurb: '', suggested_names: [] },
       ],
     }
     getScene.mockResolvedValue(multiTrackScene)

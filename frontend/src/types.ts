@@ -285,6 +285,9 @@ export interface ShopItem {
   hint: string | null
   variants: VariantOption[] // selectable base forms (empty for fixed-form items)
   blurb: string // a short, calm flavour line (cosmetic; '' when the item has none)
+  // On-character example names, offered as an optional naming suggestion in the buy UI
+  // (placeholder + shuffle, ADR-0015). Cosmetic only; [] when the item has none.
+  suggested_names: string[]
 }
 
 export type Vitality = 'dormant' | 'thriving' | 'flourishing'

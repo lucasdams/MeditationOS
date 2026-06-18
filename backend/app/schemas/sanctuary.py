@@ -85,6 +85,9 @@ class ShopItem(BaseModel):
     hint: str | None  # what's needed to unlock (None when unlocked)
     variants: list[VariantOption]  # selectable base forms (empty for fixed-form items)
     blurb: str  # a short, calm flavour line (cosmetic; "" when the item has none)
+    # A small pool of on-character example names, offered as an optional naming suggestion
+    # (placeholder + shuffle, ADR-0015). Cosmetic only; [] when the item has none.
+    suggested_names: list[str]
 
 
 class SanctuaryScene(BaseModel):
