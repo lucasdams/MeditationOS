@@ -1537,10 +1537,14 @@ const GNOME_HAT: Record<string, string> = { classic: '#dc2626', mossy: '#4d7c0f'
 
 function Gnome({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'classic'
-  const hat = GNOME_HAT[v] ?? '#dc2626'
+  const form = cust.form
+  // The wizardly form trades the red cap for a deep-violet star hat; the others keep variant hue.
+  const hat = form === 'wizardly' ? '#6d28d9' : GNOME_HAT[v] ?? '#dc2626'
+  const coat = form === 'wizardly' ? '#4338ca' : '#2563eb'
   const s = 1 + 0.12 * stage
   const cx = 40
   const bodyY = GROUND - 18 * s
+  const hatTip = bodyY - 18 * s
   return (
     <g>
       {has(cust, 'companion', 'snail') && (
@@ -1549,22 +1553,81 @@ function Gnome({ variant, cust, stage }: DrawProps) {
           <path d="M52 69 q2 2 4 1" stroke="#a3e635" strokeWidth={2} fill="none" strokeLinecap="round" />
         </g>
       )}
-      {/* blue coat / body */}
-      <path d={`M${cx} ${GROUND} q-9 0 -9 -10 q0 -8 9 -8 q9 0 9 8 q0 10 -9 10z`} fill="#2563eb" />
+      {/* wandering form: a walking staff in hand */}
+      {form === 'wandering' && (
+        <g>
+          <line x1={52} y1={GROUND} x2={49} y2={bodyY - 6} stroke="#7c5210" strokeWidth={1.6} strokeLinecap="round" />
+          <circle cx={49} cy={bodyY - 6} r={1.6} fill="#a16207" />
+        </g>
+      )}
+      {/* coat / body */}
+      <path d={`M${cx} ${GROUND} q-9 0 -9 -10 q0 -8 9 -8 q9 0 9 8 q0 10 -9 10z`} fill={coat} />
+      {/* wizardly form: little stars sprinkled on the robe */}
+      {form === 'wizardly' && (
+        <g fill="#fde68a">
+          <circle cx={cx - 4} cy={GROUND - 6} r={0.9} />
+          <circle cx={cx + 4} cy={GROUND - 9} r={0.9} />
+          <circle cx={cx} cy={GROUND - 3} r={0.8} />
+        </g>
+      )}
       {/* face */}
       <circle cx={cx} cy={bodyY} r={6 * s} fill="#f5d0b0" />
-      {/* beard */}
-      <path d={`M${cx - 6} ${bodyY + 1} q6 12 12 0 q-2 8 -6 8 q-4 0 -6 -8z`} fill="#f1f5f9" />
-      <circle cx={cx - 2.2} cy={bodyY} r={0.9} fill="#1c1c1e" />
-      <circle cx={cx + 2.2} cy={bodyY} r={0.9} fill="#1c1c1e" />
+      {/* beard — the wizardly sage's flows longer */}
+      <path
+        d={
+          form === 'wizardly'
+            ? `M${cx - 6} ${bodyY + 1} q6 16 12 0 q-2 12 -6 12 q-4 0 -6 -12z`
+            : `M${cx - 6} ${bodyY + 1} q6 12 12 0 q-2 8 -6 8 q-4 0 -6 -8z`
+        }
+        fill="#f1f5f9"
+      />
+      {/* dozing form: closed eyes (a content snooze) instead of dots */}
+      {form === 'dozing' ? (
+        <g stroke="#1c1c1e" strokeWidth={0.9} strokeLinecap="round">
+          <path d={`M${cx - 3.2} ${bodyY} q1 1.2 2 0`} fill="none" />
+          <path d={`M${cx + 1.2} ${bodyY} q1 1.2 2 0`} fill="none" />
+        </g>
+      ) : (
+        <>
+          <circle cx={cx - 2.2} cy={bodyY} r={0.9} fill="#1c1c1e" />
+          <circle cx={cx + 2.2} cy={bodyY} r={0.9} fill="#1c1c1e" />
+        </>
+      )}
       {v === 'mossy' && <ellipse cx={cx - 3} cy={bodyY - 5} rx={3} ry={1.6} fill="#84cc16" opacity={0.7} />}
       {/* pointed hat */}
-      <polygon points={`${cx - 7},${bodyY - 4} ${cx + 7},${bodyY - 4} ${cx},${bodyY - 18 * s}`} fill={hat} />
+      <polygon points={`${cx - 7},${bodyY - 4} ${cx + 7},${bodyY - 4} ${cx},${hatTip}`} fill={hat} />
+      {/* wizardly form: a gold star on the hat tip */}
+      {form === 'wizardly' && (
+        <polygon
+          points={`${cx},${hatTip - 2.5} ${cx + 0.9},${hatTip} ${cx + 2.5},${hatTip} ${cx + 1.2},${hatTip + 1.5} ${cx + 1.8},${hatTip + 3.5} ${cx},${hatTip + 2.2} ${cx - 1.8},${hatTip + 3.5} ${cx - 1.2},${hatTip + 1.5} ${cx - 2.5},${hatTip} ${cx - 0.9},${hatTip}`}
+          fill="#fde68a"
+        />
+      )}
       {v === 'sleepy' && <circle cx={cx} cy={bodyY - 17 * s} r={1.6} fill="#fff" />}
+      {/* dozing form: a drifting 'z' */}
+      {form === 'dozing' && <text x={cx + 8} y={bodyY - 6} fontSize="5" fill="#94a3b8">z</text>}
+      {/* venerable (stage 5): a great old gnome — a longer cap that curls, on a little stone */}
+      {stage >= 5 && (
+        <g>
+          <ellipse cx={cx} cy={GROUND} rx={11} ry={2.4} fill="#cbd5e1" opacity={0.7} />
+          <path d={`M${cx},${hatTip} q4 -3 6 1`} stroke={hat} strokeWidth={2.4} fill="none" strokeLinecap="round" />
+        </g>
+      )}
       {has(cust, 'lantern', 'lantern') && (
         <g>
           <line x1={49} y1={GROUND - 12} x2={49} y2={GROUND - 4} stroke="#7c5210" strokeWidth={1} />
           <rect x={47} y={GROUND - 5} width={5} height={6} rx={1} fill="#fde68a" stroke="#a16207" strokeWidth={0.8} />
+        </g>
+      )}
+      {/* new additive slot: a toadstool sprouting at the gnome's feet */}
+      {has(cust, 'toadstool', 'toadstool_cap') && (
+        <g>
+          <rect x={26} y={GROUND - 5} width={2} height={5} rx={1} fill="#fef3c7" />
+          <path d={`M22 ${GROUND - 5} q5 -6 10 0z`} fill="#dc2626" />
+          <g fill="#fff">
+            <circle cx={25} cy={GROUND - 7} r={0.7} />
+            <circle cx={29} cy={GROUND - 8} r={0.7} />
+          </g>
         </g>
       )}
     </g>
@@ -1574,26 +1637,55 @@ function Gnome({ variant, cust, stage }: DrawProps) {
 const CHIME_TUBE: Record<string, string> = { brass: '#d4a017', bamboo: '#a3a847', seaglass: '#5eead4' }
 
 function WindChime({ variant, cust, stage }: DrawProps) {
-  const tube = CHIME_TUBE[variant ?? 'brass'] ?? '#d4a017'
+  const form = cust.form
+  const tube = form === 'crystal_chime' ? '#a5f3fc' : CHIME_TUBE[variant ?? 'brass'] ?? '#d4a017'
   const s = 1 + 0.12 * stage
   const topY = 30
   const len = 18 * s
   const tubes = [-6, -2, 2, 6]
+  // pan_pipes form: graduated reed lengths, longest in the middle, for a panpipe silhouette.
+  const panLen = (dx: number) => len * (0.6 + 0.5 * (1 - Math.abs(dx) / 6))
   return (
     <g>
       {/* branch it hangs from */}
       <path d="M20 28 q20 -6 40 0" stroke="#8b5a2b" strokeWidth={3} fill="none" strokeLinecap="round" />
       {/* top disc */}
-      <ellipse cx={40} cy={topY} rx={9} ry={2.6} fill="#a16207" />
-      {tubes.map((dx) => (
-        <g key={dx}>
-          <line x1={40 + dx} y1={topY} x2={40 + dx} y2={topY + 4} stroke="#6b7280" strokeWidth={0.6} />
-          <rect x={40 + dx - 1} y={topY + 4} width={2.2} height={len} rx={1} fill={tube} />
+      <ellipse cx={40} cy={topY} rx={9} ry={2.6} fill={form === 'pan_pipes' ? '#a3a847' : '#a16207'} />
+      {tubes.map((dx) => {
+        const l = form === 'pan_pipes' ? panLen(dx) : len
+        return (
+          <g key={dx}>
+            <line x1={40 + dx} y1={topY} x2={40 + dx} y2={topY + 4} stroke="#6b7280" strokeWidth={0.6} />
+            {form === 'crystal_chime' ? (
+              // faceted hanging gems instead of metal tubes
+              <g>
+                <polygon
+                  points={`${40 + dx},${topY + 4} ${40 + dx - 2},${topY + 9} ${40 + dx},${topY + 14} ${40 + dx + 2},${topY + 9}`}
+                  fill={tube}
+                  stroke="#67e8f9"
+                  strokeWidth={0.4}
+                />
+              </g>
+            ) : (
+              <rect x={40 + dx - 1} y={topY + 4} width={form === 'pan_pipes' ? 2.6 : 2.2} height={l} rx={1} fill={tube} />
+            )}
+          </g>
+        )
+      })}
+      {/* clapper (omitted for pan_pipes, which has no dangling striker) */}
+      {form !== 'pan_pipes' && (
+        <>
+          <line x1={40} y1={topY} x2={40} y2={topY + len + 4} stroke="#9ca3af" strokeWidth={0.6} />
+          <circle cx={40} cy={topY + len + 5} r={2.4} fill={form === 'crystal_chime' ? '#a5f3fc' : '#cbd5e1'} />
+        </>
+      )}
+      {/* venerable (stage 5): a weathered, well-hung chime — a second branch-loop + extra tube */}
+      {stage >= 5 && (
+        <g>
+          <path d="M18 27 q22 -7 44 0" stroke="#8b5a2b" strokeWidth={1.4} fill="none" strokeLinecap="round" opacity={0.7} />
+          <rect x={49} y={topY + 4} width={2} height={len * 0.7} rx={1} fill={tube} opacity={0.85} />
         </g>
-      ))}
-      {/* clapper */}
-      <line x1={40} y1={topY} x2={40} y2={topY + len + 4} stroke="#9ca3af" strokeWidth={0.6} />
-      <circle cx={40} cy={topY + len + 5} r={2.4} fill="#cbd5e1" />
+      )}
       {has(cust, 'ribbon', 'ribbon') && (
         <g>
           <line x1={40} y1={topY + len + 5} x2={40} y2={topY + len + 11} stroke="#f472b6" strokeWidth={0.8} />
@@ -1609,6 +1701,16 @@ function WindChime({ variant, cust, stage }: DrawProps) {
           <circle cx={0} cy={5} r={1} fill="#92400e" />
         </g>
       )}
+      {/* new additive slot: a little chickadee come to perch on the branch */}
+      {has(cust, 'perched_bird', 'chickadee') && (
+        <g>
+          <ellipse cx={26} cy={26} rx={3} ry={2.4} fill="#94a3b8" />
+          <circle cx={23} cy={24} r={2} fill="#1f2937" />
+          <polygon points="21,24 18.5,24.5 21,25.5" fill="#f59e0b" />
+          <circle cx={22.4} cy={23.6} r={0.5} fill="#fff" />
+          <path d="M28 26 l3 -1.5 l-2 2z" fill="#64748b" />
+        </g>
+      )}
     </g>
   )
 }
@@ -1616,32 +1718,82 @@ function WindChime({ variant, cust, stage }: DrawProps) {
 const LANTERN_FRAME: Record<string, string> = { paper: '#fcd34d', iron: '#4b5563', stone: '#9ca3af' }
 
 function Lantern({ variant, cust, stage }: DrawProps) {
-  const frame = LANTERN_FRAME[variant ?? 'paper'] ?? '#fcd34d'
+  const form = cust.form
+  const frame =
+    form === 'star_lantern' ? '#f59e0b' : form === 'spirit_lantern' ? '#a78bfa' : LANTERN_FRAME[variant ?? 'paper'] ?? '#fcd34d'
   const s = 1 + 0.12 * stage
   const w = 14 * s
   const h = 20 * s
   const x = 40 - w / 2
   const y = GROUND - h
   const flameColor = has(cust, 'flame', 'blue') ? '#60a5fa' : '#fbbf24'
-  const lit = has(cust, 'flame', 'blue') || has(cust, 'flame', 'warm')
+  const lit = has(cust, 'flame', 'blue') || has(cust, 'flame', 'warm') || !!form
+  // Form recolours the inner glow: green for fireflies, gold for star, ghost-violet for spirit.
+  const glowColor =
+    form === 'firefly_lantern' ? '#a3e635' : form === 'star_lantern' ? '#fde68a' : form === 'spirit_lantern' ? '#c4b5fd' : flameColor
+  const bodyFill = form === 'spirit_lantern' ? '#312e6b' : variant === 'paper' || form === 'firefly_lantern' ? '#fef9c3' : '#1f2937'
   return (
     <g>
-      {/* post */}
-      <rect x={39} y={y - 6} width={2} height={6} fill="#7c5210" />
-      <path d={`M${40 - 3} ${y - 6} h6`} stroke="#7c5210" strokeWidth={2} />
+      {/* post — the star/spirit forms hang from a hook instead of standing on a post */}
+      {form === 'star_lantern' || form === 'spirit_lantern' ? (
+        <line x1={40} y1={0} x2={40} y2={y} stroke="#7c5210" strokeWidth={1.4} />
+      ) : (
+        <>
+          <rect x={39} y={y - 6} width={2} height={6} fill="#7c5210" />
+          <path d={`M${40 - 3} ${y - 6} h6`} stroke="#7c5210" strokeWidth={2} />
+        </>
+      )}
       {/* glow */}
-      {lit && <ellipse cx={40} cy={y + h / 2} rx={w} ry={h * 0.6} fill={flameColor} opacity={0.25} />}
+      {lit && <ellipse cx={40} cy={y + h / 2} rx={w} ry={h * 0.6} fill={glowColor} opacity={0.28} />}
       {/* body */}
-      <rect x={x} y={y} width={w} height={h} rx={2} fill={variant === 'paper' ? '#fef9c3' : '#1f2937'} />
+      <rect x={x} y={y} width={w} height={h} rx={2} fill={bodyFill} />
       <rect x={x} y={y} width={w} height={h} rx={2} fill="none" stroke={frame} strokeWidth={1.6} />
       <line x1={40} y1={y} x2={40} y2={y + h} stroke={frame} strokeWidth={1} />
       <rect x={x - 1} y={y - 2} width={w + 2} height={2.4} rx={1} fill={frame} />
-      {/* flame */}
-      {lit && <path d={`M40 ${y + h - 4} q-2 -4 0 -7 q2 3 0 7z`} fill={flameColor} />}
+      {/* firefly_lantern form: a cluster of glowing firefly dots inside the jar */}
+      {form === 'firefly_lantern' &&
+        [
+          [40, y + 6],
+          [37, y + 11],
+          [43, y + 13],
+          [39, y + 16],
+        ].map(([fx, fy], i) => <circle key={i} cx={fx} cy={fy} r={1.1} fill="#bef264" />)}
+      {/* star_lantern form: a gold star cut into the glowing face */}
+      {form === 'star_lantern' && (
+        <polygon
+          points={`40,${y + 5} 41.4,${y + 9} 45.4,${y + 9} 42.2,${y + 11.6} 43.4,${y + 15.6} 40,${y + 13} 36.6,${y + 15.6} 37.8,${y + 11.6} 34.6,${y + 9} 38.6,${y + 9}`}
+          fill="#fde68a"
+        />
+      )}
+      {/* spirit_lantern form: a pale wisp drifting up from the lantern top */}
+      {form === 'spirit_lantern' && (
+        <path d={`M40 ${y} q-3 -5 0 -8 q3 4 1 7`} fill="#ddd6fe" opacity={0.8} />
+      )}
+      {/* flame (the base forms; the evolved forms supply their own inner light above) */}
+      {lit && !form && <path d={`M40 ${y + h - 4} q-2 -4 0 -7 q2 3 0 7z`} fill={flameColor} />}
+      {/* venerable (stage 5): a weathered, long-burning lantern — a wider base + a curl of smoke */}
+      {stage >= 5 && (
+        <g>
+          <rect x={x - 2} y={y + h - 1} width={w + 4} height={2.2} rx={1} fill={frame} opacity={0.8} />
+          <path d={`M40 ${y - 3} q-2 -3 0 -5 q2 2 0 5`} fill="#cbd5e1" opacity={0.6} />
+        </g>
+      )}
       {has(cust, 'moth', 'moth') && (
         <g transform={`translate(${x - 4} ${y + 4})`}>
           <ellipse cx={-1.5} cy={0} rx={1.8} ry={2.4} fill="#d6d3d1" />
           <ellipse cx={1.5} cy={0} rx={1.8} ry={2.4} fill="#e7e5e4" />
+        </g>
+      )}
+      {/* new additive slot: a crystal charm dangling beneath the lantern */}
+      {has(cust, 'charm', 'crystal_charm') && (
+        <g>
+          <line x1={40} y1={y + h} x2={40} y2={y + h + 4} stroke="#9ca3af" strokeWidth={0.6} />
+          <polygon
+            points={`40,${y + h + 4} 38,${y + h + 7} 40,${y + h + 11} 42,${y + h + 7}`}
+            fill="#a5f3fc"
+            stroke="#67e8f9"
+            strokeWidth={0.4}
+          />
         </g>
       )}
     </g>
@@ -1651,33 +1803,75 @@ function Lantern({ variant, cust, stage }: DrawProps) {
 const FROG_BODY: Record<string, string> = { green: '#22c55e', golden: '#eab308', blue: '#38bdf8' }
 
 function FrogLily({ variant, cust, stage }: DrawProps) {
-  const body = FROG_BODY[variant ?? 'green'] ?? '#22c55e'
+  const form = cust.form
+  const body = form === 'frog_prince' ? '#16a34a' : FROG_BODY[variant ?? 'green'] ?? '#22c55e'
   const s = 1 + 0.12 * stage
+  const zen = form === 'zen_frog'
   return (
     <g>
       {/* water + lily pad */}
       <ellipse cx={40} cy={68} rx={22} ry={6} fill="#bae6fd" />
       <ellipse cx={40} cy={66} rx={15} ry={5} fill="#16a34a" />
       <path d="M40 66 L51 63" stroke="#bae6fd" strokeWidth={1.4} />
+      {/* zen_frog form: a calm aura ring around the meditating frog */}
+      {zen && <circle cx={40} cy={57} r={13} fill="none" stroke="#bbf7d0" strokeWidth={1.4} opacity={0.7} />}
       {/* frog body */}
       <ellipse cx={40} cy={60} rx={10 * s} ry={6 * s} fill={body} />
       <ellipse cx={48} cy={64} rx={4} ry={2} fill={body} />
       <ellipse cx={32} cy={64} rx={4} ry={2} fill={body} />
+      {/* frog_prince form: a little royal cape clasped at the neck */}
+      {form === 'frog_prince' && (
+        <path d="M31 58 q9 6 18 0 q-2 6 -9 6 q-7 0 -9 -6z" fill="#7f1d1d" opacity={0.9} />
+      )}
       {/* eyes */}
       <circle cx={35} cy={53} r={3 * s} fill={body} />
       <circle cx={45} cy={53} r={3 * s} fill={body} />
-      <circle cx={35} cy={53} r={1.4} fill="#fff" />
-      <circle cx={45} cy={53} r={1.4} fill="#fff" />
-      <circle cx={35} cy={53} r={0.8} fill="#1c1c1e" />
-      <circle cx={45} cy={53} r={0.8} fill="#1c1c1e" />
+      {/* zen_frog meditates with closed eyes; the others keep bright open eyes */}
+      {zen ? (
+        <g stroke="#15803d" strokeWidth={1} strokeLinecap="round" fill="none">
+          <path d="M33 53 q2 1.5 4 0" />
+          <path d="M43 53 q2 1.5 4 0" />
+        </g>
+      ) : (
+        <>
+          <circle cx={35} cy={53} r={1.4} fill="#fff" />
+          <circle cx={45} cy={53} r={1.4} fill="#fff" />
+          <circle cx={35} cy={53} r={0.8} fill="#1c1c1e" />
+          <circle cx={45} cy={53} r={0.8} fill="#1c1c1e" />
+        </>
+      )}
       <path d="M35 60 q5 3 10 0" stroke="#15803d" strokeWidth={1} fill="none" strokeLinecap="round" />
+      {/* venerable (stage 5): a grand old frog on a broader pad with a second small lily bud */}
+      {stage >= 5 && (
+        <g>
+          <ellipse cx={40} cy={66} rx={19} ry={6} fill="#15803d" opacity={0.5} />
+          <circle cx={58} cy={64} r={2} fill="#f472b6" />
+        </g>
+      )}
       {has(cust, 'crown', 'crown') && (
         <polygon points="35,49 38,45 40,48 42,45 45,49" fill="#fbbf24" stroke="#d97706" strokeWidth={0.5} />
+      )}
+      {/* frog_prince form: its own gold crown (a step grander than the plain crown slot) */}
+      {form === 'frog_prince' && !has(cust, 'crown', 'crown') && (
+        <g>
+          <polygon points="34,49 37,44 40,47 43,44 46,49" fill="#fbbf24" stroke="#d97706" strokeWidth={0.6} />
+          <circle cx={40} cy={45} r={1} fill="#ef4444" />
+        </g>
       )}
       {has(cust, 'hat', 'hat') && (
         <g>
           <rect x={34} y={48} width={12} height={2} fill="#1f2937" />
           <rect x={36} y={43} width={8} height={5.5} fill="#1f2937" />
+        </g>
+      )}
+      {/* new additive slot: a dragonfly hovering over the lily pad */}
+      {has(cust, 'dragonfly_friend', 'pond_dragonfly') && (
+        <g transform="translate(58 50)">
+          <rect x={-0.5} y={-3} width={1} height={7} rx={0.5} fill="#0ea5e9" />
+          <ellipse cx={-2.5} cy={-1.5} rx={2.6} ry={1} fill="#7dd3fc" opacity={0.85} />
+          <ellipse cx={2.5} cy={-1.5} rx={2.6} ry={1} fill="#7dd3fc" opacity={0.85} />
+          <ellipse cx={-2.2} cy={1} rx={2.2} ry={0.9} fill="#7dd3fc" opacity={0.7} />
+          <ellipse cx={2.2} cy={1} rx={2.2} ry={0.9} fill="#7dd3fc" opacity={0.7} />
         </g>
       )}
     </g>
@@ -1692,17 +1886,31 @@ const SCARECROW_SHIRT: Record<string, string> = {
 
 function Scarecrow({ variant, cust, stage }: DrawProps) {
   const v = variant ?? 'straw'
-  const shirt = SCARECROW_SHIRT[v] ?? '#a16207'
+  const form = cust.form
+  // harvest_guard warms the shirt to autumn russet; the others keep the variant colour.
+  const shirt = form === 'harvest_guard' ? '#b45309' : form === 'dapper' ? '#334155' : SCARECROW_SHIRT[v] ?? '#a16207'
   const s = 1 + 0.12 * stage
   const headY = GROUND - 34 * s
+  // The spooky form forces a carved jack-o'-lantern head regardless of variant.
+  const pumpkinHead = v === 'pumpkin' || form === 'spooky'
   return (
     <g>
+      {/* spooky form: a wash of dusk behind the scarecrow */}
+      {form === 'spooky' && <ellipse cx={40} cy={headY} rx={20} ry={22} fill="#4c1d95" opacity={0.18} />}
       {/* cross-post + outstretched arms */}
       <rect x={39} y={GROUND - 32 * s} width={2} height={32 * s} fill="#7c5210" />
       <rect x={26} y={GROUND - 22 * s} width={28} height={2} fill="#7c5210" />
       {/* straw hands */}
       <path d={`M26 ${GROUND - 21 * s} l-3 2 M26 ${GROUND - 21 * s} l-3 -1`} stroke="#eab308" strokeWidth={1} />
       <path d={`M54 ${GROUND - 21 * s} l3 2 M54 ${GROUND - 21 * s} l3 -1`} stroke="#eab308" strokeWidth={1} />
+      {/* harvest_guard form: a sheaf of wheat tucked under one arm */}
+      {form === 'harvest_guard' && (
+        <g stroke="#d97706" strokeWidth={1} strokeLinecap="round">
+          <line x1={24} y1={GROUND - 20 * s} x2={22} y2={GROUND - 28 * s} />
+          <line x1={26} y1={GROUND - 20 * s} x2={26} y2={GROUND - 28 * s} />
+          <line x1={28} y1={GROUND - 20 * s} x2={30} y2={GROUND - 28 * s} />
+        </g>
+      )}
       {/* shirt */}
       <path d={`M31 ${GROUND - 22 * s} h18 l-2 16 h-14z`} fill={shirt} />
       {v === 'patchwork' && (
@@ -1711,13 +1919,22 @@ function Scarecrow({ variant, cust, stage }: DrawProps) {
           <rect x={42} y={GROUND - 12 * s} width={4} height={4} />
         </g>
       )}
+      {/* dapper form: a little bow tie at the collar */}
+      {form === 'dapper' && (
+        <g fill="#dc2626">
+          <polygon points={`40,${GROUND - 22 * s} 37,${GROUND - 23.5 * s} 37,${GROUND - 20.5 * s}`} />
+          <polygon points={`40,${GROUND - 22 * s} 43,${GROUND - 23.5 * s} 43,${GROUND - 20.5 * s}`} />
+        </g>
+      )}
       {/* head */}
-      {v === 'pumpkin' ? (
+      {pumpkinHead ? (
         <g>
           <circle cx={40} cy={headY} r={6 * s} fill="#f97316" />
           <polygon points={`37,${headY} 39,${headY - 2} 41,${headY}`} fill="#1c1c1e" />
           <polygon points={`39,${headY} 41,${headY - 2} 43,${headY}`} fill="#1c1c1e" />
           <path d={`M36 ${headY + 2} q4 3 8 0`} stroke="#1c1c1e" strokeWidth={1} fill="none" />
+          {/* spooky form: a faint inner glow through the carved face */}
+          {form === 'spooky' && <circle cx={40} cy={headY} r={3} fill="#fde68a" opacity={0.6} />}
         </g>
       ) : (
         <g>
@@ -1727,9 +1944,25 @@ function Scarecrow({ variant, cust, stage }: DrawProps) {
           <path d={`M37 ${headY + 2.5} q3 2 6 0`} stroke="#1c1c1e" strokeWidth={0.9} fill="none" />
         </g>
       )}
-      {/* straw hat brim */}
-      <ellipse cx={40} cy={headY - 5 * s} rx={8 * s} ry={2} fill="#ca8a04" />
-      <path d={`M${40 - 4 * s} ${headY - 5 * s} q${4 * s} -5 ${8 * s} 0z`} fill="#a16207" />
+      {/* hat — the dapper form swaps the straw hat for a black top hat */}
+      {form === 'dapper' ? (
+        <g fill="#1f2937">
+          <ellipse cx={40} cy={headY - 5 * s} rx={7 * s} ry={1.8} />
+          <rect x={40 - 4 * s} y={headY - 12 * s} width={8 * s} height={7 * s} rx={0.6} />
+        </g>
+      ) : (
+        <>
+          <ellipse cx={40} cy={headY - 5 * s} rx={8 * s} ry={2} fill="#ca8a04" />
+          <path d={`M${40 - 4 * s} ${headY - 5 * s} q${4 * s} -5 ${8 * s} 0z`} fill="#a16207" />
+        </>
+      )}
+      {/* venerable (stage 5): a long-standing guardian — a leaning fence rail + scattered straw */}
+      {stage >= 5 && (
+        <g stroke="#a16207" strokeWidth={1.4} strokeLinecap="round">
+          <line x1={16} y1={GROUND - 4} x2={24} y2={GROUND - 7} />
+          <path d={`M52 ${GROUND} l3 -2 M55 ${GROUND - 1} l2 -3`} strokeWidth={1} stroke="#eab308" />
+        </g>
+      )}
       {has(cust, 'crow', 'crow') && (
         <g transform={`translate(54 ${GROUND - 23 * s})`}>
           <ellipse cx={0} cy={0} rx={4} ry={2.6} fill="#1f2937" />
@@ -1739,6 +1972,15 @@ function Scarecrow({ variant, cust, stage }: DrawProps) {
         </g>
       )}
       {has(cust, 'lights', 'lights') && <Lights y={GROUND - 23 * s} x={30} w={20} />}
+      {/* new additive slot: a little pumpkin patch sprouting at its feet */}
+      {has(cust, 'pumpkin_patch', 'pumpkins') && (
+        <g>
+          <ellipse cx={24} cy={GROUND - 1} rx={3.4} ry={2.6} fill="#ea580c" />
+          <line x1={24} y1={GROUND - 3.6} x2={24} y2={GROUND - 5} stroke="#15803d" strokeWidth={1} />
+          <ellipse cx={30} cy={GROUND} rx={2.6} ry={2} fill="#f97316" />
+          <line x1={30} y1={GROUND - 2} x2={30} y2={GROUND - 3} stroke="#15803d" strokeWidth={0.8} />
+        </g>
+      )}
     </g>
   )
 }
@@ -1746,7 +1988,10 @@ function Scarecrow({ variant, cust, stage }: DrawProps) {
 const FAIRY_DOOR: Record<string, string> = { acorn: '#92400e', toadstool: '#dc2626', rosewood: '#9d174d' }
 
 function FairyDoor({ variant, cust, stage }: DrawProps) {
-  const door = FAIRY_DOOR[variant ?? 'acorn'] ?? '#92400e'
+  const form = cust.form
+  const door =
+    form === 'royal_door' ? '#7c2d12' : form === 'starlit_door' ? '#1e3a8a' : FAIRY_DOOR[variant ?? 'acorn'] ?? '#92400e'
+  const arch = form === 'royal_door' ? '#fbbf24' : form === 'starlit_door' ? '#818cf8' : '#3f2410'
   const s = 1 + 0.12 * stage
   const w = 14 * s
   const h = 22 * s
@@ -1757,29 +2002,69 @@ function FairyDoor({ variant, cust, stage }: DrawProps) {
       {/* tree-base mound */}
       <path d={`M${x - 8} ${GROUND} q${w / 2 + 8} -28 ${w + 16} 0z`} fill="#6b4423" />
       <path d={`M${x - 8} ${GROUND} q${w / 2 + 8} -28 ${w + 16} 0z`} fill="none" stroke="#5a3a1f" strokeWidth={1} />
-      {has(cust, 'glow', 'glow') && <ellipse cx={40} cy={y + h / 2} rx={w} ry={h * 0.6} fill="#fde68a" opacity={0.3} />}
+      {/* mossy_door form: a cushion of moss creeping over the mound */}
+      {form === 'mossy_door' && (
+        <g fill="#4d7c0f" opacity={0.85}>
+          <ellipse cx={x - 4} cy={GROUND - 6} rx={4} ry={2.4} />
+          <ellipse cx={x + w + 4} cy={GROUND - 7} rx={4} ry={2.6} />
+          <ellipse cx={40} cy={y - 1} rx={5} ry={2.2} />
+        </g>
+      )}
+      {(has(cust, 'glow', 'glow') || form === 'starlit_door') && (
+        <ellipse cx={40} cy={y + h / 2} rx={w} ry={h * 0.6} fill={form === 'starlit_door' ? '#c7d2fe' : '#fde68a'} opacity={0.3} />
+      )}
       {/* arched door */}
       <path d={`M${x} ${GROUND} v${-h + w / 2} a${w / 2} ${w / 2} 0 0 1 ${w} 0 v${h - w / 2}z`} fill={door} />
       <path
         d={`M${x} ${GROUND} v${-h + w / 2} a${w / 2} ${w / 2} 0 0 1 ${w} 0 v${h - w / 2}z`}
         fill="none"
-        stroke="#3f2410"
-        strokeWidth={1}
+        stroke={arch}
+        strokeWidth={form === 'royal_door' ? 1.6 : 1}
       />
       {/* planks + knob */}
       <line x1={40} y1={y + 3} x2={40} y2={GROUND} stroke="#3f2410" strokeWidth={0.7} />
       <circle cx={x + w - 3} cy={y + h * 0.6} r={1.2} fill="#fbbf24" />
-      {variant === 'toadstool' && (
+      {/* royal_door form: a gold crown emblem above the arch */}
+      {form === 'royal_door' && (
+        <polygon points={`40,${y - 2} 37,${y + 1} 38.5,${y + 1} 40,${y - 0.5} 41.5,${y + 1} 43,${y + 1}`} fill="#fbbf24" />
+      )}
+      {/* starlit_door form: a scatter of little stars over the door */}
+      {form === 'starlit_door' && (
+        <g fill="#e0e7ff">
+          <circle cx={x + 4} cy={y + 5} r={0.7} />
+          <circle cx={x + w - 4} cy={y + 8} r={0.7} />
+          <circle cx={x + 5} cy={y + 13} r={0.6} />
+          <circle cx={x + w - 5} cy={y + 16} r={0.6} />
+        </g>
+      )}
+      {variant === 'toadstool' && form !== 'starlit_door' && (
         <g fill="#fff">
           <circle cx={x + 3} cy={y + 3} r={0.9} />
           <circle cx={x + w - 3} cy={y + 4} r={0.9} />
         </g>
+      )}
+      {/* venerable (stage 5): a long-settled door — ivy trailing down one side of the arch */}
+      {stage >= 5 && (
+        <path
+          d={`M${x} ${y + 3} q-3 6 1 10 q-3 5 0 9`}
+          fill="none"
+          stroke="#4d7c0f"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+        />
       )}
       {has(cust, 'path', 'path') && (
         <g fill="#cbd5e1">
           <ellipse cx={40} cy={GROUND + 1} rx={3} ry={1.4} />
           <ellipse cx={34} cy={GROUND + 3} rx={2.6} ry={1.2} />
           <ellipse cx={46} cy={GROUND + 3} rx={2.6} ry={1.2} />
+        </g>
+      )}
+      {/* new additive slot: a tiny welcome mat on the doorstep */}
+      {has(cust, 'doorstep', 'welcome_mat') && (
+        <g>
+          <rect x={40 - w / 2 + 1} y={GROUND} width={w - 2} height={2.4} rx={0.6} fill="#b45309" />
+          <line x1={40} y1={GROUND + 0.4} x2={40} y2={GROUND + 2} stroke="#7c2d12" strokeWidth={0.5} />
         </g>
       )}
     </g>
@@ -1789,6 +2074,7 @@ function FairyDoor({ variant, cust, stage }: DrawProps) {
 const HAMMOCK_CLOTH: Record<string, string> = { striped: '#f97316', canvas: '#d6c1a8', rainbow: '#a855f7' }
 
 function Hammock({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const cloth = HAMMOCK_CLOTH[variant ?? 'striped'] ?? '#f97316'
   const s = 1 + 0.12 * stage
   const postY = GROUND - 26 * s
@@ -1798,17 +2084,37 @@ function Hammock({ variant, cust, stage }: DrawProps) {
       {/* two posts */}
       <rect x={20} y={postY} width={2.4} height={GROUND - postY} fill="#7c5210" />
       <rect x={57.6} y={postY} width={2.4} height={GROUND - postY} fill="#7c5210" />
-      {/* the hammock sling */}
-      <path d={`M21 ${postY + 2} Q40 ${sag + 10} 59 ${postY + 2}`} fill="none" stroke={cloth} strokeWidth={6 * s} strokeLinecap="round" />
-      {variant === 'striped' && (
-        <path d={`M21 ${postY + 2} Q40 ${sag + 10} 59 ${postY + 2}`} fill="none" stroke="#fff" strokeWidth={1.4} strokeDasharray="3 4" />
+      {/* canopy_hammock form: a fabric canopy stretched over the top between the posts */}
+      {form === 'canopy_hammock' && (
+        <g>
+          <path d={`M19 ${postY} Q40 ${postY - 8} 60 ${postY}`} fill="none" stroke={cloth} strokeWidth={3} strokeLinecap="round" />
+          <line x1={19} y1={postY} x2={19} y2={postY + 3} stroke="#a8a29e" strokeWidth={0.6} />
+          <line x1={60} y1={postY} x2={60} y2={postY + 3} stroke="#a8a29e" strokeWidth={0.6} />
+        </g>
       )}
-      {variant === 'rainbow' && (
-        <path d={`M21 ${postY + 4} Q40 ${sag + 12} 59 ${postY + 4}`} fill="none" stroke="#22d3ee" strokeWidth={2} opacity={0.8} />
+      {form === 'garden_swing' ? (
+        // garden_swing form: a hanging plank swing seat instead of the cloth sling.
+        <g>
+          <line x1={28} y1={postY + 2} x2={28} y2={sag + 4} stroke="#a8a29e" strokeWidth={0.8} />
+          <line x1={52} y1={postY + 2} x2={52} y2={sag + 4} stroke="#a8a29e" strokeWidth={0.8} />
+          <rect x={25} y={sag + 4} width={30} height={3} rx={1} fill="#a16207" />
+          <rect x={25} y={sag + 4} width={30} height={1} fill="#d97706" />
+        </g>
+      ) : (
+        <>
+          {/* the hammock sling */}
+          <path d={`M21 ${postY + 2} Q40 ${sag + 10} 59 ${postY + 2}`} fill="none" stroke={cloth} strokeWidth={6 * s} strokeLinecap="round" />
+          {variant === 'striped' && (
+            <path d={`M21 ${postY + 2} Q40 ${sag + 10} 59 ${postY + 2}`} fill="none" stroke="#fff" strokeWidth={1.4} strokeDasharray="3 4" />
+          )}
+          {variant === 'rainbow' && (
+            <path d={`M21 ${postY + 4} Q40 ${sag + 12} 59 ${postY + 4}`} fill="none" stroke="#22d3ee" strokeWidth={2} opacity={0.8} />
+          )}
+          {/* ropes */}
+          <line x1={22} y1={postY + 2} x2={26} y2={postY + 5} stroke="#a8a29e" strokeWidth={0.8} />
+          <line x1={58} y1={postY + 2} x2={54} y2={postY + 5} stroke="#a8a29e" strokeWidth={0.8} />
+        </>
       )}
-      {/* ropes */}
-      <line x1={22} y1={postY + 2} x2={26} y2={postY + 5} stroke="#a8a29e" strokeWidth={0.8} />
-      <line x1={58} y1={postY + 2} x2={54} y2={postY + 5} stroke="#a8a29e" strokeWidth={0.8} />
       {has(cust, 'occupant', 'cat') && (
         <g>
           <ellipse cx={40} cy={sag + 2} rx={6} ry={2.6} fill="#9ca3af" />
@@ -1823,7 +2129,23 @@ function Hammock({ variant, cust, stage }: DrawProps) {
           <text x={33} y={sag - 3} fontSize="5" fill="#94a3b8">z</text>
         </g>
       )}
+      {/* venerable (stage 5): well-worn posts — trailing ivy up one post + a fallen leaf */}
+      {stage >= 5 && (
+        <g>
+          <path d={`M21 ${GROUND} q-3 -6 1 -10 q-3 -5 0 -9`} fill="none" stroke="#4d7c0f" strokeWidth={1.1} strokeLinecap="round" />
+          <ellipse cx={64} cy={GROUND - 1} rx={2.4} ry={1.2} fill="#ca8a04" transform="rotate(20 64 69)" />
+        </g>
+      )}
       {has(cust, 'lights', 'lights') && <Lights y={postY} x={22} w={36} />}
+      {/* new additive slot: a side table with a glass of lemonade within reach */}
+      {has(cust, 'side_table', 'lemonade') && (
+        <g>
+          <rect x={62} y={GROUND - 9} width={6} height={1.6} rx={0.6} fill="#a16207" />
+          <line x1={63} y1={GROUND - 7.4} x2={63} y2={GROUND} stroke="#7c5210" strokeWidth={0.8} />
+          <line x1={67} y1={GROUND - 7.4} x2={67} y2={GROUND} stroke="#7c5210" strokeWidth={0.8} />
+          <path d={`M63.5 ${GROUND - 14} l1 5 h2 l1 -5z`} fill="#fde047" opacity={0.9} />
+        </g>
+      )}
     </g>
   )
 }
@@ -1831,6 +2153,7 @@ function Hammock({ variant, cust, stage }: DrawProps) {
 const TEACART_BODY: Record<string, string> = { rose: '#fb7185', mint: '#5eead4', midnight: '#475569' }
 
 function TeaCart({ variant, cust, stage }: DrawProps) {
+  const form = cust.form
   const body = TEACART_BODY[variant ?? 'rose'] ?? '#fb7185'
   const s = 1 + 0.12 * stage
   const w = 30 * s
@@ -1838,15 +2161,43 @@ function TeaCart({ variant, cust, stage }: DrawProps) {
   const topY = GROUND - 22 * s
   return (
     <g>
+      {/* garden_party form: a little run of bunting strung above the cart */}
+      {form === 'garden_party' &&
+        [0, 1, 2, 3].map((i) => {
+          const fx = x + 4 + (i * (w - 8)) / 3
+          const colors = ['#fbbf24', '#fb7185', '#34d399', '#60a5fa']
+          return <polygon key={i} points={`${fx - 2},${topY - 8} ${fx + 2},${topY - 8} ${fx},${topY - 4}`} fill={colors[i]} />
+        })}
       {/* frame + two tiers */}
       <rect x={x} y={topY} width={w} height={2.6} rx={1} fill={body} />
       <rect x={x} y={topY + 10} width={w} height={2.6} rx={1} fill={body} />
       <rect x={x + 1} y={topY} width={2} height={GROUND - 4 - topY} fill="#9ca3af" />
       <rect x={x + w - 3} y={topY} width={2} height={GROUND - 4 - topY} fill="#9ca3af" />
-      {/* teapot on top */}
-      <ellipse cx={40} cy={topY - 2} rx={5} ry={4} fill="#f8fafc" stroke={body} strokeWidth={1} />
-      <path d={`M45 ${topY - 3} q4 0 3 3`} stroke={body} strokeWidth={1.2} fill="none" />
-      <rect x={38.5} y={topY - 8} width={3} height={2} rx={1} fill={body} />
+      {form === 'high_tea' ? (
+        // high_tea form: a tall three-tier cake stand rises from the cart top.
+        <g>
+          <line x1={40} y1={topY - 16} x2={40} y2={topY} stroke="#cbd5e1" strokeWidth={1.2} />
+          <ellipse cx={40} cy={topY - 16} rx={5} ry={1.4} fill="#f8fafc" stroke={body} strokeWidth={0.8} />
+          <ellipse cx={40} cy={topY - 10} rx={7} ry={1.6} fill="#f8fafc" stroke={body} strokeWidth={0.8} />
+          <ellipse cx={40} cy={topY - 4} rx={9} ry={1.8} fill="#f8fafc" stroke={body} strokeWidth={0.8} />
+          <circle cx={38} cy={topY - 17} r={1} fill="#fbcfe8" />
+          <circle cx={42} cy={topY - 11} r={1} fill="#bbf7d0" />
+        </g>
+      ) : form === 'patisserie' ? (
+        // patisserie form: a glass dome over a fine pastry on the upper tier.
+        <g>
+          <rect x={x + 8} y={topY - 3} width={3} height={3} rx={1} fill="#f9a8d4" />
+          <path d={`M${x + 5} ${topY} a${4.5} ${5} 0 0 1 ${9} 0z`} fill="#bae6fd" opacity={0.45} stroke="#7dd3fc" strokeWidth={0.6} />
+          <circle cx={x + 9.5} cy={topY - 6} r={0.8} fill="#cbd5e1" />
+        </g>
+      ) : (
+        // base: a teapot on top
+        <>
+          <ellipse cx={40} cy={topY - 2} rx={5} ry={4} fill="#f8fafc" stroke={body} strokeWidth={1} />
+          <path d={`M45 ${topY - 3} q4 0 3 3`} stroke={body} strokeWidth={1.2} fill="none" />
+          <rect x={38.5} y={topY - 8} width={3} height={2} rx={1} fill={body} />
+        </>
+      )}
       {/* tiny cakes on the lower tier */}
       <rect x={x + 5} y={topY + 6} width={3} height={3} rx={0.6} fill="#fbcfe8" />
       <rect x={x + 11} y={topY + 6} width={3} height={3} rx={0.6} fill="#fde68a" />
@@ -1854,6 +2205,16 @@ function TeaCart({ variant, cust, stage }: DrawProps) {
       {/* wheels */}
       <circle cx={x + 4} cy={GROUND - 3} r={3} fill="#1f2937" />
       <circle cx={x + w - 4} cy={GROUND - 3} r={3} fill="#1f2937" />
+      {/* venerable (stage 5): a well-loved cart — a lace doily trim along the top rail */}
+      {stage >= 5 && (
+        <path
+          d={`M${x} ${topY + 2.8} q3 2 6 0 q3 2 6 0 q3 2 6 0 q3 2 6 0 q3 2 6 0`}
+          fill="none"
+          stroke="#fff"
+          strokeWidth={0.7}
+          opacity={0.85}
+        />
+      )}
       {has(cust, 'cat', 'cat') && (
         <g>
           <ellipse cx={x - 3} cy={GROUND - 4} rx={4} ry={2.4} fill="#9ca3af" />
@@ -1862,6 +2223,15 @@ function TeaCart({ variant, cust, stage }: DrawProps) {
         </g>
       )}
       {has(cust, 'lights', 'lights') && <Lights y={topY - 2} x={x} w={w} />}
+      {/* new additive slot: a plate of dainty macarons on the upper tier */}
+      {has(cust, 'treats', 'macarons') && (
+        <g>
+          <ellipse cx={x + w - 7} cy={topY - 1} rx={4} ry={1.2} fill="#e2e8f0" />
+          <circle cx={x + w - 9} cy={topY - 2.4} r={1.4} fill="#f9a8d4" />
+          <circle cx={x + w - 6} cy={topY - 2.4} r={1.4} fill="#a7f3d0" />
+          <circle cx={x + w - 7.5} cy={topY - 4} r={1.4} fill="#fde68a" />
+        </g>
+      )}
     </g>
   )
 }

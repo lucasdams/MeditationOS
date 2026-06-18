@@ -153,6 +153,15 @@ const SLOT_LABELS: Record<string, string> = {
   path: 'Path',
   occupant: 'Resting',
   cat: 'Cat',
+  // New additive whimsy slots (ADR-0021, whimsy-track evolution trees — rollout complete).
+  toadstool: 'Toadstool',
+  perched_bird: 'Visitor',
+  charm: 'Charm',
+  dragonfly_friend: 'Dragonfly',
+  pumpkin_patch: 'Pumpkins',
+  doorstep: 'Doorstep',
+  side_table: 'Side table',
+  treats: 'Treats',
 }
 
 const OPTION_LABELS: Record<string, string> = {
@@ -212,6 +221,39 @@ const OPTION_LABELS: Record<string, string> = {
   koi_kissed: 'Koi-kissed 🎏',
   mossy_garden: 'Mossy garden 🌿',
   jeweled: 'Jewelled shell 💎',
+  // Whimsy-track evolution forms (the `form` slot) — late-game final forms per whimsy item
+  // (ADR-0021, the final track in the rollout). Keys namespaced to avoid clashing with
+  // existing variant/option keys (e.g. `dozing` not `sleepy`, the `*_door` / `*_lantern` set).
+  wandering: 'Wandering pilgrim 🚶',
+  wizardly: 'Wizardly sage 🧙',
+  dozing: 'Dozing gnome 😴',
+  crystal_chime: 'Crystal chime 🔮',
+  pan_pipes: 'Pan pipes 🎶',
+  firefly_lantern: 'Firefly lantern 🪰',
+  star_lantern: 'Star lantern 🌟',
+  spirit_lantern: 'Spirit lamp 👻',
+  frog_prince: 'Frog prince 🤴',
+  zen_frog: 'Zen frog 🧘',
+  harvest_guard: 'Harvest guardian 🌾',
+  spooky: 'Spooky 🎃',
+  dapper: 'Dapper gent 🎩',
+  mossy_door: 'Mossy door 🌿',
+  royal_door: 'Royal door 👑',
+  starlit_door: 'Starlit door ✨',
+  garden_swing: 'Garden swing 🌼',
+  canopy_hammock: 'Canopy hammock ⛱️',
+  garden_party: 'Garden party 🎉',
+  patisserie: 'Patisserie 🧁',
+  high_tea: 'High tea 🫖',
+  // New additive whimsy `*` options (ADR-0021).
+  toadstool_cap: 'Toadstool 🍄',
+  chickadee: 'Chickadee 🐦',
+  crystal_charm: 'Crystal charm 💎',
+  pond_dragonfly: 'Dragonfly 🪲',
+  pumpkins: 'Pumpkins 🎃',
+  welcome_mat: 'Welcome mat 🚪',
+  lemonade: 'Lemonade 🍋',
+  macarons: 'Macarons 🧁',
   // New additive companion `toy` options (ADR-0021).
   ball: 'Ball ⚽',
   stick: 'Stick 🦴',

@@ -1595,16 +1595,18 @@ def test_grown_first_rung_cost_is_unchanged_for_legacy_compat():
     assert SANCTUARY_CATALOG["flower"].slot("grown").option("grown").cost == round(25 * 1.5)
 
 
-def test_forks_applied_to_nature_structure_and_companion_tracks_only_so_far():
-    """The evolution fork has rolled out to the NATURE (ADR-0021 part 1), STRUCTURE (part 2),
-    and COMPANION (part 3) tracks. Every nature, structure, and companion item has a `form`
-    slot; the whimsy track doesn't yet (that lands in a later PR)."""
+def test_forks_applied_to_every_track_rollout_complete():
+    """The evolution-fork rollout is COMPLETE across all four tracks — NATURE (ADR-0021 part 1),
+    STRUCTURE (part 2), COMPANION (part 3), and now WHIMSY (part 4, the final track). EVERY
+    catalog item, of every track, now carries a `form` fork."""
+    assert {item.track for item in SANCTUARY_CATALOG.values()} == {
+        "nature",
+        "structure",
+        "companion",
+        "whimsy",
+    }
     for key, item in SANCTUARY_CATALOG.items():
-        has_form = item.slot("form") is not None
-        if item.track in ("nature", "structure", "companion"):
-            assert has_form, f"{item.track} item {key} is missing its form fork"
-        else:
-            assert not has_form, f"{item.track} item {key} should not have a form fork yet"
+        assert item.slot("form") is not None, f"{item.track} item {key} is missing its form fork"
 
 
 def test_form_fork_is_one_mutually_exclusive_slot_gated_high():
@@ -2112,3 +2114,243 @@ def test_companion_legacy_grown_grown_row_spend_unchanged(client, db_session):
     grown_cost = cat_item.slot("grown").option("grown").cost
     assert grown_cost == round(50 * 1.5)  # cat base_size is 50
     assert scene["coins"] == before - (cat_item.cost + grown_cost)
+
+
+# --- Evolution-tree: WHIMSY track (ADR-0021, part 4 — rollout COMPLETE) -------------------
+#
+# The same framework (the `form` evolution fork + the shared `venerable` growth rung + a
+# whimsy-appropriate additive slot) applied to the whimsy track — the FINAL part of the
+# per-track rollout. With this, all four tracks carry forks (asserted by
+# test_forks_applied_to_every_track_rollout_complete). For whimsy the forms read as charming
+# evolved characters (gnome → wandering / wizardly / dozing; tea-cart → garden-party /
+# patisserie / high-tea). The additive slot is a themed extra (a toadstool, a perched bird, a
+# charm, a dragonfly, pumpkins, a welcome mat, a side table, a plate of treats) that does NOT
+# duplicate the item's own ADR-0016 slots. Keys are namespaced to avoid clashing with existing
+# global form/option/variant keys (e.g. `dozing` not the `sleepy` variant; `toadstool_cap` not
+# the `toadstool` variant). Same guarantees: mutually-exclusive forms gated at/above the ladder
+# top, derived balance, no migration, and the legacy {"grown":"grown"} spend untouched.
+
+# The whimsy items the evolution tree was applied to in this pass — the whole whimsy track.
+_WHIMSY_FORK_ITEMS = (
+    "garden_gnome",
+    "wind_chime",
+    "lantern",
+    "frog_lily",
+    "scarecrow",
+    "fairy_door",
+    "hammock",
+    "tea_cart",
+)
+
+# The new themed additive whimsy slot each item gained (key → at least one of its option keys).
+_WHIMSY_ADDITIVE_SLOT = {
+    "garden_gnome": ("toadstool", "toadstool_cap"),
+    "wind_chime": ("perched_bird", "chickadee"),
+    "lantern": ("charm", "crystal_charm"),
+    "frog_lily": ("dragonfly_friend", "pond_dragonfly"),
+    "scarecrow": ("pumpkin_patch", "pumpkins"),
+    "fairy_door": ("doorstep", "welcome_mat"),
+    "hammock": ("side_table", "lemonade"),
+    "tea_cart": ("treats", "macarons"),
+}
+
+
+def test_every_whimsy_item_has_a_form_fork():
+    """Every whimsy item gained a `form` fork; it's the complete whimsy track (the last one)."""
+    whimsy = {k for k, i in SANCTUARY_CATALOG.items() if i.track == "whimsy"}
+    assert whimsy == set(_WHIMSY_FORK_ITEMS)
+    for key in _WHIMSY_FORK_ITEMS:
+        assert SANCTUARY_CATALOG[key].slot("form") is not None, key
+
+
+def test_whimsy_form_fork_is_one_mutually_exclusive_slot_gated_high():
+    """Each whimsy item's `form` is a single slot of 2–3 named forms (the fork = within-slot
+    mutual exclusivity), every form gated at or above the top of the growth ladder."""
+    for key in _WHIMSY_FORK_ITEMS:
+        form = SANCTUARY_CATALOG[key].slot("form")
+        assert form is not None, key
+        opts = form.options
+        assert 2 <= len(opts) <= 3, f"{key}: a fork should offer 2–3 forms, got {len(opts)}"
+        # Distinct option keys + distinct costs (a clean, unambiguous fork).
+        assert len({o.key for o in opts}) == len(opts), key
+        assert len({o.cost for o in opts}) == len(opts), f"{key}: form costs not distinct"
+        # Every form is a late-game choice: gated at/above the top of the growth ladder.
+        for o in opts:
+            assert o.cost > 0, (key, o.key)
+            assert o.unlock_level >= TOP_GROWTH_UNLOCK, (
+                f"{key}.{o.key}: form unlock {o.unlock_level} below ladder top {TOP_GROWTH_UNLOCK}"
+            )
+
+
+def test_whimsy_form_keys_do_not_collide_with_any_other_catalog_keys():
+    """The new whimsy form/option keys are namespaced so they don't clash with any existing
+    catalog key (variant, slot, or another item's option) — labels are keyed globally, so a
+    collision would mislabel another item (ADR-0021, the companion-track namespacing rule)."""
+    whimsy_new: set[str] = set()
+    for key in _WHIMSY_FORK_ITEMS:
+        item = SANCTUARY_CATALOG[key]
+        whimsy_new |= {o.key for o in item.slot("form").options}
+        slot_key, opt_key = _WHIMSY_ADDITIVE_SLOT[key]
+        whimsy_new.add(opt_key)
+    # The set of *every other* option/variant/slot key in the catalog (excluding the whimsy
+    # forms + new additive options under test) must be disjoint from the new whimsy keys.
+    others: set[str] = set()
+    for item in SANCTUARY_CATALOG.values():
+        others |= {v.key for v in item.variants}
+        for slot in item.slots:
+            for o in slot.options:
+                if o.key in whimsy_new:
+                    continue  # this *is* a new whimsy key (its own slot), not a foreign clash
+                others.add(o.key)
+    assert whimsy_new.isdisjoint(others), whimsy_new & others
+
+
+def test_whimsy_form_fork_is_mutually_exclusive_at_runtime(client):
+    """Choosing a second whimsy form *replaces* the first (mutually-exclusive within the one
+    `form` slot) and charges only the difference — the fork, end to end."""
+    _auth(client, "whimsy-fork-runtime@example.com")
+    _earn_to_level(client, 14)  # high enough that the late-game forms unlock + afford
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "garden_gnome"}).json()
+    gnome_id = next(o for o in bought["owned"] if o["item_key"] == "garden_gnome")["id"]
+    form = SANCTUARY_CATALOG["garden_gnome"].slot("form")
+    wandering = form.option("wandering").cost
+    wizardly = form.option("wizardly").cost
+
+    coins0 = _scene(client)["coins"]
+    r1 = client.post(
+        f"/api/v1/sanctuary/items/{gnome_id}/customize",
+        json={"slot": "form", "option": "wandering"},
+    )
+    assert r1.status_code == 200, r1.json()
+    assert r1.json()["coins"] == coins0 - wandering
+    r2 = client.post(
+        f"/api/v1/sanctuary/items/{gnome_id}/customize",
+        json={"slot": "form", "option": "wizardly"},
+    )
+    assert r2.status_code == 200, r2.json()
+    only = next(o for o in r2.json()["owned"] if o["item_key"] == "garden_gnome")
+    assert only["customizations"] == {"form": "wizardly"}  # wandering replaced, not added
+    assert r2.json()["coins"] == coins0 - wandering - (wizardly - wandering)
+
+
+def test_whimsy_form_fork_is_level_gated_for_a_fresh_user(client):
+    """A fresh level-2 user (gnome just unlocked) sees every gnome form locked and cannot apply
+    one — the whimsy fork is strictly late-game (ADR-0021)."""
+    _auth(client, "whimsy-fork-gate@example.com")
+    _earn_to_level(client, 2)  # gnome unlocks at level 2 but its forms are gated far higher
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "garden_gnome"}).json()
+    gnome = bought["owned"][0]
+    gnome_id = gnome["id"]
+    form_slot = next(s for s in gnome["available"] if s["slot"] == "form")
+    for o in form_slot["options"]:
+        assert o["unlocked"] is False, o["option"]
+        assert "level" in (o["unlock_hint"] or "")
+    res = client.post(
+        f"/api/v1/sanctuary/items/{gnome_id}/customize",
+        json={"slot": "form", "option": form_slot["options"][0]["option"]},
+    )
+    assert res.status_code == 409
+
+
+def test_every_whimsy_item_gained_a_new_themed_additive_slot(client):
+    """Each whimsy item gained one new themed ADDITIVE slot — independent of the fork/ladder and
+    NOT a duplicate of the item's own pre-existing ADR-0016 slots (ADR-0021)."""
+    for key, (slot_key, opt_key) in _WHIMSY_ADDITIVE_SLOT.items():
+        item = SANCTUARY_CATALOG[key]
+        slot = item.slot(slot_key)
+        assert slot is not None and slot.options, f"{key} missing additive slot {slot_key}"
+        assert slot.option(opt_key) is not None, f"{key}.{slot_key} missing {opt_key}"
+        assert slot_key not in ("form", "grown"), key
+        # The new additive slot key is genuinely new for this item — it appears exactly once,
+        # so it can't have duplicated one of the item's other slots.
+        assert [s.key for s in item.slots].count(slot_key) == 1, key
+
+
+def test_whimsy_additive_slot_is_independent_of_form_and_grown(client):
+    """A gnome can carry a growth stage AND an evolved form AND its themed extra all at once —
+    three independent slots, each charged its own option cost (ADR-0021)."""
+    _auth(client, "whimsy-independent@example.com")
+    _earn_to_level(client, 14)
+    item = SANCTUARY_CATALOG["garden_gnome"]
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "garden_gnome"}).json()
+    gnome_id = next(o for o in bought["owned"] if o["item_key"] == "garden_gnome")["id"]
+
+    coins = _scene(client)["coins"]
+    picks = [("grown", "grown"), ("form", "wandering"), ("toadstool", "toadstool_cap")]
+    spent = 0
+    for slot, option in picks:
+        res = client.post(
+            f"/api/v1/sanctuary/items/{gnome_id}/customize",
+            json={"slot": slot, "option": option},
+        )
+        assert res.status_code == 200, (slot, option, res.json())
+        spent += item.slot(slot).option(option).cost
+    only = next(o for o in _scene(client)["owned"] if o["item_key"] == "garden_gnome")
+    assert only["customizations"] == {
+        "grown": "grown",
+        "form": "wandering",
+        "toadstool": "toadstool_cap",
+    }
+    assert _scene(client)["coins"] == coins - spent
+
+
+def test_whimsy_venerable_stage_is_buyable_and_charges_the_difference(client):
+    """The shared `venerable` growth rung works on a whimsy item too: advancing from `ancient`
+    charges only the rung difference (a within-slot swap)."""
+    _auth(client, "whimsy-venerable@example.com")
+    _earn_to_level(client, 14)
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "garden_gnome"}).json()
+    gnome_id = next(o for o in bought["owned"] if o["item_key"] == "garden_gnome")["id"]
+    grown = SANCTUARY_CATALOG["garden_gnome"].slot("grown")
+    ancient = grown.option("ancient").cost
+    venerable = grown.option("venerable").cost
+    assert venerable > ancient
+
+    client.post(
+        f"/api/v1/sanctuary/items/{gnome_id}/customize",
+        json={"slot": "grown", "option": "ancient"},
+    )
+    coins = _scene(client)["coins"]
+    res = client.post(
+        f"/api/v1/sanctuary/items/{gnome_id}/customize",
+        json={"slot": "grown", "option": "venerable"},
+    )
+    assert res.status_code == 200, res.json()
+    only = next(o for o in res.json()["owned"] if o["item_key"] == "garden_gnome")
+    assert only["customizations"] == {"grown": "venerable"}
+    assert res.json()["coins"] == coins - (venerable - ancient)
+
+
+def test_whimsy_legacy_grown_grown_row_spend_unchanged(client, db_session):
+    """A legacy {"grown":"grown"} row on a WHIMSY item resolves to stage 1 and its spend is
+    exactly base + round(base_size * 1.5) — the whimsy forks/slots never shift it."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "whimsy-legacy@example.com")
+    _earn_to_level(client, 6)
+    before = _scene(client)["coins"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "whimsy-legacy@example.com")
+    ).scalar_one()
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="garden_gnome",
+            position=0,
+            cell=0,
+            variant="classic",
+            customizations={"grown": "grown"},
+        )
+    )
+    db_session.commit()
+
+    scene = _scene(client)
+    gnome = next(o for o in scene["owned"] if o["item_key"] == "garden_gnome")
+    assert gnome["customizations"] == {"grown": "grown"}
+    gnome_item = SANCTUARY_CATALOG["garden_gnome"]
+    grown_cost = gnome_item.slot("grown").option("grown").cost
+    assert grown_cost == round(32 * 1.5)  # garden_gnome base_size is 32
+    assert scene["coins"] == before - (gnome_item.cost + grown_cost)
