@@ -1998,8 +1998,12 @@ textarea:focus-visible,
 .sanctuary-svg {
   display: block;
   margin: 0 auto;
-  width: 60px;
-  height: 60px;
+  /* Larger object art in the garden, shop, picker, and preview. The dashboard teaser
+     (.sanctuary-teaser-plant) and the grown-options row set their own smaller sizes, so
+     they're unaffected. max-width lets a cell shrink the art gracefully on narrow screens. */
+  width: 84px;
+  height: auto;
+  max-width: 100%;
 }
 
 /* Dark mode: dark art details (faces, hats, roofs) lose their edge against the dark card.
@@ -2140,7 +2144,7 @@ textarea:focus-visible,
    uniform grid (no jump in height between a dashed empty slot and a filled item card). The
    shop uses .sanctuary-card without .sanctuary-cell, so it keeps its content-sized cards. */
 .sanctuary-cell {
-  min-height: 9rem;
+  min-height: 11rem;
 }
 
 /* Empty drop targets keep a stable cell footprint so the grid never collapses. */
