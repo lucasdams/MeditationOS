@@ -92,8 +92,10 @@ in-code catalog (no migration, balance still derived):
 
 This is a **framework** built so the remaining tracks are a clean follow-up. Declaring a fork is one
 builder line — `.form(*_form_fork(base, …))` — and a stage is a one-token edit to three tuples.
-**Applied to the nature track only** in the first pass (structure/companion/whimsy follow in later
-PRs, with no framework churn):
+Rolled out **per track, one PR at a time**, with no framework churn. So far the **nature** track
+(part 1) and the **structure** track (part 2) have evolution trees; companion/whimsy follow next.
+
+Nature track (part 1):
 
 | item | `form` fork | extra growth stage | additive slot |
 |------|-------------|--------------------|---------------|
@@ -102,8 +104,20 @@ PRs, with no framework churn):
 | `mushroom_ring` | witch's-circle · moonlit | `venerable` | `firefly` (fireflies) |
 | `pond` | mountain-tarn · lotus-pool | `venerable` | `waterfowl` (duck · swan) |
 
+Structure track (part 2):
+
+| item | `form` fork | extra growth stage | additive slot |
+|------|-------------|--------------------|---------------|
+| `hut` | thatched · treehouse · hermitage | `venerable` | `window_box` (flowers · herbs) |
+| `cottage` | cosy · grand-manor · enchanted | `venerable` | `ivy` |
+| `barn` | working-farm · heritage · festival | `venerable` | `weathervane` (rooster) |
+| `car` | vintage · camper | `venerable` | `flag` (pennant) |
+| `beach_house` | cabana · lighthouse-keeper · stilt-house | `venerable` | `bunting` |
+| `boat` | sailboat · fishing-boat | `venerable` | `pennant` |
+
 Every new form, the `venerable` stage, and every additive option has distinct SVG art in
-`SanctuaryPlant.tsx`. The customize panel iterates slots generically, so the fork surfaces and is
+`SanctuaryPlant.tsx` (the structure renderers reshape the silhouette per form and add a distinct
+`venerable`-stage look). The customize panel iterates slots generically, so each fork surfaces and is
 buyable with no bespoke UI ([ADR-0021](../decisions/0021-sanctuary-evolution-tree-and-preview-locked.md)).
 
 ### Character & whimsy (ADR-0016)

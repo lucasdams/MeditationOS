@@ -1595,15 +1595,16 @@ def test_grown_first_rung_cost_is_unchanged_for_legacy_compat():
     assert SANCTUARY_CATALOG["flower"].slot("grown").option("grown").cost == round(25 * 1.5)
 
 
-def test_only_nature_items_have_a_form_fork_in_this_pass():
-    """The evolution fork was applied to the NATURE track only this PR. Every nature item has
-    a `form` slot; no structure/companion/whimsy item does (those land in later PRs)."""
+def test_forks_applied_to_nature_and_structure_tracks_only_so_far():
+    """The evolution fork has rolled out to the NATURE (ADR-0021 part 1) and STRUCTURE
+    (part 2) tracks. Every nature and structure item has a `form` slot; companion/whimsy
+    items don't yet (those land in later PRs)."""
     for key, item in SANCTUARY_CATALOG.items():
         has_form = item.slot("form") is not None
-        if item.track == "nature":
-            assert has_form, f"nature item {key} is missing its form fork"
+        if item.track in ("nature", "structure"):
+            assert has_form, f"{item.track} item {key} is missing its form fork"
         else:
-            assert not has_form, f"non-nature item {key} should not have a form fork yet"
+            assert not has_form, f"{item.track} item {key} should not have a form fork yet"
 
 
 def test_form_fork_is_one_mutually_exclusive_slot_gated_high():
@@ -1773,3 +1774,172 @@ def test_legacy_grown_grown_row_still_unchanged_after_deepening(client, db_sessi
     grown_cost = tree_item.slot("grown").option("grown").cost
     assert grown_cost == round(40 * 1.5)
     assert scene["coins"] == before - (tree_item.cost + grown_cost)
+
+
+# --- Evolution-tree: STRUCTURE track (ADR-0021, part 2) -----------------------------------
+#
+# The same framework (the `form` evolution fork + the shared `venerable` growth rung + a
+# structure-appropriate additive slot) applied to the structure track. Same guarantees:
+# mutually-exclusive forms gated at/above the ladder top, derived balance, no migration, and
+# the legacy {"grown":"grown"} spend untouched (re-asserted above for the deepened ladder).
+
+# The structure items the evolution tree was applied to in this pass. Each gains a `form`
+# fork + the shared extra growth stage + one additive structure slot.
+_STRUCTURE_FORK_ITEMS = ("hut", "cottage", "barn", "car", "beach_house", "boat")
+
+# The additive structure slot each structure item gained (key → at least one option key).
+_STRUCTURE_ADDITIVE_SLOT = {
+    "hut": "window_box",
+    "cottage": "ivy",
+    "barn": "weathervane",
+    "car": "flag",
+    "beach_house": "bunting",
+    "boat": "pennant",
+}
+
+
+def test_every_structure_item_has_a_form_fork():
+    """Every structure item gained a `form` fork; it's the complete structure track."""
+    structures = {k for k, i in SANCTUARY_CATALOG.items() if i.track == "structure"}
+    assert structures == set(_STRUCTURE_FORK_ITEMS)
+    for key in _STRUCTURE_FORK_ITEMS:
+        assert SANCTUARY_CATALOG[key].slot("form") is not None, key
+
+
+def test_structure_form_fork_is_one_mutually_exclusive_slot_gated_high():
+    """Each structure item's `form` is a single slot of 2–3 named forms (the fork = within-slot
+    mutual exclusivity), every form gated at or above the top of the growth ladder."""
+    for key in _STRUCTURE_FORK_ITEMS:
+        form = SANCTUARY_CATALOG[key].slot("form")
+        assert form is not None, key
+        opts = form.options
+        assert 2 <= len(opts) <= 3, f"{key}: a fork should offer 2–3 forms, got {len(opts)}"
+        # Distinct option keys + distinct costs (a clean, unambiguous fork).
+        assert len({o.key for o in opts}) == len(opts), key
+        assert len({o.cost for o in opts}) == len(opts), f"{key}: form costs not distinct"
+        # Every form is a late-game choice: gated at/above the top of the growth ladder.
+        for o in opts:
+            assert o.cost > 0, (key, o.key)
+            assert o.unlock_level >= TOP_GROWTH_UNLOCK, (
+                f"{key}.{o.key}: form unlock {o.unlock_level} below ladder top {TOP_GROWTH_UNLOCK}"
+            )
+
+
+def test_structure_form_fork_is_mutually_exclusive_at_runtime(client):
+    """Choosing a second structure form *replaces* the first (mutually-exclusive within the one
+    `form` slot) and charges only the difference — the fork, end to end."""
+    _auth(client, "struct-fork-runtime@example.com")
+    _earn_to_level(client, 12)  # high enough that the late-game forms unlock + afford
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "cottage"}).json()
+    cottage_id = next(o for o in bought["owned"] if o["item_key"] == "cottage")["id"]
+    form = SANCTUARY_CATALOG["cottage"].slot("form")
+    cosy = form.option("cosy").cost
+    grand = form.option("grand_manor").cost
+
+    coins0 = _scene(client)["coins"]
+    r1 = client.post(
+        f"/api/v1/sanctuary/items/{cottage_id}/customize",
+        json={"slot": "form", "option": "cosy"},
+    )
+    assert r1.status_code == 200, r1.json()
+    assert r1.json()["coins"] == coins0 - cosy
+    r2 = client.post(
+        f"/api/v1/sanctuary/items/{cottage_id}/customize",
+        json={"slot": "form", "option": "grand_manor"},
+    )
+    assert r2.status_code == 200, r2.json()
+    only = next(o for o in r2.json()["owned"] if o["item_key"] == "cottage")
+    assert only["customizations"] == {"form": "grand_manor"}  # cosy replaced, not added
+    assert r2.json()["coins"] == coins0 - cosy - (grand - cosy)  # == coins0 - grand
+
+
+def test_structure_form_fork_is_level_gated_for_a_fresh_user(client):
+    """A fresh level-2 user (hut just unlocked) sees every hut form locked and cannot apply
+    one — the structure fork is strictly late-game (ADR-0021)."""
+    _auth(client, "struct-fork-gate@example.com")
+    _earn_to_level(client, 2)  # hut unlocks at level 2 but its forms are gated far higher
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "hut"}).json()
+    hut = bought["owned"][0]
+    hut_id = hut["id"]
+    form_slot = next(s for s in hut["available"] if s["slot"] == "form")
+    for o in form_slot["options"]:
+        assert o["unlocked"] is False, o["option"]
+        assert "level" in (o["unlock_hint"] or "")
+    res = client.post(
+        f"/api/v1/sanctuary/items/{hut_id}/customize",
+        json={"slot": "form", "option": form_slot["options"][0]["option"]},
+    )
+    assert res.status_code == 409
+
+
+def test_every_structure_item_gained_an_additive_slot(client):
+    """Each structure item gained one structure-appropriate ADDITIVE slot (window_box / ivy /
+    weathervane / flag / bunting / pennant) — independent of the fork and the ladder."""
+    for key, slot_key in _STRUCTURE_ADDITIVE_SLOT.items():
+        item = SANCTUARY_CATALOG[key]
+        slot = item.slot(slot_key)
+        assert slot is not None and slot.options, f"{key} missing additive slot {slot_key}"
+        assert slot_key not in ("form", "grown"), key
+
+
+def test_structure_additive_slot_is_independent_of_form_and_grown(client):
+    """A barn can carry a growth stage AND an evolved form AND a weathervane all at once —
+    three independent slots, each charged its own option cost (ADR-0021)."""
+    _auth(client, "struct-independent@example.com")
+    _earn_to_level(client, 12)
+    item = SANCTUARY_CATALOG["barn"]
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "barn"}).json()
+    barn_id = next(o for o in bought["owned"] if o["item_key"] == "barn")["id"]
+
+    coins = _scene(client)["coins"]
+    picks = [("grown", "grown"), ("form", "working_farm"), ("weathervane", "rooster")]
+    spent = 0
+    for slot, option in picks:
+        res = client.post(
+            f"/api/v1/sanctuary/items/{barn_id}/customize",
+            json={"slot": slot, "option": option},
+        )
+        assert res.status_code == 200, (slot, option, res.json())
+        spent += item.slot(slot).option(option).cost
+    only = next(o for o in _scene(client)["owned"] if o["item_key"] == "barn")
+    assert only["customizations"] == {
+        "grown": "grown",
+        "form": "working_farm",
+        "weathervane": "rooster",
+    }
+    assert _scene(client)["coins"] == coins - spent
+
+
+def test_structure_legacy_grown_grown_row_spend_unchanged(client, db_session):
+    """A legacy {"grown":"grown"} row on a STRUCTURE item resolves to stage 1 and its spend is
+    exactly base + round(base_size * 1.5) — the structure forks/slots never shift it."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "struct-legacy@example.com")
+    _earn_to_level(client, 6)
+    before = _scene(client)["coins"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "struct-legacy@example.com")
+    ).scalar_one()
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="hut",
+            position=0,
+            cell=0,
+            variant="wood",
+            customizations={"grown": "grown"},
+        )
+    )
+    db_session.commit()
+
+    scene = _scene(client)
+    hut = next(o for o in scene["owned"] if o["item_key"] == "hut")
+    assert hut["customizations"] == {"grown": "grown"}
+    hut_item = SANCTUARY_CATALOG["hut"]
+    grown_cost = hut_item.slot("grown").option("grown").cost
+    assert grown_cost == round(60 * 1.5)  # hut base_size is 60
+    assert scene["coins"] == before - (hut_item.cost + grown_cost)

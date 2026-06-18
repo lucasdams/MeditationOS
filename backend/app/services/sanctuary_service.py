@@ -424,15 +424,24 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .build()
     ),
     # --- Structures -------------------------------------------------------------------
+    # Evolution trees applied to the STRUCTURE track (ADR-0021, part 2 of the per-track
+    # rollout). Each structure gains a late-game `form` fork of fitting architectural forms
+    # (gated at/above the ladder top via _form_fork) and one structure-appropriate additive
+    # slot (lighting / garden trim / banner). Same framework as the nature track — no new
+    # machinery, no migration; the `venerable` 5th growth rung is shared globally.
     "hut": (
         _Build("hut", "structure", 45, unlock_level=2)
         .blurb("Cosy enough for one, with room for a kettle.")
         .names("The Snug", "Little Hideaway", "Kettle Cottage", "The Burrow")
         .variants("straw", "wood")
         .ladder(_growth_ladder(60))
+        # Evolution fork: a snug thatched cottage, a stilted treehouse, or a tucked-away hermitage.
+        .form(*_form_fork(60, ("thatched", 4.0, 0), ("treehouse", 4.3, 1), ("hermitage", 4.6, 2)))
         .slot("chimney_smoke", ("smoke", 30))
         .slot("garden", ("garden", 35))
         .slot("lights", ("lights", 25))
+        # New additive structure slot (ADR-0021): a window-box of flowers or herbs under the sill.
+        .slot("window_box", ("flowers", 22), ("herbs", 22))
         .build()
     ),
     "cottage": (
@@ -441,9 +450,13 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Honeysuckle", "The Bakehouse", "Rosewood Cottage", "Hearthstone")
         .variants("cream", "stone")
         .ladder(_growth_ladder(90))
+        # Evolution fork: a cosy thatched home, a grand many-gabled manor, or an enchanted dwelling.
+        .form(*_form_fork(90, ("cosy", 4.0, 0), ("grand_manor", 4.3, 1), ("enchanted", 4.6, 2)))
         .slot("chimney_smoke", ("smoke", 40))
         .slot("garden", ("garden", 45))
         .slot("lights", ("lights", 35))
+        # New additive structure slot: climbing ivy up the walls.
+        .slot("ivy", ("ivy", 35))
         .build()
     ),
     "barn": (
@@ -452,9 +465,17 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("The Old Barn", "Hayloft", "Big Red", "The Homestead")
         .variants("red", "gray")
         .ladder(_growth_ladder(120))
+        # Evolution fork: a busy working farm, a stately heritage barn, or a festive party barn.
+        .form(
+            *_form_fork(
+                120, ("working_farm", 3.8, 0), ("heritage", 4.1, 1), ("festival", 4.4, 2)
+            )
+        )
         .slot("chimney_smoke", ("smoke", 50))
         .slot("garden", ("garden", 55))
         .slot("lights", ("lights", 45))
+        # New additive structure slot: a rooster weathervane on the ridge.
+        .slot("weathervane", ("rooster", 40))
         .build()
     ),
     "car": (
@@ -463,7 +484,11 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Old Faithful", "The Getaway", "Bessie", "Sunday Driver")
         .variants("red", "blue", "yellow")
         .ladder(_growth_ladder(130))
+        # Evolution fork: a polished vintage roadster or a cosy camper van.
+        .form(*_form_fork(130, ("vintage", 3.8, 0), ("camper", 4.2, 2)))
         .slot("lights", ("lights", 45))
+        # New additive structure slot: a little pennant flag flying from the aerial.
+        .slot("flag", ("pennant", 30))
         .build()
     ),
     "beach_house": (
@@ -472,8 +497,16 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("Saltwind", "The Sandcastle", "Tidepool", "Seabreeze")
         .variants("white", "teal")
         .ladder(_growth_ladder(150))
+        # Evolution fork: a breezy beach cabana, a lighthouse-keeper's cottage, or a stilt house.
+        .form(
+            *_form_fork(
+                150, ("cabana", 3.8, 0), ("lighthouse_keeper", 4.1, 1), ("stilt_house", 4.4, 2)
+            )
+        )
         .slot("garden", ("garden", 60))
         .slot("lights", ("lights", 55))
+        # New additive structure slot: strung bunting along the eave.
+        .slot("bunting", ("bunting", 36))
         .build()
     ),
     "boat": (
@@ -482,7 +515,11 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
         .names("The Driftwood", "Little Dipper", "Seafarer", "Slow Current")
         .variants("wood", "white")
         .ladder(_growth_ladder(170))
+        # Evolution fork: a tall-masted sailboat or a snug fishing trawler.
+        .form(*_form_fork(170, ("sailboat", 3.8, 0), ("fishing_boat", 4.2, 2)))
         .slot("lights", ("lights", 60))
+        # New additive structure slot: a pennant flying from the masthead.
+        .slot("pennant", ("pennant", 40))
         .build()
     ),
     # --- Companions -------------------------------------------------------------------
