@@ -82,6 +82,16 @@ class User(Base):
     weekly_summary_last_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Cumulative coins charged as Sanctuary upgrade-reset fees (ADR-0019). The garden's coin
+    # balance is otherwise *derived* from holdings (no wallet/ledger): resetting an item's
+    # customizations refunds their sunk cost via that derived balance, so a flat per-reset fee
+    # would vanish on the next read. This counter is the one stored economy figure — it persists
+    # the fees and is subtracted from the derived balance: `balance = coins_earned − Σ_holdings
+    # − sanctuary_reset_fees`. NOT NULL, server_default 0; only ever increases (monotonic, like
+    # coins), so it never retroactively raises an existing garden's balance.
+    sanctuary_reset_fees: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0", default=0
+    )
     # Which daily-activity quests the user opted into (a subset of QUEST_FEATURES,
     # ≥3). NULL until they choose: the client shows a first-run picker, and quest
     # generation falls back to all four while NULL. Existing users were backfilled

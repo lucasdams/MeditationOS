@@ -307,6 +307,7 @@ Numbered, immutable records of significant choices — see [`docs/decisions/`](d
 | [0015](docs/decisions/0015-sanctuary-personalization-touches.md) | Sanctuary — naming and personal touches (name, note, favourite) |
 | [0016](docs/decisions/0016-sanctuary-shop-expansion-and-retune.md) | Sanctuary — shop expansion (whimsy track) + economy retune |
 | [0017](docs/decisions/0017-biometric-readings-data-model.md) | Source-agnostic biometric-readings data model |
+| [0019](docs/decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) | Sanctuary — reset an item's upgrades for a fee (one stored per-user counter) |
 
 ---
 

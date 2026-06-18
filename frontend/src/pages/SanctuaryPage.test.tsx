@@ -9,6 +9,7 @@ const buy = vi.fn()
 const customize = vi.fn()
 const move = vi.fn()
 const personalize = vi.fn()
+const resetUpgrades = vi.fn()
 const playReward = vi.fn()
 
 vi.mock('../services/sanctuary', () => ({
@@ -18,6 +19,7 @@ vi.mock('../services/sanctuary', () => ({
     customize: (...a: unknown[]) => customize(...a),
     move: (...a: unknown[]) => move(...a),
     personalize: (...a: unknown[]) => personalize(...a),
+    resetUpgrades: (...a: unknown[]) => resetUpgrades(...a),
   },
 }))
 vi.mock('../lib/sfx', () => ({ playReward: (...a: unknown[]) => playReward(...a) }))
@@ -207,6 +209,85 @@ describe('SanctuaryPage naming (ADR-0015)', () => {
     fireEvent.click(view.getByRole('button', { name: /Mark favourite/ }))
 
     await waitFor(() => expect(personalize).toHaveBeenCalledWith('a', { favorite: true }))
+  })
+})
+
+describe('SanctuaryPage reset upgrades (ADR-0019)', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+    resetUpgrades.mockReset()
+  })
+
+  // An owned item carrying a customization, so the panel offers the reset action.
+  const grownItem = (id: string) => ({
+    ...ownedItem(id, 0),
+    customizations: { grown: 'grown' },
+  })
+
+  it('confirms the fee, then resets and toasts the refund', async () => {
+    const start = sceneWith(40, [grownItem('a')])
+    // After reset: customizations cleared and the sunk cost refunded minus the fee.
+    const reset = sceneWith(85, [ownedItem('a', 0)])
+    getScene.mockResolvedValue(start)
+    resetUpgrades.mockResolvedValue(reset)
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    // Open the panel (the toggle shows the customization count), then start the reset flow.
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize \(1\)$/ }))
+    fireEvent.click(view.getByRole('button', { name: /Reset upgrades/ }))
+
+    // The confirm states the fee before anything is charged.
+    expect(view.getByText(/10 🪙 fee/)).toBeInTheDocument()
+
+    // Confirm → the service is called and the refund toast surfaces.
+    fireEvent.click(view.getByRole('button', { name: /Reset · −10 🪙/ }))
+    await waitFor(() => expect(resetUpgrades).toHaveBeenCalledWith('a'))
+    await waitFor(() =>
+      expect(screen.getByText(/Upgrades cleared from your tree/)).toBeInTheDocument(),
+    )
+  })
+
+  it('can be cancelled without calling the service', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [grownItem('a')]))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize \(1\)$/ }))
+    fireEvent.click(view.getByRole('button', { name: /Reset upgrades/ }))
+    fireEvent.click(view.getByRole('button', { name: /Keep them/ }))
+
+    // Back to the quiet toggle; the service was never called.
+    expect(view.getByRole('button', { name: /Reset upgrades/ })).toBeInTheDocument()
+    expect(resetUpgrades).not.toHaveBeenCalled()
+  })
+
+  it('shows an error toast when the reset fails', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [grownItem('a')]))
+    resetUpgrades.mockRejectedValue(new Error('nope'))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize \(1\)$/ }))
+    fireEvent.click(view.getByRole('button', { name: /Reset upgrades/ }))
+    fireEvent.click(view.getByRole('button', { name: /Reset · −10 🪙/ }))
+
+    await waitFor(() =>
+      expect(screen.getByText(/Could not reset that/)).toBeInTheDocument(),
+    )
+  })
+
+  it('offers no reset action for an item with no upgrades', async () => {
+    getScene.mockResolvedValue(sceneWith(40, [ownedItem('a', 0)]))
+
+    const { container } = renderPage()
+    const view = within(container)
+
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+    expect(view.queryByRole('button', { name: /Reset upgrades/ })).toBeNull()
   })
 })
 
