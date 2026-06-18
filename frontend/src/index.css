@@ -1719,8 +1719,34 @@ textarea:focus-visible,
 
 .dashboard {
   max-width: 40rem;
-  margin: 2rem auto;
+  margin: 2rem auto 3rem;
   padding: 0 1rem;
+}
+
+/* Calm, generous vertical rhythm for the home. The streak line sits close under the
+   level chip, then a comfortable gap opens before the quick-access tiles; the sections
+   below share a consistent, unhurried spacing so nothing feels crowded. */
+.dashboard > h1 {
+  margin-bottom: 0.25rem;
+}
+
+.dashboard .zen-greeting {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+}
+
+/* Breathing room between the streak line and the tiles. */
+.dashboard .quest-streak + .feature-tiles {
+  margin-top: 1.75rem;
+}
+
+/* Consistent spacing between the main home sections. */
+.dashboard .feature-tiles,
+.dashboard .quests-compact,
+.dashboard .sanctuary-teaser,
+.dashboard .mood-entry,
+.dashboard .dashboard-more {
+  margin-top: 1.75rem;
 }
 
 .dashboard header {
@@ -3032,14 +3058,10 @@ textarea:focus-visible,
   margin: 0.6rem 0 0;
 }
 
-/* Compact quests on the calm default home — a quiet "Today you could…" lead over a row of
-   small, tappable quest chips. Low-chrome by design: no card, no descriptions, no XP. */
+/* Compact quests on the calm default home — a row of small, tappable quest chips, with no
+   lead label. Low-chrome by design: no card, no descriptions, no XP. */
 .quests-compact {
   margin: 1.25rem 0;
-}
-
-.quests-compact-lead {
-  margin: 0 0 0.5rem;
 }
 
 .quest-chips {
@@ -3161,25 +3183,45 @@ textarea:focus-visible,
    level card, totals, heatmap, weekly review) off the calm default home. Quests and the
    garden now live on the default view above in compact form. */
 .dashboard-more {
-  margin-top: 1.5rem;
+  margin-top: 1.75rem;
+  text-align: center;
 }
 
+/* A quiet, centered text link (with a chevron) — deliberately no button chrome: no
+   border, no fill. It's still a real <button> (aria-expanded/aria-controls, keyboard
+   operable); this only restyles it to read as a gentle link. */
 .show-more-toggle {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   width: auto;
-  margin: 0;
-  padding: 0.4rem 0.9rem;
+  margin: 0 auto;
+  padding: 0.3rem 0.4rem;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  border-radius: 999px;
+  border: 0;
+  border-radius: 6px;
   cursor: pointer;
+  transition: color 0.12s ease;
 }
 
-.show-more-toggle:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+.show-more-toggle:hover,
+.show-more-toggle:focus-visible {
+  color: var(--text-secondary);
+}
+
+.show-more-text {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.show-more-chevron {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .stat-cards {
@@ -4556,6 +4598,85 @@ details[open] .meditate-disclosure-summary::before {
 /* Mood check-in (dashboard) — one-tap "how do you feel?". */
 .mood-checkin {
   margin: 1.5rem 0;
+}
+
+/* Inside the on-open modal the check-in leads the card, so drop its outer margin and
+   tighten the heading. */
+.mood-modal .mood-checkin {
+  margin: 0;
+}
+
+.mood-modal .mood-checkin h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.15rem;
+}
+
+/* On-open mood modal — calm, centered, low-pressure. */
+.mood-modal {
+  text-align: center;
+}
+
+.mood-modal .mood-options {
+  justify-content: center;
+}
+
+.mood-modal-kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Quiet "Skip for now" dismissal — a plain text link, never a loud button. */
+.mood-modal-skip {
+  display: inline-block;
+  width: auto;
+  margin: 1.1rem auto 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.mood-modal-skip:hover,
+.mood-modal-skip:focus-visible {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Quiet "How do you feel?" entry point on the calm home — a gentle text link, not a
+   button, so logging a mood later (when the modal was skipped) stays reachable without
+   adding chrome. */
+.mood-entry {
+  margin: 0;
+  text-align: center;
+}
+
+.mood-entry-link {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-underline-offset: 3px;
+  transition: color 0.12s ease;
+}
+
+.mood-entry-link:hover,
+.mood-entry-link:focus-visible {
+  color: var(--text-secondary);
 }
 
 .mood-options {

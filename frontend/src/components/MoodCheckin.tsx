@@ -9,7 +9,15 @@ import type { Mood } from '../types'
 // MOOD_META so the check-in and the timeline read a mood identically.
 const MOODS = (Object.keys(MOOD_META) as Mood[]).map((mood) => ({ mood, ...MOOD_META[mood] }))
 
-export default function MoodCheckin() {
+type Props = {
+  // Heading text — lets the on-open modal frame it on the present moment
+  // ("how are you arriving?") while inline use keeps the plain prompt.
+  heading?: string
+  // Called after a mood saves successfully — the modal uses this to close itself.
+  onLogged?: (mood: Mood) => void
+}
+
+export default function MoodCheckin({ heading = 'How do you feel?', onLogged }: Props) {
   const { showToast } = useToast()
   const [logged, setLogged] = useState<Mood | null>(null)
   const [saving, setSaving] = useState<Mood | null>(null)
@@ -21,6 +29,7 @@ export default function MoodCheckin() {
       await moodLogService.create(mood)
       setLogged(mood)
       showToast('Mood logged. 🌱')
+      onLogged?.(mood)
     } catch {
       showToast('Could not log your mood.', 'error')
     } finally {
@@ -30,7 +39,7 @@ export default function MoodCheckin() {
 
   return (
     <section className="mood-checkin">
-      <h2>How do you feel?</h2>
+      <h2>{heading}</h2>
       <div className="mood-options" role="group" aria-label="Log your mood">
         {MOODS.map((m) => (
           <button
