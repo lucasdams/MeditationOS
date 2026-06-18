@@ -34,6 +34,43 @@ function pickSuggestedName(pool: string[], avoid?: string): string | null {
 // Display-only; the server is the source of truth for what's actually charged.
 const RESET_FEE = 10
 
+// A hovered/focused-but-not-yet-bought option the user is exploring in the customize panel
+// (which slot + which option). `null` = nothing explored, so the preview falls back to the item
+// exactly as it is now. Kept generic over the slot/option system so any future upgrade slot
+// previews automatically, with no per-slot special-casing.
+type PreviewTarget = { slot: string; option: string } | null
+
+// The live "try before you buy" preview at the head of the customize panel: a single
+// <SanctuaryPlant> that re-renders as the user hovers or keyboard-focuses an unbought option.
+// It draws the item's *current* variant + customizations with the explored option merged in
+// ({ ...current, [slot]: option }); with nothing explored it shows the item exactly as it is
+// today. View-only — it never buys or PATCHes (the real purchase still happens on the option
+// buttons below), and the "Preview" badge makes clear the look isn't owned yet.
+function SanctuaryUpgradePreview({ item, preview }: { item: OwnedItem; preview: PreviewTarget }) {
+  // Merge the explored option into the item's current look. Generic: any slot → its option.
+  const customizations = preview
+    ? { ...item.customizations, [preview.slot]: preview.option }
+    : item.customizations
+  const exploring = preview != null
+  return (
+    <div className="sanctuary-preview">
+      <div className={`sanctuary-preview-stage${exploring ? ' exploring' : ''}`}>
+        <SanctuaryPlant
+          itemKey={item.item_key}
+          variant={item.variant}
+          customizations={customizations}
+        />
+        {exploring && <span className="sanctuary-preview-badge">Preview</span>}
+      </div>
+      <p className="muted sanctuary-preview-caption" aria-live="polite">
+        {exploring
+          ? `Preview · ${optionLabel(preview!.option)} (not yet owned)`
+          : 'Hover or focus an add-on below to preview it here.'}
+      </p>
+    </div>
+  )
+}
+
 // A calm name/note/favourite editor inside an owned item's personalize panel (ADR-0015).
 // Local input state, committed on blur / explicit save so a rename is one quiet action.
 // All optional and default-off — a user who ignores it sees nothing change.
@@ -144,6 +181,10 @@ export default function SanctuaryPage() {
   const [buyName, setBuyName] = useState('')
   // The owned item whose customization panel is open.
   const [editing, setEditing] = useState<string | null>(null)
+  // The unbought option the user is currently hovering/keyboard-focusing in the open panel, so
+  // the panel's preview can show what the item would look like with it applied — before any
+  // coins are spent. `null` = nothing explored → the preview shows the item as it is now.
+  const [preview, setPreview] = useState<PreviewTarget>(null)
   // The owned item whose "reset upgrades" confirmation is showing (null = none). A two-step
   // inline confirm that states the fee, so a reset is deliberate and never a surprise charge.
   const [confirmReset, setConfirmReset] = useState<string | null>(null)
@@ -470,6 +511,7 @@ export default function SanctuaryPage() {
                             aria-expanded={open}
                             onClick={() => {
                               if (open) setConfirmReset(null) // closing → drop any pending confirm
+                              setPreview(null) // opening/closing → reset the preview to "as-is"
                               setEditing(open ? null : o.id)
                             }}
                           >
@@ -481,6 +523,12 @@ export default function SanctuaryPage() {
                           </button>
                           {open && (
                             <div className="sanctuary-customize-panel">
+                              {/* See-it-before-you-buy preview: shows the item with whatever
+                                  unbought option is hovered/focused below merged in. View-only;
+                                  the actual purchase still happens on the option buttons. */}
+                              {o.available.length > 0 && (
+                                <SanctuaryUpgradePreview item={o} preview={preview} />
+                              )}
                               <SanctuaryNameNote
                                 item={o}
                                 busy={busy != null}
@@ -500,6 +548,15 @@ export default function SanctuaryPage() {
                                         opt.applied ||
                                         !opt.unlocked ||
                                         !opt.affordable
+                                      // Only unbought options preview (an already-applied option
+                                      // would just redraw the current look). Works on hover AND
+                                      // keyboard focus so it isn't pointer-only. (Disabled
+                                      // locked/too-dear buttons don't emit hover/focus, so they
+                                      // simply don't preview — which is fine.)
+                                      const canPreview = !opt.applied
+                                      const showPreview = () =>
+                                        canPreview && setPreview({ slot: s.slot, option: opt.option })
+                                      const clearPreview = () => setPreview(null)
                                       return (
                                         <button
                                           key={opt.option}
@@ -513,6 +570,10 @@ export default function SanctuaryPage() {
                                                 ? 'Earn more coins'
                                                 : undefined
                                           }
+                                          onMouseEnter={showPreview}
+                                          onMouseLeave={clearPreview}
+                                          onFocus={showPreview}
+                                          onBlur={clearPreview}
                                           onClick={() => customize(o, s.slot, opt.option)}
                                         >
                                           {opt.applied

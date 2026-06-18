@@ -2285,6 +2285,61 @@ textarea:focus-visible,
   text-align: left;
 }
 
+/* "See it before you buy" preview at the head of the customize panel. A calm, quiet stage:
+   the item is drawn at a comfortable size, and a soft ring + "Preview" badge appear only while
+   the user is exploring an unbought option, so it never shouts and never crowds the panel. */
+.sanctuary-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.sanctuary-preview-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0.2rem;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.sanctuary-preview-stage.exploring {
+  border-color: #34d399;
+  background: var(--bg-surface);
+}
+
+.sanctuary-preview-stage .sanctuary-svg {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.sanctuary-preview-badge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  background: #047857;
+  color: #fff;
+}
+
+.sanctuary-preview-caption {
+  font-size: 0.7rem;
+  margin: 0;
+  text-align: center;
+  line-height: 1.3;
+}
+
 .sanctuary-slot {
   border: 1px solid var(--border);
   border-radius: 10px;
