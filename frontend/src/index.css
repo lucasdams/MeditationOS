@@ -3247,6 +3247,55 @@ textarea:focus-visible,
   color: rgba(255, 244, 214, 0.7);
 }
 
+/* Immersive gaze mode — while actively gazing (`running`), the stage fills the screen in
+   pure black and everything around the flame falls away. The controls dim right back but
+   stay reachable: they (and the faint clock) brighten on hover/focus. */
+.trataka-immersive .back-link,
+.trataka-immersive > header.page-head,
+.trataka-immersive > label,
+.trataka-immersive .stepper,
+.trataka-immersive .meditate-disclosure,
+.trataka-immersive .breathe-stats,
+.trataka-immersive .trataka-about,
+.trataka-immersive .trataka-stage .breathe-phase {
+  display: none;
+}
+
+.trataka-immersive .trataka-stage {
+  position: fixed;
+  inset: 0;
+  height: auto;
+  border-radius: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000; /* darker than the boxed stage — nothing but the flame */
+}
+
+.trataka-immersive .trataka-time {
+  opacity: 0.3;
+  z-index: 31;
+  transition: opacity 0.4s ease;
+}
+
+.trataka-immersive .breathe-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 1.75rem;
+  z-index: 31;
+  margin: 0;
+  opacity: 0.16;
+  transition: opacity 0.4s ease;
+}
+
+.trataka-immersive .trataka-stage:hover ~ .breathe-controls,
+.trataka-immersive .breathe-controls:hover,
+.trataka-immersive .breathe-controls:focus-within {
+  opacity: 1;
+}
+
 /* About section — explanatory, low-key prose. Left-aligned for readability,
    sitting below the practice controls. */
 .trataka-about {

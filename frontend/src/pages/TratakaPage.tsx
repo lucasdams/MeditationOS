@@ -322,7 +322,10 @@ export default function TratakaPage() {
   const flameIntensity = prefersReducedMotion ? 0 : running ? 1 : 0.5
 
   return (
-    <main id="main-content" className="breathe trataka">
+    <main
+      id="main-content"
+      className={`breathe trataka${running ? ' trataka-immersive' : ''}`}
+    >
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Trataka</h1>
