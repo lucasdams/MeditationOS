@@ -2481,6 +2481,39 @@ textarea:focus-visible,
   border-color: #34d399;
 }
 
+/* Name field + its 🎲 "suggest a name" button side by side (ADR-0015). The input flexes
+   to fill; the dice button is a small, quiet square that fills a random example name. */
+.sanctuary-name-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.sanctuary-name-input-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sanctuary-suggest-name {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-input);
+  cursor: pointer;
+}
+
+.sanctuary-suggest-name:hover:not(:disabled) {
+  border-color: #34d399;
+}
+
+.sanctuary-suggest-name:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sanctuary-fav-toggle {
   align-self: flex-start;
   padding: 0.25rem 0.6rem;

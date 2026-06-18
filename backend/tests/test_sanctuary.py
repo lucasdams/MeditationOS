@@ -824,6 +824,40 @@ def test_new_items_carry_a_blurb(client):
         assert isinstance(s["blurb"], str) and s["blurb"].strip(), s["item_key"]
 
 
+# --- Suggested names (ADR-0015) ---------------------------------------------------------
+# Each catalog item carries a static pool of charming, on-character example names, surfaced
+# as an optional naming *suggestion* (placeholder + shuffle). Static per item type, like the
+# blurb — no DB change, cosmetic only (never enters the spend computation).
+
+
+def test_every_catalog_item_has_suggested_names():
+    """Catalog integrity: every item offers at least one suggested name, each a non-empty,
+    sanely-short string (a plaque fits NAME_MAX_LENGTH), with no duplicates within an item."""
+    from app.schemas.sanctuary import NAME_MAX_LENGTH
+
+    for key, item in SANCTUARY_CATALOG.items():
+        names = item.suggested_names
+        assert len(names) >= 1, f"{key} has no suggested names"
+        assert len(set(names)) == len(names), f"{key} has duplicate suggested names: {names}"
+        for n in names:
+            assert isinstance(n, str) and n.strip(), f"{key}: empty suggested name"
+            assert len(n) <= NAME_MAX_LENGTH, f"{key}: suggested name too long: {n!r}"
+        # `suggested_name` (the placeholder hint) is the first of the pool.
+        assert item.suggested_name == names[0], key
+
+
+def test_scene_shop_exposes_suggested_names(client):
+    """The scene's shop payload carries each item's suggested-name pool so the client can
+    offer the naming suggestion (placeholder + shuffle). Cosmetic — it never affects coins."""
+    _auth(client, "suggestnames@example.com")
+    for s in _scene(client)["shop"]:
+        names = s["suggested_names"]
+        assert isinstance(names, list) and names, s["item_key"]
+        assert all(isinstance(n, str) and n.strip() for n in names), s["item_key"]
+        # Matches the in-code catalog (the single source of truth).
+        assert names == list(SANCTUARY_CATALOG[s["item_key"]].suggested_names)
+
+
 def test_new_items_are_level_gated(client):
     """A fresh level-1 user sees the new (lvl ≥ 2) items locked with a reach-level hint and
     cannot buy them yet."""

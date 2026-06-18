@@ -140,6 +140,18 @@ class CatalogItem:
     # A short, calm flavour line surfaced quietly in the shop/plaque (ADR-0016). Cosmetic
     # only — never enters the spend computation. "" = no blurb.
     blurb: str = ""
+    # A small pool of charming, on-character example names for this item (ADR-0015) — a
+    # gnome name for the gnome, a fox name for the fox, a tree name for the tree. Surfaced
+    # purely as an optional *suggestion* when naming (an input placeholder + a "suggest a
+    # name" shuffle); the user always chooses, nothing is auto-assigned. Static per item
+    # type, exactly like `blurb` — no DB change. Cosmetic only: never enters the spend
+    # computation. () = no suggestions.
+    suggested_names: tuple[str, ...] = ()
+
+    @property
+    def suggested_name(self) -> str | None:
+        """The first suggested example name — the stable placeholder hint — or None."""
+        return self.suggested_names[0] if self.suggested_names else None
 
     @property
     def default_variant(self) -> str | None:
@@ -196,12 +208,19 @@ class _Build:
     cost: int
     unlock_level: int = 1
     _blurb: str = ""
+    _names: tuple[str, ...] = ()
     _variants: list[Variant] = field(default_factory=list)
     _slots: list[Slot] = field(default_factory=list)
 
     def blurb(self, text: str) -> "_Build":
         # A short, calm flavour line shown in the shop tooltip / on the plaque. Cosmetic.
         self._blurb = text
+        return self
+
+    def names(self, *names: str) -> "_Build":
+        # A pool of charming, on-character example names offered as a naming *suggestion*
+        # (placeholder + shuffle, ADR-0015). Cosmetic only; never affects price.
+        self._names = names
         return self
 
     def variants(self, *keys: str) -> "_Build":
@@ -235,6 +254,7 @@ class _Build:
             variants=tuple(self._variants),
             slots=tuple(self._slots),
             blurb=self._blurb,
+            suggested_names=self._names,
         )
 
 
@@ -290,6 +310,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "tree": (
         _Build("tree", "nature", 30)
         .blurb("A patient old soul. It was here before you, and it's in no hurry.")
+        .names("Old Oak", "Willowmere", "Evergreen", "Grandfather", "Mossbeard")
         .variants("oak", "pine", "cherry", "willow")
         .ladder(_growth_ladder(40))
         .slot("foliage", ("fruit", 30), ("blossom", 30), ("autumn", 30))
@@ -300,6 +321,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "flower": (
         _Build("flower", "nature", 20)
         .blurb("Small, bright, and quietly pleased with itself.")
+        .names("Petal", "Sunny", "Daisy", "Poppy", "Marigold")
         .variants("rose", "tulip", "sunflower", "daisy")
         .ladder(_growth_ladder(25))
         .slot("bloom", ("double", 18))
@@ -309,6 +331,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "mushroom_ring": (
         _Build("mushroom_ring", "nature", 28, unlock_level=2)
         .blurb("A fairy ring of toadstools. Don't step inside after dark — or do.")
+        .names("Fairy Ring", "Toadstool Circle", "The Wee Folk", "Pixie Glen")
         .variants("ruby", "amber", "violet")
         .ladder(_growth_ladder(36))
         .slot("glow", ("glow", 24))
@@ -318,6 +341,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "pond": (
         _Build("pond", "nature", 60, unlock_level=4)
         .blurb("Still water. Good for skipping stones and skipping worries.")
+        .names("Still Waters", "The Mirror", "Mossbank", "Reflection Pool")
         .ladder(_growth_ladder(80))
         .slot("lilies", ("lilies", 40))
         .slot("koi", ("koi", 50))
@@ -328,6 +352,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "hut": (
         _Build("hut", "structure", 45, unlock_level=2)
         .blurb("Cosy enough for one, with room for a kettle.")
+        .names("The Snug", "Little Hideaway", "Kettle Cottage", "The Burrow")
         .variants("straw", "wood")
         .ladder(_growth_ladder(60))
         .slot("chimney_smoke", ("smoke", 30))
@@ -338,6 +363,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "cottage": (
         _Build("cottage", "structure", 70, unlock_level=3)
         .blurb("Crooked windows, warm light, the smell of something baking.")
+        .names("Honeysuckle", "The Bakehouse", "Rosewood Cottage", "Hearthstone")
         .variants("cream", "stone")
         .ladder(_growth_ladder(90))
         .slot("chimney_smoke", ("smoke", 40))
@@ -348,6 +374,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "barn": (
         _Build("barn", "structure", 90, unlock_level=4)
         .blurb("Big doors, big yawns. The unofficial heart of the place.")
+        .names("The Old Barn", "Hayloft", "Big Red", "The Homestead")
         .variants("red", "gray")
         .ladder(_growth_ladder(120))
         .slot("chimney_smoke", ("smoke", 50))
@@ -358,6 +385,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "car": (
         _Build("car", "structure", 100, unlock_level=5)
         .blurb("Always packed for a trip you keep meaning to take.")
+        .names("Old Faithful", "The Getaway", "Bessie", "Sunday Driver")
         .variants("red", "blue", "yellow")
         .ladder(_growth_ladder(130))
         .slot("lights", ("lights", 45))
@@ -366,6 +394,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "beach_house": (
         _Build("beach_house", "structure", 110, unlock_level=6)
         .blurb("Salt air and a porch made for doing absolutely nothing.")
+        .names("Saltwind", "The Sandcastle", "Tidepool", "Seabreeze")
         .variants("white", "teal")
         .ladder(_growth_ladder(150))
         .slot("garden", ("garden", 60))
@@ -375,6 +404,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "boat": (
         _Build("boat", "structure", 130, unlock_level=8)
         .blurb("A little vessel for a slow drift. Bring snacks.")
+        .names("The Driftwood", "Little Dipper", "Seafarer", "Slow Current")
         .variants("wood", "white")
         .ladder(_growth_ladder(170))
         .slot("lights", ("lights", 60))
@@ -384,6 +414,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "goldfish": (
         _Build("goldfish", "companion", 20)
         .blurb("Three-second memory, infinite serenity. We could learn a lot.")
+        .names("Bubbles", "Goldie", "Finn", "Splash", "Marigold")
         .variants("orange", "white", "black")
         .ladder(_growth_ladder(30))
         .build()
@@ -391,6 +422,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "bird": (
         _Build("bird", "companion", 25, unlock_level=2)
         .blurb("Sings first thing, asks for nothing. A fine alarm clock.")
+        .names("Pip", "Chirp", "Sunny", "Bluebell", "Wren")
         .variants("bluebird", "robin", "canary")
         .ladder(_growth_ladder(35))
         .slot("accessory", ("hat", 25))
@@ -401,6 +433,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "cat": (
         _Build("cat", "companion", 40, unlock_level=3)
         .blurb("Will sit with you. On its terms. Probably on your keyboard.")
+        .names("Mochi", "Whiskers", "Marmalade", "Shadow", "Clementine")
         .variants("gray", "ginger", "black", "white")
         .ladder(_growth_ladder(50))
         .slot("accessory", ("collar", 25), ("bandana", 25), ("hat", 30))
@@ -415,6 +448,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "snake": (
         _Build("snake", "companion", 45, unlock_level=4)
         .blurb("A long, slow noodle. Surprisingly good company.")
+        .names("Noodle", "Sir Hiss", "Ziggy", "Slinky", "Basil")
         .variants("green", "amber", "blue")
         .ladder(_growth_ladder(60))
         .slot("accessory", ("hat", 30))
@@ -424,6 +458,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "fox": (
         _Build("fox", "companion", 50, unlock_level=5)
         .blurb("Clever, quiet, and up to something. You'll never know what.")
+        .names("Ember", "Rusty", "Vixen", "Juniper", "Sly")
         .variants("red", "arctic")
         .ladder(_growth_ladder(70))
         .slot("accessory", ("collar", 30), ("bandana", 30))
@@ -435,6 +470,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "hedgehog": (
         _Build("hedgehog", "companion", 38, unlock_level=3)
         .blurb("Pointy on the outside, soft about everything on the inside.")
+        .names("Bramble", "Quill", "Pokey", "Thistle", "Hazel")
         .variants("brown", "cream", "salt")
         .ladder(_growth_ladder(48))
         .slot("accessory", ("scarf", 26), ("leaf", 22))
@@ -444,6 +480,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "snail": (
         _Build("snail", "companion", 22, unlock_level=2)
         .blurb("The garden's slowest philosopher. Carries home everywhere.")
+        .names("Gary", "Turbo", "Shelly", "Pokey", "Sluggo")
         .variants("amber", "minty", "rosy")
         .ladder(_growth_ladder(28))
         .slot("accessory", ("hat", 24))
@@ -452,6 +489,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "dog": (
         _Build("dog", "companion", 70, unlock_level=6)
         .blurb("Thinks today is the best day ever. Every single day.")
+        .names("Biscuit", "Cooper", "Maple", "Scout", "Pepper")
         .variants("corgi", "husky", "shiba", "dalmatian")
         .ladder(_growth_ladder(90))
         .slot("accessory", ("collar", 30), ("bandana", 35), ("hat", 40))
@@ -466,6 +504,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "garden_gnome": (
         _Build("garden_gnome", "whimsy", 26, unlock_level=2)
         .blurb("Stands guard with great seriousness over a patch of nothing in particular.")
+        .names("Bramblewick", "Thistlebeard", "Mossback", "Pip", "Tomte")
         .variants("classic", "mossy", "sleepy")
         .ladder(_growth_ladder(32))
         .slot("lantern", ("lantern", 24))
@@ -475,6 +514,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "wind_chime": (
         _Build("wind_chime", "whimsy", 30, unlock_level=3)
         .blurb("Hung from a branch, it turns the breeze into something you can hear.")
+        .names("Whisper", "Breeze Song", "Tinkle", "Zephyr")
         .variants("brass", "bamboo", "seaglass")
         .ladder(_growth_ladder(38))
         .slot("ribbon", ("ribbon", 22))
@@ -484,6 +524,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "lantern": (
         _Build("lantern", "whimsy", 34, unlock_level=3)
         .blurb("A small, steady glow for the evenings. It waits up for you.")
+        .names("Ember", "Nightlight", "Beacon", "Glimmer")
         .variants("paper", "iron", "stone")
         .ladder(_growth_ladder(42))
         .slot("flame", ("warm", 24), ("blue", 28))
@@ -493,6 +534,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "frog_lily": (
         _Build("frog_lily", "whimsy", 36, unlock_level=4)
         .blurb("A contented frog on a lily pad. The world's least urgent creature.")
+        .names("Sir Hops", "Lily", "Croaky", "Bartholomew", "Pip")
         .variants("green", "golden", "blue")
         .ladder(_growth_ladder(46))
         .slot("crown", ("crown", 30))
@@ -502,6 +544,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "scarecrow": (
         _Build("scarecrow", "whimsy", 48, unlock_level=5)
         .blurb("Scares precisely no one. The crows bring it gifts.")
+        .names("Old Patch", "Stitches", "Hayworth", "Scraps")
         .variants("straw", "patchwork", "pumpkin")
         .ladder(_growth_ladder(60))
         .slot("crow", ("crow", 28))
@@ -511,6 +554,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "fairy_door": (
         _Build("fairy_door", "whimsy", 54, unlock_level=6)
         .blurb("Set into the base of a tree. Knock gently; you might be expected.")
+        .names("The Wee Door", "Thistledown", "Hollow Gate", "Pixie's Rest")
         .variants("acorn", "toadstool", "rosewood")
         .ladder(_growth_ladder(66))
         .slot("glow", ("glow", 28))
@@ -520,6 +564,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "hammock": (
         _Build("hammock", "whimsy", 64, unlock_level=7)
         .blurb("Strung between two posts for the fine art of doing nothing, beautifully.")
+        .names("The Lazy Sway", "Siesta", "Sunday Swing", "Daydream")
         .variants("striped", "canvas", "rainbow")
         .ladder(_growth_ladder(80))
         .slot("occupant", ("cat", 30), ("napper", 34))
@@ -529,6 +574,7 @@ SANCTUARY_CATALOG: dict[str, CatalogItem] = {
     "tea_cart": (
         _Build("tea_cart", "whimsy", 120, unlock_level=12)
         .blurb("A wandering little cart of tea and tiny cakes. The garden's quiet luxury.")
+        .names("The Teapot", "Sweet Trolley", "Earl's Cart", "Biscuit Wagon")
         .variants("rose", "mint", "midnight")
         .ladder(_growth_ladder(150))
         .slot("lights", ("lights", 48))
@@ -742,6 +788,9 @@ def _build_scene(
                 for v in item.variants
             ],
             blurb=item.blurb,
+            # The item's pool of charming example names, surfaced as an optional naming
+            # suggestion in the buy UI (placeholder + shuffle, ADR-0015). Cosmetic only.
+            suggested_names=list(item.suggested_names),
         )
         for item in SANCTUARY_CATALOG.values()
     ]

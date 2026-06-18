@@ -139,6 +139,7 @@ initial layout.
 | `variants` | selectable base forms (each with an optional `cost_delta` + `unlock_level`) |
 | `slots` | customization slots → `{option: cost}` (+ optional per-option `unlock_level`) |
 | `blurb` | a short, calm flavour line shown in the shop tooltip / plaque (cosmetic; ADR-0016) |
+| `suggested_names` | a small pool of on-character example names offered as a naming suggestion — placeholder + 🎲 shuffle (cosmetic; ADR-0015) |
 
 The shipped catalog (buy cost / variants / customization slots). The **whimsy** track and a
 couple of nature/companion additions were added in [ADR-0016](../decisions/0016-sanctuary-shop-expansion-and-retune.md):
@@ -275,7 +276,12 @@ returns the updated scene.
 - **Name at purchase:** the buy modal (multi-variant items) carries an optional name field;
   single-variant items keep their one-tap Buy with a quiet, optional "name it…" affordance, so
   naming is always available but never a nag. A named item shows its plaque first (the item /
-  variant becomes a quiet subtitle) and a small star when favourited.
+  variant becomes a quiet subtitle) and a small star when favourited. The name field starts
+  blank but offers each item's own **suggested example name** — an on-character placeholder
+  ("e.g. Bramblewick" for the gnome) plus a 🎲 "suggest a name" shuffle that fills a random
+  one from the item's pool ([ADR-0015](../decisions/0015-sanctuary-personalization-touches.md)).
+  It's a suggestion, never a default — nothing is auto-assigned. The same hint + shuffle
+  appears when renaming an owned item in the personalize panel.
 - **Arrange:** the garden renders on a row-major **grid** (`GRID_COLUMNS = 4`, mirroring
   the backend) ordered by `cell`, so each user lays their garden out where they want it
   ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)). Desktop supports **drag-to-move**
