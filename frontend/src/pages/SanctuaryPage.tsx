@@ -174,11 +174,10 @@ export default function SanctuaryPage() {
   const [error, setError] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
-  // The shop item whose buy modal is open (null = none). The modal lets the user pick a
-  // variant (multi-variant items) and/or type an optional name before buying.
+  // The shop item whose buy modal is open (null = none). For multi-variant items the modal
+  // lets the user pick a variant; for single-variant items it's a simple buy confirmation.
+  // Naming is no longer offered at purchase — it's an owned-item action (ADR-0015).
   const [picking, setPicking] = useState<ShopItem | null>(null)
-  // The optional name typed in the open buy modal (carried into the purchase).
-  const [buyName, setBuyName] = useState('')
   // The owned item whose customization panel is open.
   const [editing, setEditing] = useState<string | null>(null)
   // The unbought option the user is currently hovering/keyboard-focusing in the open panel, so
@@ -229,13 +228,11 @@ export default function SanctuaryPage() {
     // Snapshot before the buy so we can compute what was spent and spot the new item.
     const before = scene
     const beforeIds = new Set(before?.owned.map((o) => o.id) ?? [])
-    // An optional name the user typed in the buy modal (trimmed; blank → no name).
-    const chosenName = buyName.trim() || null
     try {
-      const next = await sanctuaryService.buy(key, variant, chosenName)
+      // Items are bought unnamed; naming happens once owned (ADR-0015), so no name is sent.
+      const next = await sanctuaryService.buy(key, variant, null)
       setScene(next)
       setPicking(null)
-      setBuyName('')
 
       // The newly added item is the one whose id wasn't owned before (fall back to the
       // highest position if ids can't be diffed — e.g. a missing prior scene).
@@ -250,13 +247,11 @@ export default function SanctuaryPage() {
       // Gentle audio cue (honours the user's sound setting via the shared sfx module).
       playReward()
 
-      // Rich feedback: what it's called, what it cost, what's left. Prefer the user's own
-      // name when they gave one ("“Grandpa's Oak” added · …"); else the variant label.
-      const name = chosenName
-        ? `“${chosenName}”`
-        : variant
-          ? `${variantLabel(variant)} ${itemLabel(key).toLowerCase()}`
-          : itemLabel(key)
+      // Rich feedback: what it is, what it cost, what's left. Items are bought unnamed
+      // (naming is an owned-item action, ADR-0015), so the variant/item label leads.
+      const name = variant
+        ? `${variantLabel(variant)} ${itemLabel(key).toLowerCase()}`
+        : itemLabel(key)
       const spent = before ? before.coins - next.coins : null
       const detail =
         spent != null ? ` · ${spent} 🪙 spent, ${next.coins} left` : ` · ${next.coins} 🪙 left`
@@ -387,7 +382,11 @@ export default function SanctuaryPage() {
             </span>
           </div>
 
-          <h2 className="sanctuary-section-title">Your garden</h2>
+          <section className="sanctuary-section sanctuary-garden-section">
+            <header className="sanctuary-section-head">
+              <h2 className="sanctuary-section-title">Your garden</h2>
+              <p className="muted sanctuary-section-subtitle">What you’ve grown</p>
+            </header>
           {scene.owned.length === 0 ? (
             <EmptyState>
               A quiet, empty patch — for now. Pick your first little friend from the shop
@@ -642,8 +641,17 @@ export default function SanctuaryPage() {
               )
             })()
           )}
+          </section>
 
-          <h2 className="sanctuary-section-title">Shop</h2>
+          {/* A calm divider band so the garden (above) and the shop (below) read as two
+              distinct spaces rather than one long stack. */}
+          <div className="sanctuary-section-divider" role="presentation" />
+
+          <section className="sanctuary-section sanctuary-shop-section">
+            <header className="sanctuary-section-head">
+              <h2 className="sanctuary-section-title">Shop</h2>
+              <p className="muted sanctuary-section-subtitle">Spend coins to add more</p>
+            </header>
           {/* Group shop items by track, preserving within-track order from the catalog. */}
           {(() => {
             // Collect tracks in the order they first appear (catalog order → stable groups).
@@ -687,37 +695,21 @@ export default function SanctuaryPage() {
                                 type="button"
                                 className="sanctuary-buy"
                                 disabled={busy != null || !affordable}
-                                onClick={() => {
-                                  setBuyName('')
-                                  setPicking(s)
-                                }}
+                                onClick={() => setPicking(s)}
                               >
                                 Choose · 🪙 {s.cost}
                               </button>
                             ) : (
-                              <div className="sanctuary-buy-row">
-                                <button
-                                  type="button"
-                                  className="sanctuary-buy"
-                                  disabled={busy != null || !affordable}
-                                  onClick={() => buy(s.item_key, null)}
-                                >
-                                  {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
-                                </button>
-                                {/* Quiet, optional: name it at purchase. The one-tap Buy stays the
-                                    default so naming never nags. */}
-                                <button
-                                  type="button"
-                                  className="sanctuary-name-it"
-                                  disabled={busy != null || !affordable}
-                                  onClick={() => {
-                                    setBuyName('')
-                                    setPicking(s)
-                                  }}
-                                >
-                                  name it…
-                                </button>
-                              </div>
+                              // One-tap buy. Naming happens once owned, in the item's
+                              // personalize panel (ADR-0015), so the shop stays uncluttered.
+                              <button
+                                type="button"
+                                className="sanctuary-buy"
+                                disabled={busy != null || !affordable}
+                                onClick={() => buy(s.item_key, null)}
+                              >
+                                {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
+                              </button>
                             )
                           ) : (
                             <span className="muted sanctuary-locked-hint">🔒 {s.hint}</span>
@@ -730,23 +722,16 @@ export default function SanctuaryPage() {
               )
             })
           })()}
+          </section>
         </>
       )}
 
       {picking && scene && (() => {
-        // The modal serves both buy paths: multi-variant items show the variant grid (a
-        // pick buys immediately, carrying the typed name); single-variant items opened via
-        // "name it…" show just the name field + a Buy button. Naming is always optional.
+        // The modal serves both buy paths: multi-variant items show the variant grid (a pick
+        // buys immediately); single-variant items show a simple buy confirmation. Naming is
+        // not offered here — it's an owned-item action (the personalize panel), per ADR-0015.
         const hasVariants = picking.variants.length > 1
-        const closeModal = () => {
-          setPicking(null)
-          setBuyName('')
-        }
-        // The item's pool of charming example names (ADR-0015). The first is a quiet
-        // placeholder hint; the 🎲 button shuffles a random one into the field. Always an
-        // optional suggestion — nothing is auto-assigned, and the field starts blank.
-        const suggestions = picking.suggested_names
-        const placeholder = suggestions[0] ? `e.g. ${suggestions[0]}` : "e.g. Grandpa's Oak"
+        const closeModal = () => setPicking(null)
         return (
           <Modal
             ariaLabel={`Buy a ${itemLabel(picking.item_key)}`}
@@ -755,40 +740,10 @@ export default function SanctuaryPage() {
             closeOnBackdrop
           >
               <h3>
-                {hasVariants ? 'Choose a' : 'Name your'}{' '}
+                {hasVariants ? 'Choose a' : 'Add a'}{' '}
                 {itemLabel(picking.item_key).toLowerCase()}
+                {hasVariants ? '' : '?'}
               </h3>
-              {/* Optional name (a quiet personal touch). Empty = unnamed. The placeholder
-                  hints an on-character example, and 🎲 shuffles one in to try on. */}
-              <label className="sanctuary-field sanctuary-modal-name">
-                <span>Name (optional)</span>
-                <div className="sanctuary-name-input-row">
-                  <input
-                    type="text"
-                    value={buyName}
-                    maxLength={NAME_MAX}
-                    placeholder={placeholder}
-                    disabled={busy != null}
-                    autoFocus={!hasVariants}
-                    onChange={(e) => setBuyName(e.target.value)}
-                  />
-                  {suggestions.length > 0 && (
-                    <button
-                      type="button"
-                      className="sanctuary-suggest-name"
-                      disabled={busy != null}
-                      title="Suggest a name"
-                      aria-label="Suggest a name"
-                      onClick={() => {
-                        const next = pickSuggestedName(suggestions, buyName.trim())
-                        if (next) setBuyName(next)
-                      }}
-                    >
-                      🎲
-                    </button>
-                  )}
-                </div>
-              </label>
               {hasVariants ? (
                 <div className="sanctuary-variant-grid">
                   {picking.variants.map((v) => {

@@ -1990,16 +1990,13 @@ textarea:focus-visible,
 }
 
 /* Dark mode: dark art details (faces, hats, roofs) lose their edge against the dark card.
-   The SVG is transparent, so (1) a soft light radial shows through as a gentle "ground"
-   behind the plant, and (2) a thin light rim via drop-shadow outlines every drawn shape —
-   together they restore definition without turning each plant into a light tile. Pure CSS,
-   no per-shape art changes. */
+   The SVG is transparent, so a thin light rim via drop-shadow outlines every drawn shape,
+   restoring definition without any glowing backdrop behind the plant. Pure CSS, no
+   per-shape art changes. */
 :root[data-theme='dark'] .sanctuary-svg,
 :root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-svg {
-  background: radial-gradient(circle at 50% 54%, rgba(236, 240, 248, 0.16), transparent 70%);
-  border-radius: 10px;
-  filter: drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.55))
-    drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.5))
+    drop-shadow(0 0 0.4px rgba(255, 255, 255, 0.35));
 }
 
 .sanctuary-grown-row {
@@ -2072,10 +2069,37 @@ textarea:focus-visible,
   font-size: 1.5rem;
 }
 
+/* Garden and shop each sit in their own calm card so the two spaces read as distinct
+   rather than one long stack. Generous padding gives each room to breathe. */
+.sanctuary-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem 1.1rem;
+}
+
+.sanctuary-section-head {
+  margin-bottom: 1rem;
+}
+
 .sanctuary-section-title {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin: 0 0 0.6rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sanctuary-section-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+}
+
+/* A quiet band of breathing room between the garden card and the shop card. The centred
+   rule keeps the boundary obvious without a heavy divider. */
+.sanctuary-section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1.75rem 2.5rem;
 }
 
 .sanctuary-grid {
@@ -2099,9 +2123,15 @@ textarea:focus-visible,
   font-size: 0.8rem;
 }
 
+/* Garden cells — empty and filled alike — share one footprint so the grid reads as a tidy,
+   uniform grid (no jump in height between a dashed empty slot and a filled item card). The
+   shop uses .sanctuary-card without .sanctuary-cell, so it keeps its content-sized cards. */
+.sanctuary-cell {
+  min-height: 9rem;
+}
+
 /* Empty drop targets keep a stable cell footprint so the grid never collapses. */
 .sanctuary-cell.empty {
-  min-height: 6rem;
   border: 1px dashed var(--border-strong);
   border-radius: 12px;
   background: transparent;
@@ -2155,6 +2185,12 @@ textarea:focus-visible,
 
 .sanctuary-card.locked {
   opacity: 0.7;
+}
+
+/* Filled garden cards centre their content within the shared cell footprint so they line
+   up with the empty cells around them (the customize panel, when open, grows the cell). */
+.sanctuary-cell.sanctuary-card {
+  justify-content: center;
 }
 
 /* A just-bought item gently pops in where it lands, with a brief soft glow on the
@@ -2640,34 +2676,6 @@ textarea:focus-visible,
 .sanctuary-fav-toggle:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-/* Buy row: the one-tap Buy plus a quiet, optional "name it…" affordance. */
-.sanctuary-buy-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem 0.5rem;
-}
-
-.sanctuary-name-it {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.sanctuary-name-it:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sanctuary-modal-name {
-  margin-bottom: 0.9rem;
 }
 
 .sanctuary-modal-buy {

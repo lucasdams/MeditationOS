@@ -18,8 +18,9 @@ default-off, and must not clutter a user who ignores it.
 
 Add three **purely cosmetic** fields to a holding, all optional and default-off:
 
-- **`name`** — a user-chosen plaque/nickname shown under the item (≤ 40 chars). Settable at
-  purchase (the primary ask) and editable anytime. `NULL` = unnamed.
+- **`name`** — a user-chosen plaque/nickname shown under the item (≤ 40 chars). Set once the
+  item is owned, from its personalize panel, and editable anytime. `NULL` = unnamed. (Naming
+  *at purchase* was the original design — superseded; see the 2026-06-18 amendment below.)
 - **`note`** — a short free-text caption/memory (≤ 140 chars). `NULL` = none.
 - **`favorite`** — a boolean pin flag, surfaced subtly (a small star). Default `false`.
 
@@ -38,6 +39,8 @@ colours, no descriptions — and all three ride one additive migration and one e
 - **Name at purchase.** `POST /sanctuary/buy` accepts an optional `name`. The frontend offers
   it in the buy modal (multi-variant items) and via a quiet, optional "name it…" affordance
   on single-variant items — the one-tap Buy stays the default so naming never nags.
+  *(Superseded 2026-06-18 — naming moved out of the buy flow; see the amendment below. The
+  `name` parameter on `POST /sanctuary/buy` is retained as a no-op for compatibility.)*
 - **A `PATCH /sanctuary/items/{id}` endpoint.** Body `{ name?, note?, favorite? }`, a
   **partial update** (only the fields *present* change, via Pydantic's `model_fields_set`),
   user-scoped and default-deny (404 for another user's item). It returns the updated scene
@@ -64,13 +67,31 @@ whimsical names for the curios (the tea cart, the wind chime).
   item's first suggested name is shown only as the input **placeholder** ("e.g. Bramblewick"),
   and a quiet **"suggest a name" 🎲** button fills a random name from the pool so the user can
   shuffle until one fits. Nothing is auto-assigned — the chosen name still saves through the
-  unchanged buy / `PATCH` flow, so storage and validation are untouched.
+  `PATCH` flow, so storage and validation are untouched. *(As of 2026-06-18 the placeholder +
+  🎲 live only in the owned-item rename panel; see the amendment below.)*
 - **Exposed to the client on the existing scene payload.** `ShopItem` (the shop entry the
   buy UI already reads) gains `suggested_names: list[str]`, the same path `blurb` travels. The
-  rename panel for an owned item looks the pool up from that shop entry by `item_key`, so both
-  the buy modal and the rename field offer the placeholder + 🎲 shuffle.
+  rename panel for an owned item looks the pool up from that shop entry by `item_key` to offer
+  the placeholder + 🎲 shuffle.
 - Names are short (≤ the 40-char cap), warm, and family-friendly; a catalog-integrity test
   asserts every item has at least one non-empty suggestion.
+
+### Name once owned, not at purchase (amendment, 2026-06-18)
+
+The original design let a user name an item **in the buy modal, before owning it** — naming
+something they hadn't yet bought. On review this read as off (you name a thing once it's
+*yours*) and added a name field to the purchase flow, working against the calm-UX goal of an
+uncluttered shop. **Naming is now an owned-item action only.**
+
+- The buy modal no longer has a name field. For multi-variant items it's a variant picker
+  ("Choose a …"); for single-variant items it's a simple buy confirmation ("Add a …?" → Buy /
+  Cancel). The shop's per-item "name it…" affordance is removed; single-variant items are a
+  one-tap Buy.
+- Naming, the note, the favourite flag, and the suggested-name placeholder + 🎲 shuffle all
+  continue to live in the **owned item's personalize panel** (`SanctuaryNameNote`), unchanged.
+- **No API or schema change.** `POST /sanctuary/buy` still accepts the optional `name` (now
+  always sent `null` from the client) and `PATCH /sanctuary/items/{id}` remains the way names
+  are set — so the change is frontend-only and fully reversible.
 
 ## Consequences
 

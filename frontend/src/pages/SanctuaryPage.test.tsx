@@ -158,50 +158,49 @@ describe('SanctuaryPage naming (ADR-0015)', () => {
     playReward.mockReset()
   })
 
-  it('names an item at purchase via the "name it…" modal', async () => {
-    const named = sceneWith(40, [{ ...ownedItem('new-1', 0), name: "Grandpa's Oak" }])
+  it('buys an unnamed item — the buy flow sends no name (naming is owned-only)', async () => {
     getScene.mockResolvedValue(before)
-    buy.mockResolvedValue(named)
+    buy.mockResolvedValue(after)
 
     renderPage()
 
-    // Open the optional name modal for a single-variant item.
-    fireEvent.click(await screen.findByRole('button', { name: /name it/ }))
-    const dialog = within(await screen.findByRole('dialog'))
-    const input = dialog.getByPlaceholderText(/Grandpa's Oak/)
-    fireEvent.change(input, { target: { value: "Grandpa's Oak" } })
-    fireEvent.click(dialog.getByRole('button', { name: /Buy · 🪙 30/ }))
-
-    // The typed name is plumbed through; the toast quotes the user's name.
-    await waitFor(() => expect(buy).toHaveBeenCalledWith('tree', null, "Grandpa's Oak"))
-    await waitFor(() =>
-      expect(screen.getByText(/“Grandpa's Oak” added/)).toBeInTheDocument(),
-    )
+    // Single-variant items buy in one tap; no name is sent (null name).
+    fireEvent.click(await screen.findByRole('button', { name: /Buy · 🪙 30/ }))
+    await waitFor(() => expect(buy).toHaveBeenCalledWith('tree', null, null))
   })
 
-  it('hints an example name as placeholder and shuffles one in with 🎲', async () => {
-    // A tree with a suggested-name pool; the buy modal should hint the first as a
-    // placeholder and fill a name from the pool when the 🎲 button is clicked.
-    const sceneWithNames: SanctuaryScene = {
+  it('offers no name input in the shop or buy flow (naming is an owned-item action)', async () => {
+    // A multi-variant tree so the buy modal opens (the "Choose" path); the modal is a
+    // variant picker / confirmation only — no "name it…" affordance, no name field.
+    const variantScene: SanctuaryScene = {
       ...before,
-      shop: [{ ...treeShop, suggested_names: ['Bramblewick'] }],
+      shop: [
+        {
+          ...treeShop,
+          suggested_names: ['Bramblewick'],
+          variants: [
+            { variant: 'oak', cost_delta: 0, unlocked: true, unlock_hint: null },
+            { variant: 'pine', cost_delta: 0, unlocked: true, unlock_hint: null },
+          ],
+        },
+      ],
     }
-    getScene.mockResolvedValue(sceneWithNames)
+    getScene.mockResolvedValue(variantScene)
 
     renderPage()
-    fireEvent.click(await screen.findByRole('button', { name: /name it/ }))
+
+    // The shop offers no "name it…" affordance any more.
+    await screen.findByRole('button', { name: /Choose · 🪙 30/ })
+    expect(screen.queryByRole('button', { name: /name it/ })).toBeNull()
+
+    // Opening the buy modal shows the variant picker but no name input.
+    fireEvent.click(screen.getByRole('button', { name: /Choose · 🪙 30/ }))
     const dialog = within(await screen.findByRole('dialog'))
-
-    // The placeholder hints the item's example name.
-    const input = dialog.getByPlaceholderText(/e\.g\. Bramblewick/) as HTMLInputElement
-    expect(input.value).toBe('') // never auto-assigned — starts blank
-
-    // 🎲 fills a name from the pool (here, the single suggestion).
-    fireEvent.click(dialog.getByRole('button', { name: /Suggest a name/ }))
-    expect(input.value).toBe('Bramblewick')
+    expect(dialog.queryByRole('textbox')).toBeNull()
+    expect(dialog.queryByLabelText(/Name/i)).toBeNull()
   })
 
-  it('renames an owned item from the personalize panel', async () => {
+  it('renames an owned item from the personalize panel (naming still works once owned)', async () => {
     const start = sceneWith(40, [ownedItem('a', 0)])
     const renamed = sceneWith(40, [{ ...ownedItem('a', 0), name: 'Willow' }])
     getScene.mockResolvedValue(start)
