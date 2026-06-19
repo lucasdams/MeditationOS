@@ -152,7 +152,7 @@ export default function TratakaPage() {
     if (!payload) return
     writeDraft(DRAFT_PAGE, {
       clientToken: payload.client_token as string,
-      label: 'Trataka',
+      label: 'Candle gazing',
       elapsedSeconds: Math.floor(elapsedSec),
       payload,
       savedAt: Date.now(),
@@ -262,7 +262,7 @@ export default function TratakaPage() {
     clearDraft(DRAFT_PAGE)
 
     const after = await dashboardService.getStats().catch(() => ZERO_STATS)
-    const bd = buildXpBreakdown(before, after, '🕯️ Trataka')
+    const bd = buildXpBreakdown(before, after, '🕯️ Candle gazing')
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
@@ -342,7 +342,7 @@ export default function TratakaPage() {
     >
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
-        <h1>Trataka</h1>
+        <h1>Candle gazing</h1>
       </header>
 
       {restorable && !started && (
@@ -439,9 +439,10 @@ export default function TratakaPage() {
 
       {/* ── About: what Trataka is and why people practise it ──────────────────── */}
       <section className="trataka-about" aria-labelledby="trataka-about-h">
-        <h2 id="trataka-about-h">About Trataka</h2>
+        <h2 id="trataka-about-h">About candle gazing</h2>
         <p>
-          Trataka is a traditional yogic concentration practice (a form of <em>dharana</em>):
+          Candle gazing — traditionally called <em>Trataka</em> — is a yogic concentration
+          practice (a form of <em>dharana</em>):
           you simply rest your open gaze on a single point — classically a candle flame — and
           let your attention settle there. Unlike a breathing or eyes-closed sit, the screen
           itself is the practice. When the mind wanders, you gently bring it back to the flame.
@@ -462,7 +463,7 @@ export default function TratakaPage() {
         </p>
         <p>
           Some people who experience attention difficulties find single-point focus practices
-          grounding. That said, Trataka is <strong>not a treatment for ADHD or any condition</strong>,
+          grounding. That said, candle gazing is <strong>not a treatment for ADHD or any condition</strong>,
           and it is no substitute for professional care — if you have medical concerns, please
           speak with a qualified professional.
         </p>
