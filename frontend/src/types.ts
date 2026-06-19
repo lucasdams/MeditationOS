@@ -252,6 +252,18 @@ export interface AvailableSlot {
   options: SlotOption[]
 }
 
+// The "Tended" growth-from-practice status of an item whose stage is driven by practice, not
+// coins (see docs/design/sanctuary-upgrades-tended.md). Present only on Tended items (the oak,
+// in the MVP); null otherwise. The displayed stage is already merged into customizations.grown,
+// so this is purely for the path ribbon + "Tended by N days" meter.
+export interface TendingStatus {
+  tending: number // the user's monotonic Tending score `T`
+  practice_days: number // distinct practice days behind `T` (for the meter copy)
+  stage: string | null // currently-displayed growth stage key (null = un-grown base)
+  next_stage: string | null // the next growth stage key (null at the top of the ladder)
+  next_threshold: number | null // Tending score that unlocks the next stage (null at the top)
+}
+
 // An item the user owns, with its chosen variant and purchased customizations.
 export interface OwnedItem {
   id: string
@@ -266,6 +278,8 @@ export interface OwnedItem {
   name: string | null // user-chosen plaque/nickname (null = unnamed)
   note: string | null // short free-text caption/memory (null = none)
   favorite: boolean // pinned/favourited (subtle star)
+  // "Tended" growth-from-practice status (oak-only MVP). null for items not in Tending.
+  tending: TendingStatus | null
 }
 
 // A base form selectable at purchase time.

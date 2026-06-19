@@ -51,6 +51,19 @@ class AvailableSlot(BaseModel):
     options: list[SlotOption]
 
 
+class TendingStatus(BaseModel):
+    """The "Tended" growth state of an item whose stage is driven by practice, not coins
+    (see docs/design/sanctuary-upgrades-tended.md). Present only on items that participate in
+    Tending (the oak, in the MVP); None otherwise. Purely informational — the displayed stage
+    is already merged into `customizations.grown`, so the renderer needs no special-casing."""
+
+    tending: int  # the user's monotonic Tending score `T`
+    practice_days: int  # distinct practice days behind `T` (for the "Tended by N days" meter)
+    stage: str | None  # the currently-displayed growth stage key (None = un-grown base)
+    next_stage: str | None  # the next growth stage key, if any (None at the top of the ladder)
+    next_threshold: int | None  # Tending score that unlocks the next stage (None at the top)
+
+
 class OwnedItem(BaseModel):
     id: str  # the planting row id (for customize / move requests)
     item_key: str
@@ -64,6 +77,8 @@ class OwnedItem(BaseModel):
     name: str | None  # user-chosen plaque/nickname (None = unnamed)
     note: str | None  # short free-text caption/memory (None = none)
     favorite: bool  # pinned/favourited (subtle star); default False
+    # "Tended" growth-from-practice status (oak-only MVP). None for items not in Tending.
+    tending: TendingStatus | None = None
 
 
 class VariantOption(BaseModel):

@@ -63,6 +63,7 @@ const after = sceneWith(40, [
     name: null,
     note: null,
     favorite: false,
+    tending: null,
   },
 ])
 
@@ -79,6 +80,7 @@ function ownedItem(id: string, cell: number): SanctuaryScene['owned'][number] {
     name: null,
     note: null,
     favorite: false,
+    tending: null,
   }
 }
 
@@ -525,5 +527,46 @@ describe('SanctuaryPage move (grid layout)', () => {
     fireEvent.click(spot)
 
     await waitFor(() => expect(screen.getByText(/Could not move that item/)).toBeInTheDocument())
+  })
+})
+
+describe('SanctuaryPage "Tended" path (oak grows from practice)', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+  })
+
+  it('shows the Tending path ribbon + day meter in the oak panel', async () => {
+    const tended = {
+      ...ownedItem('a', 0),
+      customizations: { grown: 'flourishing' },
+      tending: {
+        tending: 45,
+        practice_days: 9,
+        stage: 'flourishing',
+        next_stage: 'mature',
+        next_threshold: 110,
+      },
+    }
+    getScene.mockResolvedValue(sceneWith(40, [tended]))
+
+    const { container } = renderPage()
+    const view = within(container)
+    // The displayed grown stage counts as one customization, so the toggle reads "(1)".
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize \(1\)$/ }))
+
+    // The "Tended by N days" meter and the next-stage tending hint surface, quietly.
+    expect(view.getByText(/9 days of practice/)).toBeInTheDocument()
+    expect(view.getByText(/your tending reaches 110 \(now 45\)/i)).toBeInTheDocument()
+  })
+
+  it('omits the Tending path for a non-Tended item', async () => {
+    const plain = { ...ownedItem('a', 0), tending: null }
+    getScene.mockResolvedValue(sceneWith(40, [plain]))
+
+    const { container } = renderPage()
+    const view = within(container)
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize$/ }))
+
+    expect(view.queryByText(/of practice/)).not.toBeInTheDocument()
   })
 })

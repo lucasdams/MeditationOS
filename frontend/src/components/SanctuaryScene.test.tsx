@@ -23,6 +23,7 @@ function ownedItem(over: Partial<OwnedItem> = {}): OwnedItem {
     name: null,
     note: null,
     favorite: false,
+    tending: null,
     ...over,
   }
 }

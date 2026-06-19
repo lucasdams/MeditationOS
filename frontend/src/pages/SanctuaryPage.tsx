@@ -16,7 +16,7 @@ import {
   gardenGreeting,
 } from '../lib/sanctuaryArt'
 import { playReward } from '../lib/sfx'
-import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
+import type { OwnedItem, SanctuaryScene as Scene, ShopItem, TendingStatus } from '../types'
 
 // Grid layout width (must mirror the backend's GRID_COLUMNS). The garden lays items out
 // row-major: cell = row * GRID_COLUMNS + col. One tunable constant maps cell ↔ (row, col).
@@ -48,6 +48,55 @@ const RESET_FEE = 10
 // exactly as it is now. Kept generic over the slot/option system so any future upgrade slot
 // previews automatically, with no per-slot special-casing.
 type PreviewTarget = { slot: string; option: string } | null
+
+// The ordered growth ladder (mirrors the backend GROWTH_STAGES) — the path a Tended item
+// climbs from practice. The oak (the "Tended" MVP) walks this for free as Tending rises.
+const TENDING_PATH = ['grown', 'flourishing', 'mature', 'ancient', 'venerable'] as const
+
+// The "Tended" panel for an item whose growth is driven by practice, not coins (the oak, in
+// the MVP). A quiet path ribbon (the growth ladder with the current stage lit and the next one
+// shown as a goal, reusing the preview-locked look) plus a calm "Tended by N days of practice"
+// meter that fills toward the next stage's Tending threshold. Read-only — it never buys; the
+// stage advances on its own as the user practices. ADR / docs/design/sanctuary-upgrades-tended.md.
+function SanctuaryTendingPath({ tending }: { tending: TendingStatus }) {
+  const currentIndex = tending.stage ? TENDING_PATH.indexOf(tending.stage as (typeof TENDING_PATH)[number]) : -1
+  const atTop = tending.next_stage == null
+  return (
+    <div className="sanctuary-tending" aria-label="Tended by your practice">
+      <div className="sanctuary-tending-head">
+        <span className="sanctuary-tending-title">🌿 Tended by your practice</span>
+        <span className="muted sanctuary-tending-days">
+          {tending.practice_days} {tending.practice_days === 1 ? 'day' : 'days'} of practice
+        </span>
+      </div>
+      {/* The growth ladder as a ribbon: each stage a pip, the current one lit, the next a goal. */}
+      <ol className="sanctuary-tending-ribbon">
+        {TENDING_PATH.map((stage, i) => {
+          const reached = i <= currentIndex
+          const isNext = stage === tending.next_stage
+          return (
+            <li
+              key={stage}
+              className={`sanctuary-tending-pip${reached ? ' reached' : ''}${isNext ? ' next' : ''}`}
+              aria-current={i === currentIndex ? 'step' : undefined}
+              title={optionLabel(stage)}
+            >
+              <span className="sanctuary-tending-dot" aria-hidden="true" />
+              <span className="sanctuary-tending-label">{optionLabel(stage)}</span>
+            </li>
+          )
+        })}
+      </ol>
+      <p className="muted sanctuary-tending-hint" aria-live="polite">
+        {atTop
+          ? 'Fully grown — tended all the way. Thank you for showing up. 🌳'
+          : tending.next_threshold != null
+            ? `Keep practicing — ${optionLabel(tending.next_stage as string)} grows in as your tending reaches ${tending.next_threshold} (now ${tending.tending}).`
+            : 'Keep practicing — your oak grows as you do.'}
+      </p>
+    </div>
+  )
+}
 
 // The live "try before you buy" preview at the head of the customize panel: a single
 // <SanctuaryPlant> that re-renders as the user hovers or keyboard-focuses an unbought option.
@@ -545,6 +594,10 @@ export default function SanctuaryPage() {
                           </button>
                           {open && (
                             <div className="sanctuary-customize-panel">
+                              {/* "Tended" growth-from-practice (oak-only MVP): a path ribbon +
+                                  a "Tended by N days" meter. Present only on Tended items; the
+                                  stage advances for free as the user practices (no buy here). */}
+                              {o.tending && <SanctuaryTendingPath tending={o.tending} />}
                               {/* See-it-before-you-buy preview: shows the item with whatever
                                   unbought option is hovered/focused below merged in. View-only;
                                   the actual purchase still happens on the option buttons. */}
