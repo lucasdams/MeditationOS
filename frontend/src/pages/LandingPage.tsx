@@ -7,6 +7,7 @@ const FEATURES = [
   { emoji: '🫁', title: 'HRV resonance breathing', body: 'A guided pacer at your chosen slow rate, with an ocean-breath audio guide and a breathing circle to follow.' },
   { emoji: '🙏', title: 'Gratitude', body: 'Capture small moments of gratitude across 37 themes — with AI-suggested prompts, or write your own.' },
   { emoji: '📓', title: 'Journal', body: 'Reflect on a sit, tag a mood, and resurface a random past entry to revisit.' },
+  { emoji: '🕯️', title: 'Trataka focus practice', body: 'An eyes-open candle-gaze — rest your attention on a single, gently moving flame to steady a busy mind.' },
   { emoji: '🎯', title: 'Goals', body: 'Set recurring habits — meditate, breathe, journal — and watch progress fill in automatically from your activity.' },
   { emoji: '🌳', title: 'Sanctuary', body: 'Earn coins as you level up, then buy and upgrade a garden of plants, pets, and places.' },
   { emoji: '📊', title: 'Dashboard & analytics', body: 'Streaks, levels, a weekly breakdown, an activity heatmap, and trends across type, day, and time.' },
