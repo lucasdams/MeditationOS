@@ -2161,13 +2161,101 @@ textarea:focus-visible,
   margin-bottom: 1.5rem;
 }
 
+/* --- The garden scene ------------------------------------------------------------------
+   The garden no longer reads as a grid of cards. Instead the items sit *in* a calm little
+   scene: a soft sky→earth gradient backdrop, a subtle grass/soil ground band under the
+   plants, and a gentle vignette + ambient glow for depth. Tokens keep it legible in both
+   themes. A `data-daytime` attribute on the section adds a very soft time-of-day tint so
+   the garden feels quietly alive. Decorative only — interactivity is untouched. */
+
+/* Garden-scene ambient palette. Light theme: a soft dawn-sky → warm-earth wash. The
+   per-theme overrides below keep the dark garden deep and calm (never a glaring light box). */
+.sanctuary-garden-section {
+  --garden-sky: #eaf4ff;
+  --garden-earth: #f3f6ee;
+  --garden-grass: #bfe6c4;
+  --garden-soil: #e7d9c4;
+  --garden-shadow: rgba(40, 70, 40, 0.16);
+  --garden-vignette: rgba(40, 60, 45, 0.05);
+  --garden-tint: transparent;
+  position: relative;
+}
+
+:root[data-theme='dark'] .sanctuary-garden-section,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-garden-section {
+  --garden-sky: #1a2238;
+  --garden-earth: #1d2733;
+  --garden-grass: #2a4636;
+  --garden-soil: #2c2a32;
+  --garden-shadow: rgba(0, 0, 0, 0.4);
+  --garden-vignette: rgba(0, 0, 0, 0.22);
+}
+
+/* A whisper-soft time-of-day tint laid over the sky — gentle in both themes. */
+.sanctuary-garden-section[data-daytime='dawn'] {
+  --garden-tint: rgba(255, 214, 170, 0.18);
+}
+.sanctuary-garden-section[data-daytime='dusk'] {
+  --garden-tint: rgba(255, 168, 140, 0.16);
+}
+.sanctuary-garden-section[data-daytime='night'] {
+  --garden-tint: rgba(70, 90, 160, 0.16);
+}
+
+/* The scene canvas the plants live in: sky overhead fading to earth, with a soft vignette
+   and a barely-there ambient glow at the top so it feels like open air, not a flat panel. */
+.sanctuary-garden-scene,
+.sanctuary-preview-scene {
+  position: relative;
+  border-radius: 14px;
+  padding: 0.5rem 0.5rem 0;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--garden-tint), transparent 60%),
+    radial-gradient(140% 120% at 50% 120%, var(--garden-vignette), transparent 55%),
+    linear-gradient(to bottom, var(--garden-sky) 0%, var(--garden-earth) 78%);
+}
+
+.sanctuary-garden-scene {
+  margin-bottom: 1.5rem;
+}
+
+/* The ground band: a soft grass strip over a quiet soil base, anchored to the bottom of the
+   scene so every plant appears rooted in the same earth. Soft-edged, never a hard line. */
+.sanctuary-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30%;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, transparent, var(--garden-soil) 55%);
+  z-index: 0;
+}
+
+.sanctuary-ground::before {
+  /* a softer grass crest sitting on top of the soil */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 42%;
+  height: 60%;
+  background: linear-gradient(to bottom, transparent, var(--garden-grass));
+  opacity: 0.55;
+  filter: blur(1px);
+}
+
 /* The garden's movable layout grid (ADR-0014): a fixed-width grid the user rearranges by
    dragging items (desktop) or tap-to-pick-then-tap-target (touch/keyboard). Columns are
-   set inline from GRID_COLUMNS so the layout maths stays in one place. */
+   set inline from GRID_COLUMNS so the layout maths stays in one place. Now it floats above
+   the scene's ground band rather than carrying its own background. */
 .sanctuary-garden-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 0.6rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem;
 }
 
 .sanctuary-move-hint {
@@ -2182,18 +2270,21 @@ textarea:focus-visible,
   min-height: 12.5rem;
 }
 
-/* Empty drop targets keep a stable cell footprint so the grid never collapses. */
+/* Empty drop targets keep a stable cell footprint so the grid never collapses. In the garden
+   scene they're a soft, barely-there patch of open ground rather than a hard dashed box, so
+   the eye reads tended plots with a little room to grow — not a grid of empty cells. */
 .sanctuary-cell.empty {
-  border: 1px dashed var(--border-strong);
-  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--border-strong) 35%, transparent);
+  border-radius: 14px;
   background: transparent;
   cursor: default;
 }
 
-/* While an item is picked up, empty cells invite a drop. */
+/* While an item is picked up, empty cells warmly invite a drop. */
 .sanctuary-cell.empty.droppable {
   border-color: #34d399;
-  background: #ecfdf5;
+  border-style: solid;
+  background: color-mix(in srgb, #34d399 14%, transparent);
   cursor: pointer;
 }
 
@@ -2240,9 +2331,54 @@ textarea:focus-visible,
 }
 
 /* Filled garden cards centre their content within the shared cell footprint so they line
-   up with the empty cells around them (the customize panel, when open, grows the cell). */
+   up with the empty cells around them (the customize panel, when open, grows the cell).
+   In the garden scene the card sheds its panel chrome (border / surface fill / drop shadow)
+   so each plant sits *in* the garden rather than in a box — the shop keeps its cards, since
+   it uses .sanctuary-card without .sanctuary-cell. */
 .sanctuary-cell.sanctuary-card {
   justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+
+/* The plant's grounding shadow: a soft ellipse cast on the earth under each item, so it reads
+   as planted rather than floating. Sits behind the plant art, scaled to the cell. */
+.sanctuary-cell.sanctuary-card .sanctuary-grab {
+  position: relative;
+}
+
+.sanctuary-cell.sanctuary-card .sanctuary-grab::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.15rem;
+  width: 58%;
+  height: 0.55rem;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, var(--garden-shadow), transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* On hover/focus a garden plant lifts a touch — a gentle, living response, motion-safe. */
+.sanctuary-cell.sanctuary-card .sanctuary-grab .sanctuary-svg {
+  transition: transform 0.18s ease;
+}
+
+.sanctuary-cell.sanctuary-card .sanctuary-grab:hover .sanctuary-svg,
+.sanctuary-cell.sanctuary-card .sanctuary-grab:focus-visible .sanctuary-svg {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sanctuary-cell.sanctuary-card .sanctuary-grab .sanctuary-svg {
+    transition: none;
+  }
+  .sanctuary-cell.sanctuary-card .sanctuary-grab:hover .sanctuary-svg,
+  .sanctuary-cell.sanctuary-card .sanctuary-grab:focus-visible .sanctuary-svg {
+    transform: none;
+  }
 }
 
 /* A just-bought item gently pops in where it lands, with a brief soft glow on the
@@ -2623,6 +2759,18 @@ textarea:focus-visible,
 .sanctuary-plaque {
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+/* In the garden scene the name now floats over the ground rather than on a card, so the
+   user's plaque gets a soft warm pill to keep it legible and read as a little garden marker —
+   "this one is mine, and it has a name". A gentle backdrop, never a hard label. The shop's
+   own .sanctuary-card-name is untouched (it has no .sanctuary-cell ancestor). */
+.sanctuary-cell.sanctuary-card .sanctuary-card-name {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 1px 2px var(--garden-shadow);
 }
 
 .sanctuary-fav-star {
@@ -3193,6 +3341,35 @@ textarea:focus-visible,
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
+  /* The home preview shares the full garden's scene palette so the glance feels like the
+     same little world — a calm sky→earth wash with a grounded plot below. */
+  --garden-sky: #eaf4ff;
+  --garden-earth: #f3f6ee;
+  --garden-grass: #bfe6c4;
+  --garden-soil: #e7d9c4;
+  --garden-shadow: rgba(40, 70, 40, 0.16);
+  --garden-vignette: rgba(40, 60, 45, 0.05);
+  --garden-tint: transparent;
+}
+
+:root[data-theme='dark'] .sanctuary-preview-home,
+:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-preview-home {
+  --garden-sky: #1a2238;
+  --garden-earth: #1d2733;
+  --garden-grass: #2a4636;
+  --garden-soil: #2c2a32;
+  --garden-shadow: rgba(0, 0, 0, 0.4);
+  --garden-vignette: rgba(0, 0, 0, 0.22);
+}
+
+.sanctuary-preview-home[data-daytime='dawn'] {
+  --garden-tint: rgba(255, 214, 170, 0.18);
+}
+.sanctuary-preview-home[data-daytime='dusk'] {
+  --garden-tint: rgba(255, 168, 140, 0.16);
+}
+.sanctuary-preview-home[data-daytime='night'] {
+  --garden-tint: rgba(70, 90, 160, 0.16);
 }
 
 .sanctuary-preview-head {
@@ -3230,19 +3407,41 @@ textarea:focus-visible,
 
 /* The read-only garden plot: items laid out row-major in their cells, mirroring the full
    page's layout. Columns are set inline from GRID_COLUMNS so the layout maths stays in one
-   place. Static tiles — no drag, no buttons. */
+   place. Static tiles — no drag, no buttons. The grid floats above the scene's ground band. */
 .sanctuary-preview-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 0.4rem;
 }
 
 /* Calm, glanceable cells — smaller than the full page's interactive cards (no min-height,
-   no card chrome) so the home stays light and uncrowded. */
+   no card chrome) so the home stays light and uncrowded. Each plant casts a soft grounding
+   shadow so it reads as rooted in the same little plot. */
 .sanctuary-preview-cell {
+  position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   min-height: 3.75rem;
+}
+
+.sanctuary-preview-cell:not(.empty)::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.2rem;
+  width: 52%;
+  height: 0.4rem;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, var(--garden-shadow), transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.sanctuary-preview-cell .sanctuary-svg {
+  position: relative;
+  z-index: 1;
 }
 
 .sanctuary-preview-cell.empty {

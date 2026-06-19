@@ -354,3 +354,31 @@ export function slotLabel(slot: string): string {
 export function optionLabel(option: string): string {
   return OPTION_LABELS[option] ?? titleCase(option)
 }
+
+// A render-time time-of-day band, used purely for a gentle ambient tint over the garden
+// scene (a `data-daytime` hook the CSS reads). Cosmetic only — it never changes the art,
+// the economy, or any data; it just makes the garden feel quietly alive across the day.
+// The tint itself is kept soft and legible in both light and dark themes.
+export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night'
+
+export function timeOfDay(date: Date = new Date()): TimeOfDay {
+  const h = date.getHours()
+  if (h < 6) return 'night'
+  if (h < 9) return 'dawn'
+  if (h < 17) return 'day'
+  if (h < 20) return 'dusk'
+  return 'night'
+}
+
+// A warm, quiet line for the garden header — a gentle "this is yours" presence that shifts
+// softly with the time of day. Personal in tone, never shouty; carries no names or PII.
+const GARDEN_GREETINGS: Record<TimeOfDay, string> = {
+  dawn: 'A fresh morning in your garden.',
+  day: 'Your garden, basking in the daylight.',
+  dusk: 'Your garden, settling into the evening.',
+  night: 'Your garden, quiet under the night sky.',
+}
+
+export function gardenGreeting(when: TimeOfDay = timeOfDay()): string {
+  return GARDEN_GREETINGS[when]
+}
