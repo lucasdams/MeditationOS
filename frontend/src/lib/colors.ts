@@ -28,12 +28,12 @@ export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; col
 }
 
 // Bold, saturated fills for the dashboard quick-action tiles — distinct per destination
-// and dark enough that white label/icon text clears WCAG AA (≥4.5:1) in BOTH themes
-// (the tile background and text are fixed, so contrast is theme-independent). These are
-// deliberately heavier than the soft ACTIVITY_COLORS used for borders/quests, so the
-// tiles read as the home screen's primary focal point.
+// and dark enough that white label/icon text clears WCAG AA (≥4.5:1) in LIGHT mode. Dark
+// mode swaps to the brighter TILE_COLORS_DARK below (with a dark label) so the tiles pop on
+// the slate canvas. These are deliberately heavier than the soft ACTIVITY_COLORS used for
+// borders/quests, so the tiles read as the home screen's primary focal point.
 //   meditate #0f766e → 5.47:1 · breathe #0369a1 → 5.93:1 · gratitude #b45309 → 5.02:1
-//   journal #6d28d9 → 7.10:1 · sanctuary #15803d → 5.02:1  (all vs #fff)
+//   journal #6d28d9 → 7.10:1 · sanctuary #15803d → 5.02:1  (white text, light mode)
 export const TILE_COLORS = {
   meditate: '#0f766e', // teal-700
   breathe: '#0369a1', // sky-700
@@ -41,6 +41,23 @@ export const TILE_COLORS = {
   journal: '#6d28d9', // violet-700
   sanctuary: '#15803d', // green-700
 } as const
+
+// Dark-mode tile fills. The light TILE_COLORS are deep, near-700 shades that go muddy on the
+// dark slate canvas, so dark mode uses brighter, more saturated ~500 shades that pop. At those
+// brightnesses white text would drop below WCAG AA, so the dark tile carries a near-black slate
+// LABEL instead (TILE_TEXT_DARK) — the .feature-tile dark CSS pairs the two via --tile-fill-dark.
+//   meditate #14b8a6 → 7.17:1 · breathe #0ea5e9 → 6.44:1 · gratitude #f59e0b → 8.31:1
+//   journal #a78bfa → 6.56:1 · sanctuary #22c55e → 7.83:1  (label #0f172a vs each fill)
+export const TILE_COLORS_DARK = {
+  meditate: '#14b8a6', // teal-500
+  breathe: '#0ea5e9', // sky-500
+  gratitude: '#f59e0b', // amber-500
+  journal: '#a78bfa', // violet-400
+  sanctuary: '#22c55e', // green-500
+} as const
+
+// The label/icon colour used on the brighter dark-mode tile fills (slate-900).
+export const TILE_TEXT_DARK = '#0f172a'
 
 // Meditation session types — same palette used by the session-log cards.
 export const TYPE_COLORS: Record<MeditationType, string> = {
