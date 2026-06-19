@@ -3067,10 +3067,45 @@ textarea:focus-visible,
   margin: 0.6rem 0 0;
 }
 
-/* Compact quests on the calm default home — a row of small, tappable quest chips, with no
-   lead label. Low-chrome by design: no card, no descriptions, no XP. */
+/* Compact quests on the calm default home — a small "Today's quests" heading over a row of
+   tappable quest chips. Low-chrome by design: no card, no descriptions, no XP — but the
+   heading + target motif + done/total count make it clearly read as the day's quests. */
 .quests-compact {
   margin: 1.25rem 0;
+}
+
+/* Quiet quest heading — a target icon, the label, and a done/total count, so the chips
+   below clearly read as today's completable tasks (not just a stray row of links). */
+.quests-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.quests-heading-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.quests-heading-text {
+  text-transform: uppercase;
+}
+
+/* The "2/3" progress count — a small muted pill, calm not grindy. */
+.quests-heading-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
 }
 
 .quest-chips {
@@ -4519,36 +4554,44 @@ details[open] .meditate-disclosure-summary::before {
   margin: 0 0 1.25rem;
 }
 
+/* Bold, full-colour tiles — the home's primary focal point. Each carries a saturated fill
+   (--tile-fill from TILE_COLORS) with white icon + label; the fills are dark enough that
+   white text clears WCAG AA (≥4.5:1) in both themes (fill + text are fixed, so contrast is
+   theme-independent). Equal-sized, tidy boxes; a subtle lift on hover keeps them tasteful. */
 .feature-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.6rem 0.4rem 0.55rem;
-  background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--tile-accent) 28%, var(--border));
-  border-top: 2px solid var(--tile-accent, #c4c4c9);
-  border-radius: 10px;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.85rem 0.4rem;
+  background: var(--tile-fill, #6b6b70);
+  border: 1px solid color-mix(in srgb, #000 12%, var(--tile-fill, #6b6b70));
+  border-radius: 12px;
   text-decoration: none;
-  color: var(--text-primary);
-  transition: background 0.12s ease, border-color 0.12s ease;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  transition: filter 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.feature-tile:hover {
-  background: color-mix(in srgb, var(--tile-accent) 8%, var(--bg-surface));
-  border-color: var(--tile-accent, #c4c4c9);
+.feature-tile:hover,
+.feature-tile:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
 }
 
 .feature-tile-emoji {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   line-height: 1;
 }
 
 .feature-tile-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--tile-accent) 70%, #1c1c1e);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffffff;
   text-align: center;
+  letter-spacing: 0.01em;
 }
 
 @media (max-width: 480px) {
@@ -4672,6 +4715,18 @@ details[open] .meditate-disclosure-summary::before {
 .mood-entry-link:hover,
 .mood-entry-link:focus-visible {
   color: var(--text-secondary);
+}
+
+/* Reflected mood ("You felt calm 😌") — a touch warmer than the plain prompt, with a small
+   colour accent from the mood's own colour. Still a quiet, tappable text link. */
+.mood-entry-reflect {
+  color: var(--text-secondary);
+  text-decoration-color: color-mix(in srgb, var(--mood-accent, currentColor) 45%, transparent);
+}
+
+.mood-entry-reflect:hover,
+.mood-entry-reflect:focus-visible {
+  color: var(--text-primary);
 }
 
 .mood-options {

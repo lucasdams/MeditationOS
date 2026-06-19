@@ -27,6 +27,21 @@ export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; col
   custom: { emoji: '⭐', label: 'Custom', color: ACTIVITY_COLORS.custom },
 }
 
+// Bold, saturated fills for the dashboard quick-action tiles — distinct per destination
+// and dark enough that white label/icon text clears WCAG AA (≥4.5:1) in BOTH themes
+// (the tile background and text are fixed, so contrast is theme-independent). These are
+// deliberately heavier than the soft ACTIVITY_COLORS used for borders/quests, so the
+// tiles read as the home screen's primary focal point.
+//   meditate #0f766e → 5.47:1 · breathe #0369a1 → 5.93:1 · gratitude #b45309 → 5.02:1
+//   journal #6d28d9 → 7.10:1 · sanctuary #15803d → 5.02:1  (all vs #fff)
+export const TILE_COLORS = {
+  meditate: '#0f766e', // teal-700
+  breathe: '#0369a1', // sky-700
+  gratitude: '#b45309', // amber-700
+  journal: '#6d28d9', // violet-700
+  sanctuary: '#15803d', // green-700
+} as const
+
 // Meditation session types — same palette used by the session-log cards.
 export const TYPE_COLORS: Record<MeditationType, string> = {
   mindfulness: '#14b8a6',
