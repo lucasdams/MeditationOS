@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { itemLabel, variantLabel, VITALITY } from '../lib/sanctuaryArt'
+import { itemLabel, variantLabel, VITALITY, timeOfDay } from '../lib/sanctuaryArt'
 import SanctuaryPlant from './SanctuaryPlant'
 import type { OwnedItem, SanctuaryScene as Scene } from '../types'
 
@@ -63,7 +63,11 @@ export default function SanctuaryScene({
   // names, and one "Tend it →" link to where the garden is actually tended.
   if (preview) {
     return (
-      <section className="sanctuary-preview-home" aria-label="Your garden">
+      <section
+        className="sanctuary-preview-home"
+        aria-label="Your garden"
+        data-daytime={timeOfDay()}
+      >
         <div className="sanctuary-preview-head">
           <h2 className="sanctuary-preview-title">Your garden</h2>
           <Link to="/sanctuary" className="sanctuary-preview-link">
@@ -87,10 +91,15 @@ export default function SanctuaryScene({
             const rows = Math.floor(maxCell / GRID_COLUMNS) + 1
             const cellCount = rows * GRID_COLUMNS
             return (
-              <div
-                className="sanctuary-preview-grid"
-                style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)` }}
-              >
+              // The same calm garden scene as the full page: a soft backdrop + a grass/soil
+              // ground band so the home preview reads as a little garden, not a strip of tiles.
+              // Read-only — purely decorative wrappers, no controls (keeps the preview button-free).
+              <div className="sanctuary-preview-scene">
+                <div className="sanctuary-ground" aria-hidden="true" />
+                <div
+                  className="sanctuary-preview-grid"
+                  style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)` }}
+                >
                 {Array.from({ length: cellCount }, (_, cell) => {
                   const o = byCell.get(cell)
                   if (!o) {
@@ -120,6 +129,7 @@ export default function SanctuaryScene({
                     </div>
                   )
                 })}
+                </div>
               </div>
             )
           })()

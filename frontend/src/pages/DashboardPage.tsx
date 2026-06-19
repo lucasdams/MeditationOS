@@ -9,7 +9,7 @@ import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
-import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, type Activity } from '../lib/colors'
+import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TILE_COLORS_DARK, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
@@ -205,7 +205,10 @@ export default function DashboardPage() {
             key={to}
             to={to}
             className="feature-tile"
-            style={{ ['--tile-fill' as string]: TILE_COLORS[tile] }}
+            style={{
+              ['--tile-fill' as string]: TILE_COLORS[tile],
+              ['--tile-fill-dark' as string]: TILE_COLORS_DARK[tile],
+            }}
           >
             <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
             <span className="feature-tile-label">{label}</span>
