@@ -58,6 +58,7 @@ class TendingStatus(BaseModel):
     is already merged into `customizations.grown`, so the renderer needs no special-casing."""
 
     tending: int  # the user's monotonic Tending score `T`
+    practice_days: int  # distinct practice days behind `T` (for the "Tended by N days" meter)
     stage: str | None  # the currently-displayed growth stage key (None = un-grown base)
     next_stage: str | None  # the next growth stage key, if any (None at the top of the ladder)
     next_threshold: int | None  # Tending score that unlocks the next stage (None at the top)

@@ -2445,6 +2445,7 @@ def test_high_practice_oak_advances_with_zero_coins_spent(client):
     assert tree["customizations"].get("grown") in GROWTH_STAGES
     assert tree["tending"] is not None
     assert tree["tending"]["tending"] > 0
+    assert tree["tending"]["practice_days"] >= 1  # the "Tended by N days" meter
     assert tree["tending"]["stage"] == tree["customizations"]["grown"]
     # Coins spent equal exactly the oak's buy price — growth was free.
     assert bought["coins"] == coins_before - SANCTUARY_CATALOG["tree"].cost

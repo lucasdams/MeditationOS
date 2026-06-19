@@ -394,8 +394,24 @@ def get_tending_basis(
 TENDED_ITEM_KEY = "tree"
 
 
+@dataclass(frozen=True)
+class _TendingView:
+    """The resolved Tending state threaded into a scene: the monotonic score and the distinct
+    practice-day count behind it (for the "Tended by N days" meter). The zero view (no
+    practice / no Tended item owned) leaves every Tended display exactly at its purchased stage.
+    """
+
+    score: int = 0
+    practice_days: int = 0
+
+
+# The neutral Tending state — no practice / no Tended item owned. Used as the default so every
+# Tended display falls back to exactly its purchased stage (a module singleton, frozen/immutable).
+_NO_TENDING = _TendingView()
+
+
 def _display_customizations(
-    item_key: str, customizations: dict[str, str], tending: int
+    item_key: str, customizations: dict[str, str], tending: _TendingView
 ) -> dict[str, str]:
     """The customizations to *render* for an item — the stored map, except a Tended item's
     `grown` stage is lifted to `max(purchased, tending_earned)` so practice grows it for free.
@@ -408,7 +424,7 @@ def _display_customizations(
     """
     if item_key != TENDED_ITEM_KEY:
         return customizations
-    earned = tending_earned_stage(tending)
+    earned = tending_earned_stage(tending.score)
     displayed = max(_purchased_stage(customizations), earned)
     if displayed == 0:
         return customizations  # un-grown base — nothing to show
@@ -418,14 +434,14 @@ def _display_customizations(
 
 
 def _tending_status(
-    item_key: str, customizations: dict[str, str], tending: int
+    item_key: str, customizations: dict[str, str], tending: _TendingView
 ) -> TendingStatus | None:
     """The TendingStatus surfaced for a Tended item (None for every other item). Reports the
-    score, the currently-displayed stage = max(purchased, earned), and the next stage + the
-    Tending score that unlocks it (None at the top of the ladder)."""
+    score + practice days, the currently-displayed stage = max(purchased, earned), and the
+    next stage + the Tending score that unlocks it (None at the top of the ladder)."""
     if item_key != TENDED_ITEM_KEY:
         return None
-    displayed = max(_purchased_stage(customizations), tending_earned_stage(tending))
+    displayed = max(_purchased_stage(customizations), tending_earned_stage(tending.score))
     stage = GROWTH_STAGES[displayed - 1] if displayed >= 1 else None
     if displayed < len(GROWTH_STAGES):
         next_stage = GROWTH_STAGES[displayed]
@@ -434,7 +450,8 @@ def _tending_status(
         next_stage = None
         next_threshold = None
     return TendingStatus(
-        tending=tending,
+        tending=tending.score,
+        practice_days=tending.practice_days,
         stage=stage,
         next_stage=next_stage,
         next_threshold=next_threshold,
@@ -1088,7 +1105,7 @@ def _build_scene(
     level: int,
     streak: int,
     reset_fees: int = 0,
-    tending: int = 0,
+    tending: _TendingView = _NO_TENDING,
 ) -> SanctuaryScene:
     # The balance is derived from holdings minus the one stored economy figure — the
     # cumulative upgrade-reset fees (ADR-0019) — then clamped ≥ 0 (legacy/large gardens
@@ -1176,14 +1193,16 @@ def _build_scene_with_tending(
     today: date,
     tz: str,
 ) -> SanctuaryScene:
-    """Build the scene, resolving the user's Tending score first so a Tended item (the oak)
+    """Build the scene, resolving the user's Tending state first so a Tended item (the oak)
     renders at its practice-earned stage. Only computes Tending when the user actually owns a
     Tended item, so a garden without one never pays for the extra practice query."""
-    tending = (
-        get_tending_basis(db, user_id, today=today, tz=tz)
-        if any(p.item_key == TENDED_ITEM_KEY for p in plantings)
-        else 0
-    )
+    if any(p.item_key == TENDED_ITEM_KEY for p in plantings):
+        signals = dashboard_service.get_tending_signals(db, user_id, today=today, tz=tz)
+        tending = _TendingView(
+            score=tending_score(signals), practice_days=signals.practice_days
+        )
+    else:
+        tending = _NO_TENDING
     return _build_scene(plantings, coins_earned, level, streak, reset_fees, tending)
 
 
