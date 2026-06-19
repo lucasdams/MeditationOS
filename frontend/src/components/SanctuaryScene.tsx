@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { itemLabel, VITALITY } from '../lib/sanctuaryArt'
+import { itemLabel, variantLabel, VITALITY } from '../lib/sanctuaryArt'
 import SanctuaryPlant from './SanctuaryPlant'
-import type { SanctuaryScene as Scene } from '../types'
+import type { OwnedItem, SanctuaryScene as Scene } from '../types'
 
 /**
  * Sanctuary on the dashboard: a preview of the garden linking to the full /sanctuary page
@@ -12,23 +12,29 @@ import type { SanctuaryScene as Scene } from '../types'
  * Two shapes:
  *  - default: the full card (coin balance, explainer, garden preview, vitality) — lives in
  *    the dashboard "Show more" drawer / used standalone.
- *  - `compact`: a slim, low-chrome teaser strip for the calm default home — a few plant
- *    thumbnails plus a "tend it" link, and NO coin count. The slim level chip already shows
- *    coins, and the app's stance is not to show coins twice.
+ *  - `preview`: a naturally-expanded, READ-ONLY garden laid out on the calm default home —
+ *    the owned plants in their actual grid cells (the same SanctuaryPlant art as the full
+ *    page), at a calm size, with NO interactivity: no drag, no pick-up/move, no buy or
+ *    customize. A single "Tend it →" link leads to /sanctuary, where the garden is actually
+ *    tended. No coin count here — the slim level chip already shows coins, and the app's
+ *    stance is not to show coins twice.
  *
  * When `scene` is provided (DashboardPage fetches it once and passes it down) we use that
  * directly. When omitted (standalone usage) we fetch it ourselves as a fallback.
  */
 const PREVIEW_LIMIT = 6
-// The compact teaser shows fewer thumbnails so the strip stays slim and uncrowded.
-const COMPACT_PREVIEW_LIMIT = 4
+
+// The home preview lays items out on the same row-major grid as the full page (cell = row *
+// GRID_COLUMNS + col), so the glance mirrors the user's chosen layout. Mirrors SanctuaryPage's
+// GRID_COLUMNS; the read-only preview never moves items, so it only ever reads cells.
+const GRID_COLUMNS = 4
 
 export default function SanctuaryScene({
   scene: sceneProp,
-  compact = false,
+  preview = false,
 }: {
   scene?: Scene | null
-  compact?: boolean
+  preview?: boolean
 }) {
   const [sceneFetched, setSceneFetched] = useState<Scene | null>(null)
   const [error, setError] = useState(false)
@@ -49,34 +55,76 @@ export default function SanctuaryScene({
   const { coins, owned, vitality } = scene
   // The scene already returns items in grid order (by `cell`); preview the first few so
   // the dashboard reflects the user's chosen layout (top-left of their garden).
-  const limit = compact ? COMPACT_PREVIEW_LIMIT : PREVIEW_LIMIT
-  const preview = [...owned].sort((a, b) => a.cell - b.cell).slice(0, limit)
+  const previewItems = [...owned].sort((a, b) => a.cell - b.cell).slice(0, PREVIEW_LIMIT)
 
-  // Compact teaser for the calm default home: a slim strip with a couple of garden
-  // thumbnails and a single link to go tend it — no coins, no explainer, no vitality.
-  if (compact) {
+  // Read-only expanded garden for the calm default home: the owned plants laid out in their
+  // grid cells, at a calm size — a real little garden to glance at, then tap through to tend.
+  // Static: no drag handlers, no grab/move buttons, no buy or customize. Just the art, the
+  // names, and one "Tend it →" link to where the garden is actually tended.
+  if (preview) {
     return (
-      <Link to="/sanctuary" className="sanctuary-teaser" aria-label="Tend your sanctuary">
-        <span className="sanctuary-teaser-plants" aria-hidden="true">
-          {owned.length === 0 ? (
-            <span className="sanctuary-teaser-empty">🌱</span>
-          ) : (
-            preview.map((o) => (
-              <span key={o.id} className="sanctuary-teaser-plant">
-                <SanctuaryPlant
-                  itemKey={o.item_key}
-                  variant={o.variant}
-                  customizations={o.customizations}
-                />
-              </span>
-            ))
-          )}
-        </span>
-        <span className="sanctuary-teaser-text">
-          {owned.length === 0 ? 'Start your garden' : 'Your garden'}
-        </span>
-        <span className="sanctuary-teaser-cta">Tend it →</span>
-      </Link>
+      <section className="sanctuary-preview-home" aria-label="Your garden">
+        <div className="sanctuary-preview-head">
+          <h2 className="sanctuary-preview-title">Your garden</h2>
+          <Link to="/sanctuary" className="sanctuary-preview-link">
+            {owned.length === 0 ? 'Open your garden →' : 'Tend it →'}
+          </Link>
+        </div>
+
+        {owned.length === 0 ? (
+          <p className="muted sanctuary-preview-empty">
+            Your garden is empty — <Link to="/sanctuary">start it in the Sanctuary →</Link>
+          </p>
+        ) : (
+          (() => {
+            // Lay the previewed items out row-major by `cell`, exactly as the full page does,
+            // so the home glance mirrors the user's chosen layout. Read-only: every cell is a
+            // static tile (no buttons, no drag), filling empty cells in the spanned rows so the
+            // grid reads as a tidy little plot rather than a ragged strip.
+            const byCell = new Map<number, OwnedItem>()
+            for (const o of previewItems) byCell.set(o.cell, o)
+            const maxCell = Math.max(...previewItems.map((o) => o.cell))
+            const rows = Math.floor(maxCell / GRID_COLUMNS) + 1
+            const cellCount = rows * GRID_COLUMNS
+            return (
+              <div
+                className="sanctuary-preview-grid"
+                style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)` }}
+              >
+                {Array.from({ length: cellCount }, (_, cell) => {
+                  const o = byCell.get(cell)
+                  if (!o) {
+                    return (
+                      <div
+                        key={`empty-${cell}`}
+                        className="sanctuary-preview-cell empty"
+                        aria-hidden="true"
+                      />
+                    )
+                  }
+                  // A hover/focus title carries the user's plaque name (or the item label);
+                  // the plant's own <svg> keeps its existing aria-label for screen readers, so
+                  // we don't nest a second img role on the wrapper.
+                  const title = o.name
+                    ? o.name
+                    : o.variant
+                      ? `${variantLabel(o.variant)} ${itemLabel(o.item_key).toLowerCase()}`
+                      : itemLabel(o.item_key)
+                  return (
+                    <div key={o.id} className="sanctuary-preview-cell" title={title}>
+                      <SanctuaryPlant
+                        itemKey={o.item_key}
+                        variant={o.variant}
+                        customizations={o.customizations}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()
+        )}
+      </section>
     )
   }
 
@@ -103,7 +151,7 @@ export default function SanctuaryScene({
         </p>
       ) : (
         <div className="sanctuary-grown-row">
-          {preview.map((o) => (
+          {previewItems.map((o) => (
             <div key={o.id} className="sanctuary-grown-item" title={itemLabel(o.item_key)}>
               <SanctuaryPlant
                 itemKey={o.item_key}

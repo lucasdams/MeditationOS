@@ -1743,7 +1743,7 @@ textarea:focus-visible,
 /* Consistent spacing between the main home sections. */
 .dashboard .feature-tiles,
 .dashboard .quests-compact,
-.dashboard .sanctuary-teaser,
+.dashboard .sanctuary-preview-home,
 .dashboard .mood-entry,
 .dashboard .dashboard-more {
   margin-top: 1.75rem;
@@ -2033,8 +2033,8 @@ textarea:focus-visible,
 .sanctuary-svg {
   display: block;
   margin: 0 auto;
-  /* Larger object art in the garden, shop, picker, and preview. The dashboard teaser
-     (.sanctuary-teaser-plant) and the grown-options row set their own smaller sizes, so
+  /* Larger object art in the garden, shop, picker, and preview. The home garden preview
+     (.sanctuary-preview-cell) and the grown-options row set their own smaller sizes, so
      they're unaffected. max-width lets a cell shrink the art gracefully on narrow screens. */
   width: 96px;
   height: auto;
@@ -3171,56 +3171,80 @@ textarea:focus-visible,
 /* Compact sanctuary teaser — a slim strip linking to the full garden. A couple of plant
    thumbnails + a label + a "tend it" cue. Deliberately shows no coin count (the level chip
    above already does). */
-.sanctuary-teaser {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+/* Expanded, READ-ONLY garden preview on the calm default home (replaces the old slim
+   teaser strip). The user's actual plants laid out in their grid cells — the same
+   SanctuaryPlant art as the full /sanctuary page, at a calmer size — so the home reads like
+   a real little garden you glance at, then tap through to tend. No interactive chrome
+   (no grab handles, no buy/customize), no coin count. */
+.sanctuary-preview-home {
   margin: 1.25rem 0;
-  padding: 0.55rem 0.85rem;
+  padding: 0.85rem 1rem 1rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  text-decoration: none;
+}
+
+.sanctuary-preview-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.sanctuary-preview-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--text-secondary);
-  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-.sanctuary-teaser:hover,
-.sanctuary-teaser:focus-visible {
-  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
-  border-color: var(--accent-border);
-}
-
-.sanctuary-teaser-plants {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 0.15rem;
-  flex-shrink: 0;
-}
-
-.sanctuary-teaser-plant .sanctuary-svg {
-  width: 28px;
-  height: 28px;
-  display: block;
-}
-
-.sanctuary-teaser-empty {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.sanctuary-teaser-text {
-  flex: 1;
-  font-size: 0.9rem;
-  font-weight: 500;
-  min-width: 0;
-}
-
-.sanctuary-teaser-cta {
+.sanctuary-preview-link {
   flex-shrink: 0;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent);
+  text-decoration: none;
+}
+
+.sanctuary-preview-link:hover,
+.sanctuary-preview-link:focus-visible {
+  text-decoration: underline;
+}
+
+.sanctuary-preview-empty {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+}
+
+/* The read-only garden plot: items laid out row-major in their cells, mirroring the full
+   page's layout. Columns are set inline from GRID_COLUMNS so the layout maths stays in one
+   place. Static tiles — no drag, no buttons. */
+.sanctuary-preview-grid {
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* Calm, glanceable cells — smaller than the full page's interactive cards (no min-height,
+   no card chrome) so the home stays light and uncrowded. */
+.sanctuary-preview-cell {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 3.75rem;
+}
+
+.sanctuary-preview-cell.empty {
+  /* a quiet, barely-there spacer so the grid keeps its shape without drawing attention */
+  min-height: 0;
+}
+
+/* Garden-glance object art: noticeably smaller than the 96px full-page art so a few cells
+   sit nicely across the home without a heavy block. */
+.sanctuary-preview-cell .sanctuary-svg {
+  width: 56px;
+  height: 56px;
+  display: block;
 }
 
 /* Collapsible "Show more" drawer — keeps the heavier retrospective/progress detail (full

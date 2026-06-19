@@ -261,10 +261,12 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Compact sanctuary — a slim garden teaser linking to the full /sanctuary page. No
-          coin count here (the slim level chip above already shows coins; don't show twice).
-          Also moved out of the "Show more" drawer onto the calm default home. */}
-      {stats && <SanctuaryScene scene={sanctuaryScene} compact />}
+      {/* Expanded, READ-ONLY garden preview — the user's actual plants laid out in their grid
+          cells on the calm default home, so the home reads like a real little garden you glance
+          at, then tap through to tend. No interactivity here (no drag/move/buy/customize) and no
+          coin count (the slim level chip above already shows coins); a "Tend it →" link opens
+          /sanctuary, where the garden is actually tended. */}
+      {stats && <SanctuaryScene scene={sanctuaryScene} preview />}
 
       {/* Quiet, always-reachable mood line. If the user already logged a mood today we reflect
           it back calmly — "You felt {mood} {emoji}" with a small colour accent — instead of
