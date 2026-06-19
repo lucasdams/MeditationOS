@@ -37,6 +37,7 @@ from app.schemas.sanctuary import (
     SanctuaryScene,
     ShopItem,
     SlotOption,
+    TendingStatus,
     VariantOption,
 )
 from app.services import dashboard_service
@@ -313,6 +314,131 @@ _GROWTH_UNLOCK: tuple[int, ...] = (1, 3, 5, 8, 11)
 # above (ADR-0021), so an evolved form is only ever chosen once a player has tended an item
 # all the way up. Derived from the ladder so the fork tracks any future re-tuning of it.
 TOP_GROWTH_UNLOCK: int = _GROWTH_UNLOCK[-1]
+
+
+# --- Tending: growth from practice, not coins (oak-only MVP) ----------------------------
+#
+# A SECOND, separate signal from coins (see docs/design/sanctuary-upgrades-tended.md). Coins
+# keep doing acquisition (buy item + variant + cosmetic slots — unchanged). "Tending" is a
+# monotonic score `T` derived from real practice that advances an item up its growth ladder
+# FOR FREE — by showing up. It is never stored, never spent, computed read-time exactly like
+# XP and streaks, so the no-ledger / no-migration properties survive. It only affects which
+# growth stage is *rendered*; it never touches coins, _spent, or the stored customizations.
+#
+# T blends the monotonic practice signals from dashboard_service.get_tending_signals (each
+# only ever grows): distinct practice days (the core habit — heaviest), the LONGEST streak
+# (not current — current falls back on a lapse and would break monotonicity), per-day-capped
+# breathing minutes (the signature practice, weighted above plain meditation, mirroring its 3×
+# XP), per-day-capped meditation minutes, and a small variety bonus per distinct session type.
+# All weights are tunable in-code constants — re-tuning needs no migration.
+_TENDING_PER_PRACTICE_DAY = 3.0
+_TENDING_PER_LONGEST_STREAK_DAY = 2.0
+_TENDING_PER_BREATHING_MIN = 1.0
+_TENDING_PER_MEDITATION_MIN = 0.5
+_TENDING_PER_DISTINCT_TYPE = 4.0
+
+
+# Front-loaded T → stage thresholds: the minimum Tending score to reach each GROWTH_STAGES
+# rung. Early stages arrive fast (a new practitioner sees the oak respond within a week or
+# two); the gaps widen each step (12 → 28 → 70 → 150 → 300), so later stages stretch into a
+# long, calm horizon. In-code constants — re-tuning pacing is a one-line change, no migration.
+# Parallel to GROWTH_STAGES; an un-grown base is "below the first threshold".
+TENDING_STAGE_THRESHOLDS: tuple[int, ...] = (12, 40, 110, 260, 560)
+
+
+def tending_score(signals: "dashboard_service.TendingSignals") -> int:
+    """The monotonic Tending score `T` blended from a user's practice signals. Each input is
+    non-decreasing over the immutable activity log, so `T` only ever grows — an item's Tended
+    stage never regresses (the same guarantee coins have via *earned* XP)."""
+    return int(
+        signals.practice_days * _TENDING_PER_PRACTICE_DAY
+        + signals.longest_streak * _TENDING_PER_LONGEST_STREAK_DAY
+        + signals.breathing_minutes * _TENDING_PER_BREATHING_MIN
+        + signals.meditation_minutes * _TENDING_PER_MEDITATION_MIN
+        + signals.distinct_session_types * _TENDING_PER_DISTINCT_TYPE
+    )
+
+
+def tending_earned_stage(tending: int) -> int:
+    """The growth-ladder stage index a Tending score earns: 0 = un-grown base, 1..5 = the
+    GROWTH_STAGES rungs (grown → … → venerable). Front-loaded via TENDING_STAGE_THRESHOLDS."""
+    stage = 0
+    for threshold in TENDING_STAGE_THRESHOLDS:
+        if tending >= threshold:
+            stage += 1
+        else:
+            break
+    return stage
+
+
+def _purchased_stage(customizations: dict[str, str]) -> int:
+    """The growth-ladder stage the item has PURCHASED via its `grown` slot: 0 = un-grown,
+    1..5 for grown → venerable. Unknown/absent → 0. A purchase is a floor on the displayed
+    stage (never lowered by Tending)."""
+    grown = customizations.get("grown")
+    if grown in GROWTH_STAGES:
+        return GROWTH_STAGES.index(grown) + 1
+    return 0
+
+
+def get_tending_basis(
+    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC"
+) -> int:
+    """The user's monotonic Tending score `T` — read-time, nothing stored, no migration."""
+    signals = dashboard_service.get_tending_signals(db, user_id, today=today, tz=tz)
+    return tending_score(signals)
+
+
+# The single item the "Tended" MVP applies to — the oak (the `tree` catalog item). Strictly
+# scoped here so the proof is reversible: EVERY other item keeps coin-bought growth, untouched.
+TENDED_ITEM_KEY = "tree"
+
+
+def _display_customizations(
+    item_key: str, customizations: dict[str, str], tending: int
+) -> dict[str, str]:
+    """The customizations to *render* for an item — the stored map, except a Tended item's
+    `grown` stage is lifted to `max(purchased, tending_earned)` so practice grows it for free.
+
+    Returns a (possibly new) dict; the input is never mutated. Only the displayed `grown` key
+    is touched, and only when Tending earns a HIGHER stage than was purchased — a purchase is
+    always a floor (backward-compat: a legacy oak that bought a higher rung keeps it). This is
+    a render-only override: `_spent` reads the STORED row, so coins are unaffected (no coin
+    path to a Tending-gated stage → exploit-free).
+    """
+    if item_key != TENDED_ITEM_KEY:
+        return customizations
+    earned = tending_earned_stage(tending)
+    displayed = max(_purchased_stage(customizations), earned)
+    if displayed == 0:
+        return customizations  # un-grown base — nothing to show
+    display = dict(customizations)
+    display["grown"] = GROWTH_STAGES[displayed - 1]
+    return display
+
+
+def _tending_status(
+    item_key: str, customizations: dict[str, str], tending: int
+) -> TendingStatus | None:
+    """The TendingStatus surfaced for a Tended item (None for every other item). Reports the
+    score, the currently-displayed stage = max(purchased, earned), and the next stage + the
+    Tending score that unlocks it (None at the top of the ladder)."""
+    if item_key != TENDED_ITEM_KEY:
+        return None
+    displayed = max(_purchased_stage(customizations), tending_earned_stage(tending))
+    stage = GROWTH_STAGES[displayed - 1] if displayed >= 1 else None
+    if displayed < len(GROWTH_STAGES):
+        next_stage = GROWTH_STAGES[displayed]
+        next_threshold = TENDING_STAGE_THRESHOLDS[displayed]
+    else:
+        next_stage = None
+        next_threshold = None
+    return TendingStatus(
+        tending=tending,
+        stage=stage,
+        next_stage=next_stage,
+        next_threshold=next_threshold,
+    )
 
 
 def _growth_ladder(base: int) -> tuple[tuple[str, int, int], ...]:
@@ -962,6 +1088,7 @@ def _build_scene(
     level: int,
     streak: int,
     reset_fees: int = 0,
+    tending: int = 0,
 ) -> SanctuaryScene:
     # The balance is derived from holdings minus the one stored economy figure — the
     # cumulative upgrade-reset fees (ADR-0019) — then clamped ≥ 0 (legacy/large gardens
@@ -982,12 +1109,18 @@ def _build_scene(
                 position=p.position,
                 cell=p.cell,
                 variant=p.variant if p.variant is not None else item.default_variant,
-                customizations=customizations,
+                # A Tended item (the oak, MVP) renders at max(purchased, tending-earned) stage:
+                # its displayed `grown` is lifted for free by practice. Render-only — `_spent`
+                # below reads the STORED row, so coins are untouched (no coin path to a
+                # Tending-gated stage). `available` keeps showing the *purchased* state so the
+                # buy/swap economics are unchanged. See sanctuary-upgrades-tended.md.
+                customizations=_display_customizations(p.item_key, customizations, tending),
                 available=_available_slots(item, customizations, balance, level),
                 # Cosmetic personalization (ADR-0015) — never affects the derived balance.
                 name=p.name,
                 note=p.note,
                 favorite=bool(p.favorite),
+                tending=_tending_status(p.item_key, customizations, tending),
             )
         )
     # Every shop item, if bought next, lands at the same ordinal and so carries the same
@@ -1031,12 +1164,43 @@ def _build_scene(
     )
 
 
+def _build_scene_with_tending(
+    db: DBSession,
+    user_id: uuid.UUID,
+    plantings: list[SanctuaryPlanting],
+    coins_earned: int,
+    level: int,
+    streak: int,
+    reset_fees: int,
+    *,
+    today: date,
+    tz: str,
+) -> SanctuaryScene:
+    """Build the scene, resolving the user's Tending score first so a Tended item (the oak)
+    renders at its practice-earned stage. Only computes Tending when the user actually owns a
+    Tended item, so a garden without one never pays for the extra practice query."""
+    tending = (
+        get_tending_basis(db, user_id, today=today, tz=tz)
+        if any(p.item_key == TENDED_ITEM_KEY for p in plantings)
+        else 0
+    )
+    return _build_scene(plantings, coins_earned, level, streak, reset_fees, tending)
+
+
 def get_scene(
     db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC"
 ) -> SanctuaryScene:
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(
-        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    return _build_scene_with_tending(
+        db,
+        user_id,
+        _load(db, user_id),
+        coins_earned,
+        level,
+        streak,
+        _reset_fees(db, user_id),
+        today=today,
+        tz=tz,
     )
 
 
@@ -1091,7 +1255,10 @@ def buy(
     except IntegrityError as err:  # lost a race on uq position/cell despite the lock
         db.rollback()
         raise SanctuaryConflictError(item.key) from err
-    return _build_scene(_load(db, user_id), coins_earned, level, streak, reset_fees)
+    return _build_scene_with_tending(
+        db, user_id, _load(db, user_id), coins_earned, level, streak, reset_fees,
+        today=today, tz=tz,
+    )
 
 
 def customize(
@@ -1155,7 +1322,10 @@ def customize(
     except IntegrityError as err:
         db.rollback()
         raise SanctuaryConflictError(row.item_key) from err
-    return _build_scene(_load(db, user_id), coins_earned, level, streak, reset_fees)
+    return _build_scene_with_tending(
+        db, user_id, _load(db, user_id), coins_earned, level, streak, reset_fees,
+        today=today, tz=tz,
+    )
 
 
 def personalize(
@@ -1199,8 +1369,9 @@ def personalize(
         db.rollback()
         raise SanctuaryConflictError(row.item_key) from err
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(
-        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    return _build_scene_with_tending(
+        db, user_id, _load(db, user_id), coins_earned, level, streak,
+        _reset_fees(db, user_id), today=today, tz=tz,
     )
 
 
@@ -1263,8 +1434,9 @@ def move(
             raise SanctuaryConflictError(row.item_key) from err
 
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(
-        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    return _build_scene_with_tending(
+        db, user_id, _load(db, user_id), coins_earned, level, streak,
+        _reset_fees(db, user_id), today=today, tz=tz,
     )
 
 
@@ -1316,6 +1488,7 @@ def reset_upgrades(
         db.rollback()
         raise SanctuaryConflictError(row.item_key) from err
     coins_earned, level, streak = _wallet(db, user_id, today=today, tz=tz)
-    return _build_scene(
-        _load(db, user_id), coins_earned, level, streak, _reset_fees(db, user_id)
+    return _build_scene_with_tending(
+        db, user_id, _load(db, user_id), coins_earned, level, streak,
+        _reset_fees(db, user_id), today=today, tz=tz,
     )

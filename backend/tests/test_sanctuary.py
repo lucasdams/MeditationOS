@@ -9,13 +9,18 @@ bonuses that vary by date.
 
 import uuid
 
+from app.services.dashboard_service import TendingSignals
 from app.services.sanctuary_service import (
     COINS_PER_LEVEL,
     GRID_CELLS,
     GROWTH_STAGES,
     SANCTUARY_CATALOG,
     SANCTUARY_RESET_FEE,
+    TENDED_ITEM_KEY,
+    TENDING_STAGE_THRESHOLDS,
     progressive_surcharge,
+    tending_earned_stage,
+    tending_score,
 )
 
 
@@ -62,6 +67,22 @@ def _scene(client):
 
 def _owned_keys(scene):
     return {o["item_key"] for o in scene["owned"]}
+
+
+def _stored_cust(db_session, planting_id):
+    """The customizations actually STORED on a planting row (the purchase truth), read
+    directly from the DB. The scene's `customizations` for a Tended item (the oak) reflects
+    the *displayed* stage = max(purchased, tending-earned), which can differ from what was
+    bought; these economy/mechanics assertions are about the stored purchase, so read it."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+
+    return db_session.execute(
+        select(SanctuaryPlanting.customizations).where(
+            SanctuaryPlanting.id == uuid.UUID(str(planting_id))
+        )
+    ).scalar_one()
 
 
 def test_requires_auth(client):
@@ -165,13 +186,14 @@ def _grown_cost(item_key):
     return SANCTUARY_CATALOG[item_key].slot("grown").option("grown").cost
 
 
-def test_customize_applies_and_deducts_balance(client):
+def test_customize_applies_and_deducts_balance(client, db_session):
     _auth(client, "customize@example.com")
     _practice(client, 60)  # level up for coins
     bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
     tree = next(o for o in bought["owned"] if o["item_key"] == "tree")
-    assert tree["customizations"] == {}
-    # The available slots come back with cost + applied hints.
+    # Nothing purchased yet (the oak's STORED customizations are empty; its *displayed* grown
+    # stage may be lifted by Tending, but `available` reflects the purchased state).
+    assert _stored_cust(db_session, tree["id"]) == {}
     grown_slot = next(s for s in tree["available"] if s["slot"] == "grown")
     assert grown_slot["applied"] is None
     coins_before = bought["coins"]
@@ -183,7 +205,7 @@ def test_customize_applies_and_deducts_balance(client):
     assert res.status_code == 200
     scene = res.json()
     upgraded = next(o for o in scene["owned"] if o["item_key"] == "tree")
-    assert upgraded["customizations"] == {"foliage": "blossom"}
+    assert _stored_cust(db_session, tree["id"]) == {"foliage": "blossom"}
     cost = SANCTUARY_CATALOG["tree"].slot("foliage").option("blossom").cost
     assert scene["coins"] == coins_before - cost
     foliage_slot = next(s for s in upgraded["available"] if s["slot"] == "foliage")
@@ -1186,7 +1208,7 @@ def test_reset_requires_auth(client):
     )
 
 
-def test_reset_clears_customizations_and_refunds_minus_fee(client):
+def test_reset_clears_customizations_and_refunds_minus_fee(client, db_session):
     """A reset clears the item's customizations and returns the sunk cost minus the flat fee;
     the variant (base form) is preserved."""
     _auth(client, "reset-basic@example.com")
@@ -1212,8 +1234,9 @@ def test_reset_clears_customizations_and_refunds_minus_fee(client):
     assert res.status_code == 200
     scene = res.json()
     tree = next(o for o in scene["owned"] if o["id"] == tree_id)
-    # Customizations cleared; the purchased variant (base form) is left intact.
-    assert tree["customizations"] == {}
+    # Customizations cleared in storage; the purchased variant (base form) is left intact. (The
+    # oak's *displayed* grown stage may still be lifted by Tending — that's not a stored upgrade.)
+    assert _stored_cust(db_session, tree_id) == {}
     assert tree["variant"] == "cherry"
     # The two option costs are refunded, minus the flat fee.
     assert scene["coins"] == coins_with_upgrades + grown + foliage - SANCTUARY_RESET_FEE
@@ -1628,7 +1651,7 @@ def test_form_fork_is_one_mutually_exclusive_slot_gated_high():
             )
 
 
-def test_form_fork_is_mutually_exclusive_at_runtime(client):
+def test_form_fork_is_mutually_exclusive_at_runtime(client, db_session):
     """Choosing a second form *replaces* the first (mutually-exclusive within the one `form`
     slot) and charges only the difference — the fork, end to end."""
     _auth(client, "fork-runtime@example.com")
@@ -1652,8 +1675,9 @@ def test_form_fork_is_mutually_exclusive_at_runtime(client):
         json={"slot": "form", "option": "blossoming"},
     )
     assert r2.status_code == 200, r2.json()
-    only = next(o for o in r2.json()["owned"] if o["item_key"] == "tree")
-    assert only["customizations"] == {"form": "blossoming"}  # mighty replaced, not added
+    # Only ONE form is ever STORED (mutually-exclusive); the oak's displayed grown stage is a
+    # Tending render-overlay, not a stored upgrade, so we assert the stored purchase truth.
+    assert _stored_cust(db_session, tree_id) == {"form": "blossoming"}  # mighty replaced
     assert r2.json()["coins"] == coins0 - mighty - (blossoming - mighty)  # == coins0 - blossoming
 
 
@@ -1716,7 +1740,7 @@ def test_every_nature_item_gained_an_additive_slot(client):
         assert slot_key not in ("form", "grown"), key
 
 
-def test_nature_additive_slot_is_independent_of_form_and_grown(client):
+def test_nature_additive_slot_is_independent_of_form_and_grown(client, db_session):
     """A tree can carry a growth stage AND an evolved form AND a critter all at once — three
     independent slots, each charged its own option cost (ADR-0021)."""
     _auth(client, "nature-independent@example.com")
@@ -1735,8 +1759,13 @@ def test_nature_additive_slot_is_independent_of_form_and_grown(client):
         )
         assert res.status_code == 200, (slot, option, res.json())
         spent += item.slot(slot).option(option).cost
-    only = next(o for o in _scene(client)["owned"] if o["item_key"] == "tree")
-    assert only["customizations"] == {"grown": "mature", "form": "mighty", "critter": "songbird"}
+    # Three independent slots STORED at once (the displayed grown may sit higher via Tending —
+    # a render overlay, not a purchase; we assert the stored purchase truth).
+    assert _stored_cust(db_session, tree_id) == {
+        "grown": "mature",
+        "form": "mighty",
+        "critter": "songbird",
+    }
     assert _scene(client)["coins"] == coins - spent
 
 
@@ -2354,3 +2383,146 @@ def test_whimsy_legacy_grown_grown_row_spend_unchanged(client, db_session):
     grown_cost = gnome_item.slot("grown").option("grown").cost
     assert grown_cost == round(32 * 1.5)  # garden_gnome base_size is 32
     assert scene["coins"] == before - (gnome_item.cost + grown_cost)
+
+
+# --- "Tended" MVP: the oak grows from practice, not coins ---------------------------------
+# A second, separate signal from coins (docs/design/sanctuary-upgrades-tended.md). Tending is
+# a monotonic score `T` derived from real practice that lifts the OAK up its growth ladder for
+# free — never stored, never spent. It only affects which growth stage is *rendered*; coins,
+# _spent, and the stored customizations are untouched. Strictly oak-only (reversible proof).
+
+
+def _signals(days=0, longest=0, breath=0, med=0, types=0):
+    return TendingSignals(
+        practice_days=days,
+        longest_streak=longest,
+        breathing_minutes=breath,
+        meditation_minutes=med,
+        distinct_session_types=types,
+    )
+
+
+def test_tending_score_is_monotonic_in_every_signal():
+    """`T` only ever grows as any single practice signal grows — the load-bearing property
+    (monotonic, so a Tended item never regresses)."""
+    base = _signals(days=2, longest=2, breath=10, med=10, types=1)
+    t0 = tending_score(base)
+    assert tending_score(base._replace(practice_days=3)) > t0
+    assert tending_score(base._replace(longest_streak=3)) > t0
+    assert tending_score(base._replace(breathing_minutes=20)) > t0
+    assert tending_score(base._replace(meditation_minutes=20)) > t0
+    assert tending_score(base._replace(distinct_session_types=2)) > t0
+    # Nothing lowers it: an all-zero practice profile scores exactly 0.
+    assert tending_score(_signals()) == 0
+
+
+def test_tending_earned_stage_is_front_loaded_and_steps_through_the_ladder():
+    """The threshold table maps `T` to a stage 0..5, front-loaded: early stages arrive fast,
+    the gaps widen each step (a long calm horizon for the top rungs)."""
+    assert tending_earned_stage(0) == 0
+    assert tending_earned_stage(TENDING_STAGE_THRESHOLDS[0] - 1) == 0
+    for i, threshold in enumerate(TENDING_STAGE_THRESHOLDS):
+        assert tending_earned_stage(threshold) == i + 1
+    # Beyond the top threshold stays at the max stage (len of the ladder).
+    assert tending_earned_stage(10_000) == len(TENDING_STAGE_THRESHOLDS)
+    # Front-loaded: the gaps between thresholds widen each step (a concave curve — quick
+    # early wins, a long calm tail).
+    gaps = [
+        b - a
+        for a, b in zip(TENDING_STAGE_THRESHOLDS, TENDING_STAGE_THRESHOLDS[1:], strict=False)
+    ]
+    assert all(b > a for a, b in zip(gaps, gaps[1:], strict=False))
+
+
+def test_high_practice_oak_advances_with_zero_coins_spent(client):
+    """A high-practice user's oak renders at an advanced stage with NO coins spent on growth:
+    the displayed `grown` is driven by Tending, while coins are spent only on the buy."""
+    _auth(client, "tended-high@example.com")
+    coins_before = _earn_coins(client, 6)  # several practice days → real Tending
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree = next(o for o in bought["owned"] if o["item_key"] == "tree")
+    # The oak displays a grown stage purely from practice — nothing was spent to grow it.
+    assert tree["customizations"].get("grown") in GROWTH_STAGES
+    assert tree["tending"] is not None
+    assert tree["tending"]["tending"] > 0
+    assert tree["tending"]["stage"] == tree["customizations"]["grown"]
+    # Coins spent equal exactly the oak's buy price — growth was free.
+    assert bought["coins"] == coins_before - SANCTUARY_CATALOG["tree"].cost
+    # The grown slot still shows nothing *purchased* (Tending is a render overlay, not a buy).
+    grown_slot = next(s for s in tree["available"] if s["slot"] == "grown")
+    assert grown_slot["applied"] is None
+
+
+def test_oak_displayed_stage_is_max_of_purchased_and_earned(client, db_session):
+    """displayed_stage = max(purchased_stage, tending_earned_stage). A legacy oak that bought
+    a HIGHER rung than Tending earns keeps it (purchase is a floor)."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "tended-max@example.com")
+    # A brand-new user (no practice → T = 0 → earned stage 0) who owns a legacy oak that
+    # purchased its way to "ancient" (stage 4). The display must keep the higher purchased rung.
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "tended-max@example.com")
+    ).scalar_one()
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id,
+            item_key="tree",
+            position=0,
+            customizations={"grown": "ancient"},
+        )
+    )
+    db_session.commit()
+
+    tree = next(o for o in _scene(client)["owned"] if o["item_key"] == "tree")
+    # Earned stage is 0 (no practice), purchased is 4 → max is the purchased "ancient".
+    assert tree["tending"]["tending"] == 0
+    assert tree["customizations"]["grown"] == "ancient"
+    assert tree["tending"]["stage"] == "ancient"
+
+
+def test_legacy_grown_grown_oak_prices_identically_and_shows_at_least_purchased(client, db_session):
+    """A legacy {"grown":"grown"} oak prices EXACTLY as before (Tending never touches spend)
+    and renders at >= its purchased stage."""
+    from sqlalchemy import select
+
+    from app.models.sanctuary import SanctuaryPlanting
+    from app.models.user import User
+
+    _auth(client, "tended-legacy@example.com")
+    _practice(client, 60)  # enough coins to afford buy + grown without the balance clamping
+    before = _scene(client)["coins"]
+    user_id = db_session.execute(
+        select(User.id).where(User.email == "tended-legacy@example.com")
+    ).scalar_one()
+    db_session.add(
+        SanctuaryPlanting(
+            user_id=user_id, item_key="tree", position=0, customizations={"grown": "grown"}
+        )
+    )
+    db_session.commit()
+
+    scene = _scene(client)
+    tree = next(o for o in scene["owned"] if o["item_key"] == "tree")
+    # Priced identically to the pre-Tending economy: buy + the grown rung's cost, nothing
+    # extra from Tending (which never touches spend).
+    grown_cost = SANCTUARY_CATALOG["tree"].slot("grown").option("grown").cost
+    assert scene["coins"] == before - (SANCTUARY_CATALOG["tree"].cost + grown_cost)
+    # Displayed stage is >= the purchased "grown" (stage 1) — the purchase is a floor.
+    displayed = GROWTH_STAGES.index(tree["customizations"]["grown"])
+    assert displayed >= GROWTH_STAGES.index("grown")
+
+
+def test_non_oak_items_are_unaffected_by_tending(client):
+    """Tending is strictly oak-only: a non-oak item (a flower) never carries a TendingStatus
+    and its displayed customizations are exactly what was purchased (empty here)."""
+    _auth(client, "tended-nonoak@example.com")
+    _earn_coins(client, 5)  # plenty of practice → high Tending, which must NOT touch the flower
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    flower = next(o for o in bought["owned"] if o["item_key"] == "flower")
+    assert flower["tending"] is None
+    assert flower["customizations"] == {}  # no Tending-injected grown on a non-oak item
+    assert TENDED_ITEM_KEY == "tree"

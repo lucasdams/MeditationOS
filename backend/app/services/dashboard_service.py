@@ -413,6 +413,100 @@ def get_wallet_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str)
     )
 
 
+# Per-local-day cap on the practice minutes that feed the Tending signal, so one marathon
+# sitting (or a flood of sessions on a single day) can't inflate it — Tending should reward
+# *showing up over time*, not a single grind. Genuine daily practice sits well under this; it
+# only blunts farming. Mirrors the anti-spam stance of the gratitude/journal daily caps.
+TENDING_DAILY_MINUTES_CAP = 60
+
+
+class TendingSignals(NamedTuple):
+    """The monotonic practice signals that fund the Sanctuary "Tending" score (see
+    docs/design/sanctuary-upgrades-tended.md). Every field only ever grows or holds over the
+    immutable activity log — distinct practice days, the *longest* (not current) streak, and
+    lifetime per-minute-floored, daily-capped breathing/meditation minutes — so any score
+    blended from them is monotonic and an item's Tended stage never regresses.
+
+    `distinct_session_types` is a small variety signal (how many of SESSION_TYPES the user
+    has ever practiced); it too only ever grows.
+    """
+
+    practice_days: int  # distinct local days meeting the MIN_PRACTICE_SECONDS practice floor
+    longest_streak: int  # longest consecutive-day run ever (monotonic; current streak is not)
+    breathing_minutes: int  # lifetime resonance-breathing minutes, per-day-capped
+    meditation_minutes: int  # lifetime non-breathing minutes, per-day-capped
+    distinct_session_types: int  # how many distinct SESSION_TYPES ever practiced (variety)
+
+
+def get_tending_signals(
+    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str
+) -> TendingSignals:
+    """The monotonic practice signals behind the Sanctuary Tending score. All read-time,
+    nothing stored (the same stance as XP/streaks). Practice-day counting reuses the
+    MIN_PRACTICE_SECONDS floor; the minute totals are floored per whole minute and capped per
+    local day (TENDING_DAILY_MINUTES_CAP) to resist farming, mirroring the existing anti-spam.
+    """
+    # Distinct practice days + the longest streak — the consistency core. A day counts only
+    # once its total session time reaches MIN_PRACTICE_SECONDS (so a 1-second sit is ignored).
+    session_local_day = _local_date(tz, Session.occurred_at)
+    day_rows = db.execute(
+        select(session_local_day)
+        .where(Session.user_id == user_id)
+        .group_by(session_local_day)
+        .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
+    ).all()
+    session_days = {row[0] for row in day_rows}
+    _current, longest_streak, _rest = compute_streaks(session_days, today)
+
+    # Per-day, per-type capped minutes. Each (local day × is-breathing) bucket's whole minutes
+    # are floored then clamped to TENDING_DAILY_MINUTES_CAP, so neither a marathon sit nor a
+    # spam of sessions on one day inflates the total. Summed over all days → lifetime minutes.
+    is_breathing = Session.type == "resonance_breathing"
+    per_day = (
+        select(
+            is_breathing.label("breathing"),
+            func.least(
+                func.sum(Session.duration_seconds) / 60, TENDING_DAILY_MINUTES_CAP
+            ).label("minutes"),
+        )
+        .where(Session.user_id == user_id)
+        .group_by(session_local_day, is_breathing)
+        .subquery()
+    )
+    breathing_minutes = int(
+        db.execute(
+            select(func.coalesce(func.sum(per_day.c.minutes), 0)).where(
+                per_day.c.breathing.is_(True)
+            )
+        ).scalar_one()
+    )
+    meditation_minutes = int(
+        db.execute(
+            select(func.coalesce(func.sum(per_day.c.minutes), 0)).where(
+                per_day.c.breathing.is_(False)
+            )
+        ).scalar_one()
+    )
+
+    # Variety: how many distinct session types the user has ever practiced (a small bonus for
+    # a rounded practice). Monotonic — a type once tried is always counted.
+    distinct_types = int(
+        db.execute(
+            select(func.count(func.distinct(Session.type))).where(
+                Session.user_id == user_id
+            )
+        ).scalar_one()
+    )
+
+    return TendingSignals(
+        practice_days=len(session_days),
+        longest_streak=longest_streak,
+        breathing_minutes=breathing_minutes,
+        meditation_minutes=meditation_minutes,
+        distinct_session_types=distinct_types,
+    )
+
+
 def get_stats(
     db: DBSession,
     user_id: uuid.UUID,
