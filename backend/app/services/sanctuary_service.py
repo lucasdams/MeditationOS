@@ -433,6 +433,15 @@ def _display_customizations(
     return display
 
 
+def _earned_grown_stage(item_key: str, tending: _TendingView) -> int:
+    """The practice-earned `grown` stage index for an item (1..5), or 0. Non-zero only for the
+    Tended item (the oak) — every other item gets 0, so its coin growth path is unchanged. Used
+    to flag the oak's already-reached rungs as `reached` (not buyable) in `_available_slots`."""
+    if item_key != TENDED_ITEM_KEY:
+        return 0
+    return tending_earned_stage(tending.score)
+
+
 def _tending_status(
     item_key: str, customizations: dict[str, str], tending: _TendingView
 ) -> TendingStatus | None:
@@ -1074,15 +1083,35 @@ def _spent(plantings: list[SanctuaryPlanting]) -> int:
 
 
 def _available_slots(
-    item: CatalogItem, customizations: dict[str, str], balance: int, level: int
+    item: CatalogItem,
+    customizations: dict[str, str],
+    balance: int,
+    level: int,
+    earned_grown_stage: int = 0,
 ) -> list[AvailableSlot]:
     """Slots/options still applicable: each option with its cost + locked/affordable/applied
-    hints. Calm, not pushy — the UI uses these to gently offer the next touch."""
+    hints. Calm, not pushy — the UI uses these to gently offer the next touch.
+
+    `earned_grown_stage` is the Tended (practice-earned) `grown` stage for a Tended item (the
+    oak; 0 for every other item / no practice). Each `grown` rung at or below it is flagged
+    `reached=True` — practice already displays it, so the UI shows it as a done/reached rung,
+    NOT a buy button. This closes the trap where a user could pay full coins for a stage Tending
+    already grants (coin-safe but pointless). Coins/`_spent` are untouched — `reached` is a
+    render hint only, and only the oak's `grown` slot is ever flagged.
+    """
     out: list[AvailableSlot] = []
     for slot in item.slots:
         applied = customizations.get(slot.key)
         opts: list[SlotOption] = []
         for o in slot.options:
+            # A `grown` rung whose ladder index is within the Tending-earned stage is already
+            # displayed by practice (1-indexed stage ≥ rung index + 1) — mark it reached so it
+            # reads as earned, not buyable. Non-`grown` slots and non-Tended items never set it.
+            reached = (
+                slot.key == "grown"
+                and o.key in GROWTH_STAGES
+                and GROWTH_STAGES.index(o.key) < earned_grown_stage
+            )
             opts.append(
                 SlotOption(
                     option=o.key,
@@ -1093,6 +1122,7 @@ def _available_slots(
                     else f"Reach level {o.unlock_level}",
                     affordable=balance >= o.cost,
                     applied=applied == o.key,
+                    reached=reached,
                 )
             )
         out.append(AvailableSlot(slot=slot.key, applied=applied, options=opts))
@@ -1132,7 +1162,14 @@ def _build_scene(
                 # Tending-gated stage). `available` keeps showing the *purchased* state so the
                 # buy/swap economics are unchanged. See sanctuary-upgrades-tended.md.
                 customizations=_display_customizations(p.item_key, customizations, tending),
-                available=_available_slots(item, customizations, balance, level),
+                # The oak's `grown` rungs at/below the Tending-earned stage are flagged
+                # `reached` (not buyable) so practice — not coins — is what drives its growth
+                # ladder, and a user can't full-price-buy a rung Tending already displays.
+                # Non-oak items pass 0, so their coin path is byte-for-byte unchanged.
+                available=_available_slots(
+                    item, customizations, balance, level,
+                    _earned_grown_stage(p.item_key, tending),
+                ),
                 # Cosmetic personalization (ADR-0015) — never affects the derived balance.
                 name=p.name,
                 note=p.note,

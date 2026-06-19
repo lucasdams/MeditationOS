@@ -2527,3 +2527,68 @@ def test_non_oak_items_are_unaffected_by_tending(client):
     assert flower["tending"] is None
     assert flower["customizations"] == {}  # no Tending-injected grown on a non-oak item
     assert TENDED_ITEM_KEY == "tree"
+
+
+def _grown_options(item):
+    """The owned item's `grown` slot options from the scene (the customize-panel ladder)."""
+    return next(s for s in item["available"] if s["slot"] == "grown")["options"]
+
+
+def test_oak_reached_grown_rungs_are_marked_reached_not_buyable(client):
+    """Fix 1: the oak's `grown` rungs at/below the Tending-earned stage are flagged `reached`
+    (practice already displays them) — so a user can't full-price-buy a rung Tending grants.
+    A reached rung is not `applied` (nothing was purchased), carries no coin path, and the
+    rungs ABOVE the earned stage stay normal buyable options (their coin path is untouched)."""
+    _auth(client, "tended-reached@example.com")
+    _earn_coins(client, 6)  # real practice → an advanced earned stage
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree = next(o for o in bought["owned"] if o["item_key"] == "tree")
+    earned = GROWTH_STAGES.index(tree["tending"]["stage"]) + 1  # 1..5
+    assert earned >= 1  # the fixture must actually have earned a stage
+
+    options = _grown_options(tree)
+    for opt in options:
+        idx = GROWTH_STAGES.index(opt["option"])  # 0-indexed rung
+        if idx < earned:
+            # Already displayed by practice → reached, never a purchase.
+            assert opt["reached"] is True, opt["option"]
+            assert opt["applied"] is False  # nothing was bought (no coin path)
+        else:
+            # Above the earned stage → an ordinary coin-buyable rung, unchanged.
+            assert opt["reached"] is False, opt["option"]
+    # Nothing was actually purchased in the grown slot — the ladder reads as practice-earned.
+    assert next(s for s in tree["available"] if s["slot"] == "grown")["applied"] is None
+
+
+def test_non_oak_grown_rungs_are_never_marked_reached(client):
+    """Fix 1 stays strictly oak-only: a non-oak item's `grown` rungs are never `reached`, even
+    with high practice — its coin growth path is byte-for-byte unchanged."""
+    _auth(client, "tended-reached-nonoak@example.com")
+    _earn_coins(client, 6)  # high Tending — must not leak onto a non-oak item
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "flower"}).json()
+    flower = next(o for o in bought["owned"] if o["item_key"] == "flower")
+    for opt in _grown_options(flower):
+        assert opt["reached"] is False, opt["option"]
+
+
+def test_reset_pure_tending_oak_is_409_and_never_refunds_coins(client):
+    """Fix 3: an oak grown ONLY by practice (displayed stage advanced by Tending, but the
+    stored `customizations` is {}) has nothing to reset — reset is rejected (409 NothingToReset)
+    and no coins are minted. Proves practice-only growth can never be reset-refunded (there is
+    no sunk cost behind a Tending-driven stage)."""
+    _auth(client, "reset-pure-tending@example.com")
+    _earn_coins(client, 6)  # real practice → the oak's displayed stage is lifted for free
+    bought = client.post("/api/v1/sanctuary/buy", json={"item_key": "tree"}).json()
+    tree = next(o for o in bought["owned"] if o["item_key"] == "tree")
+    tree_id = tree["id"]
+    # The oak DISPLAYS an advanced grown stage (driven by Tending)...
+    assert tree["customizations"].get("grown") in GROWTH_STAGES
+    assert tree["tending"]["stage"] in GROWTH_STAGES
+    # ...yet nothing is stored/purchased: the grown slot shows nothing applied.
+    assert next(s for s in tree["available"] if s["slot"] == "grown")["applied"] is None
+    coins_before = bought["coins"]
+
+    res = client.post(f"/api/v1/sanctuary/items/{tree_id}/reset")
+    assert res.status_code == 409  # NothingToReset — a Tending stage is not a customization
+    # No coins minted, no fee charged — the balance is exactly unchanged.
+    assert _scene(client)["coins"] == coins_before

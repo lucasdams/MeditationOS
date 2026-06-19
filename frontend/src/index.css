@@ -2740,6 +2740,16 @@ textarea:focus-visible,
   border-color: #047857;
 }
 
+/* A growth rung REACHED via practice, not coins (Tended oak — see
+   docs/design/sanctuary-upgrades-tended.md). It carries `.applied` for the green "done" look,
+   plus this `.reached` accent so it reads as grown-by-practice rather than bought. It's
+   disabled (no buy) and never offers a coin price — practice already displays it. */
+.sanctuary-option.reached {
+  background: #15803d;
+  border-color: #15803d;
+  cursor: default;
+}
+
 .sanctuary-option:disabled:not(.applied) {
   background: var(--chip-bg);
   color: var(--text-muted);

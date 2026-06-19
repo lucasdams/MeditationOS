@@ -6,7 +6,7 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.session import Session as PracticeSession
 from app.models.user import User
-from app.services import dashboard_service
+from app.services import dashboard_service, sanctuary_service
 from app.services.quest_pool import quest_for
 
 
@@ -433,3 +433,52 @@ def test_sub_minute_slow_breath_pays_quest_bonus(db_session):
     # bonus isn't double-counted.
     wallet = dashboard_service.get_wallet_basis(db_session, user.id, today=today, tz="UTC")
     assert wallet.earned_xp == quest.xp  # earned XP == total here (no streak bonus)
+
+
+def test_tending_distinct_types_respects_the_practice_floor(db_session):
+    """Anti-farming: a flurry of trivial sub-floor sits across distinct types must NOT count
+    toward `distinct_session_types`. Six 1-second sits of six different types each sit under
+    MIN_PRACTICE_SECONDS, so none counts — the variety signal stays 0 and can't shortcut a
+    Tending stage. (Before the fix this counted all six → 24 Tending pts, clearing stage 1's
+    12-pt threshold from junk sits alone.)"""
+    user = User(email="tending_floor@example.com", password_hash="x")
+    db_session.add(user)
+    db_session.commit()
+    today = date(2026, 6, 16)
+    types = ("mindfulness", "body_scan", "walking", "loving_kindness",
+             "resonance_breathing", "other")
+    for i, t in enumerate(types):
+        db_session.add(
+            PracticeSession(
+                user_id=user.id,
+                type=t,
+                duration_seconds=1,  # < MIN_PRACTICE_SECONDS (60s) — a trivial sit
+                occurred_at=datetime(today.year, today.month, today.day, 8, i, tzinfo=UTC),
+            )
+        )
+    db_session.commit()
+
+    signals = dashboard_service.get_tending_signals(db_session, user.id, today=today, tz="UTC")
+    # None of the junk sits clears the per-type floor, so no variety and no practice day.
+    assert signals.distinct_session_types == 0
+    assert signals.practice_days == 0
+    # And the resulting Tending score can't have cleared stage 1 off trivial sits alone.
+    assert sanctuary_service.tending_earned_stage(
+        sanctuary_service.tending_score(signals)
+    ) == 0
+
+    # A real sit of a single type DOES count it (the floor only blunts junk, never genuine
+    # practice): top one type up over the 60s floor and it appears in the variety count.
+    db_session.add(
+        PracticeSession(
+            user_id=user.id,
+            type="mindfulness",
+            duration_seconds=600,
+            occurred_at=datetime(today.year, today.month, today.day, 9, 0, tzinfo=UTC),
+        )
+    )
+    db_session.commit()
+    signals2 = dashboard_service.get_tending_signals(
+        db_session, user.id, today=today, tz="UTC"
+    )
+    assert signals2.distinct_session_types == 1  # only the type that crossed the floor

@@ -626,34 +626,47 @@ export default function SanctuaryPage() {
                                       // earning it. Only an already-applied option, or an
                                       // in-flight write, fully disables the button (nothing to
                                       // preview / no double-charge). ADR-0021.
+                                      // A `grown` rung REACHED via practice (Tended oak): the
+                                      // Tending-earned stage already displays it, so it's not a
+                                      // purchase — render it like a done rung (✓ reached), never
+                                      // a buy button. Treated like `applied` for disabling and
+                                      // styling so a user can't full-price-buy a rung practice
+                                      // already grants. See sanctuary-upgrades-tended.md.
+                                      const reached = Boolean(opt.reached) && !opt.applied
+                                      const done = opt.applied || reached
                                       const gated = !opt.unlocked || !opt.affordable
-                                      const hardDisabled = busy != null || opt.applied
-                                      // Every not-yet-owned option previews (including gated
-                                      // ones now) — on hover AND keyboard focus, so the preview
-                                      // shows the goal look without spending a coin.
-                                      const canPreview = !opt.applied
+                                      const hardDisabled = busy != null || done
+                                      // Every not-yet-owned/not-yet-reached option previews
+                                      // (including gated ones) — on hover AND keyboard focus, so
+                                      // the preview shows the goal look without spending a coin. A
+                                      // reached rung is already on the item, so nothing to preview.
+                                      const canPreview = !done
                                       const showPreview = () =>
                                         canPreview && setPreview({ slot: s.slot, option: opt.option })
                                       const clearPreview = () => setPreview(null)
                                       // The click still buys only when the option is actually
-                                      // applicable; a gated click is a no-op (the server would
-                                      // 409 anyway), so a gated option can never purchase.
-                                      const buyable = !opt.applied && opt.unlocked && opt.affordable
+                                      // applicable; a gated/reached click is a no-op (a reached
+                                      // rung has no coin path — practice drives it), so it can
+                                      // never purchase.
+                                      const buyable =
+                                        !done && opt.unlocked && opt.affordable
                                       return (
                                         <button
                                           key={opt.option}
                                           type="button"
-                                          className={`sanctuary-option${opt.applied ? ' applied' : ''}${
-                                            gated && !opt.applied ? ' gated' : ''
-                                          }`}
+                                          className={`sanctuary-option${done ? ' applied' : ''}${
+                                            reached ? ' reached' : ''
+                                          }${gated && !done ? ' gated' : ''}`}
                                           disabled={hardDisabled}
-                                          aria-disabled={gated || undefined}
+                                          aria-disabled={(gated && !done) || undefined}
                                           title={
-                                            !opt.unlocked
-                                              ? (opt.unlock_hint ?? 'Locked')
-                                              : !opt.affordable
-                                                ? 'Earn more coins'
-                                                : undefined
+                                            reached
+                                              ? 'Grown by your practice'
+                                              : !opt.unlocked
+                                                ? (opt.unlock_hint ?? 'Locked')
+                                                : !opt.affordable
+                                                  ? 'Earn more coins'
+                                                  : undefined
                                           }
                                           onMouseEnter={showPreview}
                                           onMouseLeave={clearPreview}
@@ -663,11 +676,13 @@ export default function SanctuaryPage() {
                                         >
                                           {opt.applied
                                             ? `✓ ${optionLabel(opt.option)}`
-                                            : !opt.unlocked
-                                              ? `🔒 ${optionLabel(opt.option)}`
-                                              : !opt.affordable
-                                                ? `🪙 ${opt.cost} (earn more)`
-                                                : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
+                                            : reached
+                                              ? `✓ ${optionLabel(opt.option)} · grown`
+                                              : !opt.unlocked
+                                                ? `🔒 ${optionLabel(opt.option)}`
+                                                : !opt.affordable
+                                                  ? `🪙 ${opt.cost} (earn more)`
+                                                  : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
                                         </button>
                                       )
                                     })}

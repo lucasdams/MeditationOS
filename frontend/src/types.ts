@@ -243,6 +243,11 @@ export interface SlotOption {
   unlock_hint: string | null
   affordable: boolean
   applied: boolean
+  // A growth rung already REACHED via practice, not coins (Tended oak only — see
+  // docs/design/sanctuary-upgrades-tended.md). True on each `grown` rung at/below the oak's
+  // Tending-earned stage: practice already displays it, so it renders as a done/reached rung,
+  // never a buy button. Always false/absent for non-oak items and non-`grown` slots.
+  reached?: boolean
 }
 
 // A customization axis for an owned item: the options to mix and match.
