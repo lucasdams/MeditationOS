@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import { sanctuaryService } from '../services/sanctuary'
+import { moodLogService } from '../services/moodLogs'
 import LevelCard from '../components/LevelCard'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
-import { ACTIVITY_COLORS, ACTIVITY_META, type Activity } from '../lib/colors'
+import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
-import type { DashboardStats, SanctuaryScene as SanctuarySceneType } from '../types'
+import type { DashboardStats, Mood, SanctuaryScene as SanctuarySceneType } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
 const QUEST_LINKS: Record<string, string> = {
@@ -22,15 +23,17 @@ const QUEST_LINKS: Record<string, string> = {
   journal: '/journal',
 }
 
-// Quick-action tiles — one tap to the five main features from the dashboard.
-// The four activity tiles read their emoji/label from the shared ACTIVITY_META;
-// Sanctuary isn't a tracked activity, so it carries its own emoji/label.
+// Quick-action tiles — one tap to the five main features from the dashboard. These are the
+// home screen's primary focal point: each is a bold, full-colour box (saturated fill from
+// TILE_COLORS, white icon + label) so the actions clearly pop. The four activity tiles read
+// their emoji/label from the shared ACTIVITY_META; Sanctuary isn't a tracked activity, so it
+// carries its own emoji/label. `tile` keys into TILE_COLORS for the box fill.
 const FEATURE_TILES = [
-  { ...ACTIVITY_META.meditate, to: '/meditate', activity: 'meditate' as const },
-  { ...ACTIVITY_META.breathe, to: '/breathe', activity: 'breathe' as const },
-  { ...ACTIVITY_META.gratitude, to: '/gratitude', activity: 'gratitude' as const },
-  { ...ACTIVITY_META.journal, to: '/journal', activity: 'journal' as const },
-  { label: 'Sanctuary', emoji: '🌱', to: '/sanctuary', activity: null },
+  { ...ACTIVITY_META.meditate, to: '/meditate', tile: 'meditate' as const },
+  { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
+  { ...ACTIVITY_META.gratitude, to: '/gratitude', tile: 'gratitude' as const },
+  { ...ACTIVITY_META.journal, to: '/journal', tile: 'journal' as const },
+  { label: 'Sanctuary', emoji: '🌱', to: '/sanctuary', tile: 'sanctuary' as const },
 ] as const
 
 // Once-per-day gate for the on-open mood check-in. We record the local date the prompt
@@ -62,27 +65,14 @@ export default function DashboardPage() {
   // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
   // both LevelCard (next unlock) and SanctuaryScene (coins + garden preview).
   const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
-  // The deeper progress detail (full level detail, weekly review) starts collapsed so the
-  // landing view stays calm — the primary "start a practice" surface first, the rest one
-  // tap away. The open/closed choice persists across visits.
-  const [showMore, setShowMore] = useState(() => {
-    try {
-      return localStorage.getItem('dashboard.showMore') === '1'
-    } catch {
-      return false
-    }
-  })
+  // The deeper progress detail (full level detail, weekly review) starts collapsed on every
+  // load so the landing view stays calm — the primary "start a practice" surface first, the
+  // rest one tap away. We deliberately do NOT persist the open/closed choice: the owner wants
+  // it hidden by default each visit, revealed only when the user presses "Show more".
+  const [showMore, setShowMore] = useState(false)
 
   function toggleShowMore() {
-    setShowMore((v) => {
-      const next = !v
-      try {
-        localStorage.setItem('dashboard.showMore', next ? '1' : '0')
-      } catch {
-        // ignore storage failures (private mode, quota) — the toggle still works in-session
-      }
-      return next
-    })
+    setShowMore((v) => !v)
   }
   // A gentle daily greeting (stable through the day) and a mindful loading line.
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
@@ -96,6 +86,11 @@ export default function DashboardPage() {
   // day. Opened by the effect below once stats have loaded (so we can tell whether the
   // first-run card is leading the page — we don't stack the mood prompt on top of it).
   const [moodModalOpen, setMoodModalOpen] = useState(false)
+
+  // The mood the user most recently logged *today* (local calendar day), if any. Drives the
+  // home's mood line: when set we reflect "You felt {mood} {emoji}" instead of prompting.
+  // null = nothing logged today yet → fall back to the "How do you feel?" prompt.
+  const [todayMood, setTodayMood] = useState<Mood | null>(null)
 
   function closeMoodModal() {
     // Record the prompt for today on dismissal so it won't reappear until tomorrow,
@@ -125,6 +120,22 @@ export default function DashboardPage() {
       .getScene()
       .then(setSanctuaryScene)
       .catch(() => {}) // non-critical; LevelCard and SanctuaryScene handle null gracefully
+  }, [])
+
+  // Today's latest mood for the home reflection. Stats/weekly-review expose only aggregate
+  // mood data (no "today's latest"), so fetch the single most recent mood log (the list is
+  // newest-first) and keep it only if it was logged today. Non-critical: on failure we just
+  // fall back to the "How do you feel?" prompt.
+  useEffect(() => {
+    moodLogService
+      .list({ limit: 1 })
+      .then((logs) => {
+        const latest = logs[0]
+        if (latest && localDateKey(new Date(latest.created_at)) === localDateKey()) {
+          setTodayMood(latest.mood)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Decide whether to greet the user with the mood check-in. Runs once stats are in so we
@@ -189,27 +200,37 @@ export default function DashboardPage() {
       {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
           a practice. Kept prominent and always visible. */}
       <nav className="feature-tiles" aria-label="Quick access">
-        {FEATURE_TILES.map(({ label, emoji, to, activity }) => {
-          const accent = activity ? ACTIVITY_COLORS[activity] : '#6b6b70'
-          return (
-            <Link
-              key={to}
-              to={to}
-              className="feature-tile"
-              style={{ ['--tile-accent' as string]: accent }}
-            >
-              <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
-              <span className="feature-tile-label">{label}</span>
-            </Link>
-          )
-        })}
+        {FEATURE_TILES.map(({ label, emoji, to, tile }) => (
+          <Link
+            key={to}
+            to={to}
+            className="feature-tile"
+            style={{ ['--tile-fill' as string]: TILE_COLORS[tile] }}
+          >
+            <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
+            <span className="feature-tile-label">{label}</span>
+          </Link>
+        ))}
       </nav>
 
-      {/* Compact quests — the day's quests as small, tappable chips (emoji + short label),
-          each deep-linking to its feature. Low-chrome on purpose: no lead label, no
-          descriptions, no XP numbers; done quests read muted with a check. */}
+      {/* Today's quests — small, tappable chips (emoji + short label), each deep-linking to
+          its feature. A quiet "Today's quests" heading with a target motif makes it clear
+          these are the day's completable tasks; done quests read muted with a check. Still
+          low-chrome: no descriptions, no XP numbers, calm not grindy. */}
       {stats && stats.daily_quests.length > 0 && (
-        <section className="quests-compact" aria-label="Today's quests">
+        <section className="quests-compact" aria-labelledby="quests-heading">
+          {(() => {
+            const doneCount = stats.daily_quests.filter((q) => q.done).length
+            return (
+              <p className="quests-heading" id="quests-heading">
+                <span className="quests-heading-icon" aria-hidden="true">🎯</span>
+                <span className="quests-heading-text">Today's quests</span>
+                <span className="quests-heading-count">
+                  {doneCount}/{stats.daily_quests.length}
+                </span>
+              </p>
+            )
+          })()}
           <ul className="quest-chips">
             {stats.daily_quests.map((q) => {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
@@ -245,13 +266,30 @@ export default function DashboardPage() {
           Also moved out of the "Show more" drawer onto the calm default home. */}
       {stats && <SanctuaryScene scene={sanctuaryScene} compact />}
 
-      {/* Quiet, always-reachable way to log a mood — the calm fallback when the on-open
-          check-in modal was skipped (or already shown today). A plain text link, not a
-          button-styled control, so it stays unobtrusive on the calm home. */}
+      {/* Quiet, always-reachable mood line. If the user already logged a mood today we reflect
+          it back calmly — "You felt {mood} {emoji}" with a small colour accent — instead of
+          prompting again; otherwise we show the gentle "How do you feel?" prompt. Either way
+          it's a plain text link that opens the same mood modal to (re-)log. */}
       {stats && !moodModalOpen && (
         <p className="mood-entry">
-          <button type="button" className="mood-entry-link" onClick={() => setMoodModalOpen(true)}>
-            How do you feel?
+          <button
+            type="button"
+            className={todayMood ? 'mood-entry-link mood-entry-reflect' : 'mood-entry-link'}
+            onClick={() => setMoodModalOpen(true)}
+            style={
+              todayMood
+                ? { ['--mood-accent' as string]: MOOD_COLORS[todayMood] }
+                : undefined
+            }
+          >
+            {todayMood ? (
+              <>
+                You felt {MOOD_META[todayMood].label.toLowerCase()}{' '}
+                <span aria-hidden="true">{MOOD_META[todayMood].emoji}</span>
+              </>
+            ) : (
+              'How do you feel?'
+            )}
           </button>
         </p>
       )}
@@ -315,7 +353,12 @@ export default function DashboardPage() {
           <p className="mood-modal-kicker muted">Take a breath</p>
           <MoodCheckin
             heading="How are you arriving?"
-            onLogged={closeMoodModal}
+            onLogged={(mood) => {
+              // Reflect the just-logged mood on the home line immediately (no reload),
+              // then close the modal.
+              setTodayMood(mood)
+              closeMoodModal()
+            }}
           />
           <button
             type="button"

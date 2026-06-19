@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 const getStats = vi.fn()
 const getScene = vi.fn()
+const listMoodLogs = vi.fn()
 
 // Mock heavy dashboard dependencies so the component renders without a backend.
 vi.mock('../services/dashboard', () => ({
@@ -20,6 +21,11 @@ vi.mock('../services/dashboard', () => ({
 }))
 vi.mock('../services/sanctuary', () => ({
   sanctuaryService: { getScene: (...a: unknown[]) => getScene(...a) },
+}))
+// Mock the mood-logs service: the home reads the single most recent mood log to decide
+// whether to reflect "You felt X" or show the "How do you feel?" prompt.
+vi.mock('../services/moodLogs', () => ({
+  moodLogService: { list: (...a: unknown[]) => listMoodLogs(...a) },
 }))
 
 // Capture the props each child receives so we can assert the scene is passed down.
@@ -100,6 +106,9 @@ beforeEach(() => {
   localStorage.clear()
   getStats.mockReset()
   getScene.mockReset()
+  listMoodLogs.mockReset()
+  // Default: no mood logged today → the home shows the "How do you feel?" prompt.
+  listMoodLogs.mockResolvedValue([])
   capturedLevelCardProps.length = 0
   capturedSanctuarySceneProps.length = 0
 })
@@ -174,14 +183,17 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     expect(screen.getByRole('button', { name: /how do you feel/i })).toBeInTheDocument()
   })
 
-  it('shows the day\'s quests as chips with no "Today you could…" lead', async () => {
+  it('shows the day\'s quests under a clear "Today\'s quests" heading, no "Today you could…" lead', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The old imperative lead is gone; the chips render cleanly.
+    // The old imperative lead is gone, replaced by a clear quest heading.
     expect(screen.queryByText(/Today you could/i)).not.toBeInTheDocument()
     const questsSection = screen.getByRole('region', { name: /today's quests/i })
     expect(questsSection).toBeInTheDocument()
+    // A visible "Today's quests" heading + a done/total count make the chips read as quests.
+    expect(within(questsSection).getByText(/today's quests/i)).toBeInTheDocument()
+    expect(within(questsSection).getByText('0/1')).toBeInTheDocument()
     expect(
       within(questsSection).getByRole('link', { name: /meditate/i }),
     ).toHaveAttribute('href', '/meditate')
@@ -229,7 +241,7 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
     getScene.mockResolvedValue(fakeScene)
   })
 
-  it('reveals the heavier progress sections and persists the open state to localStorage', async () => {
+  it('reveals the heavier progress sections when opened', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
@@ -240,21 +252,68 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
     expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument()
-
-    expect(localStorage.getItem('dashboard.showMore')).toBe('1')
   })
 
-  it('restores the open state from localStorage on load', async () => {
+  it('always loads collapsed by default — even if an old persisted "open" flag exists', async () => {
+    // The owner wants the drawer hidden on every load. Even a stale `dashboard.showMore=1`
+    // from a previous build must NOT auto-open it; the user presses "Show more" to reveal.
     localStorage.setItem('dashboard.showMore', '1')
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // Drawer is open on first render — the heavier progress sections are visible without a click.
-    expect(screen.getByTestId('level-card')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /show less/i })).toHaveAttribute(
+    expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show more/i })).toHaveAttribute(
       'aria-expanded',
-      'true',
+      'false',
     )
+  })
+})
+
+describe('DashboardPage — today\'s mood reflection', () => {
+  beforeEach(() => {
+    // Don't let the on-open modal interfere with the home mood-line assertions.
+    seenMoodToday()
+    getStats.mockResolvedValue(fakeStats)
+    getScene.mockResolvedValue(fakeScene)
+  })
+
+  it('reflects "You felt {mood}" when a mood was logged today', async () => {
+    listMoodLogs.mockResolvedValue([
+      { id: 'm1', mood: 'calm', created_at: new Date().toISOString() },
+    ])
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    // The reflection replaces the prompt; it's still a tappable button (opens the modal).
+    const line = await screen.findByRole('button', { name: /you felt calm/i })
+    expect(line).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /how do you feel/i })).not.toBeInTheDocument()
+  })
+
+  it('falls back to the "How do you feel?" prompt when nothing was logged today', async () => {
+    // A mood log exists but it's from yesterday → not "today", so we still prompt.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    listMoodLogs.mockResolvedValue([{ id: 'm0', mood: 'low', created_at: yesterday }])
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    expect(screen.getByRole('button', { name: /how do you feel/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /you felt/i })).not.toBeInTheDocument()
+  })
+
+  it('updates the line to the new mood immediately after logging in the modal', async () => {
+    // No mood today → prompt shows; opening the modal and picking a mood reflects it at once.
+    listMoodLogs.mockResolvedValue([])
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    fireEvent.click(screen.getByRole('button', { name: /how do you feel/i }))
+    // The mock check-in fires onLogged('calm').
+    fireEvent.click(await screen.findByRole('button', { name: /mock-pick-mood/i }))
+
+    // Modal closes and the home line now reflects the just-logged mood — no reload.
+    expect(await screen.findByRole('button', { name: /you felt calm/i })).toBeInTheDocument()
   })
 })
 
@@ -263,11 +322,14 @@ describe('DashboardPage — sanctuary scene single-fetch', () => {
     seenMoodToday()
     getScene.mockResolvedValue(fakeScene)
     getStats.mockResolvedValue(fakeStats)
-    // The compact SanctuaryScene sits on the default home; LevelCard lives in the drawer —
-    // open it so both children render and we can assert the shared scene reaches each.
-    localStorage.setItem('dashboard.showMore', '1')
 
     renderPage()
+    await screen.findByText(/Level 7/)
+
+    // The compact SanctuaryScene sits on the default home; LevelCard lives in the (now
+    // default-collapsed) drawer — open it so both children render and we can assert the
+    // shared scene reaches each.
+    fireEvent.click(screen.getByRole('button', { name: /show more/i }))
 
     await waitFor(() => {
       const last = capturedSanctuarySceneProps.at(-1)
