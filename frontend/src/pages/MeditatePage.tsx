@@ -297,9 +297,18 @@ export default function MeditatePage() {
 
   function startSoundscape() {
     const name = soundscapeRef.current
-    if (name === 'silent') return
+    if (name === 'silent') {
+      // No ambient sound for this sit — stop any lingering preview.
+      soundscapeEngineRef.current?.stop()
+      return
+    }
     if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-    soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+    // Hand off from a matching preview without re-starting: the pre-session preview and
+    // the session share one engine, so if it's already playing this exact soundscape we
+    // leave it running (no double-play). Otherwise start/switch it.
+    if (soundscapeEngineRef.current.active !== name) {
+      soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+    }
   }
 
   function stopSoundscape() {
@@ -552,31 +561,37 @@ export default function MeditatePage() {
         </div>
       )}
 
-      {/* ── Primary setup: the practice-meaningful choices always visible ─────── */}
+      {/* ── Primary setup: the practice-meaningful choices always visible ───────
+          Wrapped in a flex column so every block keeps one even vertical rhythm;
+          the wrapper's `gap` owns the spacing (inner block margins are zeroed in CSS). */}
+      <div className="meditate-setup">
+      <div className="meditate-setup-field">
+        <label>Duration</label>
+        <Stepper
+          options={DURATIONS}
+          value={targetMin}
+          disabled={settingsDisabled}
+          ariaLabel="Duration"
+          onChange={setTargetMin}
+        />
+      </div>
 
-      <label>Duration</label>
-      <Stepper
-        options={DURATIONS}
-        value={targetMin}
-        disabled={settingsDisabled}
-        ariaLabel="Duration"
-        onChange={setTargetMin}
-      />
-
-      <label htmlFor="guided-structure">Guided structure</label>
-      <select
-        id="guided-structure"
-        value={guidedChoice}
-        disabled={settingsDisabled}
-        onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
-      >
-        <option value="none">None — plain timer</option>
-        {GUIDED_STRUCTURES.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.label} — {s.description}
-          </option>
-        ))}
-      </select>
+      <div className="meditate-setup-field">
+        <label htmlFor="guided-structure">Guided structure</label>
+        <select
+          id="guided-structure"
+          value={guidedChoice}
+          disabled={settingsDisabled}
+          onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
+        >
+          <option value="none">None — plain timer</option>
+          {GUIDED_STRUCTURES.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label} — {s.description}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Pre-session intention — optional, skippable, hidden once the sit has started. */}
       {!started && (
@@ -643,10 +658,13 @@ export default function MeditatePage() {
           <SoundscapePicker
             value={soundscape}
             volume={soundscapeVol}
+            previewEngineRef={soundscapeEngineRef}
+            previewEnabled={!started}
             onSoundscapeChange={(name) => {
               setSoundscape(name)
               if (running) {
-                // Live switch: restart soundscape with new choice
+                // Live switch during a sit: restart soundscape with the new choice
+                // (the picker only previews before the sit starts).
                 soundscapeEngineRef.current?.stop()
                 if (name !== 'silent') {
                   if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
@@ -680,6 +698,7 @@ export default function MeditatePage() {
           />
         </div>
       </details>
+      </div>
 
       {/* Show the locked-in intention quietly during the sit. */}
       {started && intention.trim() && (

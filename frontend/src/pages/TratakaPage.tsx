@@ -198,9 +198,16 @@ export default function TratakaPage() {
 
   function startSoundscape() {
     const name = soundscapeRef.current
-    if (name === 'silent') return
+    if (name === 'silent') {
+      // No ambient sound for this sit — stop any lingering preview.
+      soundscapeEngineRef.current?.stop()
+      return
+    }
     if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-    soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+    // Reuse a matching preview without re-starting (shared engine → no double-play).
+    if (soundscapeEngineRef.current.active !== name) {
+      soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+    }
   }
 
   function stopSoundscape() {
@@ -397,6 +404,8 @@ export default function TratakaPage() {
           <SoundscapePicker
             value={soundscape}
             volume={soundscapeVol}
+            previewEngineRef={soundscapeEngineRef}
+            previewEnabled={!started}
             onSoundscapeChange={(name) => {
               setSoundscape(name)
               if (running) {

@@ -34,6 +34,19 @@
   --accent-subtle: #eef2ff;         /* tinted background behind accent elements */
   --accent-border: #c7d2fe;
 
+  /* Meditation orb — teal (the "Meditate" destination hue), tuned to read calmly on
+     the light page. Glow/ring keep it gently lifted, not glaring. */
+  --orb-from: #5eead4;
+  --orb-to: #0d9488;
+  --orb-glow: rgba(13, 148, 136, 0.28);
+  --orb-ring: rgba(255, 255, 255, 0.35);
+
+  /* Range slider (volume) — track + thumb, theme-aware. */
+  --slider-track: #e2e2ea;
+  --slider-fill: var(--accent);
+  --slider-thumb: var(--accent);
+  --slider-thumb-ring: #ffffff;
+
   /* Nav link tints (background + text per destination) */
   --nav-home-bg: #eef2ff;
   --nav-home-text: #4338ca;
@@ -123,6 +136,19 @@
   --accent-subtle: #1e2242;
   --accent-border: #3730a3;
 
+  /* Meditation orb — deepen the teal on dark so it glows softly instead of glaring
+     against the deep-slate page; keep good contrast for the white time text. */
+  --orb-from: #2dd4bf;
+  --orb-to: #0f766e;
+  --orb-glow: rgba(45, 212, 191, 0.22);
+  --orb-ring: rgba(255, 255, 255, 0.18);
+
+  /* Range slider — track reads on dark surfaces; thumb uses the lighter accent. */
+  --slider-track: #353a5c;
+  --slider-fill: var(--accent);
+  --slider-thumb: var(--accent);
+  --slider-thumb-ring: #1e2130;
+
   /* Nav link tints — muted to sit quietly on dark */
   --nav-home-bg: #1e2242;
   --nav-home-text: #a5b4fc;
@@ -193,6 +219,15 @@
     --accent-hover: #a5b4fc;
     --accent-subtle: #1e2242;
     --accent-border: #3730a3;
+    /* Orb + slider — match the explicit dark theme above. */
+    --orb-from: #2dd4bf;
+    --orb-to: #0f766e;
+    --orb-glow: rgba(45, 212, 191, 0.22);
+    --orb-ring: rgba(255, 255, 255, 0.18);
+    --slider-track: #353a5c;
+    --slider-fill: var(--accent);
+    --slider-thumb: var(--accent);
+    --slider-thumb-ring: #1e2130;
     --nav-home-bg: #1e2242;
     --nav-home-text: #a5b4fc;
     --nav-meditate-bg: #0d2624;
@@ -3642,7 +3677,10 @@ textarea:focus-visible,
   opacity: 0.5;
 }
 
-/* Meditation timer: a calm orb with the time at its centre. */
+/* Meditation timer: a calm orb with the time at its centre. Teal echoes the
+   "Meditate" destination colour, but is driven by theme tokens so it reads well on
+   both the light and the deep-slate dark backdrops (set in the theme blocks). A soft
+   ring + glow lift it off the page without clashing with the indigo accent. */
 .meditate-orb {
   width: 220px;
   height: 220px;
@@ -3650,7 +3688,14 @@ textarea:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 40%, #5eead4, #0d9488);
+  background: radial-gradient(
+    circle at 50% 38%,
+    var(--orb-from) 0%,
+    var(--orb-to) 100%
+  );
+  box-shadow:
+    0 10px 30px var(--orb-glow),
+    inset 0 0 0 1px var(--orb-ring);
 }
 
 .meditate-orb.running {
@@ -3658,7 +3703,7 @@ textarea:focus-visible,
 }
 
 .meditate-orb.idle {
-  opacity: 0.6;
+  opacity: 0.72;
 }
 
 @keyframes meditate-pulse {
@@ -3859,7 +3904,58 @@ details[open] .meditate-disclosure-summary::before {
   padding: 0 0.85rem 0.75rem;
   display: flex;
   flex-direction: column;
+  /* Even rhythm inside the disclosure: gap owns the spacing, so the inner select /
+     slider / soundscape-picker margins are zeroed below to avoid doubled gaps. */
+  gap: 0.4rem;
   text-align: left;
+}
+
+.meditate-disclosure-body > label {
+  margin: 0.35rem 0 0;
+}
+
+.meditate-disclosure-body > label:first-child {
+  margin-top: 0;
+}
+
+.meditate-disclosure-body .breathe-volume,
+.meditate-disclosure-body .breathe select,
+.meditate-disclosure-body .soundscape-picker {
+  margin: 0;
+}
+
+/* ── Meditate setup rhythm ───────────────────────────────────────────────────
+   The setup blocks (duration, guided structure, intention, reading prompt, the
+   sound & bells disclosure) sit in one flex column with a single, even gap so the
+   page reads with a calm, consistent vertical rhythm. Each block's own top/bottom
+   margins are neutralised here so the wrapper's `gap` is the only spacing source.
+   ─────────────────────────────────────────────────────────────────────────── */
+.meditate-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin: 1rem 0 0;
+  text-align: left;
+}
+
+.meditate-setup > * {
+  margin: 0;
+}
+
+/* A label + its control kept tight together as one logical field. */
+.meditate-setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.meditate-setup-field > label {
+  margin: 0;
+}
+
+.meditate-setup-field .stepper,
+.meditate-setup-field .breathe select {
+  margin: 0;
 }
 
 .breathe-phase {
@@ -3984,11 +4080,11 @@ details[open] .meditate-disclosure-summary::before {
   font-size: 1.4rem;
   line-height: 1;
   border-radius: 0.6rem;
-  background: #4f46e5;
+  background: var(--accent);
 }
 
 .stepper-btn:disabled {
-  background: #a8a8b0;
+  background: var(--border-strong);
   cursor: default;
 }
 
@@ -4030,6 +4126,7 @@ details[open] .meditate-disclosure-summary::before {
 .breathe-controls {
   display: flex;
   gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .breathe-controls button {
@@ -4105,11 +4202,96 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* The overall volume gets its own labelled control, like Sound above it. */
+/* ── Volume / soundscape range slider ────────────────────────────────────────
+   The native range input renders with the browser's blue accent and a grey track,
+   which clashes with the calm palette and is washed-out in dark mode. Style the
+   track + thumb with theme tokens for a cohesive look, legible in both themes, and
+   keep a clear focus ring + disabled state for accessibility.
+   ─────────────────────────────────────────────────────────────────────────── */
 .breathe-volume {
+  -webkit-appearance: none;
+  appearance: none;
   display: block;
   width: 100%;
+  height: 1.4rem; /* generous hit area; the visible track is thinner, centred */
   margin: 0.35rem 0 1rem;
   padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Track — WebKit/Blink */
+.breathe-volume::-webkit-slider-runnable-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--slider-track);
+}
+
+/* Thumb — WebKit/Blink. Negative margin centres it on the thinner track. */
+.breathe-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: -0.375rem;
+  border-radius: 50%;
+  background: var(--slider-thumb);
+  border: 2px solid var(--slider-thumb-ring);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s ease;
+}
+
+.breathe-volume:hover::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+/* Track — Firefox */
+.breathe-volume::-moz-range-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--slider-track);
+}
+
+/* Filled portion up to the thumb — Firefox only (no WebKit equivalent). */
+.breathe-volume::-moz-range-progress {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--slider-fill);
+}
+
+/* Thumb — Firefox */
+.breathe-volume::-moz-range-thumb {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--slider-thumb);
+  border: 2px solid var(--slider-thumb-ring);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.breathe-volume:focus-visible {
+  outline: none;
+}
+
+.breathe-volume:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-subtle), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.breathe-volume:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--accent-subtle), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.breathe-volume:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.breathe-volume:disabled::-webkit-slider-thumb {
+  background: var(--text-muted);
+}
+
+.breathe-volume:disabled::-moz-range-thumb {
+  background: var(--text-muted);
 }
 
 /* Works at mobile widths */
