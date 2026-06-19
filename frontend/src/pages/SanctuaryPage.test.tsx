@@ -454,6 +454,68 @@ describe('SanctuaryPage upgrade preview (see-it-before-you-buy)', () => {
   })
 })
 
+describe('SanctuaryPage Tended oak — reached grown rungs are not buyable (Fix 1)', () => {
+  beforeEach(() => {
+    getScene.mockReset()
+    customize.mockReset()
+  })
+
+  // An oak grown by practice to stage "flourishing" (earned stage 2): the first two grown
+  // rungs are `reached` (practice displays them), the rest stay ordinary buyable options.
+  const tendedOak = () => ({
+    ...ownedItem('oak', 0),
+    customizations: { grown: 'flourishing' },
+    tending: {
+      tending: 80, practice_days: 6, stage: 'flourishing',
+      next_stage: 'mature', next_threshold: 110,
+    },
+    available: [
+      {
+        slot: 'grown',
+        applied: null,
+        options: [
+          { option: 'grown',       cost: 60,  unlocked: true, unlock_hint: null, affordable: true, applied: false, reached: true },
+          { option: 'flourishing', cost: 96,  unlocked: true, unlock_hint: null, affordable: true, applied: false, reached: true },
+          { option: 'mature',      cost: 144, unlocked: true, unlock_hint: null, affordable: true, applied: false, reached: false },
+        ],
+      },
+    ],
+  })
+
+  it('renders reached rungs as done (✓ grown) and never buys them on click', async () => {
+    getScene.mockResolvedValue(sceneWith(500, [tendedOak()]))
+
+    const { container } = renderPage()
+    const view = within(container)
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize/ }))
+
+    // A reached rung reads as grown-by-practice (✓ … grown), is disabled, and shows no price.
+    const reachedBtn = view.getByRole('button', { name: /✓ Flourishing.*grown/i })
+    expect(reachedBtn).toBeDisabled()
+    expect(reachedBtn).toHaveClass('reached')
+    expect(reachedBtn.textContent).not.toMatch(/🪙/) // no coin price — not a purchase
+
+    // Clicking it buys nothing (practice drives it; there is no coin path).
+    fireEvent.click(reachedBtn)
+    expect(customize).not.toHaveBeenCalled()
+  })
+
+  it('still offers the rungs ABOVE the earned stage as ordinary coin buys', async () => {
+    getScene.mockResolvedValue(sceneWith(500, [tendedOak()]))
+
+    const { container } = renderPage()
+    const view = within(container)
+    fireEvent.click(await view.findByRole('button', { name: /^Personalize/ }))
+
+    // The next rung is a normal buyable option (price shown), and clicking it buys.
+    const matureBtn = view.getByRole('button', { name: /Mature.*🪙 144/i })
+    expect(matureBtn).not.toBeDisabled()
+    expect(matureBtn).not.toHaveClass('reached')
+    fireEvent.click(matureBtn)
+    expect(customize).toHaveBeenCalledWith('oak', 'grown', 'mature')
+  })
+})
+
 describe('SanctuaryPage shop — track grouping', () => {
   beforeEach(() => {
     getScene.mockReset()

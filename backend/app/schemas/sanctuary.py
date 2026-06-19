@@ -41,6 +41,12 @@ class SlotOption(BaseModel):
     unlock_hint: str | None  # what's needed to unlock (None when unlocked)
     affordable: bool  # the current balance covers the cost
     applied: bool  # this option is the one currently on the item
+    # A growth rung already REACHED via practice, not coins (Tended oak only — see
+    # docs/design/sanctuary-upgrades-tended.md). True on each `grown` rung at or below the
+    # oak's Tending-earned stage: practice already displays it, so it's not a buyable purchase
+    # (the UI renders it like an applied/done rung, never a buy button). Always False for every
+    # non-oak item and every non-`grown` slot — the coin path there is exactly as before.
+    reached: bool = False
 
 
 class AvailableSlot(BaseModel):

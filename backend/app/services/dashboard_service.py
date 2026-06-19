@@ -489,14 +489,17 @@ def get_tending_signals(
     )
 
     # Variety: how many distinct session types the user has ever practiced (a small bonus for
-    # a rounded practice). Monotonic — a type once tried is always counted.
-    distinct_types = int(
-        db.execute(
-            select(func.count(func.distinct(Session.type))).where(
-                Session.user_id == user_id
-            )
-        ).scalar_one()
-    )
+    # a rounded practice). A type counts only once its sessions of that type total at least
+    # MIN_PRACTICE_SECONDS, so a flurry of trivial 1-second sits across distinct types can't
+    # shortcut growth (the same anti-spam floor the practice-day count uses above). Still
+    # monotonic — cumulative per-type seconds never decrease, so a counted type stays counted.
+    type_rows = db.execute(
+        select(Session.type)
+        .where(Session.user_id == user_id)
+        .group_by(Session.type)
+        .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
+    ).all()
+    distinct_types = len(type_rows)
 
     return TendingSignals(
         practice_days=len(session_days),
