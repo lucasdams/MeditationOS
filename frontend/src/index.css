@@ -3262,24 +3262,35 @@ textarea:focus-visible,
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
-/* A single quest chip: emoji + short label, the whole thing a link to its feature. Quiet
-   border tinted by the activity accent; brightens gently on hover/focus. */
+/* Each quest is its own flex item; grow to share the row so 3 quests read as intentional,
+   evenly-sized cards rather than a ragged row of pills. A min-width lets them wrap/stack
+   gracefully on narrow screens. */
+.quest-chips > li {
+  flex: 1 1 8.5rem;
+  min-width: 8.5rem;
+}
+
+/* A single quest card: emoji + short label, the whole thing a link to its feature. A
+   comfortably large, tappable target (≥44px tall) with a quiet accent-tinted border that
+   brightens gently on hover/focus — calm, not loud. */
 .quest-chip {
   --activity-accent: #c4c4c9;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 52px;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--text-secondary);
   text-decoration: none;
   background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--activity-accent) 30%, var(--border));
-  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--activity-accent) 35%, var(--border));
+  border-radius: 14px;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
@@ -3291,7 +3302,7 @@ textarea:focus-visible,
 }
 
 .quest-chip-emoji {
-  font-size: 0.95rem;
+  font-size: 1.35rem;
   line-height: 1;
 }
 
@@ -4815,6 +4826,34 @@ details[open] .meditate-disclosure-summary::before {
   color: #ffffff;
   text-align: center;
   letter-spacing: 0.01em;
+}
+
+/* Dark mode: the deep light fills go muddy on the slate canvas, so swap to the brighter
+   --tile-fill-dark (TILE_COLORS_DARK, ~500 shades) so the tiles pop. White text would drop
+   below WCAG AA at those brightnesses, so the icon/label switch to a near-black slate label
+   (#0f172a), which clears ≥6.4:1 on every fill. Light mode is untouched.
+   Two dark triggers: an explicit data-theme="dark" pin, and — only when no explicit theme is
+   set — the OS prefers-color-scheme. The system fallback is gated inside the @media block so
+   it can NOT leak into light-system mode (where data-theme is also absent). */
+:root[data-theme='dark'] .feature-tile {
+  background: var(--tile-fill-dark, var(--tile-fill, #6b6b70));
+  border-color: color-mix(in srgb, #000 18%, var(--tile-fill-dark, #6b6b70));
+  color: #0f172a;
+}
+
+:root[data-theme='dark'] .feature-tile .feature-tile-label {
+  color: #0f172a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .feature-tile {
+    background: var(--tile-fill-dark, var(--tile-fill, #6b6b70));
+    border-color: color-mix(in srgb, #000 18%, var(--tile-fill-dark, #6b6b70));
+    color: #0f172a;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .feature-tile .feature-tile-label {
+    color: #0f172a;
+  }
 }
 
 @media (max-width: 480px) {
