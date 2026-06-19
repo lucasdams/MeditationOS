@@ -2544,6 +2544,110 @@ textarea:focus-visible,
   text-align: left;
 }
 
+/* "Tended" growth-from-practice (oak-only MVP): a calm path ribbon + a quiet meter at the head
+   of the panel. Low-key in keeping with the app's gentle stance — it informs, never nags. */
+.sanctuary-tending {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 0.5rem;
+  background: var(--accent-subtle);
+}
+
+.sanctuary-tending-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sanctuary-tending-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sanctuary-tending-days {
+  font-size: 0.74rem;
+}
+
+/* The growth ladder as a row of pips, connected by a soft line; reached stages are filled,
+   the next stage is gently highlighted as the goal (echoing the preview-locked pattern). */
+.sanctuary-tending-ribbon {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.sanctuary-tending-pip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  position: relative;
+}
+
+/* Connector line between pips (behind the dots). */
+.sanctuary-tending-pip::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border-light);
+}
+
+.sanctuary-tending-pip:first-child::before {
+  display: none;
+}
+
+.sanctuary-tending-pip.reached::before {
+  background: var(--accent);
+}
+
+.sanctuary-tending-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--border-light);
+  background: var(--card-bg, #fff);
+  z-index: 1;
+}
+
+.sanctuary-tending-pip.reached .sanctuary-tending-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.sanctuary-tending-pip.next .sanctuary-tending-dot {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  box-shadow: 0 0 0 3px var(--accent-border);
+}
+
+.sanctuary-tending-label {
+  font-size: 0.62rem;
+  line-height: 1.1;
+  color: var(--text-muted);
+}
+
+.sanctuary-tending-pip.reached .sanctuary-tending-label {
+  color: var(--text);
+}
+
+.sanctuary-tending-hint {
+  font-size: 0.74rem;
+  margin: 0;
+}
+
 /* "See it before you buy" preview at the head of the customize panel. A calm, quiet stage:
    the item is drawn at a comfortable size, and a soft ring + "Preview" badge appear only while
    the user is exploring an unbought option, so it never shouts and never crowds the panel. */
