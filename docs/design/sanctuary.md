@@ -11,6 +11,11 @@ choose → upgrade*.
 > no currency. That's [ADR-0010](../decisions/0010-sanctuary-cultivation.md), now
 > superseded by [ADR-0011](../decisions/0011-sanctuary-spend-economy.md).
 
+> **"Tended" (a two-currency proposal + oak-only MVP):** a new *Tending* signal — derived
+> from real practice, monotonic, never stored, never spent — grows an item up its ladder for
+> free, while coins keep doing acquisition. See
+> [sanctuary-upgrades-tended.md](sanctuary-upgrades-tended.md).
+
 ## Core principle
 
 Coins come from your **level**, which is computed from **earned XP** — total XP minus
