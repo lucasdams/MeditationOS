@@ -5,7 +5,16 @@ import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
 import Modal from '../components/Modal'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
-import { itemLabel, optionLabel, slotLabel, variantLabel, VITALITY, TRACK_META } from '../lib/sanctuaryArt'
+import {
+  itemLabel,
+  optionLabel,
+  slotLabel,
+  variantLabel,
+  VITALITY,
+  TRACK_META,
+  timeOfDay,
+  gardenGreeting,
+} from '../lib/sanctuaryArt'
 import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem } from '../types'
 
@@ -352,6 +361,10 @@ export default function SanctuaryPage() {
     }
   }
 
+  // A gentle, render-time time-of-day band, used only to tint the garden scene's ambient
+  // light (a `data-daytime` hook the CSS reads). Cosmetic — it touches no data or economy.
+  const daytime = timeOfDay()
+
   return (
     <main id="main-content" className="dashboard sanctuary-page">
       <Link to="/" className="back-link">
@@ -382,10 +395,15 @@ export default function SanctuaryPage() {
             </span>
           </div>
 
-          <section className="sanctuary-section sanctuary-garden-section">
+          <section
+            className="sanctuary-section sanctuary-garden-section"
+            data-daytime={daytime}
+          >
             <header className="sanctuary-section-head">
               <h2 className="sanctuary-section-title">Your garden</h2>
-              <p className="muted sanctuary-section-subtitle">What you’ve grown</p>
+              {/* A warm, quiet line of place — shifts softly with the time of day, so the
+                  garden feels like the user's own little world rather than a grid of cards. */}
+              <p className="muted sanctuary-section-subtitle">{gardenGreeting(daytime)}</p>
             </header>
           {scene.owned.length === 0 ? (
             <EmptyState>
@@ -411,10 +429,15 @@ export default function SanctuaryPage() {
                       ? `Picked up ${itemLabel(selectedItem.item_key)}. Now tap a spot to place it (or tap it again to cancel).`
                       : 'Drag an item — or tap to pick it up, then tap a spot — to rearrange your garden.'}
                   </p>
-                  <div
-                    className="sanctuary-garden-grid"
-                    style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)` }}
-                  >
+                  {/* The garden scene: a soft sky→earth backdrop with a grass/soil ground
+                      band, so the plants sit *in* a calm little garden rather than in a grid
+                      of boxes. Purely decorative wrapper — the interactive grid is unchanged. */}
+                  <div className="sanctuary-garden-scene">
+                    <div className="sanctuary-ground" aria-hidden="true" />
+                    <div
+                      className="sanctuary-garden-grid"
+                      style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, 1fr)` }}
+                    >
                     {Array.from({ length: cellCount }, (_, cell) => {
                       const o = byCell.get(cell)
                       if (!o) {
@@ -648,6 +671,7 @@ export default function SanctuaryPage() {
                         </div>
                       )
                     })}
+                    </div>
                   </div>
                 </>
               )
