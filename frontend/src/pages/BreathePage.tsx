@@ -467,9 +467,16 @@ export default function BreathePage() {
 
   function startBreathSoundscape() {
     const name = soundscapeRef.current
-    if (name === 'silent') return
+    if (name === 'silent') {
+      // No ambient sound for this session — stop any lingering preview.
+      soundscapeEngineRef.current?.stop()
+      return
+    }
     if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-    soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+    // Reuse a matching preview without re-starting (shared engine → no double-play).
+    if (soundscapeEngineRef.current.active !== name) {
+      soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+    }
   }
 
   function stopBreathSoundscape() {
@@ -899,6 +906,8 @@ export default function BreathePage() {
       <SoundscapePicker
         value={soundscape}
         volume={soundscapeVol}
+        previewEngineRef={soundscapeEngineRef}
+        previewEnabled={!(running || elapsed > 0)}
         onSoundscapeChange={(name) => {
           setSoundscape(name)
           if (running) {
