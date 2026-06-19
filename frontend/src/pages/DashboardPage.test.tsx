@@ -1,8 +1,8 @@
 /**
  * Light smoke tests for the DashboardPage.
  * Full integration coverage lives in E2E; these guard the quick-action tiles,
- * the level + coins top line, the compact quests + sanctuary teaser that sit on the calm
- * default home, the single-fetch sanctuary scene optimisation, and the
+ * the level + coins top line, the compact quests + read-only garden preview that sit on the
+ * calm default home, the single-fetch sanctuary scene optimisation, and the
  * default-collapsed "Show more" drawer that holds the heavier progress detail.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -198,10 +198,10 @@ describe('DashboardPage — default (collapsed) calm view', () => {
       within(questsSection).getByRole('link', { name: /meditate/i }),
     ).toHaveAttribute('href', '/meditate')
 
-    // The sanctuary teaser (compact variant) renders on the default view.
-    const teaser = screen.getByTestId('sanctuary-scene')
-    expect(teaser).toBeInTheDocument()
-    expect(capturedSanctuarySceneProps.at(-1)?.compact).toBe(true)
+    // The read-only garden preview renders on the default view.
+    const gardenPreview = screen.getByTestId('sanctuary-scene')
+    expect(gardenPreview).toBeInTheDocument()
+    expect(capturedSanctuarySceneProps.at(-1)?.preview).toBe(true)
   })
 
   it('keeps the full level card and weekly review collapsed', async () => {
@@ -326,7 +326,7 @@ describe('DashboardPage — sanctuary scene single-fetch', () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The compact SanctuaryScene sits on the default home; LevelCard lives in the (now
+    // The read-only garden preview sits on the default home; LevelCard lives in the (now
     // default-collapsed) drawer — open it so both children render and we can assert the
     // shared scene reaches each.
     fireEvent.click(screen.getByRole('button', { name: /show more/i }))
