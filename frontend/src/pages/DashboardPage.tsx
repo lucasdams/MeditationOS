@@ -249,12 +249,24 @@ export default function DashboardPage() {
                     to={to}
                     className={q.done ? 'quest-chip done' : 'quest-chip'}
                     style={accent ? { ['--activity-accent' as string]: accent } : undefined}
-                    aria-label={`${q.label}${q.done ? ' — done' : ''}`}
+                    aria-label={`${q.label}${
+                      q.target > 1
+                        ? ` — ${Math.min(q.progress, q.target)} of ${q.target}`
+                        : ''
+                    }${q.done ? ' — done' : ''}`}
                   >
                     <span className="quest-chip-emoji" aria-hidden="true">
                       {meta?.emoji ?? '⭐'}
                     </span>
                     <span className="quest-chip-label">{q.label}</span>
+                    {/* Multi-step quests (e.g. "Meditate twice", target=2) show a quiet
+                        "X/Y" counter so partial progress is visible — single-step quests
+                        (target 1) stay clean with just the done check. */}
+                    {q.target > 1 && (
+                      <span className="quest-chip-progress" aria-hidden="true">
+                        {Math.min(q.progress, q.target)}/{q.target}
+                      </span>
+                    )}
                     {q.done && (
                       <span className="quest-chip-check" aria-hidden="true">
                         ✓

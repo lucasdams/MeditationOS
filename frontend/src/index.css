@@ -3606,6 +3606,19 @@ textarea:focus-visible,
   line-height: 1;
 }
 
+/* Multi-step quests (target > 1) show a quiet "X/Y" counter so partial progress reads at a
+   glance — a small, muted, tabular-numeral pill after the label, calm not grindy. Matches the
+   heading's done/total count and stays legible in both light and dark themes. */
+.quest-chip-progress {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+
 /* Done state: muted and struck through, with a check — a subtle "already did this" cue
    rather than a loud reward. */
 .quest-chip.done {
