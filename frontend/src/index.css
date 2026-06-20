@@ -2094,9 +2094,11 @@ textarea:focus-visible,
   gap: 0.5rem;
 }
 
+/* Width-driven (height auto) so the taller plant viewBox isn't squashed into a square — the
+   art keeps its scale and the box grows downward with transparent sky on top. */
 .sanctuary-grown-item .sanctuary-svg {
   width: 40px;
-  height: 40px;
+  height: auto;
 }
 
 .sanctuary-grown-name {
@@ -2219,82 +2221,169 @@ textarea:focus-visible,
    full page section and the home preview. `day` is also the safe default if `data-daytime`
    is ever missing. */
 
-/* DAY — bright, airy daylight: blue sky fading to warm light earth. Dark text reads on it. */
+/* Each daytime also sets the celestial body that hangs in the sky (a soft sun, or a moon at
+   night): its position (`--garden-sun-x/y`), tint (`--garden-sun`), faint halo
+   (`--garden-sun-glow`), and a near-horizon haze (`--garden-haze`) that warms the lower sky.
+   These feed a single `.…-scene::before` glow layer + the scene's sky gradient further down. */
+
+/* DAY — a clear blue sky overhead softening to a hazy horizon, a vivid-but-soft green grass
+   band, and a warm sun high in the sky. Dark text reads on it. */
 .sanctuary-garden-section,
 .sanctuary-preview-home,
 .sanctuary-garden-section[data-daytime='day'],
 .sanctuary-preview-home[data-daytime='day'] {
-  --garden-sky: #eaf4ff;
-  --garden-earth: #f3f6ee;
-  --garden-grass: #bfe6c4;
-  --garden-soil: #e7d9c4;
-  --garden-shadow: rgba(40, 70, 40, 0.16);
-  --garden-vignette: rgba(40, 60, 45, 0.05);
-  --garden-tint: transparent;
+  --garden-sky: #8ec5f0;
+  --garden-sky-mid: #c4e2f7;
+  --garden-earth: #eef3df;
+  --garden-grass: #7fce86;
+  --garden-soil: #d8c3a0;
+  --garden-shadow: rgba(40, 70, 40, 0.18);
+  --garden-vignette: rgba(40, 60, 45, 0.06);
+  --garden-tint: rgba(255, 252, 235, 0.35);
+  --garden-haze: rgba(255, 250, 230, 0.55);
   --garden-ink: #1f2a22;
-  --garden-ink-soft: #45554a;
-  --garden-plaque: rgba(255, 255, 255, 0.72);
+  --garden-ink-soft: #41524a;
+  --garden-plaque: rgba(255, 255, 255, 0.78);
+  --garden-sun: rgba(255, 246, 205, 0.95);
+  --garden-sun-glow: rgba(255, 230, 150, 0.55);
+  --garden-sun-x: 78%;
+  --garden-sun-y: 20%;
+  --garden-sun-size: 26%;
 }
 
-/* DAWN — soft, warm morning light: gentle peach sky over a light earth. Still dark text. */
+/* DAWN — a warm peach sky over fresh light grass, with a low sun just rising at the horizon. */
 .sanctuary-garden-section[data-daytime='dawn'],
 .sanctuary-preview-home[data-daytime='dawn'] {
-  --garden-sky: #ffe9d6;
-  --garden-earth: #fdf1e7;
-  --garden-grass: #cfe6bd;
-  --garden-soil: #ecdcc6;
-  --garden-shadow: rgba(120, 80, 50, 0.16);
-  --garden-vignette: rgba(120, 80, 50, 0.05);
-  --garden-tint: rgba(255, 214, 170, 0.22);
+  --garden-sky: #ffc9a0;
+  --garden-sky-mid: #ffe1c4;
+  --garden-earth: #fdeede;
+  --garden-grass: #a6d98f;
+  --garden-soil: #e6d2b4;
+  --garden-shadow: rgba(120, 80, 50, 0.18);
+  --garden-vignette: rgba(120, 80, 50, 0.06);
+  --garden-tint: rgba(255, 210, 160, 0.3);
+  --garden-haze: rgba(255, 200, 150, 0.5);
   --garden-ink: #3a2a20;
   --garden-ink-soft: #6a503e;
-  --garden-plaque: rgba(255, 255, 255, 0.7);
+  --garden-plaque: rgba(255, 255, 255, 0.74);
+  --garden-sun: rgba(255, 234, 196, 0.95);
+  --garden-sun-glow: rgba(255, 184, 120, 0.6);
+  --garden-sun-x: 26%;
+  --garden-sun-y: 56%;
+  --garden-sun-size: 24%;
 }
 
-/* DUSK — amber/mauve dimming: a warm mid-tone, clearly softer than day but not yet night.
-   A light-on-dim scene, so the scene text flips to a soft light. */
+/* DUSK — an amber-into-rose evening sky over dimming grass, with a low setting sun. A
+   light-on-dim scene, so the scene text flips to a soft light. */
 .sanctuary-garden-section[data-daytime='dusk'],
 .sanctuary-preview-home[data-daytime='dusk'] {
-  --garden-sky: #7d6a86;
+  --garden-sky: #6a5a86;
+  --garden-sky-mid: #c9759a;
   --garden-earth: #5a4a55;
-  --garden-grass: #5e6a52;
-  --garden-soil: #4a4044;
-  --garden-shadow: rgba(20, 12, 24, 0.34);
-  --garden-vignette: rgba(20, 12, 24, 0.18);
-  --garden-tint: rgba(255, 168, 120, 0.16);
+  --garden-grass: #5d6a4c;
+  --garden-soil: #463c44;
+  --garden-shadow: rgba(20, 12, 24, 0.36);
+  --garden-vignette: rgba(20, 12, 24, 0.2);
+  --garden-tint: rgba(255, 150, 110, 0.22);
+  --garden-haze: rgba(255, 140, 110, 0.4);
   --garden-ink: #fbf3ef;
   --garden-ink-soft: #e3d3d8;
-  --garden-plaque: rgba(30, 20, 34, 0.45);
+  --garden-plaque: rgba(30, 20, 34, 0.5);
+  --garden-sun: rgba(255, 214, 170, 0.92);
+  --garden-sun-glow: rgba(255, 130, 100, 0.6);
+  --garden-sun-x: 74%;
+  --garden-sun-y: 58%;
+  --garden-sun-size: 26%;
 }
 
-/* NIGHT — the deep calm dark (the old dark-theme garden values), under a soft night-blue
-   tint. Light text reads on it. */
+/* NIGHT — a deep calm blue sky with a soft moon and a faint scatter of stars over dark grass.
+   Light text reads on it. */
 .sanctuary-garden-section[data-daytime='night'],
 .sanctuary-preview-home[data-daytime='night'] {
-  --garden-sky: #1a2238;
+  --garden-sky: #131c33;
+  --garden-sky-mid: #243150;
   --garden-earth: #1d2733;
   --garden-grass: #2a4636;
-  --garden-soil: #2c2a32;
-  --garden-shadow: rgba(0, 0, 0, 0.4);
-  --garden-vignette: rgba(0, 0, 0, 0.22);
-  --garden-tint: rgba(70, 90, 160, 0.18);
+  --garden-soil: #2a2832;
+  --garden-shadow: rgba(0, 0, 0, 0.42);
+  --garden-vignette: rgba(0, 0, 0, 0.26);
+  --garden-tint: rgba(90, 110, 180, 0.16);
+  --garden-haze: rgba(120, 140, 200, 0.12);
   --garden-ink: #eaeef7;
   --garden-ink-soft: #c2c8db;
-  --garden-plaque: rgba(12, 18, 34, 0.5);
+  --garden-plaque: rgba(12, 18, 34, 0.55);
+  --garden-sun: rgba(238, 242, 252, 0.95);
+  --garden-sun-glow: rgba(180, 200, 245, 0.4);
+  --garden-sun-x: 76%;
+  --garden-sun-y: 22%;
+  --garden-sun-size: 16%;
 }
 
-/* The scene canvas the plants live in: sky overhead fading to earth, with a soft vignette
-   and a barely-there ambient glow at the top so it feels like open air, not a flat panel. */
+/* The scene canvas the plants live in: a real sky overhead — a true sky-blue (or peach/amber/
+   deep-blue) up top, softening through a mid band into a warm haze near the horizon, then into
+   the earth. A soft vignette + ambient tint give depth so it feels like open air, not a flat
+   panel. The sun/moon itself is drawn by the ::before glow layer below. */
 .sanctuary-garden-scene,
 .sanctuary-preview-scene {
   position: relative;
   border-radius: 14px;
-  padding: 0.5rem 0.5rem 0;
+  /* a little extra top padding leaves a strip of open sky above the plants so the sun/moon
+     has room to hang clear of the canopy */
+  padding: 1.5rem 0.5rem 0;
   overflow: hidden;
   background:
     radial-gradient(120% 80% at 50% -10%, var(--garden-tint), transparent 60%),
+    radial-gradient(160% 70% at 50% 82%, var(--garden-haze), transparent 60%),
     radial-gradient(140% 120% at 50% 120%, var(--garden-vignette), transparent 55%),
-    linear-gradient(to bottom, var(--garden-sky) 0%, var(--garden-earth) 78%);
+    linear-gradient(
+      to bottom,
+      var(--garden-sky) 0%,
+      var(--garden-sky-mid) 42%,
+      var(--garden-earth) 82%
+    );
+}
+
+/* The sun (day/dawn/dusk) or moon (night): a soft glowing radial disc positioned in the sky
+   by the per-daytime `--garden-sun-*` tokens. A gentle warm/cool glow, never a hard circle —
+   calm, not cartoonish. Sits above the sky gradient but below the ground band and the plants
+   (z-index 0; the ground band and grids are z-index ≥ 0/1 over it). Static — no motion. */
+.sanctuary-garden-scene::before,
+.sanctuary-preview-scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      circle at var(--garden-sun-x) var(--garden-sun-y),
+      var(--garden-sun) 0,
+      var(--garden-sun) calc(var(--garden-sun-size) * 0.34),
+      var(--garden-sun-glow) calc(var(--garden-sun-size) * 0.6),
+      transparent var(--garden-sun-size)
+    );
+}
+
+/* NIGHT only: a faint scatter of stars across the upper sky, layered under the moon glow.
+   Tiny soft dots — barely there, calm. Drawn with the moon on the ::before so it stays a
+   single decorative layer. */
+.sanctuary-garden-section[data-daytime='night'] .sanctuary-garden-scene::before,
+.sanctuary-preview-home[data-daytime='night'] .sanctuary-preview-scene::before {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.7) 0, transparent 0.45px),
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.5) 0, transparent 0.4px),
+    radial-gradient(circle at 52% 12%, rgba(255, 255, 255, 0.6) 0, transparent 0.45px),
+    radial-gradient(circle at 64% 26%, rgba(255, 255, 255, 0.45) 0, transparent 0.4px),
+    radial-gradient(circle at 88% 38%, rgba(255, 255, 255, 0.55) 0, transparent 0.4px),
+    radial-gradient(circle at 8% 40%, rgba(255, 255, 255, 0.4) 0, transparent 0.35px),
+    radial-gradient(
+      circle at var(--garden-sun-x) var(--garden-sun-y),
+      var(--garden-sun) 0,
+      var(--garden-sun) calc(var(--garden-sun-size) * 0.42),
+      var(--garden-sun-glow) calc(var(--garden-sun-size) * 0.72),
+      transparent var(--garden-sun-size)
+    );
 }
 
 .sanctuary-garden-scene {
@@ -2316,15 +2405,16 @@ textarea:focus-visible,
 }
 
 .sanctuary-ground::before {
-  /* a softer grass crest sitting on top of the soil */
+  /* a soft, vivid grass crest sitting on top of the soil — fuller now so the band reads as
+     real grass rather than a faint tint, while still soft-edged (never a hard line). */
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 42%;
-  height: 60%;
+  bottom: 38%;
+  height: 66%;
   background: linear-gradient(to bottom, transparent, var(--garden-grass));
-  opacity: 0.55;
+  opacity: 0.8;
   filter: blur(1px);
 }
 
@@ -2726,7 +2816,7 @@ textarea:focus-visible,
 
 .sanctuary-preview-stage .sanctuary-svg {
   width: 4.5rem;
-  height: 4.5rem;
+  height: auto;
 }
 
 .sanctuary-preview-badge {
@@ -2928,7 +3018,7 @@ textarea:focus-visible,
 
 .sanctuary-variant-pick .sanctuary-svg {
   width: 3rem;
-  height: 3rem;
+  height: auto;
 }
 
 .sanctuary-variant-name {
@@ -3634,10 +3724,11 @@ textarea:focus-visible,
 }
 
 /* Garden-glance object art: noticeably smaller than the 96px full-page art so a few cells
-   sit nicely across the home without a heavy block. */
+   sit nicely across the home without a heavy block. Width-driven (height auto) so the taller
+   plant viewBox keeps its scale rather than being letterboxed into a square. */
 .sanctuary-preview-cell .sanctuary-svg {
   width: 56px;
-  height: 56px;
+  height: auto;
   display: block;
 }
 

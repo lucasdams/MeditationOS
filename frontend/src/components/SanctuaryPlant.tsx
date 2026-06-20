@@ -2364,7 +2364,12 @@ function SanctuaryPlant({
   const stage = growthStage(cust)
   const label = `${itemLabel(itemKey)}${variant ? ` (${variantLabel(variant)})` : ''}`
   return (
-    <svg className="sanctuary-svg" viewBox="0 0 80 80" role="img" aria-label={label}>
+    // viewBox carries 64u of extra headroom above y=0 (the drawn ground sits at GROUND=70) so a
+    // fully grown, evolved tree — whose canopy reaches up past the old 0 0 80 80 frame — renders
+    // complete instead of clipped at the top. The drawing coordinates are unchanged; only the
+    // frame grew. Every placement sizes the svg by WIDTH (height:auto / CSS aspect-ratio), so the
+    // art keeps its on-screen scale and simply gains transparent sky above it.
+    <svg className="sanctuary-svg" viewBox="0 -64 80 144" role="img" aria-label={label}>
       <ellipse cx={40} cy={72} rx={24} ry={4} fill="#dcfce7" />
       {Render ? (
         <Render variant={variant} cust={cust} stage={stage} />
