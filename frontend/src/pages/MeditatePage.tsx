@@ -28,6 +28,7 @@ import {
 } from '../lib/sessionDraft'
 import { dailySuggestion } from '../lib/intentionPrompts'
 import { GUIDED_STRUCTURES, type GuidedStructureId } from '../lib/guidedSessions'
+import { speechAvailable, onVoicesReady, cancelSpeech } from '../lib/speech'
 import {
   SoundscapeEngine,
   loadSoundscapePref,
@@ -118,6 +119,27 @@ function writeGuidedChoice(choice: GuidedChoice) {
   }
 }
 
+// Spoken guidance (Web Speech) preference for guided sits. On by default; the user
+// can turn it off inline in the guided-session setup. Persisted across sessions.
+const SPOKEN_GUIDANCE_KEY = 'meditate:spoken-guidance'
+
+function readSpokenGuidance(): boolean {
+  try {
+    // Default ON: only an explicit "off" disables.
+    return localStorage.getItem(SPOKEN_GUIDANCE_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function writeSpokenGuidance(on: boolean) {
+  try {
+    localStorage.setItem(SPOKEN_GUIDANCE_KEY, on ? 'on' : 'off')
+  } catch {
+    // ignore — preference simply won't persist
+  }
+}
+
 export default function MeditatePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -126,6 +148,11 @@ export default function MeditatePage() {
   const [bellsOn, setBellsOn] = useState(true)
   const [volume, setVolume] = useState(0.6)
   const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(readGuidedChoice)
+  // Spoken guidance toggle (user preference) + whether this device actually has a
+  // usable TTS voice. Both must be true for the voice to replace the bell; if the
+  // device has no voice we fall back to text + bell even with the toggle on.
+  const [spokenPref, setSpokenPrefState] = useState<boolean>(readSpokenGuidance)
+  const [speechSupported, setSpeechSupported] = useState<boolean>(speechAvailable)
   const [soundDisclosureOpen, setSoundDisclosureOpen] = useState(readSoundDisclosureOpen)
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(0.4)
@@ -211,6 +238,22 @@ export default function MeditatePage() {
     }
   }, [])
 
+  // Voices can load asynchronously after first paint, so an initial "unsupported"
+  // reading may flip to supported once `voiceschanged` fires. Re-check then so the
+  // toggle reflects reality and we don't silently fall back to the bell on a device
+  // that does have a voice.
+  useEffect(() => {
+    const off = onVoicesReady(() => setSpeechSupported(speechAvailable()))
+    return off
+  }, [])
+
+  // Belt-and-braces: cancel any in-progress / queued speech if the page unmounts
+  // mid-sit (GuidedCues also cancels on its own unmount; this covers leaving the
+  // page while the cues overlay is hidden, e.g. before the first phase).
+  useEffect(() => {
+    return () => cancelSpeech()
+  }, [])
+
   function bell() {
     if (bellsOnRef.current) {
       try {
@@ -274,6 +317,7 @@ export default function MeditatePage() {
         setElapsed(targetSec)
         setRunning(false)
         stopSoundscape()
+        cancelSpeech() // the sit is over — no spoken cue should trail past the end
         bell() // closing bell
         void saveSession(targetSec)
         return
@@ -334,12 +378,14 @@ export default function MeditatePage() {
     baseElapsedRef.current += (performance.now() - startRef.current) / 1000
     setRunning(false)
     stopSoundscape()
+    cancelSpeech() // no spoken cue should keep playing while paused
     persistDraft(baseElapsedRef.current)
   }
 
   function reset() {
     setRunning(false)
     stopSoundscape()
+    cancelSpeech()
     setElapsed(0)
     baseElapsedRef.current = 0
     elapsedRef.current = 0
@@ -479,6 +525,18 @@ export default function MeditatePage() {
     writeGuidedChoice(choice)
   }
 
+  function setSpokenPref(on: boolean) {
+    setSpokenPrefState(on)
+    writeSpokenGuidance(on)
+    // Turning it off mid-thought: stop any speech already in flight.
+    if (!on) cancelSpeech()
+  }
+
+  // Spoken guidance is actually active only on a guided sit, with the toggle on,
+  // and a usable TTS voice present. Otherwise GuidedCues falls back to text + bell.
+  const isGuided = guidedChoice !== 'none'
+  const speechOn = isGuided && spokenPref && speechSupported
+
   const targetSec = targetMin * 60
   const remaining = targetSec > 0 ? Math.max(0, targetSec - elapsed) : elapsed
   // A sit is "underway" once started (running) or partway (paused). Before that, the
@@ -551,6 +609,7 @@ export default function MeditatePage() {
           durationSec={targetSec}
           volume={volume}
           bellsOn={bellsOn}
+          speechOn={speechOn && running}
         />
       )}
 
@@ -591,6 +650,30 @@ export default function MeditatePage() {
             </option>
           ))}
         </select>
+
+        {/* Spoken guidance — only meaningful for a guided sit. The voice reads each
+            cue aloud so eyes can stay closed; off falls back to text + bell. */}
+        {isGuided && (
+          <div className="meditate-spoken">
+            <label className="meditate-spoken-toggle" htmlFor="spoken-guidance">
+              <input
+                id="spoken-guidance"
+                type="checkbox"
+                checked={spokenPref}
+                disabled={settingsDisabled || !speechSupported}
+                onChange={(e) => setSpokenPref(e.target.checked)}
+              />
+              <span>Spoken guidance</span>
+            </label>
+            <p className="meditate-spoken-hint">
+              {!speechSupported
+                ? 'Voice unavailable on this device — cues show on screen with a soft bell.'
+                : spokenPref
+                  ? 'Cues are read aloud so you can keep your eyes closed.'
+                  : 'Cues show on screen with a soft bell between phases.'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Pre-session intention — optional, skippable, hidden once the sit has started. */}

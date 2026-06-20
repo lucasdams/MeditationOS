@@ -39,6 +39,15 @@ vi.mock('react-router-dom', async (importOriginal) => {
 })
 vi.mock('../components/BiometricCapture', () => ({ default: () => null }))
 vi.mock('../lib/sfx', () => ({ playBell: vi.fn() }))
+// Speech is mocked so the toggle renders as "supported" by default (jsdom has no
+// speechSynthesis). `speechAvailableValue` lets a test flip the supported branch.
+const speechState = { available: true }
+vi.mock('../lib/speech', () => ({
+  speechAvailable: () => speechState.available,
+  onVoicesReady: () => () => {},
+  cancelSpeech: vi.fn(),
+  speak: vi.fn(),
+}))
 vi.mock('../context/ToastContext', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }))
@@ -314,5 +323,63 @@ describe('MeditatePage — best-effort post-save stats', () => {
 
     // No save-error banner.
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+// ── Spoken guidance toggle ───────────────────────────────────────────────────
+// The toggle appears only for guided sits, is ON by default, persists to
+// localStorage, and is disabled (with an explanatory hint) when the device has no
+// usable TTS voice.
+
+describe('MeditatePage — spoken guidance toggle', () => {
+  beforeEach(() => {
+    speechState.available = true
+    localStorage.clear()
+  })
+  afterEach(cleanup)
+
+  function selectGuided() {
+    fireEvent.change(screen.getByLabelText(/guided structure/i), {
+      target: { value: 'body-scan' },
+    })
+  }
+
+  it('is hidden when no guided structure is selected', () => {
+    renderPage()
+    expect(screen.queryByLabelText(/spoken guidance/i)).not.toBeInTheDocument()
+  })
+
+  it('appears and is checked by default once a guided structure is chosen', () => {
+    renderPage()
+    selectGuided()
+    const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
+    expect(toggle).toBeInTheDocument()
+    expect(toggle.checked).toBe(true)
+  })
+
+  it('persists an off choice to localStorage', () => {
+    renderPage()
+    selectGuided()
+    const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
+    fireEvent.click(toggle)
+    expect(toggle.checked).toBe(false)
+    expect(localStorage.getItem('meditate:spoken-guidance')).toBe('off')
+  })
+
+  it('reads a persisted off choice on next mount', () => {
+    localStorage.setItem('meditate:spoken-guidance', 'off')
+    renderPage()
+    selectGuided()
+    const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
+    expect(toggle.checked).toBe(false)
+  })
+
+  it('is disabled with a fallback hint when no TTS voice is available', () => {
+    speechState.available = false
+    renderPage()
+    selectGuided()
+    const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
+    expect(toggle.disabled).toBe(true)
+    expect(screen.getByText(/voice unavailable/i)).toBeInTheDocument()
   })
 })

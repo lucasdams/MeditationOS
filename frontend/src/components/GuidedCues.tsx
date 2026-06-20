@@ -1,14 +1,24 @@
 // In-session guided cue overlay. Shows the current phase cue text (large,
-// calm, low-contrast) and rings the existing soft bell on phase transitions.
+// calm, low-contrast) and — depending on `speechOn` — either speaks each cue
+// aloud or rings the existing soft bell on phase transitions.
 //
 // This component derives the active phase purely from `elapsed` and
 // `durationSec` — it shares the same elapsed-time clock as the timer rather
 // than forking a second interval.
 //
-// Design constraints:
-// - No narrated audio. The bell on transition is the only sound.
-// - Low-contrast, non-intrusive: the text sits gently over the session UI.
-// - Reduced-motion: no entrance animation when prefers-reduced-motion is set.
+// Audio behaviour:
+// - Spoken guidance ON (toggle on AND a usable TTS voice exists): each cue is
+//   read aloud in a calm, slowed voice as it appears. The voice REPLACES the
+//   transition bell — no bell fires while speaking.
+// - Spoken guidance OFF / unavailable: fall back to the prior behaviour — a soft
+//   bell rings on phase transitions so guidance is never silent.
+// In both cases the on-screen cue text stays (visual aid + fallback).
+//
+// Speech is only ever started after the session Start gesture (the page only
+// mounts this component once a sit is underway), and is cancelled on pause /
+// finish / unmount so no speech leaks after the user navigates away.
+//
+// Reduced-motion: no entrance animation when prefers-reduced-motion is set.
 
 import { useEffect, useRef } from 'react'
 import {
@@ -19,6 +29,7 @@ import {
   type PhaseWindow,
 } from '../lib/guidedSessions'
 import { playBell } from '../lib/sfx'
+import { speak, cancelSpeech } from '../lib/speech'
 
 interface GuidedCuesProps {
   structureId: GuidedStructureId
@@ -30,6 +41,12 @@ interface GuidedCuesProps {
   volume: number
   /** Whether bells are enabled. If false, phase-transition bells are suppressed. */
   bellsOn: boolean
+  /**
+   * Spoken guidance is active: the page has the toggle ON and a usable TTS voice
+   * exists. When true the voice reads each cue and the transition bell is
+   * suppressed; when false we fall back to the bell.
+   */
+  speechOn: boolean
 }
 
 export default function GuidedCues({
@@ -38,6 +55,7 @@ export default function GuidedCues({
   durationSec,
   volume,
   bellsOn,
+  speechOn,
 }: GuidedCuesProps) {
   const structure = getStructure(structureId)
 
@@ -55,20 +73,56 @@ export default function GuidedCues({
   const phaseIdx = currentPhaseIndex(schedule, elapsed)
   const phase = structure.phases[phaseIdx]
 
-  // Track the last phase seen so we can ring the bell on transitions.
+  // Latest speechOn in a ref so the per-phase effect reads the current value
+  // without re-firing on toggle changes (it only acts on phase transitions).
+  const speechOnRef = useRef(speechOn)
+  useEffect(() => {
+    speechOnRef.current = speechOn
+  }, [speechOn])
+
+  // Drive the per-phase audio cue. On each phase change:
+  // - Spoken guidance on  → speak the new cue (no bell).
+  // - Spoken guidance off → ring the bell if the phase asks for one.
+  // The very first phase (lastPhaseIdxRef === -1) is spoken but not belled — the
+  // page already rings an opening bell on Start, matching the prior behaviour.
   const lastPhaseIdxRef = useRef(-1)
   useEffect(() => {
-    if (phaseIdx !== lastPhaseIdxRef.current) {
-      if (lastPhaseIdxRef.current !== -1 && phase?.bell && bellsOn) {
-        try {
-          playBell(volume)
-        } catch {
-          // audio unavailable — skip silently
-        }
+    if (phaseIdx === lastPhaseIdxRef.current) return
+    const isFirst = lastPhaseIdxRef.current === -1
+    lastPhaseIdxRef.current = phaseIdx
+    if (!phase) return
+
+    if (speechOnRef.current) {
+      speak(phase.cue)
+    } else if (!isFirst && phase.bell && bellsOn) {
+      try {
+        playBell(volume)
+      } catch {
+        // audio unavailable — skip silently
       }
-      lastPhaseIdxRef.current = phaseIdx
     }
-  }, [phaseIdx, phase?.bell, bellsOn, volume])
+  }, [phaseIdx, phase, bellsOn, volume])
+
+  // Cancel any in-progress / queued speech when spoken guidance is turned off
+  // mid-sit (e.g. the sit pauses, or a fallback kicks in) and on unmount /
+  // leave-page, so no speech leaks after navigating away. When it turns back on
+  // (resume), re-speak the current cue so the user isn't left in silence until the
+  // next phase boundary.
+  const prevSpeechOnRef = useRef(speechOn)
+  useEffect(() => {
+    const was = prevSpeechOnRef.current
+    prevSpeechOnRef.current = speechOn
+    if (!speechOn) {
+      cancelSpeech()
+    } else if (!was && phase) {
+      // off → on: resume — re-speak the cue the user is currently in.
+      speak(phase.cue)
+    }
+  }, [speechOn, phase])
+
+  useEffect(() => {
+    return () => cancelSpeech()
+  }, [])
 
   if (!phase) return null
 
