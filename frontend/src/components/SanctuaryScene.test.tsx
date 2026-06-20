@@ -86,7 +86,8 @@ describe('SanctuaryScene — read-only garden preview', () => {
 
   it('does not show a coin count (the level chip already shows coins)', () => {
     renderPreview(scene({ coins: 99, owned: [ownedItem()] }))
-    expect(screen.queryByText(/🪙/)).toBeNull()
+    // No coin mark (the CoinIcon carries an aria-label of "coins") and no balance.
+    expect(screen.queryByLabelText('coins')).toBeNull()
     expect(screen.queryByText('99')).toBeNull()
   })
 
