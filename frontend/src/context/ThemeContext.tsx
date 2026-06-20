@@ -65,10 +65,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.dataset.dayphase = dayPhase
   }, [season, dayPhase])
 
-  // Apply color mode on mount and whenever it changes.
+  // Apply color mode on mount, whenever it changes, and — for "auto" — on every
+  // clock tick, so the app flips light↔dark live at dusk/dawn without a reload.
+  // (`now` already refreshes on the minute interval + focus/visibilitychange.)
   useEffect(() => {
-    applyColorMode(colorMode)
-  }, [colorMode])
+    applyColorMode(colorMode, now)
+  }, [colorMode, now])
 
   function setPref(next: SeasonPref) {
     setPrefState(next)

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   applyColorMode,
+  autoTheme,
   dayPhaseFromHour,
   readColorModePref,
   resolveSeason,
@@ -58,8 +59,17 @@ describe('color mode persistence', () => {
     delete document.documentElement.dataset.theme
   })
 
-  it('returns "system" when nothing is stored', () => {
+  it('defaults to "auto" when nothing is stored', () => {
+    expect(readColorModePref()).toBe('auto')
+  })
+
+  it('honors an explicit stored preference over the default', () => {
+    // An explicit choice (incl. "system") still wins; only the unset default changed.
+    writeColorModePref('system')
     expect(readColorModePref()).toBe('system')
+
+    writeColorModePref('light')
+    expect(readColorModePref()).toBe('light')
   })
 
   it('round-trips a written preference', () => {
@@ -71,6 +81,9 @@ describe('color mode persistence', () => {
 
     writeColorModePref('system')
     expect(readColorModePref()).toBe('system')
+
+    writeColorModePref('auto')
+    expect(readColorModePref()).toBe('auto')
   })
 
   it('applyColorMode sets data-theme for explicit choices', () => {
@@ -85,5 +98,33 @@ describe('color mode persistence', () => {
     document.documentElement.dataset.theme = 'dark'
     applyColorMode('system')
     expect(document.documentElement.dataset.theme).toBeUndefined()
+  })
+
+  it('applyColorMode resolves "auto" from the clock', () => {
+    applyColorMode('auto', new Date(2026, 0, 1, 23)) // 11pm → dark
+    expect(document.documentElement.dataset.theme).toBe('dark')
+
+    applyColorMode('auto', new Date(2026, 0, 1, 12)) // noon → light
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+})
+
+describe('autoTheme (clock-driven light/dark)', () => {
+  it('is dark in the evening and at night', () => {
+    expect(autoTheme(new Date(2026, 0, 1, 19))).toBe('dark') // dusk
+    expect(autoTheme(new Date(2026, 0, 1, 23))).toBe('dark') // night
+    expect(autoTheme(new Date(2026, 0, 1, 3))).toBe('dark') // small hours
+  })
+
+  it('is light during the day and morning', () => {
+    expect(autoTheme(new Date(2026, 0, 1, 6))).toBe('light') // dawn
+    expect(autoTheme(new Date(2026, 0, 1, 12))).toBe('light') // day
+  })
+
+  it('flips at the dusk (18:00) and dawn (05:00) boundaries', () => {
+    expect(autoTheme(new Date(2026, 0, 1, 17, 59))).toBe('light')
+    expect(autoTheme(new Date(2026, 0, 1, 18, 0))).toBe('dark')
+    expect(autoTheme(new Date(2026, 0, 1, 4, 59))).toBe('dark')
+    expect(autoTheme(new Date(2026, 0, 1, 5, 0))).toBe('light')
   })
 })
