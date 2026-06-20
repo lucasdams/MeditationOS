@@ -234,6 +234,52 @@ describe('DashboardPage — default (collapsed) calm view', () => {
   })
 })
 
+describe('DashboardPage — multi-step quest progress counter', () => {
+  beforeEach(() => {
+    seenMoodToday()
+    getScene.mockResolvedValue(fakeScene)
+  })
+
+  it('shows an "X/Y" counter on multi-step quests and none on single-step quests', async () => {
+    // A target>1 quest at progress 1 reads "1/2"; a target=1 quest shows no counter.
+    getStats.mockResolvedValue({
+      ...fakeStats,
+      daily_quests: [
+        { key: 'meditate', label: 'Meditate twice', progress: 1, target: 2, done: false, xp: 10 },
+        { key: 'journal', label: 'Write a journal', progress: 0, target: 1, done: false, xp: 10 },
+      ],
+    } as unknown as DashboardStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    const questsSection = screen.getByRole('region', { name: /today's quests/i })
+
+    // The multi-step quest shows its partial progress as "1/2".
+    expect(within(questsSection).getByText('1/2')).toBeInTheDocument()
+
+    // The single-step quest's chip carries no counter pill.
+    const singleStep = within(questsSection).getByRole('link', { name: /write a journal/i })
+    expect(singleStep.querySelector('.quest-chip-progress')).toBeNull()
+  })
+
+  it('reads as done when a multi-step quest reaches its target', async () => {
+    getStats.mockResolvedValue({
+      ...fakeStats,
+      daily_quests: [
+        { key: 'gratitude', label: 'Write three gratitudes', progress: 3, target: 3, done: true, xp: 10 },
+      ],
+    } as unknown as DashboardStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    const questsSection = screen.getByRole('region', { name: /today's quests/i })
+    const chip = within(questsSection).getByRole('link', { name: /write three gratitudes/i })
+    // Full progress shows "3/3" and the chip carries the done state (muted + check).
+    expect(within(questsSection).getByText('3/3')).toBeInTheDocument()
+    expect(chip).toHaveClass('done')
+  })
+})
+
 describe('DashboardPage — expanding the "Show more" drawer', () => {
   beforeEach(() => {
     seenMoodToday()
