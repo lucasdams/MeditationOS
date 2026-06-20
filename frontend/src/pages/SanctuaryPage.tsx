@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { sanctuaryService, type PersonalizePatch } from '../services/sanctuary'
 import { useToast } from '../context/ToastContext'
 import SanctuaryPlant from '../components/SanctuaryPlant'
+import CoinIcon from '../components/CoinIcon'
 import Modal from '../components/Modal'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import {
@@ -312,7 +313,9 @@ export default function SanctuaryPage() {
         : itemLabel(key)
       const spent = before ? before.coins - next.coins : null
       const detail =
-        spent != null ? ` · ${spent} 🪙 spent, ${next.coins} left` : ` · ${next.coins} 🪙 left`
+        spent != null
+          ? ` · ${spent} coins spent, ${next.coins} left`
+          : ` · ${next.coins} coins left`
       showToast(`${name} added${detail}`)
     } catch {
       showToast('Could not buy that — earn more coins by practicing.', 'error')
@@ -347,7 +350,9 @@ export default function SanctuaryPage() {
       setConfirmReset(null)
       const refunded = before ? next.coins - before.coins : null
       const detail =
-        refunded != null && refunded >= 0 ? ` ${refunded} 🪙 back.` : ` ${next.coins} 🪙 left.`
+        refunded != null && refunded >= 0
+          ? ` ${refunded} coins back.`
+          : ` ${next.coins} coins left.`
       showToast(`Upgrades cleared from your ${itemLabel(item.item_key).toLowerCase()}.${detail}`)
     } catch {
       showToast('Could not reset that — please try again.', 'error')
@@ -437,7 +442,7 @@ export default function SanctuaryPage() {
       {scene && (
         <>
           <div className="sanctuary-wallet">
-            <span className="sanctuary-coins">🪙 {scene.coins}</span>
+            <span className="sanctuary-coins"><CoinIcon /> {scene.coins}</span>
             <span className="muted">
               Level {scene.level} · {VITALITY[scene.vitality].emoji}{' '}
               {VITALITY[scene.vitality].label}
@@ -674,15 +679,21 @@ export default function SanctuaryPage() {
                                           onBlur={clearPreview}
                                           onClick={() => buyable && customize(o, s.slot, opt.option)}
                                         >
-                                          {opt.applied
-                                            ? `✓ ${optionLabel(opt.option)}`
-                                            : reached
-                                              ? `✓ ${optionLabel(opt.option)} · grown`
-                                              : !opt.unlocked
-                                                ? `🔒 ${optionLabel(opt.option)}`
-                                                : !opt.affordable
-                                                  ? `🪙 ${opt.cost} (earn more)`
-                                                  : `${optionLabel(opt.option)} · 🪙 ${opt.cost}`}
+                                          {opt.applied ? (
+                                            `✓ ${optionLabel(opt.option)}`
+                                          ) : reached ? (
+                                            `✓ ${optionLabel(opt.option)} · grown`
+                                          ) : !opt.unlocked ? (
+                                            `🔒 ${optionLabel(opt.option)}`
+                                          ) : !opt.affordable ? (
+                                            <>
+                                              <CoinIcon /> {opt.cost} (earn more)
+                                            </>
+                                          ) : (
+                                            <>
+                                              {optionLabel(opt.option)} · <CoinIcon /> {opt.cost}
+                                            </>
+                                          )}
                                         </button>
                                       )
                                     })}
@@ -699,7 +710,7 @@ export default function SanctuaryPage() {
                                       <p className="muted sanctuary-reset-note">
                                         Clear this {itemLabel(o.item_key).toLowerCase()}’s
                                         upgrades back to its base form? You’ll get your coins
-                                        back, less a {RESET_FEE} 🪙 fee. Its name and form stay.
+                                        back, less a {RESET_FEE}-coin fee. Its name and form stay.
                                       </p>
                                       <div className="sanctuary-reset-actions">
                                         <button
@@ -708,9 +719,13 @@ export default function SanctuaryPage() {
                                           disabled={busy != null}
                                           onClick={() => resetUpgrades(o)}
                                         >
-                                          {busy === `reset:${o.id}`
-                                            ? 'Resetting…'
-                                            : `Reset · −${RESET_FEE} 🪙`}
+                                          {busy === `reset:${o.id}` ? (
+                                            'Resetting…'
+                                          ) : (
+                                            <>
+                                              Reset · −{RESET_FEE} <CoinIcon />
+                                            </>
+                                          )}
                                         </button>
                                         <button
                                           type="button"
@@ -801,7 +816,7 @@ export default function SanctuaryPage() {
                                 disabled={busy != null || !affordable}
                                 onClick={() => setPicking(s)}
                               >
-                                Choose · 🪙 {s.cost}
+                                Choose · <CoinIcon /> {s.cost}
                               </button>
                             ) : (
                               // One-tap buy. Naming happens once owned, in the item's
@@ -812,7 +827,13 @@ export default function SanctuaryPage() {
                                 disabled={busy != null || !affordable}
                                 onClick={() => buy(s.item_key, null)}
                               >
-                                {busy === `buy:${s.item_key}` ? 'Adding…' : `Buy · 🪙 ${s.cost}`}
+                                {busy === `buy:${s.item_key}` ? (
+                                  'Adding…'
+                                ) : (
+                                  <>
+                                    Buy · <CoinIcon /> {s.cost}
+                                  </>
+                                )}
                               </button>
                             )
                           ) : (
@@ -878,7 +899,13 @@ export default function SanctuaryPage() {
                   disabled={busy != null || scene.coins < picking.cost}
                   onClick={() => buy(picking.item_key, null)}
                 >
-                  {busy === `buy:${picking.item_key}` ? 'Adding…' : `Buy · 🪙 ${picking.cost}`}
+                  {busy === `buy:${picking.item_key}` ? (
+                    'Adding…'
+                  ) : (
+                    <>
+                      Buy · <CoinIcon /> {picking.cost}
+                    </>
+                  )}
                 </button>
               )}
               <button

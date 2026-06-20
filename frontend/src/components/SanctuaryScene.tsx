@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
 import { itemLabel, variantLabel, VITALITY, timeOfDay } from '../lib/sanctuaryArt'
 import SanctuaryPlant from './SanctuaryPlant'
+import CoinIcon from './CoinIcon'
 import type { OwnedItem, SanctuaryScene as Scene } from '../types'
 
 /**
@@ -151,7 +152,7 @@ export default function SanctuaryScene({
       </p>
 
       <div className="sanctuary-coins-row">
-        <span className="sanctuary-coins">🪙 {coins}</span>
+        <span className="sanctuary-coins"><CoinIcon /> {coins}</span>
         <span className="muted">coins to spend</span>
       </div>
 

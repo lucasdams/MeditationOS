@@ -9,6 +9,7 @@ import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import SanctuaryScene from '../components/SanctuaryScene'
+import CoinIcon from '../components/CoinIcon'
 import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TILE_COLORS_DARK, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -33,7 +34,10 @@ const FEATURE_TILES = [
   { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
   { ...ACTIVITY_META.gratitude, to: '/gratitude', tile: 'gratitude' as const },
   { ...ACTIVITY_META.journal, to: '/journal', tile: 'journal' as const },
-  { label: 'Sanctuary', emoji: '🌱', to: '/sanctuary', tile: 'sanctuary' as const },
+  // A warm pink blossom rather than a green leaf/sprout: a green 🌱 disappears into the
+  // green sanctuary tile fill, whereas 🌸 carries strong non-green (pink) and reads clearly
+  // on the green box in both light and dark themes — while staying on-theme for the garden.
+  { label: 'Sanctuary', emoji: '🌸', to: '/sanctuary', tile: 'sanctuary' as const },
 ] as const
 
 // Once-per-day gate for the on-open mood check-in. We record the local date the prompt
@@ -171,7 +175,7 @@ export default function DashboardPage() {
           </span>
           {sanctuaryScene && (
             <span className="level-topline-item">
-              <span aria-hidden="true">🪙</span> {sanctuaryScene.coins}
+              <CoinIcon /> {sanctuaryScene.coins}
             </span>
           )}
         </p>

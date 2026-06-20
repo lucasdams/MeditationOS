@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { levelProgress } from '../lib/level'
 import { playLevelUp, playReward } from '../lib/sfx'
+import CoinIcon from './CoinIcon'
 import type { XpLine } from '../lib/xpBreakdown'
 
 /**
@@ -100,7 +101,9 @@ export default function RewardOverlay({
           {leveledUp && <span className="reward-up"> · Level up! 🎉</span>}
         </div>
         {leveledUp && (
-          <div className="reward-coins">You've earned coins to spend in your sanctuary 🪙</div>
+          <div className="reward-coins">
+            You've earned coins to spend in your sanctuary <CoinIcon />
+          </div>
         )}
         <div className="xp-bar">
           <div className="xp-fill" style={{ width: `${pct}%` }} />

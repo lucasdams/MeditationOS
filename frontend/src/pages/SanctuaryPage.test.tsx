@@ -110,12 +110,12 @@ describe('SanctuaryPage buy feedback', () => {
 
     renderPage()
 
-    const buyBtn = await screen.findByRole('button', { name: /Buy · 🪙 30/ })
+    const buyBtn = await screen.findByRole('button', { name: /Buy · coins 30/ })
     fireEvent.click(buyBtn)
 
     // Rich success toast: what + spent + left.
     await waitFor(() =>
-      expect(screen.getByText(/Tree added · 30 🪙 spent, 40 left/)).toBeInTheDocument(),
+      expect(screen.getByText(/Tree added · 30 coins spent, 40 left/)).toBeInTheDocument(),
     )
     // No name typed → buys with a null variant and a null name.
     expect(buy).toHaveBeenCalledWith('tree', null, null)
@@ -133,7 +133,7 @@ describe('SanctuaryPage buy feedback', () => {
 
     renderPage()
 
-    const buyBtn = await screen.findByRole('button', { name: /Buy · 🪙 30/ })
+    const buyBtn = await screen.findByRole('button', { name: /Buy · coins 30/ })
     fireEvent.click(buyBtn)
 
     await waitFor(() => expect(screen.getByText(/Could not buy that/)).toBeInTheDocument())
@@ -167,7 +167,7 @@ describe('SanctuaryPage naming (ADR-0015)', () => {
     renderPage()
 
     // Single-variant items buy in one tap; no name is sent (null name).
-    fireEvent.click(await screen.findByRole('button', { name: /Buy · 🪙 30/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Buy · coins 30/ }))
     await waitFor(() => expect(buy).toHaveBeenCalledWith('tree', null, null))
   })
 
@@ -192,11 +192,11 @@ describe('SanctuaryPage naming (ADR-0015)', () => {
     renderPage()
 
     // The shop offers no "name it…" affordance any more.
-    await screen.findByRole('button', { name: /Choose · 🪙 30/ })
+    await screen.findByRole('button', { name: /Choose · coins 30/ })
     expect(screen.queryByRole('button', { name: /name it/ })).toBeNull()
 
     // Opening the buy modal shows the variant picker but no name input.
-    fireEvent.click(screen.getByRole('button', { name: /Choose · 🪙 30/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Choose · coins 30/ }))
     const dialog = within(await screen.findByRole('dialog'))
     expect(dialog.queryByRole('textbox')).toBeNull()
     expect(dialog.queryByLabelText(/Name/i)).toBeNull()
@@ -263,10 +263,10 @@ describe('SanctuaryPage reset upgrades (ADR-0019)', () => {
     fireEvent.click(view.getByRole('button', { name: /Reset upgrades/ }))
 
     // The confirm states the fee before anything is charged.
-    expect(view.getByText(/10 🪙 fee/)).toBeInTheDocument()
+    expect(view.getByText(/10-coin fee/)).toBeInTheDocument()
 
     // Confirm → the service is called and the refund toast surfaces.
-    fireEvent.click(view.getByRole('button', { name: /Reset · −10 🪙/ }))
+    fireEvent.click(view.getByRole('button', { name: /Reset · −10 coins/ }))
     await waitFor(() => expect(resetUpgrades).toHaveBeenCalledWith('a'))
     await waitFor(() =>
       expect(screen.getByText(/Upgrades cleared from your tree/)).toBeInTheDocument(),
@@ -297,7 +297,7 @@ describe('SanctuaryPage reset upgrades (ADR-0019)', () => {
 
     fireEvent.click(await view.findByRole('button', { name: /^Personalize \(1\)$/ }))
     fireEvent.click(view.getByRole('button', { name: /Reset upgrades/ }))
-    fireEvent.click(view.getByRole('button', { name: /Reset · −10 🪙/ }))
+    fireEvent.click(view.getByRole('button', { name: /Reset · −10 coins/ }))
 
     await waitFor(() =>
       expect(screen.getByText(/Could not reset that/)).toBeInTheDocument(),
@@ -493,7 +493,9 @@ describe('SanctuaryPage Tended oak — reached grown rungs are not buyable (Fix 
     const reachedBtn = view.getByRole('button', { name: /✓ Flourishing.*grown/i })
     expect(reachedBtn).toBeDisabled()
     expect(reachedBtn).toHaveClass('reached')
-    expect(reachedBtn.textContent).not.toMatch(/🪙/) // no coin price — not a purchase
+    // No coin price — not a purchase. The price branches render a <CoinIcon aria-label="coins" />,
+    // so a reached rung's accessible name carries no "coins" mark.
+    expect(reachedBtn).not.toHaveAccessibleName(/coins/i)
 
     // Clicking it buys nothing (practice drives it; there is no coin path).
     fireEvent.click(reachedBtn)
@@ -508,7 +510,7 @@ describe('SanctuaryPage Tended oak — reached grown rungs are not buyable (Fix 
     fireEvent.click(await view.findByRole('button', { name: /^Personalize/ }))
 
     // The next rung is a normal buyable option (price shown), and clicking it buys.
-    const matureBtn = view.getByRole('button', { name: /Mature.*🪙 144/i })
+    const matureBtn = view.getByRole('button', { name: /Mature.*coins 144/i })
     expect(matureBtn).not.toBeDisabled()
     expect(matureBtn).not.toHaveClass('reached')
     fireEvent.click(matureBtn)
