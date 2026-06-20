@@ -48,14 +48,23 @@
     <script src="https://accounts.google.com/gsi/client" async></script>
 
     <!-- Apply the saved color-mode preference before the first paint to avoid a flash.
-         Reads localStorage directly (no React/JS bundle needed at this point). -->
+         Reads localStorage directly (no React/JS bundle needed at this point).
+         Mirrors readColorModePref/applyColorMode in src/lib/theme.ts — the default
+         (missing pref) is "auto": light by day, dark in the evening/night. -->
     <script>
       (function () {
         try {
-          var m = localStorage.getItem('theme:color-mode')
-          if (m === 'dark') document.documentElement.dataset.theme = 'dark'
-          else if (m === 'light') document.documentElement.dataset.theme = 'light'
-          // 'system' or missing → no attribute; @media handles it
+          var m = localStorage.getItem('theme:color-mode') || 'auto'
+          if (m === 'auto') {
+            // dusk/night → dark, dawn/day → light (matches dayPhaseFromHour).
+            var h = new Date().getHours()
+            document.documentElement.dataset.theme = h >= 18 || h < 5 ? 'dark' : 'light'
+          } else if (m === 'dark') {
+            document.documentElement.dataset.theme = 'dark'
+          } else if (m === 'light') {
+            document.documentElement.dataset.theme = 'light'
+          }
+          // 'system' → no attribute; @media prefers-color-scheme handles it
         } catch (e) { /* private mode / unavailable — ignore */ }
       })()
     </script>

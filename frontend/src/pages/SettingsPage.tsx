@@ -10,11 +10,19 @@ import { SEASON_PREFS, SEASONS, type ColorModePref } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
-const COLOR_MODE_OPTIONS: { value: ColorModePref; label: string }[] = [
-  { value: 'system', label: 'System (auto)' },
+export const COLOR_MODE_OPTIONS: { value: ColorModePref; label: string }[] = [
+  { value: 'auto', label: 'Auto (day & night)' },
+  { value: 'system', label: 'System (OS setting)' },
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ]
+
+const COLOR_MODE_HINTS: Record<ColorModePref, string> = {
+  auto: 'Follows the time of day — light by day, dark at night.',
+  system: "Matches your device's light or dark setting.",
+  light: 'Always light.',
+  dark: 'Always dark.',
+}
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
@@ -664,6 +672,9 @@ export default function SettingsPage() {
             </option>
           ))}
         </select>
+        <p className="muted" style={{ marginTop: '0.4rem', marginBottom: '0.1rem' }}>
+          {COLOR_MODE_HINTS[colorMode]}
+        </p>
 
         <p className="muted" style={{ marginTop: '1.25rem', marginBottom: '0.1rem' }}>
           A seasonal tint colors the background, and the light shifts with your local
