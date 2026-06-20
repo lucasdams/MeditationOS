@@ -502,35 +502,39 @@ export default function TratakaPage() {
             Optional — rate how your gaze felt, or jot a quick note.
           </p>
 
-          <div className="session-reflect-row">
-            <span className="session-reflect-label">Focus</span>
-            <RatingChips
-              ariaLabel="Focus"
-              notRatedLabel="—"
-              value={reflectFocus}
-              onChange={setReflectFocus}
-            />
-          </div>
-          <div className="session-reflect-row">
-            <span className="session-reflect-label">Calm</span>
-            <RatingChips
-              ariaLabel="Calm"
-              notRatedLabel="—"
-              value={reflectCalm}
-              onChange={setReflectCalm}
-            />
+          <div className="session-reflect-ratings">
+            <div className="session-reflect-row">
+              <span className="session-reflect-label">Focus</span>
+              <RatingChips
+                ariaLabel="Focus"
+                notRatedLabel="—"
+                value={reflectFocus}
+                onChange={setReflectFocus}
+              />
+            </div>
+            <div className="session-reflect-row">
+              <span className="session-reflect-label">Calm</span>
+              <RatingChips
+                ariaLabel="Calm"
+                notRatedLabel="—"
+                value={reflectCalm}
+                onChange={setReflectCalm}
+              />
+            </div>
           </div>
 
-          <label htmlFor="reflect-notes" className="session-reflect-notes-label">
-            Notes (optional)
-          </label>
-          <textarea
-            id="reflect-notes"
-            rows={3}
-            placeholder="Anything that arose…"
-            value={reflectNotes}
-            onChange={(e) => setReflectNotes(e.target.value)}
-          />
+          <div className="session-reflect-notes">
+            <label htmlFor="reflect-notes" className="session-reflect-notes-label">
+              Notes (optional)
+            </label>
+            <textarea
+              id="reflect-notes"
+              rows={3}
+              placeholder="Anything that arose…"
+              value={reflectNotes}
+              onChange={(e) => setReflectNotes(e.target.value)}
+            />
+          </div>
 
           <ErrorBanner message={reflectError} />
 

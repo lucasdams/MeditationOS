@@ -138,6 +138,7 @@ pay-to-skip-practice (see [Payments & Monetization](#payments--monetization)).
 - [ ] Optional background audio during breathing and unguided sessions
 - [ ] Licensed classical or instrumental playlist player (curated, attribution UI)
 - [ ] Volume mixing (voice cues vs background audio)
+- [ ] **Better voices for spoken guidance** — higher-quality / curated voices for the spoken body-scan & loving-kindness cues (a calmer voice picker, per-line voice selection, or optional recorded narration as a future option). Follow-up to the shipped on-device TTS spoken guidance, whose voice quality varies by device.
 
 ## Social & Community
 

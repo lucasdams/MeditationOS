@@ -45,25 +45,6 @@ const ZERO_STATS: DashboardStats = {
   gratitude_count: 0, this_week: [], daily_quests: [],
 }
 
-// localStorage key for the Sound & bells disclosure open/closed state.
-const SOUND_DISCLOSURE_KEY = 'meditate:sound-disclosure-open'
-
-function readSoundDisclosureOpen(): boolean {
-  try {
-    return localStorage.getItem(SOUND_DISCLOSURE_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-function writeSoundDisclosureOpen(open: boolean) {
-  try {
-    localStorage.setItem(SOUND_DISCLOSURE_KEY, String(open))
-  } catch {
-    // ignore
-  }
-}
-
 const DRAFT_PAGE = 'meditate'
 
 // Unguided meditation styles (existing session types). Resonance breathing has its
@@ -153,7 +134,9 @@ export default function MeditatePage() {
   // device has no voice we fall back to text + bell even with the toggle on.
   const [spokenPref, setSpokenPrefState] = useState<boolean>(readSpokenGuidance)
   const [speechSupported, setSpeechSupported] = useState<boolean>(speechAvailable)
-  const [soundDisclosureOpen, setSoundDisclosureOpen] = useState(readSoundDisclosureOpen)
+  // Drives the summary's aria-expanded only; the <details> starts collapsed every
+  // visit so the calm default view leads with the essentials + Start.
+  const [soundDisclosureOpen, setSoundDisclosureOpen] = useState(false)
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(0.4)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
@@ -722,12 +705,9 @@ export default function MeditatePage() {
       {/* Soundscape stays live-adjustable during a sit (open the disclosure to change). */}
       <details
         className="meditate-disclosure"
-        open={soundDisclosureOpen}
-        onToggle={(e) => {
-          const open = (e.currentTarget as HTMLDetailsElement).open
-          setSoundDisclosureOpen(open)
-          writeSoundDisclosureOpen(open)
-        }}
+        onToggle={(e) =>
+          setSoundDisclosureOpen((e.currentTarget as HTMLDetailsElement).open)
+        }
       >
         <summary
           className="meditate-disclosure-summary"
@@ -861,35 +841,39 @@ export default function MeditatePage() {
             Optional — rate how your sit felt, or jot a quick note.
           </p>
 
-          <div className="session-reflect-row">
-            <span className="session-reflect-label">Focus</span>
-            <RatingChips
-              ariaLabel="Focus"
-              notRatedLabel="—"
-              value={reflectFocus}
-              onChange={setReflectFocus}
-            />
-          </div>
-          <div className="session-reflect-row">
-            <span className="session-reflect-label">Calm</span>
-            <RatingChips
-              ariaLabel="Calm"
-              notRatedLabel="—"
-              value={reflectCalm}
-              onChange={setReflectCalm}
-            />
+          <div className="session-reflect-ratings">
+            <div className="session-reflect-row">
+              <span className="session-reflect-label">Focus</span>
+              <RatingChips
+                ariaLabel="Focus"
+                notRatedLabel="—"
+                value={reflectFocus}
+                onChange={setReflectFocus}
+              />
+            </div>
+            <div className="session-reflect-row">
+              <span className="session-reflect-label">Calm</span>
+              <RatingChips
+                ariaLabel="Calm"
+                notRatedLabel="—"
+                value={reflectCalm}
+                onChange={setReflectCalm}
+              />
+            </div>
           </div>
 
-          <label htmlFor="reflect-notes" className="session-reflect-notes-label">
-            Notes (optional)
-          </label>
-          <textarea
-            id="reflect-notes"
-            rows={3}
-            placeholder="Anything that arose…"
-            value={reflectNotes}
-            onChange={(e) => setReflectNotes(e.target.value)}
-          />
+          <div className="session-reflect-notes">
+            <label htmlFor="reflect-notes" className="session-reflect-notes-label">
+              Notes (optional)
+            </label>
+            <textarea
+              id="reflect-notes"
+              rows={3}
+              placeholder="Anything that arose…"
+              value={reflectNotes}
+              onChange={(e) => setReflectNotes(e.target.value)}
+            />
+          </div>
 
           <ErrorBanner message={reflectError} />
 

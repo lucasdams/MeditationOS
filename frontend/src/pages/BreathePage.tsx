@@ -902,24 +902,31 @@ export default function BreathePage() {
         onChange={(e) => setVolume(Number(e.target.value))}
       />
 
-      <label>Ambient soundscape</label>
-      <SoundscapePicker
-        value={soundscape}
-        volume={soundscapeVol}
-        previewEngineRef={soundscapeEngineRef}
-        previewEnabled={!(running || elapsed > 0)}
-        onSoundscapeChange={(name) => {
-          setSoundscape(name)
-          if (running) {
-            soundscapeEngineRef.current?.stop()
-            if (name !== 'silent') {
-              if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-              soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
-            }
-          }
-        }}
-        onVolumeChange={setSoundscapeVol}
-      />
+      {/* Ambient soundscape — secondary, tucked behind a collapsed disclosure so the
+          pre-start view stays calm. Open it to choose a backdrop (preview-on-select
+          still works), and to switch it live during a session. */}
+      <details className="meditate-disclosure">
+        <summary className="meditate-disclosure-summary">Ambient soundscape</summary>
+        <div className="meditate-disclosure-body">
+          <SoundscapePicker
+            value={soundscape}
+            volume={soundscapeVol}
+            previewEngineRef={soundscapeEngineRef}
+            previewEnabled={!(running || elapsed > 0)}
+            onSoundscapeChange={(name) => {
+              setSoundscape(name)
+              if (running) {
+                soundscapeEngineRef.current?.stop()
+                if (name !== 'silent') {
+                  if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
+                  soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
+                }
+              }
+            }}
+            onVolumeChange={setSoundscapeVol}
+          />
+        </div>
+      </details>
 
       <ErrorBanner message={error} />
 
@@ -987,35 +994,39 @@ export default function BreathePage() {
             Optional — rate how your breathing felt, or jot a quick note.
           </p>
 
-          <div className="session-reflect-row">
-            <span className="session-reflect-label">Focus</span>
-            <RatingChips
-              ariaLabel="Focus"
-              notRatedLabel="—"
-              value={reflectFocus}
-              onChange={setReflectFocus}
-            />
-          </div>
-          <div className="session-reflect-row">
-            <span className="session-reflect-label">Calm</span>
-            <RatingChips
-              ariaLabel="Calm"
-              notRatedLabel="—"
-              value={reflectCalm}
-              onChange={setReflectCalm}
-            />
+          <div className="session-reflect-ratings">
+            <div className="session-reflect-row">
+              <span className="session-reflect-label">Focus</span>
+              <RatingChips
+                ariaLabel="Focus"
+                notRatedLabel="—"
+                value={reflectFocus}
+                onChange={setReflectFocus}
+              />
+            </div>
+            <div className="session-reflect-row">
+              <span className="session-reflect-label">Calm</span>
+              <RatingChips
+                ariaLabel="Calm"
+                notRatedLabel="—"
+                value={reflectCalm}
+                onChange={setReflectCalm}
+              />
+            </div>
           </div>
 
-          <label htmlFor="breathe-reflect-notes" className="session-reflect-notes-label">
-            Notes (optional)
-          </label>
-          <textarea
-            id="breathe-reflect-notes"
-            rows={3}
-            placeholder="Anything that arose…"
-            value={reflectNotes}
-            onChange={(e) => setReflectNotes(e.target.value)}
-          />
+          <div className="session-reflect-notes">
+            <label htmlFor="breathe-reflect-notes" className="session-reflect-notes-label">
+              Notes (optional)
+            </label>
+            <textarea
+              id="breathe-reflect-notes"
+              rows={3}
+              placeholder="Anything that arose…"
+              value={reflectNotes}
+              onChange={(e) => setReflectNotes(e.target.value)}
+            />
+          </div>
 
           <ErrorBanner message={reflectError} />
 
