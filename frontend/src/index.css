@@ -2199,13 +2199,31 @@ textarea:focus-visible,
 /* --- The garden scene ------------------------------------------------------------------
    The garden no longer reads as a grid of cards. Instead the items sit *in* a calm little
    scene: a soft sky→earth gradient backdrop, a subtle grass/soil ground band under the
-   plants, and a gentle vignette + ambient glow for depth. Tokens keep it legible in both
-   themes. A `data-daytime` attribute on the section adds a very soft time-of-day tint so
-   the garden feels quietly alive. Decorative only — interactivity is untouched. */
+   plants, and a gentle vignette + ambient glow for depth.
 
-/* Garden-scene ambient palette. Light theme: a soft dawn-sky → warm-earth wash. The
-   per-theme overrides below keep the dark garden deep and calm (never a glaring light box). */
-.sanctuary-garden-section {
+   The scene's palette follows the real TIME OF DAY (`data-daytime`), NOT the app theme — so
+   the garden is daylit at noon even in dark mode, and a deep calm dark at night even in light
+   mode. The garden is a little window onto a real sky, independent of the chrome around it.
+
+   Each `data-daytime` band sets the full `--garden-*` palette (sky/earth/grass/soil/shadow/
+   vignette/tint) AND the scene-text inks (`--garden-ink` / `--garden-ink-soft`) + the name-
+   plaque fill, all tuned to the scene's own lightness so marks sitting ON the scene stay
+   legible regardless of the app theme. Decorative only — interactivity is untouched. */
+
+.sanctuary-garden-section,
+.sanctuary-preview-home {
+  position: relative;
+}
+
+/* The garden palette is keyed to the clock, so the same per-daytime block serves both the
+   full page section and the home preview. `day` is also the safe default if `data-daytime`
+   is ever missing. */
+
+/* DAY — bright, airy daylight: blue sky fading to warm light earth. Dark text reads on it. */
+.sanctuary-garden-section,
+.sanctuary-preview-home,
+.sanctuary-garden-section[data-daytime='day'],
+.sanctuary-preview-home[data-daytime='day'] {
   --garden-sky: #eaf4ff;
   --garden-earth: #f3f6ee;
   --garden-grass: #bfe6c4;
@@ -2213,28 +2231,56 @@ textarea:focus-visible,
   --garden-shadow: rgba(40, 70, 40, 0.16);
   --garden-vignette: rgba(40, 60, 45, 0.05);
   --garden-tint: transparent;
-  position: relative;
+  --garden-ink: #1f2a22;
+  --garden-ink-soft: #45554a;
+  --garden-plaque: rgba(255, 255, 255, 0.72);
 }
 
-:root[data-theme='dark'] .sanctuary-garden-section,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-garden-section {
+/* DAWN — soft, warm morning light: gentle peach sky over a light earth. Still dark text. */
+.sanctuary-garden-section[data-daytime='dawn'],
+.sanctuary-preview-home[data-daytime='dawn'] {
+  --garden-sky: #ffe9d6;
+  --garden-earth: #fdf1e7;
+  --garden-grass: #cfe6bd;
+  --garden-soil: #ecdcc6;
+  --garden-shadow: rgba(120, 80, 50, 0.16);
+  --garden-vignette: rgba(120, 80, 50, 0.05);
+  --garden-tint: rgba(255, 214, 170, 0.22);
+  --garden-ink: #3a2a20;
+  --garden-ink-soft: #6a503e;
+  --garden-plaque: rgba(255, 255, 255, 0.7);
+}
+
+/* DUSK — amber/mauve dimming: a warm mid-tone, clearly softer than day but not yet night.
+   A light-on-dim scene, so the scene text flips to a soft light. */
+.sanctuary-garden-section[data-daytime='dusk'],
+.sanctuary-preview-home[data-daytime='dusk'] {
+  --garden-sky: #7d6a86;
+  --garden-earth: #5a4a55;
+  --garden-grass: #5e6a52;
+  --garden-soil: #4a4044;
+  --garden-shadow: rgba(20, 12, 24, 0.34);
+  --garden-vignette: rgba(20, 12, 24, 0.18);
+  --garden-tint: rgba(255, 168, 120, 0.16);
+  --garden-ink: #fbf3ef;
+  --garden-ink-soft: #e3d3d8;
+  --garden-plaque: rgba(30, 20, 34, 0.45);
+}
+
+/* NIGHT — the deep calm dark (the old dark-theme garden values), under a soft night-blue
+   tint. Light text reads on it. */
+.sanctuary-garden-section[data-daytime='night'],
+.sanctuary-preview-home[data-daytime='night'] {
   --garden-sky: #1a2238;
   --garden-earth: #1d2733;
   --garden-grass: #2a4636;
   --garden-soil: #2c2a32;
   --garden-shadow: rgba(0, 0, 0, 0.4);
   --garden-vignette: rgba(0, 0, 0, 0.22);
-}
-
-/* A whisper-soft time-of-day tint laid over the sky — gentle in both themes. */
-.sanctuary-garden-section[data-daytime='dawn'] {
-  --garden-tint: rgba(255, 214, 170, 0.18);
-}
-.sanctuary-garden-section[data-daytime='dusk'] {
-  --garden-tint: rgba(255, 168, 140, 0.16);
-}
-.sanctuary-garden-section[data-daytime='night'] {
-  --garden-tint: rgba(70, 90, 160, 0.16);
+  --garden-tint: rgba(70, 90, 160, 0.18);
+  --garden-ink: #eaeef7;
+  --garden-ink-soft: #c2c8db;
+  --garden-plaque: rgba(12, 18, 34, 0.5);
 }
 
 /* The scene canvas the plants live in: sky overhead fading to earth, with a soft vignette
@@ -2913,13 +2959,28 @@ textarea:focus-visible,
 /* In the garden scene the name now floats over the ground rather than on a card, so the
    user's plaque gets a soft warm pill to keep it legible and read as a little garden marker —
    "this one is mine, and it has a name". A gentle backdrop, never a hard label. The shop's
-   own .sanctuary-card-name is untouched (it has no .sanctuary-cell ancestor). */
+   own .sanctuary-card-name is untouched (it has no .sanctuary-cell ancestor).
+
+   The pill fill and the name's ink are keyed to the scene's TIME OF DAY (`--garden-plaque` /
+   `--garden-ink`), not the app theme — so on a bright DAY garden the plaque stays a light pill
+   with dark text even in dark mode, and on a NIGHT garden it's a dark pill with light text even
+   in light mode. This is what keeps the now theme-independent scene legible. */
 .sanctuary-cell.sanctuary-card .sanctuary-card-name {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+  color: var(--garden-ink);
+  background: var(--garden-plaque);
   backdrop-filter: blur(2px);
   box-shadow: 0 1px 2px var(--garden-shadow);
+}
+
+/* The quieter marks on the scene — the unnamed item's variant tag, and a named item's
+   item/variant subtitle and note — read as soft scene ink rather than theme `--text-muted`,
+   so they stay legible on whatever the time-of-day backdrop is, in both app themes. */
+.sanctuary-cell.sanctuary-card .sanctuary-card-sub,
+.sanctuary-cell.sanctuary-card .sanctuary-card-note,
+.sanctuary-cell.sanctuary-card .sanctuary-variant {
+  color: var(--garden-ink-soft);
 }
 
 .sanctuary-fav-star {
@@ -3484,41 +3545,15 @@ textarea:focus-visible,
    SanctuaryPlant art as the full /sanctuary page, at a calmer size — so the home reads like
    a real little garden you glance at, then tap through to tend. No interactive chrome
    (no grab handles, no buy/customize), no coin count. */
+/* The home preview's chrome only — its garden palette (sky/earth/grass/soil/inks/plaque,
+   keyed to `data-daytime`) is defined alongside the full page section up in "The garden
+   scene" block, so both views share one clock-driven palette and never the app theme. */
 .sanctuary-preview-home {
   margin: 1.25rem 0;
   padding: 0.85rem 1rem 1rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  /* The home preview shares the full garden's scene palette so the glance feels like the
-     same little world — a calm sky→earth wash with a grounded plot below. */
-  --garden-sky: #eaf4ff;
-  --garden-earth: #f3f6ee;
-  --garden-grass: #bfe6c4;
-  --garden-soil: #e7d9c4;
-  --garden-shadow: rgba(40, 70, 40, 0.16);
-  --garden-vignette: rgba(40, 60, 45, 0.05);
-  --garden-tint: transparent;
-}
-
-:root[data-theme='dark'] .sanctuary-preview-home,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-preview-home {
-  --garden-sky: #1a2238;
-  --garden-earth: #1d2733;
-  --garden-grass: #2a4636;
-  --garden-soil: #2c2a32;
-  --garden-shadow: rgba(0, 0, 0, 0.4);
-  --garden-vignette: rgba(0, 0, 0, 0.22);
-}
-
-.sanctuary-preview-home[data-daytime='dawn'] {
-  --garden-tint: rgba(255, 214, 170, 0.18);
-}
-.sanctuary-preview-home[data-daytime='dusk'] {
-  --garden-tint: rgba(255, 168, 140, 0.16);
-}
-.sanctuary-preview-home[data-daytime='night'] {
-  --garden-tint: rgba(70, 90, 160, 0.16);
 }
 
 .sanctuary-preview-head {
