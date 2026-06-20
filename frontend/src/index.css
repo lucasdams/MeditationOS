@@ -4480,6 +4480,10 @@ details[open] .meditate-disclosure-summary::before {
   background: var(--bg-surface);
   border: 1px solid var(--border-light);
   text-align: center;
+  /* Keep the whole box (text + footer) inside its bounds at every width. */
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   animation: guided-cues-fade-in 0.6s ease;
 }
 
@@ -4500,6 +4504,14 @@ details[open] .meditate-disclosure-summary::before {
   line-height: 1.5;
   color: var(--text-muted);
   white-space: pre-line; /* honour \n in cue strings */
+  /* Wrap long cue lines inside the box — break over-long words rather than
+     overflowing, and keep a steady min-height so the box doesn't jump between
+     short and long cues. */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  max-width: 100%;
+  min-height: 3em;
 }
 
 .guided-cues-footer {
@@ -5043,13 +5055,25 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-secondary);
 }
 
-/* Post-session reflection card — wider than the default biometric card, more rows. */
+/* ── Post-session reflection card ────────────────────────────────────────────
+   A wider biometric card laid out as one even flex column so the heading, the
+   focus/calm rating rows, and the notes field share a single, calm vertical
+   rhythm. The column `gap` owns the spacing — inner block margins are zeroed so
+   nothing doubles up or drifts. Reads cleanly in both light and dark themes. */
 .session-reflect-card {
   width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Neutralise the stock margins on the card's children — the flex gap is the one
+   spacing source (otherwise the global h2 / p / button margins stack unevenly). */
+.session-reflect-card > * {
+  margin: 0;
 }
 
 .session-reflect-intention {
-  margin: 0 0 0.65rem;
   font-size: 0.88rem;
   color: var(--text-secondary);
 }
@@ -5059,12 +5083,18 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-primary);
 }
 
-/* Label + chip row for focus/calm ratings inside the reflection card. */
+/* Label + chips for one rating (focus / calm). The two rows sit close together
+   as a pair, set apart from the surrounding blocks by the card's column gap. */
+.session-reflect-ratings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .session-reflect-row {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  margin-bottom: 0.65rem;
+  gap: 0.35rem;
 }
 
 .session-reflect-label {
@@ -5073,18 +5103,37 @@ details[open] .meditate-disclosure-summary::before {
   font-weight: 600;
 }
 
-/* Rating chips inside the reflect card use the same .log-session-rating layout. */
+/* Rating chips inside the reflect card use the same .log-session-rating layout,
+   on one wrapping row with even gaps and aligned baselines. */
 .session-reflect-card .log-session-rating {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.4rem;
+  margin: 0;
+}
+
+/* Notes label + its full-width textarea kept tight as one field. */
+.session-reflect-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .session-reflect-notes-label {
   font-size: 0.85rem;
   color: var(--text-secondary);
   font-weight: 600;
-  margin-bottom: 0.25rem;
+}
+
+/* The notes textarea has no width inside the .breathe page scope (only selects
+   get width:100% there), so set it here to fill the card instead of rendering at
+   its narrow intrinsic width — the main cause of the card looking "messed up". */
+.session-reflect-notes textarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  resize: vertical;
 }
 
 /* Schedule page. */
@@ -5955,48 +6004,56 @@ details[open] .meditate-disclosure-summary::before {
   border-radius: 5px;
 }
 
-/* Soundscape picker — ambient backdrop selector for meditate + breathe pages */
+/* ── Soundscape picker — ambient backdrop selector for meditate + breathe ──────
+   A quiet, low-chrome row: compact pill chips that wrap, with the volume slider
+   tucked tight beneath. Decluttered so the opened "Sound & bells" disclosure
+   reads as one calm row, not a wall of controls. */
 .soundscape-picker {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 0.3rem;
+  gap: 0.45rem;
 }
 
 .soundscape-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .soundscape-chip {
-  padding: 0.35rem 0.75rem;
+  padding: 0.3rem 0.7rem;
   border-radius: 2rem;
-  border: 1px solid var(--border-var, rgba(0, 0, 0, 0.16));
-  background: var(--card, rgba(255, 255, 255, 0.45));
+  border: 1px solid var(--border);
+  background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
   white-space: nowrap;
 }
 
 .soundscape-chip:hover:not(:disabled) {
-  border-color: var(--accent-var, #4f46e5);
+  border-color: var(--accent);
   color: var(--text-primary);
 }
 
 /* Accent border + ring come from .selectable.selected; these add the accent
    text + subtle background unique to the soundscape chip. */
 .soundscape-chip.selected {
-  color: var(--accent, #4f46e5);
-  background: var(--accent-subtle, #eef2ff);
+  color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .soundscape-chip:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* The volume slider sits quietly under the chips, not stretched full-bleed. */
+.soundscape-picker .breathe-volume {
+  margin: 0.1rem 0 0;
 }
 
 /* ── Dark-mode overrides for light-tinted panel backgrounds ─────────────────
