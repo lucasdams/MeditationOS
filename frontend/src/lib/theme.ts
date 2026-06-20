@@ -67,22 +67,38 @@ export function writeSeasonPref(pref: SeasonPref): void {
   }
 }
 
-// ── Color mode (light / dark / system) ────────────────────────────────────
-// "system" means: follow the OS prefers-color-scheme (no data-theme attribute,
-// the CSS @media handles it). "light" / "dark" pin an explicit data-theme.
+// ── Color mode (auto / light / dark / system) ─────────────────────────────
+// "auto" (the default) follows the local clock: light by day, dark at night.
+// "system" follows the OS prefers-color-scheme (no data-theme attribute, the
+// CSS @media handles it). "light" / "dark" pin an explicit data-theme.
 
-export type ColorModePref = 'system' | 'light' | 'dark'
+export type ColorModePref = 'auto' | 'system' | 'light' | 'dark'
 
 const COLOR_MODE_KEY = 'theme:color-mode'
+
+// The default when a user has never made an explicit choice. "auto" makes the
+// app track the time of day, aligning with the garden scene.
+const DEFAULT_COLOR_MODE: ColorModePref = 'auto'
+
+/**
+ * Resolve "auto" to an explicit light/dark theme from the clock. We reuse the
+ * garden's day-phase boundaries (lib/sanctuaryArt `timeOfDay`, mirrored here as
+ * `dayPhaseFromHour`) so the app and the garden stay in step: dawn/day → light,
+ * dusk/night → dark.
+ */
+export function autoTheme(now: Date = new Date()): 'light' | 'dark' {
+  const phase = dayPhaseFromHour(now.getHours())
+  return phase === 'dusk' || phase === 'night' ? 'dark' : 'light'
+}
 
 export function readColorModePref(): ColorModePref {
   try {
     const v = localStorage.getItem(COLOR_MODE_KEY)
-    if (v === 'system' || v === 'light' || v === 'dark') return v
+    if (v === 'auto' || v === 'system' || v === 'light' || v === 'dark') return v
   } catch {
-    // private mode / unavailable — default to system
+    // private mode / unavailable — fall through to the default
   }
-  return 'system'
+  return DEFAULT_COLOR_MODE
 }
 
 export function writeColorModePref(pref: ColorModePref): void {
@@ -95,16 +111,20 @@ export function writeColorModePref(pref: ColorModePref): void {
 
 /**
  * Apply the color mode preference to <html data-theme>.
+ * - "auto"   → data-theme computed from the local clock (light by day, dark at night)
  * - "light"  → data-theme="light"
  * - "dark"   → data-theme="dark"
  * - "system" → attribute removed (CSS @media prefers-color-scheme takes over)
  *
  * Call this early (before React renders) to avoid a flash, and again whenever
- * the preference changes.
+ * the preference or — for "auto" — the time of day changes. Pass `now` so the
+ * caller controls the clock (handy in tests and on the minute tick).
  */
-export function applyColorMode(pref: ColorModePref): void {
+export function applyColorMode(pref: ColorModePref, now: Date = new Date()): void {
   const root = document.documentElement
-  if (pref === 'light') {
+  if (pref === 'auto') {
+    root.dataset.theme = autoTheme(now)
+  } else if (pref === 'light') {
     root.dataset.theme = 'light'
   } else if (pref === 'dark') {
     root.dataset.theme = 'dark'
