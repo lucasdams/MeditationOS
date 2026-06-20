@@ -9,10 +9,11 @@ import {
 // ── Structural integrity ─────────────────────────────────────────────────────
 
 describe('GUIDED_STRUCTURES', () => {
-  it('exports body-scan and loving-kindness', () => {
+  it('exports body-scan, loving-kindness, and acceptance', () => {
     const ids = GUIDED_STRUCTURES.map((s) => s.id)
     expect(ids).toContain('body-scan')
     expect(ids).toContain('loving-kindness')
+    expect(ids).toContain('acceptance')
   })
 
   it('each structure has at least 2 phases with positive weights', () => {
@@ -31,6 +32,7 @@ describe('getStructure', () => {
   it('returns the correct structure by id', () => {
     expect(getStructure('body-scan').id).toBe('body-scan')
     expect(getStructure('loving-kindness').id).toBe('loving-kindness')
+    expect(getStructure('acceptance').id).toBe('acceptance')
   })
 
   it('throws for an unknown id', () => {
