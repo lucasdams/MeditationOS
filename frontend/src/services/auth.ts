@@ -5,8 +5,9 @@ export const authService = {
   register: (email: string, password: string) =>
     api.post<User>('/auth/register', { email, password }),
 
-  login: (email: string, password: string) =>
-    api.post<User>('/auth/login', { email, password }),
+  // `remember` opts into a longer-lived session ("keep me signed in").
+  login: (email: string, password: string, remember = false) =>
+    api.post<User>('/auth/login', { email, password, remember }),
 
   googleLogin: (credential: string) => api.post<User>('/auth/google', { credential }),
 

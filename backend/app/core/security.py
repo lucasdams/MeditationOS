@@ -26,13 +26,18 @@ def verify_password(password: str, password_hash: str) -> bool:
 ACCESS_TOKEN_TYPE = "access"
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, expire_minutes: int | None = None) -> str:
     """Sign a short-lived JWT carrying the user id in `sub`. The `type` claim pins
     it as an access token so a reset/verify token (same key, same `sub`) can't be
-    swapped in as the auth cookie."""
-    expire = datetime.now(UTC) + timedelta(
-        minutes=settings.access_token_expire_minutes
+    swapped in as the auth cookie.
+
+    `expire_minutes` overrides the default lifetime (used by "keep me signed in" to
+    issue a longer-lived token); when None the standard access-token expiry applies."""
+    minutes = (
+        expire_minutes if expire_minutes is not None
+        else settings.access_token_expire_minutes
     )
+    expire = datetime.now(UTC) + timedelta(minutes=minutes)
     return jwt.encode(
         {"sub": subject, "type": ACCESS_TOKEN_TYPE, "exp": expire},
         settings.secret_key,

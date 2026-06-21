@@ -14,6 +14,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -45,7 +46,7 @@ export default function LoginPage() {
 
     setSubmitting(true)
     try {
-      await authService.login(email, password)
+      await authService.login(email, password, remember)
       await refresh()
       navigate('/')
     } catch (err) {
@@ -90,6 +91,15 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
+        <label className="auth-remember">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+          />
+          <span>Keep me signed in</span>
+        </label>
 
         <ErrorBanner message={error} id="login-error" />
 

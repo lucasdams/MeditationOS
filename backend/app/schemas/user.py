@@ -34,6 +34,8 @@ class UserLogin(BaseModel):
 
     email: EmailStr
     password: str
+    # "Keep me signed in" — when true, issue a longer-lived session (see settings).
+    remember: bool = False
 
 
 class UsernameUpdate(BaseModel):

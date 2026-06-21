@@ -47,14 +47,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE_NAME = "access_token"
 
 
-def _set_auth_cookie(response: Response, token: str) -> None:
+def _set_auth_cookie(
+    response: Response, token: str, expire_minutes: int | None = None
+) -> None:
+    # Keep the cookie's lifetime in lock-step with the JWT's `exp`: pass the same
+    # `expire_minutes` to create_access_token and here. None → standard expiry.
+    minutes = (
+        expire_minutes
+        if expire_minutes is not None
+        else settings.access_token_expire_minutes
+    )
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
         httponly=True,
         secure=settings.environment == "production",  # HTTPS-only outside dev/test
         samesite="lax",
-        max_age=settings.access_token_expire_minutes * 60,
+        max_age=minutes * 60,
     )
 
 
@@ -109,7 +118,16 @@ def login(
             detail="Invalid credentials",
         )
     login_guard.clear(data.email)
-    _set_auth_cookie(response, create_access_token(str(user.id)))
+    expire_minutes = (
+        settings.remember_me_expire_minutes
+        if data.remember
+        else settings.access_token_expire_minutes
+    )
+    _set_auth_cookie(
+        response,
+        create_access_token(str(user.id), expire_minutes),
+        expire_minutes,
+    )
     return user
 
 
