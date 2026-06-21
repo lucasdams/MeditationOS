@@ -8,7 +8,6 @@ import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../compon
 import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
-import SanctuaryScene from '../components/SanctuaryScene'
 import CoinIcon from '../components/CoinIcon'
 import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TILE_COLORS_DARK, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
@@ -34,10 +33,8 @@ const FEATURE_TILES = [
   { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
   { ...ACTIVITY_META.gratitude, to: '/gratitude', tile: 'gratitude' as const },
   { ...ACTIVITY_META.journal, to: '/journal', tile: 'journal' as const },
-  // A warm pink blossom rather than a green leaf/sprout: a green 🌱 disappears into the
-  // green sanctuary tile fill, whereas 🌸 carries strong non-green (pink) and reads clearly
-  // on the green box in both light and dark themes — while staying on-theme for the garden.
-  { label: 'Sanctuary', emoji: '🌸', to: '/sanctuary', tile: 'sanctuary' as const },
+  // The garden lives at /sanctuary (reachable from the top nav), kept off the home tiles so
+  // the dashboard stays focused on practice. The coin chip in the level header still links there.
 ] as const
 
 // Once-per-day gate for the on-open mood check-in. We record the local date the prompt
@@ -279,13 +276,6 @@ export default function DashboardPage() {
           </ul>
         </section>
       )}
-
-      {/* Expanded, READ-ONLY garden preview — the user's actual plants laid out in their grid
-          cells on the calm default home, so the home reads like a real little garden you glance
-          at, then tap through to tend. No interactivity here (no drag/move/buy/customize) and no
-          coin count (the slim level chip above already shows coins); a "Tend it →" link opens
-          /sanctuary, where the garden is actually tended. */}
-      {stats && <SanctuaryScene scene={sanctuaryScene} preview />}
 
       {/* Quiet, always-reachable mood line. If the user already logged a mood today we reflect
           it back calmly — "You felt {mood} {emoji}" with a small colour accent — instead of
