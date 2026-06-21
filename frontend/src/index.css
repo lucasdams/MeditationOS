@@ -612,22 +612,23 @@ a:hover { color: var(--accent-hover); }
 
 .nav-more-menu {
   position: absolute;
-  top: calc(100% + 0.4rem);
+  top: calc(100% + 0.5rem);
   left: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 11rem;
-  padding: 0.35rem;
+  gap: 0.15rem;
+  min-width: 12rem;
+  padding: 0.5rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 4px 16px var(--shadow-modal);
 }
 
 .nav-more-menu a {
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
   text-decoration: none;
   color: var(--text-primary);
   font-size: 0.9rem;
@@ -3556,21 +3557,18 @@ textarea:focus-visible,
   padding: 0.05rem 0.45rem;
 }
 
+/* Equal-width columns via grid (not flex-grow): every quest is the same size regardless of
+   label length or how the row wraps. auto-fit fills the row when they all fit on one line,
+   and a lone wrapped quest keeps its column width instead of stretching to the full width
+   (the old flex `flex: 1 1` bug, where a longer label like "Breathe slow for 5+ min" wrapped
+   to its own row and ballooned to ~2× the others). minmax stacks them gracefully when narrow. */
 .quest-chips {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: 0.6rem;
-}
-
-/* Each quest is its own flex item; grow to share the row so 3 quests read as intentional,
-   evenly-sized cards rather than a ragged row of pills. A min-width lets them wrap/stack
-   gracefully on narrow screens. */
-.quest-chips > li {
-  flex: 1 1 8.5rem;
-  min-width: 8.5rem;
 }
 
 /* A single quest card: emoji + short label, the whole thing a link to its feature. A
@@ -3582,6 +3580,10 @@ textarea:focus-visible,
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  /* Fill the grid cell so every chip is the same width, and so chips in a row whose
+     tallest member wrapped to two lines still match that height. */
+  width: 100%;
+  height: 100%;
   min-height: 52px;
   padding: 0.7rem 1rem;
   font-size: 1rem;
@@ -4089,7 +4091,10 @@ textarea:focus-visible,
 }
 
 .grat-journal {
-  margin-top: 1.5rem;
+  margin-top: 1.75rem;
+  padding-top: 1.75rem;
+  /* Separation line above "Recent", matching the Journal page's "Past reflections" divider. */
+  border-top: 1px solid var(--border);
 }
 
 .grat-journal h2 {

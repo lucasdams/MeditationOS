@@ -130,7 +130,6 @@ describe('DashboardPage — quick-action feature tiles', () => {
     { label: 'Breathe',  href: '/breathe'  },
     { label: 'Gratitude',href: '/gratitude' },
     { label: 'Journal',  href: '/journal'   },
-    { label: 'Sanctuary',href: '/sanctuary' },
   ]
 
   tiles.forEach(({ label, href }) => {
@@ -198,10 +197,9 @@ describe('DashboardPage — default (collapsed) calm view', () => {
       within(questsSection).getByRole('link', { name: /meditate/i }),
     ).toHaveAttribute('href', '/meditate')
 
-    // The read-only garden preview renders on the default view.
-    const gardenPreview = screen.getByTestId('sanctuary-scene')
-    expect(gardenPreview).toBeInTheDocument()
-    expect(capturedSanctuarySceneProps.at(-1)?.preview).toBe(true)
+    // The garden no longer renders on the home screen — it lives at /sanctuary, reached from
+    // the top nav. The dashboard should not render the inline garden preview.
+    expect(screen.queryByTestId('sanctuary-scene')).not.toBeInTheDocument()
   })
 
   it('keeps the full level card and weekly review collapsed', async () => {
@@ -364,7 +362,7 @@ describe('DashboardPage — today\'s mood reflection', () => {
 })
 
 describe('DashboardPage — sanctuary scene single-fetch', () => {
-  it('calls getScene exactly once and passes the scene to SanctuaryScene and LevelCard', async () => {
+  it('calls getScene exactly once and passes the scene to the coin chip and LevelCard', async () => {
     seenMoodToday()
     getScene.mockResolvedValue(fakeScene)
     getStats.mockResolvedValue(fakeStats)
@@ -372,22 +370,21 @@ describe('DashboardPage — sanctuary scene single-fetch', () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The read-only garden preview sits on the default home; LevelCard lives in the (now
-    // default-collapsed) drawer — open it so both children render and we can assert the
-    // shared scene reaches each.
-    fireEvent.click(screen.getByRole('button', { name: /show more/i }))
+    // The coin chip in the level header reflects the fetched scene's coin balance.
+    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
 
-    await waitFor(() => {
-      const last = capturedSanctuarySceneProps.at(-1)
-      expect(last?.scene).toEqual(fakeScene)
-    })
+    // LevelCard lives in the (default-collapsed) drawer — open it so it renders and we can
+    // assert the same scene reaches it.
+    fireEvent.click(screen.getByRole('button', { name: /show more/i }))
 
     // Exactly one call — not two.
     expect(getScene).toHaveBeenCalledTimes(1)
 
-    // LevelCard (rendered inside the open drawer) also received the same scene.
-    const lcLast = capturedLevelCardProps.at(-1)
-    expect(lcLast?.scene).toEqual(fakeScene)
+    // LevelCard (rendered inside the open drawer) received the same scene.
+    await waitFor(() => {
+      const lcLast = capturedLevelCardProps.at(-1)
+      expect(lcLast?.scene).toEqual(fakeScene)
+    })
   })
 })
 
@@ -423,7 +420,7 @@ describe('DashboardPage — on-open mood check-in (once per day)', () => {
     unmount()
     renderPage()
     await screen.findByText(/Level 7/)
-    await waitFor(() => expect(screen.getByTestId('sanctuary-scene')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
     expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
   })
 
