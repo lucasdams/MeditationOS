@@ -20,7 +20,9 @@ from app.prompts.gratitude import SYSTEM, user_message
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5-20251001"
-MAX_OPTIONS = 10
+# Show a generous set at once (the page presents these expanded by default); the curated
+# pools hold ~90 per category, so the "New ideas" reshuffle still surfaces fresh sets.
+MAX_OPTIONS = 24
 MAX_OPTION_LEN = 60
 TIMEOUT_SECONDS = 8.0
 
@@ -84,10 +86,10 @@ def suggest_options(category: str) -> list[str]:
         )
         message = client.messages.create(
             model=MODEL,
-            max_tokens=500,
+            max_tokens=1200,
             temperature=1.0,
             system=SYSTEM,
-            messages=[{"role": "user", "content": user_message(category)}],
+            messages=[{"role": "user", "content": user_message(category, MAX_OPTIONS)}],
         )
         text = "".join(b.text for b in message.content if b.type == "text")
         start, end = text.find("["), text.rfind("]")

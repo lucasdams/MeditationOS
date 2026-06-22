@@ -306,6 +306,20 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
             .having(func.count(GratitudeEntry.id) >= 3)
         ).all()
     }
+    # "Write a gratitude in your own words": a gratitude entry in the write-your-own
+    # "custom" category on the day (vs the AI/curated prompt categories).
+    grat_custom_local_day = _local_date(tz, GratitudeEntry.created_at)
+    gratitude_custom_days = {
+        r[0]
+        for r in db.execute(
+            select(grat_custom_local_day)
+            .where(
+                GratitudeEntry.user_id == user_id,
+                GratitudeEntry.category == "custom",
+            )
+            .distinct()
+        ).all()
+    }
     # "Journal with a mood": a journal entry carrying a mood tag.
     mood_journal_days = {
         r[0]
@@ -325,6 +339,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
         "slow_breathe": slow_breathe_days,
         "gratitude": gratitude_days,
         "gratitude_three": gratitude_three_days,
+        "gratitude_custom": gratitude_custom_days,
         "journal": journal_days,
         "mood_journal": mood_journal_days,
     }

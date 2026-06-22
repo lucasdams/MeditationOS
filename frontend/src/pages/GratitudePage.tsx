@@ -87,7 +87,8 @@ const GRAT_PAGE = 50
 
 export default function GratitudePage() {
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
-  const [showAllThemes, setShowAllThemes] = useState(false)
+  // All themes are shown by default; the toggle can collapse back to the common subset.
+  const [showAllThemes, setShowAllThemes] = useState(true)
   const [options, setOptions] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
   const [text, setText] = useState('')

@@ -126,13 +126,16 @@ def test_create_accepts_new_category(client):
     assert res.json()["category"] == "spiritual"
 
 
-def test_suggestions_fallback_returns_ten(client):
+def test_suggestions_fallback_returns_max_options(client):
+    from app.services.ai.gratitude_suggester import MAX_OPTIONS
+
     _auth(client, "g12@example.com")
     # Force the no-key path so we exercise the curated fallback (no real API call).
     with patch("app.services.ai.gratitude_suggester.settings.anthropic_api_key", ""):
         res = client.get("/api/v1/gratitude/suggestions?category=material")
     assert res.status_code == 200
-    assert len(res.json()["options"]) == 10
+    # The curated pools hold ~90 per category, so the fallback returns a full MAX_OPTIONS set.
+    assert len(res.json()["options"]) == MAX_OPTIONS
 
 
 def test_suggestions_rejects_bad_category(client):

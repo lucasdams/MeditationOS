@@ -66,15 +66,6 @@ export default function DashboardPage() {
   // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
   // both LevelCard (next unlock) and SanctuaryScene (coins + garden preview).
   const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
-  // The deeper progress detail (full level detail, weekly review) starts collapsed on every
-  // load so the landing view stays calm — the primary "start a practice" surface first, the
-  // rest one tap away. We deliberately do NOT persist the open/closed choice: the owner wants
-  // it hidden by default each visit, revealed only when the user presses "Show more".
-  const [showMore, setShowMore] = useState(false)
-
-  function toggleShowMore() {
-    setShowMore((v) => !v)
-  }
   // A gentle daily greeting (stable through the day) and a mindful loading line.
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
   const [loadingLine] = useState(() => randomOf(LOADING))
@@ -317,36 +308,13 @@ export default function DashboardPage() {
           </p>
         )}
 
-      {/* The heavier retrospective/progress detail folds into one calm, default-collapsed
-          drawer: the full level detail (XP bar, next unlock) and the weekly review — both
-          still here, just one tap away. Totals and the activity calendar now live on the
-          Analytics page (alongside the rest of the stats); quests and the garden live on
-          the default home above (in compact form). */}
+      {/* Progress detail shown on the home by default: the full level detail (XP bar, next
+          unlock) and the weekly review. Totals and the activity calendar live on the
+          Analytics page; quests live above in compact form. */}
       {stats && (
         <section className="dashboard-more">
-          {/* Subtle, link-style affordance for the progress drawer — a quiet centered text
-              link with a chevron, not a chunky button. Still a real <button> with
-              aria-expanded/aria-controls and full keyboard operation. */}
-          <button
-            type="button"
-            className="show-more-toggle"
-            onClick={toggleShowMore}
-            aria-expanded={showMore}
-            aria-controls="dashboard-more-panel"
-          >
-            <span className="show-more-text">{showMore ? 'Show less' : 'Show more'}</span>
-            <span className="show-more-chevron" aria-hidden="true">
-              {showMore ? '⌃' : '⌄'}
-            </span>
-          </button>
-
-          {showMore && (
-            <div id="dashboard-more-panel">
-              <LevelCard stats={stats} scene={sanctuaryScene} />
-
-              <WeeklyReview />
-            </div>
-          )}
+          <LevelCard stats={stats} scene={sanctuaryScene} />
+          <WeeklyReview />
         </section>
       )}
 

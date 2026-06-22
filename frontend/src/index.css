@@ -23,6 +23,9 @@
   /* Warning text — amber that passes AA on light surfaces */
   --warning-text: #b45309;
 
+  /* Danger text — red for destructive actions (Delete), AA on light surfaces */
+  --danger-text: #b91c1c;
+
   /* Borders & dividers */
   --border: #e5e5ea;
   --border-strong: #94949c;
@@ -125,6 +128,9 @@
   /* Warning text — amber that reads on dark surfaces */
   --warning-text: #fbbf24;
 
+  /* Danger text — lighter red so destructive actions read on the slate canvas */
+  --danger-text: #f87171;
+
   /* Borders */
   --border: #4a5180;
   --border-strong: #646aa0;
@@ -212,6 +218,7 @@
     --text-faint: #a0a0c8;
     --success-text: #34d399;
     --warning-text: #fbbf24;
+    --danger-text: #f87171;
     --border: #4a5180;
     --border-strong: #646aa0;
     --border-light: #252940;
@@ -330,6 +337,19 @@
   --season-sat: 16%;
   --sky-top: 16%;
   --sky-bottom: 12%;
+}
+
+/* Calm near-white page canvas (light mode). The seasonal tint read too strong on the home,
+   so light mode now uses a fixed, barely-there cool grey-white regardless of season or
+   day-phase. Placed after the season/day-phase blocks so it wins on equal specificity; it
+   never matches [data-theme='dark'] and is outranked by the system-dark media rule (0,3,0),
+   so both dark paths keep their slate gradient untouched. Remove this block to restore the
+   seasonal ambient background. */
+:root:not([data-theme='dark']) {
+  --season-hue: 220;
+  --season-sat: 8%;
+  --sky-top: 98.5%;
+  --sky-bottom: 96%;
 }
 
 * {
@@ -737,9 +757,9 @@ a:hover { color: var(--accent-hover); }
   width: auto;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  background: var(--bg-surface);
+  background: var(--accent-subtle);
   color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
 }
 
 .settings-danger {
@@ -747,13 +767,13 @@ a:hover { color: var(--accent-hover); }
   width: auto;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  background: var(--bg-surface);
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: color-mix(in srgb, var(--danger-text) 8%, var(--bg-surface));
+  color: var(--danger-text);
+  border: 1.5px solid color-mix(in srgb, var(--danger-text) 55%, var(--border));
 }
 
 .settings-danger:hover:not(:disabled) {
-  background: #fef2f2;
+  background: color-mix(in srgb, var(--danger-text) 16%, var(--bg-surface));
 }
 
 .settings-confirm p {
@@ -960,9 +980,9 @@ a:hover { color: var(--accent-hover); }
 }
 
 .landing-secondary {
-  background: var(--bg-surface);
+  background: var(--accent-subtle);
   color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
 }
 
 .landing-guest {
@@ -1164,14 +1184,13 @@ a:hover { color: var(--accent-hover); }
 }
 
 .first-run-action-secondary {
-  background: var(--bg-surface);
+  background: var(--accent-subtle);
   color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
 }
 
 .first-run-action-secondary:hover {
-  background: var(--bg-surface);
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
 }
 
 .first-run-gotit {
@@ -1180,21 +1199,24 @@ a:hover { color: var(--accent-hover); }
   padding: 0.45rem 0.6rem;
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .first-run-gotit:hover {
   color: var(--text-primary);
+  text-decoration-thickness: 2px;
 }
 
 .guest-btn {
   width: 100%;
-  background: var(--bg-surface);
+  background: var(--accent-subtle);
   color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
   margin-top: 0.75rem;
 }
 
@@ -1250,11 +1272,14 @@ a:hover { color: var(--accent-hover); }
   border: none;
   color: var(--accent);
   font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .field-clear:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 .journal-list {
@@ -1286,14 +1311,14 @@ a:hover { color: var(--accent-hover); }
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--accent);
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-subtle);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-radius: 999px;
   cursor: pointer;
 }
 
 .resurface-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
 }
 
 /* A gentle resurfaced memory — softly tinted so it reads as a special moment, not
@@ -1739,7 +1764,7 @@ textarea:focus-visible,
   font-weight: 600;
   color: var(--accent);
   background: var(--accent-subtle);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -1867,28 +1892,33 @@ textarea:focus-visible,
   margin: 1rem auto 0;
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
-  background: var(--bg-surface);
+  background: var(--accent-subtle);
   color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
 }
 
 .load-more:hover:not(:disabled) {
-  background: var(--accent-subtle);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
 }
 
+/* Inline action rendered as a text link. A persistent underline (not hover-only) so it
+   reads as tappable at rest — including on touch, where there is no hover. */
 .link-danger {
   margin: 0;
   width: auto;
   padding: 0;
   background: none;
-  color: #b00020;
+  color: var(--danger-text);
   border: none;
   font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .link-danger:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 /* Neutral, non-destructive inline action (Archive, Reactivate) — visually
@@ -1901,11 +1931,14 @@ textarea:focus-visible,
   color: var(--accent);
   border: none;
   font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .link-neutral:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 /* Quiet "back to dashboard" link — no default underline; a soft arrow that nudges
@@ -3591,7 +3624,7 @@ textarea:focus-visible,
   color: var(--text-secondary);
   text-decoration: none;
   background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--activity-accent) 35%, var(--border));
+  border: 1.5px solid color-mix(in srgb, var(--activity-accent) 50%, var(--border));
   border-radius: 14px;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
@@ -3747,49 +3780,10 @@ textarea:focus-visible,
   display: block;
 }
 
-/* Collapsible "Show more" drawer — keeps the heavier retrospective/progress detail (full
-   level card, totals, heatmap, weekly review) off the calm default home. Quests and the
-   garden now live on the default view above in compact form. */
+/* Progress detail shown on the home by default — the full level card and the weekly
+   review. Totals, heatmap, and the activity calendar live on the Analytics page. */
 .dashboard-more {
   margin-top: 1.75rem;
-  text-align: center;
-}
-
-/* A quiet, centered text link (with a chevron) — deliberately no button chrome: no
-   border, no fill. It's still a real <button> (aria-expanded/aria-controls, keyboard
-   operable); this only restyles it to read as a gentle link. */
-.show-more-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  width: auto;
-  margin: 0 auto;
-  padding: 0.3rem 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: color 0.12s ease;
-}
-
-.show-more-toggle:hover,
-.show-more-toggle:focus-visible {
-  color: var(--text-secondary);
-}
-
-.show-more-text {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  text-underline-offset: 3px;
-}
-
-.show-more-chevron {
-  font-size: 0.9rem;
-  line-height: 1;
 }
 
 .stat-value {
@@ -5304,16 +5298,17 @@ details[open] .meditate-disclosure-summary::before {
    features. Placed right after LevelCard so they're one tap away on load. */
 .feature-tiles {
   display: grid;
-  /* 5 tiles: equal columns on wide screens, wraps to 3+2 then 2+2+1 at mobile. */
-  grid-template-columns: repeat(5, 1fr);
+  /* 4 tiles: equal columns on wide screens, 2x2 at mobile. */
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
   margin: 0 0 1.25rem;
 }
 
-/* Bold, full-colour tiles — the home's primary focal point. Each carries a saturated fill
-   (--tile-fill from TILE_COLORS) with white icon + label; the fills are dark enough that
-   white text clears WCAG AA (≥4.5:1) in both themes (fill + text are fixed, so contrast is
-   theme-independent). Equal-sized, tidy boxes; a subtle lift on hover keeps them tasteful. */
+/* Soft tinted tiles — calm, colour-coded quick actions. Each carries a light tint of its
+   activity colour (a 12% mix of --tile-fill into the surface) with the activity colour
+   itself as the ink for icon + label. --tile-fill is a deep ~700 shade (from TILE_COLORS),
+   so it clears WCAG AA as text on the pale tint of the same hue. Equal-sized, tidy boxes
+   with a quiet lift + deepening tint on hover. */
 .feature-tile {
   display: flex;
   flex-direction: column;
@@ -5321,20 +5316,19 @@ details[open] .meditate-disclosure-summary::before {
   justify-content: center;
   gap: 0.3rem;
   padding: 0.85rem 0.4rem;
-  background: var(--tile-fill, #6b6b70);
-  border: 1px solid color-mix(in srgb, #000 12%, var(--tile-fill, #6b6b70));
+  background: color-mix(in srgb, var(--tile-fill, #6b6b70) 12%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--tile-fill, #6b6b70) 28%, var(--border));
   border-radius: 12px;
   text-decoration: none;
-  color: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  transition: filter 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  color: var(--tile-fill, #6b6b70);
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
 }
 
 .feature-tile:hover,
 .feature-tile:focus-visible {
-  filter: brightness(1.08);
+  background: color-mix(in srgb, var(--tile-fill, #6b6b70) 18%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--tile-fill, #6b6b70) 45%, var(--border));
   transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
 }
 
 .feature-tile-emoji {
@@ -5345,7 +5339,7 @@ details[open] .meditate-disclosure-summary::before {
 .feature-tile-label {
   font-size: 0.74rem;
   font-weight: 700;
-  color: #ffffff;
+  color: inherit;
   text-align: center;
   letter-spacing: 0.01em;
 }
@@ -5358,29 +5352,29 @@ details[open] .meditate-disclosure-summary::before {
    set — the OS prefers-color-scheme. The system fallback is gated inside the @media block so
    it can NOT leak into light-system mode (where data-theme is also absent). */
 :root[data-theme='dark'] .feature-tile {
-  background: var(--tile-fill-dark, var(--tile-fill, #6b6b70));
-  border-color: color-mix(in srgb, #000 18%, var(--tile-fill-dark, #6b6b70));
-  color: #0f172a;
+  background: color-mix(in srgb, var(--tile-fill-dark, var(--tile-fill, #6b6b70)) 16%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--tile-fill-dark, #6b6b70) 32%, var(--border));
+  color: var(--tile-fill-dark, var(--tile-fill, #6b6b70));
 }
 
 :root[data-theme='dark'] .feature-tile .feature-tile-label {
-  color: #0f172a;
+  color: inherit;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) .feature-tile {
-    background: var(--tile-fill-dark, var(--tile-fill, #6b6b70));
-    border-color: color-mix(in srgb, #000 18%, var(--tile-fill-dark, #6b6b70));
-    color: #0f172a;
+    background: color-mix(in srgb, var(--tile-fill-dark, var(--tile-fill, #6b6b70)) 16%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--tile-fill-dark, #6b6b70) 32%, var(--border));
+    color: var(--tile-fill-dark, var(--tile-fill, #6b6b70));
   }
   :root:not([data-theme='light']):not([data-theme='dark']) .feature-tile .feature-tile-label {
-    color: #0f172a;
+    color: inherit;
   }
 }
 
 @media (max-width: 480px) {
   .feature-tiles {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -5456,19 +5450,20 @@ details[open] .meditate-disclosure-summary::before {
   margin: 1.1rem auto 0;
   padding: 0.25rem 0.5rem;
   font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: var(--text-secondary);
   background: transparent;
   border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
   transition: color 0.12s ease;
 }
 
 .mood-modal-skip:hover,
 .mood-modal-skip:focus-visible {
-  color: var(--text-secondary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--text-primary);
+  text-decoration-thickness: 2px;
 }
 
 /* Quiet "How do you feel?" entry point on the calm home — a gentle text link, not a
