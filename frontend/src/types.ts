@@ -379,6 +379,7 @@ export interface SpiritState {
   stage: SpiritStage // spark | wisp | fledgling | ascendant | radiant (function of level)
   path: SpiritPath | null // committed path; null until it commits at stage 2
   path_lean: SpiritPath // suggested path from lifetime practice mix; the lean shown pre-commit
+  name: string | null // the active spirit's nickname, if set (pre-fills / displays in the UI)
   bond: SpiritBond // level + XP-into-level + XP-for-next
   daily_glow: number // brightness factor in [0.4, 1.0] from recent practice
   coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0

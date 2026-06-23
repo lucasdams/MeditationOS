@@ -85,9 +85,10 @@ def test_get_returns_computed_shape(client):
     assert res.status_code == 200
     body = res.json()
 
-    # A fresh user is a level-1 pathless spark with no cosmetics.
+    # A fresh user is a level-1 pathless, unnamed spark with no cosmetics.
     assert body["stage"] == "spark"
     assert body["path"] is None
+    assert body["name"] is None
     assert body["cosmetics"] == {}
 
     # Bond reads the level + XP-into-level + XP-for-next.
@@ -506,11 +507,17 @@ def test_rename_sets_and_clears(client, db_session):
     # Trimmed and never charges coins.
     assert set_res.json()["coins"] == coins_before
     assert _stored_name(db_session) == "Ember"
+    # The (trimmed) name is echoed back in the response and a fresh GET, so the UI can
+    # pre-fill / display it — this is the gap the fix closes.
+    assert set_res.json()["name"] == "Ember"
+    assert _spirit(client)["name"] == "Ember"
 
-    # Empty string clears the nickname back to NULL.
+    # Empty string clears the nickname back to NULL — and GET reports it as null again.
     clear_res = client.patch("/api/v1/spirit", json={"name": "   "})
     assert clear_res.status_code == 200
     assert _stored_name(db_session) is None
+    assert clear_res.json()["name"] is None
+    assert _spirit(client)["name"] is None
 
 
 def test_rename_over_length_422(client):

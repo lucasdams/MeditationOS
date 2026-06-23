@@ -135,9 +135,9 @@ export default function SpiritPage() {
     }
   }
 
-  // Set or clear the nickname (PATCH). Empty/whitespace clears it. The active read shape does
-  // not echo the name back, so this is a write-only control — we don't pre-fill or compare to a
-  // current value; the trimmed input is submitted on blur (null when emptied → cleared).
+  // Set or clear the nickname (PATCH). Empty/whitespace clears it. The read shape echoes the
+  // saved name back, so the field pre-fills from it; the trimmed input is submitted on blur
+  // (null when emptied → cleared).
   async function saveName(raw: string) {
     if (!spirit) return
     const next = raw.trim()
@@ -208,6 +208,7 @@ export default function SpiritPage() {
                 />
                 {preview && <span className="spirit-preview-badge">Preview</span>}
               </div>
+              {spirit.name && <p className="spirit-hero-name">{spirit.name}</p>}
               <p className="spirit-hero-stage">
                 {stageLabel}
                 {spirit.path ? (
@@ -223,9 +224,9 @@ export default function SpiritPage() {
             </section>
 
             {/* Nickname — a quiet field; type a name (or clear it) and it saves on blur (PATCH).
-                The active read shape doesn't echo the saved name, so this is a write-only field. */}
+                Pre-filled from the saved name the read shape echoes back. */}
             <section className="spirit-section spirit-nickname-section" aria-label="Nickname">
-              <SpiritNickname busy={busy === 'rename'} onSave={saveName} />
+              <SpiritNickname name={spirit.name} busy={busy === 'rename'} onSave={saveName} />
             </section>
 
             {/* Personalize — the cosmetics slots, calm and modest. Preview-on-hover/focus, buy
@@ -401,16 +402,22 @@ export default function SpiritPage() {
 }
 
 // A quiet nickname editor — local input state, committed on blur / Enter so a rename is one
-// calm action. Empty clears the name. Write-only: the active read shape doesn't return the
-// saved nickname, so the field starts blank and submits whatever the user types.
+// calm action. Empty clears the name. Pre-filled from the saved name the read shape returns;
+// the local edit re-syncs whenever that saved value changes (e.g. after a save or refetch).
 function SpiritNickname({
+  name,
   busy,
   onSave,
 }: {
+  name: string | null
   busy: boolean
   onSave: (raw: string) => void
 }) {
-  const [value, setValue] = useState('')
+  const [value, setValue] = useState(name ?? '')
+  // Re-sync the field when the saved name changes (initial load, after save, refetch).
+  useEffect(() => {
+    setValue(name ?? '')
+  }, [name])
   return (
     <label className="spirit-field">
       <span>Nickname</span>

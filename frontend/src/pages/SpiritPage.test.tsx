@@ -45,6 +45,7 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     stage: 'fledgling',
     path: 'stillness',
     path_lean: 'stillness',
+    name: null,
     bond: { level: 7, xp_into_level: 10, xp_for_next: 40 },
     daily_glow: 0.9,
     coins: 120,
@@ -197,6 +198,19 @@ describe('SpiritPage nickname', () => {
     fireEvent.blur(input)
 
     await waitFor(() => expect(rename).toHaveBeenCalledWith({ name: 'Ember' }))
+  })
+
+  it('pre-fills the input from the saved name and shows it on the hero', async () => {
+    get.mockResolvedValue(spiritWith({ name: 'Ember' }))
+
+    renderPage()
+
+    const input = (await screen.findByPlaceholderText(
+      /Give your spirit a name/,
+    )) as HTMLInputElement
+    expect(input.value).toBe('Ember')
+    // The saved name also shows on the hero.
+    expect(document.querySelector('.spirit-hero-name')?.textContent).toBe('Ember')
   })
 
   it('clears the nickname when emptied (sends null)', async () => {
