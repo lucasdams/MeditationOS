@@ -2133,6 +2133,82 @@ textarea:focus-visible,
   font-size: 0.78rem;
 }
 
+/* --- Spirit reactivity / animation (docs/design/spirit.md, build step 4) ----------------- */
+/* The home spirit is gently alive: a slow float plus a soft aura pulse. The pulse breathes a
+   touch harder when the daily glow is high and calmer when it's resting, via `--spirit-glow`
+   (the floored [0.4,1] glow factor). Calm by design — long, eased, low-amplitude; the idiom of
+   `zen-float` / `meditate-pulse`, never a frantic game-over wobble. `transform-box` keeps the
+   SVG scaling about its own centre. The pacer-sync and reduced-motion paths override below. */
+.spirit-svg--alive {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation:
+    spirit-float 6s ease-in-out infinite,
+    spirit-pulse 4.5s ease-in-out infinite;
+  /* Default glow factor if the inline custom property is somehow absent. */
+  --spirit-glow: 1;
+  will-change: transform, opacity, filter;
+}
+
+/* The float is a slow vertical drift; the pulse is a faint scale + brightness swell whose depth
+   scales with `--spirit-glow` (calc keeps a brighter spirit breathing a touch more). They run on
+   separate timelines so the motion never looks mechanically in lock-step. */
+@keyframes spirit-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes spirit-pulse {
+  0%,
+  100% {
+    opacity: calc(0.92 + 0.04 * var(--spirit-glow));
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(calc(1 + 0.12 * var(--spirit-glow)));
+  }
+}
+
+/* Pacer mode (BreathePage): the inline transform (driven by the breathe-circle's `scaleAt`
+   clock) IS the motion, so no idle keyframes run here. A soft transition smooths the per-frame
+   scale steps without adding a second, drifting clock. */
+.spirit-svg--pacing {
+  transform-origin: center;
+  transform-box: fill-box;
+  transition: transform 0.12s linear;
+  will-change: transform;
+}
+
+/* BreathePage renders the spirit small, sitting quietly beside the breathing circle. */
+.spirit-compact {
+  display: flex;
+  justify-content: center;
+  margin: 0.25rem auto 0.5rem;
+}
+
+.spirit-art--compact .spirit-svg {
+  width: 72px;
+}
+
+/* Reduced motion: hold EVERYTHING static — no float, no pulse, no pacer transition. The JS
+   already skips the celebration and pins the pacer scale to 1; this neutralises the CSS too. */
+@media (prefers-reduced-motion: reduce) {
+  .spirit-svg--alive {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+  .spirit-svg--pacing {
+    transition: none;
+  }
+}
+
 .sanctuary-grown-row {
   display: flex;
   flex-wrap: wrap;
