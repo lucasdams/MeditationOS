@@ -13,7 +13,13 @@ from sqlalchemy import func, select
 from app.models.spirit import Spirit
 from app.services import spirit_service
 from app.services.sanctuary_service import COINS_PER_LEVEL
-from app.services.spirit_service import GLOW_FLOOR, GLOW_FULL, GLOW_MID, stage_for_level
+from app.services.spirit_service import (
+    GLOW_FLOOR,
+    GLOW_FULL,
+    GLOW_MID,
+    SPIRIT_COSMETICS_CATALOG,
+    stage_for_level,
+)
 
 
 def _auth(client, email):
@@ -312,3 +318,264 @@ def test_path_lean_tie_break_priority(db_session):
     user = _make_user(db_session, "lean_tie@example.com")
     # No activity → every bucket is 0 → tie-break resolves to the first priority (stillness).
     assert spirit_service.path_lean(db_session, user.id) == "stillness"
+
+
+# --- Cosmetics economy (step 5) ---------------------------------------------------------
+#
+# The owned cosmetics are the spend ledger: buying one drops the derived coin balance and
+# shows up `applied` in the catalog state on GET. A swap within a slot charges only the
+# difference. Costs/unlock levels come from the in-code SPIRIT_COSMETICS_CATALOG.
+
+# Non-consecutive days so earning lots of coins never accrues a streak (streak-bonus XP is
+# excluded from the earned XP that funds coins) and never depends on the current date.
+_EARN_DAYS = [
+    "2026-01-01", "2026-01-05", "2026-01-09", "2026-01-13", "2026-01-17",
+    "2026-01-21", "2026-01-25", "2026-01-29", "2026-02-02", "2026-02-06",
+    "2026-02-10", "2026-02-14", "2026-02-18", "2026-02-22", "2026-02-26",
+    "2026-03-02", "2026-03-06", "2026-03-10", "2026-03-14", "2026-03-18",
+    "2026-03-22", "2026-03-26", "2026-03-30", "2026-04-03", "2026-04-07",
+    "2026-04-11", "2026-04-15", "2026-04-19", "2026-04-23", "2026-04-27",
+    "2026-05-01", "2026-05-05", "2026-05-09", "2026-05-13", "2026-05-17",
+]
+
+
+def _earn_to_level(client, target_level):
+    """Practice long, full-rate sits across distinct (non-consecutive) days until the spirit
+    reports >= target_level. Uses resonance breathing (the higher-XP practice) so even the
+    radiant gate (level 24) is reachable within the earn-day list. Each 200-min sit pays the
+    front-loaded curve once per day; we stop once the level is reached."""
+    for day in _EARN_DAYS:
+        _breathe(client, 200, day=day)
+        if _spirit(client)["bond"]["level"] >= target_level:
+            break
+    return _spirit(client)
+
+
+def _cost(slot, option):
+    return SPIRIT_COSMETICS_CATALOG[slot][option]["cost"]
+
+
+def _applied(body, slot):
+    """The option currently applied in `slot` per the GET `available` catalog state."""
+    for s in body["available"]:
+        if s["slot"] == slot:
+            return s["applied"]
+    return None
+
+
+def test_catalog_is_exposed_in_get(client):
+    _auth(client, "cosmetics_catalog@example.com")
+    body = _spirit(client)
+    slots = {s["slot"] for s in body["available"]}
+    assert slots == set(SPIRIT_COSMETICS_CATALOG)
+    # Every catalog option is surfaced with its state hints, none applied on a fresh spirit.
+    for s in body["available"]:
+        assert s["applied"] is None
+        opts = {o["option"] for o in s["options"]}
+        assert opts == set(SPIRIT_COSMETICS_CATALOG[s["slot"]])
+        for o in s["options"]:
+            assert o["applied"] is False
+    assert body["collection"] == []
+
+
+def test_buy_cosmetic_happy_path(client):
+    _auth(client, "cosmetics_buy@example.com")
+    before = _spirit(client)
+    coins_before = before["coins"]
+
+    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    assert res.status_code == 200
+    body = res.json()
+
+    # Coins drop by exactly the option cost; the option is owned + shown applied.
+    assert body["coins"] == coins_before - _cost("aura", "soft")
+    assert body["cosmetics"]["aura"] == "soft"
+    assert _applied(body, "aura") == "soft"
+
+    # And it persists on the next GET.
+    assert _spirit(client)["cosmetics"]["aura"] == "soft"
+
+
+def test_buy_unknown_slot_or_option_404(client):
+    _auth(client, "cosmetics_404@example.com")
+    assert (
+        client.post("/api/v1/spirit/cosmetics", json={"slot": "nope", "option": "soft"}).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "nope"}
+        ).status_code
+        == 404
+    )
+
+
+def test_buy_locked_option_409(client):
+    # `starlit` aura unlocks at level 5; a fresh level-1 user can't apply it.
+    _auth(client, "cosmetics_locked@example.com")
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["starlit"]["unlock_level"] > 1
+    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "starlit"})
+    assert res.status_code == 409
+
+
+def test_buy_unaffordable_409(client):
+    # A fresh user has COINS_PER_LEVEL coins. Buy items until the balance can't cover the
+    # next one, then assert the unaffordable purchase is rejected.
+    _auth(client, "cosmetics_broke@example.com")
+    # COINS_PER_LEVEL (80) buys at most: aura soft (30) + ribbon (35) = 65; habitat meadow
+    # (50) then no longer fits (15 left). Spend down, then try the meadow.
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 200
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "accessory", "option": "ribbon"}
+    ).status_code == 200
+    broke = client.post("/api/v1/spirit/cosmetics", json={"slot": "habitat", "option": "meadow"})
+    assert broke.status_code == 409
+    # The failed purchase changed nothing.
+    assert "habitat" not in _spirit(client)["cosmetics"]
+
+
+def test_buy_already_applied_409(client):
+    _auth(client, "cosmetics_dupe@example.com")
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 200
+    again = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    assert again.status_code == 409
+
+
+def test_within_slot_swap_charges_the_difference(client):
+    # Earn enough that both options are clearly affordable, then swap within `aura` and assert
+    # only the difference is charged.
+    _auth(client, "cosmetics_swap@example.com")
+    _earn_to_level(client, 3)
+    base = _spirit(client)["coins"]
+
+    soft = _cost("aura", "soft")
+    warm = _cost("aura", "warm")
+    assert warm > soft  # the swap is to a dearer option, so the delta is positive
+
+    after_soft = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).json()
+    assert after_soft["coins"] == base - soft
+
+    after_warm = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
+    ).json()
+    # Only the difference (warm − soft) is charged on the swap, not the full warm cost.
+    assert after_warm["coins"] == base - warm
+    assert after_warm["cosmetics"]["aura"] == "warm"
+    # The slot holds exactly the new option (the old one is replaced, not accumulated).
+    assert _applied(after_warm, "aura") == "warm"
+
+
+def test_buy_cosmetic_rejects_unexpected_fields(client):
+    _auth(client, "cosmetics_extra@example.com")
+    res = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft", "x": 1}
+    )
+    assert res.status_code == 422
+
+
+def test_buy_cosmetic_requires_auth(client):
+    assert (
+        client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}).status_code
+        == 401
+    )
+
+
+# --- Nickname (PATCH /spirit) -----------------------------------------------------------
+
+
+def _stored_name(db_session):
+    """The active spirit's stored nickname (not in SpiritState — read the row directly)."""
+    db_session.expire_all()
+    return db_session.execute(
+        select(Spirit.name).where(Spirit.retired_at.is_(None))
+    ).scalars().first()
+
+
+def test_rename_sets_and_clears(client, db_session):
+    _auth(client, "rename@example.com")
+    coins_before = _spirit(client)["coins"]
+
+    set_res = client.patch("/api/v1/spirit", json={"name": "  Ember  "})
+    assert set_res.status_code == 200
+    # Trimmed and never charges coins.
+    assert set_res.json()["coins"] == coins_before
+    assert _stored_name(db_session) == "Ember"
+
+    # Empty string clears the nickname back to NULL.
+    clear_res = client.patch("/api/v1/spirit", json={"name": "   "})
+    assert clear_res.status_code == 200
+    assert _stored_name(db_session) is None
+
+
+def test_rename_over_length_422(client):
+    _auth(client, "rename_long@example.com")
+    res = client.patch("/api/v1/spirit", json={"name": "x" * 41})
+    assert res.status_code == 422
+
+
+def test_rename_rejects_unexpected_fields(client):
+    _auth(client, "rename_extra@example.com")
+    res = client.patch("/api/v1/spirit", json={"name": "Ember", "color": "blue"})
+    assert res.status_code == 422
+
+
+def test_rename_requires_auth(client):
+    assert client.patch("/api/v1/spirit", json={"name": "Ember"}).status_code == 401
+
+
+# --- Awaken / collection (step 6) -------------------------------------------------------
+
+
+def test_awaken_requires_radiant_409(client):
+    # A fresh (non-radiant) spirit cannot awaken a new spark.
+    _auth(client, "awaken_early@example.com")
+    res = client.post("/api/v1/spirit/awaken")
+    assert res.status_code == 409
+
+
+def test_awaken_at_radiant_retires_old_and_creates_new_spark(client, db_session):
+    _auth(client, "awaken_radiant@example.com")
+    user_id = _user_id(db_session, "awaken_radiant@example.com")
+
+    body = _earn_to_level(client, 24)  # radiant
+    assert body["stage"] == "radiant"
+
+    # Name the spirit so we can confirm the retired collection records it.
+    client.patch("/api/v1/spirit", json={"name": "Lumen"})
+
+    res = client.post("/api/v1/spirit/awaken")
+    assert res.status_code == 200
+    fresh = res.json()
+    # The new spark is pathless and unnamed; the collection now holds the old one.
+    assert fresh["path"] is None
+    assert len(fresh["collection"]) == 1
+    retired = fresh["collection"][0]
+    assert retired["stage"] == "radiant"
+    assert retired["name"] == "Lumen"
+
+    # Exactly one active spirit remains (the partial unique index guarantee).
+    db_session.expire_all()
+    assert _active_count(db_session, user_id) == 1
+    # And a total of two rows: the active spark + the one retired.
+    total = db_session.execute(
+        select(func.count()).select_from(Spirit).where(Spirit.user_id == user_id)
+    ).scalar_one()
+    assert total == 2
+
+
+def test_awaken_rejects_unexpected_fields(client):
+    _auth(client, "awaken_extra@example.com")
+    # A body with fields is rejected (the endpoint takes no body).
+    res = client.post("/api/v1/spirit/awaken", json={"x": 1})
+    # FastAPI 422s an unexpected JSON body against a no-body endpoint.
+    assert res.status_code in {409, 422}
+
+
+def test_awaken_requires_auth(client):
+    assert client.post("/api/v1/spirit/awaken").status_code == 401
