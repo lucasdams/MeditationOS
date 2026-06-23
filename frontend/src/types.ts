@@ -344,7 +344,37 @@ export interface SpiritBond {
   xp_for_next: number // XP needed to reach the next level
 }
 
-// The active spirit's computed state, as returned by GET /api/v1/spirit.
+// One option inside a cosmetic slot, with its cost and current state — the same calm
+// "personalize" shape the Sanctuary panel uses. Mirrors backend SpiritSlotOption.
+export interface SpiritSlotOption {
+  option: string
+  cost: number // coins to apply this option
+  unlocked: boolean // level requirement met
+  unlock_hint: string | null // what's needed to unlock (null when unlocked)
+  affordable: boolean // the current balance covers the (net) cost of a swap
+  applied: boolean // this option is the one currently on the spirit
+}
+
+// A cosmetic axis for the active spirit: the options to mix and match. Mirrors backend
+// SpiritAvailableSlot.
+export interface SpiritAvailableSlot {
+  slot: string
+  applied: string | null // the option currently applied in this slot (null if none)
+  options: SpiritSlotOption[]
+}
+
+// A past spirit in the collection — a radiant companion retired when its successor was
+// awakened, kept forever (the long-term replay loop). Mirrors backend RetiredSpirit.
+export interface RetiredSpirit {
+  id: string
+  stage: SpiritStage // the stage it retired at (radiant, in practice)
+  path: SpiritPath | null // its committed path (stillness | breath | heart), or null
+  name: string | null // its nickname, if it had one
+}
+
+// The active spirit's computed state, as returned by GET /api/v1/spirit. `available` (the
+// cosmetics catalog with per-option state) and `collection` (retired spirits) are additive
+// (steps 5 + 6); existing fields are unchanged.
 export interface SpiritState {
   stage: SpiritStage // spark | wisp | fledgling | ascendant | radiant (function of level)
   path: SpiritPath | null // committed path; null until it commits at stage 2
@@ -352,7 +382,21 @@ export interface SpiritState {
   bond: SpiritBond // level + XP-into-level + XP-for-next
   daily_glow: number // brightness factor in [0.4, 1.0] from recent practice
   coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
-  cosmetics: Record<string, string> // owned {slot: option} (empty until cosmetics ship)
+  cosmetics: Record<string, string> // owned {slot: option}
+  available: SpiritAvailableSlot[] // the cosmetics catalog with per-option state
+  collection: RetiredSpirit[] // past (retired) spirits, kept forever
+}
+
+// Buy/apply a cosmetic option to a slot on the active spirit (POST /spirit/cosmetics).
+export interface SpiritCosmeticRequest {
+  slot: string
+  option: string
+}
+
+// Set or clear the active spirit's nickname (PATCH /spirit). An empty/whitespace/null name
+// clears it; over-length is rejected server-side (422).
+export interface SpiritRenameRequest {
+  name: string | null
 }
 
 export interface BreathingPattern {

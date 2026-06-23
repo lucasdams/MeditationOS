@@ -10,6 +10,7 @@ const MORE_LINKS = [
   { to: '/timeline', label: '🕒 Timeline' },
   { to: '/goals', label: '🎯 Goals' },
   { to: '/schedule', label: '🗓️ Schedule' },
+  { to: '/spirit', label: '🪷 Spirit' },
   { to: '/sanctuary', label: '🌱 Sanctuary' },
   { to: '/analytics', label: '📈 Analytics' },
 ]
