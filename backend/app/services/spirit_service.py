@@ -176,7 +176,8 @@ def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> Sp
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
     level = basis.level
-    _lvl, xp_into_level, xp_for_next = dashboard_service._level_progress(basis.earned_xp)
+    xp_into_level = basis.xp_into_level
+    xp_for_next = basis.xp_for_next
 
     cosmetics = _cosmetics(spirit)
     coins = max(0, level * COINS_PER_LEVEL - _cosmetics_spent(cosmetics))
