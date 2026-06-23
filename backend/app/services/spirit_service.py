@@ -1,10 +1,11 @@
 """Spirit state — a single living companion grown from practice (docs/design/spirit.md,
-ADR-0022). Step 1: get-or-create the active spirit and compute its read-only state.
+ADR-0022). Get-or-create the active spirit, compute its read-only state, and (steps 5 + 6)
+write its cosmetics, nickname, and the awaken / collection loop.
 
 Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
-committed `path` (NULL in step 1 — no branching yet), optional `name`, and owned
-`cosmetics`. Everything the client sees is derived on read from the user's earned-XP
-level (via the same `dashboard_service.get_wallet_basis` the Sanctuary wallet uses):
+committed `path`, optional `name`, and owned `cosmetics`. Everything the client sees is
+derived on read from the user's earned-XP level (via the same
+`dashboard_service.get_wallet_basis` the Sanctuary wallet uses):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
   of level, so it is monotonic and can never be lost.
@@ -16,6 +17,11 @@ level (via the same `dashboard_service.get_wallet_basis` the Sanctuary wallet us
 
 The active spirit is lazily created (a pathless spark) on first read, so both new users and
 migrated users get one without a heavy backfill.
+
+Steps 5 + 6 add the writes — all user-scoped, default-deny at the route. Mutations serialize
+concurrent same-user writes via a per-user, txn-scoped Postgres advisory lock (mirroring
+`sanctuary_service`) so the read-compute-write of a cosmetic purchase (or the retire+awaken
+swap) is atomic against a parallel request — no double-spend, no two active spirits.
 """
 
 import uuid
@@ -29,7 +35,15 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.session import Session
 from app.models.spirit import Spirit
-from app.schemas.spirit import SpiritBond, SpiritState
+from app.schemas.spirit import (
+    CosmeticsRequest,
+    RenameRequest,
+    RetiredSpirit,
+    SpiritAvailableSlot,
+    SpiritBond,
+    SpiritSlotOption,
+    SpiritState,
+)
 from app.services import dashboard_service
 from app.services.dashboard_service import (
     BREATHING_XP_MULTIPLIER,
@@ -39,6 +53,45 @@ from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
 from app.services.sanctuary_service import COINS_PER_LEVEL
 from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
+
+# --- Domain errors (mapped to HTTP in the route layer) ----------------------------------
+
+
+class UnknownCosmetic(Exception):
+    """The requested cosmetic slot or option is not in the catalog → 404."""
+
+
+class CosmeticLocked(Exception):
+    """The option's level requirement isn't met yet → 409."""
+
+
+class InsufficientCoins(Exception):
+    """Not enough coins for this cosmetic → 409."""
+
+
+class AlreadyApplied(Exception):
+    """The spirit already has that exact option in that slot — a no-op → 409."""
+
+
+class NotRadiant(Exception):
+    """Awaken requires the active spirit to be at the radiant stage → 409."""
+
+
+class SpiritConflictError(Exception):
+    """A concurrent write to the same user's spirit collided on the partial unique index
+    (two active spirits). The route maps this to 409, not 500."""
+
+
+def _lock_user_spirit(db: DBSession, user_id: uuid.UUID) -> None:
+    """Serialize concurrent *writes* to one user's spirit by taking a transaction-scoped
+    Postgres advisory lock keyed on the user (mirrors `sanctuary_service._lock_user_garden`).
+    Held until the surrounding transaction commits/rolls back, so it spans the
+    read-compute-write of a single mutating method while never blocking writes for *other*
+    users. Keyed on an int8 hash (`hashtextextended`) so cross-user collisions are negligible.
+    """
+    key = func.pg_advisory_xact_lock(func.hashtextextended(str(user_id), 0))
+    db.execute(select(key))
+
 
 # --- Evolution stages (tunable level bands) ---------------------------------------------
 #
@@ -251,14 +304,50 @@ def daily_glow(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> fl
     return GLOW_FLOOR
 
 
-# --- Cosmetics spend (forward-compatible; empty in step 1) ------------------------------
+# --- Cosmetics economy (step 5: repoint the derived wallet at spirit slots) -------------
 #
 # The owned cosmetics ARE the spend ledger (ADR-0011), repointed from garden items to the
-# spirit. The cosmetics catalog/shop is a later step (build-order step 5); for now there are
-# no buyable options, so a spirit's spend is always 0. `_cosmetics_spent` is written to sum
-# option costs from this (currently empty) catalog so the coin formula stays correct the
-# moment cosmetics ship — no change to the formula here.
-SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, int]] = {}  # {slot: {option: cost}}
+# one spirit. Each slot offers a few mutually-exclusive options; choosing one within a slot
+# excludes the others (a swap charges only the difference, like the Sanctuary). Costs spend
+# from the derived coin balance (`level × COINS_PER_LEVEL − Σ owned-option cost`).
+#
+# Kept calm and modest, on-theme (docs/design/spirit.md "Coins"): a soft aura, a small
+# accessory, and a habitat/backdrop the spirit sits in. The Sanctuary's progressive
+# anti-hoarding surcharge is intentionally dropped — there is one subject now, so the
+# hoarding problem it solved no longer exists. All costs/unlock levels are tunable in-code
+# constants — retuning needs no migration. An optional per-option `unlock_level` gates a
+# couple of richer options behind a little growth (default 1 = always available).
+SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
+    # {slot: {option: {"cost": int, "unlock_level": int}}}
+    # A soft surrounding glow — the gentlest touch, available from the start.
+    "aura": {
+        "soft": {"cost": 30, "unlock_level": 1},
+        "warm": {"cost": 45, "unlock_level": 1},
+        "starlit": {"cost": 70, "unlock_level": 5},
+    },
+    # A small worn accessory.
+    "accessory": {
+        "halo": {"cost": 40, "unlock_level": 1},
+        "leaf_crown": {"cost": 55, "unlock_level": 1},
+        "ribbon": {"cost": 35, "unlock_level": 1},
+    },
+    # A small backdrop the spirit sits in (the "habitat").
+    "habitat": {
+        "meadow": {"cost": 50, "unlock_level": 1},
+        "dusk": {"cost": 65, "unlock_level": 3},
+        "night": {"cost": 80, "unlock_level": 7},
+    },
+}
+
+
+def _option_cost(slot: str, option: str) -> int:
+    """The coin cost of a catalog option (0 for unknown slot/option — never a phantom charge)."""
+    return SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("cost", 0)
+
+
+def _option_unlock_level(slot: str, option: str) -> int:
+    """The level an option unlocks at (1 = always available; unknown → 1)."""
+    return SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("unlock_level", 1)
 
 
 def _cosmetics(spirit: Spirit) -> dict[str, str]:
@@ -271,13 +360,47 @@ def _cosmetics(spirit: Spirit) -> dict[str, str]:
 
 
 def _cosmetics_spent(cosmetics: dict[str, str]) -> int:
-    """Σ cost of the owned cosmetics, summed from SPIRIT_COSMETICS_CATALOG. 0 in step 1
-    (empty catalog); forward-compatible so the coin formula is correct once cosmetics ship.
-    Unknown slots/options are ignored (never a negative or phantom charge)."""
+    """Σ cost of the owned cosmetics, summed from SPIRIT_COSMETICS_CATALOG. The owned options
+    ARE the spend ledger, so the coin formula stays fully derived. Unknown slots/options are
+    ignored (never a negative or phantom charge)."""
     total = 0
     for slot, option in cosmetics.items():
-        total += SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, 0)
+        total += _option_cost(slot, option)
     return total
+
+
+def _available_slots(
+    cosmetics: dict[str, str], balance: int, level: int
+) -> list[SpiritAvailableSlot]:
+    """The cosmetics catalog with per-option state — the same calm "personalize" shape the
+    Sanctuary panel uses: each option's cost plus unlocked / affordable / applied hints.
+
+    `affordable` is computed against the *net* cost of a swap (the new option's cost minus
+    what is already sunk in this slot), so the client's affordability gate matches exactly
+    what `buy_cosmetic` will deduct — an already-owned-slot swap to a cheaper option always
+    reads affordable, and a more expensive one only when the difference is covered.
+    """
+    out: list[SpiritAvailableSlot] = []
+    for slot, options in SPIRIT_COSMETICS_CATALOG.items():
+        applied = cosmetics.get(slot)
+        already_in_slot = _option_cost(slot, applied) if applied is not None else 0
+        opts: list[SpiritSlotOption] = []
+        for option, spec in options.items():
+            unlock_level = spec["unlock_level"]
+            unlocked = level >= unlock_level
+            net_cost = spec["cost"] - already_in_slot
+            opts.append(
+                SpiritSlotOption(
+                    option=option,
+                    cost=spec["cost"],
+                    unlocked=unlocked,
+                    unlock_hint=None if unlocked else f"Reach level {unlock_level}",
+                    affordable=balance >= net_cost,
+                    applied=applied == option,
+                )
+            )
+        out.append(SpiritAvailableSlot(slot=slot, applied=applied, options=opts))
+    return out
 
 
 def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
@@ -308,21 +431,39 @@ def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
     return spirit
 
 
-def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> SpiritState:
-    """The active spirit's computed state: stage, path (committed or NULL), the suggested
-    path lean, bond, daily glow, coins, and owned cosmetics. Get-or-creates the spark on first
-    read, and — at/after the commit stage — crystallizes the path once (write-on-read)."""
-    spirit = get_or_create_active_spirit(db, user_id)
+def _collection(db: DBSession, user_id: uuid.UUID) -> list[RetiredSpirit]:
+    """The user's retired spirits — past radiant companions, kept forever (the replay loop).
+    A retired spirit is stamped at radiant, so it reports the radiant stage; ordered most
+    recently retired first. Empty for a user who has never awakened a new spark."""
+    rows = db.execute(
+        select(Spirit)
+        .where(Spirit.user_id == user_id, Spirit.retired_at.is_not(None))
+        .order_by(Spirit.retired_at.desc())
+    ).scalars().all()
+    return [
+        RetiredSpirit(
+            id=str(row.id),
+            stage=STAGE_BANDS[-1][0],  # retired only at radiant (the final stage)
+            path=row.path,
+            name=row.name,
+        )
+        for row in rows
+    ]
 
+
+def _build_state(
+    db: DBSession,
+    user_id: uuid.UUID,
+    spirit: Spirit,
+    *,
+    today: date,
+    tz: str,
+) -> SpiritState:
+    """Assemble the active spirit's computed read state from a (committed) spirit row plus
+    the user's wallet basis. Shared by the read endpoint and every write so the response
+    shape is built once."""
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
     level = basis.level
-    xp_into_level = basis.xp_into_level
-    xp_for_next = basis.xp_for_next
-
-    # The suggested path from lifetime practice — always computed (a gentle lean shown before
-    # commit). At/after the commit stage, crystallize it once into spirits.path (idempotent).
-    lean = path_lean(db, user_id)
-    _maybe_commit_path(db, spirit, level=level, lean=lean)
 
     cosmetics = _cosmetics(spirit)
     coins = max(0, level * COINS_PER_LEVEL - _cosmetics_spent(cosmetics))
@@ -330,13 +471,134 @@ def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> Sp
     return SpiritState(
         stage=stage_for_level(level),
         path=spirit.path,
-        path_lean=lean,
+        path_lean=path_lean(db, user_id),
         bond=SpiritBond(
             level=level,
-            xp_into_level=xp_into_level,
-            xp_for_next=xp_for_next,
+            xp_into_level=basis.xp_into_level,
+            xp_for_next=basis.xp_for_next,
         ),
         daily_glow=daily_glow(db, user_id, today=today, tz=tz),
         coins=coins,
         cosmetics=cosmetics,
+        available=_available_slots(cosmetics, coins, level),
+        collection=_collection(db, user_id),
     )
+
+
+def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> SpiritState:
+    """The active spirit's computed state: stage, path (committed or NULL), the suggested
+    path lean, bond, daily glow, coins, owned cosmetics + the catalog with per-option state,
+    and the retired collection. Get-or-creates the spark on first read, and — at/after the
+    commit stage — crystallizes the path once (write-on-read)."""
+    spirit = get_or_create_active_spirit(db, user_id)
+
+    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    # Crystallize the path once at/after the commit stage (idempotent write-on-read).
+    _maybe_commit_path(db, spirit, level=basis.level, lean=path_lean(db, user_id))
+
+    return _build_state(db, user_id, spirit, today=today, tz=tz)
+
+
+def buy_cosmetic(
+    db: DBSession,
+    user_id: uuid.UUID,
+    data: CosmeticsRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SpiritState:
+    """Buy/apply a cosmetic option to a slot on the active spirit.
+
+    Validates: unknown slot/option → UnknownCosmetic (404); option not unlocked by level →
+    CosmeticLocked (409); already the applied option → AlreadyApplied (409); can't afford the
+    net cost → InsufficientCoins (409). A within-slot swap charges only the difference (the
+    new option's cost minus what's already sunk in that slot), mirroring the Sanctuary, so a
+    swap is never punishing and the derived balance stays consistent with `_cosmetics_spent`.
+    """
+    # Validate the catalog request before taking the lock (pure, no DB).
+    if data.slot not in SPIRIT_COSMETICS_CATALOG:
+        raise UnknownCosmetic(data.slot)
+    if data.option not in SPIRIT_COSMETICS_CATALOG[data.slot]:
+        raise UnknownCosmetic(data.option)
+
+    # Lock FIRST — so the affordability math AND the cosmetics map we merge onto are read
+    # under the per-user lock; a concurrent buy otherwise reads a stale snapshot and could
+    # double-spend or clobber the JSON column (last-writer-wins).
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+    current = _cosmetics(spirit)
+    if current.get(data.slot) == data.option:
+        raise AlreadyApplied(data.option)
+
+    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    level = basis.level
+    if level < _option_unlock_level(data.slot, data.option):
+        raise CosmeticLocked(data.option)
+
+    # Charge only the difference: swapping within a slot costs the new option over what is
+    # already sunk in that slot, so the balance stays consistent with `_cosmetics_spent`.
+    already_in_slot = _option_cost(data.slot, current[data.slot]) if data.slot in current else 0
+    net_cost = _option_cost(data.slot, data.option) - already_in_slot
+    balance = max(0, level * COINS_PER_LEVEL - _cosmetics_spent(current))
+    if balance < net_cost:
+        raise InsufficientCoins(data.option)
+
+    updated = dict(current)
+    updated[data.slot] = data.option
+    spirit.cosmetics = updated
+    db.commit()
+    db.refresh(spirit)
+    return _build_state(db, user_id, spirit, today=today, tz=tz)
+
+
+def rename_spirit(
+    db: DBSession,
+    user_id: uuid.UUID,
+    data: RenameRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SpiritState:
+    """Set or clear the active spirit's nickname. Purely cosmetic — never changes coins.
+
+    The name is already trimmed, capped, and empty→None by the schema (over-length → 422
+    before we get here). Always present in a PATCH body (defaults to None = clear), so we
+    write it unconditionally.
+    """
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+    spirit.name = data.name
+    db.commit()
+    db.refresh(spirit)
+    return _build_state(db, user_id, spirit, today=today, tz=tz)
+
+
+def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -> SpiritState:
+    """Retire the active spirit and awaken a fresh pathless spark — but only once it is
+    radiant (the long-horizon goal). Raises NotRadiant (409) otherwise.
+
+    Done in ONE transaction: the current row's `retired_at` is stamped and a new pathless
+    spark is inserted, so the partial unique index (one active spirit per user) is never
+    violated. A concurrent awaken loses the race on that index → SpiritConflictError (409).
+    """
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+
+    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    if stage_for_level(basis.level) != STAGE_BANDS[-1][0]:  # not radiant
+        raise NotRadiant(str(spirit.id))
+
+    # Retire the current spirit and insert the new spark together: stamping retired_at frees
+    # the partial unique slot (WHERE retired_at IS NULL), so the fresh active row is valid.
+    spirit.retired_at = func.now()
+    new_spark = Spirit(user_id=user_id, path=None, cosmetics={})
+    db.add(new_spark)
+    try:
+        db.commit()
+    except IntegrityError as err:
+        # Another awaken committed first — the partial unique index caught the duplicate
+        # active spirit. Roll back; the caller may retry.
+        db.rollback()
+        raise SpiritConflictError(str(user_id)) from err
+    db.refresh(new_spark)
+    return _build_state(db, user_id, new_spark, today=today, tz=tz)
