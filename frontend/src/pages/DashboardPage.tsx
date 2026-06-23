@@ -4,6 +4,7 @@ import { dashboardService } from '../services/dashboard'
 import { sanctuaryService } from '../services/sanctuary'
 import { moodLogService } from '../services/moodLogs'
 import LevelCard from '../components/LevelCard'
+import Spirit from '../components/Spirit'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
@@ -197,6 +198,12 @@ export default function DashboardPage() {
           {stats.rest_day_used ? ' · 🛡️ rest day — skipping one is fine' : ''}
         </p>
       )}
+
+      {/* The spirit — the home-screen centrepiece (docs/design/spirit.md, ADR-0022). A calm,
+          static glowing companion that grows with practice; it owns its own loading / error /
+          empty (first-awakening) states. Replaces the old Sanctuary scene home preview (the
+          /sanctuary page and scene are kept — they retire in a later step). */}
+      <Spirit />
 
       {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
           a practice. Kept prominent and always visible. */}

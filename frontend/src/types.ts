@@ -320,6 +320,38 @@ export interface SanctuaryScene {
   current_streak: number
 }
 
+// --- Spirit (docs/design/spirit.md, ADR-0022) -------------------------------------------
+// The Spirit is a single living companion grown from practice. Its state is *maximally
+// computed* on read: only the committed path, optional name, and owned cosmetics are stored;
+// stage, bond, glow, and coins are all derived from the user's earned-XP level. Step 2 reads
+// this shape to render the home-screen companion (no writes, no path branching yet).
+
+// The five evolution stages, derived from the user's level (a pure function of level —
+// monotonic, never stored, never lost). The mote of light gains structure each stage.
+export type SpiritStage = 'spark' | 'wisp' | 'fledgling' | 'ascendant' | 'radiant'
+
+// The committed practice path. NULL until the spirit commits at stage 2 (step 3 of the
+// build order); kept here so the read shape matches the backend, but unused by step 2's art.
+export type SpiritPath = 'stillness' | 'breath' | 'heart'
+
+// A friendly level read-out — the same level + XP-into-level the wallet basis exposes,
+// surfaced as the spirit's "bond" with the practitioner.
+export interface SpiritBond {
+  level: number // the user's level (from earned XP — monotonic)
+  xp_into_level: number // XP accumulated within the current level
+  xp_for_next: number // XP needed to reach the next level
+}
+
+// The active spirit's computed state, as returned by GET /api/v1/spirit.
+export interface SpiritState {
+  stage: SpiritStage // spark | wisp | fledgling | ascendant | radiant (function of level)
+  path: SpiritPath | null // committed path; null until it commits (step 3)
+  bond: SpiritBond // level + XP-into-level + XP-for-next
+  daily_glow: number // brightness factor in [0.4, 1.0] from recent practice
+  coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
+  cosmetics: Record<string, string> // owned {slot: option} (empty until cosmetics ship)
+}
+
 export interface BreathingPattern {
   id: string
   name: string

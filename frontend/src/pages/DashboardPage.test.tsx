@@ -44,6 +44,12 @@ vi.mock('../components/SanctuaryScene', () => ({
     return <div data-testid="sanctuary-scene" />
   },
 }))
+// The spirit is the home-screen centrepiece (docs/design/spirit.md, ADR-0022). It self-fetches
+// its state; mock it to a marker so the dashboard test stays backend-free and can assert the
+// spirit renders on the home (its own art/states are covered in Spirit.test.tsx).
+vi.mock('../components/Spirit', () => ({
+  default: () => <div data-testid="spirit" />,
+}))
 // Mock MoodCheckin: render a marker plus a "pick" button that fires onLogged, so tests
 // can exercise the "picking a mood closes the modal" path without the real API call.
 vi.mock('../components/MoodCheckin', () => ({
@@ -200,6 +206,9 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     // The garden no longer renders on the home screen — it lives at /sanctuary, reached from
     // the top nav. The dashboard should not render the inline garden preview.
     expect(screen.queryByTestId('sanctuary-scene')).not.toBeInTheDocument()
+
+    // The spirit is the new home centrepiece, rendered on the default calm home.
+    expect(screen.getByTestId('spirit')).toBeInTheDocument()
   })
 
   it('keeps the full level card and weekly review collapsed', async () => {
