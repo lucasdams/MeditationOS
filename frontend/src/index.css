@@ -2087,6 +2087,46 @@ textarea:focus-visible,
     drop-shadow(0 0 0.4px rgba(255, 255, 255, 0.35));
 }
 
+/* --- Spirit (home-screen companion, docs/design/spirit.md, ADR-0022) -------------------- */
+/* The spirit is the calm centrepiece of the home: the procedural SVG mote, then a quiet
+   stage name + note + bond read-out beneath it. Low-chrome by design — no card border, no
+   shouted numbers — so it reads as a gentle presence, not a gamified panel. */
+.spirit-home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: 0.5rem auto 1rem;
+}
+
+.spirit-art {
+  display: flex;
+  justify-content: center;
+}
+
+.spirit-svg {
+  display: block;
+  width: 140px;
+  height: auto;
+  max-width: 100%;
+}
+
+.spirit-stage {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spirit-note {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+}
+
+.spirit-bond {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+}
+
 .sanctuary-grown-row {
   display: flex;
   flex-wrap: wrap;
