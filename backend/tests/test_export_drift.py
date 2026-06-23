@@ -21,6 +21,7 @@ _TABLE_TO_EXPORT_KEY = {
     "goals": "goals",
     "goal_checkins": "goal_checkins",
     "sanctuary_plantings": "sanctuary",
+    "spirits": "spirits",
     "biometric_readings": "biometric_readings",
     "scheduled_sessions": "scheduled_sessions",
     "breathing_patterns": "breathing_patterns",
