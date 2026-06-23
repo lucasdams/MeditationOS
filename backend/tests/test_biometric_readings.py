@@ -134,7 +134,11 @@ def test_list_is_user_scoped(client):
 
 def test_days_window_filters(client):
     _auth(client, "b7@example.com")
-    _reading(client)
+    # Use a relative recent date, not a fixed literal: the ?days=7 window is relative to
+    # "now", so a hardcoded measured_at silently falls out of the window as time passes
+    # (this test was a date time-bomb). A day ago is always inside a 7-day window.
+    recent = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    _reading(client, measured_at=recent)
     assert len(client.get("/api/v1/biometric-readings?days=7").json()) == 1
 
 
