@@ -323,15 +323,17 @@ export interface SanctuaryScene {
 // --- Spirit (docs/design/spirit.md, ADR-0022) -------------------------------------------
 // The Spirit is a single living companion grown from practice. Its state is *maximally
 // computed* on read: only the committed path, optional name, and owned cosmetics are stored;
-// stage, bond, glow, and coins are all derived from the user's earned-XP level. Step 2 reads
-// this shape to render the home-screen companion (no writes, no path branching yet).
+// stage, bond, glow, and coins are all derived from the user's earned-XP level. The shape also
+// carries `path_lean` — the suggested path from lifetime practice — alongside the committed path.
 
 // The five evolution stages, derived from the user's level (a pure function of level —
 // monotonic, never stored, never lost). The mote of light gains structure each stage.
 export type SpiritStage = 'spark' | 'wisp' | 'fledgling' | 'ascendant' | 'radiant'
 
-// The committed practice path. NULL until the spirit commits at stage 2 (step 3 of the
-// build order); kept here so the read shape matches the backend, but unused by step 2's art.
+// The committed practice path. NULL until the spirit commits at stage 2 (`wisp`, level ≥ 3):
+//   stillness → a serene mini Buddha   (meditation-dominant)
+//   breath    → an airy wind spirit    (resonance-breathing-dominant)
+//   heart     → a blooming heart spirit (gratitude + journaling dominant)
 export type SpiritPath = 'stillness' | 'breath' | 'heart'
 
 // A friendly level read-out — the same level + XP-into-level the wallet basis exposes,
@@ -345,7 +347,8 @@ export interface SpiritBond {
 // The active spirit's computed state, as returned by GET /api/v1/spirit.
 export interface SpiritState {
   stage: SpiritStage // spark | wisp | fledgling | ascendant | radiant (function of level)
-  path: SpiritPath | null // committed path; null until it commits (step 3)
+  path: SpiritPath | null // committed path; null until it commits at stage 2
+  path_lean: SpiritPath // suggested path from lifetime practice mix; the lean shown pre-commit
   bond: SpiritBond // level + XP-into-level + XP-for-next
   daily_glow: number // brightness factor in [0.4, 1.0] from recent practice
   coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0

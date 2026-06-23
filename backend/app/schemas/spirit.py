@@ -3,7 +3,9 @@
 The Spirit is a single living companion grown from practice. Its state is *maximally
 computed* on read (ADR-0009/0011): only the committed `path`, optional `name`, and owned
 `cosmetics` are stored; stage, bond, daily glow, and coins are all derived from the user's
-earned-XP level. Step 1 exposes the read shape only — no writes, no path branching.
+earned-XP level. The read shape also carries `path_lean` — the suggested path computed from
+the lifetime practice mix — alongside the committed `path` (NULL until it crystallizes at the
+commit stage).
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -26,6 +28,7 @@ class SpiritState(BaseModel):
 
     stage: str  # spark | wisp | fledgling | ascendant | radiant (pure function of level)
     path: str | None  # committed path (stillness | breath | heart); NULL until commit
+    path_lean: str  # suggested path from lifetime practice mix; the lean shown before commit
     bond: SpiritBond  # level + XP-into-level + XP-for-next
     daily_glow: float  # brightness factor in [GLOW_FLOOR, 1.0] from recent practice
     coins: int  # level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
