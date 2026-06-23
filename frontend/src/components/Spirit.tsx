@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { spiritService } from '../services/spirit'
 import { Loading, RetryableError } from './StateViews'
 import { messageForError } from '../lib/errors'
@@ -18,9 +18,23 @@ import type { SpiritPath, SpiritStage, SpiritState } from '../types'
  *  - `heart`     → a blooming spirit of petals and leaves (gratitude + journaling dominant).
  *
  * Each form is drawn distinctly across the five stages, in the flat vector style of
- * SanctuaryPlant (hardcoded hex fills, a 0 0 80 80 viewBox), with its own palette. This step
- * is still STATIC — no animation (idle float / breathing sync / celebration land in step 4);
- * `daily_glow` is applied as a *static* brightness on the aura, not motion.
+ * SanctuaryPlant (hardcoded hex fills, a 0 0 80 80 viewBox), with its own palette.
+ *
+ * Step 4 adds the REACTIVITY / ANIMATION layer (CSS keyframes + Web Animations API + the
+ * breathing pacer's rAF clock — no new deps):
+ *
+ *  - Idle: a gentle, slow float plus a soft aura pulse on the home-screen spirit. Calm,
+ *    never frantic — the motion idiom of `zen-float` / `meditate-pulse`.
+ *  - Daily glow as MOTION: the aura's pulse intensity/opacity scales with `daily_glow` (via
+ *    the `--spirit-glow` custom property), so a brighter spirit breathes a touch more and a
+ *    resting one is calmer — still floored, never fully still-dark.
+ *  - Session-complete celebration: a brief, happy one-shot (a soft scale/glow swell via the
+ *    Web Animations API), triggered by `celebrate` from the post-session RewardOverlay flow.
+ *  - Breathing-pacer sync (the signature moment): on BreathePage, `paceScale` is the SAME
+ *    `scaleAt(...)` value the breathe-circle uses (one rAF clock, no drift). The spirit's
+ *    aura/scale expands on the inhale and contracts on the exhale — meditating *with* it.
+ *  - `prefers-reduced-motion`: when set, EVERYTHING holds static — no float, no pulse, no
+ *    celebration, no pacer sync — mirroring BreathePage's STATIC_SCALE stance. Non-negotiable.
  *
  * Like SanctuaryScene, this can be handed a `spirit` by the parent (DashboardPage fetches it
  * once and passes it down) or fetch its own as a standalone fallback. Loading / error /
@@ -68,6 +82,29 @@ function stageProgress(stage: SpiritStage): number {
 // Clamp the daily glow into the floored [0.4, 1] band (the backend floors it; defend anyway).
 function clampGlow(glow: number): number {
   return Math.max(0.4, Math.min(1, glow))
+}
+
+// True when the OS asks for reduced motion. Read at render (a one-shot, like BreathePage),
+// so the static path is chosen before any animation class / inline transform is applied.
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+// The pacer maps `scaleAt` (the breathe-circle's [0.35, 1] band) onto a GENTLE companion
+// scale: it should breathe *with* the circle, not mimic its full swing. We map the band into
+// a soft [0.9, 1.06] so the spirit swells on the inhale and settles on the exhale, never
+// shrinking away. Floored so it stays present even at the bottom of the breath.
+const PACE_MIN = 0.9
+const PACE_MAX = 1.06
+function paceToScale(scale: number | undefined): number {
+  if (scale === undefined || !Number.isFinite(scale)) return 1
+  // scaleAt lives in [MIN_SCALE=0.35, MAX_SCALE=1]; normalise then map into the gentle band.
+  const t = Math.max(0, Math.min(1, (scale - 0.35) / (1 - 0.35)))
+  return PACE_MIN + (PACE_MAX - PACE_MIN) * t
 }
 
 // A soft outer aura shared by every path — its opacity carries the static daily-glow read-out.
@@ -321,22 +358,77 @@ const PATH_FORM: Record<SpiritPath, (props: { stage: SpiritStage; g: number }) =
 /**
  * The procedural spirit art, branched by path. The form is chosen by the committed `path`,
  * falling back to the suggested `path_lean` before commit — so an early spark already leans
- * toward its likely form. `glow` is clamped to the floored [0.4, 1] band (static — no motion).
+ * toward its likely form. `glow` is clamped to the floored [0.4, 1] band.
+ *
+ * Motion (step 4): when not reduced-motion, the SVG carries `spirit-svg--alive` (CSS idle
+ * float + aura pulse, intensity driven by the `--spirit-glow` custom property). On BreathePage
+ * a `paceScale` (the breathe-circle's live `scaleAt` value) overrides the idle float with an
+ * inline transform synced to the pacer. `celebrate` fires a brief one-shot via the Web
+ * Animations API. When reduced-motion is on, none of these apply — the art holds static.
  */
 function SpiritArt({
   stage,
   path,
   glow,
+  paceScale,
+  celebrate = false,
+  reducedMotion,
 }: {
   stage: SpiritStage
   path: SpiritPath
   glow: number
+  // Live pacer scale (BreathePage's `scaleAt` value) — when set, the spirit syncs to the breath.
+  paceScale?: number
+  // One-shot happy reaction (session complete). Plays once when it flips true.
+  celebrate?: boolean
+  reducedMotion: boolean
 }) {
   const g = clampGlow(glow)
   const Form = PATH_FORM[path]
   const label = `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit`
+  const svgRef = useRef<SVGSVGElement | null>(null)
+
+  // Session-complete celebration: a single, gentle swell + glow via the Web Animations API,
+  // so it layers over the idle CSS without fighting it. Skipped entirely under reduced motion.
+  useEffect(() => {
+    if (!celebrate || reducedMotion) return
+    const el = svgRef.current
+    if (!el || typeof el.animate !== 'function') return
+    const anim = el.animate(
+      [
+        { transform: 'scale(1)', filter: 'brightness(1)' },
+        { transform: 'scale(1.12)', filter: 'brightness(1.25)', offset: 0.4 },
+        { transform: 'scale(1)', filter: 'brightness(1)' },
+      ],
+      { duration: 1100, easing: 'ease-in-out' },
+    )
+    return () => anim.cancel()
+  }, [celebrate, reducedMotion])
+
+  // In pacer mode the spirit follows the breath via an inline transform on the SAME clock as
+  // the breathe-circle (no idle float — the breath IS the motion). Reduced motion holds it at 1.
+  const inPacerMode = paceScale !== undefined
+  const liveScale = reducedMotion ? 1 : paceToScale(paceScale)
+
+  // `--spirit-glow` lets the CSS pulse breathe a touch harder when the daily glow is high and
+  // calmer when it's resting — daily glow expressed as motion, still floored by `clampGlow`.
+  const style: CSSProperties = { ['--spirit-glow' as string]: g }
+  if (inPacerMode) style.transform = `scale(${liveScale})`
+
+  // Idle float + aura pulse only when alive (not reduced-motion) and not driven by the pacer.
+  const alive = !reducedMotion && !inPacerMode
+  const className =
+    'spirit-svg' + (alive ? ' spirit-svg--alive' : '') + (inPacerMode ? ' spirit-svg--pacing' : '')
+
   return (
-    <svg className="spirit-svg" viewBox="0 0 80 80" role="img" aria-label={label}>
+    <svg
+      ref={svgRef}
+      className={className}
+      style={style}
+      viewBox="0 0 80 80"
+      role="img"
+      aria-label={label}
+    >
       <Form stage={stage} g={g} />
     </svg>
   )
@@ -344,8 +436,17 @@ function SpiritArt({
 
 export default function Spirit({
   spirit: spiritProp,
+  paceScale,
+  celebrate = false,
+  compact = false,
 }: {
   spirit?: SpiritState | null
+  // Live pacer scale for BreathePage sync (the breathe-circle's `scaleAt` value). Omit on home.
+  paceScale?: number
+  // One-shot session-complete celebration (from the RewardOverlay flow). Omit on home.
+  celebrate?: boolean
+  // Smaller, chrome-free render for BreathePage (just the art, no stage/bond read-out).
+  compact?: boolean
 }) {
   const [fetched, setFetched] = useState<SpiritState | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -405,11 +506,33 @@ export default function Spirit({
   // The "empty" / first-awakening state IS the spark — the backend always returns an active
   // spirit, and a brand-new user is at stage `spark`, which we frame as the spirit awakening.
 
+  // Read the OS reduced-motion preference once here and thread it down, so every motion path
+  // (idle float, glow pulse, celebration, pacer sync) is gated by the single source of truth.
+  const reducedMotion = prefersReducedMotion()
+  const art = (
+    <SpiritArt
+      stage={stage}
+      path={form}
+      glow={daily_glow}
+      paceScale={paceScale}
+      celebrate={celebrate}
+      reducedMotion={reducedMotion}
+    />
+  )
+
+  // Compact mode (BreathePage): just the art, no stage/bond chrome — the spirit breathes
+  // alongside the pacer without crowding the focused breathing screen.
+  if (compact) {
+    return (
+      <div className="spirit-compact" aria-label="Your spirit, breathing with you">
+        <div className="spirit-art spirit-art--compact">{art}</div>
+      </div>
+    )
+  }
+
   return (
     <section className="spirit-home" aria-label="Your spirit">
-      <div className="spirit-art">
-        <SpiritArt stage={stage} path={form} glow={daily_glow} />
-      </div>
+      <div className="spirit-art">{art}</div>
       {/* Quiet, calm read-out — the stage name, a gentle note, and the bond level. No XP bar,
           no shouted numbers; consistent with the app's low-pressure stance. */}
       <p className="spirit-stage">{copy.name}</p>
