@@ -2122,6 +2122,12 @@ textarea:focus-visible,
   font-size: 0.85rem;
 }
 
+.spirit-lean {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
 .spirit-bond {
   margin: 0.15rem 0 0;
   font-size: 0.78rem;
