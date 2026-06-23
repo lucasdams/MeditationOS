@@ -25,10 +25,18 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
+from app.models.gratitude import GratitudeEntry
+from app.models.journal import Journal
 from app.models.session import Session
 from app.models.spirit import Spirit
 from app.schemas.spirit import SpiritBond, SpiritState
 from app.services import dashboard_service
+from app.services.dashboard_service import (
+    BREATHING_XP_MULTIPLIER,
+    MEDITATION_XP_PER_MIN,
+)
+from app.services.gratitude_service import GRATITUDE_XP
+from app.services.journal_service import JOURNAL_XP
 from app.services.sanctuary_service import COINS_PER_LEVEL
 from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
 
@@ -60,6 +68,137 @@ def stage_for_level(level: int) -> str:
         else:
             break
     return stage
+
+
+# --- Path branching (the lifetime practice-mix lean + commit) ---------------------------
+#
+# The three paths the spirit can grow down (docs/design/spirit.md, "The standout hook"):
+#   stillness → a serene mini Buddha   (meditation-dominant)
+#   breath    → an airy wind spirit    (resonance-breathing-dominant)
+#   heart     → a blooming heart spirit (gratitude + journaling dominant)
+#
+# The dominant path is COMPUTED from the user's *lifetime* practice mix, weighted by the same
+# value system the XP economy uses (meditation ×2 per minute, resonance breathing ×3 per
+# minute, gratitude/journal per entry — GRATITUDE_XP/JOURNAL_XP). Crucially the volume is
+# UNCAPPED lifetime (raw minutes, raw entry counts) — not the daily-XP-capped figures — so the
+# lean reflects genuine long-run preference rather than the anti-farm daily ceiling. Gratitude
+# and journaling sum into one `heart` bucket (three paths from four practice categories).
+#
+# Tie-break: a fixed priority order `stillness > breath > heart`, so the result is fully
+# deterministic when two buckets are equal. A brand-new user with no practice at all has every
+# bucket at 0, which the tie-break resolves to `stillness` — a calm, on-brand default for a
+# stillness-first meditation app, and the spark a user with no history first leans toward.
+STILLNESS = "stillness"
+BREATH = "breath"
+HEART = "heart"
+
+# The commit stage: the spirit crystallizes its path here and never changes it again. Per the
+# design's stage table this is `wisp` (level ≥ 3) — the second stage. Derived from the band
+# constant so retuning STAGE_BANDS keeps the two in step (no second source of truth).
+PATH_COMMIT_STAGE = STAGE_BANDS[1][0]  # "wisp"
+
+# Fixed tie-break priority — earlier wins when buckets are equal. Also the new-user default
+# (all-zero buckets resolve to the first entry).
+_PATH_PRIORITY: tuple[str, ...] = (STILLNESS, BREATH, HEART)
+
+
+def _practice_weights(db: DBSession, user_id: uuid.UUID) -> dict[str, float]:
+    """The user's lifetime, UNCAPPED, value-weighted practice volume per path bucket.
+
+    Reuses the XP economy's weights so the lean matches what the app already treats as
+    valuable, but on raw lifetime volume (not the daily-capped XP figures) so it reflects
+    genuine preference:
+
+    - stillness = lifetime non-breathing minutes × MEDITATION_XP_PER_MIN
+    - breath    = lifetime resonance-breathing minutes × BREATHING_XP_MULTIPLIER
+    - heart     = (lifetime gratitude entries + journal entries) × per-entry XP
+
+    Minutes are floored per whole minute, consistent with the XP curve (a sub-minute sit is
+    worth 0). All values ≥ 0; a user with no practice gets all zeros.
+    """
+    is_breathing = Session.type == "resonance_breathing"
+    # Lifetime whole minutes by breathing / non-breathing (one grouped query).
+    minute_rows = db.execute(
+        select(
+            is_breathing.label("breathing"),
+            func.coalesce(func.sum(Session.duration_seconds), 0) / 60,
+        )
+        .where(Session.user_id == user_id)
+        .group_by(is_breathing)
+    ).all()
+    breathing_minutes = 0
+    meditation_minutes = 0
+    for breathing, minutes in minute_rows:
+        if breathing:
+            breathing_minutes = int(minutes)
+        else:
+            meditation_minutes = int(minutes)
+
+    gratitude_count = int(
+        db.execute(
+            select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
+        ).scalar_one()
+    )
+    journal_count = int(
+        db.execute(
+            select(func.count(Journal.id)).where(Journal.user_id == user_id)
+        ).scalar_one()
+    )
+
+    return {
+        STILLNESS: meditation_minutes * MEDITATION_XP_PER_MIN,
+        BREATH: breathing_minutes * BREATHING_XP_MULTIPLIER,
+        HEART: (gratitude_count + journal_count) * ((GRATITUDE_XP + JOURNAL_XP) / 2),
+    }
+
+
+def path_lean(db: DBSession, user_id: uuid.UUID) -> str:
+    """The suggested path from the user's lifetime, value-weighted practice mix.
+
+    Picks the highest-weighted bucket; ties (including the all-zero brand-new user) resolve by
+    the fixed `_PATH_PRIORITY` order (stillness > breath > heart). A pure read — never writes.
+    """
+    weights = _practice_weights(db, user_id)
+    # Max by weight, tie-broken by the fixed priority (lower index wins on equal weight).
+    return max(_PATH_PRIORITY, key=lambda p: (weights[p], -_PATH_PRIORITY.index(p)))
+
+
+def _stage_at_or_after_commit(level: int) -> bool:
+    """True once the user's level reaches the commit stage's band or beyond. Compared by band
+    index so it stays correct as STAGE_BANDS is retuned."""
+    order = [name for name, _ in STAGE_BANDS]
+    return order.index(stage_for_level(level)) >= order.index(PATH_COMMIT_STAGE)
+
+
+def _maybe_commit_path(db: DBSession, spirit: Spirit, *, level: int, lean: str) -> None:
+    """Crystallize the spirit's path ONCE, at/after the commit stage, if still uncommitted.
+
+    The GET endpoint writes-on-read here (precedent: get-or-create already does). The commit
+    is idempotent and safe:
+
+    - It only fires when the active spirit is at/above PATH_COMMIT_STAGE AND `path IS NULL`,
+      so a spirit that already committed is never touched again — the stored path never changes
+      even if the lean later shifts (that hysteresis is the whole point of storing it).
+    - It is guarded by a conditional UPDATE (`... WHERE id = :id AND path IS NULL`) inside its
+      own transaction, so a concurrent request can't double-commit or clobber a value; the
+      losing writer's UPDATE simply matches 0 rows. The in-memory `path` is then synced to the
+      committed value (ours, or the winner's via a refresh).
+    """
+    if spirit.path is not None or not _stage_at_or_after_commit(level):
+        return
+
+    # Conditional, idempotent write: only set path if it is still NULL (race-safe).
+    result = db.execute(
+        Spirit.__table__.update()
+        .where(Spirit.id == spirit.id, Spirit.path.is_(None))
+        .values(path=lean)
+    )
+    db.commit()
+    if result.rowcount:
+        spirit.path = lean
+    else:
+        # Another request committed first (or it was already set) — adopt the stored value.
+        db.refresh(spirit)
 
 
 # --- Daily glow (visual-only brightness from recent practice) ---------------------------
@@ -170,8 +309,9 @@ def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
 
 
 def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> SpiritState:
-    """The active spirit's computed state: stage, path (NULL in step 1), bond, daily glow,
-    coins, and owned cosmetics. Get-or-creates the spark on first read."""
+    """The active spirit's computed state: stage, path (committed or NULL), the suggested
+    path lean, bond, daily glow, coins, and owned cosmetics. Get-or-creates the spark on first
+    read, and — at/after the commit stage — crystallizes the path once (write-on-read)."""
     spirit = get_or_create_active_spirit(db, user_id)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
@@ -179,12 +319,18 @@ def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> Sp
     xp_into_level = basis.xp_into_level
     xp_for_next = basis.xp_for_next
 
+    # The suggested path from lifetime practice — always computed (a gentle lean shown before
+    # commit). At/after the commit stage, crystallize it once into spirits.path (idempotent).
+    lean = path_lean(db, user_id)
+    _maybe_commit_path(db, spirit, level=level, lean=lean)
+
     cosmetics = _cosmetics(spirit)
     coins = max(0, level * COINS_PER_LEVEL - _cosmetics_spent(cosmetics))
 
     return SpiritState(
         stage=stage_for_level(level),
         path=spirit.path,
+        path_lean=lean,
         bond=SpiritBond(
             level=level,
             xp_into_level=xp_into_level,

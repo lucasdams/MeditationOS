@@ -176,3 +176,139 @@ def test_daily_glow_floor_with_no_practice(db_session):
     user = _make_user(db_session, "glow_floor@example.com")
     glow = spirit_service.daily_glow(db_session, user.id, today=date.today(), tz="UTC")
     assert glow == GLOW_FLOOR
+
+
+# --- Path lean (the lifetime practice-mix suggestion) -----------------------------------
+
+
+def _breathe(client, minutes, *, day="2026-01-01"):
+    return client.post(
+        "/api/v1/sessions",
+        json={
+            "type": "resonance_breathing",
+            "duration_seconds": minutes * 60,
+            "occurred_at": f"{day}T08:00:00",
+            "inhale_seconds": 6,
+            "exhale_seconds": 6,
+        },
+    )
+
+
+def _gratitude(client, text="thankful"):
+    return client.post("/api/v1/gratitude", json={"category": "people", "text": text})
+
+
+def _journal(client, body="a reflection on the day, written out at length"):
+    return client.post("/api/v1/journals", json={"body": body})
+
+
+def test_lean_defaults_to_stillness_for_a_brand_new_user(client):
+    # No practice at all → all buckets 0 → the fixed tie-break default (stillness).
+    _auth(client, "lean_default@example.com")
+    assert _spirit(client)["path_lean"] == "stillness"
+
+
+def test_lean_reflects_meditation_dominant_practice(client):
+    _auth(client, "lean_stillness@example.com")
+    _practice(client, 60)  # a lot of meditation, no breathing / reflections
+    assert _spirit(client)["path_lean"] == "stillness"
+
+
+def test_lean_reflects_breathing_dominant_practice(client):
+    _auth(client, "lean_breath@example.com")
+    _breathe(client, 60)  # resonance breathing dominates
+    # A touch of meditation that stays below the breathing weight.
+    _practice(client, 1)
+    assert _spirit(client)["path_lean"] == "breath"
+
+
+def test_lean_reflects_gratitude_and_journal_dominant_practice(client):
+    _auth(client, "lean_heart@example.com")
+    # Gratitude + journal volume out-weighs a small sit (heart sums both categories).
+    for _ in range(10):
+        _gratitude(client)
+    for _ in range(10):
+        _journal(client)
+    _practice(client, 1)
+    assert _spirit(client)["path_lean"] == "heart"
+
+
+# --- Path commit (write-on-read at stage 2) ---------------------------------------------
+#
+# Stage is a band of the earned-XP level; commit happens at `wisp` (level ≥ 3). We drive the
+# level by logging enough practice, then assert the stored `path` (not just the lean).
+
+
+def _user_id(db_session, email):
+    from app.models.user import User
+
+    return db_session.execute(select(User.id).where(User.email == email)).scalar_one()
+
+
+def _stored_path(db_session, user_id):
+    return db_session.execute(
+        select(Spirit.path).where(Spirit.user_id == user_id, Spirit.retired_at.is_(None))
+    ).scalar_one()
+
+
+def test_path_does_not_commit_before_stage_two(client, db_session):
+    _auth(client, "commit_spark@example.com")
+    user_id = _user_id(db_session, "commit_spark@example.com")
+    # A tiny bit of practice — a leaning spark still at level 1 (stage spark), pre-commit.
+    _practice(client, 5)
+    body = _spirit(client)
+    assert body["stage"] == "spark"
+    assert body["path"] is None  # not yet committed
+    assert body["path_lean"] == "stillness"  # but a lean is shown
+    db_session.expire_all()
+    assert _stored_path(db_session, user_id) is None
+
+
+def test_path_commits_at_stage_two(client, db_session):
+    _auth(client, "commit_wisp@example.com")
+    user_id = _user_id(db_session, "commit_wisp@example.com")
+    # Enough breathing to reach level ≥ 3 (stage wisp). Split across days so the front-loaded
+    # per-session XP curve isn't blunted, and breathing dominates the mix.
+    for i in range(8):
+        _breathe(client, 20, day=f"2026-02-0{i + 1}")
+    body = _spirit(client)
+    assert body["stage"] in {"wisp", "fledgling", "ascendant", "radiant"}
+    assert body["bond"]["level"] >= 3
+    assert body["path"] == "breath"  # committed from the lean
+    db_session.expire_all()
+    assert _stored_path(db_session, user_id) == "breath"
+
+
+def test_path_commit_is_once_only(client, db_session):
+    """Once committed, the stored path never changes even if the lean later shifts."""
+    _auth(client, "commit_once@example.com")
+    user_id = _user_id(db_session, "commit_once@example.com")
+    # Reach stage 2 with breathing → commits to `breath`.
+    for i in range(8):
+        _breathe(client, 20, day=f"2026-03-0{i + 1}")
+    assert _spirit(client)["path"] == "breath"
+    db_session.expire_all()
+    assert _stored_path(db_session, user_id) == "breath"
+
+    # Now flood meditation so the *lean* flips to stillness…
+    for i in range(8):
+        _practice(client, 40, day=f"2026-04-0{i + 1}")
+    body = _spirit(client)
+    assert body["path_lean"] == "stillness"  # the lean moved
+    assert body["path"] == "breath"  # …but the committed path is hysteretic — unchanged
+    db_session.expire_all()
+    assert _stored_path(db_session, user_id) == "breath"
+
+
+def test_path_endpoint_requires_auth(client):
+    # The write-on-read commit must still be behind auth (default-deny).
+    assert client.get("/api/v1/spirit").status_code == 401
+
+
+# --- Path lean pure function (deterministic tie-break) ----------------------------------
+
+
+def test_path_lean_tie_break_priority(db_session):
+    user = _make_user(db_session, "lean_tie@example.com")
+    # No activity → every bucket is 0 → tie-break resolves to the first priority (stillness).
+    assert spirit_service.path_lean(db_session, user.id) == "stillness"
