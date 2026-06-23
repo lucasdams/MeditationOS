@@ -2244,6 +2244,13 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
+.spirit-hero-name {
+  margin: 0.5rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .spirit-hero-stage {
   margin: 0.25rem 0 0;
   font-weight: 600;

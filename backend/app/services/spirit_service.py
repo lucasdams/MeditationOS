@@ -472,6 +472,7 @@ def _build_state(
         stage=stage_for_level(level),
         path=spirit.path,
         path_lean=path_lean(db, user_id),
+        name=spirit.name,
         bond=SpiritBond(
             level=level,
             xp_into_level=basis.xp_into_level,

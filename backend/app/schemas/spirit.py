@@ -78,6 +78,7 @@ class SpiritState(BaseModel):
     stage: str  # spark | wisp | fledgling | ascendant | radiant (pure function of level)
     path: str | None  # committed path (stillness | breath | heart); NULL until commit
     path_lean: str  # suggested path from lifetime practice mix; the lean shown before commit
+    name: str | None  # the active spirit's nickname, if set (so the UI can pre-fill / display)
     bond: SpiritBond  # level + XP-into-level + XP-for-next
     daily_glow: float  # brightness factor in [GLOW_FLOOR, 1.0] from recent practice
     coins: int  # level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
