@@ -107,17 +107,154 @@ function paceToScale(scale: number | undefined): number {
   return PACE_MIN + (PACE_MAX - PACE_MIN) * t
 }
 
+// ── Cosmetics (steps 5 + 6) ──────────────────────────────────────────────────────────────
+// Applied cosmetics — the visible payoff of spending coins — drawn on the art in the same flat
+// vector style. Three slots, matching the backend SPIRIT_COSMETICS_CATALOG exactly:
+//   aura      → soft | warm | starlit   (tints + expands the halo)
+//   accessory → halo | leaf_crown | ribbon (a small adornment on the figure)
+//   habitat   → meadow | dusk | night   (a small backdrop the spirit sits in)
+// Each is static (the step-4 animation layer wraps the whole SVG; cosmetics don't fight it).
+export type SpiritCosmetics = Record<string, string>
+
+// Per-option aura tint + reach. `null` (no aura owned) falls back to the path's own glow in
+// `Aura` below — so an un-adorned spirit looks exactly as it did before cosmetics shipped.
+const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number }> = {
+  soft: { tint: '#e2e8f0', grow: 3, strength: 1.15 },
+  warm: { tint: '#fcd34d', grow: 5, strength: 1.3 },
+  starlit: { tint: '#c4b5fd', grow: 8, strength: 1.5 },
+}
+
 // A soft outer aura shared by every path — its opacity carries the static daily-glow read-out.
-// The aura warms/cools to the path's glow colour and grows a touch with maturity.
-function Aura({ path, p, g }: { path: SpiritPath; p: number; g: number }) {
+// The aura warms/cools to the path's glow colour and grows a touch with maturity. An owned
+// `aura` cosmetic re-tints it, expands its reach, and lifts its strength (the spend payoff).
+function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; aura?: string }) {
   const pal = PATH_PALETTE[path]
-  const r = 24 + p * 8
+  const style = aura ? AURA_STYLE[aura] : undefined
+  const fill = style ? style.tint : pal.glow
+  const strength = style ? style.strength : 1
+  const r = 24 + p * 8 + (style?.grow ?? 0)
   return (
     <>
-      <circle cx={40} cy={40} r={r} fill={pal.glow} opacity={0.14 * g} />
-      <circle cx={40} cy={40} r={r - 8} fill={pal.glow} opacity={0.22 * g} />
+      <circle cx={40} cy={40} r={r} fill={fill} opacity={Math.min(0.6, 0.14 * g * strength)} />
+      <circle cx={40} cy={40} r={r - 8} fill={fill} opacity={Math.min(0.7, 0.22 * g * strength)} />
+      {/* Starlit aura scatters a few faint stars in the halo — the richest, level-gated aura. */}
+      {aura === 'starlit' &&
+        Array.from({ length: 6 }, (_, k) => {
+          const a = (k / 6) * Math.PI * 2
+          return (
+            <circle
+              key={`star-${k}`}
+              cx={40 + Math.cos(a) * (r - 4)}
+              cy={40 + Math.sin(a) * (r - 4)}
+              r={0.9}
+              fill="#ffffff"
+              opacity={0.85 * g}
+            />
+          )
+        })}
     </>
   )
+}
+
+// The habitat backdrop — a small scene the spirit sits in, drawn behind the figure (so it
+// never occludes it). A soft rounded panel with a path-agnostic palette per option.
+function Habitat({ habitat, g }: { habitat: string; g: number }) {
+  if (habitat === 'meadow') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        <rect x={6} y={52} width={68} height={22} rx={6} fill="#bbf7d0" opacity={0.7} />
+        <rect x={6} y={60} width={68} height={14} rx={6} fill="#86efac" opacity={0.8} />
+        {/* A few simple grass blades along the ground. */}
+        {Array.from({ length: 7 }, (_, k) => (
+          <rect key={k} x={12 + k * 8} y={54} width={1.4} height={6} rx={0.7} fill="#4ade80" opacity={0.8} />
+        ))}
+      </g>
+    )
+  }
+  if (habitat === 'dusk') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#fcd9b6" opacity={0.45} />
+        <rect x={4} y={40} width={72} height={34} rx={10} fill="#f9a8d4" opacity={0.4} />
+        {/* A low sun glowing on the horizon. */}
+        <circle cx={40} cy={44} r={9} fill="#fb923c" opacity={0.55} />
+      </g>
+    )
+  }
+  if (habitat === 'night') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e293b" opacity={0.5} />
+        {/* A scattering of stars and a crescent moon. */}
+        {Array.from({ length: 9 }, (_, k) => {
+          const a = (k / 9) * Math.PI * 2
+          return (
+            <circle key={k} cx={40 + Math.cos(a) * 28} cy={36 + Math.sin(a) * 24} r={0.9} fill="#e0e7ff" opacity={0.9} />
+          )
+        })}
+        <circle cx={62} cy={18} r={6} fill="#fde68a" opacity={0.85} />
+        <circle cx={59} cy={16} r={6} fill="#1e293b" opacity={0.85} />
+      </g>
+    )
+  }
+  return null
+}
+
+// A small worn accessory drawn on top of the figure (above its head, near y≈40-14). Each
+// option is a distinct, flat little shape — the on-character payoff of spending coins.
+function Accessory({ accessory, g }: { accessory: string; g: number }) {
+  // The figures sit roughly centred on x=40; their "head" tops out around y≈26-30. We perch
+  // accessories just above that band so they read as worn rather than floating.
+  const topY = 24
+  if (accessory === 'halo') {
+    return (
+      <ellipse
+        cx={40}
+        cy={topY}
+        rx={9}
+        ry={3}
+        fill="none"
+        stroke="#fde68a"
+        strokeWidth={1.8}
+        opacity={0.95 * g}
+        aria-hidden="true"
+      />
+    )
+  }
+  if (accessory === 'leaf_crown') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A ring of small leaves resting on the brow. */}
+        {Array.from({ length: 5 }, (_, k) => {
+          const a = (k / 4) * Math.PI - Math.PI
+          const lx = 40 + Math.cos(a) * 8
+          const ly = topY + 2 - Math.sin(a) * 2
+          return (
+            <ellipse
+              key={k}
+              cx={lx}
+              cy={ly}
+              rx={2.4}
+              ry={1.2}
+              fill="#4ade80"
+              transform={`rotate(${(a * 180) / Math.PI} ${lx} ${ly})`}
+            />
+          )
+        })}
+      </g>
+    )
+  }
+  if (accessory === 'ribbon') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A small bow off to one side. */}
+        <path d={`M 47 ${topY} l 4 -2 v 4 z`} fill="#f472b6" />
+        <path d={`M 47 ${topY} l 4 2 v -4 z`} fill="#ec4899" />
+        <circle cx={47} cy={topY} r={1.1} fill="#be185d" />
+      </g>
+    )
+  }
+  return null
 }
 
 /**
@@ -125,7 +262,7 @@ function Aura({ path, p, g }: { path: SpiritPath; p: number; g: number }) {
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
  * figure haloed in gold. Warm amber/gold palette.
  */
-function StillnessForm({ stage, g }: { stage: SpiritStage; g: number }) {
+function StillnessForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: string }) {
   const pal = PATH_PALETTE.stillness
   const i = stageIndex(stage)
   const p = stageProgress(stage)
@@ -136,7 +273,7 @@ function StillnessForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const bodyH = 18 * scale
   return (
     <g>
-      <Aura path="stillness" p={p} g={g} />
+      <Aura path="stillness" p={p} g={g} aura={aura} />
       {/* Lotus base, from fledgling onward — a few warm petals under the seated figure. */}
       {i >= 3 &&
         Array.from({ length: 5 }, (_, k) => {
@@ -205,7 +342,7 @@ function StillnessForm({ stage, g }: { stage: SpiritStage; g: number }) {
  * current-strokes as it matures, ending a full set of cool-blue currents spiralling around a
  * bright core. Cool blue/white palette.
  */
-function BreathForm({ stage, g }: { stage: SpiritStage; g: number }) {
+function BreathForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: string }) {
   const pal = PATH_PALETTE.breath
   const i = stageIndex(stage)
   const p = stageProgress(stage)
@@ -216,7 +353,7 @@ function BreathForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const coreR = 5 + p * 4
   return (
     <g>
-      <Aura path="breath" p={p} g={g} />
+      <Aura path="breath" p={p} g={g} aura={aura} />
       {/* Flowing wind currents — sweeping S-curves orbiting the core, more of them each stage. */}
       {Array.from({ length: curls }, (_, k) => {
         const a = (k / curls) * Math.PI * 2 - Math.PI / 2
@@ -269,7 +406,7 @@ function BreathForm({ stage, g }: { stage: SpiritStage; g: number }) {
  * `heart` — a blooming spirit. Spark: a closed bud. It opens into petals around a glowing
  * centre, gains leaves, then a full bloom as it matures. Soft pink petals with green leaves.
  */
-function HeartForm({ stage, g }: { stage: SpiritStage; g: number }) {
+function HeartForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: string }) {
   const pal = PATH_PALETTE.heart
   const i = stageIndex(stage)
   const p = stageProgress(stage)
@@ -281,7 +418,7 @@ function HeartForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const coreR = 4 + p * 3
   return (
     <g>
-      <Aura path="heart" p={p} g={g} />
+      <Aura path="heart" p={p} g={g} aura={aura} />
       {/* Leaves flank the stem from fledgling onward — the green defining feature. */}
       {i >= 3 &&
         [-1, 1].map((dir) => (
@@ -349,7 +486,10 @@ function HeartForm({ stage, g }: { stage: SpiritStage; g: number }) {
   )
 }
 
-const PATH_FORM: Record<SpiritPath, (props: { stage: SpiritStage; g: number }) => JSX.Element> = {
+const PATH_FORM: Record<
+  SpiritPath,
+  (props: { stage: SpiritStage; g: number; aura?: string }) => JSX.Element
+> = {
   stillness: StillnessForm,
   breath: BreathForm,
   heart: HeartForm,
@@ -366,10 +506,11 @@ const PATH_FORM: Record<SpiritPath, (props: { stage: SpiritStage; g: number }) =
  * inline transform synced to the pacer. `celebrate` fires a brief one-shot via the Web
  * Animations API. When reduced-motion is on, none of these apply — the art holds static.
  */
-function SpiritArt({
+export function SpiritArt({
   stage,
   path,
   glow,
+  cosmetics,
   paceScale,
   celebrate = false,
   reducedMotion,
@@ -377,6 +518,8 @@ function SpiritArt({
   stage: SpiritStage
   path: SpiritPath
   glow: number
+  // Owned cosmetics {slot: option} — the applied aura / accessory / habitat shown on the art.
+  cosmetics?: SpiritCosmetics
   // Live pacer scale (BreathePage's `scaleAt` value) — when set, the spirit syncs to the breath.
   paceScale?: number
   // One-shot happy reaction (session complete). Plays once when it flips true.
@@ -385,6 +528,9 @@ function SpiritArt({
 }) {
   const g = clampGlow(glow)
   const Form = PATH_FORM[path]
+  const aura = cosmetics?.aura
+  const accessory = cosmetics?.accessory
+  const habitat = cosmetics?.habitat
   const label = `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit`
   const svgRef = useRef<SVGSVGElement | null>(null)
 
@@ -429,7 +575,11 @@ function SpiritArt({
       role="img"
       aria-label={label}
     >
-      <Form stage={stage} g={g} />
+      {/* Habitat backdrop sits behind the figure; the aura (inside Form) re-tints with the
+          owned aura cosmetic; the accessory perches on top. The figure is always legible. */}
+      {habitat && <Habitat habitat={habitat} g={g} />}
+      <Form stage={stage} g={g} aura={aura} />
+      {accessory && <Accessory accessory={accessory} g={g} />}
     </svg>
   )
 }
@@ -498,7 +648,7 @@ export default function Spirit({
     return null
   }
 
-  const { stage, daily_glow, bond, path, path_lean } = spirit
+  const { stage, daily_glow, bond, path, path_lean, cosmetics } = spirit
   const copy = STAGE_COPY[stage]
   // Choose the form by the committed path, falling back to the suggested lean before it
   // commits at stage 2. A defensive default keeps the art rendering if the field is missing.
@@ -514,6 +664,7 @@ export default function Spirit({
       stage={stage}
       path={form}
       glow={daily_glow}
+      cosmetics={cosmetics}
       paceScale={paceScale}
       celebrate={celebrate}
       reducedMotion={reducedMotion}

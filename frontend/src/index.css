@@ -2209,6 +2209,186 @@ textarea:focus-visible,
   }
 }
 
+/* --- Spirit page (docs/design/spirit.md, build steps 5 + 6) ------------------------------- */
+/* Calm, low-pressure: soft sections, a quiet personalize panel, never a shouty shop. */
+.spirit-page .page-head {
+  text-align: center;
+}
+
+.spirit-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: 0.5rem auto 1.5rem;
+}
+
+.spirit-hero-art {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.spirit-hero-art .spirit-svg {
+  width: 200px;
+}
+
+.spirit-preview-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.5rem;
+  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+  color: var(--text-muted);
+}
+
+.spirit-hero-stage {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spirit-hero-bond {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+}
+
+.spirit-hero-coins {
+  margin: 0.5rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.spirit-section {
+  margin: 1.25rem auto;
+  max-width: 36rem;
+}
+
+.spirit-section-head {
+  margin-bottom: 0.5rem;
+}
+
+.spirit-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.spirit-section-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+}
+
+.spirit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.spirit-field input {
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
+  background: var(--surface, #fff);
+  color: var(--text-primary);
+}
+
+.spirit-slot {
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+.spirit-slot legend {
+  padding: 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spirit-slot-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.spirit-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.18));
+  background: var(--surface, #fff);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.spirit-option.applied {
+  background: var(--accent-soft, #e0f2fe);
+  border-color: var(--accent, #38bdf8);
+  font-weight: 600;
+  cursor: default;
+}
+
+.spirit-option.gated {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spirit-collection-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.75rem;
+}
+
+.spirit-collection-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.15rem;
+}
+
+.spirit-collection-art .spirit-svg {
+  width: 72px;
+}
+
+.spirit-collection-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spirit-collection-path {
+  font-size: 0.72rem;
+}
+
+.spirit-awaken {
+  text-align: center;
+}
+
+.spirit-awaken-note {
+  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+}
+
+.spirit-awaken-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
 .sanctuary-grown-row {
   display: flex;
   flex-wrap: wrap;
