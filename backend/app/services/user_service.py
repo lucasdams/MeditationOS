@@ -40,6 +40,7 @@ from app.models.mood_log import MoodLog
 from app.models.sanctuary import SanctuaryPlanting
 from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
+from app.models.spirit import Spirit
 from app.models.user import QUEST_FEATURES, User
 from app.schemas.user import UserCreate
 from app.services.notifications import email as email_channel
@@ -441,6 +442,7 @@ def export_user_data(db: Session, user: User) -> dict:
         "goals": owned(Goal),
         "goal_checkins": owned(GoalCheckin),
         "sanctuary": owned(SanctuaryPlanting),
+        "spirits": owned(Spirit),
         "biometric_readings": owned(BiometricReading),
         "scheduled_sessions": owned(ScheduledSession),
         "breathing_patterns": owned(BreathingPattern),

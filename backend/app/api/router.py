@@ -18,6 +18,7 @@ from app.api.routes import (
     sanctuary,
     scheduled_sessions,
     sessions,
+    spirit,
 )
 
 api_router = APIRouter()
@@ -35,4 +36,5 @@ api_router.include_router(goals.router)
 api_router.include_router(push.router)
 api_router.include_router(scheduled_sessions.router)
 api_router.include_router(sanctuary.router)
+api_router.include_router(spirit.router)
 api_router.include_router(admin.router)
