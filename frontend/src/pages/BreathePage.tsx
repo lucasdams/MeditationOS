@@ -8,6 +8,7 @@ import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAud
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import { mmss } from '../lib/format'
 import RewardOverlay from '../components/RewardOverlay'
+import Spirit from '../components/Spirit'
 import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
 import Modal from '../components/Modal'
@@ -703,6 +704,16 @@ export default function BreathePage() {
           <div
             className={`breathe-circle ${running ? phase : 'idle'}`}
             style={{ transform: `scale(${scale})` }}
+          />
+          {/* The companion breathes with you: while running, it syncs to the SAME `scale`
+              (the breathe-circle's `scaleAt` value) so its aura expands on the inhale and
+              contracts on the exhale — one rAF clock, no drift. When paused it sits idle, and
+              it gives a brief happy swell once the post-session reward appears (`celebrate`).
+              Reduced-motion holds it static (handled inside Spirit). */}
+          <Spirit
+            compact
+            paceScale={running ? scale : undefined}
+            celebrate={reward !== null}
           />
           {/* aria-live="polite" announces phase changes (inhale / hold / exhale) to SR
               users — the primary cue when audio is off or headphones aren't in use. */}
