@@ -330,7 +330,7 @@ def test_other_practices_do_not_nourish_a_creature(client, db_session):
     user_id = _user_id(db_session, "needs_wrongfood@example.com")
     today, days = _recent_days(CONDITION_WINDOW_DAYS)
     for d in days:
-        _practice(client, 10, day=d.isoformat())  # meditation, not the Kapha (stillness) creature's food
+        _practice(client, 10, day=d.isoformat())  # meditation, not the Kapha creature's food
     n = _needs(db_session, "stillness", user_id, today=today)
     assert n.nourished.tier == CONDITION_UNWELL  # the wrong practice never nourishes it
 

@@ -148,9 +148,9 @@ def stage_for_level(level: int) -> str:
 # values are kept stable; the UI relabels them as Ayurvedic doshas. Each dosha's SIGNATURE
 # practice is the one that BALANCES it (Ayurveda balances by OPPOSITES), not the one that
 # matches its element:
-#   stillness → Kapha (earth/water, heavy/slow)     — balanced by resonance BREATHING (energizing)
-#   breath    → Pitta (fire/water, hot/intense)     — balanced by GRATITUDE + JOURNALING (cooling)
-#   heart     → Vata  (air/ether, light/scattered)  — balanced by non-breathing MEDITATION (grounding)
+#   stillness → Kapha (earth/water, heavy)   — balanced by resonance BREATHING (energizing)
+#   breath    → Pitta (fire/water, intense)  — balanced by GRATITUDE + JOURNALING (cooling)
+#   heart     → Vata  (air/ether, scattered) — balanced by MEDITATION (grounding)
 #
 # ADR-0023 retires ADR-0022's practice-auto-detected path and commit-on-read: the path is now
 # CHOSEN ONCE by the user (via `choose_path`) and stored in the same `spirits.path` column. A
@@ -258,7 +258,7 @@ def _signature_care_days(
     that BALANCES that dosha (Ayurveda balances by *opposites*), not the one matching its element:
 
     - stillness (Kapha — heavy/slow) → resonance BREATHING (energizing balances Kapha)
-    - breath    (Pitta — hot/intense) → a GRATITUDE or JOURNAL entry (cooling contentment balances Pitta)
+    - breath    (Pitta — hot/intense) → a GRATITUDE or JOURNAL entry (cooling balances Pitta)
     - heart     (Vata — light/scattered) → non-breathing MEDITATION (grounding balances Vata)
     """
     if path in (STILLNESS, HEART):
@@ -282,7 +282,7 @@ def _signature_care_days(
         ).all()
         return len(days)
 
-    # breath (Pitta) → distinct local days with a gratitude OR journal entry (cooling) in the window.
+    # breath (Pitta) → distinct local days with a gratitude OR journal entry (cooling).
     grat_day = local_date(tz, GratitudeEntry.created_at)
     grat_days = db.execute(
         select(grat_day)
