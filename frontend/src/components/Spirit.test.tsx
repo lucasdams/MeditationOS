@@ -178,16 +178,16 @@ describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
     expect(screen.queryByRole('img', { name: /kapha|pitta|vata/i })).toBeNull()
   })
 
-  it('shows a "choose your creature" prompt (linking to /spirit/choose) for a pathless spark', () => {
+  it('shows a "choose your companion" prompt (linking to /spirit/choose) for a pathless spark', () => {
     renderSpirit(<Spirit spirit={spiritState({ stage: 'spark', path: null })} />)
-    const link = screen.getByRole('link', { name: /choose your creature/i })
+    const link = screen.getByRole('link', { name: /choose your companion/i })
     expect(link).toHaveAttribute('href', '/spirit/choose')
   })
 
   it('renders the chosen creature form once a path is set (and drops the choose prompt)', () => {
     renderSpirit(<Spirit spirit={spiritState({ stage: 'wisp', path: 'breath' })} />)
     expect(screen.getByRole('img', { name: /pitta spirit/i })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /choose your creature/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /choose your companion/i })).toBeNull()
   })
 })
 
@@ -238,13 +238,17 @@ describe('Spirit — care needs read-out (ADR-0023)', () => {
 
 describe('Spirit — stage read-out (calm, no shouting)', () => {
   it('frames a brand-new spark as the spirit awakening', () => {
-    renderSpirit(<Spirit spirit={spiritState({ stage: 'spark' })} />)
+    // A CHOSEN creature at spark stage shows the stage framing (a pathless spark leads with the
+    // "choose your companion" prompt instead).
+    renderSpirit(<Spirit spirit={spiritState({ stage: 'spark', path: 'stillness' })} />)
     expect(screen.getByText(/just awakening/i)).toBeInTheDocument()
     expect(screen.getByText('Spark')).toBeInTheDocument()
   })
 
   it('surfaces the bond level quietly (no shouted XP bar)', () => {
-    renderSpirit(<Spirit spirit={spiritState({ bond: { level: 7, xp_into_level: 20, xp_for_next: 100 } })} />)
+    renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', bond: { level: 7, xp_into_level: 20, xp_for_next: 100 } })} />,
+    )
     expect(screen.getByText(/bond level 7/i)).toBeInTheDocument()
     // No progress bar / meter element — the read-out stays a calm line.
     expect(screen.queryByRole('progressbar')).toBeNull()

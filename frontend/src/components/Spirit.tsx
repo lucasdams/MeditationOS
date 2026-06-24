@@ -767,16 +767,18 @@ function VataForm({ stage, g }: { stage: SpiritStage; g: number }) {
  * same calm way (a pathless spirit is, by design, always early — the choice comes first).
  */
 function SparkForm({ g }: { g: number }) {
-  // A path-agnostic, gentle gold so it stays legible on light + dark without leaning to any
-  // creature's palette. The halo carries the condition glow like the path auras do.
-  const halo = '#fde68a'
-  const core = '#fffbeb'
+  // A warm amber spark with a defined edge so it reads clearly on light / beige backgrounds —
+  // the old pale near-white core was nearly invisible. The halo carries the condition glow; the
+  // core stays solidly opaque (not scaled by glow) so the spark is never hard to see.
+  const halo = '#fbbf24'
+  const core = '#fef3c7'
   return (
     <g>
-      <circle cx={40} cy={40} r={20} fill={halo} opacity={Math.min(0.5, 0.16 * g)} />
-      <circle cx={40} cy={40} r={13} fill={halo} opacity={Math.min(0.6, 0.24 * g)} />
-      <circle cx={40} cy={40} r={6} fill={core} opacity={0.92 * g} />
-      <circle cx={38.5} cy={38.5} r={1.8} fill="#ffffff" opacity={0.85 * g} />
+      <circle cx={40} cy={40} r={20} fill={halo} opacity={Math.min(0.4, 0.18 * g)} />
+      <circle cx={40} cy={40} r={13} fill={halo} opacity={Math.min(0.55, 0.3 * g)} />
+      <circle cx={40} cy={40} r={8.5} fill={core} stroke="#d97706" strokeWidth={1.5} opacity={0.96} />
+      <circle cx={40} cy={40} r={4.5} fill="#f59e0b" opacity={0.95} />
+      <circle cx={38} cy={38.5} r={1.8} fill="#ffffff" opacity={0.9} />
     </g>
   )
 }
@@ -1038,24 +1040,30 @@ export default function Spirit({
       <div className="spirit-art">{art}</div>
       {/* Quiet, calm read-out — the stage name, a gentle note, and the bond level. No XP bar,
           no shouted numbers; consistent with the app's low-pressure stance. */}
-      <p className="spirit-stage">{copy.name}</p>
-      <p className="spirit-note muted">{copy.note}</p>
       {path === null ? (
-        // Pathless spark (ADR-0023): a calm prompt to choose a creature — the picker lives on
-        // /spirit. No needs read-out yet (a pathless spark reports neutral defaults).
-        <p className="spirit-choose-prompt">
-          <Link to="/spirit/choose" className="spirit-choose-link">
-            Choose your creature →
-          </Link>
-        </p>
-      ) : (
-        // A chosen creature: a tidy needs read-out + a single kind care nudge when one is low.
+        // Choose-first (ADR-0023): lead with the CHOICE, not a faint default spark — picking a
+        // companion is the first step. The picker lives on its own focused page.
         <>
+          <p className="spirit-stage">Choose your companion</p>
+          <p className="spirit-note muted">
+            Your spirit is waiting to take form — pick the one whose nature fits you.
+          </p>
+          <p className="spirit-choose-prompt">
+            <Link to="/spirit/choose" className="spirit-choose-cta">
+              Choose your companion →
+            </Link>
+          </p>
+        </>
+      ) : (
+        // A chosen creature: its stage, a tidy needs read-out + a single kind care nudge, bond.
+        <>
+          <p className="spirit-stage">{copy.name}</p>
+          <p className="spirit-note muted">{copy.note}</p>
           <NeedsReadout needs={needs} />
           <CareNudge needs={needs} path={path} />
+          <p className="spirit-bond muted">Bond level {bond.level}</p>
         </>
       )}
-      <p className="spirit-bond muted">Bond level {bond.level}</p>
     </section>
   )
 }
