@@ -26,7 +26,6 @@ const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
 const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
 const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
 const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
-const SanctuaryPage   = lazy(() => import('./pages/SanctuaryPage'))
 const SpiritPage      = lazy(() => import('./pages/SpiritPage'))
 const SchedulePage    = lazy(() => import('./pages/SchedulePage'))
 const SettingsPage    = lazy(() => import('./pages/SettingsPage'))
@@ -80,10 +79,6 @@ export default function App() {
           <Route
             path="/analytics"
             element={<Suspense fallback={<PageFallback />}><AnalyticsPage /></Suspense>}
-          />
-          <Route
-            path="/sanctuary"
-            element={<Suspense fallback={<PageFallback />}><SanctuaryPage /></Suspense>}
           />
           <Route
             path="/spirit"

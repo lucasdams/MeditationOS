@@ -49,7 +49,7 @@ const sampleMetrics: AdminMetrics = {
   active_users: { dau: 1, wau: 3, mau: 4 },
   practice: { total_sessions: 12, total_minutes: 240 },
   content: { gratitude_entries: 7, journal_entries: 4, mood_logs: 2 },
-  adoption: { sanctuary_users: 2, goal_users: 3, reminder_users: 1, push_users: 0 },
+  adoption: { goal_users: 3, reminder_users: 1, push_users: 0 },
 }
 
 const sampleList: AdminUserList = {

@@ -147,7 +147,6 @@ function MetricsView() {
         <div className="bars">
           {(() => {
             const items = [
-              { label: 'Sanctuary', value: data.adoption.sanctuary_users },
               { label: 'Goals', value: data.adoption.goal_users },
               { label: 'Reminders', value: data.adoption.reminder_users },
               { label: 'Push', value: data.adoption.push_users },
