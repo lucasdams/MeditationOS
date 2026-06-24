@@ -29,8 +29,11 @@ SESSION_TYPES = (
     "walking",
     "loving_kindness",
     "resonance_breathing",
+    "energizing_breathing",
     "other",
 )
+# Breathwork session types (vs meditation). Both nourish the breathwork signals.
+BREATHING_SESSION_TYPES = ("resonance_breathing", "energizing_breathing")
 _TYPE_LIST = ", ".join(f"'{t}'" for t in SESSION_TYPES)
 
 

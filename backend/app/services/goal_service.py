@@ -15,6 +15,7 @@ from app.core.limits import enforce_daily_create_cap
 from app.models.goal import Goal, GoalCheckin
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
+from app.models.session import BREATHING_SESSION_TYPES
 from app.models.session import Session as PracticeSession
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
 from app.services._ownership import delete_owned, get_owned
@@ -58,7 +59,7 @@ def _done_count(db: DBSession, user_id: uuid.UUID, goal: Goal, *, today: date, t
             .where(PracticeSession.user_id == user_id, local >= start, local <= today)
         )
         if goal.activity == "breathe":
-            stmt = stmt.where(PracticeSession.type == "resonance_breathing")
+            stmt = stmt.where(PracticeSession.type.in_(BREATHING_SESSION_TYPES))
     elif goal.activity == "gratitude":
         local = local_date(tz, GratitudeEntry.created_at)
         stmt = (

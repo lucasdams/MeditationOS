@@ -35,7 +35,7 @@ import {
   writeDraft,
   type SessionDraft,
 } from '../lib/sessionDraft'
-import type { SessionCreate } from '../types'
+import type { MeditationType, SessionCreate } from '../types'
 import {
   MAX_SCALE,
   MIN_SCALE,
@@ -66,6 +66,7 @@ const STATIC_SCALE = (MIN_SCALE + MAX_SCALE) / 2
 const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
   resonance: { emoji: '🌊', tint: '#e0f2fe' }, // rolling, longer exhale
   box: { emoji: '🟦', tint: '#e0e7ff' }, // four equal sides
+  energizing: { emoji: '☀️', tint: '#fef3c7' }, // brisk, active inhale
 }
 
 // Breaths-per-minute is the user's primary control for the Resonance preset: stepped
@@ -238,6 +239,10 @@ export default function BreathePage() {
       ? (preset.pattern as Pattern)
       : (preset.derive ?? patternForBpm)(controlValue)
   const { inhale, exhale } = pattern
+  // The energizing preset saves as its own breathwork type; box + resonance stay
+  // resonance_breathing. Both are classified as breathwork by the backend.
+  const breathType: MeditationType =
+    preset.key === 'energizing' ? 'energizing_breathing' : 'resonance_breathing'
 
   // Remember the chosen pace + preset for next time.
   useEffect(() => {
@@ -282,6 +287,7 @@ export default function BreathePage() {
   const baseElapsedRef = useRef(0)
   const phaseRef = useRef<Segment>('inhale')
   const patternRef = useRef<Pattern>(pattern)
+  const breathTypeRef = useRef(breathType)
   // Audio look-ahead scheduler: `audioAnchorRef` is the audio-clock time of this run's
   // inhale start, and `nextEventRef` the index of the next cue to schedule. Audio events
   // are queued ahead on the audio clock (see lib/breathAudio.glideAt), so the guide stays
@@ -290,14 +296,15 @@ export default function BreathePage() {
   const nextEventRef = useRef(0)
   useEffect(() => {
     patternRef.current = pattern
-  }, [pattern.inhale, pattern.holdFull, pattern.exhale, pattern.holdEmpty])
+    breathTypeRef.current = breathType
+  }, [pattern.inhale, pattern.holdFull, pattern.exhale, pattern.holdEmpty, breathType])
 
   // The session payload for the current breathing sit (or null if nothing to save).
   function draftPayload(elapsedSec: number): SessionCreate | null {
     if (!tokenRef.current || elapsedSec < MIN_DRAFT_SECONDS) return null
     const p = patternRef.current
     return {
-      type: 'resonance_breathing',
+      type: breathTypeRef.current,
       duration_seconds: Math.floor(elapsedSec),
       occurred_at: startedAtRef.current || new Date().toISOString(),
       inhale_seconds: p.inhale,
@@ -560,7 +567,7 @@ export default function BreathePage() {
     try {
       const before = await dashboardService.getStats()
       const saved = await sessionService.create({
-        type: 'resonance_breathing',
+        type: breathType,
         // Floor, never round up — a sub-minute breath must not count as the
         // "breathe a minute" quest (which needs a true ≥60s).
         duration_seconds: Math.floor(durationSec),

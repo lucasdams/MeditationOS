@@ -21,6 +21,7 @@ _TYPE_LABELS = {
     "walking": "Walking",
     "loving_kindness": "Loving-kindness",
     "resonance_breathing": "Resonance breathing",
+    "energizing_breathing": "Energizing breathing",
     "other": "Meditation",
 }
 

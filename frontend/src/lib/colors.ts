@@ -66,6 +66,7 @@ export const TYPE_COLORS: Record<MeditationType, string> = {
   walking: '#f59e0b',
   loving_kindness: '#ec4899',
   resonance_breathing: '#3b82f6',
+  energizing_breathing: '#d97706',
   other: '#9ca3af',
 }
 
@@ -79,6 +80,7 @@ export const TYPE_LABELS: Record<MeditationType, string> = {
   walking: 'Walking',
   loving_kindness: 'Loving-kindness',
   resonance_breathing: 'Resonance breathing',
+  energizing_breathing: 'Energizing breathing',
   other: 'Other',
 }
 

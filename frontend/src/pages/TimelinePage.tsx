@@ -296,7 +296,7 @@ export default function TimelinePage() {
                     : undefined
             const emoji =
               item.kind === 'session'
-                ? item.session.type === 'resonance_breathing'
+                ? ['resonance_breathing', 'energizing_breathing'].includes(item.session.type)
                   ? '🫁'
                   : '🧘'
                 : item.kind === 'journal'

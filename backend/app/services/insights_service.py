@@ -28,7 +28,7 @@ from datetime import date, timedelta
 from sqlalchemy import Float, case, cast, func, select
 from sqlalchemy.orm import Session as DBSession
 
-from app.models.session import Session
+from app.models.session import BREATHING_SESSION_TYPES, Session
 from app.schemas.analytics import Insight, InsightsResponse
 from app.services.time_utils import local_date
 
@@ -182,7 +182,7 @@ def _time_of_day_calm(db: DBSession, owned, local_hour) -> list[Insight]:
 def _breathing_vs_meditation(db: DBSession, owned) -> list[Insight]:
     """Compare average calm: resonance breathing vs other meditation."""
     group = case(
-        (Session.type == "resonance_breathing", "breathing"),
+        (Session.type.in_(BREATHING_SESSION_TYPES), "breathing"),
         else_="meditation",
     )
     rows = {

@@ -25,6 +25,7 @@ const ZERO_STATS: DashboardStats = {
 const TYPES: { value: MeditationType; label: string; emoji: string; tint: string }[] = [
   { value: 'mindfulness', label: 'Meditation', emoji: '🧘', tint: '#ccfbf1' },
   { value: 'resonance_breathing', label: 'Breathing', emoji: '🫁', tint: '#e0f2fe' },
+  { value: 'energizing_breathing', label: 'Energizing breath', emoji: '☀️', tint: '#fef3c7' },
 ]
 
 // Quick-pick durations (minutes). A "Custom" option appears after these chips.
@@ -116,7 +117,9 @@ export default function LogSessionPage() {
     // failure must not report a save error or skip the reward overlay.
     const after = await dashboardService.getStats().catch(() => before)
     // True gain from the server, itemized (the session + any quest/streak bonus).
-    const label = type === 'resonance_breathing' ? '🫁 Breathing' : '🧘 Meditation'
+    const label = ['resonance_breathing', 'energizing_breathing'].includes(type)
+      ? '🫁 Breathing'
+      : '🧘 Meditation'
     const bd = buildXpBreakdown(before, after, label)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     setSubmitting(false)

@@ -35,6 +35,7 @@ SessionType = Literal[
     "walking",
     "loving_kindness",
     "resonance_breathing",
+    "energizing_breathing",
     "other",
 ]
 

@@ -40,7 +40,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
-from app.models.session import Session
+from app.models.session import BREATHING_SESSION_TYPES, Session
 from app.models.spirit import Spirit
 from app.schemas.spirit import (
     ChoosePathRequest,
@@ -270,9 +270,9 @@ def _signature_care_days(
             select(session_day)
             .where(
                 Session.user_id == user_id,
-                (Session.type == "resonance_breathing")
+                (Session.type.in_(BREATHING_SESSION_TYPES))
                 if is_breathing
-                else (Session.type != "resonance_breathing"),
+                else (Session.type.notin_(BREATHING_SESSION_TYPES)),
                 session_day >= window_start,
                 session_day <= today,
             )
@@ -339,7 +339,7 @@ def _distinct_practice_types_in_window(
     # in-window total clears the practice floor.
     secs_by_kind = db.execute(
         select(
-            (Session.type == "resonance_breathing").label("is_breathing"),
+            (Session.type.in_(BREATHING_SESSION_TYPES)).label("is_breathing"),
             func.sum(Session.duration_seconds),
         )
         .where(

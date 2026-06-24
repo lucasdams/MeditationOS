@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
-from app.models.session import Session
+from app.models.session import BREATHING_SESSION_TYPES, Session
 from app.models.user import QUEST_FEATURES
 from app.schemas.dashboard import (
     ActivityCalendar,
@@ -215,7 +215,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     breathing_local_day = _local_date(tz, Session.occurred_at)
     breathing_day_rows = db.execute(
         select(breathing_local_day)
-        .where(Session.user_id == user_id, Session.type == "resonance_breathing")
+        .where(Session.user_id == user_id, Session.type.in_(BREATHING_SESSION_TYPES))
         .group_by(breathing_local_day)
         .having(func.sum(Session.duration_seconds) >= BREATHE_QUEST_SECONDS)
     ).all()
@@ -227,7 +227,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     meditation_local_day = _local_date(tz, Session.occurred_at)
     meditation_day_rows = db.execute(
         select(meditation_local_day)
-        .where(Session.user_id == user_id, Session.type != "resonance_breathing")
+        .where(Session.user_id == user_id, Session.type.notin_(BREATHING_SESSION_TYPES))
         .group_by(meditation_local_day)
         .having(func.sum(Session.duration_seconds) >= MEDITATE_QUEST_SECONDS)
     ).all()
@@ -253,7 +253,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
             select(_local_date(tz, Session.occurred_at))
             .where(
                 Session.user_id == user_id,
-                Session.type != "resonance_breathing",
+                Session.type.notin_(BREATHING_SESSION_TYPES),
                 Session.duration_seconds >= LONG_SIT_SECONDS,
             )
             .distinct()
@@ -265,7 +265,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
         r[0]
         for r in db.execute(
             select(double_sit_local_day)
-            .where(Session.user_id == user_id, Session.type != "resonance_breathing")
+            .where(Session.user_id == user_id, Session.type.notin_(BREATHING_SESSION_TYPES))
             .group_by(double_sit_local_day)
             .having(func.count(Session.id) >= 2)
         ).all()
@@ -275,7 +275,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
         r[0]
         for r in db.execute(
             select(breathing_local_day)
-            .where(Session.user_id == user_id, Session.type == "resonance_breathing")
+            .where(Session.user_id == user_id, Session.type.in_(BREATHING_SESSION_TYPES))
             .group_by(breathing_local_day)
             .having(func.sum(Session.duration_seconds) >= DEEP_BREATHE_SECONDS)
         ).all()
@@ -287,7 +287,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
             select(_local_date(tz, Session.occurred_at))
             .where(
                 Session.user_id == user_id,
-                Session.type == "resonance_breathing",
+                Session.type.in_(BREATHING_SESSION_TYPES),
                 Session.inhale_seconds.isnot(None),
                 Session.exhale_seconds.isnot(None),
                 (Session.inhale_seconds + Session.exhale_seconds) >= SLOW_BREATH_SECONDS,
@@ -366,7 +366,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     # (capped) reflection and the daily-quest bonus. The streak bonus is tracked
     # separately so coins (funded by *earned* XP) never drop when a streak lapses.
     practice_xp = _practice_xp(
-        [(secs, type_ == "resonance_breathing") for secs, type_ in practice_rows]
+        [(secs, type_ in BREATHING_SESSION_TYPES) for secs, type_ in practice_rows]
     )
     earned_xp = (
         practice_xp
@@ -470,7 +470,7 @@ def get_tending_signals(
     # Per-day, per-type capped minutes. Each (local day × is-breathing) bucket's whole minutes
     # are floored then clamped to TENDING_DAILY_MINUTES_CAP, so neither a marathon sit nor a
     # spam of sessions on one day inflates the total. Summed over all days → lifetime minutes.
-    is_breathing = Session.type == "resonance_breathing"
+    is_breathing = Session.type.in_(BREATHING_SESSION_TYPES)
     per_day = (
         select(
             is_breathing.label("breathing"),
@@ -575,7 +575,7 @@ def get_stats(
         "double_sit": db.execute(
             select(func.count(Session.id)).where(
                 Session.user_id == user_id,
-                Session.type != "resonance_breathing",
+                Session.type.notin_(BREATHING_SESSION_TYPES),
                 _local_date(tz, Session.occurred_at) == today,
             )
         ).scalar_one(),
@@ -669,7 +669,7 @@ def get_activity(
             select(local_day)
             .where(
                 Session.user_id == user_id,
-                Session.type == "resonance_breathing",
+                Session.type.in_(BREATHING_SESSION_TYPES),
                 local_day >= start,
                 local_day <= today,
             )
