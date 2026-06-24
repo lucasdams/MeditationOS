@@ -43,7 +43,8 @@ import type { SpiritPath, SpiritStage, SpiritState } from '../types'
 
 // A calm, friendly label per stage — used for the screen-reader description and the quiet
 // caption under the art. A brand-new user is at `spark`; we frame that as the first awakening.
-const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
+// Exported so SpiritPage shares the same labels/notes (a single source of truth).
+export const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
   spark: { name: 'Spark', note: 'Your spirit is just awakening.' },
   wisp: { name: 'Wisp', note: 'Your spirit is taking shape.' },
   fledgling: { name: 'Fledgling', note: 'Your spirit is finding its form.' },
@@ -52,7 +53,8 @@ const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
 }
 
 // A friendly name per path, for the screen-reader label and the quiet pre-commit lean hint.
-const PATH_COPY: Record<SpiritPath, string> = {
+// Exported so SpiritPage shares the same path labels.
+export const PATH_COPY: Record<SpiritPath, string> = {
   stillness: 'stillness',
   breath: 'breath',
   heart: 'heart',
@@ -79,14 +81,20 @@ function stageProgress(stage: SpiritStage): number {
   return (stageIndex(stage) - 1) / (STAGE_ORDER.length - 1)
 }
 
-// Clamp the daily glow into the floored [0.4, 1] band (the backend floors it; defend anyway).
+// The floored daily-glow band [0.4, 1]. These mirror the backend GLOW_FLOOR / ceiling: the
+// server floors glow so a resting spirit never goes fully dark; we defend the same band here.
+const SPIRIT_GLOW_FLOOR = 0.4
+const SPIRIT_GLOW_CEIL = 1
+
+// Clamp the daily glow into the floored band (the backend floors it; defend anyway).
 function clampGlow(glow: number): number {
-  return Math.max(0.4, Math.min(1, glow))
+  return Math.max(SPIRIT_GLOW_FLOOR, Math.min(SPIRIT_GLOW_CEIL, glow))
 }
 
 // True when the OS asks for reduced motion. Read at render (a one-shot, like BreathePage),
 // so the static path is chosen before any animation class / inline transform is applied.
-function prefersReducedMotion(): boolean {
+// Exported so SpiritPage threads the same real value into its hero art.
+export function prefersReducedMotion(): boolean {
   return (
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
@@ -495,6 +503,13 @@ const PATH_FORM: Record<
   heart: HeartForm,
 }
 
+// The form chosen for the art: the committed path, falling back to the suggested lean before
+// it commits at stage 2. A defensive default keeps the art rendering if both are somehow absent.
+// Exported so SpiritPage uses the exact same selection logic (a single source of truth).
+export function formFor(spirit: SpiritState): SpiritPath {
+  return spirit.path ?? spirit.path_lean ?? 'stillness'
+}
+
 /**
  * The procedural spirit art, branched by path. The form is chosen by the committed `path`,
  * falling back to the suggested `path_lean` before commit — so an early spark already leans
@@ -514,6 +529,7 @@ export function SpiritArt({
   paceScale,
   celebrate = false,
   reducedMotion,
+  previewing = false,
 }: {
   stage: SpiritStage
   path: SpiritPath
@@ -525,13 +541,16 @@ export function SpiritArt({
   // One-shot happy reaction (session complete). Plays once when it flips true.
   celebrate?: boolean
   reducedMotion: boolean
+  // True when the art shows a not-yet-bought cosmetic preview — announced to screen readers
+  // (via the label + aria-live) so they know they're seeing a preview, not the applied look.
+  previewing?: boolean
 }) {
   const g = clampGlow(glow)
   const Form = PATH_FORM[path]
   const aura = cosmetics?.aura
   const accessory = cosmetics?.accessory
   const habitat = cosmetics?.habitat
-  const label = `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit`
+  const label = `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit${previewing ? ' (preview)' : ''}`
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   // Session-complete celebration: a single, gentle swell + glow via the Web Animations API,
@@ -574,6 +593,7 @@ export function SpiritArt({
       viewBox="0 0 80 80"
       role="img"
       aria-label={label}
+      aria-live="polite"
     >
       {/* Habitat backdrop sits behind the figure; the aura (inside Form) re-tints with the
           owned aura cosmetic; the accessory perches on top. The figure is always legible. */}
@@ -648,11 +668,11 @@ export default function Spirit({
     return null
   }
 
-  const { stage, daily_glow, bond, path, path_lean, cosmetics } = spirit
+  const { stage, daily_glow, bond, path, cosmetics } = spirit
   const copy = STAGE_COPY[stage]
   // Choose the form by the committed path, falling back to the suggested lean before it
   // commits at stage 2. A defensive default keeps the art rendering if the field is missing.
-  const form: SpiritPath = path ?? path_lean ?? 'stillness'
+  const form: SpiritPath = formFor(spirit)
   // The "empty" / first-awakening state IS the spark — the backend always returns an active
   // spirit, and a brand-new user is at stage `spark`, which we frame as the spirit awakening.
 
@@ -675,14 +695,19 @@ export default function Spirit({
   // alongside the pacer without crowding the focused breathing screen.
   if (compact) {
     return (
-      <div className="spirit-compact" aria-label="Your spirit, breathing with you">
+      // No wrapper aria-label: the inner SVG already carries role="img" + its own label, so a
+      // label here would double-announce. The single label lives on the art.
+      <div className="spirit-compact">
         <div className="spirit-art spirit-art--compact">{art}</div>
       </div>
     )
   }
 
   return (
-    <section className="spirit-home" aria-label="Your spirit">
+    // No section aria-label here: the inner SVG already carries role="img" + its own label, so
+    // labelling the wrapper too would double-announce. The error / loading states above keep
+    // their label since they have no labelled art to stand in for it.
+    <section className="spirit-home">
       <div className="spirit-art">{art}</div>
       {/* Quiet, calm read-out — the stage name, a gentle note, and the bond level. No XP bar,
           no shouted numbers; consistent with the app's low-pressure stance. */}
