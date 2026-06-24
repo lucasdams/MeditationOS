@@ -2861,7 +2861,10 @@ textarea:focus-visible,
   padding: 0.45rem 0.6rem;
   border-radius: 0.5rem;
   border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
-  background: var(--surface, #fff);
+  /* Use the real theme-aware surface token (white in light mode, dark slate in dark mode) so
+     typed text on --text-primary stays legible in both themes. `--surface` was never defined,
+     so this always fell back to white and hid light text in dark mode. */
+  background: var(--bg-surface);
   color: var(--text-primary);
 }
 
@@ -3018,6 +3021,108 @@ textarea:focus-visible,
 
 .spirit-awaken-cancel:hover:not(:disabled) {
   text-decoration: underline;
+}
+
+/* A quiet, link-like reset action (name reset / upgrades reset). Resetting is a rare escape
+   hatch, not a primary CTA, so it reads as a small muted text-button — never a filled button.
+   Reused by the bottom-of-page name reset and the foot of the Personalize panel. */
+.spirit-reset-quiet {
+  margin-top: 0;
+  padding: 0.2rem 0.1rem;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.spirit-reset-quiet:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.spirit-reset-quiet:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* The minor name-reset line at the foot of the page — a muted sentence with the quiet button
+   tucked inline, so it's available but never one of the first things you see. */
+.spirit-reset-name-line {
+  font-size: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 1.25rem 0 0;
+}
+
+/* The foot of the Personalize panel — the quiet reset-upgrades link sits here, set apart from
+   the buyable option chips so adorning reads as the primary action. */
+.spirit-personalize-foot {
+  margin-top: 0.75rem;
+  text-align: right;
+}
+
+/* Before/after buy confirmation — two spirit renders side by side ("Now" vs "With X"), each
+   with a small caption. Calm and on-brand; shrinks/stacks gracefully at narrow widths. */
+.spirit-buy-preview {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: flex-start;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.spirit-buy-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.spirit-buy-art .spirit-svg {
+  width: 100%;
+  max-width: 120px;
+}
+
+.spirit-buy-caption {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  text-align: center;
+}
+
+.spirit-buy-arrow {
+  align-self: center;
+  color: var(--text-secondary, #6b7280);
+  font-size: 1.2rem;
+  flex: 0 0 auto;
+}
+
+.spirit-buy-cost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0;
+}
+
+@media (max-width: 420px) {
+  .spirit-buy-art .spirit-svg {
+    max-width: 96px;
+  }
+  .spirit-buy-preview {
+    gap: 0.4rem;
+  }
 }
 
 /* The nickname hint line + near-the-cap counter — quiet, small, under the field. */

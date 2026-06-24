@@ -129,7 +129,7 @@ describe('SpiritPage personalize panel', () => {
     expect(buyCosmetic).not.toHaveBeenCalled()
   })
 
-  it('buys a cosmetic via the service and swaps in the returned state', async () => {
+  it('buys a cosmetic via a before/after confirm — clicking the option opens the modal, Confirm buys', async () => {
     get.mockResolvedValue(spiritWith())
     buyCosmetic.mockResolvedValue(
       spiritWith({ coins: 75, cosmetics: { aura: 'warm' } }),
@@ -137,12 +137,36 @@ describe('SpiritPage personalize panel', () => {
 
     renderPage()
 
+    // Clicking a buyable option no longer buys directly — it opens the before/after confirm.
     fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
+    expect(buyCosmetic).not.toHaveBeenCalled()
 
+    // The confirm modal shows a before/after preview ("Now" + "With Warm glow") and two arts.
+    const dialog = within(await screen.findByRole('dialog'))
+    expect(dialog.getByText('Now')).toBeInTheDocument()
+    expect(dialog.getByText(/With Warm glow/)).toBeInTheDocument()
+    expect(document.querySelectorAll('.spirit-buy-art .spirit-svg').length).toBe(2)
+
+    // Confirm → the purchase goes through and the success toast shows.
+    fireEvent.click(dialog.getByRole('button', { name: /Confirm/ }))
     await waitFor(() => expect(buyCosmetic).toHaveBeenCalledWith({ slot: 'aura', option: 'warm' }))
     await waitFor(() =>
       expect(screen.getByText(/Warm glow added to your spirit/)).toBeInTheDocument(),
     )
+  })
+
+  it('cancels the buy confirm without purchasing', async () => {
+    get.mockResolvedValue(spiritWith())
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
+    const dialog = within(await screen.findByRole('dialog'))
+
+    // Cancel closes the modal and nothing is bought.
+    fireEvent.click(dialog.getByRole('button', { name: /Cancel/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(buyCosmetic).not.toHaveBeenCalled()
   })
 
   it('never buys a locked option on click, but gives quiet feedback (no silent no-op)', async () => {
@@ -168,6 +192,8 @@ describe('SpiritPage personalize panel', () => {
     renderPage()
 
     fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
+    const dialog = within(await screen.findByRole('dialog'))
+    fireEvent.click(dialog.getByRole('button', { name: /Confirm/ }))
     await waitFor(() => expect(screen.getByText(/Could not apply that yet/)).toBeInTheDocument())
   })
 })
