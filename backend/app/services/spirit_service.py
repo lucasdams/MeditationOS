@@ -494,18 +494,33 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
         "soft": {"cost": 30, "unlock_level": 1},
         "warm": {"cost": 45, "unlock_level": 1},
         "starlit": {"cost": 70, "unlock_level": 5},
+        "ember": {"cost": 50, "unlock_level": 1},
+        "frost": {"cost": 55, "unlock_level": 2},
+        "rose": {"cost": 45, "unlock_level": 1},
     },
     # A small worn accessory.
     "accessory": {
         "halo": {"cost": 40, "unlock_level": 1},
         "leaf_crown": {"cost": 55, "unlock_level": 1},
         "ribbon": {"cost": 35, "unlock_level": 1},
+        "flower": {"cost": 40, "unlock_level": 1},
+        "scarf": {"cost": 45, "unlock_level": 2},
+        "star": {"cost": 60, "unlock_level": 5},
     },
     # A small backdrop the spirit sits in (the "habitat").
     "habitat": {
         "meadow": {"cost": 50, "unlock_level": 1},
         "dusk": {"cost": 65, "unlock_level": 3},
         "night": {"cost": 80, "unlock_level": 7},
+        "garden": {"cost": 60, "unlock_level": 1},
+        "seaside": {"cost": 70, "unlock_level": 3},
+        "cottage": {"cost": 90, "unlock_level": 7},
+    },
+    # A small friend that keeps the spirit company (the "companion").
+    "companion": {
+        "firefly": {"cost": 60, "unlock_level": 1},
+        "bird": {"cost": 85, "unlock_level": 3},
+        "cat": {"cost": 110, "unlock_level": 7},
     },
 }
 

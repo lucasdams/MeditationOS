@@ -50,18 +50,31 @@ const SLOT_LABEL: Record<string, string> = {
   aura: 'Aura',
   accessory: 'Accessory',
   habitat: 'Habitat',
+  companion: 'Companion',
 }
 
 const OPTION_LABEL: Record<string, string> = {
   soft: 'Soft glow',
   warm: 'Warm glow',
   starlit: 'Starlit',
+  ember: 'Ember glow',
+  frost: 'Frost glow',
+  rose: 'Rose glow',
   halo: 'Halo',
   leaf_crown: 'Leaf crown',
   ribbon: 'Ribbon',
+  flower: 'Flower',
+  scarf: 'Scarf',
+  star: 'Star',
   meadow: 'Meadow',
   dusk: 'Dusk',
   night: 'Night sky',
+  garden: 'Garden',
+  seaside: 'Seaside',
+  cottage: 'Cottage',
+  firefly: 'Firefly',
+  bird: 'Bird',
+  cat: 'Cat',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.

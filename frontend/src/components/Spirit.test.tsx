@@ -258,6 +258,26 @@ describe('Spirit — stage read-out (calm, no shouting)', () => {
   })
 })
 
+describe('Spirit — new cosmetics render on the art', () => {
+  // Each new cosmetic must actually draw something — these are stable markers that an applied
+  // option reaches the SVG (no dead catalog entries).
+  it('draws the cottage habitat backdrop (its roof) behind the figure', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { habitat: 'cottage' } })} />,
+    )
+    // The cottage roof is a distinctive amber path (#d97706).
+    expect(container.querySelector('.spirit-svg path[fill="#d97706"]')).not.toBeNull()
+  })
+
+  it('draws a companion (the cat) beside the figure', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'cat' } })} />,
+    )
+    // The curled cat body is an amber ellipse (#fbbf24).
+    expect(container.querySelector('.spirit-svg ellipse[fill="#fbbf24"]')).not.toBeNull()
+  })
+})
+
 describe('Spirit — condition applied as a static brightness (ADR-0023)', () => {
   it('renders a brighter aura at full condition than at a depleted one', () => {
     const haloOpacity = (state: SpiritState): number => {
