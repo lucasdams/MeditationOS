@@ -104,6 +104,70 @@ describe('Spirit — path-specific forms', () => {
       expect(countShapes(path, 'radiant')).toBeGreaterThan(countShapes(path, 'spark'))
     })
   })
+
+  // The `heart` path is the airy Vata creature (ADR-0023 phase 4) — air + ether, light and
+  // mobile, drawn with curling breeze currents and drifting motes/leaves across five stages.
+  describe('heart → Vata (air) creature', () => {
+    const vataShapes = (stage: SpiritStage): number => {
+      const { container } = renderSpirit(<Spirit spirit={spiritState({ stage, path: 'heart' })} />)
+      const n = container.querySelectorAll('.spirit-svg *').length
+      cleanup()
+      return n
+    }
+
+    it('is labelled a Vata spirit (the dosha) for the heart path', () => {
+      renderSpirit(<Spirit spirit={spiritState({ stage: 'radiant', path: 'heart' })} />)
+      expect(screen.getByRole('img', { name: /vata spirit/i })).toBeInTheDocument()
+    })
+
+    it('grows visibly more developed at every stage along the ladder (spark → radiant)', () => {
+      // Monotonic structure growth across all five stages, not just spark vs radiant.
+      const counts = (['spark', 'wisp', 'fledgling', 'ascendant', 'radiant'] as SpiritStage[]).map(
+        vataShapes,
+      )
+      for (let s = 1; s < counts.length; s++) {
+        expect(counts[s]).toBeGreaterThanOrEqual(counts[s - 1])
+      }
+      expect(counts[counts.length - 1]).toBeGreaterThan(counts[0])
+    })
+
+    it('draws curling breeze currents (stroked paths) — the airy silhouette, not a bloom', () => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart' })} />,
+      )
+      // The trailing air-currents are stroked (fill:none) paths — the Vata defining feature.
+      const strokedPaths = Array.from(container.querySelectorAll('.spirit-svg path')).filter(
+        (el) => el.getAttribute('fill') === 'none',
+      )
+      expect(strokedPaths.length).toBeGreaterThan(0)
+    })
+
+    it('uses the airy sky/lavender palette (not the old pink bloom)', () => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart' })} />,
+      )
+      const svg = container.querySelector('.spirit-svg')!.innerHTML
+      // Airy sky-blue body present; the retired pink bloom colour is gone.
+      expect(svg).toContain('#bae6fd')
+      expect(svg).not.toContain('#f9a8d4')
+    })
+
+    it('renders a brighter Vata at full condition than at a depleted (floored) one', () => {
+      const bodyOpacity = (state: SpiritState): number => {
+        const { container } = renderSpirit(<Spirit spirit={state} />)
+        // The flowing body path (a filled, not stroked, path) carries condition as opacity.
+        const body = Array.from(
+          container.querySelectorAll('.spirit-creature path'),
+        ).find((el) => el.getAttribute('fill') !== 'none') as SVGPathElement
+        const v = Number(body.getAttribute('opacity'))
+        cleanup()
+        return v
+      }
+      const bright = bodyOpacity(spiritState({ path: 'heart', condition: need('thriving', 1) }))
+      const faded = bodyOpacity(spiritState({ path: 'heart', condition: need('unwell', 0.4) }))
+      expect(bright).toBeGreaterThan(faded)
+    })
+  })
 })
 
 describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
