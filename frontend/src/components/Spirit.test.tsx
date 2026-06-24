@@ -277,6 +277,30 @@ describe('Spirit — new cosmetics render on the art', () => {
     expect(container.querySelector('.spirit-svg ellipse[fill="#fbbf24"]')).not.toBeNull()
   })
 
+  it('wraps the companion in a .spirit-companion group that animates on its own pace', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'cat' } })} />,
+    )
+    // The companion sits in its own group (so it can move independently of the creature's float).
+    const group = container.querySelector('.spirit-companion')
+    expect(group).not.toBeNull()
+    // When alive (motion on), it carries its own animating class — distinct from the creature/aura.
+    expect(group!.classList.contains('spirit-companion--alive')).toBe(true)
+  })
+
+  it('holds the companion static under reduced motion', () => {
+    const restore = stubReducedMotion(true)
+    try {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'cat' } })} />,
+      )
+      // No alive/animating class on the companion when reduced motion is requested.
+      expect(container.querySelector('.spirit-companion--alive')).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
   it('draws a mount (the lotus pad) under the figure', () => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ path: 'heart', cosmetics: { mount: 'lotus' } })} />,

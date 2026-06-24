@@ -348,15 +348,22 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
 
 // The habitat backdrop — a small scene the spirit sits in, drawn behind the figure (so it
 // never occludes it). A soft rounded panel with a path-agnostic palette per option.
+//
+// Habitat hygiene (the spirit must read clearly IN FRONT): the central figure occupies roughly
+// x≈26–54, y≈16–66 of the 80×80 viewBox. So NO opaque habitat element sits in that region —
+// prominent decor (suns, the cottage house) is pushed toward the EDGES / BOTTOM / CORNERS, and
+// the broad backdrop panels are kept LOW-opacity so they recede as a true, unobtrusive
+// background. The spirit clearly stands in front; each scene stays recognizable, just behind.
 function Habitat({ habitat, g }: { habitat: string; g: number }) {
   if (habitat === 'meadow') {
     return (
       <g opacity={g} aria-hidden="true">
-        <rect x={6} y={52} width={68} height={22} rx={6} fill="#bbf7d0" opacity={0.7} />
-        <rect x={6} y={60} width={68} height={14} rx={6} fill="#86efac" opacity={0.8} />
+        {/* Ground band only, kept low at the very bottom — well clear of the figure. */}
+        <rect x={6} y={56} width={68} height={18} rx={6} fill="#bbf7d0" opacity={0.55} />
+        <rect x={6} y={63} width={68} height={11} rx={6} fill="#86efac" opacity={0.6} />
         {/* A few simple grass blades along the ground. */}
         {Array.from({ length: 7 }, (_, k) => (
-          <rect key={k} x={12 + k * 8} y={54} width={1.4} height={6} rx={0.7} fill="#4ade80" opacity={0.8} />
+          <rect key={k} x={12 + k * 8} y={58} width={1.4} height={6} rx={0.7} fill="#4ade80" opacity={0.6} />
         ))}
       </g>
     )
@@ -364,40 +371,43 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
   if (habitat === 'dusk') {
     return (
       <g opacity={g} aria-hidden="true">
-        <rect x={4} y={6} width={72} height={68} rx={10} fill="#fcd9b6" opacity={0.45} />
-        <rect x={4} y={40} width={72} height={34} rx={10} fill="#f9a8d4" opacity={0.4} />
-        {/* A low sun glowing on the horizon. */}
-        <circle cx={40} cy={44} r={9} fill="#fb923c" opacity={0.55} />
+        {/* A soft dusk wash — faint enough to recede behind the figure. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#fcd9b6" opacity={0.3} />
+        <rect x={4} y={48} width={72} height={26} rx={10} fill="#f9a8d4" opacity={0.3} />
+        {/* A setting sun tucked low in the bottom-left corner, off the figure's centre. */}
+        <circle cx={16} cy={66} r={8} fill="#fb923c" opacity={0.4} />
       </g>
     )
   }
   if (habitat === 'night') {
     return (
       <g opacity={g} aria-hidden="true">
-        <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e293b" opacity={0.5} />
-        {/* A scattering of stars and a crescent moon. */}
+        {/* A faint night wash so the figure stays bright in front of it. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e293b" opacity={0.32} />
+        {/* A scattering of stars hugging the outer edge, and a crescent moon in the corner. */}
         {Array.from({ length: 9 }, (_, k) => {
           const a = (k / 9) * Math.PI * 2
           return (
-            <circle key={k} cx={40 + Math.cos(a) * 28} cy={36 + Math.sin(a) * 24} r={0.9} fill="#e0e7ff" opacity={0.9} />
+            <circle key={k} cx={40 + Math.cos(a) * 31} cy={38 + Math.sin(a) * 28} r={0.9} fill="#e0e7ff" opacity={0.9} />
           )
         })}
-        <circle cx={62} cy={18} r={6} fill="#fde68a" opacity={0.85} />
-        <circle cx={59} cy={16} r={6} fill="#1e293b" opacity={0.85} />
+        <circle cx={64} cy={16} r={6} fill="#fde68a" opacity={0.85} />
+        <circle cx={61} cy={14} r={6} fill="#1e293b" opacity={0.85} />
       </g>
     )
   }
   if (habitat === 'garden') {
     return (
       <g opacity={g} aria-hidden="true">
-        <rect x={6} y={54} width={68} height={20} rx={6} fill="#bbf7d0" opacity={0.75} />
-        <rect x={6} y={62} width={68} height={12} rx={6} fill="#86efac" opacity={0.85} />
-        {/* A few simple flowers on stems dotted across the bed. */}
-        {[14, 26, 54, 66].map((fx, k) => (
+        {/* Flower bed low at the bottom, clear of the figure. */}
+        <rect x={6} y={58} width={68} height={16} rx={6} fill="#bbf7d0" opacity={0.6} />
+        <rect x={6} y={65} width={68} height={9} rx={6} fill="#86efac" opacity={0.65} />
+        {/* Flowers kept to the outer columns so none sits under the centred figure. */}
+        {[12, 22, 58, 68].map((fx, k) => (
           <g key={k}>
-            <rect x={fx - 0.5} y={50} width={1} height={6} rx={0.5} fill="#4ade80" opacity={0.85} />
-            <circle cx={fx} cy={49} r={2.2} fill={k % 2 ? '#f472b6' : '#fcd34d'} opacity={0.9} />
-            <circle cx={fx} cy={49} r={0.9} fill="#fb923c" opacity={0.9} />
+            <rect x={fx - 0.5} y={54} width={1} height={6} rx={0.5} fill="#4ade80" opacity={0.7} />
+            <circle cx={fx} cy={53} r={2.2} fill={k % 2 ? '#f472b6' : '#fcd34d'} opacity={0.75} />
+            <circle cx={fx} cy={53} r={0.9} fill="#fb923c" opacity={0.75} />
           </g>
         ))}
       </g>
@@ -406,25 +416,28 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
   if (habitat === 'seaside') {
     return (
       <g opacity={g} aria-hidden="true">
-        <rect x={4} y={6} width={72} height={68} rx={10} fill="#bae6fd" opacity={0.4} />
-        {/* A soft sun above a calm band of water. */}
-        <circle cx={40} cy={30} r={8} fill="#fcd34d" opacity={0.55} />
-        <rect x={4} y={52} width={72} height={22} rx={10} fill="#38bdf8" opacity={0.45} />
-        <rect x={4} y={58} width={72} height={16} rx={10} fill="#0ea5e9" opacity={0.4} />
+        {/* A pale sky wash and a calm low band of water — both faint, both behind. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#bae6fd" opacity={0.28} />
+        {/* The sun lifted into the top-right corner, off the figure's centre. */}
+        <circle cx={64} cy={16} r={7} fill="#fcd34d" opacity={0.45} />
+        <rect x={4} y={56} width={72} height={18} rx={10} fill="#38bdf8" opacity={0.32} />
+        <rect x={4} y={62} width={72} height={12} rx={10} fill="#0ea5e9" opacity={0.3} />
       </g>
     )
   }
   if (habitat === 'cottage') {
     return (
       <g opacity={g} aria-hidden="true">
-        <rect x={4} y={6} width={72} height={68} rx={10} fill="#e0f2fe" opacity={0.35} />
-        {/* A small simple home — walls, pitched roof, door and window — behind the figure. */}
-        <rect x={50} y={42} width={20} height={18} rx={1.5} fill="#fde7c8" opacity={0.95} />
-        <path d="M 48 42 L 60 32 L 72 42 Z" fill="#d97706" opacity={0.9} />
-        <rect x={57} y={50} width={5} height={10} rx={0.6} fill="#b45309" opacity={0.95} />
-        <rect x={64} y={47} width={4} height={4} rx={0.5} fill="#bae6fd" opacity={0.95} />
-        {/* A wisp of ground to settle the cottage. */}
-        <rect x={6} y={58} width={68} height={16} rx={6} fill="#bbf7d0" opacity={0.55} />
+        {/* A pale sky wash, kept faint so the figure reads clearly in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#e0f2fe" opacity={0.28} />
+        {/* The home pushed into the bottom-right corner and shrunk, clear of the figure (which
+            reaches to x≈54) — walls, pitched roof, door and window, low and to the edge. */}
+        <rect x={60} y={50} width={16} height={14} rx={1.5} fill="#fde7c8" opacity={0.7} />
+        <path d="M 58 50 L 68 42 L 78 50 Z" fill="#d97706" opacity={0.65} />
+        <rect x={65} y={56} width={4} height={8} rx={0.6} fill="#b45309" opacity={0.7} />
+        <rect x={71} y={53} width={3.5} height={3.5} rx={0.5} fill="#bae6fd" opacity={0.7} />
+        {/* A wisp of ground to settle the cottage, low at the bottom. */}
+        <rect x={6} y={62} width={68} height={12} rx={6} fill="#bbf7d0" opacity={0.45} />
       </g>
     )
   }
@@ -1139,6 +1152,11 @@ export function SpiritArt({
   // The aura group glows on its own independent timeline when alive (and not paced — during the
   // pacer moment the breath is the motion, so the aura holds steady rather than double-pulsing).
   const auraClass = 'spirit-aura' + (alive && !inPacerMode ? ' spirit-aura--alive' : '')
+  // The companion moves at ITS OWN pace — a soft, slow bob/sway on a duration distinct from the
+  // creature's float and the aura's glow (so the layers are visibly out of sync). Like the aura,
+  // it holds steady during the pacer moment and under reduced motion.
+  const companionClass =
+    'spirit-companion' + (alive && !inPacerMode ? ' spirit-companion--alive' : '')
 
   return (
     <svg
@@ -1160,9 +1178,14 @@ export function SpiritArt({
         </g>
       )}
       {/* The companion sits in the static background band, off to the side of the figure — in
-          front of the habitat but clear of the creature, so it keeps the spirit company without
-          fighting it (and never floats with the creature). */}
-      {companion && <Companion companion={companion} g={g} />}
+          front of the habitat but clear of the creature. It keeps the spirit company without
+          fighting it, gently bobbing/swaying on its OWN independent rhythm (distinct from the
+          creature's float and the aura's glow), held still under reduced motion. */}
+      {companion && (
+        <g className={companionClass}>
+          <Companion companion={companion} g={g} />
+        </g>
+      )}
       {/* The mount sits centered and low in the static background band, UNDER the creature, so
           the figure appears to rest on / ride it without floating away with it or being hidden. */}
       {mount && <Mount mount={mount} g={g} />}
