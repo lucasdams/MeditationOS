@@ -65,6 +65,8 @@
   --nav-gratitude-text: #92400e;
   --nav-journal-bg: #ede9fe;
   --nav-journal-text: #6d28d9;
+  --nav-spirit-bg: #cffafe;
+  --nav-spirit-text: #0e7490;
   --nav-more-bg: #f1f5f9;
   --nav-more-text: #475569;
 
@@ -173,6 +175,8 @@
   --nav-gratitude-text: #fcd34d;
   --nav-journal-bg: #1e1640;
   --nav-journal-text: #c4b5fd;
+  --nav-spirit-bg: #08323d;
+  --nav-spirit-text: #67e8f9;
   --nav-more-bg: #1c2030;
   --nav-more-text: #94a3b8;
 
@@ -255,6 +259,8 @@
     --nav-gratitude-text: #fcd34d;
     --nav-journal-bg: #1e1640;
     --nav-journal-text: #c4b5fd;
+    --nav-spirit-bg: #08323d;
+    --nav-spirit-text: #67e8f9;
     --nav-more-bg: #1c2030;
     --nav-more-text: #94a3b8;
     --surface-analytics: #1e2130;
@@ -456,6 +462,11 @@ a:hover { color: var(--accent-hover); }
 .app-nav a.nav-journal {
   background: var(--nav-journal-bg);
   color: var(--nav-journal-text);
+}
+
+.app-nav a.nav-spirit {
+  background: var(--nav-spirit-bg);
+  color: var(--nav-spirit-text);
 }
 
 /* Analytics page */
