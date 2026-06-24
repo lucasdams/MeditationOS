@@ -354,9 +354,9 @@ describe('SpiritPage care needs (ADR-0023)', () => {
     renderPage()
 
     await screen.findByText('Care')
-    expect(screen.getByText('Nourished')).toBeInTheDocument()
-    expect(screen.getByText('Rested')).toBeInTheDocument()
-    expect(screen.getByText('Joyful')).toBeInTheDocument()
+    expect(screen.getByText('Nourishment')).toBeInTheDocument()
+    expect(screen.getByText('Rest')).toBeInTheDocument()
+    expect(screen.getByText('Joy')).toBeInTheDocument()
     // The nudge names the creature (Pitta) and its reviving practice (gratitude & journaling).
     expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
     expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
