@@ -304,23 +304,10 @@ export default function SpiritPage() {
                 })}
               </ol>
               <p className="muted spirit-journey-note">
-                Every practice — meditate, breathe, gratitude, journal — earns XP that levels up
-                your bond and carries your spirit from <strong>spark</strong> to{' '}
-                <strong>radiant</strong>. Growth never reverses; a quiet day only dims its glow,
-                never its stage.
-              </p>
-              <p className="muted spirit-journey-note">
-                {isRadiant ? (
-                  <>
-                    Your spirit is <strong>radiant</strong> — you can <strong>set it free</strong>{' '}
-                    below. It joins your collection forever, and a new spark begins, ready to grow
-                    down its own path.
-                  </>
-                ) : (
-                  <>
-                    At <strong>radiant</strong> you can <strong>set your spirit free</strong>: it
-                    joins your collection forever and a fresh spark begins its own journey.
-                  </>
+                Practice levels up your bond and grows your spirit — spark to{' '}
+                <strong>radiant</strong>. It never reverses.
+                {isRadiant && (
+                  <> Radiant now — you can <strong>set it free</strong> below.</>
                 )}
               </p>
             </section>
