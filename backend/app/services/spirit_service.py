@@ -93,10 +93,6 @@ class InsufficientCoins(Exception):
     """Not enough coins for this cosmetic / reset → 409."""
 
 
-class AlreadyApplied(Exception):
-    """The spirit already has that exact option in that slot — a no-op → 409."""
-
-
 class CosmeticSlotLocked(Exception):
     """The target slot already has an applied option, so it's locked (ADR-0024). Changing it
     requires resetting upgrades → 409."""
@@ -485,11 +481,11 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
 # constants — retuning needs no migration. An optional per-option `unlock_level` gates a
 # couple of richer options behind a little growth (default 1 = always available).
 #
-# APPEND-ONLY / STABLE FOR OWNED KEYS. `_cosmetics_spent`/`_option_cost` price an owned
-# option from this catalog and fall back to 0 for anything missing. Removing or renaming a
-# slot/option that a user could already own would silently refund its coins (drop the spend
-# from the ledger), inflating the derived balance. So: never delete or rename an owned key —
-# only add new slots/options, and only re-tune costs of options nobody owns. Test
+# APPEND-ONLY / STABLE FOR OWNED KEYS. `_option_cost` prices an option from this catalog (0 for
+# anything missing) for the affordability display and the `coins_spent` migration backfill. The
+# stored spend ledger (ADR-0024) means a removed key no longer silently refunds, but a missing
+# cost would still misprice the catalog — so never delete or rename an owned key; only add new
+# slots/options, and only re-tune costs of options nobody owns. Test
 # `test_owned_options_all_price_above_zero` guards against an owned key being dropped.
 SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
     # {slot: {option: {"cost": int, "unlock_level": int}}}
@@ -531,16 +527,6 @@ def _cosmetics(spirit: Spirit) -> dict[str, str]:
     if not isinstance(raw, dict):
         return {}
     return {str(k): str(v) for k, v in raw.items() if isinstance(v, (str, int))}
-
-
-def _cosmetics_spent(cosmetics: dict[str, str]) -> int:
-    """Σ cost of the owned cosmetics, summed from SPIRIT_COSMETICS_CATALOG. The owned options
-    ARE the spend ledger, so the coin formula stays fully derived. Unknown slots/options are
-    ignored (never a negative or phantom charge)."""
-    total = 0
-    for slot, option in cosmetics.items():
-        total += _option_cost(slot, option)
-    return total
 
 
 def _available_slots(
