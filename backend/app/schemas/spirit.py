@@ -56,8 +56,9 @@ class SpiritNeed(BaseModel):
 class SpiritNeeds(BaseModel):
     """The active creature's three tended needs (ADR-0023), replacing the single `daily_glow`.
 
-    - `nourished` — the chosen path's SIGNATURE practice (the identity need): stillness ←
-      meditation minutes, breath ← resonance-breathing minutes, heart ← gratitude + journal.
+    - `nourished` — the chosen path's SIGNATURE practice (the identity need), the one that
+      BALANCES that dosha (Ayurveda balances by opposites): stillness (Kapha) ← breathing
+      minutes, breath (Pitta) ← gratitude + journal, heart (Vata) ← meditation minutes.
     - `rested` — practice rhythm / consistency: recent active days and the current streak.
     - `joyful` — practice variety: how many distinct practice types were done recently.
 
@@ -92,7 +93,7 @@ class SpiritBond(BaseModel):
 
 class SpiritSlotOption(BaseModel):
     """One option inside a cosmetic slot, with its cost and current state — the same shape
-    the Sanctuary customize panel uses (calm, not pushy)."""
+    the Spirit personalize panel uses (calm, not pushy)."""
 
     option: str
     cost: int  # coins to apply this option
@@ -135,7 +136,7 @@ class SpiritState(BaseModel):
     bond: SpiritBond  # level + XP-into-level + XP-for-next
     needs: SpiritNeeds  # the three tended needs (nourished / rested / joyful); visual-only
     condition: SpiritCondition  # overall care state = the weakest need; visual-only (ADR-0023)
-    coins: int  # level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
+    coins: int  # level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0
     cosmetics: dict[str, str]  # owned {slot: option} (empty until cosmetics ship)
     available: list[SpiritAvailableSlot]  # the cosmetics catalog with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever

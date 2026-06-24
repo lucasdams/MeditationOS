@@ -44,9 +44,8 @@ class Spirit(Base):
         nullable=False,
     )
     # The committed path: stillness | breath | heart. NULL = a pathless spark (pre-commit).
-    # Set ONCE at the commit stage from the user's dominant practice (a crystallized decision,
-    # like a Sanctuary purchase — not derivable after the fact because hysteresis must prevent
-    # it flip-flopping). Stays NULL in step 1 (no path branching yet).
+    # USER-CHOSEN once via `choose_path` while the spirit is still pathless (ADR-0023), then
+    # immutable — it is a crystallized decision, not auto-detected from the practice mix.
     path: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Optional nickname (cosmetic). Trimmed + length-capped server-side; NULL = unnamed.
     name: Mapped[str | None] = mapped_column(String(40), nullable=True)
