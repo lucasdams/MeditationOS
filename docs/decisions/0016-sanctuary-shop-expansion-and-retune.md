@@ -1,5 +1,7 @@
 # ADR-0016: Sanctuary — shop expansion (whimsy track) + holistic economy retune
 
+> **Superseded by [ADR-0022](0022-spirit-companion-replaces-sanctuary.md)** — the Sanctuary was retired in favour of the Spirit companion. Kept for historical rationale.
+
 **Status:** Accepted · 2026-06-16 · Extends [ADR-0013](0013-sanctuary-progressive-pricing.md) (economy) + [ADR-0012](0012-sanctuary-personalization.md) (variants/customizations) · Detail: [Sanctuary design](../design/sanctuary.md)
 
 ## Context

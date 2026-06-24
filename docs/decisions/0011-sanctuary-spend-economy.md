@@ -1,5 +1,7 @@
 # ADR-0011: Sanctuary — a spend economy (coins, buy, upgrade)
 
+> **Superseded by [ADR-0022](0022-spirit-companion-replaces-sanctuary.md)** — the Sanctuary was retired in favour of the Spirit companion. Kept for historical rationale.
+
 **Status:** Accepted · 2026-06-15 · Supersedes [ADR-0010](0010-sanctuary-cultivation.md) · Detail: [Sanctuary design](../design/sanctuary.md)
 
 ## Context

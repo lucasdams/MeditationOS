@@ -1,5 +1,7 @@
 # ADR-0019: Sanctuary — reset an item's upgrades for a fee
 
+> **Superseded by [ADR-0022](0022-spirit-companion-replaces-sanctuary.md)** — the Sanctuary was retired in favour of the Spirit companion. Kept for historical rationale.
+
 **Status:** Accepted · 2026-06
 
 ## Context

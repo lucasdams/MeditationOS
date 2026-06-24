@@ -94,13 +94,14 @@ A persistent space the user grows by practicing — a calm **sanctuary** (garden
 farm / home / retreat) that becomes a long-term reason to keep levelling up.
 The strongest retention loop in the product.
 
-> **Shipped in V1 and expanded through V2** — see **[Sanctuary design](design/sanctuary.md)**
-> and [ADR-0011](decisions/0011-sanctuary-spend-economy.md) through
-> [ADR-0021](decisions/0021-sanctuary-evolution-tree-and-preview-locked.md). The original
-> cultivation model ([ADR-0010](decisions/0010-sanctuary-cultivation.md)) was superseded
-> by a **spend economy**: earn **coins** as you level up, **buy** items from the shop, and
-> personalize them over time. Plants, structures, companions, and a **whimsy** track render
-> as **procedural SVG**. *(Remaining: the ambiance track and Stripe cosmetic packs.)*
+> **Retired — replaced by the [Spirit companion](design/spirit.md)** ([ADR-0022](decisions/0022-spirit-companion-replaces-sanctuary.md)).
+> The Sanctuary shipped in V1 and was expanded through V2 (a **spend economy**: earn **coins**
+> as you level up, **buy** procedural-SVG items, and personalize them over time), but the
+> retention loop has since moved to a single **living Spirit** that grows down a practice-shaped
+> path. The checklist below is kept as a record of what was built. The original cultivation model
+> ([ADR-0010](decisions/0010-sanctuary-cultivation.md)) was the first of this lineage; the full
+> arc runs [ADR-0011](decisions/0011-sanctuary-spend-economy.md) through
+> [ADR-0021](decisions/0021-sanctuary-evolution-tree-and-preview-locked.md), all superseded by ADR-0022.
 
 - [x] **Spend economy** — earn coins from levels, buy items from a shop, coin balance computed from holdings (no wallet row); [ADR-0011](decisions/0011-sanctuary-spend-economy.md)
 - [x] **Four tracks** of items:
