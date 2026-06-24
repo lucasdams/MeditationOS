@@ -63,27 +63,27 @@ describe('SpiritChoosePage', () => {
     expect(screen.getByRole('button', { name: /Choose Vata/ })).toBeInTheDocument()
   })
 
-  it('requires a name before a creature can be chosen (ADR-0024)', async () => {
+  it('names the creature AFTER choosing it; awaken is disabled until named (ADR-0024)', async () => {
     get.mockResolvedValue(spiritWith({ path: null }))
     renderPage()
-    // The choose buttons are disabled until a non-empty name is entered.
-    const choosePitta = await screen.findByRole('button', { name: /Choose Pitta/ })
-    expect(choosePitta).toBeDisabled()
-    fireEvent.click(choosePitta)
+    // Step 1: picking a creature needs no name — it advances to the naming step.
+    fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
+    // Step 2: the name step appears; awaken is disabled until a non-empty name is entered.
+    const awaken = screen.getByRole('button', { name: /Awaken Pitta/ })
+    expect(awaken).toBeDisabled()
     expect(choose).not.toHaveBeenCalled()
-    // After naming, the buttons enable.
     fireEvent.change(screen.getByPlaceholderText(/Ember/), { target: { value: 'Ember' } })
-    expect(choosePitta).not.toBeDisabled()
+    expect(awaken).not.toBeDisabled()
   })
 
-  it('chooses a creature with the entered name and navigates back to /spirit', async () => {
+  it('awakens the chosen creature with the entered name and navigates to /spirit', async () => {
     get.mockResolvedValue(spiritWith({ path: null }))
     choose.mockResolvedValue(spiritWith({ path: 'breath', name: 'Ember' }))
     renderPage()
-    await screen.findByRole('button', { name: /Choose Pitta/ })
-    // Name (trimmed) is required; choose sends { path, name }.
+    // Step 1: choose the creature; step 2: name it (trimmed) and awaken → choose sends {path, name}.
+    fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
     fireEvent.change(screen.getByPlaceholderText(/Ember/), { target: { value: '  Ember  ' } })
-    fireEvent.click(screen.getByRole('button', { name: /Choose Pitta/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Awaken Pitta/ }))
     await waitFor(() =>
       expect(choose).toHaveBeenCalledWith({ path: 'breath', name: 'Ember' }),
     )
