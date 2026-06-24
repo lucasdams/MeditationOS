@@ -2644,6 +2644,33 @@ textarea:focus-visible,
   }
 }
 
+/* The COMPANION layer: the little friend in the corner bobs/sways gently on ITS OWN pace — a
+   longer, distinct period (6.8s) from the creature's float (5s) and the aura's glow (4.6s), so the
+   layers are visibly out of sync ("at their own pace"). Calm and low-amplitude, never frantic;
+   it stays in its corner, just alive. `transform-box`/`transform-origin` keep it moving about its
+   own centre. Held static under reduced motion (the guard below). */
+.spirit-companion--alive {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-companion-bob 6.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* The companion's own soft drift — a gentle bob with a touch of sway and tilt, distinct from the
+   creature's wandering float so the two never look lock-step. */
+@keyframes spirit-companion-bob {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  30% {
+    transform: translate(-1px, -2.5px) rotate(-1.6deg);
+  }
+  60% {
+    transform: translate(1px, -1.5px) rotate(1.2deg);
+  }
+}
+
 /* Pacer mode (BreathePage): the creature's inline transform (driven by the breathe-circle's
    `scaleAt` clock) IS the motion, so no idle keyframes run here. A soft transition smooths the
    per-frame scale steps without adding a second, drifting clock. The background stays static. */
@@ -2669,10 +2696,12 @@ textarea:focus-visible,
    already skips the celebration and pins the pacer scale to 1; this neutralises the CSS too. */
 @media (prefers-reduced-motion: reduce) {
   .spirit-creature--alive,
-  .spirit-aura--alive {
+  .spirit-aura--alive,
+  .spirit-companion--alive {
     animation: none;
     opacity: 1;
     filter: none;
+    transform: none;
   }
   .spirit-creature--pacing {
     transition: none;
