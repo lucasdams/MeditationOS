@@ -126,8 +126,8 @@ export default function SpiritChoosePage() {
           })}
         </ul>
         <p className="muted dosha-about-note">
-          A gentle, simplified take on a deep tradition — not medical advice. (The app&rsquo;s slow
-          breathwork stands in for Kapha&rsquo;s classically energizing breath.)
+          A gentle, simplified take on a deep tradition — not medical advice. (For Kapha&rsquo;s
+          invigorating breath, try the <strong>Energizing</strong> pattern on the Breathe page.)
         </p>
       </aside>
     </main>
