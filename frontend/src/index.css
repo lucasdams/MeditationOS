@@ -2368,30 +2368,54 @@ textarea:focus-visible,
    warm amber, never an alarm red. Shared by the home summary and the SpiritPage care panel. */
 .spirit-needs {
   list-style: none;
-  margin: 0.5rem 0 0;
+  margin: 0.6rem auto 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 22rem;
 }
 
 .spirit-need {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
   gap: 0.3rem;
-  padding: 0.3rem 0.7rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
+}
+
+.spirit-need-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  border: 1.5px solid var(--need-accent, #94a3b8);
-  background: var(--bg-surface, #fff);
   color: var(--text-primary);
+}
+
+/* Label takes the row; the tier word sits flush right above the bar's full end. */
+.spirit-need-label {
+  margin-right: auto;
 }
 
 .spirit-need-tier {
   font-weight: 700;
   color: var(--need-accent, #475569);
+}
+
+/* 0–100 level bar: a neutral track with a tier-tinted fill (width = the need's factor). */
+.spirit-need-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.spirit-need-bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 999px;
+  background: var(--need-accent, #94a3b8);
+  transition: width 0.45s ease;
 }
 
 /* Per-tier accent hues (best → worst), all calm mid-tones legible on light + dark. */

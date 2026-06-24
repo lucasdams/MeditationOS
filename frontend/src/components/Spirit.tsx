@@ -132,9 +132,11 @@ export const NEED_COPY: Record<
   keyof SpiritState['needs'],
   { label: string; icon: string }
 > = {
-  nourished: { label: 'Nourished', icon: '🍲' },
-  rested: { label: 'Rested', icon: '🌙' },
-  joyful: { label: 'Joyful', icon: '✨' },
+  // Labels name the DIMENSION (a noun), not a positive state — so "Nourishment · Needs care"
+  // reads honestly, rather than "Nourished" claiming the opposite of the tier beside it.
+  nourished: { label: 'Nourishment', icon: '🍲' },
+  rested: { label: 'Rest', icon: '🌙' },
+  joyful: { label: 'Joy', icon: '✨' },
 }
 
 // The practice that revives a given need for a given creature (ADR-0023). Nourished is the
@@ -155,9 +157,9 @@ export function reviveHint(
 const NEED_ORDER: Array<keyof SpiritState['needs']> = ['nourished', 'rested', 'joyful']
 
 /**
- * NeedsReadout — the three tended needs (Nourished / Rested / Joyful) as tidy tier pills, each
- * with its icon and tier label (ADR-0023). Visual-only; replaces the old single glow read-out.
- * Reused by the home summary and the SpiritPage care panel.
+ * NeedsReadout — the three tended needs (Nourishment / Rest / Joy) as labeled 0–100 bars
+ * (ADR-0023). Each shows its dimension label, current tier word, and a fill bar for the level
+ * (the need's 0..1 factor), tinted by tier. Visual-only. Reused by the home summary + SpiritPage.
  */
 export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
   return (
@@ -166,13 +168,26 @@ export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
         const need = needs[key]
         const copy = NEED_COPY[key]
         const tier = TIER_COPY[need.tier]
+        const pct = Math.round(need.factor * 100)
         return (
           <li key={key} className={`spirit-need spirit-need--${tier.tone}`}>
-            <span className="spirit-need-icon" aria-hidden="true">
-              {copy.icon}
-            </span>
-            <span className="spirit-need-label">{copy.label}</span>
-            <span className="spirit-need-tier">{tier.label}</span>
+            <div className="spirit-need-head">
+              <span className="spirit-need-icon" aria-hidden="true">
+                {copy.icon}
+              </span>
+              <span className="spirit-need-label">{copy.label}</span>
+              <span className="spirit-need-tier">{tier.label}</span>
+            </div>
+            <div
+              className="spirit-need-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={pct}
+              aria-label={`${copy.label}: ${pct} of 100 — ${tier.label}`}
+            >
+              <span className="spirit-need-bar-fill" style={{ width: `${pct}%` }} />
+            </div>
           </li>
         )
       })}

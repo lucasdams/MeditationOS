@@ -202,9 +202,9 @@ describe('Spirit — care needs read-out (ADR-0023)', () => {
         })}
       />,
     )
-    expect(screen.getByText('Nourished')).toBeInTheDocument()
-    expect(screen.getByText('Rested')).toBeInTheDocument()
-    expect(screen.getByText('Joyful')).toBeInTheDocument()
+    expect(screen.getByText('Nourishment')).toBeInTheDocument()
+    expect(screen.getByText('Rest')).toBeInTheDocument()
+    expect(screen.getByText('Joy')).toBeInTheDocument()
   })
 
   it('shows a kind, never-shaming care nudge naming the reviving practice when a need is low', () => {
@@ -245,13 +245,16 @@ describe('Spirit — stage read-out (calm, no shouting)', () => {
     expect(screen.getByText('Spark')).toBeInTheDocument()
   })
 
-  it('surfaces the bond level quietly (no shouted XP bar)', () => {
+  it('surfaces the bond level quietly (no shouted XP/level bar)', () => {
     renderSpirit(
       <Spirit spirit={spiritState({ path: 'stillness', bond: { level: 7, xp_into_level: 20, xp_for_next: 100 } })} />,
     )
     expect(screen.getByText(/bond level 7/i)).toBeInTheDocument()
-    // No progress bar / meter element — the read-out stays a calm line.
-    expect(screen.queryByRole('progressbar')).toBeNull()
+    // The bond/XP stays a calm text line — never an XP/level progress bar. The gentle care-need
+    // bars (Nourishment/Rest/Joy) are a separate, intended thing; assert none is an XP/level meter.
+    for (const meter of screen.queryAllByRole('progressbar')) {
+      expect(meter.getAttribute('aria-label') ?? '').not.toMatch(/xp|level|bond/i)
+    }
   })
 })
 
