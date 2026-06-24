@@ -103,6 +103,9 @@ export default function SpiritPage() {
   const [resetNameDraft, setResetNameDraft] = useState('')
   // The paid upgrades-reset confirmation modal (ADR-0024).
   const [confirmResetUpgrades, setConfirmResetUpgrades] = useState(false)
+  // The cosmetic-buy confirmation modal — set to the {slot, option} the user wants to buy so a
+  // before/after preview can be shown before any coins are spent; null = closed.
+  const [confirmBuy, setConfirmBuy] = useState<{ slot: string; option: string } | null>(null)
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
   // media query (and any future celebration is honored) — the single source of truth.
   const reducedMotion = prefersReducedMotion()
@@ -133,6 +136,7 @@ export default function SpiritPage() {
     try {
       const next = await spiritService.buyCosmetic({ slot, option })
       setSpirit(next)
+      setConfirmBuy(null)
       // Keep the confirmation calm: the hero balance already carries the coin count, so we
       // don't reintroduce a spent/remaining tally here — just a gentle "it's on your spirit".
       showToast(`${optionLabel(option)} added to your spirit ✨`)
@@ -312,34 +316,6 @@ export default function SpiritPage() {
               </p>
             </section>
 
-            {/* Name — read-only on the hero (above). The name is committed at creation and
-                immutable; changing it is a quiet, paid reset (ADR-0024). */}
-            <section className="spirit-section spirit-name-section" aria-label="Name">
-              <header className="spirit-section-head">
-                <h2 className="spirit-section-title">Name</h2>
-                <p className="muted spirit-section-subtitle">
-                  Your companion's name was set when you chose it. Changing it costs{' '}
-                  {RESET_COST} coins.
-                </p>
-              </header>
-              <button
-                type="button"
-                className="spirit-reset-name-btn"
-                disabled={busy != null || spirit.coins < RESET_COST}
-                title={
-                  spirit.coins < RESET_COST
-                    ? `Needs ${RESET_COST} coins`
-                    : undefined
-                }
-                onClick={() => {
-                  setResetNameDraft(spirit.name ?? '')
-                  setResetNameOpen(true)
-                }}
-              >
-                Reset name (<CoinIcon /> {RESET_COST})
-              </button>
-            </section>
-
             {/* Personalize — the cosmetics slots, calm and modest. Preview-on-hover/focus, buy
                 on click; an applied slot is LOCKED (ADR-0024); locked/unaffordable options
                 preview but never submit. */}
@@ -414,11 +390,12 @@ export default function SpiritPage() {
                             onMouseLeave={clearPreview}
                             onFocus={showPreview}
                             onBlur={clearPreview}
-                            // Buyable → purchase; otherwise a no-op in a locked slot, or quiet
-                            // feedback for a level/coin gate (never a silent no-op).
+                            // Buyable → open the before/after confirm (the purchase happens on
+                            // Confirm there, never directly here); otherwise a no-op in a locked
+                            // slot, or quiet feedback for a level/coin gate (never a silent no-op).
                             onClick={() =>
                               buyable
-                                ? buyCosmetic(s.slot, opt.option)
+                                ? setConfirmBuy({ slot: s.slot, option: opt.option })
                                 : !slotLocked && gated && notifyGated(opt)
                             }
                           >
@@ -457,19 +434,22 @@ export default function SpiritPage() {
                   </fieldset>
                 ))
               )}
-              {/* Reset upgrades — a quiet, paid action (ADR-0024). Clears every applied slot
-                  (no refund) so they can be chosen afresh. Disabled with nothing applied or
-                  too few coins. */}
+              {/* Reset upgrades — a quiet, paid escape hatch (ADR-0024). Clears every applied
+                  slot (no refund) so they can be chosen afresh. A small, low-emphasis text-link
+                  tucked at the foot of the panel — adorning is the primary action, not this.
+                  Disabled with nothing applied or too few coins. */}
               {Object.keys(spirit.cosmetics).length > 0 && (
-                <button
-                  type="button"
-                  className="spirit-reset-upgrades-btn"
-                  disabled={busy != null || spirit.coins < RESET_COST}
-                  title={spirit.coins < RESET_COST ? `Needs ${RESET_COST} coins` : undefined}
-                  onClick={() => setConfirmResetUpgrades(true)}
-                >
-                  Reset upgrades (<CoinIcon /> {RESET_COST})
-                </button>
+                <p className="spirit-personalize-foot">
+                  <button
+                    type="button"
+                    className="spirit-reset-quiet"
+                    disabled={busy != null || spirit.coins < RESET_COST}
+                    title={spirit.coins < RESET_COST ? `Needs ${RESET_COST} coins` : undefined}
+                    onClick={() => setConfirmResetUpgrades(true)}
+                  >
+                    Reset upgrades ({RESET_COST} coins)
+                  </button>
+                </p>
               )}
             </section>
 
@@ -511,6 +491,27 @@ export default function SpiritPage() {
                 </ul>
               )}
             </section>
+
+            {/* Name reset — a minor, quiet line near the foot of the page (ADR-0024). The name
+                is committed at creation and immutable; changing it is a rare, paid action, so it
+                reads as a muted sentence with a small text-button — never a prominent section. */}
+            <p className="muted spirit-reset-name-line">
+              <span>
+                Your companion's name is committed. Reset it for {RESET_COST} coins.
+              </span>
+              <button
+                type="button"
+                className="spirit-reset-quiet"
+                disabled={busy != null || spirit.coins < RESET_COST}
+                title={spirit.coins < RESET_COST ? `Needs ${RESET_COST} coins` : undefined}
+                onClick={() => {
+                  setResetNameDraft(spirit.name ?? '')
+                  setResetNameOpen(true)
+                }}
+              >
+                Reset name
+              </button>
+            </p>
 
             {/* Awaken a new spark — only at radiant. A calm action behind a confirmation that
                 states it retires the current spirit into the collection. */}
@@ -562,6 +563,83 @@ export default function SpiritPage() {
                 </div>
               </Modal>
             )}
+
+            {/* Buy a cosmetic — a calm before/after confirmation. Clicking a buyable option
+                opens this; the purchase only happens on Confirm. "Now" shows the spirit with its
+                CURRENT cosmetics; "With X" merges the chosen option in — same stage / form / glow
+                / motion, so the only difference is the adornment being considered. */}
+            {confirmBuy && (() => {
+              const slot = confirmBuy.slot
+              const option = confirmBuy.option
+              // The cost of the option being considered, looked up from the live catalog (the
+              // same source the chips render from). Falls back gracefully if not found.
+              const cost = spirit.available
+                .find((s) => s.slot === slot)
+                ?.options.find((o) => o.option === option)?.cost
+              const afterCosmetics = { ...spirit.cosmetics, [slot]: option }
+              const buying = busy === `${slot}:${option}`
+              return (
+                <Modal
+                  ariaLabel={`Add ${optionLabel(option)} to your spirit`}
+                  onClose={() => setConfirmBuy(null)}
+                  closeOnBackdrop
+                >
+                  <h3>Add {optionLabel(option)}?</h3>
+                  <p className="muted">
+                    See how your spirit looks now and with {slotLabel(slot).toLowerCase()}{' '}
+                    {optionLabel(option)} added.
+                  </p>
+                  <div className="spirit-buy-preview">
+                    <div className="spirit-buy-art">
+                      <SpiritArt
+                        stage={spirit.stage}
+                        path={form}
+                        glow={spirit.condition.factor}
+                        cosmetics={spirit.cosmetics}
+                        reducedMotion={reducedMotion}
+                      />
+                      <span className="spirit-buy-caption">Now</span>
+                    </div>
+                    <span className="spirit-buy-arrow" aria-hidden="true">
+                      →
+                    </span>
+                    <div className="spirit-buy-art">
+                      <SpiritArt
+                        stage={spirit.stage}
+                        path={form}
+                        glow={spirit.condition.factor}
+                        cosmetics={afterCosmetics}
+                        reducedMotion={reducedMotion}
+                      />
+                      <span className="spirit-buy-caption">With {optionLabel(option)}</span>
+                    </div>
+                  </div>
+                  {cost != null && (
+                    <p className="spirit-buy-cost">
+                      <CoinIcon /> {cost}
+                    </p>
+                  )}
+                  <div className="spirit-awaken-actions">
+                    <button
+                      type="button"
+                      className="spirit-awaken-do"
+                      disabled={busy != null}
+                      onClick={() => buyCosmetic(slot, option)}
+                    >
+                      {buying ? 'Adding…' : 'Confirm'}
+                    </button>
+                    <button
+                      type="button"
+                      className="spirit-awaken-cancel"
+                      disabled={busy != null}
+                      onClick={() => setConfirmBuy(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </Modal>
+              )
+            })()}
 
             {/* Reset name (ADR-0024) — a paid change to the otherwise-immutable name. */}
             {resetNameOpen && (
