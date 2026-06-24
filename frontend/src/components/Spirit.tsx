@@ -19,8 +19,8 @@ import type {
  * (labelled in the UI as the Ayurvedic dosha):
  *
  *  - `stillness` → Kapha — a serene seated mini-Buddha (meditation keeps it nourished).
- *  - `breath`    → Pitta — an airy wind spirit of flowing currents (breathwork nourishes it).
- *  - `heart`     → Vata  — a blooming spirit of petals (gratitude + journaling nourish it).
+ *  - `breath`    → Pitta — a fierce fire-and-water blaze of flame tongues (breathwork nourishes it).
+ *  - `heart`     → Vata  — an airy wisp of breeze and drifting motes (gratitude + journaling nourish it).
  *
  * Until the user chooses (path === null), the spirit is a PATHLESS SPARK: a neutral, un-themed
  * glowing mote with no creature form yet — the picker invites the choice.
@@ -210,14 +210,17 @@ export function CareNudge({
 
 // A distinct palette per path: stillness (Kapha) is a serene warm gold/amber; breath (Pitta) is
 // a fierce fire-and-water blaze — a bright ember core, flame tongues, with a cool teal-water
-// undertone in `deep`; heart (Vata) is a soft pink-and-green bloom. `core` is the bright heart,
-// `glow` the aura, `accent` the path's defining feature (halo / flame / petal), `deep` its base.
+// undertone in `deep`; heart (Vata) is an airy sky-and-ether spirit — a pale-white wisp core, a
+// soft sky-blue body, lavender breeze accents, and a deeper periwinkle base. `core` is the bright
+// heart, `glow` the aura, `accent` the path's defining feature (halo / flame / breeze), `deep` base.
 const PATH_PALETTE: Record<SpiritPath, { core: string; glow: string; accent: string; deep: string }> = {
   stillness: { core: '#fef3c7', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
   // Pitta — fire + water: a white-hot ember core (`core`), an orange flame body (`glow`), a
   // searing red-orange flame edge (`accent`), and a cool teal water-base (`deep`).
   breath: { core: '#fff7ed', glow: '#fb923c', accent: '#ef4444', deep: '#0d9488' },
-  heart: { core: '#fce7f3', glow: '#f9a8d4', accent: '#ec4899', deep: '#4ade80' },
+  // Vata — air + ether: a pale luminous core (`core`), a soft sky-blue body (`glow`), a lavender
+  // breeze accent (`accent`), and a deeper periwinkle base for wisps/leaves (`deep`).
+  heart: { core: '#f5f7ff', glow: '#bae6fd', accent: '#c4b5fd', deep: '#818cf8' },
 }
 
 const STAGE_ORDER: SpiritStage[] = ['spark', 'wisp', 'fledgling', 'ascendant', 'radiant']
@@ -636,80 +639,119 @@ function PittaForm({ stage, g }: { stage: SpiritStage; g: number }) {
 }
 
 /**
- * `heart` — a blooming spirit. Spark: a closed bud. It opens into petals around a glowing
- * centre, gains leaves, then a full bloom as it matures. Soft pink petals with green leaves.
+ * `heart` → **Vata** — an airy air-and-ether creature (ADR-0023). Light, mobile, expressive: a
+ * graceful flowing wisp of breeze with a luminous core, trailing curling air-currents and a few
+ * drifting motes/leaves. Spark is a single faint mote of mist; each stage adds a fuller flowing
+ * body, gentle eyes, longer trailing wisps of breeze, more drifting leaves, and finally a full
+ * radiant swirl haloed in a ring of orbiting motes — light and expressive, never heavy. Airy
+ * palette (`core` pale luminous → `glow` sky-blue body → `accent` lavender breeze) over a deeper
+ * periwinkle `deep` for the trailing currents. Internal `path` value stays `heart`.
  */
-function HeartForm({ stage, g }: { stage: SpiritStage; g: number }) {
+function VataForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const pal = PATH_PALETTE.heart
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   const cx = 40
-  const cy = 40
-  // Petals open up as the bloom matures: a closed bud (0) at spark, more petals each stage.
-  const petals = i <= 1 ? 0 : 3 + (i - 2) * 2 // 0, 5, 7, 9, 11
-  const petalLen = 8 + p * 6
-  const coreR = 4 + p * 3
+  const cy = 38
+  // The wisp grows fuller and its trailing currents longer up the ladder.
+  const bodyR = 5 + p * 5
+  // Trailing breeze currents curling off the body — one at spark, up to five at radiant.
+  const wisps = i
+  const wispLen = 10 + p * 14
   return (
     <g>
-      {/* Leaves flank the stem from fledgling onward — the green defining feature. */}
-      {i >= 3 &&
-        [-1, 1].map((dir) => (
-          <ellipse
-            key={dir}
-            cx={cx + dir * (8 + p * 3)}
-            cy={cy + 12}
-            rx={5 + p * 2}
-            ry={2.4 + p}
-            fill={pal.deep}
-            opacity={0.6 * g}
-            transform={`rotate(${dir * 35} ${cx + dir * (8 + p * 3)} ${cy + 12})`}
+      {/* Trailing air-currents — soft curling ribbons of breeze drifting off the body, the airy
+          defining feature. Outer currents curl wider; more + longer each stage gives the
+          "more developed" read. They flow down-and-out, so the creature reads as gliding. */}
+      {Array.from({ length: wisps }, (_, k) => {
+        const t = wisps === 1 ? 0 : (k / (wisps - 1)) * 2 - 1 // -1..1
+        const startX = cx + t * (bodyR * 0.7)
+        const startY = cy + bodyR * 0.6
+        const curl = t * (8 + p * 6) // outer currents sweep further out
+        const endX = startX + curl
+        const endY = startY + wispLen * (1 - Math.abs(t) * 0.3)
+        const midX = startX + curl * 0.4 - 4
+        const midY = (startY + endY) / 2
+        return (
+          <path
+            key={k}
+            d={`M ${startX} ${startY}
+                Q ${midX} ${midY} ${endX} ${endY}`}
+            fill="none"
+            stroke={k % 2 === 0 ? pal.accent : pal.deep}
+            strokeWidth={(2.4 + p * 1.4) * (1 - Math.abs(t) * 0.3)}
+            strokeLinecap="round"
+            opacity={(0.4 + 0.3 * p) * g}
           />
-        ))}
-      {/* A short stem grounding the bloom. */}
+        )
+      })}
+      {/* The flowing wisp body — a soft teardrop of breeze, lighter than air. A rounded,
+          upward-tapering silhouette (graceful, never blocky), brightest at the core. */}
+      <path
+        d={`M ${cx} ${cy - bodyR * 1.4}
+            Q ${cx + bodyR} ${cy - bodyR * 0.5} ${cx + bodyR} ${cy + bodyR * 0.3}
+            Q ${cx + bodyR} ${cy + bodyR * 1.1} ${cx} ${cy + bodyR * 1.2}
+            Q ${cx - bodyR} ${cy + bodyR * 1.1} ${cx - bodyR} ${cy + bodyR * 0.3}
+            Q ${cx - bodyR} ${cy - bodyR * 0.5} ${cx} ${cy - bodyR * 1.4} Z`}
+        fill={pal.glow}
+        opacity={(0.6 + 0.25 * p) * g}
+      />
+      {/* Luminous inner core — the bright airy heart of the wisp. */}
+      <ellipse
+        cx={cx}
+        cy={cy - bodyR * 0.1}
+        rx={bodyR * 0.5}
+        ry={bodyR * 0.6}
+        fill={pal.core}
+        opacity={(0.85 + 0.15 * p) * g}
+      />
+      <circle cx={cx - bodyR * 0.25} cy={cy - bodyR * 0.35} r={1.5 + p} fill="#ffffff" opacity={0.8 * g} />
+      {/* Gentle, expressive eyes — appear from wisp onward, two soft rounded dots (kind, calm). */}
       {i >= 2 && (
-        <rect x={cx - 0.9} y={cy + 2} width={1.8} height={13} fill={pal.deep} opacity={0.6 * g} />
+        <>
+          {[-1, 1].map((dir) => (
+            <circle
+              key={dir}
+              cx={cx + dir * (bodyR * 0.34)}
+              cy={cy + 0.4}
+              r={0.9 + p * 0.4}
+              fill={pal.deep}
+              opacity={0.9 * g}
+            />
+          ))}
+        </>
       )}
-      {/* Petals radiating from the centre — none at the bud, multiplying as the bloom opens. */}
-      {petals > 0 ? (
-        Array.from({ length: petals }, (_, k) => {
-          const a = (k / petals) * Math.PI * 2 - Math.PI / 2
-          const px = cx + Math.cos(a) * (coreR + petalLen * 0.5)
-          const py = cy + Math.sin(a) * (coreR + petalLen * 0.5)
+      {/* Drifting leaves on the breeze — from fledgling onward, a few small leaves carried
+          alongside the wisp, the air-borne motion made visible. */}
+      {i >= 3 &&
+        Array.from({ length: i - 1 }, (_, k) => {
+          const a = (k / Math.max(1, i - 1)) * Math.PI * 2
+          const lx = cx + Math.cos(a) * (bodyR + 8 + p * 3)
+          const ly = cy + Math.sin(a) * (bodyR + 6 + p * 2)
           return (
             <ellipse
-              key={k}
-              cx={px}
-              cy={py}
-              rx={petalLen * 0.5}
-              ry={petalLen * 0.28}
-              fill={k % 2 === 0 ? pal.glow : pal.accent}
-              opacity={(0.65 + 0.25 * p) * g}
-              transform={`rotate(${(a * 180) / Math.PI} ${px} ${py})`}
+              key={`leaf-${k}`}
+              cx={lx}
+              cy={ly}
+              rx={2.4 + p}
+              ry={1.1 + p * 0.4}
+              fill={pal.accent}
+              opacity={0.6 * g}
+              transform={`rotate(${(a * 180) / Math.PI + 30} ${lx} ${ly})`}
             />
           )
-        })
-      ) : (
-        // Spark: a closed bud — a teardrop of soft petal colour.
-        <path
-          d={`M ${cx} ${cy - 8} Q ${cx + 5} ${cy} ${cx} ${cy + 6} Q ${cx - 5} ${cy} ${cx} ${cy - 8} Z`}
-          fill={pal.glow}
-          opacity={0.8 * g}
-        />
-      )}
-      {/* The glowing flower centre. */}
-      <circle cx={cx} cy={cy} r={coreR} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
-      <circle cx={cx - coreR * 0.3} cy={cy - coreR * 0.3} r={coreR * 0.3} fill="#ffffff" opacity={0.75 * g} />
-      {/* Radiant: a dusting of pollen motes around the full bloom. */}
+        })}
+      {/* Radiant: a full ring of orbiting motes swirling around the wisp — the airiest form. */}
       {i >= 5 &&
-        Array.from({ length: 6 }, (_, k) => {
-          const a = (k / 6) * Math.PI * 2
+        Array.from({ length: 8 }, (_, k) => {
+          const a = (k / 8) * Math.PI * 2
           return (
             <circle
-              key={`p${k}`}
-              cx={cx + Math.cos(a) * (coreR + petalLen)}
-              cy={cy + Math.sin(a) * (coreR + petalLen)}
-              r={1.3}
-              fill={pal.accent}
+              key={`mote-${k}`}
+              cx={cx + Math.cos(a) * (bodyR + 11)}
+              cy={cy + Math.sin(a) * (bodyR + 11)}
+              r={1.1}
+              fill={k % 2 === 0 ? pal.core : pal.accent}
               opacity={0.8 * g}
             />
           )
@@ -747,7 +789,7 @@ const PATH_FORM: Record<
 > = {
   stillness: StillnessForm,
   breath: PittaForm,
-  heart: HeartForm,
+  heart: VataForm,
 }
 
 // The form chosen for the art: the user's CHOSEN path (ADR-0023). NULL until they choose — a
