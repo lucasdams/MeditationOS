@@ -15,7 +15,6 @@ const MORE_LINKS: MoreLink[] = [
   { to: '/timeline', icon: '🕒', label: 'Timeline', light: '#0369a1', dark: '#0ea5e9' },
   { to: '/goals', icon: '🎯', label: 'Goals', light: '#6d28d9', dark: '#a78bfa' },
   { to: '/schedule', icon: '🗓️', label: 'Schedule', light: '#1d4ed8', dark: '#60a5fa' },
-  { to: '/spirit', icon: '🪷', label: 'Spirit', light: '#0e7490', dark: '#22d3ee' },
   { to: '/analytics', icon: '📈', label: 'Analytics', light: '#be185d', dark: '#f472b6' },
 ]
 
@@ -118,6 +117,9 @@ export default function AppHeader() {
         </Link>
         <Link to="/journal" className="nav-journal">
           📓 Journal
+        </Link>
+        <Link to="/spirit" className="nav-spirit">
+          🪷 Spirit
         </Link>
 
         <div className="nav-more" ref={moreRef}>

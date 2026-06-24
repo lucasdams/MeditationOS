@@ -194,27 +194,21 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     expect(screen.getByTestId('spirit')).toBeInTheDocument()
   })
 
-  it('keeps the full level card and weekly review collapsed', async () => {
+  it('shows the full level card and weekly review by default', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The heavier progress surfaces are not rendered until the drawer is opened.
-    expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
-
-    // The toggle announces a collapsed state and points at the controlled panel — and is
-    // still a real, link-styled button (aria-expanded/aria-controls intact).
-    const toggle = screen.getByRole('button', { name: /show more/i })
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(toggle).toHaveAttribute('aria-controls', 'dashboard-more-panel')
+    // The progress detail renders directly now — no "Show more" drawer to open.
+    expect(screen.getByTestId('level-card')).toBeInTheDocument()
+    expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument()
   })
 
   it('does not render the activity calendar or the totals stat cards on the home', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The activity calendar moved to Analytics; open the drawer to confirm it isn't there either.
-    fireEvent.click(screen.getByRole('button', { name: /show more/i }))
+    // The progress detail (level card) shows by default; the activity calendar moved to Analytics.
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
     expect(document.querySelector('.calendar')).toBeNull()
     expect(document.querySelector('.stat-cards')).toBeNull()
@@ -270,39 +264,24 @@ describe('DashboardPage — multi-step quest progress counter', () => {
   })
 })
 
-describe('DashboardPage — expanding the "Show more" drawer', () => {
+describe('DashboardPage — progress detail (shown by default)', () => {
   beforeEach(() => {
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
     getSpirit.mockResolvedValue(fakeSpirit)
   })
 
-  it('reveals the heavier progress sections when opened', async () => {
-    renderPage()
-    await screen.findByText(/Level 7/)
-
-    const toggle = screen.getByRole('button', { name: /show more/i })
-    fireEvent.click(toggle)
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByTestId('level-card')).toBeInTheDocument()
-    expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument()
-  })
-
-  it('always loads collapsed by default — even if an old persisted "open" flag exists', async () => {
-    // The owner wants the drawer hidden on every load. Even a stale `dashboard.showMore=1`
-    // from a previous build must NOT auto-open it; the user presses "Show more" to reveal.
+  it('renders the level card and weekly review with no Show more toggle', async () => {
+    // A stale `dashboard.showMore` flag from an older build must not matter — the progress
+    // detail is always shown now (the drawer was removed).
     localStorage.setItem('dashboard.showMore', '1')
     renderPage()
     await screen.findByText(/Level 7/)
 
-    expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /show more/i })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
+    expect(screen.getByTestId('level-card')).toBeInTheDocument()
+    expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show less/i })).not.toBeInTheDocument()
   })
 })
 
@@ -368,8 +347,7 @@ describe('DashboardPage — spirit (coins) single-fetch', () => {
     // Exactly one fetch — not two.
     expect(getSpirit).toHaveBeenCalledTimes(1)
 
-    // LevelCard renders (no longer takes a scene prop) once the drawer is opened.
-    fireEvent.click(screen.getByRole('button', { name: /show more/i }))
+    // LevelCard renders by default (no longer takes a scene prop).
     await waitFor(() => expect(capturedLevelCardProps.length).toBeGreaterThan(0))
     expect(capturedLevelCardProps.at(-1)).not.toHaveProperty('scene')
   })
