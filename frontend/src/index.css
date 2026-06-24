@@ -2260,25 +2260,66 @@ textarea:focus-visible,
   color: var(--accent);
 }
 
-/* Choose-first (ADR-0023): a prominent pill CTA on the home for a pathless spirit, so picking a
-   companion is the clear first action — not a faint default spark with a tiny link. */
+/* Choose-first (ADR-0023): a calm, inviting CTA on the home for a pathless spirit — a soft
+   outlined accent pill that fills on hover, lighter than a heavy solid button. */
 .spirit-choose-cta {
   display: inline-block;
-  margin-top: 0.2rem;
-  padding: 0.5rem 1.15rem;
+  margin-top: 0.3rem;
+  padding: 0.45rem 1.1rem;
   border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
 
 .spirit-choose-cta:hover {
+  background: var(--accent);
+  color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+/* "About the doshas" — a calm explainer on the choose page (ADR-0023). */
+.dosha-about {
+  max-width: 32rem;
+  margin: 2rem auto 0;
+  text-align: left;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.dosha-about h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+}
+
+.dosha-about-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dosha-about-list li {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
+}
+
+.dosha-about-name {
+  font-weight: 600;
+}
+
+.dosha-about-note {
+  font-size: 0.8rem;
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+  margin-top: 0.75rem;
 }
 
 .spirit-bond {

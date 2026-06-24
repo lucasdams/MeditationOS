@@ -66,29 +66,36 @@ export const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
 // short personality line, `practice` the signature activity that keeps it nourished, and `glyph`
 // a small decorative emoji for the picker card. Exported as the single source of truth so the
 // picker, hero read-out, and care nudges all relabel consistently.
+// Each dosha is kept in good shape by the practice that BALANCES it — Ayurveda balances by
+// opposites, so a creature's signature practice is the OPPOSITE quality to its own nature, not a
+// match for its element. `balance` names that quality; `practice` is the app practice that
+// provides it.
 export const DOSHA: Record<
   SpiritPath,
-  { name: string; element: string; vibe: string; practice: string; glyph: string }
+  { name: string; element: string; vibe: string; practice: string; balance: string; glyph: string }
 > = {
   stillness: {
     name: 'Kapha',
     element: 'Earth + Water',
     vibe: 'Grounded, calm, and steady.',
-    practice: 'meditation',
+    practice: 'breathwork',
+    balance: 'energizing',
     glyph: '🪷',
   },
   breath: {
     name: 'Pitta',
     element: 'Fire + Water',
     vibe: 'Sharp, intense, and energetic.',
-    practice: 'breathwork',
+    practice: 'gratitude & journaling',
+    balance: 'cooling',
     glyph: '🔥',
   },
   heart: {
     name: 'Vata',
     element: 'Air + Ether',
     vibe: 'Light, mobile, and expressive.',
-    practice: 'gratitude + journaling',
+    practice: 'meditation',
+    balance: 'grounding',
     glyph: '🍃',
   },
 }

@@ -342,7 +342,7 @@ describe('SpiritPage care needs (ADR-0023)', () => {
   it('shows the three needs and a kind care nudge when a need is low', async () => {
     get.mockResolvedValue(
       spiritWith({
-        path: 'breath', // Pitta → breathwork
+        path: 'breath', // Pitta → balanced by gratitude & journaling (cooling)
         needs: {
           nourished: okNeed('restless', 0.5),
           rested: okNeed('content'),
@@ -357,9 +357,9 @@ describe('SpiritPage care needs (ADR-0023)', () => {
     expect(screen.getByText('Nourished')).toBeInTheDocument()
     expect(screen.getByText('Rested')).toBeInTheDocument()
     expect(screen.getByText('Joyful')).toBeInTheDocument()
-    // The nudge names the creature (Pitta) and its reviving practice (breathwork), never shaming.
+    // The nudge names the creature (Pitta) and its reviving practice (gratitude & journaling).
     expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
-    expect(screen.getByText(/breathwork would revive it/i)).toBeInTheDocument()
+    expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
   })
 
   // (A pathless spark now redirects to /spirit/choose, covered by the dosha-picker describe and
