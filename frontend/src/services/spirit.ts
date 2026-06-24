@@ -8,8 +8,8 @@ import type {
 // The Spirit API (docs/design/spirit.md, ADR-0022). The read endpoint returns the active
 // spirit's computed state plus the cosmetics catalog (`available`) and the retired
 // `collection`; the three writes buy a cosmetic, rename the spirit, and awaken a new spark.
-// Mirrors sanctuaryService: thin wrappers over the shared `api` fetch helper. Every call
-// returns the fresh SpiritState, so callers can just swap in the response (refetch-free).
+// Thin wrappers over the shared `api` fetch helper. Every call returns the fresh SpiritState,
+// so callers can just swap in the response (refetch-free).
 export const spiritService = {
   get: () => api.get<SpiritState>('/spirit'),
   // Buy/apply a cosmetic (slot → option) to the active spirit. The cost is deducted from the

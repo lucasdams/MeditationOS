@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { spiritService } from '../services/spirit'
 import { useToast } from '../context/ToastContext'
-import { SpiritArt } from '../components/Spirit'
+import {
+  SpiritArt,
+  STAGE_COPY,
+  PATH_COPY,
+  formFor,
+  prefersReducedMotion,
+} from '../components/Spirit'
 import CoinIcon from '../components/CoinIcon'
 import Modal from '../components/Modal'
 import { Loading, RetryableError } from '../components/StateViews'
@@ -11,8 +17,7 @@ import type { SpiritPath, SpiritState } from '../types'
 
 /**
  * SpiritPage — the full view of your living companion (docs/design/spirit.md, ADR-0022;
- * build-order steps 5 + 6). It mirrors the Sanctuary's proven page + "Personalize" panel
- * pattern (SanctuaryPage.tsx), repointed at the single spirit:
+ * build-order steps 5 + 6). A page + "Personalize" panel for the single spirit:
  *
  *  - the spirit rendered large with its name / stage / path,
  *  - a quiet Personalize panel — the cosmetics slots (aura / accessory / habitat) with each
@@ -26,20 +31,13 @@ import type { SpiritPath, SpiritState } from '../types'
  * Calm, low-pressure UX: the panel is a soft set of options, never a shouty shop.
  */
 
-// Friendly, calm labels for the stages and paths (kept local — the page is the only consumer).
-const STAGE_LABEL: Record<string, string> = {
-  spark: 'Spark',
-  wisp: 'Wisp',
-  fledgling: 'Fledgling',
-  ascendant: 'Ascendant',
-  radiant: 'Radiant',
-}
+// Stage labels reuse Spirit's STAGE_COPY (single source of truth) — just the display name here.
+const STAGE_LABEL: Record<string, string> = Object.fromEntries(
+  Object.entries(STAGE_COPY).map(([stage, copy]) => [stage, copy.name]),
+)
 
-const PATH_LABEL: Record<SpiritPath, string> = {
-  stillness: 'stillness',
-  breath: 'breath',
-  heart: 'heart',
-}
+// Path labels reuse Spirit's PATH_COPY (single source of truth).
+const PATH_LABEL = PATH_COPY
 
 // Calm display names for the cosmetic slots and their options (matching the backend catalog
 // SPIRIT_COSMETICS_CATALOG: aura/accessory/habitat). Unknown keys fall back to a tidied key.
@@ -79,12 +77,6 @@ type PreviewTarget = { slot: string; option: string } | null
 // the server trims + rejects over-length regardless.
 const NAME_MAX = 40
 
-// The form chosen for the art: the committed path, falling back to the suggested lean before
-// it commits. A defensive default keeps the art rendering if both are somehow absent.
-function formFor(spirit: SpiritState): SpiritPath {
-  return spirit.path ?? spirit.path_lean ?? 'stillness'
-}
-
 export default function SpiritPage() {
   const { showToast } = useToast()
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
@@ -97,6 +89,9 @@ export default function SpiritPage() {
   const [preview, setPreview] = useState<PreviewTarget>(null)
   // The awaken confirmation modal (radiant only).
   const [confirmAwaken, setConfirmAwaken] = useState(false)
+  // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
+  // media query (and any future celebration is honored) — the single source of truth.
+  const reducedMotion = prefersReducedMotion()
 
   function load() {
     setRetrying(true)
@@ -121,17 +116,30 @@ export default function SpiritPage() {
   async function buyCosmetic(slot: string, option: string) {
     const key = `${slot}:${option}`
     setBusy(key)
-    const before = spirit
     try {
       const next = await spiritService.buyCosmetic({ slot, option })
       setSpirit(next)
-      const spent = before ? before.coins - next.coins : null
-      const detail = spent != null && spent > 0 ? ` · ${spent} coins spent, ${next.coins} left` : ''
-      showToast(`${optionLabel(option)} added to your spirit.${detail} ✨`)
+      // Keep the confirmation calm: the hero balance already carries the coin count, so we
+      // don't reintroduce a spent/remaining tally here — just a gentle "it's on your spirit".
+      showToast(`${optionLabel(option)} added to your spirit ✨`)
     } catch {
       showToast('Could not apply that yet — earn more coins by practicing.', 'error')
     } finally {
       setBusy(null)
+    }
+  }
+
+  // Quiet feedback when a gated (locked / unaffordable) option is activated — so the click
+  // isn't a silent no-op. We surface the unlock requirement or the coins shortfall as a calm
+  // note, while the preview-on-focus affordance still lets the user see the goal look.
+  function notifyGated(opt: { unlocked: boolean; unlock_hint: string | null; affordable: boolean; cost: number }) {
+    if (!opt.unlocked) {
+      showToast(opt.unlock_hint ?? 'Keep practicing to unlock this.')
+      return
+    }
+    if (!opt.affordable && spirit) {
+      const short = Math.max(0, opt.cost - spirit.coins)
+      showToast(short > 0 ? `Earn ${short} more coins to add this.` : 'Earn more coins to add this.')
     }
   }
 
@@ -175,10 +183,15 @@ export default function SpiritPage() {
       </Link>
       <header className="page-head">
         <h1>Your spirit</h1>
-        <p className="page-subtitle">
-          A living companion you awaken once and grow through practice. Adorn it, name it, and
-          watch it brighten as you show up.
-        </p>
+        {/* The promise copy describes a loaded spirit, so gate it behind one being present: on a
+            first-load failure the heading + retry stand alone, not copy about a spirit that
+            never arrived. */}
+        {spirit && (
+          <p className="page-subtitle">
+            A living companion you awaken once and grow through practice. Adorn it, name it, and
+            watch it brighten as you show up.
+          </p>
+        )}
       </header>
 
       {!spirit && !error && <Loading label="Waking your spirit…" />}
@@ -204,7 +217,8 @@ export default function SpiritPage() {
                   path={form}
                   glow={spirit.daily_glow}
                   cosmetics={previewCosmetics}
-                  reducedMotion={false}
+                  reducedMotion={reducedMotion}
+                  previewing={preview !== null}
                 />
                 {preview && <span className="spirit-preview-badge">Preview</span>}
               </div>
@@ -239,7 +253,9 @@ export default function SpiritPage() {
                 </p>
               </header>
               {spirit.available.length === 0 ? (
-                <p className="muted">No adornments available yet.</p>
+                <p className="muted">
+                  Keep practicing — adornments unlock as your spirit grows.
+                </p>
               ) : (
                 spirit.available.map((s) => (
                   <fieldset key={s.slot} className="spirit-slot">
@@ -253,12 +269,22 @@ export default function SpiritPage() {
                         const buyable = !applied && opt.unlocked && opt.affordable
                         // Hard-disable only an already-applied option or an in-flight write —
                         // a gated option stays enabled so it can be PREVIEWED (the goal look)
-                        // without spending a coin, mirroring the Sanctuary panel (ADR-0021).
+                        // without spending a coin.
                         const hardDisabled = busy != null || applied
                         const canPreview = !applied
                         const showPreview = () =>
                           canPreview && setPreview({ slot: s.slot, option: opt.option })
                         const clearPreview = () => setPreview(null)
+                        // A full spoken state for SR/keyboard: name + state + reason, so the
+                        // applied/locked/unaffordable status isn't carried only by emoji/colour
+                        // and a hover-only `title`.
+                        const ariaLabel = applied
+                          ? `${optionLabel(opt.option)} — applied`
+                          : !opt.unlocked
+                            ? `${optionLabel(opt.option)} — locked, ${(opt.unlock_hint ?? 'keep practicing').toLowerCase()}`
+                            : !opt.affordable
+                              ? `${optionLabel(opt.option)} — ${opt.cost} coins, earn more`
+                              : `${optionLabel(opt.option)} — ${opt.cost} coins`
                         return (
                           <button
                             key={opt.option}
@@ -268,18 +294,15 @@ export default function SpiritPage() {
                             }`}
                             disabled={hardDisabled}
                             aria-disabled={(gated && !applied) || undefined}
-                            title={
-                              !opt.unlocked
-                                ? (opt.unlock_hint ?? 'Locked')
-                                : !opt.affordable
-                                  ? 'Earn more coins'
-                                  : undefined
-                            }
+                            aria-label={ariaLabel}
                             onMouseEnter={showPreview}
                             onMouseLeave={clearPreview}
                             onFocus={showPreview}
                             onBlur={clearPreview}
-                            onClick={() => buyable && buyCosmetic(s.slot, opt.option)}
+                            // Buyable → purchase; gated → quiet feedback (never a silent no-op).
+                            onClick={() =>
+                              buyable ? buyCosmetic(s.slot, opt.option) : gated && notifyGated(opt)
+                            }
                           >
                             {applied ? (
                               `✓ ${optionLabel(opt.option)}`
@@ -418,6 +441,9 @@ function SpiritNickname({
   useEffect(() => {
     setValue(name ?? '')
   }, [name])
+  // Surface the cap as a quiet, near-the-limit counter so a paste over length isn't silently
+  // truncated without any feedback — it appears only when the user is close to (or at) the cap.
+  const nearCap = value.length >= NAME_MAX - 5
   return (
     <label className="spirit-field">
       <span>Nickname</span>
@@ -427,10 +453,20 @@ function SpiritNickname({
         maxLength={NAME_MAX}
         placeholder="Give your spirit a name (optional)"
         disabled={busy}
+        aria-describedby="spirit-nickname-hint"
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => onSave(value)}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       />
+      <span id="spirit-nickname-hint" className="spirit-field-hint muted">
+        Up to {NAME_MAX} characters; clear to remove the name.
+        {nearCap && (
+          <span className="spirit-field-count">
+            {' '}
+            {value.length}/{NAME_MAX}
+          </span>
+        )}
+      </span>
     </label>
   )
 }

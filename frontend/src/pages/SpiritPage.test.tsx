@@ -78,16 +78,18 @@ describe('SpiritPage personalize panel', () => {
 
     renderPage()
 
-    // Applied option reads as done and is disabled (nothing to buy).
-    const applied = await screen.findByRole('button', { name: /✓ Soft glow/ })
+    // Applied option reads as done and is disabled (nothing to buy). The accessible name now
+    // carries the full state ("Soft glow — applied") for SR/keyboard, not just the ✓ glyph.
+    const applied = await screen.findByRole('button', { name: /Soft glow — applied/ })
     expect(applied).toBeDisabled()
 
-    // A locked option is rendered (not disabled, so it can still preview) with the lock mark.
-    const locked = screen.getByRole('button', { name: /🔒 Starlit/ })
+    // A locked option is rendered (not disabled, so it can still preview); its name states the
+    // locked status + the unlock reason.
+    const locked = screen.getByRole('button', { name: /Starlit — locked, reach level 5/i })
     expect(locked).not.toBeDisabled()
 
-    // A plain buyable option shows its coin price.
-    expect(screen.getByRole('button', { name: /Warm glow · coins 45/ })).toBeInTheDocument()
+    // A plain buyable option's name states its coin price.
+    expect(screen.getByRole('button', { name: /Warm glow — 45 coins/ })).toBeInTheDocument()
   })
 
   it('buys a cosmetic via the service and swaps in the returned state', async () => {
@@ -98,7 +100,7 @@ describe('SpiritPage personalize panel', () => {
 
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Warm glow · coins 45/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
 
     await waitFor(() => expect(buyCosmetic).toHaveBeenCalledWith({ slot: 'aura', option: 'warm' }))
     await waitFor(() =>
@@ -106,14 +108,16 @@ describe('SpiritPage personalize panel', () => {
     )
   })
 
-  it('never buys a locked option on click (the gate is client-side too)', async () => {
+  it('never buys a locked option on click, but gives quiet feedback (no silent no-op)', async () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
 
-    const locked = await screen.findByRole('button', { name: /🔒 Starlit/ })
+    const locked = await screen.findByRole('button', { name: /Starlit — locked/ })
     fireEvent.click(locked)
     expect(buyCosmetic).not.toHaveBeenCalled()
+    // The click is acknowledged with the unlock reason rather than doing nothing.
+    await waitFor(() => expect(screen.getByText(/Reach level 5/)).toBeInTheDocument())
   })
 
   it('shows an error toast when a buy fails', async () => {
@@ -122,7 +126,7 @@ describe('SpiritPage personalize panel', () => {
 
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Warm glow · coins 45/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
     await waitFor(() => expect(screen.getByText(/Could not apply that yet/)).toBeInTheDocument())
   })
 })

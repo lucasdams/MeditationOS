@@ -14,7 +14,7 @@ import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TI
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
-import type { DashboardStats, Mood } from '../types'
+import type { DashboardStats, Mood, SpiritState } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
 const QUEST_LINKS: Record<string, string> = {
@@ -61,9 +61,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
-  // The spendable coin balance shown on the home top line. Sourced from the spirit
-  // (spiritService.get() derives coins from earned-XP level minus cosmetics spent).
-  const [coins, setCoins] = useState<number | null>(null)
+  // The home-screen spirit, fetched once here and shared: it drives both the top-line coin
+  // chip (its derived spendable balance) and the <Spirit/> companion below (passed as a prop,
+  // so the companion doesn't fire a second GET /spirit). null until loaded / on a quiet failure.
+  const [spirit, setSpirit] = useState<SpiritState | null>(null)
   // The deeper progress detail (full level detail, weekly review) starts collapsed on every
   // load so the landing view stays calm — the primary "start a practice" surface first, the
   // rest one tap away. We deliberately do NOT persist the open/closed choice: the owner wants
@@ -117,8 +118,8 @@ export default function DashboardPage() {
   useEffect(() => {
     spiritService
       .get()
-      .then((spirit) => setCoins(spirit.coins))
-      .catch(() => {}) // non-critical; the coin chip simply won't render
+      .then((s) => setSpirit(s))
+      .catch(() => {}) // non-critical; the coin chip + companion simply stay hidden on failure
   }, [])
 
   // Today's latest mood for the home reflection. Stats/weekly-review expose only aggregate
@@ -168,9 +169,9 @@ export default function DashboardPage() {
           <span className="level-topline-item">
             <span aria-hidden="true">◆</span> Level {stats.level}
           </span>
-          {coins !== null && (
+          {spirit && (
             <span className="level-topline-item">
-              <CoinIcon /> {coins}
+              <CoinIcon /> {spirit.coins}
             </span>
           )}
         </p>
@@ -197,9 +198,10 @@ export default function DashboardPage() {
       )}
 
       {/* The spirit — the home-screen centrepiece (docs/design/spirit.md, ADR-0022). A calm,
-          static glowing companion that grows with practice; it owns its own loading / error /
-          empty (first-awakening) states. Replaces the old Sanctuary scene home preview. */}
-      <Spirit />
+          static glowing companion that grows with practice. We fetch it once above (for the coin
+          chip) and pass it down, so the companion doesn't fire a second GET /spirit; it waits
+          quietly while the prop is still null. */}
+      <Spirit spirit={spirit} />
 
       {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
           a practice. Kept prominent and always visible. */}

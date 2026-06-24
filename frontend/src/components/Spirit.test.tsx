@@ -26,10 +26,13 @@ function spiritState(over: Partial<SpiritState> = {}): SpiritState {
     stage: 'spark',
     path: null,
     path_lean: 'stillness',
+    name: null,
     bond: { level: 1, xp_into_level: 0, xp_for_next: 100 },
     daily_glow: 1,
     coins: 0,
     cosmetics: {},
+    available: [],
+    collection: [],
     ...over,
   }
 }

@@ -2328,6 +2328,9 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  /* Reset the global `button { margin-top: 1rem }` so the row's spacing comes from its `gap`
+     / wrap layout, not a leaked top margin. */
+  margin-top: 0;
   padding: 0.35rem 0.65rem;
   border-radius: 0.5rem;
   border: 1px solid var(--border, rgba(0, 0, 0, 0.18));
@@ -2394,6 +2397,48 @@ textarea:focus-visible,
   gap: 0.5rem;
   justify-content: center;
   margin-top: 1rem;
+}
+
+/* The awaken actions, styled so the safe vs consequential choice reads clearly instead of all
+   three inheriting the indigo primary. The "Awaken a new spark" actions (the page trigger and
+   the modal confirm) are the emphasized, distinct action — a warm amber that signals "this
+   matters / is irreversible". "Keep this one" gets the quiet secondary (link-neutral) idiom so
+   the safe out is visually subordinate. Margins reset so layout owns the spacing. */
+.spirit-awaken-btn,
+.spirit-awaken-do {
+  margin-top: 0;
+  /* A fixed amber (the same #b45309 the app uses for warning text — AA with white) so the
+     emphasis reads identically in light and dark and stands apart from the indigo primary. */
+  background: #b45309;
+  color: #fff;
+}
+
+.spirit-awaken-btn:hover:not(:disabled),
+.spirit-awaken-do:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+/* "Keep this one" — the calm, non-destructive way out. Mirrors the .link-neutral secondary
+   idiom (e.g. the breathe Discard): a quiet text action, not a filled button. */
+.spirit-awaken-cancel {
+  margin-top: 0;
+  padding: 0.65rem 0.4rem;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.spirit-awaken-cancel:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* The nickname hint line + near-the-cap counter — quiet, small, under the field. */
+.spirit-field-hint {
+  font-size: 0.78rem;
+}
+
+.spirit-field-count {
+  font-variant-numeric: tabular-nums;
 }
 
 .sanctuary-grown-row {
