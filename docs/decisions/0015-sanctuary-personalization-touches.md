@@ -1,5 +1,7 @@
 # ADR-0015: Sanctuary — naming and personal touches (name, note, favourite)
 
+> **Superseded by [ADR-0022](0022-spirit-companion-replaces-sanctuary.md)** — the Sanctuary was retired in favour of the Spirit companion. Kept for historical rationale.
+
 **Status:** Accepted · 2026-06-16 · Extends [ADR-0011](0011-sanctuary-spend-economy.md), [ADR-0012](0012-sanctuary-personalization.md), [ADR-0014](0014-sanctuary-grid-layout.md) · Detail: [Sanctuary design](../design/sanctuary.md)
 
 ## Context

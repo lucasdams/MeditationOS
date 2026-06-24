@@ -1,6 +1,6 @@
 # ADR-0022: Spirit companion replaces the Sanctuary
 
-**Status:** Proposed · 2026-06-23 · Will supersede [ADR-0010](0010-sanctuary-cultivation.md)–[ADR-0021](0021-sanctuary-evolution-tree-and-preview-locked.md) on acceptance · Detail: [Spirit design](../design/spirit.md)
+**Status:** Accepted · 2026-06-23 · Supersedes [ADR-0010](0010-sanctuary-cultivation.md)–[ADR-0021](0021-sanctuary-evolution-tree-and-preview-locked.md) · Detail: [Spirit design](../design/spirit.md)
 
 ## Context
 

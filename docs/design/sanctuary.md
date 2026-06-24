@@ -1,5 +1,7 @@
 # Sanctuary Design — a garden you build with coins
 
+> **Superseded by [the Spirit design](spirit.md)** ([ADR-0022](../decisions/0022-spirit-companion-replaces-sanctuary.md)). The Sanctuary was retired; this document is kept for historical context.
+
 [← Back to README](../../README.md) · Related: [ADR-0020 (growth ladder + accessory slots)](../decisions/0020-sanctuary-growth-ladder-and-accessory-slots.md) · [ADR-0019 (reset upgrades for a fee)](../decisions/0019-sanctuary-reset-upgrades-for-a-fee.md) · [ADR-0016 (shop expansion + retune)](../decisions/0016-sanctuary-shop-expansion-and-retune.md) · [ADR-0015 (naming + personal touches)](../decisions/0015-sanctuary-personalization-touches.md) · [ADR-0014 (grid layout)](../decisions/0014-sanctuary-grid-layout.md) · [ADR-0013 (progressive pricing)](../decisions/0013-sanctuary-progressive-pricing.md) · [ADR-0012 (personalization)](../decisions/0012-sanctuary-personalization.md) · [ADR-0011 (spend economy)](../decisions/0011-sanctuary-spend-economy.md) · [ADR-0010 (superseded)](../decisions/0010-sanctuary-cultivation.md) · [gamification](gamification.md) · [data-model](data-model.md)
 
 The Sanctuary is the product's retention loop: a small **spend economy**. You earn

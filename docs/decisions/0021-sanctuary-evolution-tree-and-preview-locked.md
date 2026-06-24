@@ -1,5 +1,7 @@
 # ADR-0021: Sanctuary — evolution-tree framework (form fork + deeper ladder) + preview locked options
 
+> **Superseded by [ADR-0022](0022-spirit-companion-replaces-sanctuary.md)** — the Sanctuary was retired in favour of the Spirit companion. Kept for historical rationale.
+
 **Status:** Accepted · 2026-06 · Extends [ADR-0020](0020-sanctuary-growth-ladder-and-accessory-slots.md) (growth ladder + accessory slots) · Builds on [ADR-0012](0012-sanctuary-personalization.md) (variants/customizations) + [ADR-0011](0011-sanctuary-spend-economy.md)/[ADR-0013](0013-sanctuary-progressive-pricing.md) (derived balance) · Detail: [Sanctuary design](../design/sanctuary.md)
 
 ## Context
