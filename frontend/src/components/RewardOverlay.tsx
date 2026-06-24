@@ -104,7 +104,7 @@ export default function RewardOverlay({
         </div>
         {leveledUp && (
           <div className="reward-coins">
-            You've earned coins to spend in your sanctuary <CoinIcon />
+            You've earned coins to spend on your spirit <CoinIcon />
           </div>
         )}
         <div className="xp-bar">

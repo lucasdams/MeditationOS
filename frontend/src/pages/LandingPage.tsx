@@ -10,7 +10,7 @@ const FEATURES = [
   { emoji: '📓', title: 'Journal', body: 'Reflect on a sit, tag a mood, and resurface a random past entry to revisit.' },
   { emoji: '🕯️', title: 'Candle gazing', body: 'An eyes-open focus practice (traditionally called Trataka) — rest your attention on a single, gently moving flame to steady a busy mind.' },
   { emoji: '🎯', title: 'Goals', body: 'Set recurring habits — meditate, breathe, journal — and watch progress fill in automatically from your activity.' },
-  { emoji: '🌳', title: 'Sanctuary', body: 'Earn coins as you level up, then buy and upgrade a garden of plants, pets, and places.' },
+  { emoji: '🪷', title: 'Spirit', body: 'Awaken a living companion that grows with your practice — evolving down a path shaped by how you meditate, and brightening each time you return.' },
   { emoji: '📊', title: 'Dashboard & analytics', body: 'Streaks, levels, a weekly breakdown, an activity heatmap, and trends across type, day, and time.' },
   { emoji: '🌱', title: 'Streaks, XP & quests', body: 'Rotating daily quests, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
 ]
