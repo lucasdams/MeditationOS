@@ -38,10 +38,11 @@ export function setInterfaceSounds(on: boolean): void {
 }
 
 /**
- * A soft, short UI "tick" for tactile feedback when pressing controls (the
- * duration / breaths-per-minute steppers, etc.). Deliberately quiet and brief so
- * rapid presses stay pleasant, not fatiguing. `volume` is 0–1. Always fired from a
- * click handler, so the shared audio context is already gesture-unlocked.
+ * A soft, short UI "tick" for tactile feedback when pressing controls. Fired app-wide
+ * by the global button handler (see installButtonClickSfx) so every button sounds the
+ * same. Deliberately quiet and brief so rapid presses stay pleasant, not fatiguing.
+ * `volume` is 0–1. Always fired from a click handler, so the shared audio context is
+ * already gesture-unlocked.
  *
  * No-ops when the user has turned interface sounds off (Settings → Appearance).
  */
@@ -69,6 +70,62 @@ export function playClick(volume = 0.5): void {
     osc.stop(t + 0.06)
   } catch {
     // audio unavailable — skip silently
+  }
+}
+
+/**
+ * The single, app-wide rule for "which controls make a click sound".
+ *
+ * A soft tick plays when the user activates a genuine *button* control — a native
+ * `<button>` or an element with `role="button"`. That covers primary actions, nav
+ * buttons, icon buttons, steppers, chips, etc. in one place, so every tappable
+ * button is consistent instead of each component opting in by hand.
+ *
+ * Deliberately excluded, to keep it tasteful rather than "everything beeps":
+ *   - Plain links (`<a>` / react-router `<Link>`) — navigation, not a press.
+ *   - Form inputs (checkbox / radio / select / text) — they have their own affordance,
+ *     and some (e.g. the Settings "interface sounds" toggle) preview the sound on their
+ *     own terms.
+ *   - Disabled / `aria-disabled` controls — a no-op shouldn't make noise.
+ *
+ * Honours the interface-sounds preference because it routes through `playClick()`.
+ */
+function isClickableButton(el: Element | null): el is HTMLElement {
+  // Walk up from the event target to the nearest button-like ancestor. Clicks often
+  // land on an inner icon/span, so closest() finds the real control.
+  const control = el?.closest<HTMLElement>('button, [role="button"]')
+  if (!control) return false
+  // Native disabled buttons don't dispatch click, but role="button" / aria-disabled do.
+  if (
+    (control as HTMLButtonElement).disabled ||
+    control.getAttribute('aria-disabled') === 'true'
+  ) {
+    return false
+  }
+  return true
+}
+
+let buttonSfxInstalled = false
+
+/**
+ * Install the one global listener that gives every button a consistent click tick.
+ * Capture phase (like the audio-unlock listener in audioContext.ts) so it fires even
+ * when a handler stops propagation. Idempotent. Returns a teardown for tests.
+ */
+export function installButtonClickSfx(): () => void {
+  if (buttonSfxInstalled || typeof document === 'undefined') {
+    return () => {}
+  }
+  buttonSfxInstalled = true
+  const onClick = (e: MouseEvent): void => {
+    if (isClickableButton(e.target as Element | null)) {
+      playClick()
+    }
+  }
+  document.addEventListener('click', onClick, true)
+  return () => {
+    document.removeEventListener('click', onClick, true)
+    buttonSfxInstalled = false
   }
 }
 
