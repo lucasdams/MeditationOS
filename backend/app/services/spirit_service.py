@@ -4,14 +4,13 @@ write its cosmetics, nickname, and the awaken / collection loop.
 
 Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
 committed `path`, optional `name`, and owned `cosmetics`. Everything the client sees is
-derived on read from the user's earned-XP level (via the same
-`dashboard_service.get_wallet_basis` the Sanctuary wallet uses):
+derived on read from the user's earned-XP level (via `dashboard_service.get_wallet_basis`):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
   of level, so it is monotonic and can never be lost.
 - **Bond** — a friendly level read-out (level + XP-into-level + XP-for-next).
-- **Coins** — `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0. The coin formula
-  and `COINS_PER_LEVEL` are reused verbatim from `sanctuary_service` (no duplication).
+- **Coins** — `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0 (see
+  `_coin_balance`). Self-contained: this module owns its own `COINS_PER_LEVEL` constant.
 - **Daily glow** — a brightness factor in [GLOW_FLOOR, 1.0] from recent practice, floored
   so the spirit never goes dark. Visual only, never destructive.
 
@@ -19,9 +18,9 @@ The active spirit is lazily created (a pathless spark) on first read, so both ne
 migrated users get one without a heavy backfill.
 
 Steps 5 + 6 add the writes — all user-scoped, default-deny at the route. Mutations serialize
-concurrent same-user writes via a per-user, txn-scoped Postgres advisory lock (mirroring
-`sanctuary_service`) so the read-compute-write of a cosmetic purchase (or the retire+awaken
-swap) is atomic against a parallel request — no double-spend, no two active spirits.
+concurrent same-user writes via a per-user, txn-scoped Postgres advisory lock so the
+read-compute-write of a cosmetic purchase (or the retire+awaken swap) is atomic against a
+parallel request — no double-spend, no two active spirits.
 """
 
 import uuid
@@ -54,8 +53,15 @@ from app.services.journal_service import JOURNAL_XP
 from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
 
 # The spirit's own economy constant: coins earned per level. The derived coin balance is
-# `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0.
+# `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0 (see `_coin_balance`).
 COINS_PER_LEVEL = 80
+
+
+def _coin_balance(level: int, cosmetics: dict[str, str]) -> int:
+    """The derived coin balance: `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0.
+    Single source of truth for the formula shared by the read state, purchases, and the
+    affordability check."""
+    return max(0, level * COINS_PER_LEVEL - _cosmetics_spent(cosmetics))
 
 # --- Domain errors (mapped to HTTP in the route layer) ----------------------------------
 
@@ -87,8 +93,8 @@ class SpiritConflictError(Exception):
 
 def _lock_user_spirit(db: DBSession, user_id: uuid.UUID) -> None:
     """Serialize concurrent *writes* to one user's spirit by taking a transaction-scoped
-    Postgres advisory lock keyed on the user (mirrors `sanctuary_service._lock_user_garden`).
-    Held until the surrounding transaction commits/rolls back, so it spans the
+    Postgres advisory lock keyed on the user. Held until the surrounding transaction
+    commits/rolls back, so it spans the
     read-compute-write of a single mutating method while never blocking writes for *other*
     users. Keyed on an int8 hash (`hashtextextended`) so cross-user collisions are negligible.
     """
@@ -169,8 +175,10 @@ def _practice_weights(db: DBSession, user_id: uuid.UUID) -> dict[str, float]:
     - breath    = lifetime resonance-breathing minutes × BREATHING_XP_MULTIPLIER
     - heart     = (lifetime gratitude entries + journal entries) × per-entry XP
 
-    Minutes are floored per whole minute, consistent with the XP curve (a sub-minute sit is
-    worth 0). All values ≥ 0; a user with no practice gets all zeros.
+    Minutes are floored once over the per-bucket total: the SQL floors
+    `SUM(duration_seconds) / 60` for the whole bucket, not per individual session — a coarse
+    lifetime-lean signal (so e.g. many sub-minute sits in a bucket can still sum to a minute).
+    All values ≥ 0; a user with no practice gets all zeros.
     """
     is_breathing = Session.type == "resonance_breathing"
     # Lifetime whole minutes by breathing / non-breathing (one grouped query).
@@ -242,6 +250,12 @@ def _maybe_commit_path(db: DBSession, spirit: Spirit, *, level: int, lean: str) 
     """
     if spirit.path is not None or not _stage_at_or_after_commit(level):
         return
+
+    # A commit will actually fire (path is NULL and we're at/after the commit stage). Take the
+    # per-user advisory lock for defense-in-depth before the conditional UPDATE — this branch
+    # stops firing once path is set, so the GET path never locks on the common (already-
+    # committed) read. The conditional `WHERE path IS NULL` still carries correctness on its own.
+    _lock_user_spirit(db, spirit.user_id)
 
     # Conditional, idempotent write: only set path if it is still NULL (race-safe).
     result = db.execute(
@@ -320,6 +334,13 @@ def daily_glow(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> fl
 # hoarding problem it solved no longer exists. All costs/unlock levels are tunable in-code
 # constants — retuning needs no migration. An optional per-option `unlock_level` gates a
 # couple of richer options behind a little growth (default 1 = always available).
+#
+# APPEND-ONLY / STABLE FOR OWNED KEYS. `_cosmetics_spent`/`_option_cost` price an owned
+# option from this catalog and fall back to 0 for anything missing. Removing or renaming a
+# slot/option that a user could already own would silently refund its coins (drop the spend
+# from the ledger), inflating the derived balance. So: never delete or rename an owned key —
+# only add new slots/options, and only re-tune costs of options nobody owns. Test
+# `test_owned_options_all_price_above_zero` guards against an owned key being dropped.
 SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
     # {slot: {option: {"cost": int, "unlock_level": int}}}
     # A soft surrounding glow — the gentlest touch, available from the start.
@@ -441,7 +462,9 @@ def _collection(db: DBSession, user_id: uuid.UUID) -> list[RetiredSpirit]:
     rows = db.execute(
         select(Spirit)
         .where(Spirit.user_id == user_id, Spirit.retired_at.is_not(None))
-        .order_by(Spirit.retired_at.desc())
+        # Most recently retired first; stable tiebreaks (created_at, then id) so spirits that
+        # share a retired_at can't tie into a nondeterministic order.
+        .order_by(Spirit.retired_at.desc(), Spirit.created_at.desc(), Spirit.id)
     ).scalars().all()
     return [
         RetiredSpirit(
@@ -461,21 +484,36 @@ def _build_state(
     *,
     today: date,
     tz: str,
+    basis: dashboard_service.WalletBasis | None = None,
+    lean: str | None = None,
 ) -> SpiritState:
     """Assemble the active spirit's computed read state from a (committed) spirit row plus
     the user's wallet basis. Shared by the read endpoint and every write so the response
-    shape is built once."""
-    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    shape is built once.
+
+    `basis` and `lean` are computed here only if not supplied — callers that already have
+    them (the read endpoint, the writes) pass them through so the request does exactly one
+    `get_wallet_basis` and one `path_lean`, not two.
+    """
+    if basis is None:
+        basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    if lean is None:
+        lean = path_lean(db, user_id)
     level = basis.level
 
     cosmetics = _cosmetics(spirit)
-    coins = max(0, level * COINS_PER_LEVEL - _cosmetics_spent(cosmetics))
+    coins = _coin_balance(level, cosmetics)
 
     return SpiritState(
         stage=stage_for_level(level),
         path=spirit.path,
-        path_lean=path_lean(db, user_id),
+        path_lean=lean,
         name=spirit.name,
+        # `bond.level` is the user's *earned-XP* level (the same basis that funds stage and
+        # coins), so the spirit stays monotonic with its own economy. This is deliberately the
+        # earned-XP basis and can read LOWER than the dashboard's headline level during an
+        # active streak (the dashboard adds streak-bonus XP that earned XP excludes). Intended,
+        # not a bug — keeping the spirit on earned XP makes its progress un-loseable.
         bond=SpiritBond(
             level=level,
             xp_into_level=basis.xp_into_level,
@@ -497,10 +535,12 @@ def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> Sp
     spirit = get_or_create_active_spirit(db, user_id)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    lean = path_lean(db, user_id)
     # Crystallize the path once at/after the commit stage (idempotent write-on-read).
-    _maybe_commit_path(db, spirit, level=basis.level, lean=path_lean(db, user_id))
+    _maybe_commit_path(db, spirit, level=basis.level, lean=lean)
 
-    return _build_state(db, user_id, spirit, today=today, tz=tz)
+    # Reuse the already-computed basis/lean so the request does exactly one of each.
+    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis, lean=lean)
 
 
 def buy_cosmetic(
@@ -543,7 +583,7 @@ def buy_cosmetic(
     # already sunk in that slot, so the balance stays consistent with `_cosmetics_spent`.
     already_in_slot = _option_cost(data.slot, current[data.slot]) if data.slot in current else 0
     net_cost = _option_cost(data.slot, data.option) - already_in_slot
-    balance = max(0, level * COINS_PER_LEVEL - _cosmetics_spent(current))
+    balance = _coin_balance(level, current)
     if balance < net_cost:
         raise InsufficientCoins(data.option)
 
@@ -552,7 +592,7 @@ def buy_cosmetic(
     spirit.cosmetics = updated
     db.commit()
     db.refresh(spirit)
-    return _build_state(db, user_id, spirit, today=today, tz=tz)
+    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
 
 
 def rename_spirit(
@@ -605,4 +645,4 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
         db.rollback()
         raise SpiritConflictError(str(user_id)) from err
     db.refresh(new_spark)
-    return _build_state(db, user_id, new_spark, today=today, tz=tz)
+    return _build_state(db, user_id, new_spark, today=today, tz=tz, basis=basis)

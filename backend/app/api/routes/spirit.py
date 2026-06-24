@@ -44,14 +44,19 @@ _CONFLICT = HTTPException(
 
 
 @router.get("", response_model=SpiritState)
+@limiter.limit(settings.write_rate_limit)
 def get_spirit(
+    request: Request,  # required by the rate limiter
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
     """The active spirit's computed state — stage, path (null until it commits), bond,
     daily glow, coins, owned cosmetics + the catalog with per-option state, and the retired
-    collection. The spark is lazily created on first read."""
+    collection. The spark is lazily created on first read.
+
+    Carries the per-IP write burst limit even though it's a GET: it writes-on-read (lazy
+    get-or-create plus the one-time path commit), so it isn't a pure read."""
     today, tz = today_tz
     return spirit_service.get_spirit(db, current_user.id, today=today, tz=tz)
 
@@ -108,7 +113,7 @@ def awaken_spirit(
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """Retire the active radiant spirit and awaken a fresh pathless spark (steps 6). Requires
+    """Retire the active radiant spirit and awaken a fresh pathless spark (step 6). Requires
     the active spirit to be at radiant — otherwise 409; a concurrent awaken is also 409."""
     today, tz = today_tz
     try:
