@@ -129,9 +129,9 @@ export type SpiritCosmetics = Record<string, string>
 // Per-option aura tint + reach. `null` (no aura owned) falls back to the path's own glow in
 // `Aura` below — so an un-adorned spirit looks exactly as it did before cosmetics shipped.
 const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number }> = {
-  soft: { tint: '#e2e8f0', grow: 3, strength: 1.15 },
-  warm: { tint: '#fcd34d', grow: 5, strength: 1.3 },
-  starlit: { tint: '#c4b5fd', grow: 8, strength: 1.5 },
+  soft: { tint: '#bfdbfe', grow: 4, strength: 2.0 },
+  warm: { tint: '#fcd34d', grow: 6, strength: 2.6 },
+  starlit: { tint: '#c4b5fd', grow: 8, strength: 3.2 },
 }
 
 // A soft outer aura shared by every path — its opacity carries the static daily-glow read-out.
