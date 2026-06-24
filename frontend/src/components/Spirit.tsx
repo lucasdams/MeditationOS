@@ -208,12 +208,15 @@ export function CareNudge({
   )
 }
 
-// A distinct palette per path: stillness is a serene warm gold/amber; breath is a cool airy
-// blue/white; heart is a soft pink-and-green bloom. `core` is the bright heart, `glow` the
-// aura, `accent` the path's defining feature (halo / current / petal).
+// A distinct palette per path: stillness (Kapha) is a serene warm gold/amber; breath (Pitta) is
+// a fierce fire-and-water blaze — a bright ember core, flame tongues, with a cool teal-water
+// undertone in `deep`; heart (Vata) is a soft pink-and-green bloom. `core` is the bright heart,
+// `glow` the aura, `accent` the path's defining feature (halo / flame / petal), `deep` its base.
 const PATH_PALETTE: Record<SpiritPath, { core: string; glow: string; accent: string; deep: string }> = {
   stillness: { core: '#fef3c7', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
-  breath: { core: '#e0f2fe', glow: '#7dd3fc', accent: '#38bdf8', deep: '#0ea5e9' },
+  // Pitta — fire + water: a white-hot ember core (`core`), an orange flame body (`glow`), a
+  // searing red-orange flame edge (`accent`), and a cool teal water-base (`deep`).
+  breath: { core: '#fff7ed', glow: '#fb923c', accent: '#ef4444', deep: '#0d9488' },
   heart: { core: '#fce7f3', glow: '#f9a8d4', accent: '#ec4899', deep: '#4ade80' },
 }
 
@@ -421,7 +424,7 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
  * figure haloed in gold. Warm amber/gold palette.
  */
-function StillnessForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: string }) {
+function StillnessForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const pal = PATH_PALETTE.stillness
   const i = stageIndex(stage)
   const p = stageProgress(stage)
@@ -432,7 +435,6 @@ function StillnessForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura
   const bodyH = 18 * scale
   return (
     <g>
-      <Aura path="stillness" p={p} g={g} aura={aura} />
       {/* Lotus base, from fledgling onward — a few warm petals under the seated figure. */}
       {i >= 3 &&
         Array.from({ length: 5 }, (_, k) => {
@@ -497,62 +499,134 @@ function StillnessForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura
 }
 
 /**
- * `breath` — an airy wind spirit. Spark: a single curl. It gains more flowing, swirling
- * current-strokes as it matures, ending a full set of cool-blue currents spiralling around a
- * bright core. Cool blue/white palette.
+ * `breath` → **Pitta** — a fierce fire-and-water creature (ADR-0023). Sharp, intense, energetic:
+ * a blazing ember body crowned with flame tongues, rising from a cool teal water-base. Spark is a
+ * single banked ember; each stage adds taller, more numerous flame tongues, eyes, a water pool,
+ * rising sparks, and finally a full radiant blaze with an aura of embers — fierce but never scary
+ * (rounded silhouette, friendly eyes). Warm fire palette (`core` white-hot → `glow` orange →
+ * `accent` red) over a teal `deep` water element. Internal `path` value stays `breath`.
  */
-function BreathForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: string }) {
+function PittaForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const pal = PATH_PALETTE.breath
   const i = stageIndex(stage)
   const p = stageProgress(stage)
-  // The number of flowing current-strokes grows with the stage (1 at spark → 5 at radiant).
-  const curls = i
   const cx = 40
-  const cy = 40
-  const coreR = 5 + p * 4
+  // The blaze grows taller and the body fuller up the ladder.
+  const baseY = 52
+  const bodyR = 6 + p * 5
+  const bodyCy = baseY - bodyR * 0.6
+  // Flame tongues licking up off the body — one at spark, up to five at radiant.
+  const tongues = i
+  const flameTop = baseY - (16 + p * 18) // how high the tallest tongue reaches
   return (
     <g>
-      <Aura path="breath" p={p} g={g} aura={aura} />
-      {/* Flowing wind currents — sweeping S-curves orbiting the core, more of them each stage. */}
-      {Array.from({ length: curls }, (_, k) => {
-        const a = (k / curls) * Math.PI * 2 - Math.PI / 2
-        const reach = coreR + 8 + p * 6
-        const ox = Math.cos(a)
-        const oy = Math.sin(a)
-        // A swirling stroke: starts near the core, sweeps out and curls back.
-        const sx = cx + ox * coreR
-        const sy = cy + oy * coreR
-        const mx = cx + ox * reach - oy * (5 + p * 4)
-        const my = cy + oy * reach + ox * (5 + p * 4)
-        const ex = cx + ox * (reach + 4) + oy * (6 + p * 5)
-        const ey = cy + oy * (reach + 4) - ox * (6 + p * 5)
+      {/* Water element — a cool teal pool the fire rises from, widening from wisp onward. The
+          fire-and-water duality of Pitta (ADR-0023). A single ripple at spark, a pool later. */}
+      <ellipse
+        cx={cx}
+        cy={baseY + 6}
+        rx={bodyR + 4 + p * 4}
+        ry={2.6 + p * 1.6}
+        fill={pal.deep}
+        opacity={(0.45 + 0.2 * p) * g}
+      />
+      {i >= 3 && (
+        <ellipse
+          cx={cx}
+          cy={baseY + 6}
+          rx={bodyR + 9 + p * 4}
+          ry={1.4 + p}
+          fill="none"
+          stroke={pal.deep}
+          strokeWidth={1.1}
+          opacity={0.4 * g}
+        />
+      )}
+      {/* Flame tongues — sharp, pointed teardrops curling up off the ember body. Outer tongues
+          are searing red (`accent`), the central one the hot orange body colour. More + taller
+          each stage, giving the "more developed" read. */}
+      {Array.from({ length: tongues }, (_, k) => {
+        // Spread tongues across the top of the body; the centre one rises highest.
+        const t = tongues === 1 ? 0 : (k / (tongues - 1)) * 2 - 1 // -1..1
+        const tx = cx + t * (bodyR * 0.8)
+        const sway = t * 3 // outer tongues lean outward
+        const tipY = flameTop + Math.abs(t) * (6 + p * 3) // centre tallest
+        const w = (2.6 + p * 1.6) * (1 - Math.abs(t) * 0.25)
+        const baseTy = bodyCy - bodyR * 0.2
         return (
           <path
             key={k}
-            d={`M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}`}
-            fill="none"
-            stroke={k % 2 === 0 ? pal.accent : pal.deep}
-            strokeWidth={1.4 + p}
-            strokeLinecap="round"
-            opacity={(0.55 + 0.3 * p) * g}
+            d={`M ${tx - w} ${baseTy}
+                Q ${tx - w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + sway} ${tipY}
+                Q ${tx + w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + w} ${baseTy} Z`}
+            fill={k === Math.floor(tongues / 2) ? pal.glow : pal.accent}
+            opacity={(0.7 + 0.25 * p) * g}
           />
         )
       })}
-      {/* The breezy core — a soft body and a bright inner heart. */}
-      <circle cx={cx} cy={cy} r={coreR} fill={pal.glow} opacity={(0.55 + 0.3 * p) * g} />
-      <circle cx={cx} cy={cy} r={coreR * 0.6} fill={pal.core} opacity={(0.8 + 0.2 * p) * g} />
-      <circle cx={cx - coreR * 0.3} cy={cy - coreR * 0.3} r={coreR * 0.22} fill="#ffffff" opacity={0.8 * g} />
-      {/* Radiant: a few drifting motes carried on the wind — the fullest, airiest form. */}
-      {i >= 5 &&
-        Array.from({ length: 4 }, (_, k) => {
-          const a = (k / 4) * Math.PI * 2
+      {/* The ember body — a hot rounded blaze with a white-hot heart. The fierce-but-friendly
+          silhouette: a rounded teardrop, not a jagged shape. */}
+      <path
+        d={`M ${cx} ${bodyCy - bodyR * 1.3}
+            Q ${cx + bodyR} ${bodyCy - bodyR * 0.4} ${cx + bodyR} ${bodyCy + bodyR * 0.5}
+            Q ${cx + bodyR} ${baseY} ${cx} ${baseY}
+            Q ${cx - bodyR} ${baseY} ${cx - bodyR} ${bodyCy + bodyR * 0.5}
+            Q ${cx - bodyR} ${bodyCy - bodyR * 0.4} ${cx} ${bodyCy - bodyR * 1.3} Z`}
+        fill={pal.glow}
+        opacity={(0.8 + 0.2 * p) * g}
+      />
+      {/* White-hot inner core. */}
+      <ellipse
+        cx={cx}
+        cy={bodyCy + 1}
+        rx={bodyR * 0.5}
+        ry={bodyR * 0.6}
+        fill={pal.core}
+        opacity={(0.85 + 0.15 * p) * g}
+      />
+      {/* Fierce-but-kind eyes — appear from wisp onward, two sharp upward-tilted slivers. */}
+      {i >= 2 && (
+        <>
+          {[-1, 1].map((dir) => (
+            <path
+              key={dir}
+              d={`M ${cx + dir * (bodyR * 0.4) - 1.4} ${bodyCy + 0.6}
+                  q 1.4 -1.4 2.8 0`}
+              fill="none"
+              stroke="#7c2d12"
+              strokeWidth={1}
+              strokeLinecap="round"
+              opacity={0.9 * g}
+            />
+          ))}
+        </>
+      )}
+      {/* Rising sparks / embers — from fledgling onward, a few flecks lifting off the blaze. */}
+      {i >= 3 &&
+        Array.from({ length: i - 1 }, (_, k) => {
+          const a = (k / Math.max(1, i - 1)) * Math.PI - Math.PI / 2
           return (
             <circle
-              key={`m${k}`}
-              cx={cx + Math.cos(a) * (coreR + 13)}
-              cy={cy + Math.sin(a) * (coreR + 13)}
-              r={1.6}
-              fill={pal.core}
+              key={`spark-${k}`}
+              cx={cx + Math.cos(a) * (bodyR + 4)}
+              cy={flameTop + 2 + Math.sin(a) * 3}
+              r={0.9 + p * 0.5}
+              fill={pal.accent}
+              opacity={0.75 * g}
+            />
+          )
+        })}
+      {/* Radiant: a fierce ring of embers crowning the full blaze — the fullest form. */}
+      {i >= 5 &&
+        Array.from({ length: 8 }, (_, k) => {
+          const a = (k / 8) * Math.PI * 2
+          return (
+            <circle
+              key={`ember-${k}`}
+              cx={cx + Math.cos(a) * (bodyR + 10)}
+              cy={bodyCy + Math.sin(a) * (bodyR + 10)}
+              r={1.3}
+              fill={k % 2 === 0 ? pal.glow : pal.core}
               opacity={0.8 * g}
             />
           )
@@ -565,7 +639,7 @@ function BreathForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: 
  * `heart` — a blooming spirit. Spark: a closed bud. It opens into petals around a glowing
  * centre, gains leaves, then a full bloom as it matures. Soft pink petals with green leaves.
  */
-function HeartForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: string }) {
+function HeartForm({ stage, g }: { stage: SpiritStage; g: number }) {
   const pal = PATH_PALETTE.heart
   const i = stageIndex(stage)
   const p = stageProgress(stage)
@@ -577,7 +651,6 @@ function HeartForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: s
   const coreR = 4 + p * 3
   return (
     <g>
-      <Aura path="heart" p={p} g={g} aura={aura} />
       {/* Leaves flank the stem from fledgling onward — the green defining feature. */}
       {i >= 3 &&
         [-1, 1].map((dir) => (
@@ -666,12 +739,14 @@ function SparkForm({ g }: { g: number }) {
   )
 }
 
+// The creature figure per path (aura is now hoisted to its own static animated layer in
+// SpiritArt, so the Form draws only the creature body — the part that floats).
 const PATH_FORM: Record<
   SpiritPath,
-  (props: { stage: SpiritStage; g: number; aura?: string }) => JSX.Element
+  (props: { stage: SpiritStage; g: number }) => JSX.Element
 > = {
   stillness: StillnessForm,
-  breath: BreathForm,
+  breath: PittaForm,
   heart: HeartForm,
 }
 
@@ -687,11 +762,19 @@ export function formFor(spirit: SpiritState): SpiritPath | null {
  * spirit is a pathless spark, drawn as the neutral, un-themed SparkForm (no creature features
  * yet). `glow` (the overall condition factor) is clamped to the floored band.
  *
- * Motion: when not reduced-motion, the SVG carries `spirit-svg--alive` (CSS idle float + aura
- * pulse, intensity driven by the `--spirit-glow` custom property = the condition factor). On
- * BreathePage a `paceScale` (the breathe-circle's live `scaleAt` value) overrides the idle float
- * with an inline transform synced to the pacer. `celebrate` fires a brief one-shot via the Web
- * Animations API. When reduced-motion is on, none of these apply — the art holds static.
+ * Motion is SPLIT into two layers (ADR-0023), so the background never drifts with the creature:
+ *  - A STATIC background layer (the outer `<svg>` itself): the habitat backdrop and the aura.
+ *    The aura is its own `<g class="spirit-aura">` that, when alive, runs an INDEPENDENT
+ *    `spirit-aura-glow` keyframe (opacity/brightness in→out) on its own timeline — it glows up
+ *    and down by itself, with depth driven by `--spirit-glow` (the condition factor). It does not
+ *    float; it stays put behind the creature.
+ *  - A FLOATING creature layer (`<g class="spirit-creature">`): the figure + accessory. When
+ *    alive it runs `spirit-float` (the drift), so ONLY the creature moves. On BreathePage a
+ *    `paceScale` (the breathe-circle's live `scaleAt` value) drives this same group via an inline
+ *    transform synced to the pacer (the creature, not the background, follows the breath).
+ *    `celebrate` fires a brief one-shot on this group via the Web Animations API.
+ *
+ * When reduced-motion is on, none of these apply — every layer holds static.
  */
 export function SpiritArt({
   stage,
@@ -725,13 +808,16 @@ export function SpiritArt({
   // A pathless spark has no creature label yet — describe it as an awakening spark.
   const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
   const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
-  const svgRef = useRef<SVGSVGElement | null>(null)
+  // The celebration + pacer transform now target the CREATURE group, so the static background
+  // (habitat + aura) never swells with the one-shot or drifts with the breath.
+  const creatureRef = useRef<SVGGElement | null>(null)
 
-  // Session-complete celebration: a single, gentle swell + glow via the Web Animations API,
-  // so it layers over the idle CSS without fighting it. Skipped entirely under reduced motion.
+  // Session-complete celebration: a single, gentle swell + glow on the creature layer via the
+  // Web Animations API, so it layers over the idle CSS without fighting it. Skipped under
+  // reduced motion. Only the creature swells — the background holds still.
   useEffect(() => {
     if (!celebrate || reducedMotion) return
-    const el = svgRef.current
+    const el = creatureRef.current
     if (!el || typeof el.animate !== 'function') return
     const anim = el.animate(
       [
@@ -744,44 +830,63 @@ export function SpiritArt({
     return () => anim.cancel()
   }, [celebrate, reducedMotion])
 
-  // In pacer mode the spirit follows the breath via an inline transform on the SAME clock as
+  // In pacer mode the creature follows the breath via an inline transform on the SAME clock as
   // the breathe-circle (no idle float — the breath IS the motion). Reduced motion holds it at 1.
   const inPacerMode = paceScale !== undefined
   const liveScale = reducedMotion ? 1 : paceToScale(paceScale)
 
-  // `--spirit-glow` lets the CSS pulse breathe a touch harder when the condition is high and
+  // `--spirit-glow` lets the aura glow breathe a touch harder when the condition is high and
   // calmer when a need is depleted — condition expressed as motion, still floored by `clampGlow`.
-  const style: CSSProperties = { ['--spirit-glow' as string]: g }
-  if (inPacerMode) style.transform = `scale(${liveScale})`
+  // It lives on the SVG so both the (static) aura layer and the (floating) creature share it.
+  const svgStyle: CSSProperties = { ['--spirit-glow' as string]: g }
 
-  // Idle float + aura pulse only when alive (not reduced-motion) and not driven by the pacer.
-  const alive = !reducedMotion && !inPacerMode
-  const className =
-    'spirit-svg' + (alive ? ' spirit-svg--alive' : '') + (inPacerMode ? ' spirit-svg--pacing' : '')
+  // The float / glow / pace only run when alive (not reduced-motion). The OUTER svg is now a
+  // STATIC layer — it never floats. The creature layer floats (or paces); the aura layer glows.
+  const alive = !reducedMotion
+  // The creature group: idle float when alive & not pacing; a pacer transform when pacing.
+  const creatureClass =
+    'spirit-creature' +
+    (alive && !inPacerMode ? ' spirit-creature--alive' : '') +
+    (inPacerMode ? ' spirit-creature--pacing' : '')
+  const creatureStyle: CSSProperties | undefined = inPacerMode
+    ? { transform: `scale(${liveScale})` }
+    : undefined
+  // The aura group glows on its own independent timeline when alive (and not paced — during the
+  // pacer moment the breath is the motion, so the aura holds steady rather than double-pulsing).
+  const auraClass = 'spirit-aura' + (alive && !inPacerMode ? ' spirit-aura--alive' : '')
 
   return (
     <svg
-      ref={svgRef}
-      className={className}
-      style={style}
+      className="spirit-svg"
+      style={svgStyle}
       viewBox="0 0 80 80"
       role="img"
       aria-label={label}
       aria-live="polite"
     >
-      {/* Habitat backdrop sits behind the figure; the aura (inside Form) re-tints with the
-          owned aura cosmetic; the accessory perches on top. The figure is always legible.
-          A pathless spark renders the neutral SparkForm (no creature features yet). */}
+      {/* ── STATIC background layer ── habitat backdrop + aura. Neither floats: they stay put so
+          the background does not drift with the creature (ADR-0023). The aura glows up/down on
+          its own `spirit-aura-glow` keyframe, independent of the creature's float. For a pathless
+          spark the SparkForm carries its own halo, so no separate aura layer is drawn. */}
       {habitat && <Habitat habitat={habitat} g={g} />}
-      {path ? (
-        (() => {
-          const Form = PATH_FORM[path]
-          return <Form stage={stage} g={g} aura={aura} />
-        })()
-      ) : (
-        <SparkForm g={g} />
+      {path && (
+        <g className={auraClass}>
+          <Aura path={path} p={stageProgress(stage)} g={g} aura={aura} />
+        </g>
       )}
-      {accessory && <Accessory accessory={accessory} g={g} />}
+      {/* ── FLOATING creature layer ── only this group moves: idle float, pacer sync, or the
+          celebration one-shot. The figure is always legible; the accessory perches on top. */}
+      <g ref={creatureRef} className={creatureClass} style={creatureStyle}>
+        {path ? (
+          (() => {
+            const Form = PATH_FORM[path]
+            return <Form stage={stage} g={g} />
+          })()
+        ) : (
+          <SparkForm g={g} />
+        )}
+        {accessory && <Accessory accessory={accessory} g={g} />}
+      </g>
     </svg>
   )
 }

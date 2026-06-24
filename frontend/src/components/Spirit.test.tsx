@@ -5,11 +5,13 @@
  * overall condition is applied as a brightness, that the bond/stage + care read-out are surfaced
  * calmly, and that loading / error / empty states follow conventions.
  *
- * The reactivity layer is covered at the bottom: the home spirit carries the idle animation
- * class and a `--spirit-glow` pulse factor (driven by `condition.factor`); `prefers-reduced-
- * motion` holds it static (no animation class, no celebration); BreathePage's `paceScale` syncs
- * the aura to the breath; and a session-complete `celebrate` plays a one-shot via the Web
- * Animations API.
+ * The reactivity layer is covered at the bottom (ADR-0023 layer split): the render is two layers
+ * — a STATIC background `.spirit-svg` carrying `--spirit-glow` (driven by `condition.factor`), a
+ * FLOATING `.spirit-creature` group (the only part that drifts / follows the pacer), and an
+ * independently-glowing `.spirit-aura` group. `prefers-reduced-motion` holds every layer static
+ * (no animation class, no celebration); BreathePage's `paceScale` syncs the CREATURE (not the
+ * background) to the breath; a session-complete `celebrate` plays a one-shot via the Web
+ * Animations API on the creature group.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
@@ -90,14 +92,17 @@ describe('Spirit — path-specific forms', () => {
     expect(stillness).not.toEqual(heart)
   })
 
-  it('grows more elaborate from spark to radiant for a path (more drawn shapes each stage)', () => {
-    const countShapes = (stage: SpiritStage): number => {
-      const { container } = renderSpirit(<Spirit spirit={spiritState({ stage, path: 'heart' })} />)
+  it('grows more elaborate from spark to radiant for every path (more drawn shapes each stage)', () => {
+    const countShapes = (path: SpiritPath, stage: SpiritStage): number => {
+      const { container } = renderSpirit(<Spirit spirit={spiritState({ stage, path })} />)
       const n = container.querySelectorAll('.spirit-svg *').length
       cleanup()
       return n
     }
-    expect(countShapes('radiant')).toBeGreaterThan(countShapes('spark'))
+    // Each creature (Kapha / Pitta / Vata) gains structure from its spark to its radiant form.
+    ;(['stillness', 'breath', 'heart'] as SpiritPath[]).forEach((path) => {
+      expect(countShapes(path, 'radiant')).toBeGreaterThan(countShapes(path, 'spark'))
+    })
   })
 })
 
@@ -258,10 +263,14 @@ function stubReducedMotion(matches: boolean): () => void {
 }
 
 describe('Spirit — idle animation (home)', () => {
-  it('marks the home spirit alive so the idle float + aura pulse run', () => {
+  it('floats the creature layer (not the static background) and glows the aura independently', () => {
     const { container } = render(<Spirit spirit={spiritState({ stage: 'wisp', path: 'breath' })} />)
+    // The outer SVG is the STATIC background — it does NOT carry the float class.
     const svg = container.querySelector('.spirit-svg')!
-    expect(svg.classList.contains('spirit-svg--alive')).toBe(true)
+    expect(svg.classList.contains('spirit-creature--alive')).toBe(false)
+    // Only the inner creature group floats; the aura glows on its own independent timeline.
+    expect(container.querySelector('.spirit-creature.spirit-creature--alive')).not.toBeNull()
+    expect(container.querySelector('.spirit-aura.spirit-aura--alive')).not.toBeNull()
   })
 
   it('drives the aura pulse intensity from the condition factor via --spirit-glow', () => {
@@ -290,12 +299,13 @@ describe('Spirit — idle animation (home)', () => {
 })
 
 describe('Spirit — prefers-reduced-motion holds static', () => {
-  it('drops the idle animation class when reduced motion is requested', () => {
+  it('drops the float + aura-glow animation classes when reduced motion is requested', () => {
     const restore = stubReducedMotion(true)
     try {
       const { container } = render(<Spirit spirit={spiritState({ stage: 'wisp', path: 'breath' })} />)
-      const svg = container.querySelector('.spirit-svg')!
-      expect(svg.classList.contains('spirit-svg--alive')).toBe(false)
+      // Neither the creature nor the aura carries its alive/animating class.
+      expect(container.querySelector('.spirit-creature--alive')).toBeNull()
+      expect(container.querySelector('.spirit-aura--alive')).toBeNull()
     } finally {
       restore()
     }
@@ -307,9 +317,9 @@ describe('Spirit — prefers-reduced-motion holds static', () => {
       const { container } = render(
         <Spirit compact paceScale={1} spirit={spiritState({ stage: 'wisp', path: 'breath' })} />,
       )
-      const svg = container.querySelector('.spirit-svg') as SVGElement
-      // Held static: scale(1), regardless of the incoming pace value.
-      expect(svg.style.transform).toBe('scale(1)')
+      // The pacer transform lives on the CREATURE group; held static at scale(1) here.
+      const creature = container.querySelector('.spirit-creature') as SVGElement
+      expect(creature.style.transform).toBe('scale(1)')
     } finally {
       restore()
     }
@@ -331,14 +341,16 @@ describe('Spirit — prefers-reduced-motion holds static', () => {
 })
 
 describe('Spirit — breathing-pacer sync (BreathePage)', () => {
-  it('renders the compact spirit and syncs its scale to the pacer (no idle class)', () => {
+  it('syncs the CREATURE (not the static background) to the pacer (no idle float)', () => {
     const { container } = render(
       <Spirit compact paceScale={1} spirit={spiritState({ stage: 'wisp', path: 'breath' })} />,
     )
-    const svg = container.querySelector('.spirit-svg')!
-    // Pacing mode: tracks the inline transform, not the CSS idle float.
-    expect(svg.classList.contains('spirit-svg--pacing')).toBe(true)
-    expect(svg.classList.contains('spirit-svg--alive')).toBe(false)
+    // The creature group paces; the background SVG and the creature both drop the idle float.
+    const creature = container.querySelector('.spirit-creature')!
+    expect(creature.classList.contains('spirit-creature--pacing')).toBe(true)
+    expect(creature.classList.contains('spirit-creature--alive')).toBe(false)
+    // The aura holds steady during the pacer moment (breath is the motion, no double-pulse).
+    expect(container.querySelector('.spirit-aura--alive')).toBeNull()
     expect(container.querySelector('.spirit-compact')).not.toBeNull()
   })
 
@@ -347,8 +359,8 @@ describe('Spirit — breathing-pacer sync (BreathePage)', () => {
       const { container } = render(
         <Spirit compact paceScale={paceScale} spirit={spiritState({ stage: 'wisp', path: 'breath' })} />,
       )
-      const svg = container.querySelector('.spirit-svg') as SVGElement
-      const m = svg.style.transform.match(/scale\(([\d.]+)\)/)
+      const creature = container.querySelector('.spirit-creature') as SVGElement
+      const m = creature.style.transform.match(/scale\(([\d.]+)\)/)
       cleanup()
       return m ? Number(m[1]) : NaN
     }
