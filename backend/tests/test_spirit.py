@@ -303,13 +303,13 @@ def test_pathless_spark_has_neutral_needs(client, db_session):
 
 
 def test_nourished_rises_with_the_signature_practice(client, db_session):
-    """A `stillness` creature's `nourished` thrives when fed enough recent MEDITATION across
-    distinct days."""
+    """A `stillness` (Kapha) creature's `nourished` thrives when fed enough recent BREATHING
+    (its balancing practice) across distinct days."""
     _auth(client, "needs_nourish_rise@example.com")
     user_id = _user_id(db_session, "needs_nourish_rise@example.com")
     today, days = _recent_days(CONDITION_WINDOW_DAYS)
     for d in days:
-        _practice(client, 10, day=d.isoformat())  # meditation = the stillness creature's food
+        _breathe(client, 30, day=d.isoformat())  # breathing = the Kapha (stillness) creature's food
     n = _needs(db_session, "stillness", user_id, today=today)
     assert n.nourished.tier == CONDITION_THRIVING
     assert n.nourished.factor == 1.0
@@ -323,14 +323,14 @@ def test_nourished_declines_to_unwell_without_the_signature_practice(db_session)
 
 
 def test_other_practices_do_not_nourish_a_creature(client, db_session):
-    """`nourished` is fed ONLY by the SIGNATURE practice: lots of breathing (the wrathful
-    creature's food) must not nourish a `stillness` creature — it stays at the neglected
+    """`nourished` is fed ONLY by the SIGNATURE practice: lots of meditation must not nourish a
+    `stillness` (Kapha) creature — its food is energizing BREATHING, so it stays at the neglected
     floor. (Variety/rhythm may climb, but identity does not.)"""
     _auth(client, "needs_wrongfood@example.com")
     user_id = _user_id(db_session, "needs_wrongfood@example.com")
     today, days = _recent_days(CONDITION_WINDOW_DAYS)
     for d in days:
-        _breathe(client, 30, day=d.isoformat())  # breathing, not the stillness creature's food
+        _practice(client, 10, day=d.isoformat())  # meditation, not the Kapha creature's food
     n = _needs(db_session, "stillness", user_id, today=today)
     assert n.nourished.tier == CONDITION_UNWELL  # the wrong practice never nourishes it
 
@@ -341,22 +341,23 @@ def test_nourished_one_token_session_does_not_jump_to_thriving(client, db_sessio
     _auth(client, "needs_token@example.com")
     user_id = _user_id(db_session, "needs_token@example.com")
     today = date.today()
-    _practice(client, 30, day=today.isoformat())  # one big sit, but only one care day
+    _breathe(client, 30, day=today.isoformat())  # one big breathing session, but only one care day
     n = _needs(db_session, "stillness", user_id, today=today)
     assert n.nourished.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
     assert n.nourished.factor < 1.0
 
 
-def test_nourished_heart_counts_gratitude_and_journal(client, db_session):
-    """The `heart` creature's signature practice is gratitude + journaling; a single reflection
-    day is off the floor but not thriving (demanding day-distinct signal)."""
-    _auth(client, "needs_heart@example.com")
-    user_id = _user_id(db_session, "needs_heart@example.com")
+def test_nourished_breath_counts_gratitude_and_journal(client, db_session):
+    """The `breath` (Pitta) creature's signature practice is gratitude + journaling (its cooling
+    balancing practice); a single reflection day is off the floor but not thriving (demanding
+    day-distinct signal)."""
+    _auth(client, "needs_pitta@example.com")
+    user_id = _user_id(db_session, "needs_pitta@example.com")
     # Gratitude/journal stamp created_at = now, so they all land on today's window day.
     for _ in range(8):
         _gratitude(client)
         _journal(client)
-    n = _needs(db_session, "heart", user_id)
+    n = _needs(db_session, "breath", user_id)
     # Only one distinct care day (all today) → off the floor but not thriving.
     assert n.nourished.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
     assert n.nourished.tier != CONDITION_UNWELL
@@ -416,10 +417,11 @@ def test_overall_condition_is_the_weakest_need(client, db_session):
     _auth(client, "needs_overall@example.com")
     user_id = _user_id(db_session, "needs_overall@example.com")
     today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    # Feed ONLY breathing every day: a `stillness` creature is well-RESTED (consistency) but
-    # NOT nourished (wrong food). So nourished is the floor and drives the overall condition.
+    # Feed ONLY meditation every day: a `stillness` (Kapha) creature is well-RESTED (consistency
+    # counts any practice) but NOT nourished (its food is energizing breathing, not meditation).
+    # So nourished is the floor and drives the overall condition.
     for d in days:
-        _breathe(client, 10, day=d.isoformat())
+        _practice(client, 10, day=d.isoformat())
     n = _needs(db_session, "stillness", user_id, today=today)
     overall = spirit_service.overall_condition(n)
     assert n.nourished.tier == CONDITION_UNWELL  # the weakest need

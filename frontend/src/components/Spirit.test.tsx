@@ -212,14 +212,14 @@ describe('Spirit — care needs read-out (ADR-0023)', () => {
       <Spirit
         spirit={spiritState({
           stage: 'wisp',
-          path: 'breath', // Pitta → breathwork
+          path: 'breath', // Pitta → balanced by gratitude & journaling (cooling)
           needs: { nourished: need('restless', 0.5), rested: need('content'), joyful: need('content') },
         })}
       />,
     )
-    // Names the creature (Pitta) and the reviving practice (breathwork); a calm nudge, no alarm.
+    // Names the creature (Pitta) and the reviving practice (gratitude & journaling); calm, no alarm.
     expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
-    expect(screen.getByText(/breathwork would revive it/i)).toBeInTheDocument()
+    expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
   })
 
   it('shows no care nudge when every need is content-or-better', () => {

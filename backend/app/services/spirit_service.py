@@ -145,10 +145,12 @@ def stage_for_level(level: int) -> str:
 # --- The three creatures (chosen, not auto-detected) ------------------------------------
 #
 # The three creatures the user can choose (docs/design/spirit.md, ADR-0023). The internal enum
-# values are kept stable; the UI relabels them (peaceful / wrathful / loving):
-#   stillness → peaceful — a serene mini Buddha; its practice is non-breathing MEDITATION
-#   breath    → wrathful — a fierce wind protector; its practice is resonance BREATHING
-#   heart     → loving   — a compassionate being; its practice is GRATITUDE + JOURNALING
+# values are kept stable; the UI relabels them as Ayurvedic doshas. Each dosha's SIGNATURE
+# practice is the one that BALANCES it (Ayurveda balances by OPPOSITES), not the one that
+# matches its element:
+#   stillness → Kapha (earth/water, heavy)   — balanced by resonance BREATHING (energizing)
+#   breath    → Pitta (fire/water, intense)  — balanced by GRATITUDE + JOURNALING (cooling)
+#   heart     → Vata  (air/ether, scattered) — balanced by MEDITATION (grounding)
 #
 # ADR-0023 retires ADR-0022's practice-auto-detected path and commit-on-read: the path is now
 # CHOSEN ONCE by the user (via `choose_path`) and stored in the same `spirits.path` column. A
@@ -252,14 +254,17 @@ def _signature_care_days(
     db: DBSession, path: str, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
 ) -> int:
     """Distinct recent local days the user did `path`'s SIGNATURE practice, in the window. The
-    `nourished` signal — only the chosen creature's own practice counts.
+    `nourished` signal — only the chosen creature's own practice counts. The practice is the one
+    that BALANCES that dosha (Ayurveda balances by *opposites*), not the one matching its element:
 
-    - stillness → distinct days with non-breathing meditation meeting MIN_PRACTICE_SECONDS
-    - breath    → distinct days with resonance breathing meeting MIN_PRACTICE_SECONDS
-    - heart     → distinct days with a gratitude entry OR a journal entry
+    - stillness (Kapha — heavy/slow) → resonance BREATHING (energizing balances Kapha)
+    - breath    (Pitta — hot/intense) → a GRATITUDE or JOURNAL entry (cooling balances Pitta)
+    - heart     (Vata — light/scattered) → non-breathing MEDITATION (grounding balances Vata)
     """
-    if path in (STILLNESS, BREATH):
-        is_breathing = path == BREATH
+    if path in (STILLNESS, HEART):
+        # Session-based signatures: Kapha (stillness) is energized by resonance breathing; Vata
+        # (heart) is grounded by non-breathing meditation.
+        is_breathing = path == STILLNESS
         session_day = local_date(tz, Session.occurred_at)
         days = db.execute(
             select(session_day)
@@ -277,7 +282,7 @@ def _signature_care_days(
         ).all()
         return len(days)
 
-    # heart → distinct local days with a gratitude OR a journal entry in the window.
+    # breath (Pitta) → distinct local days with a gratitude OR journal entry (cooling).
     grat_day = local_date(tz, GratitudeEntry.created_at)
     grat_days = db.execute(
         select(grat_day)

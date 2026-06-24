@@ -11,18 +11,27 @@ never *chooses*, and a single `daily_glow` rises with *any* practice, so there's
 favour one practice over another.
 
 We want a stronger, more game-like loop: the user **picks** a companion with a distinct
-personality, and **keeps it in good shape by doing that companion's kind of practice**. We theme
-the three on the **Ayurvedic doshas** — a natural fit, because a dosha is precisely something you
-keep *in balance* through the right practices. The three doshas map cleanly onto the existing
-three practice families:
+personality, and **keeps it in good shape by doing the practice that *balances* it**. We theme the
+three on the **Ayurvedic doshas** — a natural fit, because a dosha is precisely something you keep
+*in balance* through practice. Crucially, **Ayurveda balances by *opposites*** ("like increases
+like; opposites bring balance"), so each creature's signature practice is the one whose quality
+*counters* its nature — not the one that matches its element:
 
-| Creature | Dosha (elements) | Signature practice (its main need) |
-|----------|------------------|------------------------------------|
-| **Kapha** (`stillness`) | earth + water — grounded, calm, steady | Meditation / stillness |
-| **Pitta** (`breath`) | fire + water — sharp, intense, energetic | Resonance breathwork |
-| **Vata** (`heart`) | air + ether — light, mobile, expressive | Gratitude + journaling |
+| Creature | Dosha (elements) | Its nature | Needs (opposite) → signature practice |
+|----------|------------------|-----------|----------------------------------------|
+| **Kapha** (`stillness`) | earth + water | heavy, slow, sluggish | **energizing** → resonance **breathwork** |
+| **Pitta** (`breath`) | fire + water | hot, sharp, intense | **cooling** → **gratitude + journaling** |
+| **Vata** (`heart`) | air + ether | light, mobile, scattered | **grounding** → **meditation** |
 
-(Internal `path` values stay `stillness | breath | heart` — the dosha is the *label*; no rename.)
+(Internal `path` values stay `stillness | breath | heart` — the dosha is the *label*; no rename.
+Note the path name no longer matches the practice — e.g. the `breath` path is the Pitta creature,
+fed by gratitude — because the practice is the *balancing* one. The art still matches each dosha's
+element.)
+
+> **Caveat (honest):** the app's only breathwork is *slow resonance* breathing, which is calming —
+> whereas Kapha ideally wants *energizing* breath (Kapalabhati). The app has no vigorous practice,
+> so Kapha is served by the closest available (breathwork). The about section says so plainly; this
+> is a simplified, app-shaped take, not clinical Ayurveda.
 
 ## Decision
 
@@ -39,9 +48,9 @@ care mechanic**. The user explicitly asked for a demanding, Tamagotchi-style upk
   `thriving → content → restless → unwell` (plus a 0..1 factor), all computed from the activity
   log over a rolling window and all **demanding / slow to recover** (they reflect *sustained*
   recent activity on a concave curve — one token session does not refill a depleted need):
-  - **Nourished** — its *signature* practice (Kapha ← meditation, Pitta ← breathwork, Vata ←
-    gratitude + journal). The identity need; this is what "different activities for different
-    creatures" means.
+  - **Nourished** — its *signature* (balancing) practice (Kapha ← breathwork, Pitta ← gratitude +
+    journal, Vata ← meditation — each the practice that *counterbalances* that dosha). The identity
+    need; this is what "different activities for different creatures" means.
   - **Rested** — practice *rhythm / consistency* (recent active days, the streak) — Ayurvedic
     *dinacharya*, a steady daily routine.
   - **Joyful** — *variety* / breadth (distinct practice types practised recently) — not overdoing
