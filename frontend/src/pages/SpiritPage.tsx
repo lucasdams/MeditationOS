@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { spiritService } from '../services/spirit'
 import { useToast } from '../context/ToastContext'
 import {
   SpiritArt,
   STAGE_COPY,
   PATH_COPY,
-  DOSHA,
-  PATH_ORDER,
   NeedsReadout,
   CareNudge,
   formFor,
@@ -167,21 +165,6 @@ export default function SpiritPage() {
     }
   }
 
-  // Choose the active creature (ADR-0023) — only offered while the spirit is pathless. The write
-  // returns the fresh state (now with a path + creature form), so we just swap it in (no refetch).
-  async function choose(path: SpiritPath) {
-    setBusy(`choose:${path}`)
-    try {
-      const next = await spiritService.choose({ path })
-      setSpirit(next)
-      showToast(`Your ${DOSHA[path].name} spirit awakens. ${DOSHA[path].glyph}`)
-    } catch {
-      showToast('Could not choose that creature — please try again.', 'error')
-    } finally {
-      setBusy(null)
-    }
-  }
-
   // Awaken a new spark — retires the current radiant spirit into the collection. Only reachable
   // at radiant (the action is hidden otherwise); the confirmation states what it does first.
   async function awaken() {
@@ -197,6 +180,9 @@ export default function SpiritPage() {
       setBusy(null)
     }
   }
+
+  // A pathless spark picks its creature on a dedicated, focused page (not crammed in here).
+  if (spirit && spirit.path === null) return <Navigate to="/spirit/choose" replace />
 
   return (
     <main id="main-content" className="dashboard spirit-page">
@@ -274,12 +260,6 @@ export default function SpiritPage() {
               </section>
             )}
 
-            {/* Choose your creature (ADR-0023) — the "3 starter choices". Shown only while the
-                spirit is pathless (first awakening, or again after set-free). Picking adopts that
-                creature; the spark then grows down its chosen form. */}
-            {spirit.path === null && (
-              <DoshaPicker busy={busy} onChoose={choose} />
-            )}
 
             {/* How it grows + set free — a calm explainer of the path to radiance. */}
             <section className="spirit-section spirit-journey" aria-label="How your spirit grows">
@@ -561,56 +541,3 @@ function SpiritNickname({
   )
 }
 
-/**
- * DoshaPicker — the "3 starter choices" (ADR-0023). A calm pick-your-creature screen shown only
- * while the spirit is pathless (first awakening, or again after set-free). Three cards (Kapha /
- * Pitta / Vata), each with its dosha name, elements, vibe, and the practice that keeps it in
- * shape. Picking calls `onChoose(path)`, which the page swaps in. Low-pressure: it's an
- * invitation, not a sale — each card is one clear, reversible-only-by-set-free choice.
- */
-function DoshaPicker({
-  busy,
-  onChoose,
-}: {
-  busy: string | null
-  onChoose: (path: SpiritPath) => void
-}) {
-  return (
-    <section className="spirit-section spirit-picker" aria-label="Choose your creature">
-      <header className="spirit-section-head">
-        <h2 className="spirit-section-title">Choose your creature</h2>
-        <p className="muted spirit-section-subtitle">
-          Pick the companion whose nature fits you. You’ll keep it in good shape by doing its
-          kind of practice. (You can choose a new one if you ever set this spirit free.)
-        </p>
-      </header>
-      <ul className="spirit-picker-grid">
-        {PATH_ORDER.map((path) => {
-          const d = DOSHA[path]
-          const busyHere = busy === `choose:${path}`
-          return (
-            <li key={path} className={`spirit-picker-card spirit-picker-card--${path}`}>
-              <p className="spirit-picker-glyph" aria-hidden="true">
-                {d.glyph}
-              </p>
-              <p className="spirit-picker-name">{d.name}</p>
-              <p className="muted spirit-picker-element">{d.element}</p>
-              <p className="spirit-picker-vibe">{d.vibe}</p>
-              <p className="muted spirit-picker-practice">
-                Kept in shape by <strong>{d.practice}</strong>.
-              </p>
-              <button
-                type="button"
-                className="spirit-picker-choose"
-                disabled={busy != null}
-                onClick={() => onChoose(path)}
-              >
-                {busyHere ? 'Awakening…' : `Choose ${d.name}`}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-    </section>
-  )
-}

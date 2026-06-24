@@ -312,30 +312,16 @@ describe('SpiritPage dosha picker (pathless spark)', () => {
     choose.mockReset()
   })
 
-  it('shows the three dosha choices (Kapha / Pitta / Vata) for a pathless spark', async () => {
+  it('redirects a pathless spark to the dedicated choose page (no inline picker here)', async () => {
     get.mockResolvedValue(spiritWith({ stage: 'spark', path: null }))
 
     renderPage()
 
-    await screen.findByText('Choose your creature')
-    expect(screen.getByRole('button', { name: /Choose Kapha/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Choose Pitta/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Choose Vata/ })).toBeInTheDocument()
-    // The hero reads as a pathless spark, not a creature.
-    expect(screen.getByText(/a pathless spark/i)).toBeInTheDocument()
-  })
-
-  it('chooses a creature via the service and swaps in the returned state', async () => {
-    get.mockResolvedValue(spiritWith({ stage: 'spark', path: null }))
-    // Choosing Pitta (breath) returns the spirit now committed to that path.
-    choose.mockResolvedValue(spiritWith({ stage: 'spark', path: 'breath' }))
-
-    renderPage()
-
-    fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
-    await waitFor(() => expect(choose).toHaveBeenCalledWith({ path: 'breath' }))
-    // After choosing, the picker is gone (the spirit now has a path).
-    await waitFor(() => expect(screen.queryByText('Choose your creature')).toBeNull())
+    // The picker moved to its own /spirit/choose page; a pathless spark redirects there, so
+    // neither the picker nor the Personalize panel renders on /spirit.
+    await waitFor(() => expect(get).toHaveBeenCalled())
+    expect(screen.queryByText('Choose your creature')).toBeNull()
+    expect(screen.queryByText('Personalize')).toBeNull()
   })
 
   it('hides the picker once a creature is chosen', async () => {
@@ -376,14 +362,8 @@ describe('SpiritPage care needs (ADR-0023)', () => {
     expect(screen.getByText(/breathwork would revive it/i)).toBeInTheDocument()
   })
 
-  it('shows no care panel for a pathless spark (no needs yet)', async () => {
-    get.mockResolvedValue(spiritWith({ stage: 'spark', path: null }))
-
-    renderPage()
-    await screen.findByText('Choose your creature')
-
-    expect(screen.queryByText('Care')).toBeNull()
-  })
+  // (A pathless spark now redirects to /spirit/choose, covered by the dosha-picker describe and
+  // SpiritChoosePage.test — so there's no inline pathless state to assert here.)
 })
 
 describe('SpiritPage level-gated upgrades shown, not hidden (ADR-0023 / task #4)', () => {

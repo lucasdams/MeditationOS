@@ -178,10 +178,10 @@ describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
     expect(screen.queryByRole('img', { name: /kapha|pitta|vata/i })).toBeNull()
   })
 
-  it('shows a "choose your creature" prompt (linking to /spirit) for a pathless spark', () => {
+  it('shows a "choose your creature" prompt (linking to /spirit/choose) for a pathless spark', () => {
     renderSpirit(<Spirit spirit={spiritState({ stage: 'spark', path: null })} />)
     const link = screen.getByRole('link', { name: /choose your creature/i })
-    expect(link).toHaveAttribute('href', '/spirit')
+    expect(link).toHaveAttribute('href', '/spirit/choose')
   })
 
   it('renders the chosen creature form once a path is set (and drops the choose prompt)', () => {
