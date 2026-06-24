@@ -235,91 +235,6 @@ export interface GratitudeSuggestions {
   options: string[]
 }
 
-// One option inside a customization slot, with its cost and current state.
-export interface SlotOption {
-  option: string
-  cost: number
-  unlocked: boolean
-  unlock_hint: string | null
-  affordable: boolean
-  applied: boolean
-  // A growth rung already REACHED via practice, not coins (Tended oak only — see
-  // docs/design/sanctuary-upgrades-tended.md). True on each `grown` rung at/below the oak's
-  // Tending-earned stage: practice already displays it, so it renders as a done/reached rung,
-  // never a buy button. Always false/absent for non-oak items and non-`grown` slots.
-  reached?: boolean
-}
-
-// A customization axis for an owned item: the options to mix and match.
-export interface AvailableSlot {
-  slot: string
-  applied: string | null // option currently applied (null if none)
-  options: SlotOption[]
-}
-
-// The "Tended" growth-from-practice status of an item whose stage is driven by practice, not
-// coins (see docs/design/sanctuary-upgrades-tended.md). Present only on Tended items (the oak,
-// in the MVP); null otherwise. The displayed stage is already merged into customizations.grown,
-// so this is purely for the path ribbon + "Tended by N days" meter.
-export interface TendingStatus {
-  tending: number // the user's monotonic Tending score `T`
-  practice_days: number // distinct practice days behind `T` (for the meter copy)
-  stage: string | null // currently-displayed growth stage key (null = un-grown base)
-  next_stage: string | null // the next growth stage key (null at the top of the ladder)
-  next_threshold: number | null // Tending score that unlocks the next stage (null at the top)
-}
-
-// An item the user owns, with its chosen variant and purchased customizations.
-export interface OwnedItem {
-  id: string
-  item_key: string
-  track: string
-  position: number // immutable acquisition order (economy key — NOT the layout)
-  cell: number // grid layout slot (row-major index); the user rearranges this freely
-  variant: string | null // chosen base form (default when the item has variants)
-  customizations: Record<string, string> // {slot: option} purchased
-  available: AvailableSlot[] // slots/options still applicable, with hints
-  // Optional cosmetic personalization (ADR-0015) — all default-off, never affect coins.
-  name: string | null // user-chosen plaque/nickname (null = unnamed)
-  note: string | null // short free-text caption/memory (null = none)
-  favorite: boolean // pinned/favourited (subtle star)
-  // "Tended" growth-from-practice status (oak-only MVP). null for items not in Tending.
-  tending: TendingStatus | null
-}
-
-// A base form selectable at purchase time.
-export interface VariantOption {
-  variant: string
-  cost_delta: number // extra coins over the buy cost (0 = free)
-  unlocked: boolean
-  unlock_hint: string | null
-}
-
-// A buyable catalog item (locked ones carry a hint).
-export interface ShopItem {
-  item_key: string
-  track: string
-  cost: number
-  unlocked: boolean
-  hint: string | null
-  variants: VariantOption[] // selectable base forms (empty for fixed-form items)
-  blurb: string // a short, calm flavour line (cosmetic; '' when the item has none)
-  // On-character example names, offered as an optional naming suggestion in the buy UI
-  // (placeholder + shuffle, ADR-0015). Cosmetic only; [] when the item has none.
-  suggested_names: string[]
-}
-
-export type Vitality = 'dormant' | 'thriving' | 'flourishing'
-
-export interface SanctuaryScene {
-  coins: number // spendable balance
-  level: number
-  owned: OwnedItem[]
-  shop: ShopItem[]
-  vitality: Vitality
-  current_streak: number
-}
-
 // --- Spirit (docs/design/spirit.md, ADR-0022) -------------------------------------------
 // The Spirit is a single living companion grown from practice. Its state is *maximally
 // computed* on read: only the committed path, optional name, and owned cosmetics are stored;
@@ -617,7 +532,6 @@ export interface AdminMetrics {
     mood_logs: number
   }
   adoption: {
-    sanctuary_users: number
     goal_users: number
     reminder_users: number
     push_users: number
