@@ -36,6 +36,9 @@ const STAGE_LABEL: Record<string, string> = Object.fromEntries(
   Object.entries(STAGE_COPY).map(([stage, copy]) => [stage, copy.name]),
 )
 
+// The five stages in order (STAGE_COPY is defined spark → radiant), for the journey stepper.
+const STAGE_ORDER = Object.keys(STAGE_LABEL)
+
 // Path labels reuse Spirit's PATH_COPY (single source of truth).
 const PATH_LABEL = PATH_COPY
 
@@ -234,6 +237,44 @@ export default function SpiritPage() {
               <p className="muted spirit-hero-bond">Bond level {spirit.bond.level}</p>
               <p className="spirit-hero-coins">
                 <CoinIcon /> {spirit.coins} <span className="muted">coins to spend</span>
+              </p>
+            </section>
+
+            {/* How it grows + set free — a calm explainer of the path to radiance. */}
+            <section className="spirit-section spirit-journey" aria-label="How your spirit grows">
+              <header className="spirit-section-head">
+                <h2 className="spirit-section-title">Growing to radiance</h2>
+              </header>
+              <ol className="spirit-journey-stages">
+                {STAGE_ORDER.map((s, i) => {
+                  const here = STAGE_ORDER.indexOf(spirit.stage)
+                  const cls = i === here ? ' is-current' : i < here ? ' is-done' : ''
+                  return (
+                    <li key={s} className={`spirit-journey-stage${cls}`}>
+                      {STAGE_LABEL[s] ?? s}
+                    </li>
+                  )
+                })}
+              </ol>
+              <p className="muted spirit-journey-note">
+                Every practice — meditate, breathe, gratitude, journal — earns XP that levels up
+                your bond and carries your spirit from <strong>spark</strong> to{' '}
+                <strong>radiant</strong>. Growth never reverses; a quiet day only dims its glow,
+                never its stage.
+              </p>
+              <p className="muted spirit-journey-note">
+                {isRadiant ? (
+                  <>
+                    Your spirit is <strong>radiant</strong> — you can <strong>set it free</strong>{' '}
+                    below. It joins your collection forever, and a new spark begins, ready to grow
+                    down its own path.
+                  </>
+                ) : (
+                  <>
+                    At <strong>radiant</strong> you can <strong>set your spirit free</strong>: it
+                    joins your collection forever and a fresh spark begins its own journey.
+                  </>
+                )}
               </p>
             </section>
 
