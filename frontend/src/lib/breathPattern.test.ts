@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ENERGIZING_PATTERN,
   PRESETS,
   boxPatternForCount,
   breathEventAt,
@@ -81,7 +82,7 @@ describe('PRESETS', () => {
     const byControl = (c: string) => PRESETS.filter((x) => x.control === c).map((x) => x.key)
     expect(byControl('bpm')).toEqual(['resonance'])
     expect(byControl('count')).toEqual(['box'])
-    expect(byControl('none')).toEqual([])
+    expect(byControl('none')).toEqual(['energizing'])
     // adjustable presets (bpm/count) carry a derive fn + null pattern; 'none' carries a pattern
     for (const p of PRESETS) {
       if (p.control === 'none') {
@@ -91,6 +92,16 @@ describe('PRESETS', () => {
         expect(typeof p.derive).toBe('function')
       }
     }
+  })
+
+  it('includes the fixed energizing preset (control none, brisk no-hold pattern)', () => {
+    const energizing = PRESETS.find((p) => p.key === 'energizing')
+    expect(energizing).toBeDefined()
+    expect(energizing!.control).toBe('none')
+    expect(energizing!.pattern).toEqual(ENERGIZING_PATTERN)
+    // Active inhale, quick exhale, no holds → 5s cycle (12 breaths/min).
+    expect(ENERGIZING_PATTERN).toEqual({ inhale: 3, holdFull: 0, exhale: 2, holdEmpty: 0 })
+    expect(cycleLength(ENERGIZING_PATTERN)).toBe(5)
   })
 
   it('patternSummary shows holds only when present', () => {

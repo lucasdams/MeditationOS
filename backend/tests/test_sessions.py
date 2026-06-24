@@ -21,6 +21,25 @@ def test_create_session(client):
     assert "id" in body
 
 
+def test_create_energizing_breathing_session(client):
+    """The API accepts the new energizing_breathing type (schema + model CHECK allow it)."""
+    _auth(client, "energize@example.com")
+    resp = client.post(
+        "/api/v1/sessions",
+        json={
+            "type": "energizing_breathing",
+            "duration_seconds": 300,
+            "occurred_at": "2026-01-01T08:00:00",
+            "inhale_seconds": 3,
+            "exhale_seconds": 2,
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["type"] == "energizing_breathing"
+    assert body["breaths_per_minute"] == 12.0  # 60 / (3 + 2)
+
+
 def test_duration_over_cap_rejected(client):
     # Security audit fix #3: an unbounded duration would inflate XP→level→coins.
     _auth(client, "huge@example.com")

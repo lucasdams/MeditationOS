@@ -40,6 +40,7 @@ export type MeditationType =
   | 'walking'
   | 'loving_kindness'
   | 'resonance_breathing'
+  | 'energizing_breathing'
   | 'other'
 
 export interface Session {

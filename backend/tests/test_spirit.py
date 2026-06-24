@@ -198,6 +198,21 @@ def _breathe(client, minutes, *, day="2026-01-01"):
     )
 
 
+def _energize(client, minutes, *, day="2026-01-01"):
+    """A brisk energizing-breath session (active inhale, quick exhale) — also breathwork,
+    so it feeds the Kapha (stillness) creature just like resonance breathing does."""
+    return client.post(
+        "/api/v1/sessions",
+        json={
+            "type": "energizing_breathing",
+            "duration_seconds": minutes * 60,
+            "occurred_at": f"{day}T08:00:00",
+            "inhale_seconds": 3,
+            "exhale_seconds": 2,
+        },
+    )
+
+
 def _gratitude(client, text="thankful"):
     return client.post("/api/v1/gratitude", json={"category": "people", "text": text})
 
@@ -313,6 +328,32 @@ def test_nourished_rises_with_the_signature_practice(client, db_session):
     n = _needs(db_session, "stillness", user_id, today=today)
     assert n.nourished.tier == CONDITION_THRIVING
     assert n.nourished.factor == 1.0
+
+
+def test_energizing_breath_nourishes_the_kapha_creature(client, db_session):
+    """Energizing breath is breathwork too: feeding a `stillness` (Kapha) creature enough
+    recent energizing-breath days thrives its `nourished`, exactly like resonance does."""
+    _auth(client, "needs_energize_kapha@example.com")
+    user_id = _user_id(db_session, "needs_energize_kapha@example.com")
+    today, days = _recent_days(CONDITION_WINDOW_DAYS)
+    for d in days:
+        _energize(client, 30, day=d.isoformat())  # energizing breath = Kapha's food too
+    n = _needs(db_session, "stillness", user_id, today=today)
+    assert n.nourished.tier == CONDITION_THRIVING
+    assert n.nourished.factor == 1.0
+
+
+def test_energizing_breath_does_not_nourish_the_vata_creature_as_meditation(client, db_session):
+    """Energizing breath is breathwork, NOT meditation — so a `heart` (Vata) creature, whose
+    food is non-breathing MEDITATION, stays at the `unwell` floor when fed only energizing
+    breath. This guards the classifier: energizing must never count as meditation."""
+    _auth(client, "needs_energize_vata@example.com")
+    user_id = _user_id(db_session, "needs_energize_vata@example.com")
+    today, days = _recent_days(CONDITION_WINDOW_DAYS)
+    for d in days:
+        _energize(client, 30, day=d.isoformat())  # breathwork, not the Vata creature's food
+    n = _needs(db_session, "heart", user_id, today=today)
+    assert n.nourished.tier == CONDITION_UNWELL
 
 
 def test_nourished_declines_to_unwell_without_the_signature_practice(db_session):

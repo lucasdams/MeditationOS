@@ -27,6 +27,7 @@ const TYPE_LABELS: Record<string, string> = {
   walking: 'Walking',
   loving_kindness: 'Loving-kindness',
   resonance_breathing: 'Resonance breathing',
+  energizing_breathing: 'Energizing breathing',
   other: 'Other',
 }
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

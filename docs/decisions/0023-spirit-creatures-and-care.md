@@ -28,10 +28,10 @@ Note the path name no longer matches the practice — e.g. the `breath` path is 
 fed by gratitude — because the practice is the *balancing* one. The art still matches each dosha's
 element.)
 
-> **Caveat (honest):** the app's only breathwork is *slow resonance* breathing, which is calming —
-> whereas Kapha ideally wants *energizing* breath (Kapalabhati). The app has no vigorous practice,
-> so Kapha is served by the closest available (breathwork). The about section says so plainly; this
-> is a simplified, app-shaped take, not clinical Ayurveda.
+> **Note:** Kapha ideally wants *energizing* breath (Kapalabhati-style). The Breathe page now ships
+> an **Energizing** pattern (brisk, active inhale) for exactly this — and Kapha's `nourished` need
+> counts any breathwork (`BREATHING_SESSION_TYPES`), so both it and slow resonance feed Kapha. This
+> stays a simplified, app-shaped take, not clinical Ayurveda.
 
 ## Decision
 

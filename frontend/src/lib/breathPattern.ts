@@ -93,9 +93,14 @@ export type Preset = {
   derive?: (value: number) => Pattern
 }
 
+// A brisk, invigorating breath: active inhale, quick exhale, no holds (5s cycle =
+// 12 breaths/min) — the inverse of resonance's long exhale. Fixed, no pace slider.
+export const ENERGIZING_PATTERN: Pattern = { inhale: 3, holdFull: 0, exhale: 2, holdEmpty: 0 }
+
 export const PRESETS: Preset[] = [
   { key: 'resonance', label: 'Resonance', control: 'bpm', pattern: null, derive: patternForBpm, hint: 'Longer exhale, at your pace' },
   { key: 'box', label: 'Box', control: 'count', pattern: null, derive: boxPatternForCount, hint: 'Equal in · hold · out · hold' },
+  { key: 'energizing', label: 'Energizing', control: 'none', pattern: ENERGIZING_PATTERN, hint: 'Active inhale, brisk pace' },
 ]
 
 export const PRESET_STORAGE_KEY = 'breathe.preset'

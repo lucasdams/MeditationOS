@@ -33,6 +33,7 @@ const TYPE_LABELS: Record<MeditationType, string> = {
   walking: 'Walking',
   loving_kindness: 'Loving-kindness',
   resonance_breathing: 'Resonance breathing',
+  energizing_breathing: 'Energizing breathing',
   other: 'Other',
 }
 
