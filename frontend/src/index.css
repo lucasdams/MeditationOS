@@ -2248,15 +2248,170 @@ textarea:focus-visible,
   font-size: 0.85rem;
 }
 
-.spirit-lean {
-  margin: 0.15rem 0 0;
-  font-size: 0.78rem;
-  font-style: italic;
+/* The pathless-spark "choose your creature" prompt on the home — a calm, inviting link, not a
+   shouty CTA. (ADR-0023) */
+.spirit-choose-prompt {
+  margin: 0.4rem 0 0;
+}
+
+.spirit-choose-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .spirit-bond {
-  margin: 0.15rem 0 0;
+  margin: 0.4rem 0 0;
   font-size: 0.78rem;
+}
+
+/* --- Spirit care needs (ADR-0023) -------------------------------------------------------- */
+/* The three tended needs (Nourished / Rested / Joyful) as tidy tier pills, each with an icon +
+   tier label. Per-tier accent hues read at a glance without shaming — even "Needs care" is a
+   warm amber, never an alarm red. Shared by the home summary and the SpiritPage care panel. */
+.spirit-needs {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.spirit-need {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1.5px solid var(--need-accent, #94a3b8);
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary);
+}
+
+.spirit-need-tier {
+  font-weight: 700;
+  color: var(--need-accent, #475569);
+}
+
+/* Per-tier accent hues (best → worst), all calm mid-tones legible on light + dark. */
+.spirit-need--thriving {
+  --need-accent: #14b8a6;
+}
+.spirit-need--content {
+  --need-accent: #3b82f6;
+}
+.spirit-need--restless {
+  --need-accent: #f59e0b;
+}
+.spirit-need--unwell {
+  --need-accent: #b45309;
+}
+
+/* The single kind care nudge — one calm line, never a shaming alarm (ADR-0023 guardrail). */
+.spirit-care-nudge {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #475569);
+}
+
+/* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
+/* The "3 starter choices" — three calm cards, each with its own dosha accent hue. An invitation,
+   not a sale: soft surfaces, one clear choose button each. */
+.spirit-picker-grid {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.spirit-picker-card {
+  --card-accent: #8b5cf6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.2rem;
+  padding: 1rem 0.85rem;
+  border: 1.5px solid var(--card-accent);
+  border-radius: 1rem;
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+/* Each dosha card carries its creature's palette accent (Kapha gold, Pitta red, Vata teal). */
+.spirit-picker-card--stillness {
+  --card-accent: #f59e0b;
+}
+.spirit-picker-card--breath {
+  --card-accent: #ef4444;
+}
+.spirit-picker-card--heart {
+  --card-accent: #14b8a6;
+}
+
+.spirit-picker-glyph {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.spirit-picker-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--card-accent);
+}
+
+.spirit-picker-element {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.spirit-picker-vibe {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.spirit-picker-practice {
+  margin: 0.15rem 0 0.3rem;
+  font-size: 0.8rem;
+}
+
+.spirit-picker-choose {
+  margin-top: auto;
+  background: var(--card-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.spirit-picker-choose:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+/* A level-gated cosmetic option (ADR-0023 / task #4): shown, not hidden, with its requirement —
+   so the user can see what they're working toward. The lock chip wraps the requirement so it
+   reads as a clear "Reach level N" badge rather than disappearing into the toast. */
+.spirit-option.locked {
+  border-style: dashed;
+}
+
+.spirit-option-lock {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
 }
 
 /* --- Spirit reactivity / animation (docs/design/spirit.md, build step 4) ----------------- */

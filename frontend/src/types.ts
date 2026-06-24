@@ -235,21 +235,50 @@ export interface GratitudeSuggestions {
   options: string[]
 }
 
-// --- Spirit (docs/design/spirit.md, ADR-0022) -------------------------------------------
+// --- Spirit (docs/design/spirit.md, ADR-0022, ADR-0023) ---------------------------------
 // The Spirit is a single living companion grown from practice. Its state is *maximally
-// computed* on read: only the committed path, optional name, and owned cosmetics are stored;
-// stage, bond, glow, and coins are all derived from the user's earned-XP level. The shape also
-// carries `path_lean` — the suggested path from lifetime practice — alongside the committed path.
+// computed* on read: only the CHOSEN path, optional name, and owned cosmetics are stored;
+// stage, bond, needs, and coins are all derived. ADR-0023 makes the `path` user-CHOSEN (set
+// once via POST /spirit/choose, NULL until then) instead of auto-detected, and replaces the
+// single `daily_glow` with three named `needs` plus an overall `condition` (the weakest need).
 
 // The five evolution stages, derived from the user's level (a pure function of level —
 // monotonic, never stored, never lost). The mote of light gains structure each stage.
 export type SpiritStage = 'spark' | 'wisp' | 'fledgling' | 'ascendant' | 'radiant'
 
-// The committed practice path. NULL until the spirit commits at stage 2 (`wisp`, level ≥ 3):
-//   stillness → a serene mini Buddha   (meditation-dominant)
-//   breath    → an airy wind spirit    (resonance-breathing-dominant)
-//   heart     → a blooming heart spirit (gratitude + journaling dominant)
+// The chosen creature/path. NULL until the user chooses one (POST /spirit/choose). Labelled in
+// the UI as the Ayurvedic dosha; the internal value is unchanged:
+//   stillness → Kapha — a serene mini Buddha  (meditation keeps it nourished)
+//   breath    → Pitta — an airy wind spirit   (resonance breathwork keeps it nourished)
+//   heart     → Vata  — a blooming heart spirit (gratitude + journaling keeps it nourished)
 export type SpiritPath = 'stillness' | 'breath' | 'heart'
+
+// A care-need tier, best → worst (ADR-0023). Drives the per-need pill + the overall condition.
+export type SpiritNeedTier = 'thriving' | 'content' | 'restless' | 'unwell'
+
+// One tended need (ADR-0023) — a visual-only care signal over a rolling window. `factor` is a
+// 0..1 vibrancy multiplier (concave). Advisory only; never reduces progress.
+export interface SpiritNeed {
+  tier: SpiritNeedTier // thriving | content | restless | unwell
+  factor: number // 0..1 vibrancy multiplier (concave)
+}
+
+// The active creature's three tended needs (ADR-0023), replacing the single `daily_glow`:
+//   nourished — its signature practice (the identity need; per the chosen path)
+//   rested    — practice rhythm / consistency (recent active days + streak)
+//   joyful    — practice variety (distinct practice types done recently)
+export interface SpiritNeeds {
+  nourished: SpiritNeed
+  rested: SpiritNeed
+  joyful: SpiritNeed
+}
+
+// The overall care state = the weakest of the three needs (ADR-0023), so the UI can render one
+// summary look (the glow/vibrancy) without inspecting each need. Visual-only.
+export interface SpiritCondition {
+  tier: SpiritNeedTier // the weakest need's tier
+  factor: number // its 0..1 vibrancy multiplier
+}
 
 // A friendly level read-out — the same level + XP-into-level the wallet basis exposes,
 // surfaced as the spirit's "bond" with the practitioner.
@@ -292,15 +321,21 @@ export interface RetiredSpirit {
 // (steps 5 + 6); existing fields are unchanged.
 export interface SpiritState {
   stage: SpiritStage // spark | wisp | fledgling | ascendant | radiant (function of level)
-  path: SpiritPath | null // committed path; null until it commits at stage 2
-  path_lean: SpiritPath // suggested path from lifetime practice mix; the lean shown pre-commit
+  path: SpiritPath | null // the CHOSEN creature; null until chosen via POST /spirit/choose
   name: string | null // the active spirit's nickname, if set (pre-fills / displays in the UI)
   bond: SpiritBond // level + XP-into-level + XP-for-next
-  daily_glow: number // brightness factor in [0.4, 1.0] from recent practice
+  needs: SpiritNeeds // the three tended needs (nourished / rested / joyful); visual-only
+  condition: SpiritCondition // overall care state = the weakest need; visual-only (ADR-0023)
   coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
   cosmetics: Record<string, string> // owned {slot: option}
   available: SpiritAvailableSlot[] // the cosmetics catalog with per-option state
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
+}
+
+// Choose the active creature once (POST /spirit/choose). `path` is the internal enum value
+// (the UI relabels it as the dosha). Only settable while the spirit is pathless (re-choose → 409).
+export interface SpiritChooseRequest {
+  path: SpiritPath
 }
 
 // Buy/apply a cosmetic option to a slot on the active spirit (POST /spirit/cosmetics).

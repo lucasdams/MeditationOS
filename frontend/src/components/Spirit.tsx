@@ -1,33 +1,42 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { spiritService } from '../services/spirit'
 import { Loading, RetryableError } from './StateViews'
 import { messageForError } from '../lib/errors'
-import type { SpiritPath, SpiritStage, SpiritState } from '../types'
+import type {
+  SpiritNeedTier,
+  SpiritPath,
+  SpiritStage,
+  SpiritState,
+} from '../types'
 
 /**
- * Spirit — the home-screen companion (docs/design/spirit.md, ADR-0022; build-order step 3).
+ * Spirit — the home-screen companion (docs/design/spirit.md, ADR-0022, ADR-0023).
  *
- * A single living companion you awaken once and grow through practice, rendered as a
+ * A single living companion you CHOOSE once (ADR-0023) and grow through practice, rendered as a
  * procedural SVG that gains structure from `spark` → `wisp` → `fledgling` → `ascendant` →
- * `radiant`. Step 3 adds PATH BRANCHING: the spirit grows down one of three path-specific
- * forms, chosen by the committed `path` (falling back to the suggested `path_lean` before it
- * commits at stage 2):
+ * `radiant`. The spirit grows down one of three chosen forms, keyed to the chosen `path`
+ * (labelled in the UI as the Ayurvedic dosha):
  *
- *  - `stillness` → a serene seated mini-Buddha with a calm aura (meditation-dominant).
- *  - `breath`    → an airy wind spirit of flowing/swirling currents (breathing-dominant).
- *  - `heart`     → a blooming spirit of petals and leaves (gratitude + journaling dominant).
+ *  - `stillness` → Kapha — a serene seated mini-Buddha (meditation keeps it nourished).
+ *  - `breath`    → Pitta — an airy wind spirit of flowing currents (breathwork nourishes it).
+ *  - `heart`     → Vata  — a blooming spirit of petals (gratitude + journaling nourish it).
+ *
+ * Until the user chooses (path === null), the spirit is a PATHLESS SPARK: a neutral, un-themed
+ * glowing mote with no creature form yet — the picker invites the choice.
  *
  * Each form is drawn distinctly across the five stages, in the flat vector style of
  * SanctuaryPlant (hardcoded hex fills, a 0 0 80 80 viewBox), with its own palette.
  *
- * Step 4 adds the REACTIVITY / ANIMATION layer (CSS keyframes + Web Animations API + the
- * breathing pacer's rAF clock — no new deps):
+ * The REACTIVITY / ANIMATION layer (CSS keyframes + Web Animations API + the breathing pacer's
+ * rAF clock — no new deps):
  *
  *  - Idle: a gentle, slow float plus a soft aura pulse on the home-screen spirit. Calm,
  *    never frantic — the motion idiom of `zen-float` / `meditate-pulse`.
- *  - Daily glow as MOTION: the aura's pulse intensity/opacity scales with `daily_glow` (via
- *    the `--spirit-glow` custom property), so a brighter spirit breathes a touch more and a
- *    resting one is calmer — still floored, never fully still-dark.
+ *  - Condition as MOTION (ADR-0023): the aura's pulse intensity/opacity scales with the overall
+ *    `condition` factor (the weakest need), via the `--spirit-glow` custom property — so a
+ *    well-tended spirit breathes a touch more and a neglected one is calmer/dimmer; still
+ *    floored, never fully still-dark (the no-catastrophe guardrail — it never affects progress).
  *  - Session-complete celebration: a brief, happy one-shot (a soft scale/glow swell via the
  *    Web Animations API), triggered by `celebrate` from the post-session RewardOverlay flow.
  *  - Breathing-pacer sync (the signature moment): on BreathePage, `paceScale` is the SAME
@@ -52,12 +61,151 @@ export const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
   radiant: { name: 'Radiant', note: 'Your spirit shines fully.' },
 }
 
-// A friendly name per path, for the screen-reader label and the quiet pre-commit lean hint.
-// Exported so SpiritPage shares the same path labels.
+// The dosha each path is labelled as in the UI (ADR-0023; the internal `path` value is
+// unchanged). `name` is the displayed creature name, `element` its Ayurvedic elements, `vibe` a
+// short personality line, `practice` the signature activity that keeps it nourished, and `glyph`
+// a small decorative emoji for the picker card. Exported as the single source of truth so the
+// picker, hero read-out, and care nudges all relabel consistently.
+export const DOSHA: Record<
+  SpiritPath,
+  { name: string; element: string; vibe: string; practice: string; glyph: string }
+> = {
+  stillness: {
+    name: 'Kapha',
+    element: 'Earth + Water',
+    vibe: 'Grounded, calm, and steady.',
+    practice: 'meditation',
+    glyph: '🪷',
+  },
+  breath: {
+    name: 'Pitta',
+    element: 'Fire + Water',
+    vibe: 'Sharp, intense, and energetic.',
+    practice: 'breathwork',
+    glyph: '🔥',
+  },
+  heart: {
+    name: 'Vata',
+    element: 'Air + Ether',
+    vibe: 'Light, mobile, and expressive.',
+    practice: 'gratitude + journaling',
+    glyph: '🍃',
+  },
+}
+
+// A friendly name per path for screen-reader labels — the dosha name (ADR-0023). Exported so
+// SpiritPage shares the same path labels.
 export const PATH_COPY: Record<SpiritPath, string> = {
-  stillness: 'stillness',
-  breath: 'breath',
-  heart: 'heart',
+  stillness: DOSHA.stillness.name,
+  breath: DOSHA.breath.name,
+  heart: DOSHA.heart.name,
+}
+
+// The three doshas in the order the picker presents them (Kapha / Pitta / Vata).
+export const PATH_ORDER: SpiritPath[] = ['stillness', 'breath', 'heart']
+
+// Calm, never-shaming copy per care tier (ADR-0023 guardrail: nudge, never shame). `label` is
+// the pill text, `tone` the CSS state suffix. Exported so SpiritPage + the home summary share it.
+export const TIER_COPY: Record<SpiritNeedTier, { label: string; tone: string }> = {
+  thriving: { label: 'Thriving', tone: 'thriving' },
+  content: { label: 'Content', tone: 'content' },
+  restless: { label: 'Restless', tone: 'restless' },
+  unwell: { label: 'Needs care', tone: 'unwell' },
+}
+
+// A care-need tier is "low" (worth a gentle nudge) once it slips below content.
+export function isLowTier(tier: SpiritNeedTier): boolean {
+  return tier === 'restless' || tier === 'unwell'
+}
+
+// Friendly per-need labels + the practice that revives each (ADR-0023). `nourished` is the
+// signature need, so its reviving practice depends on the chosen creature; `rested` and `joyful`
+// are path-agnostic. Used for the needs read-out and the per-need care nudges.
+export const NEED_COPY: Record<
+  keyof SpiritState['needs'],
+  { label: string; icon: string }
+> = {
+  nourished: { label: 'Nourished', icon: '🍲' },
+  rested: { label: 'Rested', icon: '🌙' },
+  joyful: { label: 'Joyful', icon: '✨' },
+}
+
+// The practice that revives a given need for a given creature (ADR-0023). Nourished is the
+// signature need (per dosha); rested wants a steady daily rhythm; joyful wants variety.
+export function reviveHint(
+  need: keyof SpiritState['needs'],
+  path: SpiritPath | null,
+): string {
+  if (need === 'nourished') {
+    const practice = path ? DOSHA[path].practice : 'your practice'
+    return `a few minutes of ${practice} would revive it`
+  }
+  if (need === 'rested') return 'a calm daily rhythm would settle it'
+  return 'a little variety in your practice would lift it'
+}
+
+// The three needs in display order, so the read-out + nudges iterate consistently.
+const NEED_ORDER: Array<keyof SpiritState['needs']> = ['nourished', 'rested', 'joyful']
+
+/**
+ * NeedsReadout — the three tended needs (Nourished / Rested / Joyful) as tidy tier pills, each
+ * with its icon and tier label (ADR-0023). Visual-only; replaces the old single glow read-out.
+ * Reused by the home summary and the SpiritPage care panel.
+ */
+export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
+  return (
+    <ul className="spirit-needs" aria-label="Care needs">
+      {NEED_ORDER.map((key) => {
+        const need = needs[key]
+        const copy = NEED_COPY[key]
+        const tier = TIER_COPY[need.tier]
+        return (
+          <li key={key} className={`spirit-need spirit-need--${tier.tone}`}>
+            <span className="spirit-need-icon" aria-hidden="true">
+              {copy.icon}
+            </span>
+            <span className="spirit-need-label">{copy.label}</span>
+            <span className="spirit-need-tier">{tier.label}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/**
+ * CareNudge — a single, kind care nudge for the lowest need that's slipped below content
+ * (ADR-0023 guardrail: nudge, never shame). Names the creature (dosha) and the practice that
+ * revives it. Renders nothing when every need is content-or-better. Reused on the home + page.
+ */
+export function CareNudge({
+  needs,
+  path,
+}: {
+  needs: SpiritState['needs']
+  path: SpiritPath | null
+}) {
+  // Surface the single most-depleted low need so the nudge stays one calm line, not a list.
+  const TIER_RANK: Record<SpiritNeedTier, number> = {
+    unwell: 0,
+    restless: 1,
+    content: 2,
+    thriving: 3,
+  }
+  const low = NEED_ORDER.filter((k) => isLowTier(needs[k].tier)).sort(
+    (a, b) => TIER_RANK[needs[a].tier] - TIER_RANK[needs[b].tier],
+  )
+  if (low.length === 0) return null
+  const key = low[0]
+  const tier = needs[key].tier
+  const tierLabel = TIER_COPY[tier].label.toLowerCase()
+  const creature = path ? `Your ${DOSHA[path].name}` : 'Your spark'
+  return (
+    <p className="spirit-care-nudge" role="status">
+      <span aria-hidden="true">🌿 </span>
+      {creature} is {tierLabel} — {reviveHint(key, path)}.
+    </p>
+  )
 }
 
 // A distinct palette per path: stillness is a serene warm gold/amber; breath is a cool airy
@@ -81,14 +229,15 @@ function stageProgress(stage: SpiritStage): number {
   return (stageIndex(stage) - 1) / (STAGE_ORDER.length - 1)
 }
 
-// The floored daily-glow band [0.7, 1]. The server floors raw glow at 0.4 so a resting spirit
-// never goes fully dark; we raise the *visual* floor higher here so the companion stays clearly
-// legible on light backgrounds (a glow of 0.4 rendered the early-stage spark too faint to see).
-// Practice still visibly brightens it (0.7 resting → 1.0 active) — just never into low contrast.
+// The floored condition-glow band [0.7, 1]. The condition factor lives in [0..1]; we raise the
+// *visual* floor here so the companion stays clearly legible on light backgrounds even when a
+// need is depleted (a low factor rendered the early-stage spark too faint to see). A well-tended
+// spirit still visibly brightens it (0.7 neglected → 1.0 thriving) — just never into low contrast.
+// This is the no-catastrophe guardrail in the art: condition only dims the look, never hides it.
 const SPIRIT_GLOW_FLOOR = 0.7
 const SPIRIT_GLOW_CEIL = 1
 
-// Clamp the daily glow into the floored band (the backend floors it; defend anyway).
+// Clamp the condition factor into the floored visual band (the backend bounds it; defend anyway).
 function clampGlow(glow: number): number {
   return Math.max(SPIRIT_GLOW_FLOOR, Math.min(SPIRIT_GLOW_CEIL, glow))
 }
@@ -496,6 +645,27 @@ function HeartForm({ stage, g, aura }: { stage: SpiritStage; g: number; aura?: s
   )
 }
 
+/**
+ * The PATHLESS SPARK (ADR-0023) — a neutral, un-themed glowing mote shown before the user
+ * chooses a creature. No path palette, no creature features: just a soft white-gold core with a
+ * faint halo, so it reads as "a spark waiting to become something". Drawn at every stage the
+ * same calm way (a pathless spirit is, by design, always early — the choice comes first).
+ */
+function SparkForm({ g }: { g: number }) {
+  // A path-agnostic, gentle gold so it stays legible on light + dark without leaning to any
+  // creature's palette. The halo carries the condition glow like the path auras do.
+  const halo = '#fde68a'
+  const core = '#fffbeb'
+  return (
+    <g>
+      <circle cx={40} cy={40} r={20} fill={halo} opacity={Math.min(0.5, 0.16 * g)} />
+      <circle cx={40} cy={40} r={13} fill={halo} opacity={Math.min(0.6, 0.24 * g)} />
+      <circle cx={40} cy={40} r={6} fill={core} opacity={0.92 * g} />
+      <circle cx={38.5} cy={38.5} r={1.8} fill="#ffffff" opacity={0.85 * g} />
+    </g>
+  )
+}
+
 const PATH_FORM: Record<
   SpiritPath,
   (props: { stage: SpiritStage; g: number; aura?: string }) => JSX.Element
@@ -505,22 +675,22 @@ const PATH_FORM: Record<
   heart: HeartForm,
 }
 
-// The form chosen for the art: the committed path, falling back to the suggested lean before
-// it commits at stage 2. A defensive default keeps the art rendering if both are somehow absent.
-// Exported so SpiritPage uses the exact same selection logic (a single source of truth).
-export function formFor(spirit: SpiritState): SpiritPath {
-  return spirit.path ?? spirit.path_lean ?? 'stillness'
+// The form chosen for the art: the user's CHOSEN path (ADR-0023). NULL until they choose — a
+// pathless spark has no creature form yet, so this returns null and the art renders the neutral
+// SparkForm. Exported so SpiritPage uses the exact same selection logic (a single source of truth).
+export function formFor(spirit: SpiritState): SpiritPath | null {
+  return spirit.path
 }
 
 /**
- * The procedural spirit art, branched by path. The form is chosen by the committed `path`,
- * falling back to the suggested `path_lean` before commit — so an early spark already leans
- * toward its likely form. `glow` is clamped to the floored [0.4, 1] band.
+ * The procedural spirit art, branched by the CHOSEN path (ADR-0023). When `path` is null the
+ * spirit is a pathless spark, drawn as the neutral, un-themed SparkForm (no creature features
+ * yet). `glow` (the overall condition factor) is clamped to the floored band.
  *
- * Motion (step 4): when not reduced-motion, the SVG carries `spirit-svg--alive` (CSS idle
- * float + aura pulse, intensity driven by the `--spirit-glow` custom property). On BreathePage
- * a `paceScale` (the breathe-circle's live `scaleAt` value) overrides the idle float with an
- * inline transform synced to the pacer. `celebrate` fires a brief one-shot via the Web
+ * Motion: when not reduced-motion, the SVG carries `spirit-svg--alive` (CSS idle float + aura
+ * pulse, intensity driven by the `--spirit-glow` custom property = the condition factor). On
+ * BreathePage a `paceScale` (the breathe-circle's live `scaleAt` value) overrides the idle float
+ * with an inline transform synced to the pacer. `celebrate` fires a brief one-shot via the Web
  * Animations API. When reduced-motion is on, none of these apply — the art holds static.
  */
 export function SpiritArt({
@@ -534,7 +704,8 @@ export function SpiritArt({
   previewing = false,
 }: {
   stage: SpiritStage
-  path: SpiritPath
+  // The chosen creature, or null for a pathless spark (drawn neutral, no creature form).
+  path: SpiritPath | null
   glow: number
   // Owned cosmetics {slot: option} — the applied aura / accessory / habitat shown on the art.
   cosmetics?: SpiritCosmetics
@@ -548,11 +719,12 @@ export function SpiritArt({
   previewing?: boolean
 }) {
   const g = clampGlow(glow)
-  const Form = PATH_FORM[path]
   const aura = cosmetics?.aura
   const accessory = cosmetics?.accessory
   const habitat = cosmetics?.habitat
-  const label = `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit${previewing ? ' (preview)' : ''}`
+  // A pathless spark has no creature label yet — describe it as an awakening spark.
+  const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
+  const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   // Session-complete celebration: a single, gentle swell + glow via the Web Animations API,
@@ -577,8 +749,8 @@ export function SpiritArt({
   const inPacerMode = paceScale !== undefined
   const liveScale = reducedMotion ? 1 : paceToScale(paceScale)
 
-  // `--spirit-glow` lets the CSS pulse breathe a touch harder when the daily glow is high and
-  // calmer when it's resting — daily glow expressed as motion, still floored by `clampGlow`.
+  // `--spirit-glow` lets the CSS pulse breathe a touch harder when the condition is high and
+  // calmer when a need is depleted — condition expressed as motion, still floored by `clampGlow`.
   const style: CSSProperties = { ['--spirit-glow' as string]: g }
   if (inPacerMode) style.transform = `scale(${liveScale})`
 
@@ -598,9 +770,17 @@ export function SpiritArt({
       aria-live="polite"
     >
       {/* Habitat backdrop sits behind the figure; the aura (inside Form) re-tints with the
-          owned aura cosmetic; the accessory perches on top. The figure is always legible. */}
+          owned aura cosmetic; the accessory perches on top. The figure is always legible.
+          A pathless spark renders the neutral SparkForm (no creature features yet). */}
       {habitat && <Habitat habitat={habitat} g={g} />}
-      <Form stage={stage} g={g} aura={aura} />
+      {path ? (
+        (() => {
+          const Form = PATH_FORM[path]
+          return <Form stage={stage} g={g} aura={aura} />
+        })()
+      ) : (
+        <SparkForm g={g} />
+      )}
       {accessory && <Accessory accessory={accessory} g={g} />}
     </svg>
   )
@@ -670,13 +850,11 @@ export default function Spirit({
     return null
   }
 
-  const { stage, daily_glow, bond, path, cosmetics } = spirit
+  const { stage, condition, needs, bond, path, cosmetics } = spirit
   const copy = STAGE_COPY[stage]
-  // Choose the form by the committed path, falling back to the suggested lean before it
-  // commits at stage 2. A defensive default keeps the art rendering if the field is missing.
-  const form: SpiritPath = formFor(spirit)
-  // The "empty" / first-awakening state IS the spark — the backend always returns an active
-  // spirit, and a brand-new user is at stage `spark`, which we frame as the spirit awakening.
+  // The form is the CHOSEN path (ADR-0023); null = a pathless spark (neutral SparkForm). The
+  // overall look (glow/vibrancy) reads from the condition factor — the weakest of the needs.
+  const form: SpiritPath | null = formFor(spirit)
 
   // Read the OS reduced-motion preference once here and thread it down, so every motion path
   // (idle float, glow pulse, celebration, pacer sync) is gated by the single source of truth.
@@ -685,7 +863,7 @@ export default function Spirit({
     <SpiritArt
       stage={stage}
       path={form}
-      glow={daily_glow}
+      glow={condition.factor}
       cosmetics={cosmetics}
       paceScale={paceScale}
       celebrate={celebrate}
@@ -715,10 +893,20 @@ export default function Spirit({
           no shouted numbers; consistent with the app's low-pressure stance. */}
       <p className="spirit-stage">{copy.name}</p>
       <p className="spirit-note muted">{copy.note}</p>
-      {/* Before the path commits, a quiet "leaning toward …" hint — a gentle nudge, never a
-          shout. Once committed, the form speaks for itself, so the hint drops away. */}
-      {path === null && (
-        <p className="spirit-lean muted">Leaning toward {PATH_COPY[form]}</p>
+      {path === null ? (
+        // Pathless spark (ADR-0023): a calm prompt to choose a creature — the picker lives on
+        // /spirit. No needs read-out yet (a pathless spark reports neutral defaults).
+        <p className="spirit-choose-prompt">
+          <Link to="/spirit" className="spirit-choose-link">
+            Choose your creature →
+          </Link>
+        </p>
+      ) : (
+        // A chosen creature: a tidy needs read-out + a single kind care nudge when one is low.
+        <>
+          <NeedsReadout needs={needs} />
+          <CareNudge needs={needs} path={path} />
+        </>
       )}
       <p className="spirit-bond muted">Bond level {bond.level}</p>
     </section>
