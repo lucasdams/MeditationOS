@@ -276,6 +276,14 @@ describe('Spirit — new cosmetics render on the art', () => {
     // The curled cat body is an amber ellipse (#fbbf24).
     expect(container.querySelector('.spirit-svg ellipse[fill="#fbbf24"]')).not.toBeNull()
   })
+
+  it('draws a mount (the lotus pad) under the figure', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { mount: 'lotus' } })} />,
+    )
+    // The lotus pad is a distinctive green ellipse (#86efac).
+    expect(container.querySelector('.spirit-svg ellipse[fill="#86efac"]')).not.toBeNull()
+  })
 })
 
 describe('Spirit — condition applied as a static brightness (ADR-0023)', () => {

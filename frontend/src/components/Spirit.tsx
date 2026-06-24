@@ -594,6 +594,73 @@ function Companion({ companion, g }: { companion: string; g: number }) {
   return null
 }
 
+function Mount({ mount, g }: { mount: string; g: number }) {
+  // A serene thing the spirit floats on / rides (the "mount") — drawn centered and low so the
+  // figure rests ON it. It sits UNDER the creature, in the static background band, so it never
+  // floats away with the figure and never obscures it (ADR-0023).
+  const cx = 40
+  const cy = 66
+  if (mount === 'cloud') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A soft cloud the spirit floats on — overlapping white/sky puffs with a flat base. */}
+        <ellipse cx={cx} cy={cy + 2} rx={18} ry={5} fill="#f1f5f9" />
+        <circle cx={cx - 9} cy={cy} r={6} fill="#e0f2fe" />
+        <circle cx={cx + 9} cy={cy} r={6} fill="#e0f2fe" />
+        <circle cx={cx - 2} cy={cy - 3} r={7.5} fill="#ffffff" />
+        <circle cx={cx + 5} cy={cy - 1} r={6.5} fill="#ffffff" />
+      </g>
+    )
+  }
+  if (mount === 'lotus') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A lotus the spirit rests on — a green pad with calm pink petals fanned around it. */}
+        <ellipse cx={cx} cy={cy + 3} rx={16} ry={4.5} fill="#86efac" />
+        {[-12, -6, 0, 6, 12].map((dx, k) => (
+          <path
+            key={k}
+            d={`M ${cx + dx} ${cy + 1} q ${dx * 0.4} -8 0 -11 q ${-dx * 0.4} 3 0 11 z`}
+            fill="#fbcfe8"
+            stroke="#f9a8d4"
+            strokeWidth={0.5}
+          />
+        ))}
+        <ellipse cx={cx} cy={cy} rx={4} ry={2.5} fill="#fce7f3" />
+      </g>
+    )
+  }
+  if (mount === 'leaf') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A drifting leaf-boat the spirit sits on — a green leaf with a central vein. */}
+        <path
+          d={`M ${cx - 18} ${cy} q 18 9 36 0 q -18 -9 -36 0 z`}
+          fill="#4ade80"
+          stroke="#16a34a"
+          strokeWidth={1}
+        />
+        <path
+          d={`M ${cx - 16} ${cy} L ${cx + 16} ${cy}`}
+          stroke="#16a34a"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+        />
+        {[-9, -3, 3, 9].map((dx, k) => (
+          <path
+            key={k}
+            d={`M ${cx + dx} ${cy} l ${dx > 0 ? 3 : -3} -2.5`}
+            stroke="#16a34a"
+            strokeWidth={0.7}
+            strokeLinecap="round"
+          />
+        ))}
+      </g>
+    )
+  }
+  return null
+}
+
 /**
  * `stillness` — a serene seated mini-Buddha. Spark: a tiny glowing seated mote. It gains a
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
@@ -1022,6 +1089,7 @@ export function SpiritArt({
   const accessory = cosmetics?.accessory
   const habitat = cosmetics?.habitat
   const companion = cosmetics?.companion
+  const mount = cosmetics?.mount
   // A pathless spark has no creature label yet — describe it as an awakening spark.
   const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
   const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
@@ -1095,6 +1163,9 @@ export function SpiritArt({
           front of the habitat but clear of the creature, so it keeps the spirit company without
           fighting it (and never floats with the creature). */}
       {companion && <Companion companion={companion} g={g} />}
+      {/* The mount sits centered and low in the static background band, UNDER the creature, so
+          the figure appears to rest on / ride it without floating away with it or being hidden. */}
+      {mount && <Mount mount={mount} g={g} />}
       {/* ── FLOATING creature layer ── only this group moves: idle float, pacer sync, or the
           celebration one-shot. The figure is always legible; the accessory perches on top. */}
       <g ref={creatureRef} className={creatureClass} style={creatureStyle}>

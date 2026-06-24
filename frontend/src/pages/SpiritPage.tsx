@@ -51,6 +51,7 @@ const SLOT_LABEL: Record<string, string> = {
   accessory: 'Accessory',
   habitat: 'Habitat',
   companion: 'Companion',
+  mount: 'Mount',
 }
 
 const OPTION_LABEL: Record<string, string> = {
@@ -75,6 +76,9 @@ const OPTION_LABEL: Record<string, string> = {
   firefly: 'Firefly',
   bird: 'Bird',
   cat: 'Cat',
+  cloud: 'Cloud',
+  lotus: 'Lotus',
+  leaf: 'Leaf boat',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
