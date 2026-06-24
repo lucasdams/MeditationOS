@@ -81,9 +81,11 @@ function stageProgress(stage: SpiritStage): number {
   return (stageIndex(stage) - 1) / (STAGE_ORDER.length - 1)
 }
 
-// The floored daily-glow band [0.4, 1]. These mirror the backend GLOW_FLOOR / ceiling: the
-// server floors glow so a resting spirit never goes fully dark; we defend the same band here.
-const SPIRIT_GLOW_FLOOR = 0.4
+// The floored daily-glow band [0.7, 1]. The server floors raw glow at 0.4 so a resting spirit
+// never goes fully dark; we raise the *visual* floor higher here so the companion stays clearly
+// legible on light backgrounds (a glow of 0.4 rendered the early-stage spark too faint to see).
+// Practice still visibly brightens it (0.7 resting → 1.0 active) — just never into low contrast.
+const SPIRIT_GLOW_FLOOR = 0.7
 const SPIRIT_GLOW_CEIL = 1
 
 // Clamp the daily glow into the floored band (the backend floors it; defend anyway).
