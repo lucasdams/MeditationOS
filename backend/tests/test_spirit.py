@@ -641,6 +641,26 @@ def test_buy_cosmetic_happy_path(client):
     assert _spirit(client)["cosmetics"]["aura"] == "soft"
 
 
+def test_buy_companion_firefly_applies(client):
+    # The `companion` slot (the "friends" upgrade) is buyable like any other slot: firefly is
+    # unlock_level 1 and affordable from a fresh balance.
+    _auth(client, "cosmetics_companion@example.com")
+    before = _spirit(client)
+    coins_before = before["coins"]
+    assert "companion" in {s["slot"] for s in before["available"]}
+
+    res = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": "firefly"}
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["coins"] == coins_before - _cost("companion", "firefly")
+    assert body["cosmetics"]["companion"] == "firefly"
+    assert _applied(body, "companion") == "firefly"
+    # Persists on the next GET.
+    assert _spirit(client)["cosmetics"]["companion"] == "firefly"
+
+
 def test_buy_unknown_slot_or_option_404(client):
     _auth(client, "cosmetics_404@example.com")
     assert (

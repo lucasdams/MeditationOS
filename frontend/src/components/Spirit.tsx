@@ -309,6 +309,9 @@ const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number 
   soft: { tint: '#bfdbfe', grow: 4, strength: 2.0 },
   warm: { tint: '#fcd34d', grow: 6, strength: 2.6 },
   starlit: { tint: '#c4b5fd', grow: 8, strength: 3.2 },
+  ember: { tint: '#f97316', grow: 6, strength: 2.6 },
+  frost: { tint: '#7dd3fc', grow: 6, strength: 2.4 },
+  rose: { tint: '#fda4af', grow: 5, strength: 2.2 },
 }
 
 // A soft outer aura shared by every path — its opacity carries the static daily-glow read-out.
@@ -384,6 +387,47 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
       </g>
     )
   }
+  if (habitat === 'garden') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        <rect x={6} y={54} width={68} height={20} rx={6} fill="#bbf7d0" opacity={0.75} />
+        <rect x={6} y={62} width={68} height={12} rx={6} fill="#86efac" opacity={0.85} />
+        {/* A few simple flowers on stems dotted across the bed. */}
+        {[14, 26, 54, 66].map((fx, k) => (
+          <g key={k}>
+            <rect x={fx - 0.5} y={50} width={1} height={6} rx={0.5} fill="#4ade80" opacity={0.85} />
+            <circle cx={fx} cy={49} r={2.2} fill={k % 2 ? '#f472b6' : '#fcd34d'} opacity={0.9} />
+            <circle cx={fx} cy={49} r={0.9} fill="#fb923c" opacity={0.9} />
+          </g>
+        ))}
+      </g>
+    )
+  }
+  if (habitat === 'seaside') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#bae6fd" opacity={0.4} />
+        {/* A soft sun above a calm band of water. */}
+        <circle cx={40} cy={30} r={8} fill="#fcd34d" opacity={0.55} />
+        <rect x={4} y={52} width={72} height={22} rx={10} fill="#38bdf8" opacity={0.45} />
+        <rect x={4} y={58} width={72} height={16} rx={10} fill="#0ea5e9" opacity={0.4} />
+      </g>
+    )
+  }
+  if (habitat === 'cottage') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#e0f2fe" opacity={0.35} />
+        {/* A small simple home — walls, pitched roof, door and window — behind the figure. */}
+        <rect x={50} y={42} width={20} height={18} rx={1.5} fill="#fde7c8" opacity={0.95} />
+        <path d="M 48 42 L 60 32 L 72 42 Z" fill="#d97706" opacity={0.9} />
+        <rect x={57} y={50} width={5} height={10} rx={0.6} fill="#b45309" opacity={0.95} />
+        <rect x={64} y={47} width={4} height={4} rx={0.5} fill="#bae6fd" opacity={0.95} />
+        {/* A wisp of ground to settle the cottage. */}
+        <rect x={6} y={58} width={68} height={16} rx={6} fill="#bbf7d0" opacity={0.55} />
+      </g>
+    )
+  }
   return null
 }
 
@@ -438,6 +482,112 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
         <path d={`M 47 ${topY} l 4 -2 v 4 z`} fill="#f472b6" />
         <path d={`M 47 ${topY} l 4 2 v -4 z`} fill="#ec4899" />
         <circle cx={47} cy={topY} r={1.1} fill="#be185d" />
+      </g>
+    )
+  }
+  if (accessory === 'flower') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A small blossom tucked by the head. */}
+        {Array.from({ length: 5 }, (_, k) => {
+          const a = (k / 5) * Math.PI * 2
+          return (
+            <circle
+              key={k}
+              cx={48 + Math.cos(a) * 2.4}
+              cy={topY + 1 + Math.sin(a) * 2.4}
+              r={1.6}
+              fill="#f9a8d4"
+            />
+          )
+        })}
+        <circle cx={48} cy={topY + 1} r={1.3} fill="#fbbf24" />
+      </g>
+    )
+  }
+  if (accessory === 'scarf') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A little scarf wrapped low at the neck/base, with a hanging tail. */}
+        <rect x={33} y={40} width={14} height={3.4} rx={1.7} fill="#60a5fa" />
+        <rect x={44} y={42} width={3} height={7} rx={1.4} fill="#3b82f6" />
+      </g>
+    )
+  }
+  if (accessory === 'star') {
+    // A tiny five-point star floating just above the head.
+    const sx = 40
+    const sy = topY - 5
+    const pts = Array.from({ length: 5 }, (_, k) => {
+      const a = -Math.PI / 2 + (k / 5) * Math.PI * 2
+      return `${(sx + Math.cos(a) * 3).toFixed(2)},${(sy + Math.sin(a) * 3).toFixed(2)}`
+    })
+    return (
+      <polygon
+        points={pts.join(' ')}
+        fill="#fde68a"
+        stroke="#fbbf24"
+        strokeWidth={0.5}
+        opacity={0.95 * g}
+        aria-hidden="true"
+      />
+    )
+  }
+  return null
+}
+
+// A small friend that keeps the spirit company — drawn at the bottom-left of the 80×80
+// viewBox, in front of the habitat but well clear of the centred figure, so it never fights
+// the spirit. Static like every other cosmetic (the outer layer carries any animation).
+function Companion({ companion, g }: { companion: string; g: number }) {
+  // The little friend sits on the ground band, off to the left of the figure.
+  const baseX = 16
+  const baseY = 62
+  if (companion === 'firefly') {
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A couple of soft glowing dots hovering low and left. */}
+        {[
+          { x: baseX - 2, y: baseY - 6 },
+          { x: baseX + 6, y: baseY - 12 },
+        ].map((d, k) => (
+          <g key={k}>
+            <circle cx={d.x} cy={d.y} r={3} fill="#fde68a" opacity={0.4} />
+            <circle cx={d.x} cy={d.y} r={1.3} fill="#fef08a" opacity={0.95} />
+          </g>
+        ))}
+      </g>
+    )
+  }
+  if (companion === 'bird') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A small perched bird — round body, head, beak, tail. */}
+        <ellipse cx={baseX} cy={baseY - 4} rx={4} ry={3.2} fill="#60a5fa" />
+        <circle cx={baseX + 3} cy={baseY - 7} r={2.2} fill="#3b82f6" />
+        <path d={`M ${baseX + 5} ${baseY - 7} l 2.4 0.8 l -2.4 0.8 z`} fill="#f59e0b" />
+        <path d={`M ${baseX - 4} ${baseY - 4} l -3 1.6 l 3 1 z`} fill="#2563eb" />
+        <circle cx={baseX + 3.6} cy={baseY - 7.4} r={0.5} fill="#0f172a" />
+      </g>
+    )
+  }
+  if (companion === 'cat') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A small curled cat resting by the base. */}
+        <ellipse cx={baseX} cy={baseY - 2} rx={6} ry={3.6} fill="#fbbf24" />
+        <circle cx={baseX - 4.5} cy={baseY - 4} r={2.6} fill="#f59e0b" />
+        <path d={`M ${baseX - 6.5} ${baseY - 5.6} l 0.8 -2 l 1.4 1.4 z`} fill="#f59e0b" />
+        <path d={`M ${baseX - 3.5} ${baseY - 5.8} l 0.8 -2 l 1.2 1.6 z`} fill="#f59e0b" />
+        {/* A tail curling around the body. */}
+        <path
+          d={`M ${baseX + 5} ${baseY - 1} q 4 -1 3 -4`}
+          fill="none"
+          stroke="#fbbf24"
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+        <circle cx={baseX - 5.2} cy={baseY - 4} r={0.5} fill="#0f172a" />
       </g>
     )
   }
@@ -871,6 +1021,7 @@ export function SpiritArt({
   const aura = cosmetics?.aura
   const accessory = cosmetics?.accessory
   const habitat = cosmetics?.habitat
+  const companion = cosmetics?.companion
   // A pathless spark has no creature label yet — describe it as an awakening spark.
   const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
   const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
@@ -940,6 +1091,10 @@ export function SpiritArt({
           <Aura path={path} p={stageProgress(stage)} g={g} aura={aura} />
         </g>
       )}
+      {/* The companion sits in the static background band, off to the side of the figure — in
+          front of the habitat but clear of the creature, so it keeps the spirit company without
+          fighting it (and never floats with the creature). */}
+      {companion && <Companion companion={companion} g={g} />}
       {/* ── FLOATING creature layer ── only this group moves: idle float, pacer sync, or the
           celebration one-shot. The figure is always legible; the accessory perches on top. */}
       <g ref={creatureRef} className={creatureClass} style={creatureStyle}>
