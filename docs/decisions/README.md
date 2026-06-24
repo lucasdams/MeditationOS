@@ -28,3 +28,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0020](0020-sanctuary-growth-ladder-and-accessory-slots.md) | Sanctuary — multi-stage growth ladder + additive accessory slots | Superseded by 0022 |
 | [0021](0021-sanctuary-evolution-tree-and-preview-locked.md) | Sanctuary — evolution-tree framework (form fork + deeper ladder) + preview locked options | Superseded by 0022 |
 | [0022](0022-spirit-companion-replaces-sanctuary.md) | Spirit companion replaces the Sanctuary (one living, practice-shaped pet) | Accepted |
+| [0023](0023-spirit-creatures-and-care.md) | Spirit creatures — chosen archetype (peaceful/wrathful/loving) + per-creature care | Proposed |
