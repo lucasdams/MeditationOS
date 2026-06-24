@@ -1044,7 +1044,7 @@ export default function Spirit({
         // Pathless spark (ADR-0023): a calm prompt to choose a creature — the picker lives on
         // /spirit. No needs read-out yet (a pathless spark reports neutral defaults).
         <p className="spirit-choose-prompt">
-          <Link to="/spirit" className="spirit-choose-link">
+          <Link to="/spirit/choose" className="spirit-choose-link">
             Choose your creature →
           </Link>
         </p>

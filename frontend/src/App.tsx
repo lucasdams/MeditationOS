@@ -28,6 +28,7 @@ const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
 const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
 const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
 const SpiritPage      = lazy(() => import('./pages/SpiritPage'))
+const SpiritChoosePage = lazy(() => import('./pages/SpiritChoosePage'))
 const SchedulePage    = lazy(() => import('./pages/SchedulePage'))
 const SettingsPage    = lazy(() => import('./pages/SettingsPage'))
 const AdminPage       = lazy(() => import('./pages/AdminPage'))
@@ -84,6 +85,10 @@ export default function App() {
           <Route
             path="/spirit"
             element={<Suspense fallback={<PageFallback />}><SpiritPage /></Suspense>}
+          />
+          <Route
+            path="/spirit/choose"
+            element={<Suspense fallback={<PageFallback />}><SpiritChoosePage /></Suspense>}
           />
           <Route
             path="/schedule"
