@@ -1,9 +1,16 @@
-"""Tests for the Spirit read API (step 1 — docs/design/spirit.md, ADR-0022).
+"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022).
 
 The spirit's state is computed on read from the user's earned-XP level; the only stored
-state is the active spirit row. Covered here: the GET happy-path shape, auth-required,
-lazy get-or-create (first GET creates exactly one active spirit; a second GET does not
-duplicate it), and the pure stage-from-level band computation.
+state is the active spirit row (committed path, name, owned cosmetics). Covered here:
+
+- the GET read API — happy-path shape, auth-required, and lazy get-or-create (first GET
+  creates exactly one active spirit; a second GET does not duplicate it);
+- the pure stage-from-level band computation and daily-glow floors;
+- path branching — the lifetime practice-mix lean, the write-on-read commit at stage 2, its
+  hysteresis (once committed, never changes), and the lost-race no-op commit;
+- the cosmetics economy — buy / lock / afford / already-applied, within-slot swaps (dearer
+  and cheaper), and the catalog/spend-ledger invariant;
+- rename (set / clear / over-length); and awaken / collection (radiant gate + retire+spark).
 """
 
 from datetime import date
@@ -307,6 +314,31 @@ def test_path_commit_is_once_only(client, db_session):
     assert _stored_path(db_session, user_id) == "breath"
 
 
+def test_path_commit_is_a_noop_when_already_set(client, db_session):
+    """The write-on-read commit's `WHERE path IS NULL` no-op branch: if the active spirit
+    already has a stored path, a GET adopts that value verbatim and never overwrites it —
+    even if the live lean differs (this is the lost-race / already-committed path)."""
+    _auth(client, "commit_noop@example.com")
+    user_id = _user_id(db_session, "commit_noop@example.com")
+
+    # Create the spark, then pre-set its stored path out-of-band to a value the lean would
+    # NOT pick (a brand-new user with no practice leans `stillness`).
+    assert client.get("/api/v1/spirit").status_code == 200
+    db_session.execute(
+        Spirit.__table__.update()
+        .where(Spirit.user_id == user_id, Spirit.retired_at.is_(None))
+        .values(path="heart")
+    )
+    db_session.commit()
+
+    body = _spirit(client)
+    # The GET keeps the stored value (no-op UPDATE), not the lean.
+    assert body["path"] == "heart"
+    assert body["path_lean"] == "stillness"
+    db_session.expire_all()
+    assert _stored_path(db_session, user_id) == "heart"
+
+
 def test_path_endpoint_requires_auth(client):
     # The write-on-read commit must still be behind auth (default-deny).
     assert client.get("/api/v1/spirit").status_code == 401
@@ -361,6 +393,17 @@ def _applied(body, slot):
     for s in body["available"]:
         if s["slot"] == slot:
             return s["applied"]
+    return None
+
+
+def _option_state(body, slot, option):
+    """The per-option state dict (cost / unlocked / affordable / applied) for one catalog
+    option in the GET `available` shape."""
+    for s in body["available"]:
+        if s["slot"] == slot:
+            for o in s["options"]:
+                if o["option"] == option:
+                    return o
     return None
 
 
@@ -470,6 +513,47 @@ def test_within_slot_swap_charges_the_difference(client):
     assert after_warm["cosmetics"]["aura"] == "warm"
     # The slot holds exactly the new option (the old one is replaced, not accumulated).
     assert _applied(after_warm, "aura") == "warm"
+
+
+def test_within_slot_swap_to_cheaper_is_allowed_and_charges_the_delta(client):
+    """Swapping within a slot to a CHEAPER option is allowed, charges the (≤ 0) difference —
+    so the balance goes UP — and the option reads affordable. Mirrors the dearer-swap test on
+    the other side of the delta."""
+    _auth(client, "cosmetics_swap_cheaper@example.com")
+    _earn_to_level(client, 3)
+    base = _spirit(client)["coins"]
+
+    soft = _cost("aura", "soft")
+    warm = _cost("aura", "warm")
+    assert warm > soft  # so soft → warm is dearer; warm → soft is the cheaper swap
+
+    # Buy the dearer option first.
+    after_warm = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
+    ).json()
+    assert after_warm["coins"] == base - warm
+    # The cheaper option reads affordable (a swap-down is always coverable).
+    assert _option_state(after_warm, "aura", "soft")["affordable"] is True
+
+    # Swap down to the cheaper option in the same slot — allowed, and it refunds the delta.
+    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    assert res.status_code == 200
+    after_soft = res.json()
+    # Net spend is just `soft`, so the balance recovers the (warm − soft) difference.
+    assert after_soft["coins"] == base - soft
+    assert after_soft["coins"] > after_warm["coins"]  # balance went up on the cheaper swap
+    assert after_soft["cosmetics"]["aura"] == "soft"
+    assert _applied(after_soft, "aura") == "soft"
+
+
+def test_owned_options_all_price_above_zero(client):
+    """Catalog/spend-ledger invariant: every option a user can own must price > 0. The coin
+    balance derives owned spend from SPIRIT_COSMETICS_CATALOG (`_option_cost` → 0 for missing
+    keys), so dropping/renaming an owned key would silently refund its coins. This guards the
+    catalog's append-only-for-owned-keys contract: a missing owned key would show as cost 0."""
+    for slot, options in SPIRIT_COSMETICS_CATALOG.items():
+        for option, spec in options.items():
+            assert spec["cost"] > 0, f"{slot}.{option} must cost > 0 to stay in the ledger"
 
 
 def test_buy_cosmetic_rejects_unexpected_fields(client):
