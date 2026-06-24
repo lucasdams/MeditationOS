@@ -661,6 +661,26 @@ def test_buy_companion_firefly_applies(client):
     assert _spirit(client)["cosmetics"]["companion"] == "firefly"
 
 
+def test_buy_mount_cloud_applies(client):
+    # The `mount` slot (the calm "vehicle" upgrade) is buyable like any other slot: cloud is
+    # unlock_level 1 and affordable (cost 70 ≤ a fresh level-1 balance of 80).
+    _auth(client, "cosmetics_mount@example.com")
+    before = _spirit(client)
+    coins_before = before["coins"]
+    assert "mount" in {s["slot"] for s in before["available"]}
+
+    res = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "mount", "option": "cloud"}
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["coins"] == coins_before - _cost("mount", "cloud")
+    assert body["cosmetics"]["mount"] == "cloud"
+    assert _applied(body, "mount") == "cloud"
+    # Persists on the next GET.
+    assert _spirit(client)["cosmetics"]["mount"] == "cloud"
+
+
 def test_buy_unknown_slot_or_option_404(client):
     _auth(client, "cosmetics_404@example.com")
     assert (

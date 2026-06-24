@@ -522,6 +522,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
         "bird": {"cost": 85, "unlock_level": 3},
         "cat": {"cost": 110, "unlock_level": 7},
     },
+    # A serene thing the spirit floats on / rides — the calm take on a "mount".
+    "mount": {
+        "cloud": {"cost": 70, "unlock_level": 1},
+        "lotus": {"cost": 90, "unlock_level": 3},
+        "leaf": {"cost": 120, "unlock_level": 7},
+    },
 }
 
 
