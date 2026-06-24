@@ -1,5 +1,5 @@
-"""Spirit routes (docs/design/spirit.md, ADR-0022). The read API plus the cosmetics
-economy, nickname, and awaken / collection writes (steps 5 + 6).
+"""Spirit routes (docs/design/spirit.md, ADR-0022, ADR-0023). The read API plus the choose,
+cosmetics, nickname, and awaken / collection writes.
 
 Thin handlers — all business logic lives in `spirit_service`; its domain errors map to HTTP
 status codes here. Scoped to the authenticated user (default-deny via get_current_user); the
@@ -18,13 +18,19 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.core.rate_limit import limiter
 from app.models.user import User
-from app.schemas.spirit import CosmeticsRequest, RenameRequest, SpiritState
+from app.schemas.spirit import (
+    ChoosePathRequest,
+    CosmeticsRequest,
+    RenameRequest,
+    SpiritState,
+)
 from app.services import spirit_service
 from app.services.spirit_service import (
     AlreadyApplied,
     CosmeticLocked,
     InsufficientCoins,
     NotRadiant,
+    PathAlreadyChosen,
     SpiritConflictError,
     UnknownCosmetic,
 )
@@ -51,14 +57,35 @@ def get_spirit(
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """The active spirit's computed state — stage, path (null until it commits), bond,
-    daily glow, coins, owned cosmetics + the catalog with per-option state, and the retired
-    collection. The spark is lazily created on first read.
+    """The active spirit's computed state — stage, the chosen path (null until chosen), bond,
+    the per-creature condition, coins, owned cosmetics + the catalog with per-option state,
+    and the retired collection. The spark is lazily created on first read.
 
     Carries the per-IP write burst limit even though it's a GET: it writes-on-read (lazy
-    get-or-create plus the one-time path commit), so it isn't a pure read."""
+    get-or-create), so it isn't a pure read."""
     today, tz = today_tz
     return spirit_service.get_spirit(db, current_user.id, today=today, tz=tz)
+
+
+@router.post("/choose", response_model=SpiritState)
+@limiter.limit(settings.write_rate_limit)
+def choose_path(
+    request: Request,  # required by the rate limiter
+    body: ChoosePathRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
+) -> SpiritState:
+    """Choose the active creature once (ADR-0023). Sets the path only while the spirit is
+    pathless; choosing again → 409. An unknown path value is rejected as 422 by the schema."""
+    today, tz = today_tz
+    try:
+        return spirit_service.choose_path(db, current_user.id, body, today=today, tz=tz)
+    except PathAlreadyChosen:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Your spirit has already chosen its path",
+        ) from None
 
 
 @router.post("/cosmetics", response_model=SpiritState)
