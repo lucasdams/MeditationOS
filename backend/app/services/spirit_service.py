@@ -518,9 +518,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
     },
     # A small friend that keeps the spirit company (the "companion").
     "companion": {
-        "firefly": {"cost": 60, "unlock_level": 1},
-        "bird": {"cost": 85, "unlock_level": 3},
-        "cat": {"cost": 110, "unlock_level": 7},
+        "firefly": {"cost": 100, "unlock_level": 1},
+        "bird": {"cost": 160, "unlock_level": 3},
+        "cat": {"cost": 240, "unlock_level": 7},
     },
     # A serene thing the spirit floats on / rides — the calm take on a "mount".
     "mount": {
@@ -579,6 +579,10 @@ def _available_slots(
                     applied=applied == option,
                 )
             )
+        # Order so the applied option leads (if any), then unlocked (available) options, then
+        # level-locked ones — ties broken by cost ascending. Otherwise raw catalog-insertion
+        # order can put an unlocked option (e.g. the L1 `rose` aura) after a level-locked one.
+        opts.sort(key=lambda o: (not o.applied, not o.unlocked, o.cost))
         out.append(
             SpiritAvailableSlot(slot=slot, applied=applied, locked=locked, options=opts)
         )

@@ -623,6 +623,49 @@ def test_catalog_is_exposed_in_get(client):
     assert body["collection"] == []
 
 
+def test_available_options_order_unlocked_before_locked(client):
+    """The Personalize panel orders each slot's options so unlocked (available) ones lead and
+    level-locked ones trail (ties broken by cost). For a fresh level-1 user the `aura` slot's
+    L1 options (`rose`/`ember`/`soft`/`warm`/`frost*`) must all precede the L5-locked `starlit`
+    — previously raw catalog order left the L1 `rose` after the locked `starlit`. (*frost is L2,
+    also locked at level 1, but still ordered after the unlocked ones.)"""
+    _auth(client, "cosmetics_order@example.com")
+    body = _spirit(client)
+    assert body["bond"]["level"] == 1
+
+    aura = next(s for s in body["available"] if s["slot"] == "aura")
+    order = [o["option"] for o in aura["options"]]
+
+    # Sanity: the fixture still has an L1-unlocked option and the L5-locked `starlit`.
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["rose"]["unlock_level"] == 1
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["starlit"]["unlock_level"] == 5
+
+    # Every unlocked option precedes every locked one.
+    unlocked = [o["option"] for o in aura["options"] if o["unlocked"]]
+    locked = [o["option"] for o in aura["options"] if not o["unlocked"]]
+    assert max(order.index(u) for u in unlocked) < min(order.index(x) for x in locked)
+    # Concretely, the L1 `rose`/`ember` come before the L5-locked `starlit`.
+    assert order.index("rose") < order.index("starlit")
+    assert order.index("ember") < order.index("starlit")
+
+
+def test_available_options_applied_leads_then_cost(client):
+    """The applied option leads its slot; remaining unlocked options are ordered by cost
+    ascending. Buy the warm aura (cost 45), then it must be first, with the cheaper `soft`
+    (30) still ordered ahead of the pricier unlocked options that follow."""
+    _auth(client, "cosmetics_order_applied@example.com")
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
+    ).status_code == 200
+    body = _spirit(client)
+
+    aura = next(s for s in body["available"] if s["slot"] == "aura")
+    order = [o["option"] for o in aura["options"]]
+    assert order[0] == "warm"  # the applied option leads
+    # Among the remaining unlocked options, cheaper precedes pricier (soft 30 before ember 50).
+    assert order.index("soft") < order.index("ember")
+
+
 def test_buy_cosmetic_happy_path(client):
     _auth(client, "cosmetics_buy@example.com")
     before = _spirit(client)
@@ -643,8 +686,10 @@ def test_buy_cosmetic_happy_path(client):
 
 def test_buy_companion_firefly_applies(client):
     # The `companion` slot (the "friends" upgrade) is buyable like any other slot: firefly is
-    # unlock_level 1 and affordable from a fresh balance.
+    # unlock_level 1. Companions are premium-priced (firefly 100 > a fresh level-1 balance of
+    # 80), so earn a couple of levels first to afford it.
     _auth(client, "cosmetics_companion@example.com")
+    _earn_to_level(client, 2)  # 2 × 80 = 160 coins, covers the firefly companion
     before = _spirit(client)
     coins_before = before["coins"]
     assert "companion" in {s["slot"] for s in before["available"]}
