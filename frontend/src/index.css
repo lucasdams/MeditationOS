@@ -2283,17 +2283,52 @@ textarea:focus-visible,
 }
 
 /* "About the doshas" — a calm explainer on the choose page (ADR-0023). */
+/* Collapsed by default — a quiet <details>/<summary> disclosure (matches the Trataka
+   "About" pattern) so the picker stays uncrowded until someone wants the explainer. */
 .dosha-about {
   max-width: 32rem;
   margin: 2rem auto 0;
   text-align: left;
   font-size: 0.9rem;
   line-height: 1.6;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-surface);
 }
 
-.dosha-about h2 {
-  font-size: 1.05rem;
-  margin: 0 0 0.5rem;
+.dosha-about-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 12px;
+  user-select: none;
+}
+
+.dosha-about-summary::-webkit-details-marker {
+  display: none;
+}
+
+.dosha-about-summary::before {
+  content: '›';
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-faint);
+  transition: transform 0.18s ease;
+}
+
+.dosha-about[open] > .dosha-about-summary::before {
+  transform: rotate(90deg);
+}
+
+.dosha-about-body {
+  padding: 0 0.9rem 0.75rem;
 }
 
 .dosha-about-list {
