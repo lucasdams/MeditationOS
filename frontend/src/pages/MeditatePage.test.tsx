@@ -302,8 +302,11 @@ describe('MeditatePage — best-effort post-save stats', () => {
   })
   afterEach(cleanup)
 
-  it('shows the reward overlay even when the after-getStats call throws', async () => {
-    // First getStats (before save) succeeds; second (after save) throws.
+  it('still saves and goes to reflection (no fake-XP reward) when the after-getStats call throws', async () => {
+    // First getStats (before save) succeeds; second (after save) throws. With stats
+    // unavailable, the XP breakdown would be a meaningless "0 XP / level 1", so the
+    // reward overlay is suppressed and we go straight to the reflection step instead
+    // of celebrating fake numbers — the session itself is still saved with no error.
     mockGetStats
       .mockResolvedValueOnce(BASE_STATS)
       .mockRejectedValueOnce(new Error('network error'))
@@ -318,10 +321,11 @@ describe('MeditatePage — best-effort post-save stats', () => {
     // Session must be created.
     await vi.waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1))
 
-    // Reward overlay must be shown (onClose captured by mock).
-    await vi.waitFor(() => expect(rewardOverlayState.onClose).not.toBeNull())
+    // Reflection step appears directly (no reward overlay first).
+    await screen.findByRole('heading', { name: /how was that\?/i })
 
-    // No save-error banner.
+    // No fake-XP reward overlay, and no save-error banner.
+    expect(rewardOverlayState.onClose).toBeNull()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

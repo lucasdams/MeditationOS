@@ -70,7 +70,10 @@ export default function GuidedCues({
   }
 
   const schedule = scheduleRef.current
-  const phaseIdx = currentPhaseIndex(schedule, elapsed)
+  // Open-ended sits (durationSec === 0) cycle the schedule rather than parking on
+  // the closing phase once they pass the 20-minute reference window.
+  const loop = durationSec === 0
+  const phaseIdx = currentPhaseIndex(schedule, elapsed, loop)
   const phase = structure.phases[phaseIdx]
 
   // Latest speechOn in a ref so the per-phase effect reads the current value
@@ -127,10 +130,14 @@ export default function GuidedCues({
   if (!phase) return null
 
   // Progress within the current phase (0..1) for the subtle progress indicator.
+  // Wrap elapsed over the reference span for open-ended sits so the bar tracks the
+  // cycling phase rather than pinning at 100% past the 20-minute reference.
+  const totalSpan = schedule.length ? schedule[schedule.length - 1].endSec : 0
+  const wrappedElapsed = loop && totalSpan > 0 ? elapsed % totalSpan : elapsed
   const window = schedule[phaseIdx]
   const windowDuration = window ? window.endSec - window.startSec : 1
   const progressInPhase = window
-    ? Math.min(1, Math.max(0, (elapsed - window.startSec) / windowDuration))
+    ? Math.min(1, Math.max(0, (wrappedElapsed - window.startSec) / windowDuration))
     : 0
 
   // Phase number shown to user (1-based)

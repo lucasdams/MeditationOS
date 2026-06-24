@@ -77,7 +77,9 @@ export default function RewardOverlay({
   }, [autoDismissMs, onClose])
 
   const prog = levelProgress(Math.floor(shownXp))
-  const pct = Math.min(100, Math.round((prog.xpIntoLevel / prog.xpForNextLevel) * 100))
+  // Use the unrounded fraction for the fill width so the bar glides continuously over the
+  // ease-out rather than stepping in 1% integer jumps on each frame.
+  const pct = Math.min(100, (prog.xpIntoLevel / prog.xpForNextLevel) * 100)
 
   return (
     // Non-blocking: a polite live region — no backdrop, no focus trap. Sits in the

@@ -20,7 +20,7 @@ export class ApiError extends Error {
 }
 
 export class TimeoutError extends Error {
-  timeout: true = true
+  readonly timeout = true as const
   constructor() {
     super('Request timed out')
     this.name = 'TimeoutError'

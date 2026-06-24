@@ -6,8 +6,10 @@ import { sessionService } from '../services/sessions'
 import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { MOOD_COLORS, MOOD_META, gratitudeColor } from '../lib/colors'
+import { MOOD_COLORS, MOOD_META, TYPE_LABELS, gratitudeColor } from '../lib/colors'
 import { csvEscape } from '../lib/csvEscape'
+import { toDatetimeLocal } from '../lib/format'
+import RatingChips from '../components/RatingChips'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import type { MeditationType, Mood, Session } from '../types'
@@ -17,15 +19,6 @@ import type { MeditationType, Mood, Session } from '../types'
 // (this replaced the separate History page); journal/gratitude rows are read-only and
 // managed on their own pages. We merge the most recent slice of each source.
 const PER_SOURCE = 50
-
-const TYPE_LABELS: Record<MeditationType, string> = {
-  mindfulness: 'Mindfulness',
-  body_scan: 'Body scan',
-  walking: 'Walking',
-  loving_kindness: 'Loving-kindness',
-  resonance_breathing: 'Resonance breathing',
-  other: 'Other',
-}
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // The API serializes timestamps as UTC ISO (with `Z`); render them in the user's
@@ -38,16 +31,6 @@ const formatWhen = (iso: string) =>
     minute: '2-digit',
   })
 const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
-
-// Convert a UTC ISO instant to the local "YYYY-MM-DDTHH:mm" a datetime-local input
-// expects (the input is interpreted in the browser's local zone).
-function toLocalInputValue(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`
-}
 
 // CSV export (sessions only) — quote per RFC 4180; injection-safe via csvEscape.
 function toCsv(rows: Session[]): string {
@@ -160,12 +143,31 @@ export default function TimelinePage() {
     load(() => retryIgnoreRef.current)
   }
 
+  // Dismiss an open row menu on Escape or a tap/click outside it (a popup contract
+  // implied by aria-haspopup that wasn't otherwise honored).
+  useEffect(() => {
+    if (!menuId) return
+    function onPointerDown(e: PointerEvent) {
+      const menu = document.getElementById(`menu-${menuId}`)
+      if (menu && !menu.contains(e.target as Node)) setMenuId(null)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuId(null)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuId])
+
   function startEdit(s: Session) {
     setEditingId(s.id)
     setMenuId(null)
     setEditType(s.type)
     setEditMin(Math.max(1, Math.round(s.duration_seconds / 60)))
-    setEditWhen(toLocalInputValue(s.occurred_at))
+    setEditWhen(toDatetimeLocal(new Date(s.occurred_at)))
     setEditNotes(s.notes ?? '')
     setEditFocus(s.focus != null ? String(s.focus) : '')
     setEditCalm(s.calm != null ? String(s.calm) : '')
@@ -333,25 +335,11 @@ export default function TimelinePage() {
                     </label>
                     <label>
                       Focus
-                      <select value={editFocus} onChange={(e) => setEditFocus(e.target.value)}>
-                        <option value="">Not rated</option>
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <option key={n} value={n}>
-                            {n} / 5
-                          </option>
-                        ))}
-                      </select>
+                      <RatingChips ariaLabel="Focus rating" value={editFocus} onChange={setEditFocus} />
                     </label>
                     <label>
                       Calm
-                      <select value={editCalm} onChange={(e) => setEditCalm(e.target.value)}>
-                        <option value="">Not rated</option>
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <option key={n} value={n}>
-                            {n} / 5
-                          </option>
-                        ))}
-                      </select>
+                      <RatingChips ariaLabel="Calm rating" value={editCalm} onChange={setEditCalm} />
                     </label>
                     <label>
                       Notes
@@ -399,7 +387,7 @@ export default function TimelinePage() {
                       </span>
                     )}
                     {(item.kind === 'session' || item.kind === 'mood') && (
-                      <span className="journal-entry-actions">
+                      <span className="journal-entry-actions" id={`menu-${item.id}`}>
                         {menuId === item.id && (
                           <>
                             {item.kind === 'session' && (
@@ -428,6 +416,7 @@ export default function TimelinePage() {
                           aria-label={item.kind === 'mood' ? 'Mood actions' : 'Session actions'}
                           aria-haspopup="true"
                           aria-expanded={menuId === item.id}
+                          aria-controls={`menu-${item.id}`}
                           onClick={() => setMenuId(menuId === item.id ? null : item.id)}
                         >
                           ⋯

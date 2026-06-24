@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
+import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
+import { MIN_QUEST_FEATURES } from '../types'
 
 // First-run activation flow, shown by ProtectedRoute while quest_features is null
 // (i.e. only for genuinely new users). It collects a goal, experience, and preferred
@@ -16,20 +17,24 @@ const GOALS = [
   { key: 'stress', label: 'Calm & stress relief', emoji: '🌊', quests: ['breathe', 'gratitude', 'journal'], starter: '/breathe' },
   { key: 'sleep', label: 'Better sleep', emoji: '🌙', quests: ['breathe', 'gratitude', 'meditate'], starter: '/breathe' },
   { key: 'focus', label: 'Focus & clarity', emoji: '🎯', quests: ['meditate', 'breathe', 'journal'], starter: '/meditate' },
-]
+] as const
 
 const EXPERIENCE = [
   { key: 'new', label: 'New to meditation', bpm: 6 },
   { key: 'some', label: 'Some experience', bpm: 4.5 },
   { key: 'seasoned', label: 'Seasoned practitioner', bpm: 3 },
-]
+] as const
 
 const TIMES = [
   { key: 'morning', label: 'Mornings', hour: 8 },
   { key: 'midday', label: 'Midday', hour: 12 },
   { key: 'evening', label: 'Evenings', hour: 19 },
   { key: 'none', label: 'No reminder for now', hour: null as number | null },
-]
+] as const
+
+type GoalKey = (typeof GOALS)[number]['key']
+type ExperienceKey = (typeof EXPERIENCE)[number]['key']
+type TimeKey = (typeof TIMES)[number]['key']
 
 type Step = 'welcome' | 'goal' | 'experience' | 'time' | 'quests'
 const STEPS: Step[] = ['welcome', 'goal', 'experience', 'time', 'quests']
@@ -38,9 +43,9 @@ export default function Onboarding() {
   const { refresh } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('welcome')
-  const [goal, setGoal] = useState<string | null>(null)
-  const [experience, setExperience] = useState<string | null>(null)
-  const [time, setTime] = useState<string | null>(null)
+  const [goal, setGoal] = useState<GoalKey | null>(null)
+  const [experience, setExperience] = useState<ExperienceKey | null>(null)
+  const [time, setTime] = useState<TimeKey | null>(null)
   const [quests, setQuests] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -50,9 +55,14 @@ export default function Onboarding() {
     setStep(next)
   }
 
-  function pickGoal(key: string) {
+  function pickGoal(key: GoalKey) {
+    // Seed quests from the preset only on first pick or when the goal actually
+    // changes, so re-tapping the same goal (or returning to this step) doesn't
+    // wipe quests the user hand-toggled later in the flow.
+    if (key !== goal) {
+      setQuests([...(GOALS.find((g) => g.key === key)?.quests ?? [])])
+    }
     setGoal(key)
-    setQuests(GOALS.find((g) => g.key === key)?.quests ?? [])
     go('experience')
   }
 
@@ -63,7 +73,7 @@ export default function Onboarding() {
 
   async function finish() {
     if (quests.length < MIN_QUEST_FEATURES) {
-      setError(`Pick at least ${MIN_QUEST_FEATURES}.`)
+      setError(tooFewQuestsMessage)
       return
     }
     setSubmitting(true)
@@ -98,9 +108,18 @@ export default function Onboarding() {
   return (
     <main className="auth-card onboarding">
       <AuthBrand />
-      <div className="onboarding-progress" aria-hidden="true">
+      <div
+        className="onboarding-progress"
+        role="group"
+        aria-label={`Step ${stepIndex + 1} of ${STEPS.length}`}
+      >
         {STEPS.map((s, i) => (
-          <span key={s} className={`onboarding-dot${i <= stepIndex ? ' active' : ''}`} />
+          <span
+            key={s}
+            className={`onboarding-dot${i <= stepIndex ? ' active' : ''}`}
+            aria-current={i === stepIndex ? 'step' : undefined}
+            aria-hidden={i === stepIndex ? undefined : 'true'}
+          />
         ))}
       </div>
 
@@ -193,18 +212,11 @@ export default function Onboarding() {
             We’ve picked a few based on your goal — pick at least {MIN_QUEST_FEATURES}. Change
             anytime in Settings.
           </p>
-          <fieldset className="quest-picker">
-            {QUEST_FEATURES.map((f) => (
-              <label key={f.key} className="quest-option">
-                <input
-                  type="checkbox"
-                  checked={quests.includes(f.key)}
-                  onChange={(e) => toggleQuest(f.key, e.target.checked)}
-                />{' '}
-                {f.label}
-              </label>
-            ))}
-          </fieldset>
+          <QuestPicker
+            selected={quests}
+            onToggle={toggleQuest}
+            legend="Daily quest practices"
+          />
           <ErrorBanner message={error} />
           <button type="button" onClick={finish} disabled={submitting}>
             {submitting ? 'Setting up…' : 'Start practicing'}

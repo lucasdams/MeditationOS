@@ -189,18 +189,21 @@ export class BreathAudio {
       return
     }
     const now = Math.max(at, ctx.currentTime)
-    const base = phase === 'inhale' ? 880 : 660 // A5 going in / E5 coming out
-    const peak = Math.max(0.06, this.volume * 0.18) // gentle bell, sits under the ambient wash
+    // An octave lower than before (was A5/E5) for a deeper, gentler tone that doesn't
+    // ring sharp over the ambient wash.
+    const base = phase === 'inhale' ? 440 : 330 // A4 going in / E4 coming out
+    const peak = Math.max(0.04, this.volume * 0.12) // quiet, soft bell under the wash
 
     const out = ctx.createGain()
     out.gain.setValueAtTime(0.0001, now)
-    out.gain.linearRampToValueAtTime(peak, now + 0.01) // quick strike
-    out.gain.setTargetAtTime(0, now + 0.01, 0.4) // natural bell decay
+    out.gain.linearRampToValueAtTime(peak, now + 0.03) // soft swell, not a hard strike
+    out.gain.setTargetAtTime(0, now + 0.03, 0.5) // slow, natural bell decay
     out.connect(ctx.destination)
 
     for (const [mult, level] of [
       [1, 1],
-      [2.01, 0.35],
+      // Quieter, slightly lower overtone keeps the bell round rather than bright/tinny.
+      [2.01, 0.22],
     ] as const) {
       const osc = ctx.createOscillator()
       osc.type = 'sine'

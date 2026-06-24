@@ -1,18 +1,41 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
 
-// Secondary destinations, tucked into the "More" menu.
-const MORE_LINKS = [
-  { to: '/trataka', label: '🕯️ Candle gazing' },
-  { to: '/sessions/new', label: '➕ Log a session' },
-  { to: '/timeline', label: '🕒 Timeline' },
-  { to: '/goals', label: '🎯 Goals' },
-  { to: '/schedule', label: '🗓️ Schedule' },
-  { to: '/spirit', label: '🪷 Spirit' },
-  { to: '/analytics', label: '📈 Analytics' },
+// Secondary destinations, tucked into the "More" menu. Each carries a per-destination
+// accent (light + dark shades, mirroring the home tiles' TILE_COLORS pairs) so the menu
+// items read as the app's soft colour-tinted pills, not plain text. icon + label are
+// separate so the emoji can sit in a fixed-width gutter (labels line up cleanly).
+type MoreLink = { to: string; icon: string; label: string; light: string; dark: string }
+
+const MORE_LINKS: MoreLink[] = [
+  { to: '/trataka', icon: '🕯️', label: 'Candle gazing', light: '#b45309', dark: '#f59e0b' },
+  { to: '/sessions/new', icon: '➕', label: 'Log a session', light: '#0f766e', dark: '#14b8a6' },
+  { to: '/timeline', icon: '🕒', label: 'Timeline', light: '#0369a1', dark: '#0ea5e9' },
+  { to: '/goals', icon: '🎯', label: 'Goals', light: '#6d28d9', dark: '#a78bfa' },
+  { to: '/schedule', icon: '🗓️', label: 'Schedule', light: '#1d4ed8', dark: '#60a5fa' },
+  { to: '/spirit', icon: '🪷', label: 'Spirit', light: '#0e7490', dark: '#22d3ee' },
+  { to: '/analytics', icon: '📈', label: 'Analytics', light: '#be185d', dark: '#f472b6' },
 ]
+
+// The "More" links render in two sibling containers (desktop dropdown + mobile inline
+// list), shown/hidden per breakpoint via CSS. Shared so the markup can't drift. NavLink
+// adds an `active` class on the current route so the user can see where they are. The
+// per-destination accent is passed as CSS vars; the CSS resolves light/dark per theme.
+function renderMoreLink(l: MoreLink) {
+  return (
+    <NavLink
+      key={l.to}
+      to={l.to}
+      className="nav-more-link"
+      style={{ ['--more-fill' as string]: l.light, ['--more-fill-dark' as string]: l.dark }}
+    >
+      <span className="nav-more-icon" aria-hidden="true">{l.icon}</span>
+      <span className="nav-more-label">{l.label}</span>
+    </NavLink>
+  )
+}
 
 export default function AppHeader() {
   const { user, logout } = useAuth()
@@ -25,7 +48,7 @@ export default function AppHeader() {
   // The admin entry renders only for admins (is_admin from /auth/me). Non-admins never
   // see it; the backend also 403s every /admin/* call regardless of the UI.
   const moreLinks = user?.is_admin
-    ? [...MORE_LINKS, { to: '/admin', label: '🛠️ Admin' }]
+    ? [...MORE_LINKS, { to: '/admin', icon: '🛠️', label: 'Admin', light: '#475569', dark: '#94a3b8' }]
     : MORE_LINKS
 
   // Refetch on every navigation so the level stays live after earning XP.
@@ -113,23 +136,13 @@ export default function AppHeader() {
           </button>
           {moreOpen && (
             <div id="nav-more-dropdown" className="nav-more-menu">
-              {moreLinks.map((l) => (
-                <Link key={l.to} to={l.to}>
-                  {l.label}
-                </Link>
-              ))}
+              {moreLinks.map(renderMoreLink)}
             </div>
           )}
         </div>
 
         {/* On mobile the "More" dropdown is hidden; its links show inline in the menu. */}
-        <div className="nav-mobile-extra">
-          {moreLinks.map((l) => (
-            <Link key={l.to} to={l.to}>
-              {l.label}
-            </Link>
-          ))}
-        </div>
+        <div className="nav-mobile-extra">{moreLinks.map(renderMoreLink)}</div>
       </nav>
       <div className="app-user">
         <Link to="/settings" className="nav-settings" title="Account settings">

@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import { dashboardService } from '../services/dashboard'
+import { MOOD_META } from '../lib/colors'
 import type { WeeklyReview as WeeklyReviewData } from '../types'
 
 // A reflective "your week in practice" card — minutes (vs last week), days practiced,
 // streak, longest sit, and the mood you logged most. All computed from activity.
-const MOOD_EMOJI: Record<string, string> = {
-  calm: '😌', content: '🙂', focused: '🎯', energized: '⚡', grateful: '🙏',
-  neutral: '😐', restless: '😣', anxious: '😰', tired: '😴', low: '😔',
-}
 
 const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
 
@@ -30,7 +27,10 @@ export default function WeeklyReview() {
     )
   }
 
-  if (data.sessions === 0 && !data.top_mood) {
+  // No practice logged this week → show the gentle empty copy rather than a grid of zeros,
+  // even if a mood was logged. Surfacing "0 minutes / 0 days / 0 longest sit" prominently
+  // reads as deflating against the low-pressure ethos.
+  if (data.sessions === 0) {
     return (
       <section className="weekly-review">
         <h2>This week</h2>
@@ -72,7 +72,7 @@ export default function WeeklyReview() {
         {data.top_mood && (
           <div className="weekly-stat">
             {/* The emoji is decorative; the text label below names the mood. */}
-            <span className="weekly-value" aria-hidden="true">{MOOD_EMOJI[data.top_mood] ?? '🙂'}</span>
+            <span className="weekly-value" aria-hidden="true">{MOOD_META[data.top_mood].emoji}</span>
             <span className="weekly-label">mostly {data.top_mood}</span>
           </div>
         )}

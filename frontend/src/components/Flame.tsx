@@ -94,7 +94,9 @@ export default function Flame({ intensity = 1, size = 220 }: FlameProps) {
     <canvas
       ref={canvasRef}
       className="trataka-flame"
-      style={{ width: size, height: size }}
+      // Cap the displayed size to the viewport so the focal flame never overflows
+      // narrow phones (e.g. 320px); aspect-ratio keeps it square as it scales down.
+      style={{ width: size, maxWidth: '90vw', aspectRatio: '1 / 1', height: 'auto' }}
       role="img"
       aria-label="A softly glowing candle flame to gaze at"
     />

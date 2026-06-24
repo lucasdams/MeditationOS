@@ -60,9 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  // Hydrate auth state once on mount.
+  // Hydrate auth state once on mount. refresh() swallows 401 (logged out) but
+  // rethrows other errors (e.g. /auth/me 500, network down); catch those here so a
+  // first-load failure doesn't become an unhandled rejection — treat it as logged out.
   useEffect(() => {
-    refresh().finally(() => setLoading(false))
+    refresh()
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false))
   }, [])
 
   // If any API call returns 401, the session has expired/gone — drop to login.

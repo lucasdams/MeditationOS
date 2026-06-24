@@ -136,16 +136,28 @@ export function buildSchedule(
 /**
  * Return the index of the current phase given elapsed time and a pre-built
  * schedule. Returns 0 if elapsed is before the first phase (shouldn't happen
- * in practice but safe). Returns the last phase index once the sit ends.
+ * in practice but safe).
+ *
+ * For a timed sit the caller stops the clock at the target, so elapsed never
+ * runs meaningfully past the last window and this returns the closing phase.
+ *
+ * For an open-ended sit (`loop: true`) the schedule is built against a 20-minute
+ * reference; once elapsed runs past that reference we wrap elapsed back over the
+ * schedule so the cues keep cycling instead of parking permanently on the
+ * closing phase.
  */
 export function currentPhaseIndex(
   schedule: PhaseWindow[],
   elapsedSec: number,
+  loop = false,
 ): number {
   if (schedule.length === 0) return 0
-  // Walk backwards: the last window whose startSec <= elapsed is the active one.
+  const total = schedule[schedule.length - 1].endSec
+  // Open-ended sits cycle the schedule rather than freezing on the final phase.
+  const t = loop && total > 0 ? elapsedSec % total : elapsedSec
+  // Walk backwards: the last window whose startSec <= t is the active one.
   for (let i = schedule.length - 1; i >= 0; i--) {
-    if (elapsedSec >= schedule[i].startSec) return i
+    if (t >= schedule[i].startSec) return i
   }
   return 0
 }
