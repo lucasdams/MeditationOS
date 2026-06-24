@@ -1,24 +1,10 @@
-import { itemLabel } from '../lib/sanctuaryArt'
-import type { DashboardStats, SanctuaryScene, ShopItem } from '../types'
+import type { DashboardStats } from '../types'
 
-// The next thing your level will unlock: the locked shop item with the lowest level
-// requirement (parsed from its "Reach level N" hint).
-function nextUnlock(shop: ShopItem[]): ShopItem | null {
-  const locked = shop.filter((s) => !s.unlocked)
-  if (locked.length === 0) return null
-  const levelOf = (s: ShopItem) => Number(s.hint?.match(/\d+/)?.[0] ?? Infinity)
-  return locked.reduce((best, s) => (levelOf(s) < levelOf(best) ? s : best))
-}
-
-// Your level is the coin/unlock track — not a thing you grow. It shows the level, the XP
-// progress to the next one, and what that next level unlocks. The coin balance lives on
-// the SanctuaryScene card (the spend surface) so it isn't restated here.
-// `scene` is fetched once by DashboardPage and passed down; when used standalone (outside
-// the dashboard) the prop may be omitted and the unlock row simply won't appear.
-export default function LevelCard({ stats, scene = null }: { stats: DashboardStats; scene?: SanctuaryScene | null }) {
+// Your level is the coin/unlock track — not a thing you grow. It shows the level and the XP
+// progress to the next one. The spendable coin balance lives on the home top line (sourced
+// from the spirit), so it isn't restated here.
+export default function LevelCard({ stats }: { stats: DashboardStats }) {
   const pct = Math.min(100, Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100))
-
-  const unlock = scene ? nextUnlock(scene.shop) : null
 
   return (
     <section className="level-card">
@@ -44,11 +30,6 @@ export default function LevelCard({ stats, scene = null }: { stats: DashboardSta
           {stats.xp_into_level} / {stats.xp_for_next_level} XP to level {stats.level + 1} ·{' '}
           {stats.xp} total
         </div>
-        {unlock && (
-          <div className="level-unlock muted">
-            Next unlock: {itemLabel(unlock.item_key)} · {unlock.hint}
-          </div>
-        )}
       </div>
     </section>
   )

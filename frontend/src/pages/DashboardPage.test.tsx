@@ -1,16 +1,16 @@
 /**
  * Light smoke tests for the DashboardPage.
  * Full integration coverage lives in E2E; these guard the quick-action tiles,
- * the level + coins top line, the compact quests + read-only garden preview that sit on the
- * calm default home, the single-fetch sanctuary scene optimisation, and the
- * default-collapsed "Show more" drawer that holds the heavier progress detail.
+ * the level + coins top line, the compact quests that sit on the calm default home, the
+ * single-fetch spirit (coins) optimisation, and the default-collapsed "Show more" drawer
+ * that holds the heavier progress detail.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const getStats = vi.fn()
-const getScene = vi.fn()
+const getSpirit = vi.fn()
 const listMoodLogs = vi.fn()
 
 // Mock heavy dashboard dependencies so the component renders without a backend.
@@ -19,8 +19,8 @@ vi.mock('../services/dashboard', () => ({
     getStats: (...a: unknown[]) => getStats(...a),
   },
 }))
-vi.mock('../services/sanctuary', () => ({
-  sanctuaryService: { getScene: (...a: unknown[]) => getScene(...a) },
+vi.mock('../services/spirit', () => ({
+  spiritService: { get: (...a: unknown[]) => getSpirit(...a) },
 }))
 // Mock the mood-logs service: the home reads the single most recent mood log to decide
 // whether to reflect "You felt X" or show the "How do you feel?" prompt.
@@ -28,20 +28,13 @@ vi.mock('../services/moodLogs', () => ({
   moodLogService: { list: (...a: unknown[]) => listMoodLogs(...a) },
 }))
 
-// Capture the props each child receives so we can assert the scene is passed down.
+// Capture the props LevelCard receives.
 const capturedLevelCardProps: Array<Record<string, unknown>> = []
-const capturedSanctuarySceneProps: Array<Record<string, unknown>> = []
 
 vi.mock('../components/LevelCard', () => ({
   default: (props: Record<string, unknown>) => {
     capturedLevelCardProps.push(props)
     return <div data-testid="level-card" />
-  },
-}))
-vi.mock('../components/SanctuaryScene', () => ({
-  default: (props: Record<string, unknown>) => {
-    capturedSanctuarySceneProps.push(props)
-    return <div data-testid="sanctuary-scene" />
   },
 }))
 // The spirit is the home-screen centrepiece (docs/design/spirit.md, ADR-0022). It self-fetches
@@ -67,7 +60,7 @@ vi.mock('../components/WeeklyReview', () => ({
 
 import DashboardPage from './DashboardPage'
 import { localDateKey } from '../lib/zen'
-import type { DashboardStats, SanctuaryScene } from '../types'
+import type { DashboardStats, SpiritState } from '../types'
 
 // The once-per-day mood prompt is keyed by the local date. Helpers to read/seed that gate.
 const moodPromptKey = () => `mood.prompted.${localDateKey()}`
@@ -91,14 +84,9 @@ const fakeStats = {
   streak_bonus_xp: 0,
 } as unknown as DashboardStats
 
-const fakeScene: SanctuaryScene = {
-  coins: 142,
-  level: 7,
-  owned: [],
-  shop: [],
-  vitality: 'thriving',
-  current_streak: 3,
-}
+// The dashboard only reads `coins` from the spirit for the home top-line chip; the rest of
+// SpiritState is irrelevant here, so cast a minimal coins-only fake.
+const fakeSpirit = { coins: 142 } as unknown as SpiritState
 
 function renderPage() {
   return render(
@@ -111,19 +99,18 @@ function renderPage() {
 beforeEach(() => {
   localStorage.clear()
   getStats.mockReset()
-  getScene.mockReset()
+  getSpirit.mockReset()
   listMoodLogs.mockReset()
   // Default: no mood logged today → the home shows the "How do you feel?" prompt.
   listMoodLogs.mockResolvedValue([])
   capturedLevelCardProps.length = 0
-  capturedSanctuarySceneProps.length = 0
 })
 afterEach(cleanup)
 
 describe('DashboardPage — quick-action feature tiles', () => {
   beforeEach(() => {
     getStats.mockReturnValue(new Promise(() => {})) // loading forever for tile tests
-    getScene.mockReturnValue(new Promise(() => {})) // pending forever
+    getSpirit.mockReturnValue(new Promise(() => {})) // pending forever
     renderPage()
   })
 
@@ -152,7 +139,7 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     // interfere with the calm-home assertions (its own gating is tested separately).
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
-    getScene.mockResolvedValue(fakeScene)
+    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('shows the level + coins top line once stats and scene load', async () => {
@@ -203,10 +190,6 @@ describe('DashboardPage — default (collapsed) calm view', () => {
       within(questsSection).getByRole('link', { name: /meditate/i }),
     ).toHaveAttribute('href', '/meditate')
 
-    // The garden no longer renders on the home screen — it lives at /sanctuary, reached from
-    // the top nav. The dashboard should not render the inline garden preview.
-    expect(screen.queryByTestId('sanctuary-scene')).not.toBeInTheDocument()
-
     // The spirit is the new home centrepiece, rendered on the default calm home.
     expect(screen.getByTestId('spirit')).toBeInTheDocument()
   })
@@ -244,7 +227,7 @@ describe('DashboardPage — default (collapsed) calm view', () => {
 describe('DashboardPage — multi-step quest progress counter', () => {
   beforeEach(() => {
     seenMoodToday()
-    getScene.mockResolvedValue(fakeScene)
+    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('shows an "X/Y" counter on multi-step quests and none on single-step quests', async () => {
@@ -291,7 +274,7 @@ describe('DashboardPage — expanding the "Show more" drawer', () => {
   beforeEach(() => {
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
-    getScene.mockResolvedValue(fakeScene)
+    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('reveals the heavier progress sections when opened', async () => {
@@ -328,7 +311,7 @@ describe('DashboardPage — today\'s mood reflection', () => {
     // Don't let the on-open modal interfere with the home mood-line assertions.
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
-    getScene.mockResolvedValue(fakeScene)
+    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('reflects "You felt {mood}" when a mood was logged today', async () => {
@@ -370,36 +353,31 @@ describe('DashboardPage — today\'s mood reflection', () => {
   })
 })
 
-describe('DashboardPage — sanctuary scene single-fetch', () => {
-  it('calls getScene exactly once and passes the scene to the coin chip and LevelCard', async () => {
+describe('DashboardPage — spirit (coins) single-fetch', () => {
+  it('calls the spirit fetch exactly once and shows its coin balance in the level header', async () => {
     seenMoodToday()
-    getScene.mockResolvedValue(fakeScene)
+    getSpirit.mockResolvedValue(fakeSpirit)
     getStats.mockResolvedValue(fakeStats)
 
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The coin chip in the level header reflects the fetched scene's coin balance.
+    // The coin chip in the level header reflects the spirit's derived coin balance.
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
 
-    // LevelCard lives in the (default-collapsed) drawer — open it so it renders and we can
-    // assert the same scene reaches it.
+    // Exactly one fetch — not two.
+    expect(getSpirit).toHaveBeenCalledTimes(1)
+
+    // LevelCard renders (no longer takes a scene prop) once the drawer is opened.
     fireEvent.click(screen.getByRole('button', { name: /show more/i }))
-
-    // Exactly one call — not two.
-    expect(getScene).toHaveBeenCalledTimes(1)
-
-    // LevelCard (rendered inside the open drawer) received the same scene.
-    await waitFor(() => {
-      const lcLast = capturedLevelCardProps.at(-1)
-      expect(lcLast?.scene).toEqual(fakeScene)
-    })
+    await waitFor(() => expect(capturedLevelCardProps.length).toBeGreaterThan(0))
+    expect(capturedLevelCardProps.at(-1)).not.toHaveProperty('scene')
   })
 })
 
 describe('DashboardPage — on-open mood check-in (once per day)', () => {
   beforeEach(() => {
-    getScene.mockResolvedValue(fakeScene)
+    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('shows the mood modal on the first open of the day', async () => {

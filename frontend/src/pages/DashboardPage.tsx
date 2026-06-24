@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
-import { sanctuaryService } from '../services/sanctuary'
+import { spiritService } from '../services/spirit'
 import { moodLogService } from '../services/moodLogs'
 import LevelCard from '../components/LevelCard'
 import Spirit from '../components/Spirit'
@@ -14,7 +14,7 @@ import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TI
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
-import type { DashboardStats, Mood, SanctuaryScene as SanctuarySceneType } from '../types'
+import type { DashboardStats, Mood } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
 const QUEST_LINKS: Record<string, string> = {
@@ -27,15 +27,12 @@ const QUEST_LINKS: Record<string, string> = {
 // Quick-action tiles — one tap to the five main features from the dashboard. These are the
 // home screen's primary focal point: each is a bold, full-colour box (saturated fill from
 // TILE_COLORS, white icon + label) so the actions clearly pop. The four activity tiles read
-// their emoji/label from the shared ACTIVITY_META; Sanctuary isn't a tracked activity, so it
-// carries its own emoji/label. `tile` keys into TILE_COLORS for the box fill.
+// their emoji/label from the shared ACTIVITY_META. `tile` keys into TILE_COLORS for the box fill.
 const FEATURE_TILES = [
   { ...ACTIVITY_META.meditate, to: '/meditate', tile: 'meditate' as const },
   { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
   { ...ACTIVITY_META.gratitude, to: '/gratitude', tile: 'gratitude' as const },
   { ...ACTIVITY_META.journal, to: '/journal', tile: 'journal' as const },
-  // The garden lives at /sanctuary (reachable from the top nav), kept off the home tiles so
-  // the dashboard stays focused on practice. The coin chip in the level header still links there.
 ] as const
 
 // Once-per-day gate for the on-open mood check-in. We record the local date the prompt
@@ -64,9 +61,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
-  // Sanctuary scene is the heaviest dashboard read; fetch once here and pass down to
-  // both LevelCard (next unlock) and SanctuaryScene (coins + garden preview).
-  const [sanctuaryScene, setSanctuaryScene] = useState<SanctuarySceneType | null>(null)
+  // The spendable coin balance shown on the home top line. Sourced from the spirit
+  // (spiritService.get() derives coins from earned-XP level minus cosmetics spent).
+  const [coins, setCoins] = useState<number | null>(null)
   // The deeper progress detail (full level detail, weekly review) starts collapsed on every
   // load so the landing view stays calm — the primary "start a practice" surface first, the
   // rest one tap away. We deliberately do NOT persist the open/closed choice: the owner wants
@@ -118,10 +115,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    sanctuaryService
-      .getScene()
-      .then(setSanctuaryScene)
-      .catch(() => {}) // non-critical; LevelCard and SanctuaryScene handle null gracefully
+    spiritService
+      .get()
+      .then((spirit) => setCoins(spirit.coins))
+      .catch(() => {}) // non-critical; the coin chip simply won't render
   }, [])
 
   // Today's latest mood for the home reflection. Stats/weekly-review expose only aggregate
@@ -165,15 +162,15 @@ export default function DashboardPage() {
       {/* Level + coins pinned to the very top of the home — the first thing the user sees,
           above the page title and the first-run card. A clean, tidy top line (not a big
           gamified bar): calm but clearly present. Level comes from stats; coins from the
-          single sanctuary-scene fetch shared with LevelCard and the garden teaser. */}
+          spirit (its derived spendable balance). */}
       {stats && (
         <p className="level-topline" aria-label={`Level ${stats.level}`}>
           <span className="level-topline-item">
             <span aria-hidden="true">◆</span> Level {stats.level}
           </span>
-          {sanctuaryScene && (
+          {coins !== null && (
             <span className="level-topline-item">
-              <CoinIcon /> {sanctuaryScene.coins}
+              <CoinIcon /> {coins}
             </span>
           )}
         </p>
@@ -201,8 +198,7 @@ export default function DashboardPage() {
 
       {/* The spirit — the home-screen centrepiece (docs/design/spirit.md, ADR-0022). A calm,
           static glowing companion that grows with practice; it owns its own loading / error /
-          empty (first-awakening) states. Replaces the old Sanctuary scene home preview (the
-          /sanctuary page and scene are kept — they retire in a later step). */}
+          empty (first-awakening) states. Replaces the old Sanctuary scene home preview. */}
       <Spirit />
 
       {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
@@ -327,8 +323,8 @@ export default function DashboardPage() {
       {/* The heavier retrospective/progress detail folds into one calm, default-collapsed
           drawer: the full level detail (XP bar, next unlock) and the weekly review — both
           still here, just one tap away. Totals and the activity calendar now live on the
-          Analytics page (alongside the rest of the stats); quests and the garden live on
-          the default home above (in compact form). */}
+          Analytics page (alongside the rest of the stats); quests live on the default home
+          above (in compact form). */}
       {stats && (
         <section className="dashboard-more">
           {/* Subtle, link-style affordance for the progress drawer — a quiet centered text
@@ -349,7 +345,7 @@ export default function DashboardPage() {
 
           {showMore && (
             <div id="dashboard-more-panel">
-              <LevelCard stats={stats} scene={sanctuaryScene} />
+              <LevelCard stats={stats} />
 
               <WeeklyReview />
             </div>
