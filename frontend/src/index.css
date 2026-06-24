@@ -2269,35 +2269,45 @@ textarea:focus-visible,
   transform-origin: center;
   transform-box: fill-box;
   animation:
-    spirit-float 6s ease-in-out infinite,
-    spirit-pulse 4.5s ease-in-out infinite;
+    spirit-float 5s ease-in-out infinite,
+    spirit-pulse 3.8s ease-in-out infinite;
   /* Default glow factor if the inline custom property is somehow absent. */
   --spirit-glow: 1;
   will-change: transform, opacity, filter;
 }
 
-/* The float is a slow vertical drift; the pulse is a faint scale + brightness swell whose depth
-   scales with `--spirit-glow` (calc keeps a brighter spirit breathing a touch more). They run on
-   separate timelines so the motion never looks mechanically in lock-step. */
+/* The float is a gentle wandering drift — a bob with a little side-to-side sway and a slight tilt,
+   so the spirit reads as alive rather than just bobbing. The pulse is a brightness/opacity swell
+   whose depth scales with `--spirit-glow`. Float owns `transform` and pulse owns opacity/filter,
+   so they compose instead of overriding each other, and run on separate timelines so the motion
+   never looks lock-step. */
 @keyframes spirit-float {
-  0%,
-  100% {
-    transform: translateY(0);
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(2.5px, -5px) rotate(1.4deg);
   }
   50% {
-    transform: translateY(-3px);
+    transform: translate(0, -8px) rotate(0deg);
+  }
+  75% {
+    transform: translate(-2.5px, -5px) rotate(-1.4deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
   }
 }
 
 @keyframes spirit-pulse {
   0%,
   100% {
-    opacity: calc(0.92 + 0.04 * var(--spirit-glow));
+    opacity: calc(0.9 + 0.05 * var(--spirit-glow));
     filter: brightness(1);
   }
   50% {
     opacity: 1;
-    filter: brightness(calc(1 + 0.12 * var(--spirit-glow)));
+    filter: brightness(calc(1 + 0.16 * var(--spirit-glow)));
   }
 }
 
@@ -2413,6 +2423,47 @@ textarea:focus-visible,
 .spirit-section-subtitle {
   margin: 0.15rem 0 0;
   font-size: 0.85rem;
+}
+
+/* "Growing to radiance" — a colourful stage stepper: past stages outlined, the current stage
+   filled, future stages muted; plus the how-to-grow / set-free copy. */
+.spirit-journey-stages {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.spirit-journey-stage {
+  flex: 1 1 auto;
+  text-align: center;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+}
+
+.spirit-journey-stage.is-done {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.spirit-journey-stage.is-current {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+}
+
+.spirit-journey-note {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
 }
 
 .spirit-field {
