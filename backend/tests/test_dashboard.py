@@ -6,7 +6,7 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.session import Session as PracticeSession
 from app.models.user import User
-from app.services import dashboard_service, sanctuary_service
+from app.services import dashboard_service
 from app.services.quest_pool import quest_for
 
 
@@ -462,10 +462,6 @@ def test_tending_distinct_types_respects_the_practice_floor(db_session):
     # None of the junk sits clears the per-type floor, so no variety and no practice day.
     assert signals.distinct_session_types == 0
     assert signals.practice_days == 0
-    # And the resulting Tending score can't have cleared stage 1 off trivial sits alone.
-    assert sanctuary_service.tending_earned_stage(
-        sanctuary_service.tending_score(signals)
-    ) == 0
 
     # A real sit of a single type DOES count it (the floor only blunts junk, never genuine
     # practice): top one type up over the 60s floor and it appears in the variety count.

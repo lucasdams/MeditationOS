@@ -12,8 +12,8 @@ from sqlalchemy import func, select
 
 from app.models.spirit import Spirit
 from app.services import spirit_service
-from app.services.sanctuary_service import COINS_PER_LEVEL
 from app.services.spirit_service import (
+    COINS_PER_LEVEL,
     GLOW_FLOOR,
     GLOW_FULL,
     GLOW_MID,
