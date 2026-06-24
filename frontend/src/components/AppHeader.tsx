@@ -10,7 +10,6 @@ import { dashboardService } from '../services/dashboard'
 type MoreLink = { to: string; icon: string; label: string; light: string; dark: string }
 
 const MORE_LINKS: MoreLink[] = [
-  { to: '/trataka', icon: '🕯️', label: 'Candle gazing', light: '#b45309', dark: '#f59e0b' },
   { to: '/sessions/new', icon: '➕', label: 'Log a session', light: '#0f766e', dark: '#14b8a6' },
   { to: '/timeline', icon: '🕒', label: 'Timeline', light: '#0369a1', dark: '#0ea5e9' },
   { to: '/goals', icon: '🎯', label: 'Goals', light: '#6d28d9', dark: '#a78bfa' },
@@ -120,6 +119,9 @@ export default function AppHeader() {
         </Link>
         <Link to="/spirit" className="nav-spirit">
           🪷 Spirit
+        </Link>
+        <Link to="/trataka" className="nav-trataka">
+          🕯️ Candle gazing
         </Link>
 
         <div className="nav-more" ref={moreRef}>

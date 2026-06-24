@@ -67,6 +67,8 @@
   --nav-journal-text: #6d28d9;
   --nav-spirit-bg: #cffafe;
   --nav-spirit-text: #0e7490;
+  --nav-trataka-bg: #ffedd5;
+  --nav-trataka-text: #9a3412;
   --nav-more-bg: #f1f5f9;
   --nav-more-text: #475569;
 
@@ -177,6 +179,8 @@
   --nav-journal-text: #c4b5fd;
   --nav-spirit-bg: #08323d;
   --nav-spirit-text: #67e8f9;
+  --nav-trataka-bg: #2a1708;
+  --nav-trataka-text: #fdba74;
   --nav-more-bg: #1c2030;
   --nav-more-text: #94a3b8;
 
@@ -261,6 +265,8 @@
     --nav-journal-text: #c4b5fd;
     --nav-spirit-bg: #08323d;
     --nav-spirit-text: #67e8f9;
+    --nav-trataka-bg: #2a1708;
+    --nav-trataka-text: #fdba74;
     --nav-more-bg: #1c2030;
     --nav-more-text: #94a3b8;
     --surface-analytics: #1e2130;
@@ -467,6 +473,11 @@ a:hover { color: var(--accent-hover); }
 .app-nav a.nav-spirit {
   background: var(--nav-spirit-bg);
   color: var(--nav-spirit-text);
+}
+
+.app-nav a.nav-trataka {
+  background: var(--nav-trataka-bg);
+  color: var(--nav-trataka-text);
 }
 
 /* Analytics page */
@@ -2420,17 +2431,34 @@ textarea:focus-visible,
 }
 
 .spirit-slot {
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
-  border-radius: 0.6rem;
-  padding: 0.5rem 0.75rem 0.75rem;
-  margin: 0 0 0.75rem;
+  --slot-accent: #8b5cf6;
+  border: 1.5px solid var(--slot-accent);
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.85rem 0.85rem;
+  margin: 0 0 0.85rem;
+  background: var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+/* More colour: each cosmetic slot carries its own accent hue, which cascades down to its
+   option chips (hover + applied states). Saturated mid-tones read on light and dark alike. */
+.spirit-slot:nth-of-type(3n + 1) {
+  --slot-accent: #8b5cf6;
+}
+.spirit-slot:nth-of-type(3n + 2) {
+  --slot-accent: #ec4899;
+}
+.spirit-slot:nth-of-type(3n) {
+  --slot-accent: #14b8a6;
 }
 
 .spirit-slot legend {
-  padding: 0 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  padding: 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--slot-accent);
 }
 
 .spirit-slot-options {
@@ -2446,19 +2474,29 @@ textarea:focus-visible,
   /* Reset the global `button { margin-top: 1rem }` so the row's spacing comes from its `gap`
      / wrap layout, not a leaked top margin. */
   margin-top: 0;
-  padding: 0.35rem 0.65rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.18));
-  background: var(--surface, #fff);
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--border, rgba(0, 0, 0, 0.18));
+  background: var(--bg-surface, #fff);
   color: var(--text-primary);
   font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+
+.spirit-option:hover:not(.gated):not(.applied) {
+  border-color: var(--slot-accent, #8b5cf6);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
 }
 
 .spirit-option.applied {
-  background: var(--accent-soft, #e0f2fe);
-  border-color: var(--accent, #38bdf8);
-  font-weight: 600;
+  background: var(--slot-accent, #38bdf8);
+  border-color: var(--slot-accent, #38bdf8);
+  color: #fff;
+  font-weight: 700;
   cursor: default;
 }
 
@@ -4795,22 +4833,56 @@ textarea:focus-visible,
 
 /* About section — explanatory, low-key prose. Left-aligned for readability,
    sitting below the practice controls. */
+/* "About candle gazing" — tucked into a collapsed disclosure so the practice, not the
+   prose, leads the page (mirrors the meditate-disclosure pattern). */
 .trataka-about {
-  margin: 2rem auto 1rem;
+  margin: 1.5rem auto 1rem;
   max-width: 32rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
   text-align: left;
   color: var(--text-secondary, var(--text-muted));
   font-size: 0.95rem;
   line-height: 1.55;
 }
 
-.trataka-about h2 {
-  font-size: 1.05rem;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+.trataka-about-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 10px;
+  user-select: none;
 }
 
-.trataka-about p {
+.trataka-about-summary::-webkit-details-marker {
+  display: none;
+}
+
+.trataka-about-summary::before {
+  content: '›';
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-faint);
+  transition: transform 0.18s ease;
+}
+
+.trataka-about[open] > .trataka-about-summary::before {
+  transform: rotate(90deg);
+}
+
+.trataka-about-body {
+  padding: 0 0.85rem 0.5rem;
+}
+
+.trataka-about-body p {
   margin: 0 0 0.75rem;
 }
 
