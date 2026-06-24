@@ -14,6 +14,10 @@ import type { SpiritPath, SpiritState } from '../types'
  * the creature and returns to /spirit. If the spirit already has a creature, this redirects to
  * /spirit (nothing to choose).
  */
+// The name cap, mirroring the backend SPIRIT_NAME_MAX_LENGTH. The form soft-limits input; the
+// server trims + rejects blank/over-length regardless.
+const NAME_MAX = 40
+
 export default function SpiritChoosePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -21,6 +25,9 @@ export default function SpiritChoosePage() {
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  // The required name (ADR-0024): committed at creation and immutable thereafter, so a creature
+  // can't be chosen until a non-empty name is entered.
+  const [name, setName] = useState('')
 
   function load() {
     setRetrying(true)
@@ -39,10 +46,14 @@ export default function SpiritChoosePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const trimmedName = name.trim()
+  const hasName = trimmedName.length > 0
+
   async function choose(path: SpiritPath) {
+    if (!hasName) return // the name is required (ADR-0024)
     setBusy(`choose:${path}`)
     try {
-      await spiritService.choose({ path })
+      await spiritService.choose({ path, name: trimmedName })
       showToast(`Your ${DOSHA[path].name} spirit awakens. ${DOSHA[path].glyph}`)
       navigate('/spirit')
     } catch {
@@ -72,6 +83,22 @@ export default function SpiritChoosePage() {
       ) : !spirit ? (
         <Loading label="Waking your spirit…" />
       ) : (
+        <>
+        <label className="spirit-field spirit-choose-name">
+          <span>Name your companion</span>
+          <input
+            type="text"
+            value={name}
+            maxLength={NAME_MAX}
+            placeholder="e.g. Ember"
+            aria-describedby="spirit-choose-name-hint"
+            disabled={busy != null}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <span id="spirit-choose-name-hint" className="spirit-field-hint muted">
+            Name your companion — you can only change this later for a fee.
+          </span>
+        </label>
         <ul className="spirit-picker-grid spirit-choose-grid">
           {PATH_ORDER.map((path) => {
             const d = DOSHA[path]
@@ -90,7 +117,8 @@ export default function SpiritChoosePage() {
                 <button
                   type="button"
                   className="spirit-picker-choose"
-                  disabled={busy != null}
+                  disabled={busy != null || !hasName}
+                  title={hasName ? undefined : 'Name your companion first'}
                   onClick={() => choose(path)}
                 >
                   {busyHere ? 'Awakening…' : `Choose ${d.name}`}
@@ -99,6 +127,7 @@ export default function SpiritChoosePage() {
             )
           })}
         </ul>
+        </>
       )}
 
       <details className="dosha-about">

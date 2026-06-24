@@ -7,7 +7,8 @@ import type { SpiritAvailableSlot, SpiritState } from '../types'
 const get = vi.fn()
 const choose = vi.fn()
 const buyCosmetic = vi.fn()
-const rename = vi.fn()
+const resetName = vi.fn()
+const resetCosmetics = vi.fn()
 const awaken = vi.fn()
 
 vi.mock('../services/spirit', () => ({
@@ -15,7 +16,8 @@ vi.mock('../services/spirit', () => ({
     get: (...a: unknown[]) => get(...a),
     choose: (...a: unknown[]) => choose(...a),
     buyCosmetic: (...a: unknown[]) => buyCosmetic(...a),
-    rename: (...a: unknown[]) => rename(...a),
+    resetName: (...a: unknown[]) => resetName(...a),
+    resetCosmetics: (...a: unknown[]) => resetCosmetics(...a),
     awaken: (...a: unknown[]) => awaken(...a),
   },
 }))
@@ -23,13 +25,15 @@ vi.mock('../services/spirit', () => ({
 import SpiritPage from './SpiritPage'
 import { ToastProvider } from '../context/ToastContext'
 
-// A single-slot "aura" catalog with three differently-stated options: applied, locked, and a
-// plain buyable one. Lets a single fixture exercise applied / locked / affordable rendering.
+// An OPEN (unapplied, ADR-0024) single-slot "aura" catalog with three differently-stated
+// options: a plain buyable one, another buyable one, and a level-locked one. Lets a single
+// fixture exercise buyable / level-locked / affordable rendering on an open slot.
 const auraSlot: SpiritAvailableSlot = {
   slot: 'aura',
-  applied: 'soft',
+  applied: null,
+  locked: false,
   options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true },
+    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: false },
     { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: true, applied: false },
     {
       option: 'starlit',
@@ -39,6 +43,18 @@ const auraSlot: SpiritAvailableSlot = {
       affordable: true,
       applied: false,
     },
+  ],
+}
+
+// A LOCKED "aura" slot (ADR-0024): `soft` is applied, so the slot is locked and its other
+// options can't be bought until upgrades are reset.
+const lockedAuraSlot: SpiritAvailableSlot = {
+  slot: 'aura',
+  applied: 'soft',
+  locked: true,
+  options: [
+    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true },
+    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: false, applied: false },
   ],
 }
 
@@ -56,7 +72,7 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     needs: { nourished: okNeed(), rested: okNeed(), joyful: okNeed() },
     condition: okNeed('content', 0.9),
     coins: 120,
-    cosmetics: { aura: 'soft' },
+    cosmetics: {},
     available: [auraSlot],
     collection: [],
     ...overrides,
@@ -80,23 +96,37 @@ describe('SpiritPage personalize panel', () => {
     buyCosmetic.mockReset()
   })
 
-  it('renders option state — applied (✓), locked (🔒), and an affordable price', async () => {
+  it('renders option state on an open slot — buyable prices and a level-locked option', async () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
 
-    // Applied option reads as done and is disabled (nothing to buy). The accessible name now
-    // carries the full state ("Soft glow — applied") for SR/keyboard, not just the ✓ glyph.
+    // Two buyable options on the open slot state their coin price in the accessible name.
+    expect(await screen.findByRole('button', { name: /Soft glow — 30 coins/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Warm glow — 45 coins/ })).toBeInTheDocument()
+
+    // A level-locked option is rendered (not disabled, so it can still preview); its name
+    // states the locked status + the unlock reason.
+    const locked = screen.getByRole('button', { name: /Starlit — locked, reach level 5/i })
+    expect(locked).not.toBeDisabled()
+  })
+
+  it('locks a slot once an option is applied — its other options cannot be bought (ADR-0024)', async () => {
+    get.mockResolvedValue(
+      spiritWith({ cosmetics: { aura: 'soft' }, available: [lockedAuraSlot] }),
+    )
+
+    renderPage()
+
+    // The applied option reads as done and is disabled.
     const applied = await screen.findByRole('button', { name: /Soft glow — applied/ })
     expect(applied).toBeDisabled()
 
-    // A locked option is rendered (not disabled, so it can still preview); its name states the
-    // locked status + the unlock reason.
-    const locked = screen.getByRole('button', { name: /Starlit — locked, reach level 5/i })
-    expect(locked).not.toBeDisabled()
-
-    // A plain buyable option's name states its coin price.
-    expect(screen.getByRole('button', { name: /Warm glow — 45 coins/ })).toBeInTheDocument()
+    // The other option in the now-locked slot is shown but NOT buyable (disabled, no purchase).
+    const warm = screen.getByRole('button', { name: /Warm glow — locked, reset upgrades/i })
+    expect(warm).toBeDisabled()
+    fireEvent.click(warm)
+    expect(buyCosmetic).not.toHaveBeenCalled()
   })
 
   it('buys a cosmetic via the service and swaps in the returned state', async () => {
@@ -153,6 +183,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
   const habitatSlot: SpiritAvailableSlot = {
     slot: 'habitat',
     applied: null,
+    locked: false,
     options: [
       { option: 'night', cost: 80, unlocked: true, unlock_hint: null, affordable: true, applied: false },
     ],
@@ -196,49 +227,88 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
   })
 })
 
-describe('SpiritPage nickname', () => {
+describe('SpiritPage name (immutable; paid reset — ADR-0024)', () => {
   beforeEach(() => {
     get.mockReset()
-    rename.mockReset()
+    resetName.mockReset()
   })
 
-  it('saves a nickname on blur (PATCH)', async () => {
-    get.mockResolvedValue(spiritWith())
-    rename.mockResolvedValue(spiritWith())
-
-    renderPage()
-
-    const input = await screen.findByPlaceholderText(/Give your spirit a name/)
-    fireEvent.change(input, { target: { value: 'Ember' } })
-    fireEvent.blur(input)
-
-    await waitFor(() => expect(rename).toHaveBeenCalledWith({ name: 'Ember' }))
-  })
-
-  it('pre-fills the input from the saved name and shows it on the hero', async () => {
+  it('shows the name read-only on the hero (no editable nickname field)', async () => {
     get.mockResolvedValue(spiritWith({ name: 'Ember' }))
 
     renderPage()
 
-    const input = (await screen.findByPlaceholderText(
-      /Give your spirit a name/,
-    )) as HTMLInputElement
-    expect(input.value).toBe('Ember')
-    // The saved name also shows on the hero.
+    await screen.findByText('Personalize')
+    // The name shows on the hero, read-only.
     expect(document.querySelector('.spirit-hero-name')?.textContent).toBe('Ember')
+    // There is no free editable nickname input anymore.
+    expect(screen.queryByPlaceholderText(/Give your spirit a name/)).toBeNull()
   })
 
-  it('clears the nickname when emptied (sends null)', async () => {
-    get.mockResolvedValue(spiritWith())
-    rename.mockResolvedValue(spiritWith())
+  it('changes the name via the paid reset flow (confirm → input → resetName)', async () => {
+    get.mockResolvedValue(spiritWith({ name: 'Ember', coins: 400 }))
+    resetName.mockResolvedValue(spiritWith({ name: 'Aster', coins: 150 }))
 
     renderPage()
 
-    const input = await screen.findByPlaceholderText(/Give your spirit a name/)
-    fireEvent.change(input, { target: { value: '   ' } })
-    fireEvent.blur(input)
+    // Open the reset-name modal, type a new name, and confirm.
+    fireEvent.click(await screen.findByRole('button', { name: /Reset name/ }))
+    const dialog = within(await screen.findByRole('dialog'))
+    fireEvent.change(dialog.getByPlaceholderText(/A new name/), { target: { value: 'Aster' } })
+    fireEvent.click(dialog.getByRole('button', { name: /Change name/ }))
 
-    await waitFor(() => expect(rename).toHaveBeenCalledWith({ name: null }))
+    await waitFor(() => expect(resetName).toHaveBeenCalledWith({ name: 'Aster' }))
+  })
+
+  it('disables the reset-name action when coins are below the reset cost', async () => {
+    get.mockResolvedValue(spiritWith({ name: 'Ember', coins: 100 }))
+
+    renderPage()
+
+    const btn = await screen.findByRole('button', { name: /Reset name/ })
+    expect(btn).toBeDisabled()
+  })
+})
+
+describe('SpiritPage reset upgrades (paid, no refund — ADR-0024)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    resetCosmetics.mockReset()
+  })
+
+  it('offers reset-upgrades only when something is applied, and resets after confirmation', async () => {
+    get.mockResolvedValue(
+      spiritWith({ cosmetics: { aura: 'soft' }, available: [lockedAuraSlot], coins: 400 }),
+    )
+    resetCosmetics.mockResolvedValue(spiritWith({ cosmetics: {}, available: [auraSlot] }))
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Reset upgrades/ }))
+    const dialog = within(await screen.findByRole('dialog'))
+    fireEvent.click(dialog.getByRole('button', { name: /Reset upgrades/ }))
+
+    await waitFor(() => expect(resetCosmetics).toHaveBeenCalledTimes(1))
+  })
+
+  it('hides the reset-upgrades action when no upgrades are applied', async () => {
+    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [auraSlot] }))
+
+    renderPage()
+    await screen.findByText('Personalize')
+
+    expect(screen.queryByRole('button', { name: /Reset upgrades/ })).toBeNull()
+  })
+
+  it('disables the reset-upgrades action when coins are below the reset cost', async () => {
+    get.mockResolvedValue(
+      spiritWith({ cosmetics: { aura: 'soft' }, available: [lockedAuraSlot], coins: 100 }),
+    )
+
+    renderPage()
+
+    const btn = await screen.findByRole('button', { name: /Reset upgrades/ })
+    expect(btn).toBeDisabled()
   })
 })
 
@@ -264,12 +334,13 @@ describe('SpiritPage collection gallery', () => {
     expect(screen.getByText(/Radiant spirit/)).toBeInTheDocument()
   })
 
-  it('shows an empty-collection note when there are no retired spirits', async () => {
+  it('shows a concise empty-collection note when there are no retired spirits', async () => {
     get.mockResolvedValue(spiritWith({ collection: [] }))
 
     renderPage()
 
-    expect(await screen.findByText(/No past spirits yet/)).toBeInTheDocument()
+    // The empty-state line is shortened to a single non-redundant line (ADR-0024 copy fix).
+    expect(await screen.findByText('None yet.')).toBeInTheDocument()
   })
 })
 

@@ -63,12 +63,30 @@ describe('SpiritChoosePage', () => {
     expect(screen.getByRole('button', { name: /Choose Vata/ })).toBeInTheDocument()
   })
 
-  it('chooses a creature via the service and navigates back to /spirit', async () => {
+  it('requires a name before a creature can be chosen (ADR-0024)', async () => {
     get.mockResolvedValue(spiritWith({ path: null }))
-    choose.mockResolvedValue(spiritWith({ path: 'breath' }))
     renderPage()
-    fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
-    await waitFor(() => expect(choose).toHaveBeenCalledWith({ path: 'breath' }))
+    // The choose buttons are disabled until a non-empty name is entered.
+    const choosePitta = await screen.findByRole('button', { name: /Choose Pitta/ })
+    expect(choosePitta).toBeDisabled()
+    fireEvent.click(choosePitta)
+    expect(choose).not.toHaveBeenCalled()
+    // After naming, the buttons enable.
+    fireEvent.change(screen.getByPlaceholderText(/Ember/), { target: { value: 'Ember' } })
+    expect(choosePitta).not.toBeDisabled()
+  })
+
+  it('chooses a creature with the entered name and navigates back to /spirit', async () => {
+    get.mockResolvedValue(spiritWith({ path: null }))
+    choose.mockResolvedValue(spiritWith({ path: 'breath', name: 'Ember' }))
+    renderPage()
+    await screen.findByRole('button', { name: /Choose Pitta/ })
+    // Name (trimmed) is required; choose sends { path, name }.
+    fireEvent.change(screen.getByPlaceholderText(/Ember/), { target: { value: '  Ember  ' } })
+    fireEvent.click(screen.getByRole('button', { name: /Choose Pitta/ }))
+    await waitFor(() =>
+      expect(choose).toHaveBeenCalledWith({ path: 'breath', name: 'Ember' }),
+    )
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/spirit'))
   })
 

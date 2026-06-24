@@ -1,5 +1,5 @@
-"""Spirit routes (docs/design/spirit.md, ADR-0022, ADR-0023). The read API plus the choose,
-cosmetics, nickname, and awaken / collection writes.
+"""Spirit routes (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024). The read API plus the
+choose (creature + name), cosmetics, paid name/upgrade resets, and awaken / collection writes.
 
 Thin handlers — all business logic lives in `spirit_service`; its domain errors map to HTTP
 status codes here. Scoped to the authenticated user (default-deny via get_current_user); the
@@ -21,14 +21,15 @@ from app.models.user import User
 from app.schemas.spirit import (
     ChoosePathRequest,
     CosmeticsRequest,
-    RenameRequest,
+    ResetNameRequest,
     SpiritState,
 )
 from app.services import spirit_service
 from app.services.spirit_service import (
-    AlreadyApplied,
     CosmeticLocked,
+    CosmeticSlotLocked,
     InsufficientCoins,
+    NothingToReset,
     NotRadiant,
     PathAlreadyChosen,
     SpiritConflictError,
@@ -76,8 +77,9 @@ def choose_path(
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """Choose the active creature once (ADR-0023). Sets the path only while the spirit is
-    pathless; choosing again → 409. An unknown path value is rejected as 422 by the schema."""
+    """Choose the active creature + name it once (ADR-0023 / ADR-0024). Sets the path AND the
+    required name only while the spirit is pathless; choosing again → 409. An unknown path or a
+    missing/blank/over-length name is rejected as 422 by the schema."""
     today, tz = today_tz
     try:
         return spirit_service.choose_path(db, current_user.id, body, today=today, tz=tz)
@@ -97,39 +99,68 @@ def buy_cosmetic(
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """Buy/apply a cosmetic (slot → option) to the active spirit. The cost is deducted from
-    the derived coin balance; a within-slot swap charges only the difference. Unknown
-    slot/option → 404; locked / unaffordable / already-applied → 409."""
+    """Buy/apply a cosmetic (slot → option) to the active spirit. The full cost is deducted
+    from the derived coin balance and added to the spend ledger. A slot is applied once and
+    then LOCKED (ADR-0024) — changing it needs a paid upgrades-reset. Unknown slot/option →
+    404; locked-slot / not-unlocked / unaffordable → 409."""
     today, tz = today_tz
     try:
         return spirit_service.buy_cosmetic(db, current_user.id, body, today=today, tz=tz)
     except UnknownCosmetic:
         raise _NOT_FOUND from None
+    except CosmeticSlotLocked:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That slot is locked — reset upgrades to change it",
+        ) from None
     except CosmeticLocked:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="That cosmetic is not unlocked yet"
-        ) from None
-    except AlreadyApplied:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="That cosmetic is already applied"
         ) from None
     except InsufficientCoins:
         raise _BROKE from None
 
 
-@router.patch("", response_model=SpiritState)
+@router.post("/reset-name", response_model=SpiritState)
 @limiter.limit(settings.write_rate_limit)
-def rename_spirit(
+def reset_name(
     request: Request,  # required by the rate limiter
-    body: RenameRequest,
+    body: ResetNameRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """Set or clear the active spirit's nickname (cosmetic; never changes coins). An empty/
-    whitespace/null name clears it; over-length is rejected as 422 by the schema."""
+    """Change the active spirit's name via a PAID reset (ADR-0024). The name is otherwise
+    immutable. Charges the flat reset fee — too few coins → 409. The new name is required and
+    validated like creation (blank / over-length → 422 by the schema)."""
     today, tz = today_tz
-    return spirit_service.rename_spirit(db, current_user.id, body, today=today, tz=tz)
+    try:
+        return spirit_service.reset_name(db, current_user.id, body, today=today, tz=tz)
+    except InsufficientCoins:
+        raise _BROKE from None
+
+
+@router.post("/reset-upgrades", response_model=SpiritState)
+@limiter.limit(settings.write_rate_limit)
+def reset_upgrades(
+    request: Request,  # required by the rate limiter
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
+) -> SpiritState:
+    """Clear ALL applied upgrades via a PAID reset (ADR-0024), unlocking every slot. Charges
+    the flat reset fee — too few coins → 409 — and does NOT refund the cleared upgrades. With
+    no upgrades applied there's nothing to reset → 409."""
+    today, tz = today_tz
+    try:
+        return spirit_service.reset_cosmetics(db, current_user.id, today=today, tz=tz)
+    except NothingToReset:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="There are no upgrades to reset",
+        ) from None
+    except InsufficientCoins:
+        raise _BROKE from None
 
 
 @router.post("/awaken", response_model=SpiritState)

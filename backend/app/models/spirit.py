@@ -15,7 +15,17 @@ bond, daily glow, and coins are all derived on read from the user's earned-XP le
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,9 +50,17 @@ class Spirit(Base):
     path: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Optional nickname (cosmetic). Trimmed + length-capped server-side; NULL = unnamed.
     name: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # Owned cosmetics as {slot: option} — the spend ledger (ADR-0011). Default {} = no spend.
+    # Owned cosmetics as {slot: option} — the applied upgrades (ADR-0011). Default {} = none.
     cosmetics: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    # The STORED, monotonic spend ledger (ADR-0024). Coins are `level × COINS_PER_LEVEL −
+    # coins_spent`, clamped ≥ 0. Every upgrade and paid reset only ADDS to this; clearing
+    # cosmetics or resetting the name never refunds it (a committed-choice economy), so the
+    # spend can't be recovered by undoing a purchase. Replaces deriving spend from the owned
+    # cosmetics (which a swap/clear could lower). Never decreases.
+    coins_spent: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
     )
     awakened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -59,6 +77,8 @@ class Spirit(Base):
     )
 
     __table_args__ = (
+        # The spend ledger is monotonic and never negative (ADR-0024).
+        CheckConstraint("coins_spent >= 0", name="ck_spirits_coins_spent_nonneg"),
         Index("ix_spirits_user_id", "user_id"),
         # At most one ACTIVE spirit per user (a retired spirit no longer blocks a new one).
         Index(

@@ -1,21 +1,26 @@
-"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022, ADR-0023).
+"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024).
 
 The spirit's state is computed on read from the user's earned-XP level; the only stored
-state is the active spirit row (chosen path, name, owned cosmetics). Covered here:
+state is the active spirit row (chosen path, name, applied cosmetics, and the monotonic
+`coins_spent` ledger). Covered here:
 
 - the GET read API — happy-path shape, auth-required, and lazy get-or-create (first GET
   creates exactly one active spirit; a second GET does not duplicate it);
 - the pure stage-from-level band computation;
-- choose (ADR-0023) — sets the path once (409 on re-choose, 422 on a bad value), a fresh
-  spark is pathless, and after awaken the new spark is pathless again (choose-able anew);
+- choose (ADR-0023 / ADR-0024) — sets the path + REQUIRED name once (422 on missing/blank
+  name, 409 on re-choose, 422 on a bad path), a fresh spark is pathless, and after awaken the
+  new spark is pathless again (choose-able anew);
 - the three tended needs (ADR-0023) — neutral defaults while pathless; `nourished` RISES with
   the chosen creature's SIGNATURE practice and DECLINES without it (other practices do NOT
   nourish it); `rested` reflects rhythm/consistency; `joyful` reflects variety; a depleted need
   doesn't jump to thriving from one session; the overall condition is the WEAKEST need; and the
   GUARDRAIL — needs never change coins/stage;
-- the cosmetics economy — buy / lock / afford / already-applied, within-slot swaps (dearer
-  and cheaper), and the catalog/spend-ledger invariant;
-- rename (set / clear / over-length); and awaken / collection (radiant gate + retire+spark).
+- the cosmetics economy (ADR-0024) — buy at FULL cost; an applied slot LOCKS (no swap/re-buy);
+  the stored `coins_spent` ledger only grows; and the catalog/cost invariant;
+- the paid resets (ADR-0024) — reset-name (charges RESET_COST, sets a new name, 409 when
+  broke) and reset-upgrades (charges RESET_COST, clears cosmetics with NO refund, 409 when
+  nothing to reset / broke); the free PATCH rename is gone;
+- and awaken / collection (radiant gate + retire+spark).
 """
 
 from datetime import date, timedelta
@@ -30,6 +35,7 @@ from app.services.spirit_service import (
     CONDITION_THRIVING,
     CONDITION_UNWELL,
     CONDITION_WINDOW_DAYS,
+    RESET_COST,
     SPIRIT_COSMETICS_CATALOG,
     stage_for_level,
 )
@@ -38,6 +44,12 @@ from app.services.spirit_service import (
 def _auth(client, email):
     client.post("/api/v1/auth/register", json={"email": email, "password": "correct horse"})
     client.post("/api/v1/auth/login", json={"email": email, "password": "correct horse"})
+
+
+def _choose(client, path, name="Ember"):
+    """Choose the creature + (required, ADR-0024) name in one call — the helper most tests use
+    now that the name is mandatory at creation."""
+    return client.post("/api/v1/spirit/choose", json={"path": path, "name": name})
 
 
 def _practice(client, minutes, *, day="2026-01-01"):
@@ -233,11 +245,22 @@ def _stored_path(db_session, user_id):
     ).scalar_one()
 
 
+def _stored_coins_spent(db_session, user_id):
+    """The active spirit's stored monotonic spend ledger (ADR-0024) — read directly off the
+    row (it isn't in SpiritState)."""
+    db_session.expire_all()
+    return db_session.execute(
+        select(Spirit.coins_spent).where(
+            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
+        )
+    ).scalar_one()
+
+
 # --- Choose the creature (ADR-0023; path is chosen, not auto-detected) ------------------
 
 
 def test_choose_requires_auth(client):
-    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 401
+    assert _choose(client, "stillness").status_code == 401
 
 
 def test_fresh_spark_is_pathless(client):
@@ -245,36 +268,57 @@ def test_fresh_spark_is_pathless(client):
     assert _spirit(client)["path"] is None  # nothing auto-detected — pathless until chosen
 
 
-def test_choose_sets_the_path_once(client, db_session):
+def test_choose_sets_the_path_and_name_once(client, db_session):
     _auth(client, "choose_set@example.com")
     user_id = _user_id(db_session, "choose_set@example.com")
 
-    res = client.post("/api/v1/spirit/choose", json={"path": "breath"})
+    res = _choose(client, "breath", name="  Zephyr  ")
     assert res.status_code == 200
     assert res.json()["path"] == "breath"
+    # The required name is trimmed, set, and echoed on the state (ADR-0024).
+    assert res.json()["name"] == "Zephyr"
     # Persisted, and echoed on a fresh GET.
     db_session.expire_all()
     assert _stored_path(db_session, user_id) == "breath"
-    assert _spirit(client)["path"] == "breath"
+    fresh = _spirit(client)
+    assert fresh["path"] == "breath"
+    assert fresh["name"] == "Zephyr"
+
+
+def test_choose_requires_a_name_422(client):
+    """ADR-0024: the name is REQUIRED at creation — missing or blank → 422, and the spirit
+    stays pathless (nothing committed)."""
+    _auth(client, "choose_noname@example.com")
+    # Missing name entirely.
+    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 422
+    # Empty / whitespace-only name.
+    assert _choose(client, "stillness", name="").status_code == 422
+    assert _choose(client, "stillness", name="   ").status_code == 422
+    # Nothing was committed — still pathless and unnamed.
+    body = _spirit(client)
+    assert body["path"] is None
+    assert body["name"] is None
 
 
 def test_choose_again_is_409(client):
     _auth(client, "choose_twice@example.com")
-    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 200
+    assert _choose(client, "stillness").status_code == 200
     # The choice is once-only — re-choosing (even the same value) conflicts.
-    assert client.post("/api/v1/spirit/choose", json={"path": "heart"}).status_code == 409
-    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 409
+    assert _choose(client, "heart").status_code == 409
+    assert _choose(client, "stillness").status_code == 409
 
 
 def test_choose_bad_value_is_422(client):
     _auth(client, "choose_bad@example.com")
-    assert client.post("/api/v1/spirit/choose", json={"path": "wrathful"}).status_code == 422
-    assert client.post("/api/v1/spirit/choose", json={"path": "nope"}).status_code == 422
+    assert _choose(client, "wrathful").status_code == 422
+    assert _choose(client, "nope").status_code == 422
 
 
 def test_choose_rejects_unexpected_fields(client):
     _auth(client, "choose_extra@example.com")
-    res = client.post("/api/v1/spirit/choose", json={"path": "stillness", "x": 1})
+    res = client.post(
+        "/api/v1/spirit/choose", json={"path": "stillness", "name": "Ember", "x": 1}
+    )
     assert res.status_code == 422
 
 
@@ -478,7 +522,7 @@ def test_needs_never_change_coins_or_stage(client, db_session):
     user_id = _user_id(db_session, "needs_guardrail@example.com")
     # Earn some coins/levels, then choose a creature and never feed it.
     _earn_to_level(client, 3)
-    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 200
+    assert _choose(client, "stillness").status_code == 200
 
     before = _spirit(client)
     # Drive every need to the floor by computing them with a `today` far past any practice.
@@ -500,18 +544,19 @@ def test_awaken_returns_a_pathless_spark(client, db_session):
     (ADR-0023's set-free → re-choose loop)."""
     _auth(client, "cond_awaken_pathless@example.com")
     _earn_to_level(client, 24)  # radiant
-    client.post("/api/v1/spirit/choose", json={"path": "breath"})
+    _choose(client, "breath")
     fresh = client.post("/api/v1/spirit/awaken").json()
     assert fresh["path"] is None
     # And it can be chosen again on the new spark.
-    assert client.post("/api/v1/spirit/choose", json={"path": "heart"}).status_code == 200
+    assert _choose(client, "heart").status_code == 200
 
 
-# --- Cosmetics economy (step 5) ---------------------------------------------------------
+# --- Cosmetics economy (ADR-0024: committed upgrades, stored spend ledger) --------------
 #
-# The owned cosmetics are the spend ledger: buying one drops the derived coin balance and
-# shows up `applied` in the catalog state on GET. A swap within a slot charges only the
-# difference. Costs/unlock levels come from the in-code SPIRIT_COSMETICS_CATALOG.
+# Buying a cosmetic drops the derived coin balance (now `level × COINS_PER_LEVEL −
+# coins_spent`) by the FULL option cost and adds it to the stored, monotonic `coins_spent`
+# ledger; the option shows `applied` and its slot LOCKS (no swap / re-buy). Costs/unlock
+# levels come from the in-code SPIRIT_COSMETICS_CATALOG.
 
 # Non-consecutive days so earning lots of coins never accrues a streak (streak-bonus XP is
 # excluded from the earned XP that funds coins) and never depends on the current date.
@@ -566,9 +611,11 @@ def test_catalog_is_exposed_in_get(client):
     body = _spirit(client)
     slots = {s["slot"] for s in body["available"]}
     assert slots == set(SPIRIT_COSMETICS_CATALOG)
-    # Every catalog option is surfaced with its state hints, none applied on a fresh spirit.
+    # Every catalog option is surfaced with its state hints, none applied on a fresh spirit,
+    # and every slot reports unlocked (ADR-0024 `locked` flag) since nothing is applied yet.
     for s in body["available"]:
         assert s["applied"] is None
+        assert s["locked"] is False
         opts = {o["option"] for o in s["options"]}
         assert opts == set(SPIRIT_COSMETICS_CATALOG[s["slot"]])
         for o in s["options"]:
@@ -634,70 +681,58 @@ def test_buy_unaffordable_409(client):
     assert "habitat" not in _spirit(client)["cosmetics"]
 
 
-def test_buy_already_applied_409(client):
-    _auth(client, "cosmetics_dupe@example.com")
+def test_applied_slot_is_locked_no_rebuy_or_swap(client):
+    """ADR-0024: once a slot has an applied option it LOCKS — buying into it again (the same OR
+    a different option) is a 409, the slot reads `locked`, and the spend ledger doesn't move."""
+    _auth(client, "cosmetics_lock@example.com")
+    _earn_to_level(client, 3)  # plenty of coins so affordability isn't the gate
+
+    first = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    assert first.status_code == 200
+    body = first.json()
+    assert _applied(body, "aura") == "soft"
+    # The slot now reports locked, and the (would-be cheaper/different) options can't be bought.
+    slot = next(s for s in body["available"] if s["slot"] == "aura")
+    assert slot["locked"] is True
+    coins_after_first = body["coins"]
+
+    # Re-buying the same option, or swapping to a different one in the locked slot, both 409.
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 409
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
+    ).status_code == 409
+    # Nothing changed: still `soft`, same balance (no second charge).
+    after = _spirit(client)
+    assert after["cosmetics"]["aura"] == "soft"
+    assert after["coins"] == coins_after_first
+
+
+def test_coins_spent_ledger_only_grows_and_drives_balance(client, db_session):
+    """The stored `coins_spent` ledger (ADR-0024) only GROWS as upgrades are applied, and the
+    coin balance is exactly `level × COINS_PER_LEVEL − coins_spent`."""
+    _auth(client, "cosmetics_ledger@example.com")
+    user_id = _user_id(db_session, "cosmetics_ledger@example.com")
+    _earn_to_level(client, 3)
+
+    level = _spirit(client)["bond"]["level"]
+    soft = _cost("aura", "soft")
+    halo = _cost("accessory", "halo")
+
     assert client.post(
         "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
     ).status_code == 200
-    again = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
-    assert again.status_code == 409
+    assert _stored_coins_spent(db_session, user_id) == soft
 
-
-def test_within_slot_swap_charges_the_difference(client):
-    # Earn enough that both options are clearly affordable, then swap within `aura` and assert
-    # only the difference is charged.
-    _auth(client, "cosmetics_swap@example.com")
-    _earn_to_level(client, 3)
-    base = _spirit(client)["coins"]
-
-    soft = _cost("aura", "soft")
-    warm = _cost("aura", "warm")
-    assert warm > soft  # the swap is to a dearer option, so the delta is positive
-
-    after_soft = client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).json()
-    assert after_soft["coins"] == base - soft
-
-    after_warm = client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
-    ).json()
-    # Only the difference (warm − soft) is charged on the swap, not the full warm cost.
-    assert after_warm["coins"] == base - warm
-    assert after_warm["cosmetics"]["aura"] == "warm"
-    # The slot holds exactly the new option (the old one is replaced, not accumulated).
-    assert _applied(after_warm, "aura") == "warm"
-
-
-def test_within_slot_swap_to_cheaper_is_allowed_and_charges_the_delta(client):
-    """Swapping within a slot to a CHEAPER option is allowed, charges the (≤ 0) difference —
-    so the balance goes UP — and the option reads affordable. Mirrors the dearer-swap test on
-    the other side of the delta."""
-    _auth(client, "cosmetics_swap_cheaper@example.com")
-    _earn_to_level(client, 3)
-    base = _spirit(client)["coins"]
-
-    soft = _cost("aura", "soft")
-    warm = _cost("aura", "warm")
-    assert warm > soft  # so soft → warm is dearer; warm → soft is the cheaper swap
-
-    # Buy the dearer option first.
-    after_warm = client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
-    ).json()
-    assert after_warm["coins"] == base - warm
-    # The cheaper option reads affordable (a swap-down is always coverable).
-    assert _option_state(after_warm, "aura", "soft")["affordable"] is True
-
-    # Swap down to the cheaper option in the same slot — allowed, and it refunds the delta.
-    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
-    assert res.status_code == 200
-    after_soft = res.json()
-    # Net spend is just `soft`, so the balance recovers the (warm − soft) difference.
-    assert after_soft["coins"] == base - soft
-    assert after_soft["coins"] > after_warm["coins"]  # balance went up on the cheaper swap
-    assert after_soft["cosmetics"]["aura"] == "soft"
-    assert _applied(after_soft, "aura") == "soft"
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "accessory", "option": "halo"}
+    ).status_code == 200
+    # The ledger grew by the full second cost (no swap discounting across slots).
+    assert _stored_coins_spent(db_session, user_id) == soft + halo
+    # And the balance matches the formula exactly.
+    body = _spirit(client)
+    assert body["coins"] == level * COINS_PER_LEVEL - (soft + halo)
 
 
 def test_owned_options_all_price_above_zero(client):
@@ -725,53 +760,126 @@ def test_buy_cosmetic_requires_auth(client):
     )
 
 
-# --- Nickname (PATCH /spirit) -----------------------------------------------------------
+# --- Name immutability + paid resets (ADR-0024) -----------------------------------------
 
 
 def _stored_name(db_session):
-    """The active spirit's stored nickname (not in SpiritState — read the row directly)."""
+    """The active spirit's stored name (not always in SpiritState — read the row directly)."""
     db_session.expire_all()
     return db_session.execute(
         select(Spirit.name).where(Spirit.retired_at.is_(None))
     ).scalars().first()
 
 
-def test_rename_sets_and_clears(client, db_session):
-    _auth(client, "rename@example.com")
-    coins_before = _spirit(client)["coins"]
-
-    set_res = client.patch("/api/v1/spirit", json={"name": "  Ember  "})
-    assert set_res.status_code == 200
-    # Trimmed and never charges coins.
-    assert set_res.json()["coins"] == coins_before
-    assert _stored_name(db_session) == "Ember"
-    # The (trimmed) name is echoed back in the response and a fresh GET, so the UI can
-    # pre-fill / display it — this is the gap the fix closes.
-    assert set_res.json()["name"] == "Ember"
-    assert _spirit(client)["name"] == "Ember"
-
-    # Empty string clears the nickname back to NULL — and GET reports it as null again.
-    clear_res = client.patch("/api/v1/spirit", json={"name": "   "})
-    assert clear_res.status_code == 200
-    assert _stored_name(db_session) is None
-    assert clear_res.json()["name"] is None
-    assert _spirit(client)["name"] is None
+def test_free_rename_route_is_gone(client):
+    """ADR-0024: the free PATCH /spirit rename is removed — the name is immutable except via a
+    paid reset, so the old route 404/405s (never a 200)."""
+    _auth(client, "rename_gone@example.com")
+    res = client.patch("/api/v1/spirit", json={"name": "Ember"})
+    assert res.status_code in {404, 405}
 
 
-def test_rename_over_length_422(client):
-    _auth(client, "rename_long@example.com")
-    res = client.patch("/api/v1/spirit", json={"name": "x" * 41})
-    assert res.status_code == 422
+def test_reset_name_charges_and_sets_new_name(client, db_session):
+    """reset-name changes the (otherwise immutable) name, charges RESET_COST against the
+    balance, and adds it to the monotonic ledger (no refund)."""
+    _auth(client, "reset_name@example.com")
+    user_id = _user_id(db_session, "reset_name@example.com")
+    _earn_to_level(client, 5)  # 5 × 80 = 400 coins, comfortably over RESET_COST
+    _choose(client, "stillness", name="Old")
+    before = _spirit(client)["coins"]
+    spent_before = _stored_coins_spent(db_session, user_id)
+
+    res = client.post("/api/v1/spirit/reset-name", json={"name": "  New  "})
+    assert res.status_code == 200
+    body = res.json()
+    # The new (trimmed) name is set and echoed; coins dropped by exactly RESET_COST.
+    assert body["name"] == "New"
+    assert body["coins"] == before - RESET_COST
+    assert _stored_name(db_session) == "New"
+    assert _stored_coins_spent(db_session, user_id) == spent_before + RESET_COST
 
 
-def test_rename_rejects_unexpected_fields(client):
-    _auth(client, "rename_extra@example.com")
-    res = client.patch("/api/v1/spirit", json={"name": "Ember", "color": "blue"})
-    assert res.status_code == 422
+def test_reset_name_requires_a_valid_name_422(client):
+    _auth(client, "reset_name_bad@example.com")
+    _earn_to_level(client, 5)
+    _choose(client, "stillness")
+    assert client.post("/api/v1/spirit/reset-name", json={"name": "   "}).status_code == 422
+    assert client.post("/api/v1/spirit/reset-name", json={"name": "x" * 41}).status_code == 422
+    # Unexpected fields are rejected too.
+    assert client.post(
+        "/api/v1/spirit/reset-name", json={"name": "Ok", "x": 1}
+    ).status_code == 422
 
 
-def test_rename_requires_auth(client):
-    assert client.patch("/api/v1/spirit", json={"name": "Ember"}).status_code == 401
+def test_reset_name_insufficient_coins_409(client):
+    """A fresh user (only COINS_PER_LEVEL = 80 coins) can't afford the 250 reset → 409, and the
+    name is unchanged."""
+    _auth(client, "reset_name_broke@example.com")
+    _choose(client, "stillness", name="Keep")
+    res = client.post("/api/v1/spirit/reset-name", json={"name": "Nope"})
+    assert res.status_code == 409
+    assert _spirit(client)["name"] == "Keep"
+
+
+def test_reset_name_requires_auth(client):
+    assert client.post("/api/v1/spirit/reset-name", json={"name": "Ember"}).status_code == 401
+
+
+def test_reset_upgrades_charges_clears_and_does_not_refund(client, db_session):
+    """The crux of ADR-0024: after buying a cosmetic then resetting upgrades, coins =
+    before_buy − cost − RESET_COST. The cleared upgrade's cost stays SUNK (no refund), and the
+    slot unlocks for a fresh buy."""
+    _auth(client, "reset_upgrades@example.com")
+    user_id = _user_id(db_session, "reset_upgrades@example.com")
+    _earn_to_level(client, 5)
+    before_buy = _spirit(client)["coins"]
+
+    cost = _cost("aura", "soft")
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 200
+
+    res = client.post("/api/v1/spirit/reset-upgrades")
+    assert res.status_code == 200
+    body = res.json()
+    # Cosmetics cleared; the slot is unlocked again (not locked).
+    assert body["cosmetics"] == {}
+    assert _applied(body, "aura") is None
+    assert _option_state(body, "aura", "soft")["applied"] is False
+    # NO REFUND: the cosmetic cost AND the reset fee both stay sunk in the ledger.
+    assert body["coins"] == before_buy - cost - RESET_COST
+    assert _stored_coins_spent(db_session, user_id) == cost + RESET_COST
+
+
+def test_reset_upgrades_nothing_to_reset_409(client, db_session):
+    """With no cosmetics applied there's nothing to clear → 409, and no fee is charged (the
+    ledger doesn't move)."""
+    _auth(client, "reset_upgrades_empty@example.com")
+    user_id = _user_id(db_session, "reset_upgrades_empty@example.com")
+    _earn_to_level(client, 5)
+    spent_before = _stored_coins_spent(db_session, user_id)
+
+    res = client.post("/api/v1/spirit/reset-upgrades")
+    assert res.status_code == 409
+    # No coins spent — the fee is only charged when there's something to reset.
+    assert _stored_coins_spent(db_session, user_id) == spent_before
+
+
+def test_reset_upgrades_insufficient_coins_409(client):
+    """A fresh user buys the cheapest aura (30 of 80 coins), leaving 50 < RESET_COST — so the
+    upgrades reset is rejected and the cosmetic is left in place."""
+    _auth(client, "reset_upgrades_broke@example.com")
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 200
+    res = client.post("/api/v1/spirit/reset-upgrades")
+    assert res.status_code == 409
+    # The cosmetic is untouched (the failed reset changed nothing).
+    assert _spirit(client)["cosmetics"]["aura"] == "soft"
+
+
+def test_reset_upgrades_requires_auth(client):
+    assert client.post("/api/v1/spirit/reset-upgrades").status_code == 401
 
 
 # --- Awaken / collection (step 6) -------------------------------------------------------
@@ -791,8 +899,9 @@ def test_awaken_at_radiant_retires_old_and_creates_new_spark(client, db_session)
     body = _earn_to_level(client, 24)  # radiant
     assert body["stage"] == "radiant"
 
-    # Name the spirit so we can confirm the retired collection records it.
-    client.patch("/api/v1/spirit", json={"name": "Lumen"})
+    # Name the spirit (required at creation, ADR-0024) so we can confirm the retired collection
+    # records it.
+    _choose(client, "stillness", name="Lumen")
 
     res = client.post("/api/v1/spirit/awaken")
     assert res.status_code == 200

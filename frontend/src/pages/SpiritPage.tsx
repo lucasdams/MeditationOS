@@ -78,22 +78,31 @@ const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
 // any coins are spent. `null` = nothing explored → the preview shows the spirit as it is now.
 type PreviewTarget = { slot: string; option: string } | null
 
-// The nickname cap, mirroring the backend SPIRIT_NAME_MAX_LENGTH. The form soft-limits input;
-// the server trims + rejects over-length regardless.
+// The name cap, mirroring the backend SPIRIT_NAME_MAX_LENGTH. The form soft-limits input; the
+// server trims + rejects blank/over-length regardless.
 const NAME_MAX = 40
+
+// The flat fee for a paid reset (ADR-0024), mirroring the backend RESET_COST — used for both
+// the name reset and the upgrades reset. The server enforces it; this gates the UI calmly.
+const RESET_COST = 250
 
 export default function SpiritPage() {
   const { showToast } = useToast()
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
-  // A key (`slot:option` or 'rename' or 'awaken') marking the in-flight write, so the matching
-  // control disables and can't double-submit; null = idle.
+  // A key (`slot:option` or 'reset-name' or 'reset-upgrades' or 'awaken') marking the in-flight
+  // write, so the matching control disables and can't double-submit; null = idle.
   const [busy, setBusy] = useState<string | null>(null)
   // The option being previewed (hovered / focused) in the panel — view-only, never buys.
   const [preview, setPreview] = useState<PreviewTarget>(null)
   // The awaken confirmation modal (radiant only).
   const [confirmAwaken, setConfirmAwaken] = useState(false)
+  // The paid name-reset modal (ADR-0024) + its draft input; null = closed.
+  const [resetNameOpen, setResetNameOpen] = useState(false)
+  const [resetNameDraft, setResetNameDraft] = useState('')
+  // The paid upgrades-reset confirmation modal (ADR-0024).
+  const [confirmResetUpgrades, setConfirmResetUpgrades] = useState(false)
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
   // media query (and any future celebration is honored) — the single source of truth.
   const reducedMotion = prefersReducedMotion()
@@ -148,18 +157,35 @@ export default function SpiritPage() {
     }
   }
 
-  // Set or clear the nickname (PATCH). Empty/whitespace clears it. The read shape echoes the
-  // saved name back, so the field pre-fills from it; the trimmed input is submitted on blur
-  // (null when emptied → cleared).
-  async function saveName(raw: string) {
+  // Change the name via a PAID reset (ADR-0024). The name is otherwise immutable. The new
+  // name is required; the server charges the fee and returns the fresh state.
+  async function resetName() {
     if (!spirit) return
-    const next = raw.trim()
-    setBusy('rename')
+    const next = resetNameDraft.trim()
+    if (!next) return // required
+    setBusy('reset-name')
     try {
-      setSpirit(await spiritService.rename({ name: next || null }))
-      showToast(next ? 'Name saved.' : 'Name cleared.')
+      setSpirit(await spiritService.resetName({ name: next }))
+      setResetNameOpen(false)
+      showToast('Name changed.')
     } catch {
-      showToast('Could not save that name — please try again.', 'error')
+      showToast('Could not change the name — you may need more coins.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Clear ALL applied upgrades via a PAID reset (ADR-0024) — no refund. The server charges the
+  // fee and returns the fresh state with every slot unlocked again.
+  async function resetUpgrades() {
+    if (!spirit) return
+    setBusy('reset-upgrades')
+    try {
+      setSpirit(await spiritService.resetCosmetics())
+      setConfirmResetUpgrades(false)
+      showToast('Upgrades reset — your slots are open again.')
+    } catch {
+      showToast('Could not reset upgrades — you may need more coins.', 'error')
     } finally {
       setBusy(null)
     }
@@ -299,14 +325,37 @@ export default function SpiritPage() {
               </p>
             </section>
 
-            {/* Nickname — a quiet field; type a name (or clear it) and it saves on blur (PATCH).
-                Pre-filled from the saved name the read shape echoes back. */}
-            <section className="spirit-section spirit-nickname-section" aria-label="Nickname">
-              <SpiritNickname name={spirit.name} busy={busy === 'rename'} onSave={saveName} />
+            {/* Name — read-only on the hero (above). The name is committed at creation and
+                immutable; changing it is a quiet, paid reset (ADR-0024). */}
+            <section className="spirit-section spirit-name-section" aria-label="Name">
+              <header className="spirit-section-head">
+                <h2 className="spirit-section-title">Name</h2>
+                <p className="muted spirit-section-subtitle">
+                  Your companion's name was set when you chose it. Changing it costs{' '}
+                  {RESET_COST} coins.
+                </p>
+              </header>
+              <button
+                type="button"
+                className="spirit-reset-name-btn"
+                disabled={busy != null || spirit.coins < RESET_COST}
+                title={
+                  spirit.coins < RESET_COST
+                    ? `Needs ${RESET_COST} coins`
+                    : undefined
+                }
+                onClick={() => {
+                  setResetNameDraft(spirit.name ?? '')
+                  setResetNameOpen(true)
+                }}
+              >
+                Reset name (<CoinIcon /> {RESET_COST})
+              </button>
             </section>
 
             {/* Personalize — the cosmetics slots, calm and modest. Preview-on-hover/focus, buy
-                on click; locked / unaffordable options preview but never submit. */}
+                on click; an applied slot is LOCKED (ADR-0024); locked/unaffordable options
+                preview but never submit. */}
             <section className="spirit-section spirit-personalize" aria-label="Personalize">
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Personalize</h2>
@@ -320,20 +369,35 @@ export default function SpiritPage() {
                 </p>
               ) : (
                 spirit.available.map((s) => (
-                  <fieldset key={s.slot} className="spirit-slot">
-                    <legend>{slotLabel(s.slot)}</legend>
+                  <fieldset
+                    key={s.slot}
+                    className={`spirit-slot${s.slot && s.locked ? ' is-locked' : ''}`}
+                  >
+                    <legend>
+                      {slotLabel(s.slot)}
+                      {s.locked && (
+                        <span className="spirit-slot-locked muted">
+                          {' '}
+                          <span aria-hidden="true">🔒</span> locked
+                        </span>
+                      )}
+                    </legend>
                     <div className="spirit-slot-options">
                       {s.options.map((opt) => {
                         const applied = opt.applied
-                        const gated = !opt.unlocked || !opt.affordable
-                        // Buy only when the option is actually applicable; a locked / unaffordable
-                        // / already-applied click is a no-op (the server enforces this too).
-                        const buyable = !applied && opt.unlocked && opt.affordable
-                        // Hard-disable only an already-applied option or an in-flight write —
-                        // a gated option stays enabled so it can be PREVIEWED (the goal look)
-                        // without spending a coin.
-                        const hardDisabled = busy != null || applied
-                        const canPreview = !applied
+                        // ADR-0024: once any option in the slot is applied, the slot LOCKS —
+                        // no other option in it can be bought until upgrades are reset.
+                        const slotLocked = s.locked
+                        const gated = slotLocked || !opt.unlocked || !opt.affordable
+                        // Buy only when the slot is open AND the option is unlocked/affordable;
+                        // any other click is a no-op (the server enforces this too).
+                        const buyable =
+                          !applied && !slotLocked && opt.unlocked && opt.affordable
+                        // Hard-disable an already-applied option, an option in a locked slot, or
+                        // an in-flight write. A merely-gated (level/coin) option in an OPEN slot
+                        // stays enabled so it can be PREVIEWED without spending a coin.
+                        const hardDisabled = busy != null || applied || (slotLocked && !applied)
+                        const canPreview = !applied && !slotLocked
                         const showPreview = () =>
                           canPreview && setPreview({ slot: s.slot, option: opt.option })
                         const clearPreview = () => setPreview(null)
@@ -342,18 +406,20 @@ export default function SpiritPage() {
                         // and a hover-only `title`.
                         const ariaLabel = applied
                           ? `${optionLabel(opt.option)} — applied`
-                          : !opt.unlocked
-                            ? `${optionLabel(opt.option)} — locked, ${(opt.unlock_hint ?? 'keep practicing').toLowerCase()}`
-                            : !opt.affordable
-                              ? `${optionLabel(opt.option)} — ${opt.cost} coins, earn more`
-                              : `${optionLabel(opt.option)} — ${opt.cost} coins`
+                          : slotLocked
+                            ? `${optionLabel(opt.option)} — locked, reset upgrades to change`
+                            : !opt.unlocked
+                              ? `${optionLabel(opt.option)} — locked, ${(opt.unlock_hint ?? 'keep practicing').toLowerCase()}`
+                              : !opt.affordable
+                                ? `${optionLabel(opt.option)} — ${opt.cost} coins, earn more`
+                                : `${optionLabel(opt.option)} — ${opt.cost} coins`
                         return (
                           <button
                             key={opt.option}
                             type="button"
                             className={`spirit-option${applied ? ' applied' : ''}${
                               gated && !applied ? ' gated' : ''
-                            }${!opt.unlocked ? ' locked' : ''}`}
+                            }${slotLocked || !opt.unlocked ? ' locked' : ''}`}
                             disabled={hardDisabled}
                             aria-disabled={(gated && !applied) || undefined}
                             aria-label={ariaLabel}
@@ -361,13 +427,23 @@ export default function SpiritPage() {
                             onMouseLeave={clearPreview}
                             onFocus={showPreview}
                             onBlur={clearPreview}
-                            // Buyable → purchase; gated → quiet feedback (never a silent no-op).
+                            // Buyable → purchase; otherwise a no-op in a locked slot, or quiet
+                            // feedback for a level/coin gate (never a silent no-op).
                             onClick={() =>
-                              buyable ? buyCosmetic(s.slot, opt.option) : gated && notifyGated(opt)
+                              buyable
+                                ? buyCosmetic(s.slot, opt.option)
+                                : !slotLocked && gated && notifyGated(opt)
                             }
                           >
                             {applied ? (
                               `✓ ${optionLabel(opt.option)}`
+                            ) : slotLocked ? (
+                              // A locked slot (ADR-0024): the unapplied options are shown but not
+                              // buyable, with a small lock hint pointing at the reset.
+                              <>
+                                <span aria-hidden="true">🔒</span> {optionLabel(opt.option)}
+                                <span className="spirit-option-lock">Reset to change</span>
+                              </>
                             ) : !opt.unlocked ? (
                               // Level-gated upgrades are shown, NOT hidden (ADR-0023 / task #4):
                               // a lock badge + the unlock requirement, so the user sees what
@@ -394,6 +470,20 @@ export default function SpiritPage() {
                   </fieldset>
                 ))
               )}
+              {/* Reset upgrades — a quiet, paid action (ADR-0024). Clears every applied slot
+                  (no refund) so they can be chosen afresh. Disabled with nothing applied or
+                  too few coins. */}
+              {Object.keys(spirit.cosmetics).length > 0 && (
+                <button
+                  type="button"
+                  className="spirit-reset-upgrades-btn"
+                  disabled={busy != null || spirit.coins < RESET_COST}
+                  title={spirit.coins < RESET_COST ? `Needs ${RESET_COST} coins` : undefined}
+                  onClick={() => setConfirmResetUpgrades(true)}
+                >
+                  Reset upgrades (<CoinIcon /> {RESET_COST})
+                </button>
+              )}
             </section>
 
             {/* Collection — the gallery of retired (past radiant) spirits, kept forever. */}
@@ -405,9 +495,7 @@ export default function SpiritPage() {
                 </p>
               </header>
               {spirit.collection.length === 0 ? (
-                <p className="muted">
-                  No past spirits yet — grow this one to radiance to begin your collection.
-                </p>
+                <p className="muted">None yet.</p>
               ) : (
                 <ul className="spirit-collection-grid">
                   {spirit.collection.map((r) => {
@@ -487,57 +575,89 @@ export default function SpiritPage() {
                 </div>
               </Modal>
             )}
+
+            {/* Reset name (ADR-0024) — a paid change to the otherwise-immutable name. */}
+            {resetNameOpen && (
+              <Modal
+                ariaLabel="Reset your spirit's name"
+                onClose={() => setResetNameOpen(false)}
+                closeOnBackdrop
+              >
+                <h3>Reset your spirit's name?</h3>
+                <p className="muted">
+                  Your companion's name was set when you chose it. Changing it costs{' '}
+                  {RESET_COST} coins.
+                </p>
+                <label className="spirit-field">
+                  <span>New name</span>
+                  <input
+                    type="text"
+                    value={resetNameDraft}
+                    maxLength={NAME_MAX}
+                    placeholder="A new name"
+                    disabled={busy === 'reset-name'}
+                    onChange={(e) => setResetNameDraft(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && resetName()}
+                  />
+                </label>
+                <div className="spirit-awaken-actions">
+                  <button
+                    type="button"
+                    className="spirit-awaken-do"
+                    disabled={busy === 'reset-name' || !resetNameDraft.trim()}
+                    onClick={resetName}
+                  >
+                    {busy === 'reset-name' ? 'Changing…' : `Change name (${RESET_COST} coins)`}
+                  </button>
+                  <button
+                    type="button"
+                    className="spirit-awaken-cancel"
+                    disabled={busy === 'reset-name'}
+                    onClick={() => setResetNameOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </Modal>
+            )}
+
+            {/* Reset upgrades (ADR-0024) — clears every applied slot, no refund. */}
+            {confirmResetUpgrades && (
+              <Modal
+                ariaLabel="Reset upgrades"
+                onClose={() => setConfirmResetUpgrades(false)}
+                closeOnBackdrop
+              >
+                <h3>Reset all upgrades?</h3>
+                <p className="muted">
+                  This clears every adornment on your spirit so you can choose afresh. It costs{' '}
+                  {RESET_COST} coins and the upgrades you already bought are not refunded.
+                </p>
+                <div className="spirit-awaken-actions">
+                  <button
+                    type="button"
+                    className="spirit-awaken-do"
+                    disabled={busy === 'reset-upgrades'}
+                    onClick={resetUpgrades}
+                  >
+                    {busy === 'reset-upgrades'
+                      ? 'Resetting…'
+                      : `Reset upgrades (${RESET_COST} coins)`}
+                  </button>
+                  <button
+                    type="button"
+                    className="spirit-awaken-cancel"
+                    disabled={busy === 'reset-upgrades'}
+                    onClick={() => setConfirmResetUpgrades(false)}
+                  >
+                    Keep them
+                  </button>
+                </div>
+              </Modal>
+            )}
           </>
         )
       })()}
     </main>
   )
 }
-
-// A quiet nickname editor — local input state, committed on blur / Enter so a rename is one
-// calm action. Empty clears the name. Pre-filled from the saved name the read shape returns;
-// the local edit re-syncs whenever that saved value changes (e.g. after a save or refetch).
-function SpiritNickname({
-  name,
-  busy,
-  onSave,
-}: {
-  name: string | null
-  busy: boolean
-  onSave: (raw: string) => void
-}) {
-  const [value, setValue] = useState(name ?? '')
-  // Re-sync the field when the saved name changes (initial load, after save, refetch).
-  useEffect(() => {
-    setValue(name ?? '')
-  }, [name])
-  // Surface the cap as a quiet, near-the-limit counter so a paste over length isn't silently
-  // truncated without any feedback — it appears only when the user is close to (or at) the cap.
-  const nearCap = value.length >= NAME_MAX - 5
-  return (
-    <label className="spirit-field">
-      <span>Nickname</span>
-      <input
-        type="text"
-        value={value}
-        maxLength={NAME_MAX}
-        placeholder="Give your spirit a name (optional)"
-        disabled={busy}
-        aria-describedby="spirit-nickname-hint"
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => onSave(value)}
-        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-      />
-      <span id="spirit-nickname-hint" className="spirit-field-hint muted">
-        Up to {NAME_MAX} characters; clear to remove the name.
-        {nearCap && (
-          <span className="spirit-field-count">
-            {' '}
-            {value.length}/{NAME_MAX}
-          </span>
-        )}
-      </span>
-    </label>
-  )
-}
-
