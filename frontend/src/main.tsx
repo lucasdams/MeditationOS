@@ -7,10 +7,16 @@ import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import { initSentry } from './lib/observability'
+import { installButtonClickSfx } from './lib/sfx'
 import './index.css'
 
 // Initialise Sentry before the app renders.  No-op when VITE_SENTRY_DSN is unset.
 initSentry()
+
+// One global listener gives every button the same soft click tick, so the sound is
+// consistent app-wide instead of each component opting in. Honours the interface-sounds
+// preference (Settings → Appearance) via playClick().
+installButtonClickSfx()
 
 // Register the service worker (PWA install + offline + push) in production only — in
 // dev it would intercept Vite's module requests and break HMR.

@@ -5,7 +5,6 @@
 // entry, so the gaps need not be regular. Each step plays a soft tactile tick.
 
 import type { ReactNode } from 'react'
-import { playClick } from '../lib/sfx'
 
 export type StepperOption<T extends string | number> = { value: T; label: string }
 
@@ -43,7 +42,9 @@ export default function Stepper<T extends string | number>({
   const go = (delta: number) => {
     const next = options[index + delta]
     if (next) {
-      playClick() // soft tactile feedback on each step
+      // The soft tactile tick comes from the app-wide button click handler
+      // (installButtonClickSfx in main.tsx), so it stays consistent with every
+      // other button rather than special-casing the stepper here.
       onChange(next.value)
     }
   }
