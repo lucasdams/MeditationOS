@@ -1,6 +1,6 @@
 # ADR-0022: Spirit companion replaces the Sanctuary
 
-**Status:** Accepted · 2026-06-23 · Supersedes [ADR-0010](0010-sanctuary-cultivation.md)–[ADR-0021](0021-sanctuary-evolution-tree-and-preview-locked.md) · Detail: [Spirit design](../design/spirit.md)
+**Status:** Accepted · 2026-06-23 · Supersedes the Sanctuary ADRs ([ADR-0010](0010-sanctuary-cultivation.md)–[ADR-0016](0016-sanctuary-shop-expansion-and-retune.md), [ADR-0019](0019-sanctuary-reset-upgrades-for-a-fee.md)–[ADR-0021](0021-sanctuary-evolution-tree-and-preview-locked.md)) · Detail: [Spirit design](../design/spirit.md)
 
 ## Context
 
@@ -62,7 +62,7 @@ Full mechanics, data model, API, and the seven-step build order are in the
 
 ## Consequences
 
-- **Supersedes a large body of work.** On acceptance this retires ADR-0010–0021 and removes the
+- **Supersedes a large body of work.** On acceptance this retires the Sanctuary ADRs (0010–0016, 0019–0021) and removes the
   Sanctuary routes/UI; ~4,000 lines of frontend and a full backend service are replaced. The
   derived-economy machinery, the level/XP engine, and the companion SVG renderers (dog/cat/fox/
   bird) are reused; the grid, multi-item collection, four-track shop, and progressive pricing are

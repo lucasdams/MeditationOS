@@ -22,8 +22,8 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0014](0014-sanctuary-grid-layout.md) | Sanctuary — movable grid layout (cell separate from position) | Superseded by 0022 |
 | [0015](0015-sanctuary-personalization-touches.md) | Sanctuary — naming and personal touches (name, note, favourite) | Superseded by 0022 |
 | [0016](0016-sanctuary-shop-expansion-and-retune.md) | Sanctuary — shop expansion (whimsy track) + economy retune | Superseded by 0022 |
-| [0017](0017-biometric-readings-data-model.md) | Source-agnostic biometric-readings data model | Superseded by 0022 |
-| [0018](0018-trataka-flame-gazing-practice.md) | Trataka flame-gazing focus practice (reuse `mindfulness`, no migration) | Superseded by 0022 |
+| [0017](0017-biometric-readings-data-model.md) | Source-agnostic biometric-readings data model | Accepted |
+| [0018](0018-trataka-flame-gazing-practice.md) | Trataka flame-gazing focus practice (reuse `mindfulness`, no migration) | Accepted |
 | [0019](0019-sanctuary-reset-upgrades-for-a-fee.md) | Sanctuary — reset an item's upgrades for a fee (one stored per-user counter) | Superseded by 0022 |
 | [0020](0020-sanctuary-growth-ladder-and-accessory-slots.md) | Sanctuary — multi-stage growth ladder + additive accessory slots | Superseded by 0022 |
 | [0021](0021-sanctuary-evolution-tree-and-preview-locked.md) | Sanctuary — evolution-tree framework (form fork + deeper ladder) + preview locked options | Superseded by 0022 |
