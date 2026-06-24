@@ -101,35 +101,37 @@ export default function SpiritChoosePage() {
         </ul>
       )}
 
-      <aside className="dosha-about" aria-label="About the doshas">
-        <h2>About the doshas</h2>
-        <p className="muted">
-          In Ayurveda, the three <em>doshas</em> are elemental energies, and each stays healthy
-          through <strong>balance</strong> — by leaning into the <em>opposite</em> of its nature,
-          not more of it (&ldquo;like increases like; opposites bring balance&rdquo;). So each
-          companion is kept in good shape by the practice that <em>counterbalances</em> it:
-        </p>
-        <ul className="dosha-about-list">
-          {PATH_ORDER.map((path) => {
-            const d = DOSHA[path]
-            return (
-              <li key={path}>
-                <span className="dosha-about-name">
-                  {d.glyph} {d.name}
-                </span>{' '}
-                <span className="muted">
-                  ({d.element}) — {d.vibe.toLowerCase().replace(/\.$/, '')}
-                </span>{' '}
-                wants a <strong>{d.balance}</strong> practice → <strong>{d.practice}</strong>.
-              </li>
-            )
-          })}
-        </ul>
-        <p className="muted dosha-about-note">
-          A gentle, simplified take on a deep tradition — not medical advice. (For Kapha&rsquo;s
-          invigorating breath, try the <strong>Energizing</strong> pattern on the Breathe page.)
-        </p>
-      </aside>
+      <details className="dosha-about">
+        <summary className="dosha-about-summary">About the doshas</summary>
+        <div className="dosha-about-body">
+          <p className="muted">
+            In Ayurveda, the three <em>doshas</em> are elemental energies, and each stays healthy
+            through <strong>balance</strong> — by leaning into the <em>opposite</em> of its nature,
+            not more of it (&ldquo;like increases like; opposites bring balance&rdquo;). So each
+            companion is kept in good shape by the practice that <em>counterbalances</em> it:
+          </p>
+          <ul className="dosha-about-list">
+            {PATH_ORDER.map((path) => {
+              const d = DOSHA[path]
+              return (
+                <li key={path}>
+                  <span className="dosha-about-name">
+                    {d.glyph} {d.name}
+                  </span>{' '}
+                  <span className="muted">
+                    ({d.element}) — {d.vibe.toLowerCase().replace(/\.$/, '')}
+                  </span>{' '}
+                  wants a <strong>{d.balance}</strong> practice → <strong>{d.practice}</strong>.
+                </li>
+              )
+            })}
+          </ul>
+          <p className="muted dosha-about-note">
+            A gentle, simplified take on a deep tradition — not medical advice. (For Kapha&rsquo;s
+            invigorating breath, try the <strong>Energizing</strong> pattern on the Breathe page.)
+          </p>
+        </div>
+      </details>
     </main>
   )
 }
