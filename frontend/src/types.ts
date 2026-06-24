@@ -296,15 +296,17 @@ export interface SpiritSlotOption {
   cost: number // coins to apply this option
   unlocked: boolean // level requirement met
   unlock_hint: string | null // what's needed to unlock (null when unlocked)
-  affordable: boolean // the current balance covers the (net) cost of a swap
+  affordable: boolean // the current balance covers the FULL cost (ADR-0024: no swap math)
   applied: boolean // this option is the one currently on the spirit
 }
 
-// A cosmetic axis for the active spirit: the options to mix and match. Mirrors backend
+// A cosmetic axis for the active spirit: the options to mix and match. Once an option is
+// applied the slot LOCKS (ADR-0024) until upgrades are reset. Mirrors backend
 // SpiritAvailableSlot.
 export interface SpiritAvailableSlot {
   slot: string
   applied: string | null // the option currently applied in this slot (null if none)
+  locked: boolean // the slot has an applied option → its options can't be bought (ADR-0024)
   options: SpiritSlotOption[]
 }
 
@@ -333,22 +335,25 @@ export interface SpiritState {
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
 }
 
-// Choose the active creature once (POST /spirit/choose). `path` is the internal enum value
-// (the UI relabels it as the dosha). Only settable while the spirit is pathless (re-choose → 409).
+// Choose the active creature + name it once (POST /spirit/choose). `path` is the internal
+// enum value (the UI relabels it as the dosha); `name` is REQUIRED (ADR-0024) and immutable
+// thereafter. Only settable while the spirit is pathless (re-choose → 409).
 export interface SpiritChooseRequest {
   path: SpiritPath
+  name: string
 }
 
-// Buy/apply a cosmetic option to a slot on the active spirit (POST /spirit/cosmetics).
+// Buy/apply a cosmetic option to a slot on the active spirit (POST /spirit/cosmetics). A slot
+// is applied once and then locked (ADR-0024).
 export interface SpiritCosmeticRequest {
   slot: string
   option: string
 }
 
-// Set or clear the active spirit's nickname (PATCH /spirit). An empty/whitespace/null name
-// clears it; over-length is rejected server-side (422).
-export interface SpiritRenameRequest {
-  name: string | null
+// Change the active spirit's name via a PAID reset (POST /spirit/reset-name). The name is
+// otherwise immutable; `name` is required (blank/over-length → 422 server-side).
+export interface SpiritResetNameRequest {
+  name: string
 }
 
 export interface BreathingPattern {

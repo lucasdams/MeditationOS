@@ -1,33 +1,40 @@
-"""Spirit response/request schemas (docs/design/spirit.md, ADR-0022, ADR-0023).
+"""Spirit response/request schemas (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024).
 
 The Spirit is a single living companion grown from practice. Its state is *maximally
-computed* on read (ADR-0009/0011): only the chosen `path`, optional `name`, and owned
-`cosmetics` are stored; stage, bond, needs, and coins are all derived. ADR-0023 makes
-the `path` USER-CHOSEN (set once via `POST /spirit/choose`, NULL until then) instead of
-auto-detected from the practice mix, and replaces the single `daily_glow` with THREE named
-`needs` (`nourished` / `rested` / `joyful`), each a tier + factor over a rolling window,
-plus an overall `condition` derived from the weakest need (so the UI can render one
-summary look).
+computed* on read (ADR-0009/0011): only the chosen `path`, the `name`, the applied
+`cosmetics`, and the stored `coins_spent` ledger are persisted; stage, bond, needs, and
+coins are all derived. ADR-0023 makes the `path` USER-CHOSEN (set once via
+`POST /spirit/choose`, NULL until then) instead of auto-detected from the practice mix, and
+replaces the single `daily_glow` with THREE named `needs` (`nourished` / `rested` /
+`joyful`), each a tier + factor over a rolling window, plus an overall `condition` derived
+from the weakest need (so the UI can render one summary look).
 
-The writes: choose the creature once (`POST /spirit/choose`), buy/apply a cosmetic
-(`POST /spirit/cosmetics`), set/clear the nickname (`PATCH /spirit`), and awaken a new spark
-at radiant (`POST /spirit/awaken`). The cosmetics catalog state and the retired collection
-are part of the read shape too.
+ADR-0024 makes the name & upgrades a COMMITTED choice: the name is REQUIRED at creation
+(`POST /spirit/choose` now carries it) and immutable thereafter; each cosmetic slot is
+applied once and then LOCKED. Both can only be changed by a paid reset
+(`POST /spirit/reset-name`, `POST /spirit/reset-upgrades`), each costing a flat fee with no
+refund. The free `PATCH /spirit` rename is gone.
+
+The writes: choose the creature + name once (`POST /spirit/choose`), buy/apply a cosmetic
+(`POST /spirit/cosmetics`), reset the name (`POST /spirit/reset-name`) or all upgrades
+(`POST /spirit/reset-upgrades`), and awaken a new spark at radiant (`POST /spirit/awaken`).
+The cosmetics catalog state and the retired collection are part of the read shape too.
 """
 
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict
 
-from app.schemas._validators import _capped_blank_to_none
+from app.schemas._validators import trimmed_nonblank
 
-# The nickname is a short label, capped server-side regardless of any client cap. Empty/
-# whitespace → None (clears it); over-length → 422.
+# The name is a short label, capped server-side regardless of any client cap. Over-length →
+# 422.
 SPIRIT_NAME_MAX_LENGTH = 40
 
-# A trimmed, length-capped optional nickname. Empty/whitespace → None; over-length → 422.
-SpiritName = Annotated[
-    str | None, BeforeValidator(_capped_blank_to_none(SPIRIT_NAME_MAX_LENGTH))
+# A REQUIRED, trimmed, length-capped name (ADR-0024): empty/whitespace → 422; over-length →
+# 422. Used at creation (choose) and on the paid name reset.
+SpiritRequiredName = Annotated[
+    str, BeforeValidator(trimmed_nonblank(SPIRIT_NAME_MAX_LENGTH))
 ]
 
 
@@ -91,15 +98,17 @@ class SpiritSlotOption(BaseModel):
     cost: int  # coins to apply this option
     unlocked: bool  # level requirement met
     unlock_hint: str | None  # what's needed to unlock (None when unlocked)
-    affordable: bool  # the current balance covers the (net) cost
+    affordable: bool  # the current balance covers the FULL cost (ADR-0024: no swap math)
     applied: bool  # this option is the one currently on the spirit
 
 
 class SpiritAvailableSlot(BaseModel):
-    """A cosmetic axis for the active spirit: the options to mix and match."""
+    """A cosmetic axis for the active spirit. Once an option is applied the slot LOCKS
+    (ADR-0024): its options can no longer be bought/swapped until upgrades are reset."""
 
     slot: str
     applied: str | None  # the option currently applied in this slot (None if none)
+    locked: bool  # the slot already has an applied option → no further buys (ADR-0024)
     options: list[SpiritSlotOption]
 
 
@@ -133,14 +142,16 @@ class SpiritState(BaseModel):
 
 
 class ChoosePathRequest(BaseModel):
-    """Choose the active creature once (ADR-0023). `path` is the internal enum value
-    (`stillness | breath | heart`; the UI relabels them peaceful / wrathful / loving). Only
-    settable while the active spirit is pathless — a re-choose is a 409, an unknown value a
-    422. Forbids extra fields."""
+    """Choose the active creature + name it once (ADR-0023 / ADR-0024). `path` is the internal
+    enum value (`stillness | breath | heart`; the UI relabels them as doshas). `name` is
+    REQUIRED (empty/whitespace → 422, over-length → 422) and immutable thereafter — changing
+    it later needs a paid reset. Only settable while the active spirit is pathless — a
+    re-choose is a 409, an unknown path value a 422. Forbids extra fields."""
 
     model_config = ConfigDict(extra="forbid")
 
     path: Literal["stillness", "breath", "heart"]
+    name: SpiritRequiredName
 
 
 class CosmeticsRequest(BaseModel):
@@ -152,10 +163,12 @@ class CosmeticsRequest(BaseModel):
     option: str
 
 
-class RenameRequest(BaseModel):
-    """Set or clear the active spirit's nickname (cosmetic; never changes coins). An empty/
-    whitespace/null name clears it; over-length → 422. Forbids extra fields."""
+class ResetNameRequest(BaseModel):
+    """Change the active spirit's name via a PAID reset (ADR-0024). The name is otherwise
+    immutable (set once at creation). `name` is REQUIRED and validated like creation
+    (empty/whitespace → 422, over-length → 422). Charges a flat fee; no refund. Forbids extra
+    fields."""
 
     model_config = ConfigDict(extra="forbid")
 
-    name: SpiritName = None
+    name: SpiritRequiredName

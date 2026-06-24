@@ -1,16 +1,19 @@
 """Spirit state — a single living companion grown from practice (docs/design/spirit.md,
-ADR-0022, ADR-0023). Get-or-create the active spirit, compute its read-only state, and write
-the choose / cosmetics / nickname / awaken loop.
+ADR-0022, ADR-0023, ADR-0024). Get-or-create the active spirit, compute its read-only state,
+and write the choose / cosmetics / paid-reset / awaken loop.
 
 Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
-chosen `path`, optional `name`, and owned `cosmetics`. Everything the client sees is
-derived on read from the user's earned-XP level (via `dashboard_service.get_wallet_basis`):
+chosen `path`, the `name`, the applied `cosmetics`, and the `coins_spent` spend ledger.
+Everything the client sees is derived on read from the user's earned-XP level (via
+`dashboard_service.get_wallet_basis`):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
   of level, so it is monotonic and can never be lost.
 - **Bond** — a friendly level read-out (level + XP-into-level + XP-for-next).
-- **Coins** — `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0 (see
-  `_coin_balance`). Self-contained: this module owns its own `COINS_PER_LEVEL` constant.
+- **Coins** — `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
+  ADR-0024: the balance comes from the STORED, monotonic `coins_spent` ledger (every upgrade
+  and paid reset only ADDS to it; clearing an upgrade never refunds), so a committed choice
+  can't be undone for free. Self-contained: this module owns its own `COINS_PER_LEVEL`.
 - **Needs** (ADR-0023) — THREE named care states (`nourished` / `rested` / `joyful`), each a
   tier + 0..1 factor, computed from the activity log over a rolling window. Demanding: they
   decline through tiers when neglected and recover only gradually on a concave curve.
@@ -45,7 +48,7 @@ from app.models.spirit import Spirit
 from app.schemas.spirit import (
     ChoosePathRequest,
     CosmeticsRequest,
-    RenameRequest,
+    ResetNameRequest,
     RetiredSpirit,
     SpiritAvailableSlot,
     SpiritBond,
@@ -59,15 +62,21 @@ from app.services import dashboard_service
 from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
 
 # The spirit's own economy constant: coins earned per level. The derived coin balance is
-# `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0 (see `_coin_balance`).
+# `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
 COINS_PER_LEVEL = 80
 
+# The flat fee for a paid reset (ADR-0024) — used for BOTH the name reset and the upgrades
+# reset. Charged against the coin balance; never refunded (a committed-choice economy).
+RESET_COST = 250
 
-def _coin_balance(level: int, cosmetics: dict[str, str]) -> int:
-    """The derived coin balance: `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0.
-    Single source of truth for the formula shared by the read state, purchases, and the
-    affordability check."""
-    return max(0, level * COINS_PER_LEVEL - _cosmetics_spent(cosmetics))
+
+def _coin_balance(level: int, coins_spent: int) -> int:
+    """The derived coin balance: `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0
+    (ADR-0024). The balance now comes from the STORED, monotonic spend ledger
+    (`spirits.coins_spent`) rather than the sum of applied cosmetics, so undoing/clearing an
+    upgrade never refunds its coins. Single source of truth for the formula shared by the read
+    state, purchases, and resets."""
+    return max(0, level * COINS_PER_LEVEL - coins_spent)
 
 # --- Domain errors (mapped to HTTP in the route layer) ----------------------------------
 
@@ -81,11 +90,21 @@ class CosmeticLocked(Exception):
 
 
 class InsufficientCoins(Exception):
-    """Not enough coins for this cosmetic → 409."""
+    """Not enough coins for this cosmetic / reset → 409."""
 
 
 class AlreadyApplied(Exception):
     """The spirit already has that exact option in that slot — a no-op → 409."""
+
+
+class CosmeticSlotLocked(Exception):
+    """The target slot already has an applied option, so it's locked (ADR-0024). Changing it
+    requires resetting upgrades → 409."""
+
+
+class NothingToReset(Exception):
+    """A reset-upgrades on a spirit with no applied cosmetics — there's nothing to clear, so we
+    don't waste the reset fee → 409 (ADR-0024)."""
 
 
 class PathAlreadyChosen(Exception):
@@ -453,10 +472,11 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
 
 # --- Cosmetics economy (step 5: repoint the derived wallet at spirit slots) -------------
 #
-# The owned cosmetics ARE the spend ledger (ADR-0011), repointed from garden items to the
-# one spirit. Each slot offers a few mutually-exclusive options; choosing one within a slot
-# excludes the others (a swap charges only the difference, like the Sanctuary). Costs spend
-# from the derived coin balance (`level × COINS_PER_LEVEL − Σ owned-option cost`).
+# Each slot offers a few mutually-exclusive options. ADR-0024: a slot is applied ONCE and
+# then LOCKED — there is no within-slot swap; changing an applied slot requires a paid
+# upgrades-reset (which clears all slots, no refund). Costs spend from the derived coin
+# balance, which now comes from the STORED `coins_spent` ledger (`level × COINS_PER_LEVEL −
+# coins_spent`), not the sum of applied cosmetics, so clearing a slot never refunds it.
 #
 # Kept calm and modest, on-theme (docs/design/spirit.md "Coins"): a soft aura, a small
 # accessory, and a habitat/backdrop the spirit sits in. The Sanctuary's progressive
@@ -529,31 +549,32 @@ def _available_slots(
     """The cosmetics catalog with per-option state — the same calm "personalize" shape the
     Sanctuary panel uses: each option's cost plus unlocked / affordable / applied hints.
 
-    `affordable` is computed against the *net* cost of a swap (the new option's cost minus
-    what is already sunk in this slot), so the client's affordability gate matches exactly
-    what `buy_cosmetic` will deduct — an already-owned-slot swap to a cheaper option always
-    reads affordable, and a more expensive one only when the difference is covered.
+    ADR-0024: a slot with an applied option is LOCKED — its options can't be bought until
+    upgrades are reset — so the slot exposes a `locked` flag for the UI to disable it.
+    `affordable` is the FULL option cost against the balance (no swap/net math anymore), since
+    a slot is applied once and then locked rather than swapped.
     """
     out: list[SpiritAvailableSlot] = []
     for slot, options in SPIRIT_COSMETICS_CATALOG.items():
         applied = cosmetics.get(slot)
-        already_in_slot = _option_cost(slot, applied) if applied is not None else 0
+        locked = applied is not None
         opts: list[SpiritSlotOption] = []
         for option, spec in options.items():
             unlock_level = spec["unlock_level"]
             unlocked = level >= unlock_level
-            net_cost = spec["cost"] - already_in_slot
             opts.append(
                 SpiritSlotOption(
                     option=option,
                     cost=spec["cost"],
                     unlocked=unlocked,
                     unlock_hint=None if unlocked else f"Reach level {unlock_level}",
-                    affordable=balance >= net_cost,
+                    affordable=balance >= spec["cost"],
                     applied=applied == option,
                 )
             )
-        out.append(SpiritAvailableSlot(slot=slot, applied=applied, options=opts))
+        out.append(
+            SpiritAvailableSlot(slot=slot, applied=applied, locked=locked, options=opts)
+        )
     return out
 
 
@@ -628,7 +649,8 @@ def _build_state(
     level = basis.level
 
     cosmetics = _cosmetics(spirit)
-    coins = _coin_balance(level, cosmetics)
+    # ADR-0024: the balance comes from the STORED spend ledger, not the applied cosmetics.
+    coins = _coin_balance(level, spirit.coins_spent)
 
     # GUARDRAIL (ADR-0023): the three needs (and the overall condition derived from them) are
     # visual-only — they are NOT read by stage/coins above, so a neglected creature never loses
@@ -686,9 +708,10 @@ def choose_path(
     today: date,
     tz: str = "UTC",
 ) -> SpiritState:
-    """Choose the active creature ONCE (ADR-0023). Sets `path` only while it is currently
-    NULL; a re-choose raises PathAlreadyChosen (409). The schema already constrains `path` to
-    a valid enum value (bad value → 422 before we get here).
+    """Choose the active creature + name it ONCE (ADR-0023 / ADR-0024). Sets `path` AND `name`
+    atomically only while `path` is currently NULL; a re-choose raises PathAlreadyChosen (409).
+    The schema already constrains `path` to a valid enum value (bad value → 422) and requires a
+    non-empty, length-capped `name` (empty/whitespace → 422) before we get here.
 
     Race-safe and idempotent like the rest of the spirit writes: a conditional UPDATE
     (`WHERE id = :id AND path IS NULL`) under the per-user advisory lock, so two concurrent
@@ -702,7 +725,7 @@ def choose_path(
     result = db.execute(
         Spirit.__table__.update()
         .where(Spirit.id == spirit.id, Spirit.path.is_(None))
-        .values(path=data.path)
+        .values(path=data.path, name=data.name)
     )
     db.commit()
     if not result.rowcount:
@@ -710,6 +733,7 @@ def choose_path(
         db.refresh(spirit)
         raise PathAlreadyChosen(str(spirit.id))
     spirit.path = data.path
+    spirit.name = data.name
     return _build_state(db, user_id, spirit, today=today, tz=tz)
 
 
@@ -723,11 +747,11 @@ def buy_cosmetic(
 ) -> SpiritState:
     """Buy/apply a cosmetic option to a slot on the active spirit.
 
-    Validates: unknown slot/option → UnknownCosmetic (404); option not unlocked by level →
-    CosmeticLocked (409); already the applied option → AlreadyApplied (409); can't afford the
-    net cost → InsufficientCoins (409). A within-slot swap charges only the difference (the
-    new option's cost minus what's already sunk in that slot), mirroring the Sanctuary, so a
-    swap is never punishing and the derived balance stays consistent with `_cosmetics_spent`.
+    ADR-0024 (committed upgrades): a slot is applied ONCE and then LOCKED. Validates: unknown
+    slot/option → UnknownCosmetic (404); the slot already has an applied option →
+    CosmeticSlotLocked (409, no swaps); option not unlocked by level → CosmeticLocked (409);
+    can't afford the FULL cost → InsufficientCoins (409). The full option cost is added to the
+    stored `coins_spent` ledger (monotonic — there is no net-of-swap discount and no refund).
     """
     # Validate the catalog request before taking the lock (pure, no DB).
     if data.slot not in SPIRIT_COSMETICS_CATALOG:
@@ -735,56 +759,100 @@ def buy_cosmetic(
     if data.option not in SPIRIT_COSMETICS_CATALOG[data.slot]:
         raise UnknownCosmetic(data.option)
 
-    # Lock FIRST — so the affordability math AND the cosmetics map we merge onto are read
-    # under the per-user lock; a concurrent buy otherwise reads a stale snapshot and could
-    # double-spend or clobber the JSON column (last-writer-wins).
+    # Lock FIRST — so the affordability math AND the cosmetics/ledger we read are taken under
+    # the per-user lock; a concurrent buy otherwise reads a stale snapshot and could
+    # double-spend or clobber the JSON column / ledger (last-writer-wins).
     _lock_user_spirit(db, user_id)
     spirit = get_or_create_active_spirit(db, user_id)
     current = _cosmetics(spirit)
-    if current.get(data.slot) == data.option:
-        raise AlreadyApplied(data.option)
+    # The slot is applied once, then locked — no swaps, no re-buy (ADR-0024).
+    if data.slot in current:
+        raise CosmeticSlotLocked(data.slot)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
     level = basis.level
     if level < _option_unlock_level(data.slot, data.option):
         raise CosmeticLocked(data.option)
 
-    # Charge only the difference: swapping within a slot costs the new option over what is
-    # already sunk in that slot, so the balance stays consistent with `_cosmetics_spent`.
-    already_in_slot = _option_cost(data.slot, current[data.slot]) if data.slot in current else 0
-    net_cost = _option_cost(data.slot, data.option) - already_in_slot
-    balance = _coin_balance(level, current)
-    if balance < net_cost:
+    # Charge the FULL option cost (no swap discount anymore) and add it to the monotonic
+    # spend ledger, so the balance stays consistent with `coins_spent`.
+    cost = _option_cost(data.slot, data.option)
+    balance = _coin_balance(level, spirit.coins_spent)
+    if balance < cost:
         raise InsufficientCoins(data.option)
 
     updated = dict(current)
     updated[data.slot] = data.option
     spirit.cosmetics = updated
+    spirit.coins_spent = spirit.coins_spent + cost
     db.commit()
     db.refresh(spirit)
     return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
 
 
-def rename_spirit(
+def reset_name(
     db: DBSession,
     user_id: uuid.UUID,
-    data: RenameRequest,
+    data: ResetNameRequest,
     *,
     today: date,
     tz: str = "UTC",
 ) -> SpiritState:
-    """Set or clear the active spirit's nickname. Purely cosmetic — never changes coins.
+    """Change the active spirit's name via a PAID reset (ADR-0024). The name is otherwise
+    immutable (set once at `choose`). Charges RESET_COST against the balance — raises
+    InsufficientCoins (409) when the balance can't cover it — adds it to the monotonic
+    `coins_spent` ledger (no refund), and sets the new validated name.
 
-    The name is already trimmed, capped, and empty→None by the schema (over-length → 422
-    before we get here). Always present in a PATCH body (defaults to None = clear), so we
-    write it unconditionally.
+    The name is already trimmed, required (non-empty), and length-capped by the schema
+    (over-length / blank → 422 before we get here). Serialized under the per-user advisory
+    lock so the read-compute-write of the fee is atomic.
     """
     _lock_user_spirit(db, user_id)
     spirit = get_or_create_active_spirit(db, user_id)
+
+    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    if _coin_balance(basis.level, spirit.coins_spent) < RESET_COST:
+        raise InsufficientCoins("reset-name")
+
     spirit.name = data.name
+    spirit.coins_spent = spirit.coins_spent + RESET_COST
     db.commit()
     db.refresh(spirit)
-    return _build_state(db, user_id, spirit, today=today, tz=tz)
+    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
+
+
+def reset_cosmetics(
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SpiritState:
+    """Clear ALL applied upgrades via a PAID reset (ADR-0024), unlocking every slot to be
+    bought afresh. Charges RESET_COST against the balance — raises InsufficientCoins (409)
+    when the balance can't cover it — and adds it to the monotonic `coins_spent` ledger. The
+    cleared cosmetics' cost stays SUNK in the ledger (no refund) — that is the whole point of
+    the committed economy.
+
+    If there are no applied cosmetics there's nothing to reset, so we raise NothingToReset
+    (409) rather than waste the fee. Serialized under the per-user advisory lock so the
+    read-compute-write of the fee is atomic.
+    """
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+    if not _cosmetics(spirit):
+        raise NothingToReset(str(spirit.id))
+
+    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
+    if _coin_balance(basis.level, spirit.coins_spent) < RESET_COST:
+        raise InsufficientCoins("reset-upgrades")
+
+    # Clear the applied upgrades but DO NOT refund their cost — coins_spent only grows.
+    spirit.cosmetics = {}
+    spirit.coins_spent = spirit.coins_spent + RESET_COST
+    db.commit()
+    db.refresh(spirit)
+    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
 
 
 def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -> SpiritState:
