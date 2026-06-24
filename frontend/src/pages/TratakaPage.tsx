@@ -441,9 +441,10 @@ export default function TratakaPage() {
         </button>
       )}
 
-      {/* ── About: what Trataka is and why people practise it ──────────────────── */}
-      <section className="trataka-about" aria-labelledby="trataka-about-h">
-        <h2 id="trataka-about-h">About candle gazing</h2>
+      {/* ── About: tucked into a collapsed disclosure so the practice stays the focus ── */}
+      <details className="trataka-about">
+        <summary className="trataka-about-summary">About candle gazing</summary>
+        <div className="trataka-about-body">
         <p>
           Candle gazing — traditionally called <em>Trataka</em> — is a yogic concentration
           practice (a form of <em>dharana</em>):
@@ -475,7 +476,8 @@ export default function TratakaPage() {
           A gentle, traditional focus practice — supportive, not clinical, and not a medical
           measurement or diagnosis.
         </p>
-      </section>
+        </div>
+      </details>
 
       {reward && (
         <RewardOverlay
