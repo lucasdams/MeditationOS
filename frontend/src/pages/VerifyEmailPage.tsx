@@ -77,7 +77,7 @@ export default function VerifyEmailPage() {
             <>
               <p>We can send a fresh confirmation link to {user.email}.</p>
               {resend === 'sent' ? (
-                <p className="verify-banner-note">Sent — check your inbox.</p>
+                <p role="status" className="verify-banner-note">Sent — check your inbox.</p>
               ) : (
                 <button type="button" onClick={handleResend} disabled={resend === 'sending'}>
                   {resend === 'sending' ? 'Sending…' : 'Send a new link'}

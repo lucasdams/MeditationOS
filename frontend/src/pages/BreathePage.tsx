@@ -22,6 +22,8 @@ import { dailySuggestion } from '../lib/intentionPrompts'
 import {
   SoundscapeEngine,
   loadSoundscapePref,
+  loadSoundscapeVolPref,
+  saveSoundscapeVolPref,
   type SoundscapeName,
 } from '../lib/soundscapes'
 import {
@@ -35,6 +37,7 @@ import {
 } from '../lib/sessionDraft'
 import type { SessionCreate } from '../types'
 import {
+  MAX_SCALE,
   MIN_SCALE,
   PRESETS,
   PRESET_STORAGE_KEY,
@@ -53,6 +56,11 @@ import {
 // How far ahead (seconds) the scheduler queues audio on the audio clock. Comfortably
 // larger than a throttled background timer tick (~1s), so cues are always queued in time.
 const AUDIO_LOOKAHEAD = 2.5
+
+// When reduced-motion is on we don't animate the circle's scale; instead we hold it at a
+// calm, settled mid-size (between MIN_SCALE and MAX_SCALE) so it reads as a full circle
+// rather than the tiny MIN_SCALE dot it would otherwise freeze at.
+const STATIC_SCALE = (MIN_SCALE + MAX_SCALE) / 2
 
 // A distinct icon + soft tint per pattern, so the cards read apart at a glance.
 const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
@@ -169,7 +177,7 @@ export default function BreathePage() {
   const [presetKey, setPresetKey] = useState<string>(loadPreset)
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
-  const [scale, setScale] = useState(MIN_SCALE)
+  const [scale, setScale] = useState(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
   const [elapsed, setElapsed] = useState(0)
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -206,7 +214,7 @@ export default function BreathePage() {
   const [volume, setVolume] = useState(() => loadPrefs().volume)
   const [targetMin, setTargetMin] = useState(() => loadPrefs().targetMin)
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
-  const [soundscapeVol, setSoundscapeVol] = useState(0.4)
+  const [soundscapeVol, setSoundscapeVol] = useState(loadSoundscapeVolPref)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
   const soundscapeRef = useRef(soundscape)
   const soundscapeVolRef = useRef(soundscapeVol)
@@ -345,6 +353,7 @@ export default function BreathePage() {
 
   useEffect(() => {
     soundscapeEngineRef.current?.setVolume(soundscapeVol)
+    saveSoundscapeVolPref(soundscapeVol)
   }, [soundscapeVol])
 
   useEffect(() => {
@@ -385,9 +394,10 @@ export default function BreathePage() {
         lastPersistRef.current = sec
         persistDraft(total)
       }
-      // When reduced-motion is on, hold the circle static — the CSS global reset can't
-      // catch JS inline transform updates, so we skip them here instead.
-      if (!prefersReducedMotion) setScale(scaleAt(runSec % cycle, p))
+      // When reduced-motion is on, hold the circle static at a calm settled size — the
+      // CSS global reset can't catch JS inline transform updates, so we set a fixed scale
+      // here instead of animating (React bails out of re-render when the value is equal).
+      setScale(prefersReducedMotion ? STATIC_SCALE : scaleAt(runSec % cycle, p))
       setCycles(Math.floor(total / cycle))
       const seg = segmentAt(runSec % cycle, p)
       if (seg !== phaseRef.current) {
@@ -466,8 +476,10 @@ export default function BreathePage() {
     }
   }, [running])
 
-  function startBreathSoundscape() {
-    const name = soundscapeRef.current
+  // Start (or keep) the soundscape for the given name; defaults to the current selection.
+  // An explicit name lets callers act before the ref-syncing effect has run (e.g. the
+  // picker's onChange), while reusing the single start/stop + dedupe logic here.
+  function startBreathSoundscape(name: SoundscapeName = soundscapeRef.current) {
     if (name === 'silent') {
       // No ambient sound for this session — stop any lingering preview.
       soundscapeEngineRef.current?.stop()
@@ -538,7 +550,7 @@ export default function BreathePage() {
     elapsedRef.current = 0
     tokenRef.current = null
     clearDraft(DRAFT_PAGE)
-    setScale(MIN_SCALE)
+    setScale(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
     setPhase('inhale')
   }
 
@@ -926,13 +938,9 @@ export default function BreathePage() {
             previewEnabled={!(running || elapsed > 0)}
             onSoundscapeChange={(name) => {
               setSoundscape(name)
-              if (running) {
-                soundscapeEngineRef.current?.stop()
-                if (name !== 'silent') {
-                  if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-                  soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
-                }
-              }
+              // Switch the live bed during a session, reusing the shared start/stop helper
+              // (which dedupes a matching engine) rather than re-implementing it inline.
+              if (running) startBreathSoundscape(name)
             }}
             onVolumeChange={setSoundscapeVol}
           />

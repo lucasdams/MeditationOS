@@ -3,21 +3,14 @@ import { Link } from 'react-router-dom'
 import { scheduledSessionService } from '../services/scheduledSessions'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { TYPE_COLORS } from '../lib/colors'
-import { localYMD } from '../lib/format'
+import { TYPE_COLORS, TYPE_LABELS } from '../lib/colors'
+import { toDatetimeLocal } from '../lib/format'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import type { MeditationType, ScheduledSession } from '../types'
 
-const TYPES: { value: MeditationType; label: string }[] = [
-  { value: 'mindfulness', label: 'Mindfulness' },
-  { value: 'body_scan', label: 'Body scan' },
-  { value: 'walking', label: 'Walking' },
-  { value: 'loving_kindness', label: 'Loving-kindness' },
-  { value: 'resonance_breathing', label: 'Resonance breathing' },
-  { value: 'other', label: 'Other' },
-]
-const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]))
+// Order shown in the picker; labels come from the shared TYPE_LABELS map.
+const TYPE_OPTIONS = Object.keys(TYPE_LABELS) as MeditationType[]
 
 const DURATIONS = [0, 5, 10, 20, 30, 45, 60]
 
@@ -26,8 +19,7 @@ function defaultWhen(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
   d.setHours(8, 0, 0, 0)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${localYMD(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return toDatetimeLocal(d)
 }
 
 function formatWhen(iso: string): string {
@@ -51,6 +43,9 @@ export default function SchedulePage() {
   const [duration, setDuration] = useState(0)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Earliest selectable instant for the picker — keeps the native UI from offering
+  // past times (the list filters those out anyway).
+  const minWhen = toDatetimeLocal(new Date())
 
   const handleDelete = useUndoableDelete<ScheduledSession>({
     list: items,
@@ -92,6 +87,12 @@ export default function SchedulePage() {
       setError('Pick a date and time.')
       return
     }
+    // The Upcoming list only shows future sessions, so a past pick would save but
+    // silently never appear — reject it with a clear message instead.
+    if (new Date(when).getTime() <= Date.now()) {
+      setError('Pick a time in the future.')
+      return
+    }
     setSubmitting(true)
     try {
       await scheduledSessionService.create({
@@ -124,9 +125,9 @@ export default function SchedulePage() {
       <form onSubmit={handleSubmit} noValidate className="schedule-form">
         <label htmlFor="sched-type">Type</label>
         <select id="sched-type" value={type} onChange={(e) => setType(e.target.value as MeditationType)}>
-          {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {TYPE_OPTIONS.map((value) => (
+            <option key={value} value={value}>
+              {TYPE_LABELS[value]}
             </option>
           ))}
         </select>
@@ -135,6 +136,7 @@ export default function SchedulePage() {
         <input
           id="sched-when"
           type="datetime-local"
+          min={minWhen}
           value={when}
           onChange={(e) => setWhen(e.target.value)}
         />
@@ -186,7 +188,7 @@ export default function SchedulePage() {
                 <strong>{formatWhen(s.scheduled_at)}</strong>
                 <span className="muted">
                   {' '}
-                  · {TYPE_LABEL[s.type] ?? s.type}
+                  · {TYPE_LABELS[s.type] ?? s.type}
                   {s.duration_minutes ? ` · ${s.duration_minutes} min` : ''}
                 </span>
                 {s.note && <div className="muted schedule-note">{s.note}</div>}

@@ -6,6 +6,7 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
+import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
 import { SEASON_PREFS, SEASONS, type ColorModePref } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
@@ -231,6 +232,9 @@ export default function SettingsPage() {
           ? 'That email already has an account.'
           : messageForError(err),
       )
+    } finally {
+      // Normally the section unmounts on success (is_guest flips false); reset anyway so
+      // the button never stays stuck on 'Saving…' if the user object shape is unchanged.
       setSavingClaim(false)
     }
   }
@@ -277,7 +281,7 @@ export default function SettingsPage() {
     setQuestError(null)
     setQuestOk(false)
     if (questFeatures.length < MIN_QUEST_FEATURES) {
-      setQuestError(`Pick at least ${MIN_QUEST_FEATURES}.`)
+      setQuestError(tooFewQuestsMessage)
       return
     }
     setSavingQuests(true)
@@ -297,14 +301,24 @@ export default function SettingsPage() {
     setReminderError(null)
     setReminderOk(false)
     setSavingReminder(true)
+    // Two separate endpoints: persist the reminder first, then the streak-save toggle.
+    // Track whether the first write landed so a failure on the second can report the
+    // partial state honestly instead of a blanket "nothing saved" error.
+    let remindersSaved = false
     try {
       await authService.setReminders(remindersEnabled, remindersEnabled ? reminderHour : null)
+      remindersSaved = true
       // The streak-save nudge only fires when reminders are on; persist its toggle too.
       await authService.setStreakSave(streakSaveEnabled)
       await refresh()
       setReminderOk(true)
     } catch (err) {
-      setReminderError(messageForError(err))
+      await refresh() // reflect whatever did persist
+      setReminderError(
+        remindersSaved
+          ? 'Your reminder time was saved, but the streak-save nudge couldn’t be updated. Please try again.'
+          : messageForError(err),
+      )
     } finally {
       setSavingReminder(false)
     }
@@ -403,7 +417,7 @@ export default function SettingsPage() {
               {usernameError}
             </p>
           )}
-          {usernameOk && <p className="success">Username updated.</p>}
+          {usernameOk && <p role="status" className="success">Username updated.</p>}
           <button type="submit" disabled={savingUsername}>
             {savingUsername ? 'Saving…' : 'Save username'}
           </button>
@@ -443,7 +457,7 @@ export default function SettingsPage() {
               </p>
             )}
             {emailOk && (
-              <p className="success">Email updated — check your inbox to verify it.</p>
+              <p role="status" className="success">Email updated — check your inbox to verify it.</p>
             )}
             <button type="submit" disabled={savingEmail}>
               {savingEmail ? 'Saving…' : 'Change email'}
@@ -496,7 +510,7 @@ export default function SettingsPage() {
             </p>
           )}
           {passwordOk && (
-            <p className="success">{hasPassword ? 'Password changed.' : 'Password set.'}</p>
+            <p role="status" className="success">{hasPassword ? 'Password changed.' : 'Password set.'}</p>
           )}
           <button type="submit" disabled={savingPassword}>
             {savingPassword ? 'Saving…' : hasPassword ? 'Change password' : 'Set password'}
@@ -511,25 +525,18 @@ export default function SettingsPage() {
           Choose which practices you get daily quests for — at least {MIN_QUEST_FEATURES}.
         </p>
         <form onSubmit={handleQuests} noValidate>
-          <fieldset className="quest-picker">
-            <legend className="sr-only">Daily quest practices</legend>
-            {QUEST_FEATURES.map((f) => (
-              <label key={f.key} className="settings-check">
-                <input
-                  type="checkbox"
-                  checked={questFeatures.includes(f.key)}
-                  onChange={(e) => toggleQuest(f.key, e.target.checked)}
-                />
-                {f.label}
-              </label>
-            ))}
-          </fieldset>
+          <QuestPicker
+            selected={questFeatures}
+            onToggle={toggleQuest}
+            optionClassName="settings-check"
+            legend="Daily quest practices"
+          />
           {questError && (
             <p role="alert" className="error">
               {questError}
             </p>
           )}
-          {questOk && <p className="success">Quest preferences saved.</p>}
+          {questOk && <p role="status" className="success">Quest preferences saved.</p>}
           <button type="submit" disabled={savingQuests}>
             {savingQuests ? 'Saving…' : 'Save quests'}
           </button>
@@ -589,7 +596,7 @@ export default function SettingsPage() {
               {reminderError}
             </p>
           )}
-          {reminderOk && <p className="success">Reminder preferences saved.</p>}
+          {reminderOk && <p role="status" className="success">Reminder preferences saved.</p>}
           <button type="submit" disabled={savingReminder}>
             {savingReminder ? 'Saving…' : 'Save reminders'}
           </button>
@@ -638,7 +645,7 @@ export default function SettingsPage() {
               {summaryError}
             </p>
           )}
-          {summaryOk && <p className="success">Weekly summary preferences saved.</p>}
+          {summaryOk && <p role="status" className="success">Weekly summary preferences saved.</p>}
           <button type="submit" disabled={savingSummary}>
             {savingSummary ? 'Saving…' : 'Save weekly summary'}
           </button>
@@ -664,7 +671,6 @@ export default function SettingsPage() {
           id="color-mode"
           value={colorMode}
           onChange={(e) => setColorMode(e.target.value as ColorModePref)}
-          style={{ maxWidth: '14rem' }}
         >
           {COLOR_MODE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -672,11 +678,11 @@ export default function SettingsPage() {
             </option>
           ))}
         </select>
-        <p className="muted" style={{ marginTop: '0.4rem', marginBottom: '0.1rem' }}>
+        <p className="muted settings-hint">
           {COLOR_MODE_HINTS[colorMode]}
         </p>
 
-        <p className="muted" style={{ marginTop: '1.25rem', marginBottom: '0.1rem' }}>
+        <p className="muted settings-section-note">
           A seasonal tint colors the background, and the light shifts with your local
           time of day. Pick a season, or let it follow the calendar.
         </p>

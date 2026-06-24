@@ -8,9 +8,10 @@ import type { ReactNode } from 'react'
  */
 
 // A quiet "Loading…" line. `label` overrides the default copy where a page used
-// something more specific.
-export function Loading({ label = 'Loading…' }: { label?: string }) {
-  return <p>{label}</p>
+// something more specific; `className` lets a caller keep its existing placement
+// (e.g. "centered" full-page, or "muted" inside a fallback).
+export function Loading({ label = 'Loading…', className }: { label?: string; className?: string }) {
+  return <p className={className}>{label}</p>
 }
 
 // An accessible error banner — the `<p role="alert" className="error">` that

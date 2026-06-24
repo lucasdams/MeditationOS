@@ -214,10 +214,13 @@ export default function MeditatePage() {
     soundscapeEngineRef.current?.setVolume(soundscapeVol)
   }, [soundscapeVol])
 
-  // Stop and clean up the soundscape engine on unmount.
+  // Stop the soundscape engine and cancel any in-progress / queued speech on
+  // unmount. (GuidedCues also cancels speech on its own unmount; this covers
+  // leaving the page while the cues overlay is hidden, e.g. before the first phase.)
   useEffect(() => {
     return () => {
       soundscapeEngineRef.current?.stop()
+      cancelSpeech()
     }
   }, [])
 
@@ -228,13 +231,6 @@ export default function MeditatePage() {
   useEffect(() => {
     const off = onVoicesReady(() => setSpeechSupported(speechAvailable()))
     return off
-  }, [])
-
-  // Belt-and-braces: cancel any in-progress / queued speech if the page unmounts
-  // mid-sit (GuidedCues also cancels on its own unmount; this covers leaving the
-  // page while the cues overlay is hidden, e.g. before the first phase).
-  useEffect(() => {
-    return () => cancelSpeech()
   }, [])
 
   function bell() {
@@ -388,8 +384,14 @@ export default function MeditatePage() {
 
     // Fetch pre-save stats outside the save try/catch so a getStats failure before
     // the create does not silently swallow the real save error. If the pre-fetch fails
-    // we still save; XP breakdown will show zeros.
-    const before = await dashboardService.getStats().catch(() => ZERO_STATS)
+    // we still save, but we suppress the XP reward (a confident "0 XP" would be a lie).
+    let statsFailed = false
+    const before = await dashboardService
+      .getStats()
+      .catch(() => {
+        statsFailed = true
+        return ZERO_STATS
+      })
 
     // The save itself — this is the one step that must succeed.
     let saved: { id: string }
@@ -425,10 +427,23 @@ export default function MeditatePage() {
       preReadingIdRef.current = null
     }
 
-    // Post-save stats are best-effort: if getStats throws the session is still saved
-    // and the reward overlay still fires (with a zero/minimal breakdown). The user
-    // must not see "Could not save the session." when only the stats fetch failed.
-    const after = await dashboardService.getStats().catch(() => ZERO_STATS)
+    // Post-save stats are best-effort: the session is already saved. The user must
+    // not see "Could not save the session." when only the stats fetch failed.
+    const after = await dashboardService.getStats().catch(() => {
+      statsFailed = true
+      return ZERO_STATS
+    })
+
+    // If either stats fetch fell back to zeros, the breakdown is meaningless (it
+    // would render a confident "0 XP / level 1" after a real sit). Skip the reward
+    // overlay and go straight to the reflection step rather than showing fake numbers.
+    if (statsFailed) {
+      setSaving(false)
+      if (savedSessionIdRef.current) setShowReflection(true)
+      else navigate('/')
+      return
+    }
+
     const bd = buildXpBreakdown(before, after, '🧘 Meditation')
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
@@ -441,7 +456,10 @@ export default function MeditatePage() {
       return
     }
     bell() // closing bell
-    void saveSession(elapsed)
+    // pause() above flushed the exact accumulated seconds into baseElapsedRef;
+    // save that rather than the `elapsed` state, which can lag by up to the
+    // interval cadence (~250ms) — matches the timed-completion path's precision.
+    void saveSession(baseElapsedRef.current)
   }
 
   // Save an unsaved sit recovered from a previous visit. Idempotent on its token, so if
@@ -747,7 +765,7 @@ export default function MeditatePage() {
             ))}
           </select>
 
-          <label htmlFor="bell-volume">Volume</label>
+          <label htmlFor="bell-volume">Bell volume</label>
           <input
             id="bell-volume"
             className="breathe-volume"

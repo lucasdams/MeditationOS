@@ -84,8 +84,9 @@ const BELLS: Record<BellSound, BellSpec> = {
   // Singing bowl — the default. Lower fundamental than before (A3, was 320 Hz)
   // so the bell sounds deeper and rounder.
   bowl: { partials: [{ freq: 220, gain: 1 }, { freq: 440, gain: 0.35 }], decay: 2.8, peak: 0.26 },
-  // Brighter, shorter tap.
-  chime: { partials: [{ freq: 330, gain: 1 }, { freq: 660, gain: 0.3 }], decay: 1.8, peak: 0.24 },
+  // A soft, low chime — gentler and deeper than before (was 330 Hz / brighter / louder),
+  // with a longer, calmer decay so it reads as a quiet cue, not a tap.
+  chime: { partials: [{ freq: 294, gain: 1 }, { freq: 588, gain: 0.22 }], decay: 2.4, peak: 0.2 },
   // Deep gong — low fundamental with a slightly detuned partial for body.
   gong: {
     partials: [{ freq: 110, gain: 1 }, { freq: 165, gain: 0.5 }, { freq: 221, gain: 0.25 }],

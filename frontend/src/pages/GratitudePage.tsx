@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
@@ -84,6 +84,9 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
 const GRAT_PAGE = 50
+const MAX_LEN = 500
+// Show the remaining-characters hint only as the user nears the limit, so it stays quiet.
+const COUNTER_THRESHOLD = 50
 
 export default function GratitudePage() {
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
@@ -99,6 +102,10 @@ export default function GratitudePage() {
   const [menuId, setMenuId] = useState<string | null>(null) // entry whose Delete is revealed
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  // Stable pagination cursor: the number of rows fetched from the server so far.
+  // Derived from rows received, NOT entries.length (which the user can mutate via
+  // dedup or delete), so the next offset can't skip or re-fetch rows.
+  const loadedCount = useRef(0)
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
@@ -119,6 +126,7 @@ export default function GratitudePage() {
       .list({ limit: GRAT_PAGE, offset: 0 })
       .then((rows) => {
         setEntries(rows)
+        loadedCount.current = rows.length
         setHasMore(rows.length === GRAT_PAGE)
         setLoadError(null)
       })
@@ -143,7 +151,8 @@ export default function GratitudePage() {
     setError(null)
     setLoadingMore(true)
     try {
-      const rows = await gratitudeService.list({ limit: GRAT_PAGE, offset: entries.length })
+      const rows = await gratitudeService.list({ limit: GRAT_PAGE, offset: loadedCount.current })
+      loadedCount.current += rows.length
       setEntries((prev) => {
         const seen = new Set((prev ?? []).map((e) => e.id))
         return [...(prev ?? []), ...rows.filter((r) => !seen.has(r.id))]
@@ -185,15 +194,26 @@ export default function GratitudePage() {
       // Stats are best-effort and sit outside the create: a getStats failure must not
       // surface "could not save" for an entry that did save (which provokes a re-tap
       // and a duplicate, since create carries no idempotency token).
-      const before = await dashboardService.getStats().catch(() => ZERO_STATS)
+      let beforeOk = true
+      const before = await dashboardService.getStats().catch(() => {
+        beforeOk = false
+        return ZERO_STATS
+      })
       const entry = await gratitudeService.create({ category, text: text.trim() })
       setEntries((prev) => [entry, ...(prev ?? [])])
+      // The new row shifts everything down by one server-side; advance the cursor so
+      // the next loadMore doesn't re-fetch the row now sitting at the old boundary.
+      loadedCount.current += 1
       // Post-save stats are best-effort too: the entry is already saved, so fall back
       // to `before` (zero gain) on failure rather than failing the whole save.
       const after = await dashboardService.getStats().catch(() => before)
-      // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
-      const bd = buildXpBreakdown(before, after, '🙏 Gratitude')
-      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
+      // Only show the reward when the BEFORE snapshot is real: with a zeroed `before`
+      // the breakdown would treat the user's entire lifetime XP as this entry's gain.
+      if (beforeOk) {
+        // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
+        const bd = buildXpBreakdown(before, after, '🙏 Gratitude')
+        setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
+      }
       // Return to the "pick a category" state for next time.
       setCategory(null)
       setText('')
@@ -285,11 +305,16 @@ export default function GratitudePage() {
           <textarea
             rows={3}
             value={text}
-            maxLength={500}
+            maxLength={MAX_LEN}
             aria-label="What you're grateful for"
             placeholder={category === 'custom' ? 'Write your own…' : "I'm grateful for…"}
             onChange={(e) => setText(e.target.value)}
           />
+          {MAX_LEN - text.length <= COUNTER_THRESHOLD && (
+            <p className="grat-counter muted" aria-live="polite">
+              {MAX_LEN - text.length} left
+            </p>
+          )}
           <button type="button" onClick={save} disabled={saving || !text.trim()}>
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -317,7 +342,10 @@ export default function GratitudePage() {
               >
                 <div className="journal-entry-head">
                   <span className="muted">{fmtDate(e.created_at)}</span>
-                  <span className="journal-mood" style={{ ['--pill' as any]: color }}>
+                  <span
+                    className="journal-mood"
+                    style={{ '--pill': color } as React.CSSProperties}
+                  >
                     {LABELS[e.category] ?? e.category}
                   </span>
                   <span className="journal-entry-actions" id={`menu-${e.id}`}>

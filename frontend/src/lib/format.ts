@@ -15,3 +15,11 @@ export const localYMD = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
     d.getDate(),
   ).padStart(2, '0')}`
+
+// A Date → the local "YYYY-MM-DDTHH:mm" value that an <input type="datetime-local">
+// expects (the input is interpreted in the browser's local zone). Shared so the
+// log/schedule/timeline pages don't each hand-roll a slightly different version.
+export const toDatetimeLocal = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${localYMD(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}

@@ -69,6 +69,19 @@ export const TYPE_COLORS: Record<MeditationType, string> = {
   other: '#9ca3af',
 }
 
+// Display labels for each meditation type — the single source of truth so the
+// Schedule and Timeline views (and any new surface) can't drift apart when a
+// type is added or renamed. LogSessionPage intentionally shows a narrower
+// 2-type subset with its own copy and stays separate.
+export const TYPE_LABELS: Record<MeditationType, string> = {
+  mindfulness: 'Mindfulness',
+  body_scan: 'Body scan',
+  walking: 'Walking',
+  loving_kindness: 'Loving-kindness',
+  resonance_breathing: 'Resonance breathing',
+  other: 'Other',
+}
+
 // Journal moods, grouped loosely by sentiment — pleasant moods stay warm/bright,
 // neutral is grey, and harder moods take calmer cool tones (never alarm-red).
 export const MOOD_COLORS: Record<Mood, string> = {

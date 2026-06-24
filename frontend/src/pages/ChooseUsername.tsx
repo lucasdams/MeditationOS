@@ -60,6 +60,9 @@ export default function ChooseUsername() {
           ? 'That username is taken — try another.'
           : messageForError(err),
       )
+    } finally {
+      // Reset even on success: refresh() normally unmounts this gate, but if it
+      // resolves without lifting the gate the button must not stay stuck on "Saving…".
       setSubmitting(false)
     }
   }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import GuestButton from '../components/GuestButton'
 import SiteFooter from '../components/SiteFooter'
@@ -15,8 +16,10 @@ const FEATURES = [
 ]
 
 export default function LandingPage() {
+  const [guestError, setGuestError] = useState('')
+
   return (
-    <main className="landing">
+    <main id="main-content" className="landing">
       <section className="landing-hero">
         <h1>MeditationOS</h1>
         <p className="landing-tagline">
@@ -33,8 +36,13 @@ export default function LandingPage() {
           </Link>
         </div>
         <div className="landing-guest">
-          <GuestButton onError={() => {}} />
+          <GuestButton onError={setGuestError} />
           <span className="muted">No sign-up needed to try it.</span>
+          {guestError && (
+            <p className="error" role="alert">
+              {guestError}
+            </p>
+          )}
         </div>
       </section>
 

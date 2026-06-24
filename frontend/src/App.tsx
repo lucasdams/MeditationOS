@@ -18,6 +18,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import CookieNotice from './components/CookieNotice'
 import ZenEgg from './components/ZenEgg'
+import { Loading } from './components/StateViews'
 
 // --- Lazily-loaded routes (heavy pages unlikely to be the first URL visited) ---
 const TratakaPage     = lazy(() => import('./pages/TratakaPage'))
@@ -36,7 +37,7 @@ const AdminPage       = lazy(() => import('./pages/AdminPage'))
 function PageFallback() {
   return (
     <main id="main-content" style={{ padding: '2rem' }}>
-      <p className="muted">Loading…</p>
+      <Loading className="muted" />
     </main>
   )
 }

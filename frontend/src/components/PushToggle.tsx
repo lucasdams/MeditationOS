@@ -48,7 +48,7 @@ export default function PushToggle() {
       <button type="button" onClick={toggle} disabled={busy}>
         {busy ? '…' : on ? 'Turn off push' : 'Enable push'}
       </button>
-      {msg && <p className="success">{msg}</p>}
+      {msg && <p role="status" className="success">{msg}</p>}
       {err && (
         <p role="alert" className="error">
           {err}

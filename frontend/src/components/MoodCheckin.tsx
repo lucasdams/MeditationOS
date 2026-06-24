@@ -13,13 +13,20 @@ type Props = {
   // Heading text — lets the on-open modal frame it on the present moment
   // ("how are you arriving?") while inline use keeps the plain prompt.
   heading?: string
+  // The mood already logged today, if any — surfaced as the pre-selected chip when the
+  // check-in is reopened to re-log, so the prior choice is visible rather than starting blank.
+  initial?: Mood | null
   // Called after a mood saves successfully — the modal uses this to close itself.
   onLogged?: (mood: Mood) => void
 }
 
-export default function MoodCheckin({ heading = 'How do you feel?', onLogged }: Props) {
+export default function MoodCheckin({ heading = 'How do you feel?', initial = null, onLogged }: Props) {
   const { showToast } = useToast()
-  const [logged, setLogged] = useState<Mood | null>(null)
+  // `logged` drives the selected chip — seeded with today's already-logged mood so the
+  // prior choice shows when reopened. `justLogged` gates the confirmation line so it only
+  // appears after an actual save this session, not for the pre-selected initial value.
+  const [logged, setLogged] = useState<Mood | null>(initial)
+  const [justLogged, setJustLogged] = useState(false)
   const [saving, setSaving] = useState<Mood | null>(null)
 
   async function pick(mood: Mood) {
@@ -28,6 +35,7 @@ export default function MoodCheckin({ heading = 'How do you feel?', onLogged }: 
     try {
       await moodLogService.create(mood)
       setLogged(mood)
+      setJustLogged(true)
       showToast('Mood logged. 🌱')
       onLogged?.(mood)
     } catch {
@@ -58,7 +66,7 @@ export default function MoodCheckin({ heading = 'How do you feel?', onLogged }: 
           </button>
         ))}
       </div>
-      {logged && (
+      {justLogged && (
         <p className="muted mood-logged">Thanks for checking in — it feeds your trends.</p>
       )}
     </section>

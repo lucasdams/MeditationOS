@@ -41,6 +41,13 @@
   --orb-glow: rgba(13, 148, 136, 0.28);
   --orb-ring: rgba(255, 255, 255, 0.35);
 
+  /* Breathing circle — indigo (the "Breathe" identity hue). Token-driven like the orb
+     so it carries a soft ring/glow and reads well on both backdrops. */
+  --breathe-from: #818cf8;
+  --breathe-to: #4f46e5;
+  --breathe-glow: rgba(79, 70, 229, 0.28);
+  --breathe-ring: rgba(255, 255, 255, 0.35);
+
   /* Range slider (volume) — track + thumb, theme-aware. */
   --slider-track: #e2e2ea;
   --slider-fill: var(--accent);
@@ -143,6 +150,12 @@
   --orb-glow: rgba(45, 212, 191, 0.22);
   --orb-ring: rgba(255, 255, 255, 0.18);
 
+  /* Breathing circle — soften the indigo on dark so it glows rather than glares. */
+  --breathe-from: #a5b4fc;
+  --breathe-to: #4f46e5;
+  --breathe-glow: rgba(129, 140, 248, 0.24);
+  --breathe-ring: rgba(255, 255, 255, 0.18);
+
   /* Range slider — track reads on dark surfaces; thumb uses the lighter accent. */
   --slider-track: #353a5c;
   --slider-fill: var(--accent);
@@ -219,11 +232,15 @@
     --accent-hover: #a5b4fc;
     --accent-subtle: #1e2242;
     --accent-border: #3730a3;
-    /* Orb + slider — match the explicit dark theme above. */
+    /* Orb + breathing circle + slider — match the explicit dark theme above. */
     --orb-from: #2dd4bf;
     --orb-to: #0f766e;
     --orb-glow: rgba(45, 212, 191, 0.22);
     --orb-ring: rgba(255, 255, 255, 0.18);
+    --breathe-from: #a5b4fc;
+    --breathe-to: #4f46e5;
+    --breathe-glow: rgba(129, 140, 248, 0.24);
+    --breathe-ring: rgba(255, 255, 255, 0.18);
     --slider-track: #353a5c;
     --slider-fill: var(--accent);
     --slider-thumb: var(--accent);
@@ -497,6 +514,13 @@ a:hover { color: var(--accent-hover); }
   font-size: 0.85rem;
 }
 
+.bar-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bar-track {
   background: var(--bar-track);
   border-radius: 999px;
@@ -626,17 +650,58 @@ a:hover { color: var(--accent-hover); }
   box-shadow: 0 4px 16px var(--shadow-modal);
 }
 
+/* Shared row layout for both the desktop dropdown and the mobile inline list: the emoji
+   sits in a fixed-width gutter so every label starts at the same x (no ragged edge).
+   `--more-ink` resolves the per-destination accent (set inline as --more-fill/--more-fill-dark
+   in AppHeader) to the right shade for the current theme — same light/dark pairing the home
+   tiles use — so each item reads as the app's soft colour-tinted pill, not plain text. */
+.nav-more-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  --more-ink: var(--more-fill, var(--accent));
+}
+
+:root[data-theme='dark'] .nav-more-link {
+  --more-ink: var(--more-fill-dark, var(--accent));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .nav-more-link {
+    --more-ink: var(--more-fill-dark, var(--accent));
+  }
+}
+
+.nav-more-icon {
+  flex: none;
+  width: 1.25rem;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Soft colour-tinted pill — a light tint of the destination's accent with that accent as
+   the ink, mirroring the home feature tiles. */
 .nav-more-menu a {
-  padding: 0.6rem 0.85rem;
+  padding: 0.6rem 0.7rem;
   border-radius: 8px;
   text-decoration: none;
-  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 600;
+  color: var(--more-ink);
+  background: color-mix(in srgb, var(--more-ink) 12%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--more-ink) 26%, var(--border));
 }
 
 .nav-more-menu a:hover {
-  background: var(--nav-more-bg);
+  background: color-mix(in srgb, var(--more-ink) 20%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--more-ink) 42%, var(--border));
+}
+
+/* Current route — a deeper tint + a small left bar so you can see where you are. */
+.nav-more-menu a.active {
+  background: color-mix(in srgb, var(--more-ink) 22%, var(--bg-surface));
+  box-shadow: inset 0.2rem 0 0 var(--more-ink);
 }
 
 .app-user {
@@ -765,10 +830,29 @@ a:hover { color: var(--accent-hover); }
 .settings-check {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  /* flex-start (not center) keeps a wrapped second line hanging under the text
+     rather than under the checkbox on narrow/mobile widths. */
+  align-items: flex-start;
   gap: 0.5rem;
   font-weight: 400;
   margin-top: 0.5rem;
+}
+
+/* Standalone controls (Appearance / Timezone) that sit outside a <form>; cap them
+   to the same width as the section forms so the column reads aligned, not ragged. */
+.settings-section > select,
+.settings-control {
+  max-width: 22rem;
+}
+
+.settings-hint {
+  margin-top: 0.4rem;
+  margin-bottom: 0.1rem;
+}
+
+.settings-section-note {
+  margin-top: 1.25rem;
+  margin-bottom: 0.1rem;
 }
 
 .settings-check input {
@@ -887,8 +971,9 @@ a:hover { color: var(--accent-hover); }
   bottom: 1rem;
   margin: 0 auto;
   max-width: 40rem;
-  background: #1c1c1e;
-  color: #fff;
+  /* Intentionally always-dark (see --cookie-bg/--cookie-text), regardless of theme. */
+  background: var(--cookie-bg);
+  color: var(--cookie-text);
   border-radius: 10px;
   padding: 0.85rem 1rem;
   display: flex;
@@ -955,14 +1040,27 @@ a:hover { color: var(--accent-hover); }
 }
 
 .landing-primary {
-  background: #4f46e5;
+  background: var(--accent);
+  color: #fff;
+  transition: background 0.15s ease;
+}
+
+.landing-primary:hover {
+  background: var(--accent-hover);
   color: #fff;
 }
 
 .landing-secondary {
   background: var(--bg-surface);
   color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border: 1.5px solid var(--accent);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.landing-secondary:hover {
+  background: var(--accent-subtle);
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
 }
 
 .landing-guest {
@@ -1314,7 +1412,7 @@ a:hover { color: var(--accent-hover); }
 
 .memory-kind {
   font-weight: 600;
-  color: #6d28d9;
+  color: var(--nav-journal-text);
 }
 
 .memory-close {
@@ -1323,13 +1421,13 @@ a:hover { color: var(--accent-hover); }
   padding: 0 0.2rem;
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--text-muted);
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 .memory-close:hover {
-  color: #6d28d9;
+  color: var(--nav-journal-text);
 }
 
 .memory-text {
@@ -1479,7 +1577,7 @@ a:hover { color: var(--accent-hover); }
 .journal-session {
   margin: 0.4rem 0 0;
   font-size: 0.8rem;
-  color: #6d28d9;
+  color: var(--nav-journal-text);
 }
 
 .goal-compose {
@@ -1502,7 +1600,7 @@ a:hover { color: var(--accent-hover); }
 }
 
 .goal-tab.active {
-  background: #4f46e5;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -1515,9 +1613,15 @@ a:hover { color: var(--accent-hover); }
 
 .goal-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.4rem 0.6rem;
   font-size: 0.9rem;
+}
+
+.goal-card-head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .goal-cadence {
@@ -3223,6 +3327,12 @@ textarea:focus-visible,
   color: var(--success-text);
   border: 1px solid #bbf7d0;
   cursor: pointer;
+  /* Keep each option a clean single-line capsule. Long emoji-suffixed labels (e.g.
+     "Lighthouse keeper's") would otherwise wrap inside the pill at mobile widths, breaking
+     the rounded-pill shape into a lumpy two-line capsule; the wrapping flex row above flows
+     pills to new lines instead. max-width guards against a single pill exceeding the panel. */
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .sanctuary-option.applied {
@@ -3553,7 +3663,9 @@ textarea:focus-visible,
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  /* Above the cookie notice (z-index:50) so an open dialog is never fought by the
+     bottom-pinned cookie bar. */
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3600,12 +3712,12 @@ textarea:focus-visible,
 }
 
 .reward-up {
-  color: #059669;
+  color: var(--success-text);
 }
 
 .reward-coins {
   font-size: 0.85rem;
-  color: #b45309;
+  color: var(--warning-text);
   margin-top: 0.5rem;
 }
 
@@ -4318,6 +4430,15 @@ textarea:focus-visible,
 .timeline-text {
   font-size: 0.9rem;
   line-height: 1.35;
+  /* A long journal/gratitude body (up to 2000 chars) would dwarf the compact
+     session/mood rows — clamp to a few lines and break unbreakable tokens so the
+     feed keeps its scannable rhythm. */
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 /* The mood chip otherwise inherits the full body size — shrink it to match the row. */
@@ -4439,6 +4560,13 @@ textarea:focus-visible,
   width: 100%;
 }
 
+/* Quiet "N left" hint that only appears near the 500-char limit. */
+.grat-counter {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  text-align: right;
+}
+
 .grat-compose button {
   width: auto;
   padding: 0.6rem 1.25rem;
@@ -4491,12 +4619,17 @@ textarea:focus-visible,
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, #818cf8, #4f46e5);
+  /* Indigo, but token-driven (like .meditate-orb) so it reads on both backdrops and
+     carries a soft ring/glow rather than a flat disc. */
+  background: radial-gradient(circle at 50% 40%, var(--breathe-from), var(--breathe-to));
+  box-shadow:
+    0 10px 30px var(--breathe-glow),
+    inset 0 0 0 1px var(--breathe-ring);
   /* transform (scale) is set inline from JS each frame */
 }
 
 .breathe-circle.idle {
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 /* Meditation timer: a calm orb with the time at its centre. Teal echoes the
@@ -4626,7 +4759,10 @@ textarea:focus-visible,
   right: 0;
   bottom: 1.75rem;
   z-index: 31;
-  margin: 0;
+  /* Centre a constrained bar rather than letting a lone Pause button span the whole
+     viewport — calmer against the minimal black gaze stage. */
+  width: min(22rem, calc(100% - 2rem));
+  margin: 0 auto;
   opacity: 0.16;
   transition: opacity 0.4s ease;
 }
@@ -4635,6 +4771,15 @@ textarea:focus-visible,
 .trataka-immersive .breathe-controls:hover,
 .trataka-immersive .breathe-controls:focus-within {
   opacity: 1;
+}
+
+/* Touch devices have no hover, so the dim baseline above would hide the only exit
+   affordance (Pause / Finish & save). On coarse pointers keep the controls clearly
+   visible at all times. */
+@media (hover: none) {
+  .trataka-immersive .breathe-controls {
+    opacity: 1;
+  }
 }
 
 /* About section — explanatory, low-key prose. Left-aligned for readability,
@@ -4950,8 +5095,12 @@ details[open] .meditate-disclosure-summary::before {
   background: var(--accent);
 }
 
+/* A locked stepper (e.g. Duration during a sit) should read as calmly inactive,
+   not as a heavy grey block: soft raised surface with a faint glyph rather than
+   white-on-mid-grey. Theme-aware in every mode. */
 .stepper-btn:disabled {
-  background: var(--border-strong);
+  background: var(--bg-surface-raised);
+  color: var(--text-faint);
   cursor: default;
 }
 
@@ -5216,12 +5365,19 @@ details[open] .meditate-disclosure-summary::before {
   .nav-mobile-extra a {
     padding: 0.6rem 0.85rem;
     border-radius: 8px;
-    color: var(--text-secondary);
     text-decoration: none;
     font-size: 0.95rem;
+    color: var(--more-ink);
+    background: color-mix(in srgb, var(--more-ink) 12%, var(--bg-surface));
+    border: 1px solid color-mix(in srgb, var(--more-ink) 26%, var(--border));
   }
   .nav-mobile-extra a:hover {
-    background: var(--chip-bg);
+    background: color-mix(in srgb, var(--more-ink) 20%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--more-ink) 42%, var(--border));
+  }
+  .nav-mobile-extra a.active {
+    background: color-mix(in srgb, var(--more-ink) 22%, var(--bg-surface));
+    box-shadow: inset 0.2rem 0 0 var(--more-ink);
   }
 }
 
@@ -5591,6 +5747,19 @@ details[open] .meditate-disclosure-summary::before {
 .schedule-ics {
   font-size: 0.85rem;
   white-space: nowrap;
+}
+
+/* On narrow phones the date/type/note block and the two action controls compete
+   for one cramped row — stack the actions beneath the content instead. */
+@media (max-width: 480px) {
+  .schedule-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .schedule-actions {
+    justify-content: flex-end;
+  }
 }
 
 /* Onboarding wizard (first run). */
@@ -6102,10 +6271,15 @@ details[open] .meditate-disclosure-summary::before {
   line-height: 1.4;
 }
 
-.journal-nudge-text:hover {
+.journal-nudge-text:hover:not(:disabled) {
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.journal-nudge-text:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .journal-nudge-actions {
@@ -6512,12 +6686,6 @@ details[open] .meditate-disclosure-summary::before {
 :root[data-theme='dark'] .pace-difficulty.d-expert,
 :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-expert {
   color: #f87171;
-}
-
-:root[data-theme='dark'] .stepper-btn:disabled,
-:root:not([data-theme='light']):not([data-theme='dark']) .stepper-btn:disabled {
-  background: var(--bg-surface-raised);
-  color: var(--text-faint);
 }
 
 /* Beat the inline near-white tints set in BreathePage.tsx. */
