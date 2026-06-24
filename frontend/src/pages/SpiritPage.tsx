@@ -6,6 +6,10 @@ import {
   SpiritArt,
   STAGE_COPY,
   PATH_COPY,
+  DOSHA,
+  PATH_ORDER,
+  NeedsReadout,
+  CareNudge,
   formFor,
   prefersReducedMotion,
 } from '../components/Spirit'
@@ -163,6 +167,21 @@ export default function SpiritPage() {
     }
   }
 
+  // Choose the active creature (ADR-0023) — only offered while the spirit is pathless. The write
+  // returns the fresh state (now with a path + creature form), so we just swap it in (no refetch).
+  async function choose(path: SpiritPath) {
+    setBusy(`choose:${path}`)
+    try {
+      const next = await spiritService.choose({ path })
+      setSpirit(next)
+      showToast(`Your ${DOSHA[path].name} spirit awakens. ${DOSHA[path].glyph}`)
+    } catch {
+      showToast('Could not choose that creature — please try again.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   // Awaken a new spark — retires the current radiant spirit into the collection. Only reachable
   // at radiant (the action is hidden otherwise); the confirmation states what it does first.
   async function awaken() {
@@ -218,7 +237,7 @@ export default function SpiritPage() {
                 <SpiritArt
                   stage={spirit.stage}
                   path={form}
-                  glow={spirit.daily_glow}
+                  glow={spirit.condition.factor}
                   cosmetics={previewCosmetics}
                   reducedMotion={reducedMotion}
                   previewing={preview !== null}
@@ -231,7 +250,7 @@ export default function SpiritPage() {
                 {spirit.path ? (
                   <> · {PATH_LABEL[spirit.path]} spirit</>
                 ) : (
-                  <span className="muted"> · leaning toward {PATH_LABEL[form]}</span>
+                  <span className="muted"> · a pathless spark</span>
                 )}
               </p>
               <p className="muted spirit-hero-bond">Bond level {spirit.bond.level}</p>
@@ -239,6 +258,28 @@ export default function SpiritPage() {
                 <CoinIcon /> {spirit.coins} <span className="muted">coins to spend</span>
               </p>
             </section>
+
+            {/* Care (ADR-0023) — the three tended needs + a single kind nudge when one is low.
+                Only for a chosen creature; a pathless spark has no needs yet (the picker leads). */}
+            {spirit.path && (
+              <section className="spirit-section spirit-care" aria-label="Care">
+                <header className="spirit-section-head">
+                  <h2 className="spirit-section-title">Care</h2>
+                  <p className="muted spirit-section-subtitle">
+                    Keep your {PATH_LABEL[spirit.path]} in good shape by doing its kind of practice.
+                  </p>
+                </header>
+                <NeedsReadout needs={spirit.needs} />
+                <CareNudge needs={spirit.needs} path={spirit.path} />
+              </section>
+            )}
+
+            {/* Choose your creature (ADR-0023) — the "3 starter choices". Shown only while the
+                spirit is pathless (first awakening, or again after set-free). Picking adopts that
+                creature; the spark then grows down its chosen form. */}
+            {spirit.path === null && (
+              <DoshaPicker busy={busy} onChoose={choose} />
+            )}
 
             {/* How it grows + set free — a calm explainer of the path to radiance. */}
             <section className="spirit-section spirit-journey" aria-label="How your spirit grows">
@@ -332,7 +373,7 @@ export default function SpiritPage() {
                             type="button"
                             className={`spirit-option${applied ? ' applied' : ''}${
                               gated && !applied ? ' gated' : ''
-                            }`}
+                            }${!opt.unlocked ? ' locked' : ''}`}
                             disabled={hardDisabled}
                             aria-disabled={(gated && !applied) || undefined}
                             aria-label={ariaLabel}
@@ -348,7 +389,15 @@ export default function SpiritPage() {
                             {applied ? (
                               `✓ ${optionLabel(opt.option)}`
                             ) : !opt.unlocked ? (
-                              `🔒 ${optionLabel(opt.option)}`
+                              // Level-gated upgrades are shown, NOT hidden (ADR-0023 / task #4):
+                              // a lock badge + the unlock requirement, so the user sees what
+                              // they're working toward. Non-buyable until reached.
+                              <>
+                                <span aria-hidden="true">🔒</span> {optionLabel(opt.option)}
+                                <span className="spirit-option-lock">
+                                  {opt.unlock_hint ?? 'Keep practicing'}
+                                </span>
+                              </>
                             ) : !opt.affordable ? (
                               <>
                                 {optionLabel(opt.option)} · <CoinIcon /> {opt.cost} (earn more)
@@ -509,5 +558,59 @@ function SpiritNickname({
         )}
       </span>
     </label>
+  )
+}
+
+/**
+ * DoshaPicker — the "3 starter choices" (ADR-0023). A calm pick-your-creature screen shown only
+ * while the spirit is pathless (first awakening, or again after set-free). Three cards (Kapha /
+ * Pitta / Vata), each with its dosha name, elements, vibe, and the practice that keeps it in
+ * shape. Picking calls `onChoose(path)`, which the page swaps in. Low-pressure: it's an
+ * invitation, not a sale — each card is one clear, reversible-only-by-set-free choice.
+ */
+function DoshaPicker({
+  busy,
+  onChoose,
+}: {
+  busy: string | null
+  onChoose: (path: SpiritPath) => void
+}) {
+  return (
+    <section className="spirit-section spirit-picker" aria-label="Choose your creature">
+      <header className="spirit-section-head">
+        <h2 className="spirit-section-title">Choose your creature</h2>
+        <p className="muted spirit-section-subtitle">
+          Pick the companion whose nature fits you. You’ll keep it in good shape by doing its
+          kind of practice. (You can choose a new one if you ever set this spirit free.)
+        </p>
+      </header>
+      <ul className="spirit-picker-grid">
+        {PATH_ORDER.map((path) => {
+          const d = DOSHA[path]
+          const busyHere = busy === `choose:${path}`
+          return (
+            <li key={path} className={`spirit-picker-card spirit-picker-card--${path}`}>
+              <p className="spirit-picker-glyph" aria-hidden="true">
+                {d.glyph}
+              </p>
+              <p className="spirit-picker-name">{d.name}</p>
+              <p className="muted spirit-picker-element">{d.element}</p>
+              <p className="spirit-picker-vibe">{d.vibe}</p>
+              <p className="muted spirit-picker-practice">
+                Kept in shape by <strong>{d.practice}</strong>.
+              </p>
+              <button
+                type="button"
+                className="spirit-picker-choose"
+                disabled={busy != null}
+                onClick={() => onChoose(path)}
+              >
+                {busyHere ? 'Awakening…' : `Choose ${d.name}`}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }

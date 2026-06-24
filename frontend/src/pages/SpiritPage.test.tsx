@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import type { SpiritAvailableSlot, SpiritState } from '../types'
 
 const get = vi.fn()
+const choose = vi.fn()
 const buyCosmetic = vi.fn()
 const rename = vi.fn()
 const awaken = vi.fn()
@@ -12,6 +13,7 @@ const awaken = vi.fn()
 vi.mock('../services/spirit', () => ({
   spiritService: {
     get: (...a: unknown[]) => get(...a),
+    choose: (...a: unknown[]) => choose(...a),
     buyCosmetic: (...a: unknown[]) => buyCosmetic(...a),
     rename: (...a: unknown[]) => rename(...a),
     awaken: (...a: unknown[]) => awaken(...a),
@@ -40,14 +42,19 @@ const auraSlot: SpiritAvailableSlot = {
   ],
 }
 
+const okNeed = (tier: SpiritState['condition']['tier'] = 'content', factor = 0.85) => ({
+  tier,
+  factor,
+})
+
 function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
   return {
     stage: 'fledgling',
     path: 'stillness',
-    path_lean: 'stillness',
     name: null,
     bond: { level: 7, xp_into_level: 10, xp_for_next: 40 },
-    daily_glow: 0.9,
+    needs: { nourished: okNeed(), rested: okNeed(), joyful: okNeed() },
+    condition: okNeed('content', 0.9),
     coins: 120,
     cosmetics: { aura: 'soft' },
     available: [auraSlot],
@@ -116,8 +123,12 @@ describe('SpiritPage personalize panel', () => {
     const locked = await screen.findByRole('button', { name: /Starlit — locked/ })
     fireEvent.click(locked)
     expect(buyCosmetic).not.toHaveBeenCalled()
-    // The click is acknowledged with the unlock reason rather than doing nothing.
-    await waitFor(() => expect(screen.getByText(/Reach level 5/)).toBeInTheDocument())
+    // The click is acknowledged with the unlock reason in a toast (not a silent no-op). The
+    // requirement also shows on the locked chip itself; target the toast message specifically.
+    await waitFor(() => {
+      const toast = document.querySelector('.toast-message')
+      expect(toast?.textContent).toMatch(/Reach level 5/)
+    })
   })
 
   it('shows an error toast when a buy fails', async () => {
@@ -290,5 +301,108 @@ describe('SpiritPage awaken (radiant only)', () => {
     // Confirm → the service is called.
     fireEvent.click(dialog.getByRole('button', { name: /Awaken a new spark/ }))
     await waitFor(() => expect(awaken).toHaveBeenCalledTimes(1))
+  })
+})
+
+// --- ADR-0023: dosha picker, needs/care, level-gated upgrades ----------------------------
+
+describe('SpiritPage dosha picker (pathless spark)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    choose.mockReset()
+  })
+
+  it('shows the three dosha choices (Kapha / Pitta / Vata) for a pathless spark', async () => {
+    get.mockResolvedValue(spiritWith({ stage: 'spark', path: null }))
+
+    renderPage()
+
+    await screen.findByText('Choose your creature')
+    expect(screen.getByRole('button', { name: /Choose Kapha/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Choose Pitta/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Choose Vata/ })).toBeInTheDocument()
+    // The hero reads as a pathless spark, not a creature.
+    expect(screen.getByText(/a pathless spark/i)).toBeInTheDocument()
+  })
+
+  it('chooses a creature via the service and swaps in the returned state', async () => {
+    get.mockResolvedValue(spiritWith({ stage: 'spark', path: null }))
+    // Choosing Pitta (breath) returns the spirit now committed to that path.
+    choose.mockResolvedValue(spiritWith({ stage: 'spark', path: 'breath' }))
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
+    await waitFor(() => expect(choose).toHaveBeenCalledWith({ path: 'breath' }))
+    // After choosing, the picker is gone (the spirit now has a path).
+    await waitFor(() => expect(screen.queryByText('Choose your creature')).toBeNull())
+  })
+
+  it('hides the picker once a creature is chosen', async () => {
+    get.mockResolvedValue(spiritWith({ path: 'stillness' }))
+
+    renderPage()
+    await screen.findByText('Personalize')
+
+    expect(screen.queryByText('Choose your creature')).toBeNull()
+  })
+})
+
+describe('SpiritPage care needs (ADR-0023)', () => {
+  beforeEach(() => {
+    get.mockReset()
+  })
+
+  it('shows the three needs and a kind care nudge when a need is low', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        path: 'breath', // Pitta → breathwork
+        needs: {
+          nourished: okNeed('restless', 0.5),
+          rested: okNeed('content'),
+          joyful: okNeed('content'),
+        },
+      }),
+    )
+
+    renderPage()
+
+    await screen.findByText('Care')
+    expect(screen.getByText('Nourished')).toBeInTheDocument()
+    expect(screen.getByText('Rested')).toBeInTheDocument()
+    expect(screen.getByText('Joyful')).toBeInTheDocument()
+    // The nudge names the creature (Pitta) and its reviving practice (breathwork), never shaming.
+    expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
+    expect(screen.getByText(/breathwork would revive it/i)).toBeInTheDocument()
+  })
+
+  it('shows no care panel for a pathless spark (no needs yet)', async () => {
+    get.mockResolvedValue(spiritWith({ stage: 'spark', path: null }))
+
+    renderPage()
+    await screen.findByText('Choose your creature')
+
+    expect(screen.queryByText('Care')).toBeNull()
+  })
+})
+
+describe('SpiritPage level-gated upgrades shown, not hidden (ADR-0023 / task #4)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    buyCosmetic.mockReset()
+  })
+
+  it('surfaces a locked option with its level requirement visibly (a lock + "Reach level N")', async () => {
+    get.mockResolvedValue(spiritWith())
+
+    renderPage()
+
+    // The locked Starlit option is shown (not hidden) with its unlock requirement on the chip.
+    const locked = await screen.findByRole('button', { name: /Starlit — locked, reach level 5/i })
+    expect(locked).toBeInTheDocument()
+    // The requirement text is rendered in the panel, so the user can see what to work toward.
+    expect(within(locked).getByText(/Reach level 5/)).toBeInTheDocument()
+    // It stays non-buyable (a locked click never buys).
+    expect(buyCosmetic).not.toHaveBeenCalled()
   })
 })
