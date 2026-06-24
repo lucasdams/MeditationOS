@@ -11,15 +11,18 @@ never *chooses*, and a single `daily_glow` rises with *any* practice, so there's
 favour one practice over another.
 
 We want a stronger, more game-like loop: the user **picks** a companion with a distinct
-personality, and **keeps it in good shape by doing that companion's kind of practice**. Three
-archetypes drawn from Buddhist iconography fit a meditation app and map cleanly onto the
-existing three practice families:
+personality, and **keeps it in good shape by doing that companion's kind of practice**. We theme
+the three on the **Ayurvedic doshas** — a natural fit, because a dosha is precisely something you
+keep *in balance* through the right practices. The three doshas map cleanly onto the existing
+three practice families:
 
-| Creature | Archetype | Its practice (what keeps it in good shape) |
-|----------|-----------|--------------------------------------------|
-| **Peaceful** (`peaceful`) | *śānta* — the serene Buddha (today's stillness form) | Meditation / stillness |
-| **Wrathful** (`wrathful`) | *krodha* — a fierce protector (Mahākāla / Fudō); compassion in fierce form | Resonance breathwork |
-| **Loving** (`loving`) | *karuṇā* — a compassionate being (Tārā / Avalokiteśvara) | Gratitude + journaling |
+| Creature | Dosha (elements) | Signature practice (its main need) |
+|----------|------------------|------------------------------------|
+| **Kapha** (`stillness`) | earth + water — grounded, calm, steady | Meditation / stillness |
+| **Pitta** (`breath`) | fire + water — sharp, intense, energetic | Resonance breathwork |
+| **Vata** (`heart`) | air + ether — light, mobile, expressive | Gratitude + journaling |
+
+(Internal `path` values stay `stillness | breath | heart` — the dosha is the *label*; no rename.)
 
 ## Decision
 
@@ -27,18 +30,25 @@ Replace ADR-0022's practice-auto-detected path with a **chosen creature** plus a
 care mechanic**. The user explicitly asked for a demanding, Tamagotchi-style upkeep loop.
 
 - **Choose your creature (the "3 starter choices").** At first awakening — and again after
-  *setting free* a radiant spirit — the user picks one of the three creatures. The choice is
-  stored in the existing `spirits.path` column (values `peaceful` | `wrathful` | `loving`),
-  set **explicitly** rather than computed. The practice-lean / commit-on-read logic from
-  ADR-0022 is retired.
+  *setting free* a radiant spirit — the user picks one of the three doshas (Kapha / Pitta /
+  Vata). The choice is stored in the existing `spirits.path` column (`stillness` | `breath` |
+  `heart`, labelled as the dosha in the UI), set **explicitly** rather than computed. The
+  practice-lean / commit-on-read logic from ADR-0022 is retired.
 
-- **Per-creature condition (demanding care).** Each creature has a **condition** — a tier of
-  `thriving → content → restless → unwell` — computed from **recent practice of its own kind**
-  over a rolling window (not *any* practice). Do its practice and it climbs toward thriving;
-  neglect it and it declines through the tiers. The decline is **demanding and slow to
-  recover**: condition reflects sustained recent practice (e.g. preferred-practice minutes over
-  the last ~7 days on a concave curve), so one token session does not instantly restore a
-  neglected creature. This replaces the single `daily_glow`.
+- **A few named needs (demanding care).** Each creature has **three tended needs**, each a tier
+  `thriving → content → restless → unwell` (plus a 0..1 factor), all computed from the activity
+  log over a rolling window and all **demanding / slow to recover** (they reflect *sustained*
+  recent activity on a concave curve — one token session does not refill a depleted need):
+  - **Nourished** — its *signature* practice (Kapha ← meditation, Pitta ← breathwork, Vata ←
+    gratitude + journal). The identity need; this is what "different activities for different
+    creatures" means.
+  - **Rested** — practice *rhythm / consistency* (recent active days, the streak) — Ayurvedic
+    *dinacharya*, a steady daily routine.
+  - **Joyful** — *variety* / breadth (distinct practice types practised recently) — not overdoing
+    one thing.
+
+  These replace the single `daily_glow`. The creature's overall look reads from the lowest /
+  composite need, so a neglected need visibly shows.
 
 - **Computed, not stored (unchanged philosophy).** Condition is a pure function of the activity
   log and the chosen creature — no stored decay counter, consistent with
@@ -54,15 +64,19 @@ care mechanic**. The user explicitly asked for a demanding, Tamagotchi-style upk
   earned XP, which only grows) and keeps neglect from being genuinely punishing — the pressure
   is "tend to it", not "lose it".
 
-- **Art — three creatures × five stages.** `peaceful` reuses today's stillness/Buddha form.
-  `wrathful` and `loving` are **new procedural-SVG forms** across all five stages (spark →
-  radiant), reshaping the existing breath/heart renderers into a fierce protector and a
-  compassionate being. Condition modulates the render (vibrancy / posture), reusing the glow
-  plumbing.
+- **Art — three creatures × five stages.** `stillness` (Kapha) reuses today's grounded Buddha
+  form. `breath` (Pitta) and `heart` (Vata) become **new procedural-SVG forms** across all five
+  stages (spark → radiant) — a fiery Pitta and an airy Vata. The needs modulate the render
+  (vibrancy / posture), reusing the glow plumbing. The render is split into a **static background
+  layer** and a **floating creature layer**, so only the creature moves (the background does not
+  drift with it), and the **aura glows on its own independent up/down keyframe** (separate from
+  the float). No new dependency required — layered SVG + CSS.
 
-- **Frontend.** A **starter-choice screen** (three creatures, with a line on what each needs)
-  at first awakening and after set-free; a **condition read-out + care nudge**; the home and
-  `/spirit` art reflect condition.
+- **Frontend.** A **starter-choice screen** (three doshas, each with what it needs) at first
+  awakening and after set-free; a **needs read-out + per-need care nudges** ("Pitta is restless —
+  a few minutes of breathwork would revive it"); the home and `/spirit` art reflect the needs.
+  Plus a **coin fee** to rename and to reset cosmetics, reviving the Sanctuary reset-fee pattern
+  ([ADR-0019](0019-sanctuary-reset-upgrades-for-a-fee.md)).
 
 ## Consequences
 
