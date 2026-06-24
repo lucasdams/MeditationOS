@@ -14,8 +14,6 @@ What it seeds for the demo user (`demo@meditationos.app`):
   * Journals with varied moods, a few linked to sessions.
   * Gratitude entries across several categories.
   * A couple of active goals.
-  * A Sanctuary garden: the seeded sessions earn XP → levels → coins, which we spend
-    via `sanctuary_service` to buy a few items and upgrade one or two tiers.
 
 Idempotent: re-running deletes the demo user's owned rows and re-seeds, so there are
 no duplicates and no crash. Timestamps are written explicitly (past data does not
@@ -25,7 +23,6 @@ depend on "now"), bucketed into the user's local days.
 import argparse
 import random
 import sys
-import uuid
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import delete, select
@@ -37,11 +34,8 @@ from app.core.security import hash_password
 from app.models.goal import Goal, GoalCheckin
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
-from app.models.sanctuary import SanctuaryPlanting
 from app.models.session import Session as PracticeSession
 from app.models.user import QUEST_FEATURES, User
-from app.schemas.sanctuary import BuyRequest, CustomizeRequest
-from app.services import sanctuary_service
 
 DEMO_EMAIL = "demo@meditationos.app"
 DEMO_USERNAME = "demo"
@@ -107,7 +101,6 @@ def _reset_demo_user(db: DBSession) -> User:
         Goal,
         Journal,
         GratitudeEntry,
-        SanctuaryPlanting,
         PracticeSession,
     ):
         db.execute(delete(model).where(model.user_id == user.id))
@@ -300,71 +293,6 @@ def _seed_goals(db: DBSession, user: User) -> None:
     db.commit()
 
 
-def _seed_sanctuary(db: DBSession, user: User, today: date) -> None:
-    """Spend the coins the seeded sessions earned: buy a few items (with a chosen
-    variant), then apply a customization or two.
-
-    Goes through `sanctuary_service` so coin balance / level / unlock rules are
-    enforced exactly as the live app does. Items are chosen low-to-high cost and only
-    bought while affordable, so the script is robust to XP/level tuning changes.
-    """
-    scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
-    print(f"  sanctuary: level {scene.level}, {scene.coins} coins to spend")
-
-    # (item_key, preferred variant) — variant falls back to the default if unavailable.
-    wishlist = [
-        ("flower", "tulip"),
-        ("tree", "cherry"),
-        ("goldfish", "orange"),
-        ("bird", "bluebird"),
-        ("cat", "ginger"),
-        ("pond", None),
-    ]
-    for item_key, variant in wishlist:
-        scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
-        shop = {s.item_key: s for s in scene.shop}
-        item = shop.get(item_key)
-        if item is None or not item.unlocked or item.cost > scene.coins:
-            continue
-        offered = {v.variant for v in item.variants}
-        chosen = variant if variant in offered else None
-        sanctuary_service.buy(
-            db,
-            user.id,
-            BuyRequest(item_key=item_key, variant=chosen),
-            today=today,
-            tz=DEMO_TZ,
-        )
-
-    # Apply the first affordable customization on a couple of owned items, while coins
-    # allow — shows the mix-and-match panel populated.
-    for _ in range(3):
-        scene = sanctuary_service.get_scene(db, user.id, today=today, tz=DEMO_TZ)
-        applied = False
-        for owned in scene.owned:
-            for slot in owned.available:
-                option = next(
-                    (o for o in slot.options if not o.applied and o.unlocked and o.affordable),
-                    None,
-                )
-                if option is None:
-                    continue
-                sanctuary_service.customize(
-                    db,
-                    user.id,
-                    uuid.UUID(owned.id),
-                    CustomizeRequest(slot=slot.slot, option=option.option),
-                    today=today,
-                    tz=DEMO_TZ,
-                )
-                applied = True
-                break
-            if applied:
-                break
-        if not applied:
-            break
-
-
 def seed(db: DBSession) -> None:
     today = date.today()
     user = _reset_demo_user(db)
@@ -372,7 +300,6 @@ def seed(db: DBSession) -> None:
     _seed_journals(db, user, sessions)
     _seed_gratitude(db, user, today)
     _seed_goals(db, user)
-    _seed_sanctuary(db, user, today)
 
     print("\nDemo data seeded:")
     print(f"  user:      {user.email} (id {user.id})")

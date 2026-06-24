@@ -51,8 +51,11 @@ from app.services.dashboard_service import (
 )
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
-from app.services.sanctuary_service import COINS_PER_LEVEL
 from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
+
+# The spirit's own economy constant: coins earned per level. The derived coin balance is
+# `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0.
+COINS_PER_LEVEL = 80
 
 # --- Domain errors (mapped to HTTP in the route layer) ----------------------------------
 

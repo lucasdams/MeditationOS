@@ -15,7 +15,6 @@ from app.api.routes import (
     journals,
     mood_logs,
     push,
-    sanctuary,
     scheduled_sessions,
     sessions,
     spirit,
@@ -35,6 +34,5 @@ api_router.include_router(mood_logs.router)
 api_router.include_router(goals.router)
 api_router.include_router(push.router)
 api_router.include_router(scheduled_sessions.router)
-api_router.include_router(sanctuary.router)
 api_router.include_router(spirit.router)
 api_router.include_router(admin.router)

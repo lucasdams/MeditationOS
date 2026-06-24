@@ -22,7 +22,6 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.mood_log import MoodLog
 from app.models.push_subscription import PushSubscription
-from app.models.sanctuary import SanctuaryPlanting
 from app.models.session import Session
 from app.models.user import User
 from app.schemas.admin import (
@@ -135,7 +134,6 @@ def get_admin_metrics(db: DBSession, *, now: datetime | None = None) -> AdminMet
 
     # ── Adoption (distinct users per optional surface) ──────────────────────
     adoption = AdoptionMetrics(
-        sanctuary_users=_distinct_users(db, SanctuaryPlanting),
         goal_users=_distinct_users(db, Goal),
         reminder_users=int(
             db.execute(
