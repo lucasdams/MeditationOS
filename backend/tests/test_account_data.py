@@ -33,7 +33,7 @@ def test_export_includes_account_and_owned_data(client):
     assert len(body["mood_logs"]) == 1
     assert set(body) >= {
         "account", "sessions", "gratitude", "journals", "goals", "goal_checkins",
-        "sanctuary", "mood_logs", "biometric_readings", "scheduled_sessions",
+        "mood_logs", "biometric_readings", "scheduled_sessions",
         "breathing_patterns",
     }
 

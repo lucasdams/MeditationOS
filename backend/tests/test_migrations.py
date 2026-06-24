@@ -294,16 +294,6 @@ def test_account_delete_cascades_to_all_owned_tables(scratch_engine):
             {"id": uuid.uuid4(), "uid": user_id, "now": now},
         )
 
-        # ── sanctuary_plantings ───────────────────────────────────────────────
-        conn.execute(
-            text(
-                "INSERT INTO sanctuary_plantings (id, user_id, item_key, position, cell,"
-                " customizations, created_at)"
-                " VALUES (:id, :uid, 'oak', 0, 0, '{}', :now)"
-            ),
-            {"id": uuid.uuid4(), "uid": user_id, "now": now},
-        )
-
         # ── push_subscriptions ────────────────────────────────────────────────
         conn.execute(
             text(
@@ -347,7 +337,6 @@ def test_account_delete_cascades_to_all_owned_tables(scratch_engine):
         "goal_checkins",
         "scheduled_sessions",
         "biometric_readings",
-        "sanctuary_plantings",
         "push_subscriptions",
         "breathing_patterns",
     ]

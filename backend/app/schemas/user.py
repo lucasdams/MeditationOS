@@ -172,7 +172,6 @@ class ExportData(BaseModel):
     mood_logs: list[dict]
     goals: list[dict]
     goal_checkins: list[dict]
-    sanctuary: list[dict]
     spirits: list[dict]
     biometric_readings: list[dict]
     scheduled_sessions: list[dict]

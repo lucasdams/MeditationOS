@@ -51,7 +51,6 @@ class ContentMetrics(BaseModel):
 class AdoptionMetrics(BaseModel):
     """How many users have adopted optional surfaces (distinct user counts)."""
 
-    sanctuary_users: int  # users with ≥1 sanctuary planting
     goal_users: int  # users with ≥1 goal
     reminder_users: int  # users with the daily reminder enabled
     push_users: int  # users with ≥1 push subscription
