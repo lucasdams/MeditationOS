@@ -1,19 +1,24 @@
-"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022).
+"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022, ADR-0023).
 
 The spirit's state is computed on read from the user's earned-XP level; the only stored
-state is the active spirit row (committed path, name, owned cosmetics). Covered here:
+state is the active spirit row (chosen path, name, owned cosmetics). Covered here:
 
 - the GET read API — happy-path shape, auth-required, and lazy get-or-create (first GET
   creates exactly one active spirit; a second GET does not duplicate it);
-- the pure stage-from-level band computation and daily-glow floors;
-- path branching — the lifetime practice-mix lean, the write-on-read commit at stage 2, its
-  hysteresis (once committed, never changes), and the lost-race no-op commit;
+- the pure stage-from-level band computation;
+- choose (ADR-0023) — sets the path once (409 on re-choose, 422 on a bad value), a fresh
+  spark is pathless, and after awaken the new spark is pathless again (choose-able anew);
+- the three tended needs (ADR-0023) — neutral defaults while pathless; `nourished` RISES with
+  the chosen creature's SIGNATURE practice and DECLINES without it (other practices do NOT
+  nourish it); `rested` reflects rhythm/consistency; `joyful` reflects variety; a depleted need
+  doesn't jump to thriving from one session; the overall condition is the WEAKEST need; and the
+  GUARDRAIL — needs never change coins/stage;
 - the cosmetics economy — buy / lock / afford / already-applied, within-slot swaps (dearer
   and cheaper), and the catalog/spend-ledger invariant;
 - rename (set / clear / over-length); and awaken / collection (radiant gate + retire+spark).
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 
@@ -21,9 +26,10 @@ from app.models.spirit import Spirit
 from app.services import spirit_service
 from app.services.spirit_service import (
     COINS_PER_LEVEL,
-    GLOW_FLOOR,
-    GLOW_FULL,
-    GLOW_MID,
+    CONDITION_CONTENT,
+    CONDITION_THRIVING,
+    CONDITION_UNWELL,
+    CONDITION_WINDOW_DAYS,
     SPIRIT_COSMETICS_CATALOG,
     stage_for_level,
 )
@@ -107,9 +113,16 @@ def test_get_returns_computed_shape(client):
     # Coins are level × COINS_PER_LEVEL (no cosmetics spend in step 1).
     assert body["coins"] == bond["level"] * COINS_PER_LEVEL
 
-    # Daily glow is one of the floored brightness factors, never below the floor.
-    assert body["daily_glow"] in {GLOW_FLOOR, GLOW_MID, GLOW_FULL}
-    assert body["daily_glow"] >= GLOW_FLOOR
+    # A pathless spark reports neutral, content-ish needs (no care requirement until a creature
+    # is chosen), and the overall condition (= the weakest need) is the same neutral default.
+    for need in ("nourished", "rested", "joyful"):
+        assert body["needs"][need]["tier"] == CONDITION_CONTENT
+        assert 0.0 <= body["needs"][need]["factor"] <= 1.0
+    assert body["condition"]["tier"] == CONDITION_CONTENT
+    assert 0.0 <= body["condition"]["factor"] <= 1.0
+    # ADR-0023 retired the auto-detected lean and the single daily_glow — gone from the shape.
+    assert "path_lean" not in body
+    assert "daily_glow" not in body
 
 
 def test_response_forbids_extra_fields():
@@ -169,30 +182,7 @@ def test_service_get_or_create_is_idempotent(db_session):
     assert _active_count(db_session, user.id) == 1
 
 
-# --- Daily glow (visual-only, floored) -------------------------------------------------
-
-
-def test_daily_glow_full_when_practiced_today(client, db_session):
-    _auth(client, "spirit_glow@example.com")
-    from app.models.user import User
-
-    user_id = db_session.execute(
-        select(User.id).where(User.email == "spirit_glow@example.com")
-    ).scalar_one()
-
-    today = date.today()
-    _practice(client, 5, day=today.isoformat())
-    glow = spirit_service.daily_glow(db_session, user_id, today=today, tz="UTC")
-    assert glow == GLOW_FULL
-
-
-def test_daily_glow_floor_with_no_practice(db_session):
-    user = _make_user(db_session, "glow_floor@example.com")
-    glow = spirit_service.daily_glow(db_session, user.id, today=date.today(), tz="UTC")
-    assert glow == GLOW_FLOOR
-
-
-# --- Path lean (the lifetime practice-mix suggestion) -----------------------------------
+# --- Practice helpers + id lookups ------------------------------------------------------
 
 
 def _breathe(client, minutes, *, day="2026-01-01"):
@@ -216,43 +206,6 @@ def _journal(client, body="a reflection on the day, written out at length"):
     return client.post("/api/v1/journals", json={"body": body})
 
 
-def test_lean_defaults_to_stillness_for_a_brand_new_user(client):
-    # No practice at all → all buckets 0 → the fixed tie-break default (stillness).
-    _auth(client, "lean_default@example.com")
-    assert _spirit(client)["path_lean"] == "stillness"
-
-
-def test_lean_reflects_meditation_dominant_practice(client):
-    _auth(client, "lean_stillness@example.com")
-    _practice(client, 60)  # a lot of meditation, no breathing / reflections
-    assert _spirit(client)["path_lean"] == "stillness"
-
-
-def test_lean_reflects_breathing_dominant_practice(client):
-    _auth(client, "lean_breath@example.com")
-    _breathe(client, 60)  # resonance breathing dominates
-    # A touch of meditation that stays below the breathing weight.
-    _practice(client, 1)
-    assert _spirit(client)["path_lean"] == "breath"
-
-
-def test_lean_reflects_gratitude_and_journal_dominant_practice(client):
-    _auth(client, "lean_heart@example.com")
-    # Gratitude + journal volume out-weighs a small sit (heart sums both categories).
-    for _ in range(10):
-        _gratitude(client)
-    for _ in range(10):
-        _journal(client)
-    _practice(client, 1)
-    assert _spirit(client)["path_lean"] == "heart"
-
-
-# --- Path commit (write-on-read at stage 2) ---------------------------------------------
-#
-# Stage is a band of the earned-XP level; commit happens at `wisp` (level ≥ 3). We drive the
-# level by logging enough practice, then assert the stored `path` (not just the lean).
-
-
 def _user_id(db_session, email):
     from app.models.user import User
 
@@ -265,92 +218,250 @@ def _stored_path(db_session, user_id):
     ).scalar_one()
 
 
-def test_path_does_not_commit_before_stage_two(client, db_session):
-    _auth(client, "commit_spark@example.com")
-    user_id = _user_id(db_session, "commit_spark@example.com")
-    # A tiny bit of practice — a leaning spark still at level 1 (stage spark), pre-commit.
-    _practice(client, 5)
-    body = _spirit(client)
-    assert body["stage"] == "spark"
-    assert body["path"] is None  # not yet committed
-    assert body["path_lean"] == "stillness"  # but a lean is shown
-    db_session.expire_all()
-    assert _stored_path(db_session, user_id) is None
+# --- Choose the creature (ADR-0023; path is chosen, not auto-detected) ------------------
 
 
-def test_path_commits_at_stage_two(client, db_session):
-    _auth(client, "commit_wisp@example.com")
-    user_id = _user_id(db_session, "commit_wisp@example.com")
-    # Enough breathing to reach level ≥ 3 (stage wisp). Split across days so the front-loaded
-    # per-session XP curve isn't blunted, and breathing dominates the mix.
-    for i in range(8):
-        _breathe(client, 20, day=f"2026-02-0{i + 1}")
-    body = _spirit(client)
-    assert body["stage"] in {"wisp", "fledgling", "ascendant", "radiant"}
-    assert body["bond"]["level"] >= 3
-    assert body["path"] == "breath"  # committed from the lean
+def test_choose_requires_auth(client):
+    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 401
+
+
+def test_fresh_spark_is_pathless(client):
+    _auth(client, "choose_fresh@example.com")
+    assert _spirit(client)["path"] is None  # nothing auto-detected — pathless until chosen
+
+
+def test_choose_sets_the_path_once(client, db_session):
+    _auth(client, "choose_set@example.com")
+    user_id = _user_id(db_session, "choose_set@example.com")
+
+    res = client.post("/api/v1/spirit/choose", json={"path": "breath"})
+    assert res.status_code == 200
+    assert res.json()["path"] == "breath"
+    # Persisted, and echoed on a fresh GET.
     db_session.expire_all()
     assert _stored_path(db_session, user_id) == "breath"
-
-
-def test_path_commit_is_once_only(client, db_session):
-    """Once committed, the stored path never changes even if the lean later shifts."""
-    _auth(client, "commit_once@example.com")
-    user_id = _user_id(db_session, "commit_once@example.com")
-    # Reach stage 2 with breathing → commits to `breath`.
-    for i in range(8):
-        _breathe(client, 20, day=f"2026-03-0{i + 1}")
     assert _spirit(client)["path"] == "breath"
-    db_session.expire_all()
-    assert _stored_path(db_session, user_id) == "breath"
-
-    # Now flood meditation so the *lean* flips to stillness…
-    for i in range(8):
-        _practice(client, 40, day=f"2026-04-0{i + 1}")
-    body = _spirit(client)
-    assert body["path_lean"] == "stillness"  # the lean moved
-    assert body["path"] == "breath"  # …but the committed path is hysteretic — unchanged
-    db_session.expire_all()
-    assert _stored_path(db_session, user_id) == "breath"
 
 
-def test_path_commit_is_a_noop_when_already_set(client, db_session):
-    """The write-on-read commit's `WHERE path IS NULL` no-op branch: if the active spirit
-    already has a stored path, a GET adopts that value verbatim and never overwrites it —
-    even if the live lean differs (this is the lost-race / already-committed path)."""
-    _auth(client, "commit_noop@example.com")
-    user_id = _user_id(db_session, "commit_noop@example.com")
+def test_choose_again_is_409(client):
+    _auth(client, "choose_twice@example.com")
+    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 200
+    # The choice is once-only — re-choosing (even the same value) conflicts.
+    assert client.post("/api/v1/spirit/choose", json={"path": "heart"}).status_code == 409
+    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 409
 
-    # Create the spark, then pre-set its stored path out-of-band to a value the lean would
-    # NOT pick (a brand-new user with no practice leans `stillness`).
-    assert client.get("/api/v1/spirit").status_code == 200
-    db_session.execute(
-        Spirit.__table__.update()
-        .where(Spirit.user_id == user_id, Spirit.retired_at.is_(None))
-        .values(path="heart")
+
+def test_choose_bad_value_is_422(client):
+    _auth(client, "choose_bad@example.com")
+    assert client.post("/api/v1/spirit/choose", json={"path": "wrathful"}).status_code == 422
+    assert client.post("/api/v1/spirit/choose", json={"path": "nope"}).status_code == 422
+
+
+def test_choose_rejects_unexpected_fields(client):
+    _auth(client, "choose_extra@example.com")
+    res = client.post("/api/v1/spirit/choose", json={"path": "stillness", "x": 1})
+    assert res.status_code == 422
+
+
+# --- The three tended needs (ADR-0023; demanding, visual-only care state) ----------------
+#
+# Each need is derived from the activity log over a rolling CONDITION_WINDOW_DAYS window:
+# `nourished` from the chosen creature's SIGNATURE practice, `rested` from rhythm/consistency,
+# `joyful` from variety. We call the service directly with an explicit `today` so the window
+# lines up with the dated practice we log (and the test is date-independent).
+
+
+def _recent_days(n):
+    """`n` distinct recent days ending today, all inside the window — for logging practice
+    that the rolling window will count."""
+    today = date.today()
+    return today, [today - timedelta(days=i) for i in range(n)]
+
+
+def _needs(db_session, path, user_id, *, today=None, tz="UTC", current_streak=0):
+    return spirit_service.needs(
+        db_session,
+        path,
+        user_id,
+        today=today or date.today(),
+        tz=tz,
+        current_streak=current_streak,
     )
-    db_session.commit()
-
-    body = _spirit(client)
-    # The GET keeps the stored value (no-op UPDATE), not the lean.
-    assert body["path"] == "heart"
-    assert body["path_lean"] == "stillness"
-    db_session.expire_all()
-    assert _stored_path(db_session, user_id) == "heart"
 
 
-def test_path_endpoint_requires_auth(client):
-    # The write-on-read commit must still be behind auth (default-deny).
-    assert client.get("/api/v1/spirit").status_code == 401
+def test_pathless_spark_has_neutral_needs(client, db_session):
+    _auth(client, "needs_pathless@example.com")
+    user_id = _user_id(db_session, "needs_pathless@example.com")
+    client.get("/api/v1/spirit")  # create the spark
+    n = _needs(db_session, None, user_id)
+    # No creature chosen → no care requirement → every need is the neutral content-ish default.
+    assert n.nourished.tier == CONDITION_CONTENT
+    assert n.rested.tier == CONDITION_CONTENT
+    assert n.joyful.tier == CONDITION_CONTENT
+    # And the overall condition (the weakest need) is the same neutral default.
+    assert spirit_service.overall_condition(n).tier == CONDITION_CONTENT
 
 
-# --- Path lean pure function (deterministic tie-break) ----------------------------------
+def test_nourished_rises_with_the_signature_practice(client, db_session):
+    """A `stillness` creature's `nourished` thrives when fed enough recent MEDITATION across
+    distinct days."""
+    _auth(client, "needs_nourish_rise@example.com")
+    user_id = _user_id(db_session, "needs_nourish_rise@example.com")
+    today, days = _recent_days(CONDITION_WINDOW_DAYS)
+    for d in days:
+        _practice(client, 10, day=d.isoformat())  # meditation = the stillness creature's food
+    n = _needs(db_session, "stillness", user_id, today=today)
+    assert n.nourished.tier == CONDITION_THRIVING
+    assert n.nourished.factor == 1.0
 
 
-def test_path_lean_tie_break_priority(db_session):
-    user = _make_user(db_session, "lean_tie@example.com")
-    # No activity → every bucket is 0 → tie-break resolves to the first priority (stillness).
-    assert spirit_service.path_lean(db_session, user.id) == "stillness"
+def test_nourished_declines_to_unwell_without_the_signature_practice(db_session):
+    """No signature practice in the window → `nourished` declines to the `unwell` floor."""
+    user = _make_user(db_session, "needs_nourish_decline@example.com")
+    n = _needs(db_session, "stillness", user.id)
+    assert n.nourished.tier == CONDITION_UNWELL
+
+
+def test_other_practices_do_not_nourish_a_creature(client, db_session):
+    """`nourished` is fed ONLY by the SIGNATURE practice: lots of breathing (the wrathful
+    creature's food) must not nourish a `stillness` creature — it stays at the neglected
+    floor. (Variety/rhythm may climb, but identity does not.)"""
+    _auth(client, "needs_wrongfood@example.com")
+    user_id = _user_id(db_session, "needs_wrongfood@example.com")
+    today, days = _recent_days(CONDITION_WINDOW_DAYS)
+    for d in days:
+        _breathe(client, 30, day=d.isoformat())  # breathing, not the stillness creature's food
+    n = _needs(db_session, "stillness", user_id, today=today)
+    assert n.nourished.tier == CONDITION_UNWELL  # the wrong practice never nourishes it
+
+
+def test_nourished_one_token_session_does_not_jump_to_thriving(client, db_session):
+    """Demanding/slow-recovery: a single recent care day lifts `nourished` off the floor but
+    NOT all the way to thriving — recovery reflects sustained recent practice."""
+    _auth(client, "needs_token@example.com")
+    user_id = _user_id(db_session, "needs_token@example.com")
+    today = date.today()
+    _practice(client, 30, day=today.isoformat())  # one big sit, but only one care day
+    n = _needs(db_session, "stillness", user_id, today=today)
+    assert n.nourished.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
+    assert n.nourished.factor < 1.0
+
+
+def test_nourished_heart_counts_gratitude_and_journal(client, db_session):
+    """The `heart` creature's signature practice is gratitude + journaling; a single reflection
+    day is off the floor but not thriving (demanding day-distinct signal)."""
+    _auth(client, "needs_heart@example.com")
+    user_id = _user_id(db_session, "needs_heart@example.com")
+    # Gratitude/journal stamp created_at = now, so they all land on today's window day.
+    for _ in range(8):
+        _gratitude(client)
+        _journal(client)
+    n = _needs(db_session, "heart", user_id)
+    # Only one distinct care day (all today) → off the floor but not thriving.
+    assert n.nourished.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
+    assert n.nourished.tier != CONDITION_UNWELL
+
+
+def test_rested_reflects_consistency(client, db_session):
+    """`rested` tracks practice RHYTHM: enough distinct active days in the window thrives it,
+    independent of WHICH practice (breathing here, on a stillness creature) — consistency, not
+    identity. The current streak also feeds it."""
+    _auth(client, "needs_rested@example.com")
+    user_id = _user_id(db_session, "needs_rested@example.com")
+    today, days = _recent_days(CONDITION_WINDOW_DAYS)
+    for d in days:
+        _breathe(client, 10, day=d.isoformat())  # a full week of active days
+    n = _needs(db_session, "stillness", user_id, today=today)
+    assert n.rested.tier == CONDITION_THRIVING
+
+    # And a strong current streak alone reads as well-rested even before active-days fill.
+    user2 = _make_user(db_session, "needs_rested_streak@example.com")
+    streaked = _needs(db_session, "stillness", user2.id, current_streak=6)
+    assert streaked.rested.tier == CONDITION_THRIVING
+
+
+def test_rested_declines_without_recent_practice(db_session):
+    """No recent active days and no streak → `rested` falls to the `unwell` floor."""
+    user = _make_user(db_session, "needs_rested_decline@example.com")
+    n = _needs(db_session, "stillness", user.id, current_streak=0)
+    assert n.rested.tier == CONDITION_UNWELL
+
+
+def test_joyful_reflects_variety(client, db_session):
+    """`joyful` tracks VARIETY: practising all four distinct types (meditate / breathe /
+    gratitude / journal) recently thrives it; doing only ONE type does not."""
+    _auth(client, "needs_joyful@example.com")
+    user_id = _user_id(db_session, "needs_joyful@example.com")
+    today = date.today()
+    # All four practice types, today (in-window).
+    _practice(client, 5, day=today.isoformat())  # meditate
+    _breathe(client, 5, day=today.isoformat())  # breathe
+    _gratitude(client)  # gratitude
+    _journal(client)  # journal
+    n = _needs(db_session, "heart", user_id, today=today)
+    assert n.joyful.tier == CONDITION_THRIVING
+
+    # A user who only ever meditates has low variety — joyful stays off thriving.
+    _auth(client, "needs_monotone@example.com")
+    mono_id = _user_id(db_session, "needs_monotone@example.com")
+    for d in _recent_days(CONDITION_WINDOW_DAYS)[1]:
+        _practice(client, 10, day=d.isoformat())  # one type only
+    mono = _needs(db_session, "heart", mono_id, today=today)
+    assert mono.joyful.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
+
+
+def test_overall_condition_is_the_weakest_need(client, db_session):
+    """The overall `condition` summarises the three needs as their WEAKEST tier — so a single
+    neglected need shows even if the others thrive."""
+    _auth(client, "needs_overall@example.com")
+    user_id = _user_id(db_session, "needs_overall@example.com")
+    today, days = _recent_days(CONDITION_WINDOW_DAYS)
+    # Feed ONLY breathing every day: a `stillness` creature is well-RESTED (consistency) but
+    # NOT nourished (wrong food). So nourished is the floor and drives the overall condition.
+    for d in days:
+        _breathe(client, 10, day=d.isoformat())
+    n = _needs(db_session, "stillness", user_id, today=today)
+    overall = spirit_service.overall_condition(n)
+    assert n.nourished.tier == CONDITION_UNWELL  # the weakest need
+    assert n.rested.tier == CONDITION_THRIVING  # a well-tended need
+    assert overall.tier == n.nourished.tier  # overall = the weakest
+
+
+def test_needs_never_change_coins_or_stage(client, db_session):
+    """THE GUARDRAIL (ADR-0023): needs are visual-only. A fully-neglected creature (every need
+    at `unwell`) has the SAME coins and stage as the moment it was earned — needs never reduce
+    any progress."""
+    _auth(client, "needs_guardrail@example.com")
+    user_id = _user_id(db_session, "needs_guardrail@example.com")
+    # Earn some coins/levels, then choose a creature and never feed it.
+    _earn_to_level(client, 3)
+    assert client.post("/api/v1/spirit/choose", json={"path": "stillness"}).status_code == 200
+
+    before = _spirit(client)
+    # Drive every need to the floor by computing them with a `today` far past any practice.
+    far_future = date.today() + timedelta(days=400)
+    floor = _needs(db_session, "stillness", user_id, today=far_future)
+    assert floor.nourished.tier == CONDITION_UNWELL
+    assert floor.rested.tier == CONDITION_UNWELL
+    assert floor.joyful.tier == CONDITION_UNWELL
+
+    after = _spirit(client)
+    # Coins and stage are unchanged — derived from earned XP, never from any need.
+    assert after["coins"] == before["coins"]
+    assert after["stage"] == before["stage"]
+    assert after["bond"]["level"] == before["bond"]["level"]
+
+
+def test_awaken_returns_a_pathless_spark(client, db_session):
+    """After awaken the fresh spark is pathless again — so the user chooses a creature anew
+    (ADR-0023's set-free → re-choose loop)."""
+    _auth(client, "cond_awaken_pathless@example.com")
+    _earn_to_level(client, 24)  # radiant
+    client.post("/api/v1/spirit/choose", json={"path": "breath"})
+    fresh = client.post("/api/v1/spirit/awaken").json()
+    assert fresh["path"] is None
+    # And it can be chosen again on the new spark.
+    assert client.post("/api/v1/spirit/choose", json={"path": "heart"}).status_code == 200
 
 
 # --- Cosmetics economy (step 5) ---------------------------------------------------------

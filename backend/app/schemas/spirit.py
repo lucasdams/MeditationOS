@@ -1,19 +1,21 @@
-"""Spirit response/request schemas (docs/design/spirit.md, ADR-0022).
+"""Spirit response/request schemas (docs/design/spirit.md, ADR-0022, ADR-0023).
 
 The Spirit is a single living companion grown from practice. Its state is *maximally
-computed* on read (ADR-0009/0011): only the committed `path`, optional `name`, and owned
-`cosmetics` are stored; stage, bond, daily glow, and coins are all derived from the user's
-earned-XP level. The read shape also carries `path_lean` — the suggested path computed from
-the lifetime practice mix — alongside the committed `path` (NULL until it crystallizes at the
-commit stage).
+computed* on read (ADR-0009/0011): only the chosen `path`, optional `name`, and owned
+`cosmetics` are stored; stage, bond, needs, and coins are all derived. ADR-0023 makes
+the `path` USER-CHOSEN (set once via `POST /spirit/choose`, NULL until then) instead of
+auto-detected from the practice mix, and replaces the single `daily_glow` with THREE named
+`needs` (`nourished` / `rested` / `joyful`), each a tier + factor over a rolling window,
+plus an overall `condition` derived from the weakest need (so the UI can render one
+summary look).
 
-Steps 5 + 6 add the writes: buy/apply a cosmetic (`POST /spirit/cosmetics`), set/clear the
-nickname (`PATCH /spirit`), and awaken a new spark at radiant (`POST /spirit/awaken`). The
-read shape grows additively — the cosmetics catalog state and the retired collection — so
-existing fields stay a stable contract.
+The writes: choose the creature once (`POST /spirit/choose`), buy/apply a cosmetic
+(`POST /spirit/cosmetics`), set/clear the nickname (`PATCH /spirit`), and awaken a new spark
+at radiant (`POST /spirit/awaken`). The cosmetics catalog state and the retired collection
+are part of the read shape too.
 """
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict
 
@@ -27,6 +29,49 @@ SPIRIT_NAME_MAX_LENGTH = 40
 SpiritName = Annotated[
     str | None, BeforeValidator(_capped_blank_to_none(SPIRIT_NAME_MAX_LENGTH))
 ]
+
+
+class SpiritNeed(BaseModel):
+    """One tended need (ADR-0023) — a demanding, visual-only care signal derived from the
+    activity log over a rolling window.
+
+    `tier` is one of `thriving | content | restless | unwell` (best → worst); `factor` is a
+    0..1 brightness/vibrancy multiplier on a concave curve. The three needs are `nourished`
+    (the chosen creature's signature practice), `rested` (practice rhythm / consistency), and
+    `joyful` (practice variety). GUARDRAIL: advisory/visual only — needs never affect stage,
+    level, coins, cosmetics, or the collection (those stay derived from earned XP and remain
+    monotonic). A pathless spark (no creature chosen) reports neutral, content-ish needs."""
+
+    tier: str  # thriving | content | restless | unwell
+    factor: float  # 0..1 vibrancy multiplier (concave); never reduces progress
+
+
+class SpiritNeeds(BaseModel):
+    """The active creature's three tended needs (ADR-0023), replacing the single `daily_glow`.
+
+    - `nourished` — the chosen path's SIGNATURE practice (the identity need): stillness ←
+      meditation minutes, breath ← resonance-breathing minutes, heart ← gratitude + journal.
+    - `rested` — practice rhythm / consistency: recent active days and the current streak.
+    - `joyful` — practice variety: how many distinct practice types were done recently.
+
+    All three are visual-only (the guardrail) and a pathless spark reports neutral defaults."""
+
+    nourished: SpiritNeed
+    rested: SpiritNeed
+    joyful: SpiritNeed
+
+
+class SpiritCondition(BaseModel):
+    """The active creature's OVERALL care state (ADR-0023) — derived from the weakest of the
+    three `needs`, so the frontend can render one summary look without inspecting each need.
+
+    `tier` is one of `thriving | content | restless | unwell` (best → worst, = the worst need's
+    tier); `factor` is the corresponding 0..1 vibrancy multiplier. GUARDRAIL: advisory/visual
+    only — it never affects stage, level, coins, cosmetics, or the collection (those stay
+    derived from earned XP and remain monotonic). A pathless spark reports a neutral default."""
+
+    tier: str  # thriving | content | restless | unwell (the weakest need's tier)
+    factor: float  # 0..1 vibrancy multiplier (concave); never reduces progress
 
 
 class SpiritBond(BaseModel):
@@ -76,15 +121,26 @@ class SpiritState(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     stage: str  # spark | wisp | fledgling | ascendant | radiant (pure function of level)
-    path: str | None  # committed path (stillness | breath | heart); NULL until commit
-    path_lean: str  # suggested path from lifetime practice mix; the lean shown before commit
+    path: str | None  # the CHOSEN creature (stillness | breath | heart); NULL until chosen
     name: str | None  # the active spirit's nickname, if set (so the UI can pre-fill / display)
     bond: SpiritBond  # level + XP-into-level + XP-for-next
-    daily_glow: float  # brightness factor in [GLOW_FLOOR, 1.0] from recent practice
+    needs: SpiritNeeds  # the three tended needs (nourished / rested / joyful); visual-only
+    condition: SpiritCondition  # overall care state = the weakest need; visual-only (ADR-0023)
     coins: int  # level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
     cosmetics: dict[str, str]  # owned {slot: option} (empty until cosmetics ship)
     available: list[SpiritAvailableSlot]  # the cosmetics catalog with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever
+
+
+class ChoosePathRequest(BaseModel):
+    """Choose the active creature once (ADR-0023). `path` is the internal enum value
+    (`stillness | breath | heart`; the UI relabels them peaceful / wrathful / loving). Only
+    settable while the active spirit is pathless — a re-choose is a 409, an unknown value a
+    422. Forbids extra fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: Literal["stillness", "breath", "heart"]
 
 
 class CosmeticsRequest(BaseModel):

@@ -1,9 +1,9 @@
 """Spirit state — a single living companion grown from practice (docs/design/spirit.md,
-ADR-0022). Get-or-create the active spirit, compute its read-only state, and (steps 5 + 6)
-write its cosmetics, nickname, and the awaken / collection loop.
+ADR-0022, ADR-0023). Get-or-create the active spirit, compute its read-only state, and write
+the choose / cosmetics / nickname / awaken loop.
 
 Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
-committed `path`, optional `name`, and owned `cosmetics`. Everything the client sees is
+chosen `path`, optional `name`, and owned `cosmetics`. Everything the client sees is
 derived on read from the user's earned-XP level (via `dashboard_service.get_wallet_basis`):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
@@ -11,11 +11,19 @@ derived on read from the user's earned-XP level (via `dashboard_service.get_wall
 - **Bond** — a friendly level read-out (level + XP-into-level + XP-for-next).
 - **Coins** — `level × COINS_PER_LEVEL − Σ cosmetics spent`, clamped ≥ 0 (see
   `_coin_balance`). Self-contained: this module owns its own `COINS_PER_LEVEL` constant.
-- **Daily glow** — a brightness factor in [GLOW_FLOOR, 1.0] from recent practice, floored
-  so the spirit never goes dark. Visual only, never destructive.
+- **Needs** (ADR-0023) — THREE named care states (`nourished` / `rested` / `joyful`), each a
+  tier + 0..1 factor, computed from the activity log over a rolling window. Demanding: they
+  decline through tiers when neglected and recover only gradually on a concave curve.
+  `nourished` tracks the CHOSEN creature's signature practice, `rested` its rhythm/consistency,
+  `joyful` its variety. An overall **condition** is the weakest of the three. Together they
+  replace ADR-0022's single `daily_glow`. GUARDRAIL: visual/advisory only — needs never touch
+  stage, level, coins, cosmetics, or the collection, so progress stays monotonic and a
+  neglected creature never loses anything.
 
-The active spirit is lazily created (a pathless spark) on first read, so both new users and
-migrated users get one without a heavy backfill.
+ADR-0023 also makes the `path` USER-CHOSEN (set once via `choose_path` while pathless)
+instead of auto-detected from the practice mix; the ADR-0022 `path_lean` and commit-on-read
+are retired. The active spirit is lazily created (a pathless spark) on first read, so both
+new users and migrated users get one without a heavy backfill.
 
 Steps 5 + 6 add the writes — all user-scoped, default-deny at the route. Mutations serialize
 concurrent same-user writes via a per-user, txn-scoped Postgres advisory lock so the
@@ -24,7 +32,7 @@ parallel request — no double-spend, no two active spirits.
 """
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -35,21 +43,19 @@ from app.models.journal import Journal
 from app.models.session import Session
 from app.models.spirit import Spirit
 from app.schemas.spirit import (
+    ChoosePathRequest,
     CosmeticsRequest,
     RenameRequest,
     RetiredSpirit,
     SpiritAvailableSlot,
     SpiritBond,
+    SpiritCondition,
+    SpiritNeed,
+    SpiritNeeds,
     SpiritSlotOption,
     SpiritState,
 )
 from app.services import dashboard_service
-from app.services.dashboard_service import (
-    BREATHING_XP_MULTIPLIER,
-    MEDITATION_XP_PER_MIN,
-)
-from app.services.gratitude_service import GRATITUDE_XP
-from app.services.journal_service import JOURNAL_XP
 from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
 
 # The spirit's own economy constant: coins earned per level. The derived coin balance is
@@ -80,6 +86,10 @@ class InsufficientCoins(Exception):
 
 class AlreadyApplied(Exception):
     """The spirit already has that exact option in that slot — a no-op → 409."""
+
+
+class PathAlreadyChosen(Exception):
+    """The active spirit already has a chosen creature; the choice is once-only → 409."""
 
 
 class NotRadiant(Exception):
@@ -132,193 +142,308 @@ def stage_for_level(level: int) -> str:
     return stage
 
 
-# --- Path branching (the lifetime practice-mix lean + commit) ---------------------------
+# --- The three creatures (chosen, not auto-detected) ------------------------------------
 #
-# The three paths the spirit can grow down (docs/design/spirit.md, "The standout hook"):
-#   stillness → a serene mini Buddha   (meditation-dominant)
-#   breath    → an airy wind spirit    (resonance-breathing-dominant)
-#   heart     → a blooming heart spirit (gratitude + journaling dominant)
+# The three creatures the user can choose (docs/design/spirit.md, ADR-0023). The internal enum
+# values are kept stable; the UI relabels them (peaceful / wrathful / loving):
+#   stillness → peaceful — a serene mini Buddha; its practice is non-breathing MEDITATION
+#   breath    → wrathful — a fierce wind protector; its practice is resonance BREATHING
+#   heart     → loving   — a compassionate being; its practice is GRATITUDE + JOURNALING
 #
-# The dominant path is COMPUTED from the user's *lifetime* practice mix, weighted by the same
-# value system the XP economy uses (meditation ×2 per minute, resonance breathing ×3 per
-# minute, gratitude/journal per entry — GRATITUDE_XP/JOURNAL_XP). Crucially the volume is
-# UNCAPPED lifetime (raw minutes, raw entry counts) — not the daily-XP-capped figures — so the
-# lean reflects genuine long-run preference rather than the anti-farm daily ceiling. Gratitude
-# and journaling sum into one `heart` bucket (three paths from four practice categories).
-#
-# Tie-break: a fixed priority order `stillness > breath > heart`, so the result is fully
-# deterministic when two buckets are equal. A brand-new user with no practice at all has every
-# bucket at 0, which the tie-break resolves to `stillness` — a calm, on-brand default for a
-# stillness-first meditation app, and the spark a user with no history first leans toward.
+# ADR-0023 retires ADR-0022's practice-auto-detected path and commit-on-read: the path is now
+# CHOSEN ONCE by the user (via `choose_path`) and stored in the same `spirits.path` column. A
+# fresh spark is pathless (path IS NULL) until the user picks.
 STILLNESS = "stillness"
 BREATH = "breath"
 HEART = "heart"
 
-# The commit stage: the spirit crystallizes its path here and never changes it again. Per the
-# design's stage table this is `wisp` (level ≥ 3) — the second stage. Derived from the band
-# constant so retuning STAGE_BANDS keeps the two in step (no second source of truth).
-PATH_COMMIT_STAGE = STAGE_BANDS[1][0]  # "wisp"
-
-# Fixed tie-break priority — earlier wins when buckets are equal. Also the new-user default
-# (all-zero buckets resolve to the first entry).
-_PATH_PRIORITY: tuple[str, ...] = (STILLNESS, BREATH, HEART)
+# Each creature's preferred practice — the only practice that keeps it in good condition.
+_CHOOSABLE_PATHS: frozenset[str] = frozenset({STILLNESS, BREATH, HEART})
 
 
-def _practice_weights(db: DBSession, user_id: uuid.UUID) -> dict[str, float]:
-    """The user's lifetime, UNCAPPED, value-weighted practice volume per path bucket.
-
-    Reuses the XP economy's weights so the lean matches what the app already treats as
-    valuable, but on raw lifetime volume (not the daily-capped XP figures) so it reflects
-    genuine preference:
-
-    - stillness = lifetime non-breathing minutes × MEDITATION_XP_PER_MIN
-    - breath    = lifetime resonance-breathing minutes × BREATHING_XP_MULTIPLIER
-    - heart     = (lifetime gratitude entries + journal entries) × per-entry XP
-
-    Minutes are floored once over the per-bucket total: the SQL floors
-    `SUM(duration_seconds) / 60` for the whole bucket, not per individual session — a coarse
-    lifetime-lean signal (so e.g. many sub-minute sits in a bucket can still sum to a minute).
-    All values ≥ 0; a user with no practice gets all zeros.
-    """
-    is_breathing = Session.type == "resonance_breathing"
-    # Lifetime whole minutes by breathing / non-breathing (one grouped query).
-    minute_rows = db.execute(
-        select(
-            is_breathing.label("breathing"),
-            func.coalesce(func.sum(Session.duration_seconds), 0) / 60,
-        )
-        .where(Session.user_id == user_id)
-        .group_by(is_breathing)
-    ).all()
-    breathing_minutes = 0
-    meditation_minutes = 0
-    for breathing, minutes in minute_rows:
-        if breathing:
-            breathing_minutes = int(minutes)
-        else:
-            meditation_minutes = int(minutes)
-
-    gratitude_count = int(
-        db.execute(
-            select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
-        ).scalar_one()
-    )
-    journal_count = int(
-        db.execute(
-            select(func.count(Journal.id)).where(Journal.user_id == user_id)
-        ).scalar_one()
-    )
-
-    return {
-        STILLNESS: meditation_minutes * MEDITATION_XP_PER_MIN,
-        BREATH: breathing_minutes * BREATHING_XP_MULTIPLIER,
-        HEART: (gratitude_count + journal_count) * ((GRATITUDE_XP + JOURNAL_XP) / 2),
-    }
-
-
-def path_lean(db: DBSession, user_id: uuid.UUID) -> str:
-    """The suggested path from the user's lifetime, value-weighted practice mix.
-
-    Picks the highest-weighted bucket; ties (including the all-zero brand-new user) resolve by
-    the fixed `_PATH_PRIORITY` order (stillness > breath > heart). A pure read — never writes.
-    """
-    weights = _practice_weights(db, user_id)
-    # Max by weight, tie-broken by the fixed priority (lower index wins on equal weight).
-    return max(_PATH_PRIORITY, key=lambda p: (weights[p], -_PATH_PRIORITY.index(p)))
-
-
-def _stage_at_or_after_commit(level: int) -> bool:
-    """True once the user's level reaches the commit stage's band or beyond. Compared by band
-    index so it stays correct as STAGE_BANDS is retuned."""
-    order = [name for name, _ in STAGE_BANDS]
-    return order.index(stage_for_level(level)) >= order.index(PATH_COMMIT_STAGE)
-
-
-def _maybe_commit_path(db: DBSession, spirit: Spirit, *, level: int, lean: str) -> None:
-    """Crystallize the spirit's path ONCE, at/after the commit stage, if still uncommitted.
-
-    The GET endpoint writes-on-read here (precedent: get-or-create already does). The commit
-    is idempotent and safe:
-
-    - It only fires when the active spirit is at/above PATH_COMMIT_STAGE AND `path IS NULL`,
-      so a spirit that already committed is never touched again — the stored path never changes
-      even if the lean later shifts (that hysteresis is the whole point of storing it).
-    - It is guarded by a conditional UPDATE (`... WHERE id = :id AND path IS NULL`) inside its
-      own transaction, so a concurrent request can't double-commit or clobber a value; the
-      losing writer's UPDATE simply matches 0 rows. The in-memory `path` is then synced to the
-      committed value (ours, or the winner's via a refresh).
-    """
-    if spirit.path is not None or not _stage_at_or_after_commit(level):
-        return
-
-    # A commit will actually fire (path is NULL and we're at/after the commit stage). Take the
-    # per-user advisory lock for defense-in-depth before the conditional UPDATE — this branch
-    # stops firing once path is set, so the GET path never locks on the common (already-
-    # committed) read. The conditional `WHERE path IS NULL` still carries correctness on its own.
-    _lock_user_spirit(db, spirit.user_id)
-
-    # Conditional, idempotent write: only set path if it is still NULL (race-safe).
-    result = db.execute(
-        Spirit.__table__.update()
-        .where(Spirit.id == spirit.id, Spirit.path.is_(None))
-        .values(path=lean)
-    )
-    db.commit()
-    if result.rowcount:
-        spirit.path = lean
-    else:
-        # Another request committed first (or it was already set) — adopt the stored value.
-        db.refresh(spirit)
-
-
-# --- Daily glow (visual-only brightness from recent practice) ---------------------------
+# --- The three tended needs (demanding, visual-only care state) --------------------------
 #
-# A floored brightness factor in [GLOW_FLOOR, 1.0]: practiced today → full glow; within the
-# last couple of days → a mid glow; otherwise the resting floor. Never 0 — lapsing dims, it
-# never harms (ADR-0022). Tunable constants; visual only.
-GLOW_FULL = 1.0
-GLOW_MID = 0.7
-GLOW_FLOOR = 0.4
-# Practice within this many days of "today" still counts as recent enough for the mid glow.
-GLOW_RECENT_DAYS = 2
+# ADR-0023 replaces the single `daily_glow` with THREE named needs, each a tier
+# (thriving → content → restless → unwell) plus a 0..1 factor, all computed from the activity
+# log over the same rolling window and all DEMANDING + SLOW TO RECOVER (they reflect a *count
+# of distinct recent days*, mapped through a concave threshold curve, so one token session
+# can't jump a depleted need to thriving — recovery is gradual and reflects sustained practice):
+#
+#   nourished — the chosen creature's SIGNATURE practice (the identity need):
+#       stillness → non-breathing meditation days; breath → resonance-breathing days;
+#       heart → gratitude-OR-journal days. ONLY this practice feeds it — doing a different
+#       creature's practice does NOT nourish it.
+#   rested  — practice RHYTHM / consistency: how steady the recent routine is. We take the
+#       stronger of (distinct active days in the window) and (the current streak), so a solid
+#       streak or a well-covered week both read as well-rested.
+#   joyful  — practice VARIETY: how many DISTINCT practice types (meditate / breathe /
+#       gratitude / journal) were done in the window — not overdoing one thing.
+#
+# All three share the SAME window and the SAME day→(tier,factor) curve (NEED_TIERS); the
+# difference is only the signal each measures. The window length, the tier thresholds, and the
+# concave factors are the tunable knobs (retuning needs no migration).
+#
+# GUARDRAIL (ADR-0023): needs are ADVISORY / VISUAL ONLY. They are never read by stage, level,
+# coins, cosmetics, or the collection — those stay derived from earned XP and remain monotonic.
+# `unwell` is the floor; the creature never dies and the right practice always recovers it.
+
+# The rolling window: how many days back (including today) recent activity counts.
+CONDITION_WINDOW_DAYS = 7
+
+# Tiers, best → worst.
+CONDITION_THRIVING = "thriving"
+CONDITION_CONTENT = "content"
+CONDITION_RESTLESS = "restless"
+CONDITION_UNWELL = "unwell"
+
+# Tier order, worst → best, so the overall condition can pick the WEAKEST need by index.
+_TIER_RANK: dict[str, int] = {
+    CONDITION_UNWELL: 0,
+    CONDITION_RESTLESS: 1,
+    CONDITION_CONTENT: 2,
+    CONDITION_THRIVING: 3,
+}
+
+# Each need maps a COUNT (of distinct recent days, or of distinct practice types for joyful)
+# to a (tier, factor) on a concave/demanding curve. Thriving needs the signal sustained across
+# most of the window, while a single recent day only lifts a need off the unwell floor — so a
+# token session can't jump a depleted need to the top. Ordered best → worst; first satisfied
+# threshold wins. Shared by all three needs (the signals differ, the curve does not).
+#   (tier, min count for this tier, factor for this tier)
+NEED_TIERS: tuple[tuple[str, int, float], ...] = (
+    (CONDITION_THRIVING, 5, 1.0),
+    (CONDITION_CONTENT, 3, 0.8),
+    (CONDITION_RESTLESS, 1, 0.6),
+    (CONDITION_UNWELL, 0, 0.4),
+)
+
+# The variety (`joyful`) need saturates faster than the day-count needs — there are only four
+# practice types, so its thresholds are scaled down: all four types → thriving, etc. Same
+# concave shape, just keyed to "distinct types done" instead of "distinct days practiced".
+JOYFUL_TIERS: tuple[tuple[str, int, float], ...] = (
+    (CONDITION_THRIVING, 4, 1.0),
+    (CONDITION_CONTENT, 3, 0.8),
+    (CONDITION_RESTLESS, 1, 0.6),
+    (CONDITION_UNWELL, 0, 0.4),
+)
+
+# A pathless spark (no creature chosen yet) has no care requirement — every need reports a
+# neutral, content-ish default rather than declining.
+_NEUTRAL_CONDITION_TIER = CONDITION_CONTENT
+_NEUTRAL_CONDITION_FACTOR = 0.8
+
+# Minutes-based practices count a day only once its session time reaches MIN_PRACTICE_SECONDS
+# (the same floor streaks/heatmaps use), so a 1-second sit can't prop up a need.
 
 
-def _days_since_last_practice(
-    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str
-) -> int | None:
-    """Whole days between `today` and the user's most recent practice day (in their local
-    timezone), or None if they have never practiced. A day counts as practice only once its
-    total session time reaches MIN_PRACTICE_SECONDS — the same floor streaks/heatmaps use,
-    so a 1-second sit can't brighten the spirit.
+def _tier_for_count(
+    count: int, tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS
+) -> tuple[str, float]:
+    """Map a count to a (tier, factor) on the demanding curve. The first threshold (best →
+    worst) the count satisfies wins; the floor is always `unwell` (count 0)."""
+    for tier, min_count, factor in tiers:
+        if count >= min_count:
+            return tier, factor
+    # `tiers` always ends at a 0 floor, so this is unreachable; kept for total-ness.
+    return CONDITION_UNWELL, tiers[-1][2]
+
+
+def _signature_care_days(
+    db: DBSession, path: str, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
+) -> int:
+    """Distinct recent local days the user did `path`'s SIGNATURE practice, in the window. The
+    `nourished` signal — only the chosen creature's own practice counts.
+
+    - stillness → distinct days with non-breathing meditation meeting MIN_PRACTICE_SECONDS
+    - breath    → distinct days with resonance breathing meeting MIN_PRACTICE_SECONDS
+    - heart     → distinct days with a gratitude entry OR a journal entry
     """
+    if path in (STILLNESS, BREATH):
+        is_breathing = path == BREATH
+        session_day = local_date(tz, Session.occurred_at)
+        days = db.execute(
+            select(session_day)
+            .where(
+                Session.user_id == user_id,
+                (Session.type == "resonance_breathing")
+                if is_breathing
+                else (Session.type != "resonance_breathing"),
+                session_day >= window_start,
+                session_day <= today,
+            )
+            .group_by(session_day)
+            # A day counts only once its signature-practice time meets the floor.
+            .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
+        ).all()
+        return len(days)
+
+    # heart → distinct local days with a gratitude OR a journal entry in the window.
+    grat_day = local_date(tz, GratitudeEntry.created_at)
+    grat_days = db.execute(
+        select(grat_day)
+        .where(
+            GratitudeEntry.user_id == user_id,
+            grat_day >= window_start,
+            grat_day <= today,
+        )
+        .group_by(grat_day)
+    ).scalars().all()
+    journal_day = local_date(tz, Journal.created_at)
+    journal_days = db.execute(
+        select(journal_day)
+        .where(
+            Journal.user_id == user_id,
+            journal_day >= window_start,
+            journal_day <= today,
+        )
+        .group_by(journal_day)
+    ).scalars().all()
+    return len(set(grat_days) | set(journal_days))
+
+
+def _active_days_in_window(
+    db: DBSession, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
+) -> int:
+    """Distinct local days in the window with real practice (any session totalling at least
+    MIN_PRACTICE_SECONDS) — the consistency half of the `rested` signal, mirroring the
+    streak/heatmap practice-day rule the dashboard already uses."""
     session_day = local_date(tz, Session.occurred_at)
-    last_day = db.execute(
+    rows = db.execute(
         select(session_day)
-        .where(Session.user_id == user_id)
+        .where(
+            Session.user_id == user_id,
+            session_day >= window_start,
+            session_day <= today,
+        )
         .group_by(session_day)
         .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
-        .order_by(session_day.desc())
+    ).all()
+    return len(rows)
+
+
+def _distinct_practice_types_in_window(
+    db: DBSession, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
+) -> int:
+    """How many of the four practice TYPES (meditate / breathe / gratitude / journal) the user
+    did in the window — the `joyful` (variety) signal. Meditate vs breathe split the same way
+    the rest of the app does (resonance_breathing vs everything else); each minutes-based type
+    must clear MIN_PRACTICE_SECONDS total in-window so a 1-second sit can't pad variety."""
+    types = 0
+    session_day = local_date(tz, Session.occurred_at)
+    # Meditate (non-breathing) and breathe (resonance) — each counts as a type once its
+    # in-window total clears the practice floor.
+    secs_by_kind = db.execute(
+        select(
+            (Session.type == "resonance_breathing").label("is_breathing"),
+            func.sum(Session.duration_seconds),
+        )
+        .where(
+            Session.user_id == user_id,
+            session_day >= window_start,
+            session_day <= today,
+        )
+        .group_by("is_breathing")
+    ).all()
+    for _is_breathing, total in secs_by_kind:
+        if int(total or 0) >= MIN_PRACTICE_SECONDS:
+            types += 1
+
+    # Gratitude and journal — any entry in the window counts that type.
+    grat_day = local_date(tz, GratitudeEntry.created_at)
+    has_gratitude = db.execute(
+        select(GratitudeEntry.id)
+        .where(
+            GratitudeEntry.user_id == user_id,
+            grat_day >= window_start,
+            grat_day <= today,
+        )
         .limit(1)
-    ).scalar_one_or_none()
-    if last_day is None:
-        return None
-    return (today - last_day).days
+    ).first()
+    if has_gratitude is not None:
+        types += 1
+    journal_day = local_date(tz, Journal.created_at)
+    has_journal = db.execute(
+        select(Journal.id)
+        .where(
+            Journal.user_id == user_id,
+            journal_day >= window_start,
+            journal_day <= today,
+        )
+        .limit(1)
+    ).first()
+    if has_journal is not None:
+        types += 1
+    return types
 
 
-def daily_glow(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> float:
-    """The spirit's surface brightness from recent practice, floored so it never goes dark.
+def _neutral_need() -> SpiritNeed:
+    """A pathless spark's neutral, content-ish need (no care requirement until a creature is
+    chosen)."""
+    return SpiritNeed(tier=_NEUTRAL_CONDITION_TIER, factor=_NEUTRAL_CONDITION_FACTOR)
 
-    Practiced today → GLOW_FULL; within GLOW_RECENT_DAYS → GLOW_MID; otherwise GLOW_FLOOR.
-    Purely visual and non-destructive — a lapse only dims the surface, never harms progress.
+
+def needs(
+    db: DBSession,
+    path: str | None,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str,
+    current_streak: int = 0,
+) -> SpiritNeeds:
+    """The active creature's three tended needs (ADR-0023) over the rolling window. Demanding:
+    each declines through the tiers when its signal is neglected and recovers only gradually.
+
+    A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
+    content-ish default rather than a care requirement.
+
+    `current_streak` (the dashboard's value) feeds `rested` so a strong streak reads as
+    well-rested even before the active-day count fills.
+
+    GUARDRAIL: visual/advisory only — the caller must never let any need affect stage, level,
+    coins, cosmetics, or the collection.
     """
-    days = _days_since_last_practice(db, user_id, today=today, tz=tz)
-    if days is None:
-        return GLOW_FLOOR
-    if days <= 0:
-        return GLOW_FULL
-    if days <= GLOW_RECENT_DAYS:
-        return GLOW_MID
-    return GLOW_FLOOR
+    if path is None or path not in _CHOOSABLE_PATHS:
+        neutral = _neutral_need()
+        return SpiritNeeds(nourished=neutral, rested=neutral, joyful=neutral)
+
+    window_start = today - timedelta(days=CONDITION_WINDOW_DAYS - 1)
+
+    # nourished — the signature-practice care days.
+    care_days = _signature_care_days(
+        db, path, user_id, window_start=window_start, today=today, tz=tz
+    )
+    nourished_tier, nourished_factor = _tier_for_count(care_days)
+
+    # rested — rhythm/consistency: the stronger of recent active days and the current streak
+    # (capped at the window so a long streak doesn't overflow the day-count curve).
+    active_days = _active_days_in_window(
+        db, user_id, window_start=window_start, today=today, tz=tz
+    )
+    rhythm = min(max(active_days, current_streak), CONDITION_WINDOW_DAYS)
+    rested_tier, rested_factor = _tier_for_count(rhythm)
+
+    # joyful — variety: how many distinct practice types were done in the window.
+    variety = _distinct_practice_types_in_window(
+        db, user_id, window_start=window_start, today=today, tz=tz
+    )
+    joyful_tier, joyful_factor = _tier_for_count(variety, JOYFUL_TIERS)
+
+    return SpiritNeeds(
+        nourished=SpiritNeed(tier=nourished_tier, factor=nourished_factor),
+        rested=SpiritNeed(tier=rested_tier, factor=rested_factor),
+        joyful=SpiritNeed(tier=joyful_tier, factor=joyful_factor),
+    )
+
+
+def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
+    """The overall care state = the WEAKEST of the three needs (ADR-0023), so the frontend can
+    render one summary look. Ties on tier are broken by the lower factor. Visual-only."""
+    weakest = min(
+        (spirit_needs.nourished, spirit_needs.rested, spirit_needs.joyful),
+        key=lambda n: (_TIER_RANK[n.tier], n.factor),
+    )
+    return SpiritCondition(tier=weakest.tier, factor=weakest.factor)
 
 
 # --- Cosmetics economy (step 5: repoint the derived wallet at spirit slots) -------------
@@ -485,29 +610,38 @@ def _build_state(
     today: date,
     tz: str,
     basis: dashboard_service.WalletBasis | None = None,
-    lean: str | None = None,
 ) -> SpiritState:
-    """Assemble the active spirit's computed read state from a (committed) spirit row plus
-    the user's wallet basis. Shared by the read endpoint and every write so the response
-    shape is built once.
+    """Assemble the active spirit's computed read state from the (chosen-or-pathless) spirit
+    row plus the user's wallet basis. Shared by the read endpoint and every write so the
+    response shape is built once.
 
-    `basis` and `lean` are computed here only if not supplied — callers that already have
-    them (the read endpoint, the writes) pass them through so the request does exactly one
-    `get_wallet_basis` and one `path_lean`, not two.
+    `basis` is computed here only if not supplied — callers that already have it (the read
+    endpoint, the writes) pass it through so the request does exactly one `get_wallet_basis`.
     """
     if basis is None:
         basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    if lean is None:
-        lean = path_lean(db, user_id)
     level = basis.level
 
     cosmetics = _cosmetics(spirit)
     coins = _coin_balance(level, cosmetics)
 
+    # GUARDRAIL (ADR-0023): the three needs (and the overall condition derived from them) are
+    # visual-only — they are NOT read by stage/coins above, so a neglected creature never loses
+    # progress. Derived from the chosen creature's signature practice / rhythm / variety; a
+    # pathless spark gets neutral defaults. `current_streak` (from the same wallet basis) feeds
+    # the `rested` rhythm signal.
+    spirit_needs = needs(
+        db,
+        spirit.path,
+        user_id,
+        today=today,
+        tz=tz,
+        current_streak=basis.current_streak,
+    )
+
     return SpiritState(
         stage=stage_for_level(level),
         path=spirit.path,
-        path_lean=lean,
         name=spirit.name,
         # `bond.level` is the user's *earned-XP* level (the same basis that funds stage and
         # coins), so the spirit stays monotonic with its own economy. This is deliberately the
@@ -519,7 +653,9 @@ def _build_state(
             xp_into_level=basis.xp_into_level,
             xp_for_next=basis.xp_for_next,
         ),
-        daily_glow=daily_glow(db, user_id, today=today, tz=tz),
+        needs=spirit_needs,
+        # The overall condition is the weakest of the three needs — one summary look for the UI.
+        condition=overall_condition(spirit_needs),
         coins=coins,
         cosmetics=cosmetics,
         available=_available_slots(cosmetics, coins, level),
@@ -528,19 +664,48 @@ def _build_state(
 
 
 def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> SpiritState:
-    """The active spirit's computed state: stage, path (committed or NULL), the suggested
-    path lean, bond, daily glow, coins, owned cosmetics + the catalog with per-option state,
-    and the retired collection. Get-or-creates the spark on first read, and — at/after the
-    commit stage — crystallizes the path once (write-on-read)."""
+    """The active spirit's computed state: stage, the chosen path (or NULL while pathless),
+    bond, the per-creature condition, coins, owned cosmetics + the catalog with per-option
+    state, and the retired collection. Get-or-creates the spark on first read. The path is
+    no longer auto-committed (ADR-0023) — it is set explicitly via `choose_path`, so this is
+    a get-or-create read only."""
     spirit = get_or_create_active_spirit(db, user_id)
+    return _build_state(db, user_id, spirit, today=today, tz=tz)
 
-    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    lean = path_lean(db, user_id)
-    # Crystallize the path once at/after the commit stage (idempotent write-on-read).
-    _maybe_commit_path(db, spirit, level=basis.level, lean=lean)
 
-    # Reuse the already-computed basis/lean so the request does exactly one of each.
-    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis, lean=lean)
+def choose_path(
+    db: DBSession,
+    user_id: uuid.UUID,
+    data: ChoosePathRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SpiritState:
+    """Choose the active creature ONCE (ADR-0023). Sets `path` only while it is currently
+    NULL; a re-choose raises PathAlreadyChosen (409). The schema already constrains `path` to
+    a valid enum value (bad value → 422 before we get here).
+
+    Race-safe and idempotent like the rest of the spirit writes: a conditional UPDATE
+    (`WHERE id = :id AND path IS NULL`) under the per-user advisory lock, so two concurrent
+    choices can't both win — the loser matches 0 rows and is reported as already-chosen.
+    """
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+    if spirit.path is not None:
+        raise PathAlreadyChosen(str(spirit.id))
+
+    result = db.execute(
+        Spirit.__table__.update()
+        .where(Spirit.id == spirit.id, Spirit.path.is_(None))
+        .values(path=data.path)
+    )
+    db.commit()
+    if not result.rowcount:
+        # A concurrent choose set it first — the choice is once-only, so this loses.
+        db.refresh(spirit)
+        raise PathAlreadyChosen(str(spirit.id))
+    spirit.path = data.path
+    return _build_state(db, user_id, spirit, today=today, tz=tz)
 
 
 def buy_cosmetic(
