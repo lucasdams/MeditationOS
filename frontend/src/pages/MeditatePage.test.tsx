@@ -61,13 +61,21 @@ vi.mock('../lib/sessionDraft', () => ({
   writeDraft: vi.fn(),
 }))
 
-import MeditatePage from './MeditatePage'
+import MeditatePage, { guidedChoiceFromParams } from './MeditatePage'
 
 const SAVED_SESSION_ID = 'session-uuid-abc'
 
 function renderPage() {
   return render(
     <MemoryRouter>
+      <MeditatePage />
+    </MemoryRouter>,
+  )
+}
+
+function renderPageAt(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
       <MeditatePage />
     </MemoryRouter>,
   )
@@ -157,6 +165,47 @@ describe('MeditatePage — pre-session intention', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1)
 
     vi.useRealTimers()
+  })
+})
+
+// ── Deep-link pre-selection (Practices hub) ──────────────────────────────────
+// `/meditate?guided=<id>` pre-selects that guided structure on mount; `guided=none`
+// or `style=mindfulness` pre-selects plain unguided sitting; no param falls back to
+// the stored preference. Tests cover the pure param helper and the rendered <select>.
+
+describe('guidedChoiceFromParams', () => {
+  it('maps known guided ids', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=body-scan'))).toBe('body-scan')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=loving-kindness'))).toBe(
+      'loving-kindness',
+    )
+  })
+
+  it('maps guided=none and style=mindfulness to unguided', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=none'))).toBe('none')
+    expect(guidedChoiceFromParams(new URLSearchParams('style=mindfulness'))).toBe('none')
+  })
+
+  it('returns null for no / unknown params (falls back to stored pref)', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams(''))).toBeNull()
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=bogus'))).toBeNull()
+  })
+})
+
+describe('MeditatePage — guided deep-link', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(cleanup)
+
+  it('pre-selects the Body scan structure from ?guided=body-scan', () => {
+    renderPageAt('/meditate?guided=body-scan')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    expect(select.value).toBe('body-scan')
+  })
+
+  it('defaults to unguided (None) with no param', () => {
+    renderPageAt('/meditate')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    expect(select.value).toBe('none')
   })
 })
 
