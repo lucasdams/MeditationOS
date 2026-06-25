@@ -273,6 +273,31 @@ function clampGlow(glow: number): number {
   return Math.max(SPIRIT_GLOW_FLOOR, Math.min(SPIRIT_GLOW_CEIL, glow))
 }
 
+// The VITALITY band — a SECOND, wider-range expression signal off the SAME raw condition factor
+// (ADR-0023; condition is the WEAKEST of nourishment / rest / joy). Where `--spirit-glow` is
+// gently floored at 0.7 (so the aura never dims into low contrast), vitality runs a wider but
+// still-legible 0.4 (unwell) → 1.0 (thriving). It's the primary good↔bad cue: CSS uses it to
+// drive the creature's SATURATION (washed-out when low, vivid when high), the LIVELINESS of its
+// float (smaller/slower when low), and a slight droop+shrink POSTURE when unwell. Never reaches
+// 0 — the sprite always stays visible (the no-catastrophe guardrail). Still calm and kind: a low
+// spirit looks gently muted/wilted, never alarming.
+const SPIRIT_VITALITY_FLOOR = 0.4
+function conditionVitality(factor: number): number {
+  const f = Math.max(0, Math.min(1, Number.isFinite(factor) ? factor : 1))
+  return SPIRIT_VITALITY_FLOOR + (1 - SPIRIT_VITALITY_FLOOR) * f
+}
+
+// A coarse condition TIER derived from the raw factor, mirroring the backend's care tiers, so CSS
+// can add discrete touches via the `data-condition` attribute if useful. Derived here (not threaded
+// as a prop) so the art keys off the single condition factor it already receives.
+function conditionTier(factor: number): SpiritNeedTier {
+  const f = Number.isFinite(factor) ? factor : 1
+  if (f >= 0.85) return 'thriving'
+  if (f >= 0.6) return 'content'
+  if (f >= 0.35) return 'restless'
+  return 'unwell'
+}
+
 // True when the OS asks for reduced motion. Read at render (a one-shot, like BreathePage),
 // so the static path is chosen before any animation class / inline transform is applied.
 // Exported so SpiritPage threads the same real value into its hero art.
@@ -1138,7 +1163,15 @@ export function SpiritArt({
   // `--spirit-glow` lets the aura glow breathe a touch harder when the condition is high and
   // calmer when a need is depleted — condition expressed as motion, still floored by `clampGlow`.
   // It lives on the SVG so both the (static) aura layer and the (floating) creature share it.
-  const svgStyle: CSSProperties = { ['--spirit-glow' as string]: g }
+  // `--spirit-vitality` is the SECOND, wider-range cue off the RAW factor (0.4 unwell → 1.0
+  // thriving): CSS uses it for the stronger good↔bad expression (saturation, liveliness, posture).
+  // `data-condition` exposes the coarse tier so CSS can add discrete touches if useful.
+  const vitality = conditionVitality(glow)
+  const tier = conditionTier(glow)
+  const svgStyle: CSSProperties = {
+    ['--spirit-glow' as string]: g,
+    ['--spirit-vitality' as string]: vitality,
+  }
 
   // The float / glow / pace only run when alive (not reduced-motion). The OUTER svg is now a
   // STATIC layer — it never floats. The creature layer floats (or paces); the aura layer glows.
@@ -1164,6 +1197,7 @@ export function SpiritArt({
     <svg
       className="spirit-svg"
       style={svgStyle}
+      data-condition={tier}
       viewBox="0 0 80 80"
       role="img"
       aria-label={label}
