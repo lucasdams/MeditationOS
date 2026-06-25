@@ -59,8 +59,8 @@ describe('color mode persistence', () => {
     delete document.documentElement.dataset.theme
   })
 
-  it('defaults to "auto" when nothing is stored', () => {
-    expect(readColorModePref()).toBe('auto')
+  it('defaults to "dark" when nothing is stored (dark is the hero theme)', () => {
+    expect(readColorModePref()).toBe('dark')
   })
 
   it('honors an explicit stored preference over the default', () => {
