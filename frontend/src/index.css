@@ -4147,9 +4147,24 @@ textarea:focus-visible,
   background: color-mix(in srgb, var(--activity-accent) 16%, var(--bg-surface));
 }
 
-.quest-chip-label {
+/* Label + criteria line stacked, taking the row's free space (pushes the meta cluster right). */
+.quest-chip-body {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.quest-chip-label {
+  min-width: 0;
+}
+
+/* The plain-language criteria line — quiet, so it informs without shouting. */
+.quest-chip-detail {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--text-muted);
 }
 
 /* Meta cluster on the right: progress counter, XP reward chip, done check. */

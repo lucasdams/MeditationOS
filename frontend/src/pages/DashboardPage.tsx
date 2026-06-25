@@ -24,6 +24,23 @@ const QUEST_LINKS: Record<string, string> = {
   journal: '/journal',
 }
 
+// A plain-language criteria line per quest VARIANT — what exactly completes it (and what
+// counts vs not), so a terse label like "Breathe for 5+ minutes" isn't ambiguous. Note the
+// meditate/breathe split: meditation quests don't count breathing (it has its own), and any
+// breathing pattern (incl. alternate-nostril / energizing) counts toward the breathe quests.
+const QUEST_DETAIL: Record<string, string> = {
+  meditate: 'Any non-breathing meditation, 1 min+',
+  long_sit: 'One meditation sit of 10 min+',
+  double_sit: 'Two separate meditation sits today',
+  breathe: 'Any breathing pattern, 1 min+',
+  deep_breathe: '5 min+ of breathing in total today',
+  slow_breathe: 'Breathing at 5 breaths/min or slower',
+  gratitude: 'One gratitude note',
+  gratitude_three: 'Three gratitude notes today',
+  journal: 'One journal entry',
+  mood_journal: 'A journal entry with a mood set',
+}
+
 // Quick-action tiles — one tap to the five main features from the dashboard. These are the
 // home screen's primary focal point: each is a bold, full-colour box (saturated fill from
 // TILE_COLORS, white icon + label) so the actions clearly pop. The four activity tiles read
@@ -302,13 +319,14 @@ export default function DashboardPage() {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
               const meta = ACTIVITY_META[q.key as Activity]
               const accent = ACTIVITY_COLORS[q.key as Activity]
+              const detail = QUEST_DETAIL[q.variant]
               return (
                 <li key={q.key}>
                   <Link
                     to={to}
                     className={q.done ? 'quest-chip done' : 'quest-chip'}
                     style={accent ? { ['--activity-accent' as string]: accent } : undefined}
-                    aria-label={`${q.label}${
+                    aria-label={`${q.label}${detail ? `. ${detail}` : ''}${
                       q.target > 1
                         ? ` — ${Math.min(q.progress, q.target)} of ${q.target}`
                         : ''
@@ -317,7 +335,14 @@ export default function DashboardPage() {
                     <span className="quest-chip-emoji" aria-hidden="true">
                       {meta?.emoji ?? '⭐'}
                     </span>
-                    <span className="quest-chip-label">{q.label}</span>
+                    <span className="quest-chip-body">
+                      <span className="quest-chip-label">{q.label}</span>
+                      {detail && (
+                        <span className="quest-chip-detail" aria-hidden="true">
+                          {detail}
+                        </span>
+                      )}
+                    </span>
                     <span className="quest-chip-meta">
                       {/* Multi-step quests (e.g. "Meditate twice", target=2) show a quiet
                           "X/Y" counter so partial progress is visible — single-step quests
