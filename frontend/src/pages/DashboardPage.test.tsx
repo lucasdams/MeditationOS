@@ -148,6 +148,22 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
   })
 
+  it('renders an XP progress bar in the HUD reflecting xp into the level', async () => {
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    // xp_into_level 20 / xp_for_next_level 100 → 20% along the bar.
+    const xpBar = screen.getByRole('progressbar', { name: /xp to next level/i })
+    expect(xpBar).toBeInTheDocument()
+    expect(xpBar).toHaveAttribute('aria-valuenow', '20')
+    const fill = xpBar.querySelector('.hud-xp-fill') as HTMLElement | null
+    expect(fill).not.toBeNull()
+    expect(fill!.style.width).toBe('20%')
+
+    // The streak now reads as a HUD stat pill (🔥 3) rather than a separate streak line.
+    expect(screen.getByLabelText(/3 day streak/i)).toBeInTheDocument()
+  })
+
   it('pins the level + coins line to the very top of the home, above the page title', async () => {
     renderPage()
     const main = await screen.findByRole('main')
@@ -175,16 +191,16 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     expect(screen.getByRole('button', { name: /how do you feel/i })).toBeInTheDocument()
   })
 
-  it('shows the day\'s quests under a clear "Today\'s quests" heading, no "Today you could…" lead', async () => {
+  it('shows the day\'s missions under a clear "Daily missions" heading, no "Today you could…" lead', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    // The old imperative lead is gone, replaced by a clear quest heading.
+    // The old imperative lead is gone, replaced by a clear missions heading.
     expect(screen.queryByText(/Today you could/i)).not.toBeInTheDocument()
-    const questsSection = screen.getByRole('region', { name: /today's quests/i })
+    const questsSection = screen.getByRole('region', { name: /daily missions/i })
     expect(questsSection).toBeInTheDocument()
-    // A visible "Today's quests" heading + a done/total count make the chips read as quests.
-    expect(within(questsSection).getByText(/today's quests/i)).toBeInTheDocument()
+    // A visible "Daily missions" heading + a done/total count make the cards read as missions.
+    expect(within(questsSection).getByText(/daily missions/i)).toBeInTheDocument()
     expect(within(questsSection).getByText('0/1')).toBeInTheDocument()
     expect(
       within(questsSection).getByRole('link', { name: /meditate/i }),
@@ -236,7 +252,7 @@ describe('DashboardPage — multi-step quest progress counter', () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    const questsSection = screen.getByRole('region', { name: /today's quests/i })
+    const questsSection = screen.getByRole('region', { name: /daily missions/i })
 
     // The multi-step quest shows its partial progress as "1/2".
     expect(within(questsSection).getByText('1/2')).toBeInTheDocument()
@@ -256,7 +272,7 @@ describe('DashboardPage — multi-step quest progress counter', () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    const questsSection = screen.getByRole('region', { name: /today's quests/i })
+    const questsSection = screen.getByRole('region', { name: /daily missions/i })
     const chip = within(questsSection).getByRole('link', { name: /write three gratitudes/i })
     // Full progress shows "3/3" and the chip carries the done state (muted + check).
     expect(within(questsSection).getByText('3/3')).toBeInTheDocument()

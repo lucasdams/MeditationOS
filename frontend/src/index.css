@@ -2101,26 +2101,141 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
-/* Level + coins pinned to the top of the home — a clean, tidy top line. Calm and
-   uncluttered (no card, no gradient, no progress bar) but clearly present at the top:
-   reads a touch more present than a muted micro-chip, not a big gamified bar. The full
-   LevelCard (XP bar, next unlock) lives inside the "Show more" drawer. */
-.level-topline {
+/* Progression HUD pinned to the top of the home — a game-style stat bar. A glowing,
+   elevated dark panel holding the level badge + XP progress bar and the coin/streak stat
+   pills. Built on design tokens so light mode reads cleanly too; the accent glow is layered
+   subtly so it's game-y but not loud. */
+.level-topline.hud {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem 0.9rem;
-  margin: 0 0 0.85rem;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px var(--shadow-card),
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+/* Level badge + XP bar take the lead; pills tuck to the right. The level group can grow
+   so the XP bar fills available width, then wraps gracefully on narrow screens. */
+.hud-level {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.hud-level-badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.hud-level-mark {
+  position: absolute;
+  font-size: 42px;
+  line-height: 1;
+  color: var(--accent);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+
+.hud-level-num {
+  position: relative;
+  font-weight: 800;
   font-size: 0.95rem;
-  font-weight: 600;
+  color: #fff;
+}
+
+.hud-xp {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hud-xp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.hud-xp-label {
+  font-size: 0.9rem;
+  font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--text-primary);
 }
 
-.level-topline-item {
+.hud-xp-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.hud-xp-sep {
+  margin: 0 0.1rem;
+  opacity: 0.6;
+}
+
+.hud-xp-bar {
+  height: 8px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.hud-xp-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 70%, #fff),
+    var(--accent)
+  );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: width 0.5s ease;
+}
+
+.hud-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hud-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.hud-pill-streak {
+  border-color: color-mix(in srgb, #f97316 40%, var(--border));
+  background: color-mix(in srgb, #f97316 10%, var(--bg-surface));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-xp-fill {
+    transition: none;
+  }
 }
 
 .level-card {
@@ -3588,11 +3703,51 @@ textarea:focus-visible,
   margin: 0.6rem 0 0;
 }
 
-/* Compact quests on the calm default home — a small "Today's quests" heading over a row of
-   tappable quest chips. Low-chrome by design: no card, no descriptions, no XP — but the
-   heading + target motif + done/total count make it clearly read as the day's quests. */
+/* Daily missions on the home — a "Daily missions" header over a completion meter, then a
+   grid of mission cards. Game-y but tasteful: each card carries a reward chip and a clear
+   done state. */
 .quests-compact {
   margin: 1.25rem 0;
+}
+
+/* Header block: the heading row sits over a thin completion meter so progress reads at a
+   glance, mirroring the HUD's XP bar. */
+.missions-head {
+  margin-bottom: 0.7rem;
+}
+
+.missions-meter {
+  height: 5px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.missions-meter-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 70%, #fff),
+    var(--accent)
+  );
+  transition: width 0.5s ease;
+}
+
+.missions-meter.complete .missions-meter-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--success-text) 70%, #fff),
+    var(--success-text)
+  );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--success-text) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .missions-meter-fill {
+    transition: none;
+  }
 }
 
 /* Quiet quest heading — a target icon, the label, and a done/total count, so the chips
@@ -3639,33 +3794,49 @@ textarea:focus-visible,
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   gap: 0.6rem;
 }
 
-/* A single quest card: emoji + short label, the whole thing a link to its feature. A
-   comfortably large, tappable target (≥44px tall) with a quiet accent-tinted border that
-   brightens gently on hover/focus — calm, not loud. */
+/* A single mission card: an accent-tinted icon tile, the label, then a meta cluster (XP
+   reward chip / progress / done check) pushed to the right. The whole card is a link to its
+   feature. Comfortably large tap target with a left accent rail and a quiet glow that lifts on
+   hover/focus — game-y but not loud. */
 .quest-chip {
   --activity-accent: #c4c4c9;
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  /* Fill the grid cell so every chip is the same width, and so chips in a row whose
+  gap: 0.6rem;
+  /* Fill the grid cell so every card is the same width, and so cards in a row whose
      tallest member wrapped to two lines still match that height. */
   width: 100%;
   height: 100%;
-  min-height: 52px;
-  padding: 0.7rem 1rem;
-  font-size: 1rem;
+  min-height: 56px;
+  padding: 0.6rem 0.85rem 0.6rem 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-decoration: none;
   background: var(--bg-surface);
   border: 1px solid color-mix(in srgb, var(--activity-accent) 35%, var(--border));
   border-radius: 14px;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  box-shadow: 0 1px 2px var(--shadow-card);
+  overflow: hidden;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
+    transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Accent rail down the left edge — gives each mission its feature identity colour. */
+.quest-chip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--activity-accent);
+  opacity: 0.85;
 }
 
 .quest-chip:hover,
@@ -3673,11 +3844,54 @@ textarea:focus-visible,
   color: var(--text-primary);
   background: color-mix(in srgb, var(--activity-accent) 8%, var(--bg-surface));
   border-color: color-mix(in srgb, var(--activity-accent) 55%, var(--border));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--activity-accent) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-chip:hover,
+  .quest-chip:focus-visible {
+    transform: none;
+  }
 }
 
 .quest-chip-emoji {
-  font-size: 1.35rem;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  font-size: 1.2rem;
   line-height: 1;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--activity-accent) 16%, var(--bg-surface));
+}
+
+.quest-chip-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Meta cluster on the right: progress counter, XP reward chip, done check. */
+.quest-chip-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* Reward chip — the per-mission XP the backend exposes (DailyQuest.xp). A small accent
+   badge, present but not shouted. */
+.quest-chip-reward {
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
 }
 
 /* Multi-step quests (target > 1) show a quiet "X/Y" counter so partial progress reads at a
@@ -3693,25 +3907,46 @@ textarea:focus-visible,
   padding: 0.05rem 0.4rem;
 }
 
-/* Done state: muted and struck through, with a check — a subtle "already did this" cue
-   rather than a loud reward. */
+/* Done state: a satisfying "cleared" treatment — a success-tinted card, a soft glow, and a
+   green check, rather than a loud reward. The label keeps its strike-through cue. */
 .quest-chip.done {
-  color: var(--text-muted);
-  background: transparent;
-  border-color: var(--border-light);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--success-text) 9%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--success-text) 38%, var(--border));
+}
+
+.quest-chip.done::before {
+  background: var(--success-text);
+  opacity: 1;
 }
 
 .quest-chip.done .quest-chip-label {
   text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 60%, transparent);
 }
 
 .quest-chip.done .quest-chip-emoji {
-  opacity: 0.6;
+  background: color-mix(in srgb, var(--success-text) 16%, var(--bg-surface));
+}
+
+/* Completed missions show their reward as "claimed" in success green, not the pending accent. */
+.quest-chip.done .quest-chip-reward {
+  color: var(--success-text);
+  background: color-mix(in srgb, var(--success-text) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success-text) 32%, transparent);
 }
 
 .quest-chip-check {
-  font-weight: 700;
-  color: var(--success-text);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--success-text);
+  border-radius: 999px;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--success-text) 55%, transparent);
 }
 
 /* Collapsible "Show more" drawer — keeps the heavier retrospective/progress detail (full
@@ -5373,26 +5608,57 @@ details[open] .meditate-disclosure-summary::before {
    white text clears WCAG AA (≥4.5:1) in both themes (fill + text are fixed, so contrast is
    theme-independent). Equal-sized, tidy boxes; a subtle lift on hover keeps them tasteful. */
 .feature-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  padding: 0.85rem 0.4rem;
+  padding: 0.95rem 0.4rem;
   background: var(--tile-fill, #6b6b70);
   border: 1px solid color-mix(in srgb, #000 12%, var(--tile-fill, #6b6b70));
-  border-radius: 12px;
+  border-radius: 14px;
   text-decoration: none;
   color: #ffffff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
   transition: filter 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Subtle top sheen so the tiles read as raised, glowing game-hub buttons rather than flat
+   swatches. Purely decorative; doesn't affect contrast of the icon/label below it. */
+.feature-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0) 55%
+  );
+  pointer-events: none;
+}
+
+.feature-tile-emoji,
+.feature-tile-label {
+  position: relative;
 }
 
 .feature-tile:hover,
 .feature-tile:focus-visible {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--tile-fill, #6b6b70) 45%, rgba(0, 0, 0, 0.25));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-tile {
+    transition: filter 0.12s ease;
+  }
+  .feature-tile:hover,
+  .feature-tile:focus-visible {
+    transform: none;
+  }
 }
 
 .feature-tile-emoji {

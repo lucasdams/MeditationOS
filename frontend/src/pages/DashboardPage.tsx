@@ -153,22 +153,67 @@ export default function DashboardPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      {/* Level + coins pinned to the very top of the home — the first thing the user sees,
-          above the page title and the first-run card. A clean, tidy top line (not a big
-          gamified bar): calm but clearly present. Level comes from stats; coins from the
-          spirit (its derived spendable balance). */}
-      {stats && (
-        <p className="level-topline" aria-label={`Level ${stats.level}`}>
-          <span className="level-topline-item">
-            <span aria-hidden="true">◆</span> Level {stats.level}
-          </span>
-          {spirit && (
-            <span className="level-topline-item">
-              <CoinIcon /> {spirit.coins}
-            </span>
-          )}
-        </p>
-      )}
+      {/* Progression HUD pinned to the very top of the home — the first thing the user
+          sees, above the page title and the first-run card. A game-style stat bar: the
+          level badge with an XP progress bar toward the next level (xp detail straight from
+          stats, mirroring LevelCard), plus coin and streak stat pills. Glowing dark panel,
+          compact and legible. Level/XP come from stats; coins from the spirit (its derived
+          spendable balance). Kept as `.level-topline` so it stays the first child of <main>. */}
+      {stats &&
+        (() => {
+          const xpPct = Math.min(
+            100,
+            Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100),
+          )
+          return (
+            <section
+              className="level-topline hud"
+              aria-label={`Level ${stats.level}, ${stats.xp_into_level} of ${stats.xp_for_next_level} XP to the next level`}
+            >
+              <div className="hud-level">
+                <span className="hud-level-badge" aria-hidden="true">
+                  <span className="hud-level-mark">◆</span>
+                  <span className="hud-level-num">{stats.level}</span>
+                </span>
+                <div className="hud-xp">
+                  <div className="hud-xp-head">
+                    <span className="hud-xp-label">Level {stats.level}</span>
+                    <span className="hud-xp-count">
+                      {stats.xp_into_level}
+                      <span className="hud-xp-sep">/</span>
+                      {stats.xp_for_next_level} XP
+                    </span>
+                  </div>
+                  <div
+                    className="hud-xp-bar"
+                    role="progressbar"
+                    aria-label="XP to next level"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={xpPct}
+                  >
+                    <div className="hud-xp-fill" style={{ width: `${xpPct}%` }} />
+                  </div>
+                </div>
+              </div>
+              <div className="hud-pills">
+                {spirit && (
+                  <span className="hud-pill hud-pill-coins">
+                    <CoinIcon /> {spirit.coins}
+                  </span>
+                )}
+                {stats.current_streak_days > 0 && (
+                  <span
+                    className="hud-pill hud-pill-streak"
+                    aria-label={`${stats.current_streak_days} day streak`}
+                  >
+                    <span aria-hidden="true">🔥</span> {stats.current_streak_days}
+                  </span>
+                )}
+              </div>
+            </section>
+          )
+        })()}
 
       <h1>Your practice</h1>
       <p className="zen-greeting muted">{greeting}</p>
@@ -183,10 +228,12 @@ export default function DashboardPage() {
         <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
       )}
 
-      {stats && stats.current_streak_days > 0 && (
+      {/* The streak now lives as a stat pill in the HUD above; here we keep only the quiet
+          rest-day reassurance when it applies, so the gentle "skipping one is fine" message
+          isn't lost. */}
+      {stats && stats.current_streak_days > 0 && stats.rest_day_used && (
         <p className="quest-streak muted">
-          <span aria-hidden="true">🌱</span> {stats.current_streak_days}-day practice streak
-          {stats.rest_day_used ? ' · 🛡️ rest day — skipping one is fine' : ''}
+          <span aria-hidden="true">🛡️</span> Rest day used — skipping one is fine.
         </p>
       )}
 
@@ -215,22 +262,39 @@ export default function DashboardPage() {
         ))}
       </nav>
 
-      {/* Today's quests — small, tappable chips (emoji + short label), each deep-linking to
-          its feature. A quiet "Today's quests" heading with a target motif makes it clear
-          these are the day's completable tasks; done quests read muted with a check. Still
-          low-chrome: no descriptions, no XP numbers, calm not grindy. */}
+      {/* Daily missions — the day's completable tasks as mission rows. Each shows its icon +
+          label, a reward chip (+XP from the quest data), and a clear progress/done state; done
+          rows get a satisfying checked treatment. A "Daily missions — X/Y" header sits over a
+          subtle completion meter. Each row still deep-links to its feature (QUEST_LINKS).
+          Classes `.quest-chip` / `.quest-chip-progress` / `.done` are retained so the existing
+          behaviour assertions keep passing while the look turns game-y. */}
       {stats && stats.daily_quests.length > 0 && (
-        <section className="quests-compact" aria-labelledby="quests-heading">
+        <section className="quests-compact missions" aria-labelledby="quests-heading">
           {(() => {
             const doneCount = stats.daily_quests.filter((q) => q.done).length
+            const total = stats.daily_quests.length
+            const pct = Math.round((doneCount / total) * 100)
+            const allDone = doneCount === total
             return (
-              <p className="quests-heading" id="quests-heading">
-                <span className="quests-heading-icon" aria-hidden="true">🎯</span>
-                <span className="quests-heading-text">Today's quests</span>
-                <span className="quests-heading-count">
-                  {doneCount}/{stats.daily_quests.length}
-                </span>
-              </p>
+              <div className="missions-head">
+                <p className="quests-heading" id="quests-heading">
+                  <span className="quests-heading-icon" aria-hidden="true">🎯</span>
+                  <span className="quests-heading-text">Daily missions</span>
+                  <span className="quests-heading-count">
+                    {doneCount}/{total}
+                  </span>
+                </p>
+                <div
+                  className={allDone ? 'missions-meter complete' : 'missions-meter'}
+                  role="progressbar"
+                  aria-label="Daily missions complete"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={pct}
+                >
+                  <div className="missions-meter-fill" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
             )
           })()}
           <ul className="quest-chips">
@@ -248,25 +312,34 @@ export default function DashboardPage() {
                       q.target > 1
                         ? ` — ${Math.min(q.progress, q.target)} of ${q.target}`
                         : ''
-                    }${q.done ? ' — done' : ''}`}
+                    }${q.xp > 0 ? ` — reward ${q.xp} XP` : ''}${q.done ? ' — done' : ''}`}
                   >
                     <span className="quest-chip-emoji" aria-hidden="true">
                       {meta?.emoji ?? '⭐'}
                     </span>
                     <span className="quest-chip-label">{q.label}</span>
-                    {/* Multi-step quests (e.g. "Meditate twice", target=2) show a quiet
-                        "X/Y" counter so partial progress is visible — single-step quests
-                        (target 1) stay clean with just the done check. */}
-                    {q.target > 1 && (
-                      <span className="quest-chip-progress" aria-hidden="true">
-                        {Math.min(q.progress, q.target)}/{q.target}
-                      </span>
-                    )}
-                    {q.done && (
-                      <span className="quest-chip-check" aria-hidden="true">
-                        ✓
-                      </span>
-                    )}
+                    <span className="quest-chip-meta">
+                      {/* Multi-step quests (e.g. "Meditate twice", target=2) show a quiet
+                          "X/Y" counter so partial progress is visible — single-step quests
+                          (target 1) stay clean. */}
+                      {q.target > 1 && (
+                        <span className="quest-chip-progress" aria-hidden="true">
+                          {Math.min(q.progress, q.target)}/{q.target}
+                        </span>
+                      )}
+                      {/* Reward chip — the per-quest XP the backend already exposes
+                          (DailyQuest.xp). A small badge, not a shouted number. */}
+                      {q.xp > 0 && (
+                        <span className="quest-chip-reward" aria-hidden="true">
+                          +{q.xp}
+                        </span>
+                      )}
+                      {q.done && (
+                        <span className="quest-chip-check" aria-hidden="true">
+                          ✓
+                        </span>
+                      )}
+                    </span>
                   </Link>
                 </li>
               )
