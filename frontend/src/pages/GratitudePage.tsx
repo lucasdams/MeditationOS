@@ -231,7 +231,7 @@ export default function GratitudePage() {
       <header className="page-head">
         <h1>Gratitude</h1>
         <p className="page-subtitle">
-          What are you grateful for right now? Pick a theme for ideas, or write your own.
+          What are you grateful for? Pick a theme, or write your own.
         </p>
       </header>
 
@@ -328,7 +328,7 @@ export default function GratitudePage() {
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         {!entries && !loadError && <Loading />}
         {entries && entries.length === 0 && (
-          <EmptyState>No entries yet — your first grateful moment starts here.</EmptyState>
+          <EmptyState>No entries yet — start with one above.</EmptyState>
         )}
         {entries && entries.length > 0 && (
           <ul className="journal-list grat-log">

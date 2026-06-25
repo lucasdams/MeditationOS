@@ -949,11 +949,7 @@ export default function BreathePage() {
             placeholder={intentionPlaceholder}
             value={intention}
             onChange={(e) => setIntention(e.target.value)}
-            aria-describedby="breathe-intention-hint"
           />
-          <p id="breathe-intention-hint" className="session-intention-hint">
-            A quiet phrase to carry into your breathing.
-          </p>
         </div>
       )}
 
@@ -1089,7 +1085,7 @@ export default function BreathePage() {
           context="pre"
           sessionId={null}
           title="Log a reading first?"
-          intro="Optional: your heart rate now, so you can see how a breathing sit settles you."
+          intro="Optional: your heart rate now, to see how a breathing sit settles you."
           onDone={(reading) => {
             if (reading) preReadingIdRef.current = reading.id
             setShowPreReading(false)
@@ -1110,7 +1106,7 @@ export default function BreathePage() {
             </p>
           )}
           <p className="biometric-intro">
-            Optional — rate how your breathing felt, or jot a quick note.
+            Optional — rate it, or jot a quick note.
           </p>
 
           <div className="session-reflect-ratings">
