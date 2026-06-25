@@ -102,3 +102,8 @@ desktop.ini
 # Local Docker overrides
 # ─────────────────────────────────────────────
 docker-compose.override.yml
+
+# ─────────────────────────────────────────────
+# Claude Code agent worktrees (embedded git repos; never commit)
+# ─────────────────────────────────────────────
+.claude/worktrees/
