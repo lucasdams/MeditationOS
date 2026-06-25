@@ -9,7 +9,7 @@
 // IMPORTANT: no audio is produced here — the caller (GuidedCues) is responsible
 // for ringing the bell when `bell: true` on a phase transition.
 
-export type GuidedStructureId = 'body-scan' | 'loving-kindness'
+export type GuidedStructureId = 'body-scan' | 'loving-kindness' | 'acceptance'
 
 export interface GuidedPhase {
   /** Short, calm cue text shown on screen. Keep to one or two lines. */
@@ -86,7 +86,39 @@ const LOVING_KINDNESS: GuidedStructure = {
   ],
 }
 
-export const GUIDED_STRUCTURES: GuidedStructure[] = [BODY_SCAN, LOVING_KINDNESS]
+// ── Acceptance / RAIN ─────────────────────────────────────────────────────────
+// A gentle progression through meeting present experience as it is: recognise
+// what's here, allow it to be, investigate with kindness, then rest in open
+// awareness. The settle and close phases are shorter; the middle "allow" and
+// "investigate" phases carry the most weight, where the work of the practice
+// happens.
+
+const ACCEPTANCE: GuidedStructure = {
+  id: 'acceptance',
+  label: 'Acceptance',
+  description: 'Meet whatever is present with openness, rather than pushing it away.',
+  phases: [
+    { cue: 'Settle in. Let your eyes close and your body arrive.', bell: false, weight: 1 },
+    { cue: 'Breathe naturally. Feel the ground holding you.', bell: false, weight: 1 },
+    // Recognise
+    { cue: 'Notice what is here right now — a feeling, a mood, a sensation. Just name it gently.', bell: true, weight: 3 },
+    // Allow
+    { cue: 'Let it be here. Nothing to fix or change. Allow this moment to be exactly as it is.', bell: true, weight: 4 },
+    { cue: 'Soften around any urge to push it away. Make a little room for whatever you feel.', bell: false, weight: 3 },
+    // Investigate
+    { cue: 'With kindness, turn toward it. Where do you feel it in the body? What does it need?', bell: true, weight: 4 },
+    { cue: 'Offer it a kind, quiet acknowledgement: “This belongs. I can be with this.”', bell: false, weight: 3 },
+    // Rest in open awareness
+    { cue: 'Let it all rest in open awareness. You are the space that holds the experience.', bell: true, weight: 3 },
+    { cue: 'When you\'re ready, gently return to the breath. Carry this openness with you.', bell: false, weight: 2 },
+  ],
+}
+
+export const GUIDED_STRUCTURES: GuidedStructure[] = [
+  BODY_SCAN,
+  LOVING_KINDNESS,
+  ACCEPTANCE,
+]
 
 export function getStructure(id: GuidedStructureId): GuidedStructure {
   const s = GUIDED_STRUCTURES.find((g) => g.id === id)

@@ -85,7 +85,7 @@ type GuidedChoice = GuidedStructureId | 'none'
 function readGuidedChoice(): GuidedChoice {
   try {
     const v = localStorage.getItem(GUIDED_STRUCTURE_KEY)
-    if (v === 'body-scan' || v === 'loving-kindness') return v
+    if (v === 'body-scan' || v === 'loving-kindness' || v === 'acceptance') return v
     return 'none'
   } catch {
     return 'none'
