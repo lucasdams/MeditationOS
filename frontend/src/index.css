@@ -4736,23 +4736,49 @@ details[open] .meditate-disclosure-summary::before {
   font-weight: 500;
 }
 
-.breathe-nostrils {
+/* The alternate-nostril nose cue: a small nose whose active nostril glows open. */
+.breathe-nose-cue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.breathe-nose {
+  width: 56px;
+  height: auto;
+}
+
+/* Nostril holes: muted (closed) by default; the active one fills with the accent and glows. */
+.breathe-nostril-hole {
+  fill: var(--border);
+  transition: fill 0.25s ease, opacity 0.25s ease;
+  opacity: 0.6;
+}
+
+.breathe-nostril-hole.is-open {
+  fill: var(--spirit-accent, var(--accent));
+  opacity: 1;
+  filter: drop-shadow(0 0 4px var(--spirit-accent, var(--accent)));
+}
+
+.breathe-nose-tags {
   display: flex;
   justify-content: center;
-  gap: 1.25rem;
-  margin-top: 0.4rem;
-  font-size: 0.95rem;
+  gap: 1.6rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
-.breathe-nostril {
+.breathe-nostril-tag {
   opacity: 0.5;
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 
-.breathe-nostril.active {
+.breathe-nostril-tag.active {
   opacity: 1;
-  color: var(--accent);
+  color: var(--spirit-accent, var(--accent));
   font-weight: 600;
 }
 
