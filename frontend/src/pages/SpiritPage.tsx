@@ -22,10 +22,11 @@ import type { SpiritPath, SpiritState } from '../types'
  * build-order steps 5 + 6). A page + "Personalize" panel for the single spirit:
  *
  *  - the spirit rendered large with its name / stage / path,
- *  - a quiet Personalize panel — the cosmetics slots (aura / accessory / habitat) with each
- *    option's cost and applied / locked / affordable state, preview-on-hover-and-focus, and
- *    buy via the service (refetch-free: every write returns the fresh state),
- *  - a nickname field (PATCH; clears when emptied),
+ *  - a quiet Personalize panel — the cosmetics slots (see the backend SPIRIT_COSMETICS_CATALOG)
+ *    with each option's applied / locked / affordable state, preview-on-hover-and-focus, and
+ *    buy via the service behind a before/after confirm (refetch-free: every write returns the
+ *    fresh state),
+ *  - a paid name reset (ADR-0024 — the name is committed at creation, otherwise immutable),
  *  - the coins shown once (no double-show),
  *  - the collection gallery of retired spirits,
  *  - and, only at `radiant`, a calm "awaken a new spark" action behind a confirmation.
@@ -45,7 +46,7 @@ const STAGE_ORDER = Object.keys(STAGE_LABEL)
 const PATH_LABEL = PATH_COPY
 
 // Calm display names for the cosmetic slots and their options (matching the backend catalog
-// SPIRIT_COSMETICS_CATALOG: aura/accessory/habitat). Unknown keys fall back to a tidied key.
+// SPIRIT_COSMETICS_CATALOG). Unknown keys fall back to a tidied key.
 const SLOT_LABEL: Record<string, string> = {
   aura: 'Aura',
   accessory: 'Accessory',
@@ -436,13 +437,16 @@ export default function SpiritPage() {
                                 </span>
                               </>
                             ) : !opt.affordable ? (
+                              // Unaffordable: a calm muted hint, no coin tally (the buy-confirm
+                              // modal carries the cost). Keeps the chips uncrowded (calm-UX).
                               <>
-                                {optionLabel(opt.option)} · <CoinIcon /> {opt.cost} (earn more)
+                                {optionLabel(opt.option)}
+                                <span className="spirit-option-lock">Earn more</span>
                               </>
                             ) : (
-                              <>
-                                {optionLabel(opt.option)} · <CoinIcon /> {opt.cost}
-                              </>
+                              // Buyable: just the name. The cost lives on the before/after
+                              // buy-confirm modal, so the panel reads as calm, not a price list.
+                              optionLabel(opt.option)
                             )}
                           </button>
                         )
@@ -540,7 +544,7 @@ export default function SpiritPage() {
                 </p>
                 <button
                   type="button"
-                  className="spirit-awaken-btn"
+                  className="settings-danger spirit-awaken-btn"
                   disabled={busy != null}
                   onClick={() => setConfirmAwaken(true)}
                 >
@@ -563,7 +567,7 @@ export default function SpiritPage() {
                 <div className="spirit-awaken-actions">
                   <button
                     type="button"
-                    className="spirit-awaken-do"
+                    className="settings-danger spirit-awaken-do"
                     disabled={busy === 'awaken'}
                     onClick={awaken}
                   >
@@ -639,7 +643,7 @@ export default function SpiritPage() {
                   <div className="spirit-awaken-actions">
                     <button
                       type="button"
-                      className="spirit-awaken-do"
+                      className="spirit-buy-confirm"
                       disabled={busy != null}
                       onClick={() => buyCosmetic(slot, option)}
                     >
@@ -685,7 +689,7 @@ export default function SpiritPage() {
                 <div className="spirit-awaken-actions">
                   <button
                     type="button"
-                    className="spirit-awaken-do"
+                    className="settings-danger spirit-awaken-do"
                     disabled={busy === 'reset-name' || !resetNameDraft.trim()}
                     onClick={resetName}
                   >
@@ -718,7 +722,7 @@ export default function SpiritPage() {
                 <div className="spirit-awaken-actions">
                   <button
                     type="button"
-                    className="spirit-awaken-do"
+                    className="settings-danger spirit-awaken-do"
                     disabled={busy === 'reset-upgrades'}
                     onClick={resetUpgrades}
                   >

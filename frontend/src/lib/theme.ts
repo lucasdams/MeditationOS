@@ -81,10 +81,8 @@ const COLOR_MODE_KEY = 'theme:color-mode'
 const DEFAULT_COLOR_MODE: ColorModePref = 'auto'
 
 /**
- * Resolve "auto" to an explicit light/dark theme from the clock. We reuse the
- * garden's day-phase boundaries (lib/sanctuaryArt `timeOfDay`, mirrored here as
- * `dayPhaseFromHour`) so the app and the garden stay in step: dawn/day → light,
- * dusk/night → dark.
+ * Resolve "auto" to an explicit light/dark theme from the clock, using the local
+ * `dayPhaseFromHour` boundaries: dawn/day → light, dusk/night → dark.
  */
 export function autoTheme(now: Date = new Date()): 'light' | 'dark' {
   const phase = dayPhaseFromHour(now.getHours())
