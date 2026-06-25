@@ -1318,9 +1318,7 @@ export default function Spirit({
         // companion is the first step. The picker lives on its own focused page.
         <>
           <p className="spirit-stage">Choose your companion</p>
-          <p className="spirit-note muted">
-            Your spirit is waiting to take form — pick the one whose nature fits you.
-          </p>
+          <p className="spirit-note muted">Pick the one whose nature fits you.</p>
           <p className="spirit-choose-prompt">
             <Link to="/spirit/choose" className="spirit-choose-cta">
               Choose your companion →

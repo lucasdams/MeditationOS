@@ -52,28 +52,6 @@ const FEATURE_TILES = [
   { ...ACTIVITY_META.journal, to: '/journal', tile: 'journal' as const },
 ] as const
 
-// Once-per-day gate for the on-open mood check-in. We record the local date the prompt
-// was shown so it appears at most once per calendar day — not on every navigation or
-// refresh. Storage failures (private mode) degrade to "don't prompt" rather than nag.
-const MOOD_PROMPT_PREFIX = 'mood.prompted.'
-
-function moodPromptedToday(): boolean {
-  try {
-    return localStorage.getItem(MOOD_PROMPT_PREFIX + localDateKey()) === '1'
-  } catch {
-    // Can't read storage — assume already prompted so we never nag on every visit.
-    return true
-  }
-}
-
-function markMoodPromptedToday(): void {
-  try {
-    localStorage.setItem(MOOD_PROMPT_PREFIX + localDateKey(), '1')
-  } catch {
-    // ignore storage failures — worst case the modal shows again next visit
-  }
-}
-
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -92,9 +70,8 @@ export default function DashboardPage() {
   // visits. It also auto-retires once the user has logged a few sessions.
   const [firstRunDismissed, setFirstRunDismissed] = useState(() => isFirstRunDismissed())
 
-  // On-open mood check-in: a calm, skippable modal that greets the user at most once per
-  // day. Opened by the effect below once stats have loaded (so we can tell whether the
-  // first-run card is leading the page — we don't stack the mood prompt on top of it).
+  // Manual mood check-in: a calm, skippable modal the user opens themselves from the quiet
+  // inline mood line. It never auto-opens — logging a mood is always an opt-in action.
   const [moodModalOpen, setMoodModalOpen] = useState(false)
 
   // The mood the user most recently logged *today* (local calendar day), if any. Drives the
@@ -103,9 +80,6 @@ export default function DashboardPage() {
   const [todayMood, setTodayMood] = useState<Mood | null>(null)
 
   function closeMoodModal() {
-    // Record the prompt for today on dismissal so it won't reappear until tomorrow,
-    // whether the user picked a mood or skipped.
-    markMoodPromptedToday()
     setMoodModalOpen(false)
   }
 
@@ -147,21 +121,6 @@ export default function DashboardPage() {
       })
       .catch(() => {})
   }, [])
-
-  // Decide whether to greet the user with the mood check-in. Runs once stats are in so we
-  // know if the first-run "start here" card is leading the page. Gating rules:
-  //  - at most once per local calendar day (localStorage `mood.prompted.<date>`),
-  //  - never stacked on top of the first-run card — a brand-new user gets the gentler
-  //    orientation card first; the mood prompt waits for a later day.
-  useEffect(() => {
-    if (!stats || moodModalOpen) return
-    if (moodPromptedToday()) return
-    const firstRunActive =
-      !firstRunDismissed && shouldShowFirstRun(stats.session_count)
-    if (firstRunActive) return
-    setMoodModalOpen(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stats, firstRunDismissed])
 
   function retryStats() {
     setRetrying(true)
@@ -374,9 +333,9 @@ export default function DashboardPage() {
       )}
 
       {/* Quiet, always-reachable mood line. If the user already logged a mood today we reflect
-          it back calmly — "You felt {mood} {emoji}" with a small colour accent — instead of
-          prompting again; otherwise we show the gentle "How do you feel?" prompt. Either way
-          it's a plain text link that opens the same mood modal to (re-)log. */}
+          it back calmly — "You felt {mood} {emoji}" with a small colour accent; otherwise we
+          show a quiet, optional "Log today's mood" affordance. Either way it's a plain text
+          link that opens the mood modal to (re-)log — never auto-opened. */}
       {stats && !moodModalOpen && (
         <p className="mood-entry">
           <button
@@ -395,7 +354,7 @@ export default function DashboardPage() {
                 <span aria-hidden="true">{MOOD_META[todayMood].emoji}</span>
               </>
             ) : (
-              'How do you feel?'
+              "Log today's mood"
             )}
           </button>
         </p>
@@ -430,10 +389,10 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* On-open mood check-in — a calm, skippable modal greeting the user at most once a
-          day (see the gating effect above). Reuses the inline MoodCheckin logic/API call;
-          picking a mood saves it and closes; "Skip" dismisses without pressure. Escape,
-          focus trap, and focus restoration come from <Modal>. */}
+      {/* Manual mood check-in — a calm, skippable modal opened only from the inline mood
+          line (never auto-opened). Reuses the MoodCheckin logic/API call; picking a mood
+          saves it and closes; "Skip" dismisses without pressure. Escape, focus trap, and
+          focus restoration come from <Modal>. */}
       {moodModalOpen && (
         <Modal
           onClose={closeMoodModal}
