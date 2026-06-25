@@ -752,7 +752,7 @@ export default function BreathePage() {
           </span>
           <span>{cycles} cycles</span>
           <span>
-            {preset.pattern === null ? `${bpm} breaths per minute` : patternSummary(pattern)}
+            {preset.control === 'bpm' ? `${bpm} breaths per minute` : patternSummary(pattern)}
           </span>
         </div>
       )}

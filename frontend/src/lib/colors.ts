@@ -33,13 +33,12 @@ export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; col
 // the slate canvas. These are deliberately heavier than the soft ACTIVITY_COLORS used for
 // borders/quests, so the tiles read as the home screen's primary focal point.
 //   meditate #0f766e → 5.47:1 · breathe #0369a1 → 5.93:1 · gratitude #b45309 → 5.02:1
-//   journal #6d28d9 → 7.10:1 · sanctuary #15803d → 5.02:1  (white text, light mode)
+//   journal #6d28d9 → 7.10:1  (white text, light mode)
 export const TILE_COLORS = {
   meditate: '#0f766e', // teal-700
   breathe: '#0369a1', // sky-700
   gratitude: '#b45309', // amber-700
   journal: '#6d28d9', // violet-700
-  sanctuary: '#15803d', // green-700
 } as const
 
 // Dark-mode tile fills. The light TILE_COLORS are deep, near-700 shades that go muddy on the
@@ -47,13 +46,12 @@ export const TILE_COLORS = {
 // brightnesses white text would drop below WCAG AA, so the dark tile carries a near-black slate
 // LABEL instead (TILE_TEXT_DARK) — the .feature-tile dark CSS pairs the two via --tile-fill-dark.
 //   meditate #14b8a6 → 7.17:1 · breathe #0ea5e9 → 6.44:1 · gratitude #f59e0b → 8.31:1
-//   journal #a78bfa → 6.56:1 · sanctuary #22c55e → 7.83:1  (label #0f172a vs each fill)
+//   journal #a78bfa → 6.56:1  (label #0f172a vs each fill)
 export const TILE_COLORS_DARK = {
   meditate: '#14b8a6', // teal-500
   breathe: '#0ea5e9', // sky-500
   gratitude: '#f59e0b', // amber-500
   journal: '#a78bfa', // violet-400
-  sanctuary: '#22c55e', // green-500
 } as const
 
 // The label/icon colour used on the brighter dark-mode tile fills (slate-900).

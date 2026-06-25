@@ -67,6 +67,14 @@
   --nav-journal-text: #6d28d9;
   --nav-spirit-bg: #cffafe;
   --nav-spirit-text: #0e7490;
+  /* Spirit identity — structural/generic accents (journey stepper, slot accents, applied
+     chips) key off the cyan Spirit nav tile so the page agrees with its nav identity. */
+  --spirit-accent: #0e7490;          /* cyan-700 — AA on white, mirrors --nav-spirit-text */
+  /* Per-creature element hues (kept meaningful per dosha): Kapha=earth/amber,
+     Pitta=fire/red, Vata=air/teal. Tokenized so dark mode can adapt them. */
+  --spirit-kapha: #f59e0b;           /* amber-500 */
+  --spirit-pitta: #ef4444;           /* red-500 */
+  --spirit-vata: #14b8a6;            /* teal-500 */
   --nav-trataka-bg: #ffedd5;
   --nav-trataka-text: #9a3412;
   --nav-more-bg: #f1f5f9;
@@ -179,6 +187,13 @@
   --nav-journal-text: #c4b5fd;
   --nav-spirit-bg: #08323d;
   --nav-spirit-text: #67e8f9;
+  /* Spirit identity — brighter cyan so structural accents pop on the slate surfaces while
+     still reading as the same Spirit hue. */
+  --spirit-accent: #22d3ee;          /* cyan-400 */
+  /* Per-creature element hues, lifted for legibility on dark surfaces. */
+  --spirit-kapha: #fbbf24;           /* amber-400 */
+  --spirit-pitta: #f87171;           /* red-400 */
+  --spirit-vata: #2dd4bf;            /* teal-400 */
   --nav-trataka-bg: #2a1708;
   --nav-trataka-text: #fdba74;
   --nav-more-bg: #1c2030;
@@ -265,6 +280,10 @@
     --nav-journal-text: #c4b5fd;
     --nav-spirit-bg: #08323d;
     --nav-spirit-text: #67e8f9;
+    --spirit-accent: #22d3ee;
+    --spirit-kapha: #fbbf24;
+    --spirit-pitta: #f87171;
+    --spirit-vata: #2dd4bf;
     --nav-trataka-bg: #2a1708;
     --nav-trataka-text: #fdba74;
     --nav-more-bg: #1c2030;
@@ -1905,7 +1924,6 @@ textarea:focus-visible,
 /* Consistent spacing between the main home sections. */
 .dashboard .feature-tiles,
 .dashboard .quests-compact,
-.dashboard .sanctuary-preview-home,
 .dashboard .mood-entry,
 .dashboard .dashboard-more {
   margin-top: 1.75rem;
@@ -2177,42 +2195,6 @@ textarea:focus-visible,
   margin-top: 0.35rem;
 }
 
-/* Sanctuary — the starter plant growing on the dashboard (Phase 1). */
-.sanctuary {
-  background: #f0fdf4;
-  border: 1px solid #dcfce7;
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  margin: 1rem 0;
-  text-align: center;
-}
-
-.sanctuary h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
-}
-
-.sanctuary-svg {
-  display: block;
-  margin: 0 auto;
-  /* Larger object art in the garden, shop, picker, and preview. The home garden preview
-     (.sanctuary-preview-cell) and the grown-options row set their own smaller sizes, so
-     they're unaffected. max-width lets a cell shrink the art gracefully on narrow screens. */
-  width: 96px;
-  height: auto;
-  max-width: 100%;
-}
-
-/* Dark mode: dark art details (faces, hats, roofs) lose their edge against the dark card.
-   The SVG is transparent, so a thin light rim via drop-shadow outlines every drawn shape,
-   restoring definition without any glowing backdrop behind the plant. Pure CSS, no
-   per-shape art changes. */
-:root[data-theme='dark'] .sanctuary-svg,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-svg {
-  filter: drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.5))
-    drop-shadow(0 0 0.4px rgba(255, 255, 255, 0.35));
-}
-
 /* --- Spirit (home-screen companion, docs/design/spirit.md, ADR-0022) -------------------- */
 /* The spirit is the calm centrepiece of the home: the procedural SVG mote, then a quiet
    stage name + note + bond read-out beneath it. Low-chrome by design — no card border, no
@@ -2398,7 +2380,7 @@ textarea:focus-visible,
 
 .spirit-need-tier {
   font-weight: 700;
-  color: var(--need-accent, #475569);
+  color: var(--need-accent, var(--text-secondary));
 }
 
 /* 0–100 level bar: a neutral track with a tier-tinted fill (width = the need's factor). */
@@ -2414,7 +2396,7 @@ textarea:focus-visible,
   height: 100%;
   min-width: 4px;
   border-radius: 999px;
-  background: var(--need-accent, #94a3b8);
+  background: var(--need-accent, var(--border-strong));
   transition: width 0.45s ease;
 }
 
@@ -2436,7 +2418,7 @@ textarea:focus-visible,
 .spirit-care-nudge {
   margin: 0.5rem 0 0;
   font-size: 0.82rem;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
 }
 
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
@@ -2452,7 +2434,7 @@ textarea:focus-visible,
 }
 
 .spirit-picker-card {
-  --card-accent: #8b5cf6;
+  --card-accent: var(--spirit-accent);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2461,19 +2443,20 @@ textarea:focus-visible,
   padding: 1rem 0.85rem;
   border: 1.5px solid var(--card-accent);
   border-radius: 1rem;
-  background: var(--bg-surface, #fff);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 3px var(--shadow-card);
 }
 
-/* Each dosha card carries its creature's palette accent (Kapha gold, Pitta red, Vata teal). */
+/* Each dosha card carries its creature's element accent (Kapha amber, Pitta red, Vata teal),
+   tokenized so dark mode adapts the hue. */
 .spirit-picker-card--stillness {
-  --card-accent: #f59e0b;
+  --card-accent: var(--spirit-kapha);
 }
 .spirit-picker-card--breath {
-  --card-accent: #ef4444;
+  --card-accent: var(--spirit-pitta);
 }
 .spirit-picker-card--heart {
-  --card-accent: #14b8a6;
+  --card-accent: var(--spirit-vata);
 }
 
 .spirit-picker-glyph {
@@ -2573,10 +2556,10 @@ textarea:focus-visible,
   margin-left: 0.4rem;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--chip-bg);
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--text-secondary, #475569);
+  color: var(--text-muted);
 }
 
 /* --- Spirit reactivity / animation (docs/design/spirit.md, build step 4; ADR-0023) -------- */
@@ -2739,7 +2722,7 @@ textarea:focus-visible,
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   border-radius: 0.5rem;
-  background: var(--surface-2, rgba(0, 0, 0, 0.06));
+  background: var(--bg-surface-raised);
   color: var(--text-muted);
 }
 
@@ -2772,6 +2755,13 @@ textarea:focus-visible,
 .spirit-section {
   margin: 1.25rem auto;
   max-width: 36rem;
+  /* Shared card treatment (matches .analytics-section) so each spirit section reads as a
+     discrete panel like the rest of the app. */
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px var(--shadow-card);
+  padding: 1rem 1.15rem 1.15rem;
 }
 
 .spirit-section-head {
@@ -2780,7 +2770,7 @@ textarea:focus-visible,
 
 .spirit-section-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .spirit-section-subtitle {
@@ -2789,8 +2779,8 @@ textarea:focus-visible,
 }
 
 /* "Growing to radiance" — a non-interactive progress stepper: each stage is a dot on a
-   connecting line with a label beneath. Past + current dots are filled violet (current
-   emphasized), future dots are hollow/muted. Pure status read-out — never a button. */
+   connecting line with a label beneath. Past + current dots are filled with the Spirit accent
+   (current emphasized), future dots are hollow/muted. Pure status read-out — never a button. */
 .spirit-journey-stages {
   list-style: none;
   display: flex;
@@ -2847,30 +2837,31 @@ textarea:focus-visible,
 }
 
 .spirit-journey-stage.is-done {
-  color: #8b5cf6;
+  color: var(--spirit-accent);
   font-weight: 600;
 }
 
 .spirit-journey-stage.is-done::before {
-  border-color: #8b5cf6;
-  background: #8b5cf6;
+  border-color: var(--spirit-accent);
+  background: var(--spirit-accent);
 }
 
 .spirit-journey-stage.is-done::after {
-  background: #8b5cf6;
+  background: var(--spirit-accent);
 }
 
 .spirit-journey-stage.is-current {
-  color: #8b5cf6;
+  color: var(--spirit-accent);
   font-weight: 700;
 }
 
 .spirit-journey-stage.is-current::before {
   width: 11px;
   height: 11px;
-  border-color: #8b5cf6;
-  background: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+  border-color: var(--spirit-accent);
+  background: var(--spirit-accent);
+  /* Soft halo in the Spirit identity tint (the cyan nav-tile background). */
+  box-shadow: 0 0 0 3px var(--nav-spirit-bg);
 }
 
 .spirit-journey-note {
@@ -2889,7 +2880,7 @@ textarea:focus-visible,
 .spirit-field input {
   padding: 0.45rem 0.6rem;
   border-radius: 0.5rem;
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
+  border: 1px solid var(--border);
   /* Use the real theme-aware surface token (white in light mode, dark slate in dark mode) so
      typed text on --text-primary stays legible in both themes. `--surface` was never defined,
      so this always fell back to white and hid light text in dark mode. */
@@ -2898,25 +2889,15 @@ textarea:focus-visible,
 }
 
 .spirit-slot {
-  --slot-accent: #8b5cf6;
+  /* Structural accent — the Spirit identity (cyan), shared by every slot so the panel agrees
+     with the nav tile and adapts to dark mode. Cascades to legend + option hover/applied. */
+  --slot-accent: var(--spirit-accent);
   border: 1.5px solid var(--slot-accent);
   border-radius: 0.85rem;
   padding: 0.7rem 0.85rem 0.85rem;
   margin: 0 0 0.85rem;
   background: var(--bg-surface);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-}
-
-/* More colour: each cosmetic slot carries its own accent hue, which cascades down to its
-   option chips (hover + applied states). Saturated mid-tones read on light and dark alike. */
-.spirit-slot:nth-of-type(3n + 1) {
-  --slot-accent: #8b5cf6;
-}
-.spirit-slot:nth-of-type(3n + 2) {
-  --slot-accent: #ec4899;
-}
-.spirit-slot:nth-of-type(3n) {
-  --slot-accent: #14b8a6;
+  box-shadow: 0 1px 3px var(--shadow-card);
 }
 
 .spirit-slot legend {
@@ -2943,8 +2924,8 @@ textarea:focus-visible,
   margin-top: 0;
   padding: 0.4rem 0.8rem;
   border-radius: 999px;
-  border: 1.5px solid var(--border, rgba(0, 0, 0, 0.18));
-  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 500;
@@ -2954,14 +2935,14 @@ textarea:focus-visible,
 }
 
 .spirit-option:hover:not(.gated):not(.applied) {
-  border-color: var(--slot-accent, #8b5cf6);
+  border-color: var(--slot-accent);
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 3px 10px var(--shadow-card);
 }
 
 .spirit-option.applied {
-  background: var(--slot-accent, #38bdf8);
-  border-color: var(--slot-accent, #38bdf8);
+  background: var(--slot-accent);
+  border-color: var(--slot-accent);
   color: #fff;
   font-weight: 700;
   cursor: default;
@@ -3019,27 +3000,20 @@ textarea:focus-visible,
   margin-top: 1rem;
 }
 
-/* The awaken actions, styled so the safe vs consequential choice reads clearly instead of all
-   three inheriting the indigo primary. The "Awaken a new spark" actions (the page trigger and
-   the modal confirm) are the emphasized, distinct action — a warm amber that signals "this
-   matters / is irreversible". "Keep this one" gets the quiet secondary (link-neutral) idiom so
-   the safe out is visually subordinate. Margins reset so layout owns the spacing. */
+/* The action rows map onto the app's button system so the safe vs consequential choice reads
+   clearly instead of all sharing one idiom. The irreversible actions — "Awaken a new spark"
+   (page trigger + modal confirm) and the two paid resets — carry `.settings-danger` (the app's
+   red-outline danger idiom). The buy Confirm is the ordinary indigo primary. "Keep this one /
+   Cancel" gets the quiet secondary (link-neutral) idiom. These classes only reset the leaked
+   `button { margin-top: 1rem }` so the flex row owns the spacing. */
 .spirit-awaken-btn,
-.spirit-awaken-do {
+.spirit-awaken-do,
+.spirit-buy-confirm {
   margin-top: 0;
-  /* A fixed amber (the same #b45309 the app uses for warning text — AA with white) so the
-     emphasis reads identically in light and dark and stands apart from the indigo primary. */
-  background: #b45309;
-  color: #fff;
 }
 
-.spirit-awaken-btn:hover:not(:disabled),
-.spirit-awaken-do:hover:not(:disabled) {
-  filter: brightness(1.05);
-}
-
-/* "Keep this one" — the calm, non-destructive way out. Mirrors the .link-neutral secondary
-   idiom (e.g. the breathe Discard): a quiet text action, not a filled button. */
+/* The safe, non-destructive way out ("Keep this one" / "Cancel"). Mirrors the .link-neutral
+   secondary idiom (e.g. the breathe Discard): a quiet text action, not a filled button. */
 .spirit-awaken-cancel {
   margin-top: 0;
   padding: 0.65rem 0.4rem;
@@ -3061,7 +3035,7 @@ textarea:focus-visible,
   background: none;
   border: none;
   border-radius: 0.25rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   font-weight: 500;
   text-decoration: underline;
@@ -3124,13 +3098,13 @@ textarea:focus-visible,
 .spirit-buy-caption {
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary);
   text-align: center;
 }
 
 .spirit-buy-arrow {
   align-self: center;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary);
   font-size: 1.2rem;
   flex: 0 0 auto;
 }
@@ -3163,1118 +3137,6 @@ textarea:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 
-.sanctuary-grown-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-/* Width-driven (height auto) so the taller plant viewBox isn't squashed into a square — the
-   art keeps its scale and the box grows downward with transparent sky on top. */
-.sanctuary-grown-item .sanctuary-svg {
-  width: 40px;
-  height: auto;
-}
-
-.sanctuary-grown-name {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* Dashboard mini-scene header with a link to the full page. */
-.sanctuary-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.sanctuary-head h2 {
-  margin: 0;
-}
-
-.sanctuary-explainer {
-  margin: 0 0 0.75rem;
-  font-size: 0.82rem;
-  text-align: center;
-}
-
-/* Spend economy — coin balance + buy/upgrade shop. */
-.sanctuary-coins-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.4rem;
-  margin-bottom: 0.6rem;
-}
-
-.sanctuary-coins {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #b45309;
-}
-
-.sanctuary-wallet {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 12px;
-  padding: 0.7rem 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.sanctuary-wallet .sanctuary-coins {
-  font-size: 1.5rem;
-}
-
-/* Garden and shop each sit in their own calm card so the two spaces read as distinct
-   rather than one long stack. Generous padding gives each room to breathe. */
-.sanctuary-section {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.25rem 1.1rem;
-}
-
-.sanctuary-section-head {
-  margin-bottom: 1rem;
-}
-
-.sanctuary-section-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.sanctuary-section-subtitle {
-  margin: 0.15rem 0 0;
-  font-size: 0.82rem;
-}
-
-/* A quiet band of breathing room between the garden card and the shop card. The centred
-   rule keeps the boundary obvious without a heavy divider. */
-.sanctuary-section-divider {
-  height: 1px;
-  background: var(--border-strong);
-  margin: 1.75rem 2.5rem;
-}
-
-.sanctuary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-  gap: 0.6rem;
-  margin-bottom: 1.5rem;
-}
-
-/* --- The garden scene ------------------------------------------------------------------
-   The garden no longer reads as a grid of cards. Instead the items sit *in* a calm little
-   scene: a soft sky→earth gradient backdrop, a subtle grass/soil ground band under the
-   plants, and a gentle vignette + ambient glow for depth.
-
-   The scene's palette follows the real TIME OF DAY (`data-daytime`), NOT the app theme — so
-   the garden is daylit at noon even in dark mode, and a deep calm dark at night even in light
-   mode. The garden is a little window onto a real sky, independent of the chrome around it.
-
-   Each `data-daytime` band sets the full `--garden-*` palette (sky/earth/grass/soil/shadow/
-   vignette/tint) AND the scene-text inks (`--garden-ink` / `--garden-ink-soft`) + the name-
-   plaque fill, all tuned to the scene's own lightness so marks sitting ON the scene stay
-   legible regardless of the app theme. Decorative only — interactivity is untouched. */
-
-.sanctuary-garden-section,
-.sanctuary-preview-home {
-  position: relative;
-}
-
-/* The garden palette is keyed to the clock, so the same per-daytime block serves both the
-   full page section and the home preview. `day` is also the safe default if `data-daytime`
-   is ever missing. */
-
-/* Each daytime also sets the celestial body that hangs in the sky (a soft sun, or a moon at
-   night): its position (`--garden-sun-x/y`), tint (`--garden-sun`), faint halo
-   (`--garden-sun-glow`), and a near-horizon haze (`--garden-haze`) that warms the lower sky.
-   These feed a single `.…-scene::before` glow layer + the scene's sky gradient further down. */
-
-/* DAY — a clear blue sky overhead softening to a hazy horizon, a vivid-but-soft green grass
-   band, and a warm sun high in the sky. Dark text reads on it. */
-.sanctuary-garden-section,
-.sanctuary-preview-home,
-.sanctuary-garden-section[data-daytime='day'],
-.sanctuary-preview-home[data-daytime='day'] {
-  --garden-sky: #8ec5f0;
-  --garden-sky-mid: #c4e2f7;
-  --garden-earth: #eef3df;
-  --garden-grass: #7fce86;
-  --garden-soil: #d8c3a0;
-  --garden-shadow: rgba(40, 70, 40, 0.18);
-  --garden-vignette: rgba(40, 60, 45, 0.06);
-  --garden-tint: rgba(255, 252, 235, 0.35);
-  --garden-haze: rgba(255, 250, 230, 0.55);
-  --garden-ink: #1f2a22;
-  --garden-ink-soft: #41524a;
-  --garden-plaque: rgba(255, 255, 255, 0.78);
-  --garden-sun: rgba(255, 246, 205, 0.95);
-  --garden-sun-glow: rgba(255, 230, 150, 0.55);
-  --garden-sun-x: 78%;
-  --garden-sun-y: 20%;
-  --garden-sun-size: 26%;
-}
-
-/* DAWN — a warm peach sky over fresh light grass, with a low sun just rising at the horizon. */
-.sanctuary-garden-section[data-daytime='dawn'],
-.sanctuary-preview-home[data-daytime='dawn'] {
-  --garden-sky: #ffc9a0;
-  --garden-sky-mid: #ffe1c4;
-  --garden-earth: #fdeede;
-  --garden-grass: #a6d98f;
-  --garden-soil: #e6d2b4;
-  --garden-shadow: rgba(120, 80, 50, 0.18);
-  --garden-vignette: rgba(120, 80, 50, 0.06);
-  --garden-tint: rgba(255, 210, 160, 0.3);
-  --garden-haze: rgba(255, 200, 150, 0.5);
-  --garden-ink: #3a2a20;
-  --garden-ink-soft: #6a503e;
-  --garden-plaque: rgba(255, 255, 255, 0.74);
-  --garden-sun: rgba(255, 234, 196, 0.95);
-  --garden-sun-glow: rgba(255, 184, 120, 0.6);
-  --garden-sun-x: 26%;
-  --garden-sun-y: 56%;
-  --garden-sun-size: 24%;
-}
-
-/* DUSK — an amber-into-rose evening sky over dimming grass, with a low setting sun. A
-   light-on-dim scene, so the scene text flips to a soft light. */
-.sanctuary-garden-section[data-daytime='dusk'],
-.sanctuary-preview-home[data-daytime='dusk'] {
-  --garden-sky: #6a5a86;
-  --garden-sky-mid: #c9759a;
-  --garden-earth: #5a4a55;
-  --garden-grass: #5d6a4c;
-  --garden-soil: #463c44;
-  --garden-shadow: rgba(20, 12, 24, 0.36);
-  --garden-vignette: rgba(20, 12, 24, 0.2);
-  --garden-tint: rgba(255, 150, 110, 0.22);
-  --garden-haze: rgba(255, 140, 110, 0.4);
-  --garden-ink: #fbf3ef;
-  --garden-ink-soft: #e3d3d8;
-  --garden-plaque: rgba(30, 20, 34, 0.5);
-  --garden-sun: rgba(255, 214, 170, 0.92);
-  --garden-sun-glow: rgba(255, 130, 100, 0.6);
-  --garden-sun-x: 74%;
-  --garden-sun-y: 58%;
-  --garden-sun-size: 26%;
-}
-
-/* NIGHT — a deep calm blue sky with a soft moon and a faint scatter of stars over dark grass.
-   Light text reads on it. */
-.sanctuary-garden-section[data-daytime='night'],
-.sanctuary-preview-home[data-daytime='night'] {
-  --garden-sky: #131c33;
-  --garden-sky-mid: #243150;
-  --garden-earth: #1d2733;
-  --garden-grass: #2a4636;
-  --garden-soil: #2a2832;
-  --garden-shadow: rgba(0, 0, 0, 0.42);
-  --garden-vignette: rgba(0, 0, 0, 0.26);
-  --garden-tint: rgba(90, 110, 180, 0.16);
-  --garden-haze: rgba(120, 140, 200, 0.12);
-  --garden-ink: #eaeef7;
-  --garden-ink-soft: #c2c8db;
-  --garden-plaque: rgba(12, 18, 34, 0.55);
-  --garden-sun: rgba(238, 242, 252, 0.95);
-  --garden-sun-glow: rgba(180, 200, 245, 0.4);
-  --garden-sun-x: 76%;
-  --garden-sun-y: 22%;
-  --garden-sun-size: 16%;
-}
-
-/* The scene canvas the plants live in: a real sky overhead — a true sky-blue (or peach/amber/
-   deep-blue) up top, softening through a mid band into a warm haze near the horizon, then into
-   the earth. A soft vignette + ambient tint give depth so it feels like open air, not a flat
-   panel. The sun/moon itself is drawn by the ::before glow layer below. */
-.sanctuary-garden-scene,
-.sanctuary-preview-scene {
-  position: relative;
-  border-radius: 14px;
-  /* a little extra top padding leaves a strip of open sky above the plants so the sun/moon
-     has room to hang clear of the canopy */
-  padding: 1.5rem 0.5rem 0;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 80% at 50% -10%, var(--garden-tint), transparent 60%),
-    radial-gradient(160% 70% at 50% 82%, var(--garden-haze), transparent 60%),
-    radial-gradient(140% 120% at 50% 120%, var(--garden-vignette), transparent 55%),
-    linear-gradient(
-      to bottom,
-      var(--garden-sky) 0%,
-      var(--garden-sky-mid) 42%,
-      var(--garden-earth) 82%
-    );
-}
-
-/* The sun (day/dawn/dusk) or moon (night): a soft glowing radial disc positioned in the sky
-   by the per-daytime `--garden-sun-*` tokens. A gentle warm/cool glow, never a hard circle —
-   calm, not cartoonish. Sits above the sky gradient but below the ground band and the plants
-   (z-index 0; the ground band and grids are z-index ≥ 0/1 over it). Static — no motion. */
-.sanctuary-garden-scene::before,
-.sanctuary-preview-scene::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background:
-    radial-gradient(
-      circle at var(--garden-sun-x) var(--garden-sun-y),
-      var(--garden-sun) 0,
-      var(--garden-sun) calc(var(--garden-sun-size) * 0.34),
-      var(--garden-sun-glow) calc(var(--garden-sun-size) * 0.6),
-      transparent var(--garden-sun-size)
-    );
-}
-
-/* NIGHT only: a faint scatter of stars across the upper sky, layered under the moon glow.
-   Tiny soft dots — barely there, calm. Drawn with the moon on the ::before so it stays a
-   single decorative layer. */
-.sanctuary-garden-section[data-daytime='night'] .sanctuary-garden-scene::before,
-.sanctuary-preview-home[data-daytime='night'] .sanctuary-preview-scene::before {
-  background:
-    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.7) 0, transparent 0.45px),
-    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.5) 0, transparent 0.4px),
-    radial-gradient(circle at 52% 12%, rgba(255, 255, 255, 0.6) 0, transparent 0.45px),
-    radial-gradient(circle at 64% 26%, rgba(255, 255, 255, 0.45) 0, transparent 0.4px),
-    radial-gradient(circle at 88% 38%, rgba(255, 255, 255, 0.55) 0, transparent 0.4px),
-    radial-gradient(circle at 8% 40%, rgba(255, 255, 255, 0.4) 0, transparent 0.35px),
-    radial-gradient(
-      circle at var(--garden-sun-x) var(--garden-sun-y),
-      var(--garden-sun) 0,
-      var(--garden-sun) calc(var(--garden-sun-size) * 0.42),
-      var(--garden-sun-glow) calc(var(--garden-sun-size) * 0.72),
-      transparent var(--garden-sun-size)
-    );
-}
-
-.sanctuary-garden-scene {
-  margin-bottom: 1.5rem;
-}
-
-/* The ground band: a soft grass strip over a quiet soil base, anchored to the bottom of the
-   scene so every plant appears rooted in the same earth. Soft-edged, never a hard line. */
-.sanctuary-ground {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 30%;
-  pointer-events: none;
-  background:
-    linear-gradient(to bottom, transparent, var(--garden-soil) 55%);
-  z-index: 0;
-}
-
-.sanctuary-ground::before {
-  /* a soft, vivid grass crest sitting on top of the soil — fuller now so the band reads as
-     real grass rather than a faint tint, while still soft-edged (never a hard line). */
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 38%;
-  height: 66%;
-  background: linear-gradient(to bottom, transparent, var(--garden-grass));
-  opacity: 0.8;
-  filter: blur(1px);
-}
-
-/* The garden's movable layout grid (ADR-0014): a fixed-width grid the user rearranges by
-   dragging items (desktop) or tap-to-pick-then-tap-target (touch/keyboard). Columns are
-   set inline from GRID_COLUMNS so the layout maths stays in one place. Now it floats above
-   the scene's ground band rather than carrying its own background. */
-.sanctuary-garden-grid {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.sanctuary-move-hint {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-}
-
-/* Garden cells — empty and filled alike — share one footprint so the grid reads as a tidy,
-   uniform grid (no jump in height between a dashed empty slot and a filled item card). The
-   shop uses .sanctuary-card without .sanctuary-cell, so it keeps its content-sized cards. */
-.sanctuary-cell {
-  min-height: 12.5rem;
-}
-
-/* Empty drop targets keep a stable cell footprint so the grid never collapses. In the garden
-   scene they're a soft, barely-there patch of open ground rather than a hard dashed box, so
-   the eye reads tended plots with a little room to grow — not a grid of empty cells. */
-.sanctuary-cell.empty {
-  border: 1px dashed color-mix(in srgb, var(--border-strong) 35%, transparent);
-  border-radius: 14px;
-  background: transparent;
-  cursor: default;
-}
-
-/* While an item is picked up, empty cells warmly invite a drop. */
-.sanctuary-cell.empty.droppable {
-  border-color: #34d399;
-  border-style: solid;
-  background: color-mix(in srgb, #34d399 14%, transparent);
-  cursor: pointer;
-}
-
-/* The picked-up / dragging card reads as lifted. */
-.sanctuary-card.picked {
-  outline: 2px solid #059669;
-  outline-offset: 2px;
-}
-
-.sanctuary-card.dragging {
-  opacity: 0.5;
-}
-
-/* The plant doubles as the grab handle: a plain button wrapper, no chrome. */
-.sanctuary-grab {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: grab;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sanctuary-grab:active {
-  cursor: grabbing;
-}
-
-.sanctuary-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px var(--shadow-card);
-  padding: 0.7rem 0.6rem;
-  text-align: center;
-}
-
-.sanctuary-card.locked {
-  opacity: 0.7;
-}
-
-/* Filled garden cards centre their content within the shared cell footprint so they line
-   up with the empty cells around them (the customize panel, when open, grows the cell).
-   In the garden scene the card sheds its panel chrome (border / surface fill / drop shadow)
-   so each plant sits *in* the garden rather than in a box — the shop keeps its cards, since
-   it uses .sanctuary-card without .sanctuary-cell. */
-.sanctuary-cell.sanctuary-card {
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-
-/* The plant's grounding shadow: a soft ellipse cast on the earth under each item, so it reads
-   as planted rather than floating. Sits behind the plant art, scaled to the cell. */
-.sanctuary-cell.sanctuary-card .sanctuary-grab {
-  position: relative;
-}
-
-.sanctuary-cell.sanctuary-card .sanctuary-grab::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0.15rem;
-  width: 58%;
-  height: 0.55rem;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, var(--garden-shadow), transparent 70%);
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* On hover/focus a garden plant lifts a touch — a gentle, living response, motion-safe. */
-.sanctuary-cell.sanctuary-card .sanctuary-grab .sanctuary-svg {
-  transition: transform 0.18s ease;
-}
-
-.sanctuary-cell.sanctuary-card .sanctuary-grab:hover .sanctuary-svg,
-.sanctuary-cell.sanctuary-card .sanctuary-grab:focus-visible .sanctuary-svg {
-  transform: translateY(-2px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sanctuary-cell.sanctuary-card .sanctuary-grab .sanctuary-svg {
-    transition: none;
-  }
-  .sanctuary-cell.sanctuary-card .sanctuary-grab:hover .sanctuary-svg,
-  .sanctuary-cell.sanctuary-card .sanctuary-grab:focus-visible .sanctuary-svg {
-    transform: none;
-  }
-}
-
-/* A just-bought item gently pops in where it lands, with a brief soft glow on the
-   card. Only the new item carries this class (cleared after the animation), so the
-   rest of the garden never re-animates. Reuses the existing sanctuary-pop keyframe;
-   the prefers-reduced-motion guard above neutralises both. */
-.sanctuary-card.just-bought {
-  animation: sanctuary-buy-glow 0.9s ease-out;
-}
-
-.sanctuary-card.just-bought .sanctuary-svg {
-  animation: sanctuary-pop 0.5s ease;
-}
-
-@keyframes sanctuary-buy-glow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
-  35% {
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
-  }
-  100% {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-}
-
-.sanctuary-card-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--success-text);
-  overflow-wrap: anywhere;
-}
-
-.sanctuary-buy {
-  width: auto;
-  margin: 0;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: #047857;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-}
-
-.sanctuary-buy:disabled {
-  background: var(--border-strong);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-.sanctuary-maxed,
-.sanctuary-locked-hint {
-  font-size: 0.74rem;
-}
-
-.sanctuary-link {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--success-text);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-/* The dedicated Sanctuary page (Phase 3). */
-.sanctuary-page {
-  max-width: 40rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
-}
-
-.sanctuary-page header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-@keyframes sanctuary-pop {
-  0% {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Vitality — a visual-only state from the current streak (never destructive). */
-.sanctuary-vitality {
-  text-align: center;
-  font-weight: 600;
-  font-size: 0.85rem;
-  margin-bottom: 0.75rem;
-}
-
-.sanctuary-vitality.vit-dormant {
-  color: #92866b;
-}
-.sanctuary-vitality.vit-thriving {
-  color: var(--success-text);
-}
-.sanctuary-vitality.vit-flourishing {
-  color: #be185d;
-}
-
-/* --- Sanctuary personalization: variants + mix-and-match customizations --- */
-.sanctuary-variant {
-  font-weight: 400;
-}
-
-.sanctuary-customize-toggle {
-  background: #f0fdf4;
-  color: #047857;
-  border: 1px solid #bbf7d0;
-}
-
-.sanctuary-customize-panel {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
-  text-align: left;
-}
-
-/* "Tended" growth-from-practice (oak-only MVP): a calm path ribbon + a quiet meter at the head
-   of the panel. Low-key in keeping with the app's gentle stance — it informs, never nags. */
-.sanctuary-tending {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--accent-border);
-  border-radius: 0.5rem;
-  background: var(--accent-subtle);
-}
-
-.sanctuary-tending-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.sanctuary-tending-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.sanctuary-tending-days {
-  font-size: 0.74rem;
-}
-
-/* The growth ladder as a row of pips, connected by a soft line; reached stages are filled,
-   the next stage is gently highlighted as the goal (echoing the preview-locked pattern). */
-.sanctuary-tending-ribbon {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.15rem;
-}
-
-.sanctuary-tending-pip {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  text-align: center;
-  position: relative;
-}
-
-/* Connector line between pips (behind the dots). */
-.sanctuary-tending-pip::before {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: -50%;
-  width: 100%;
-  height: 2px;
-  background: var(--border-light);
-}
-
-.sanctuary-tending-pip:first-child::before {
-  display: none;
-}
-
-.sanctuary-tending-pip.reached::before {
-  background: var(--accent);
-}
-
-.sanctuary-tending-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  border: 2px solid var(--border-light);
-  background: var(--card-bg, #fff);
-  z-index: 1;
-}
-
-.sanctuary-tending-pip.reached .sanctuary-tending-dot {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.sanctuary-tending-pip.next .sanctuary-tending-dot {
-  border-color: var(--accent);
-  background: var(--accent-subtle);
-  box-shadow: 0 0 0 3px var(--accent-border);
-}
-
-.sanctuary-tending-label {
-  font-size: 0.62rem;
-  line-height: 1.1;
-  color: var(--text-muted);
-}
-
-.sanctuary-tending-pip.reached .sanctuary-tending-label {
-  color: var(--text);
-}
-
-.sanctuary-tending-hint {
-  font-size: 0.74rem;
-  margin: 0;
-}
-
-/* "See it before you buy" preview at the head of the customize panel. A calm, quiet stage:
-   the item is drawn at a comfortable size, and a soft ring + "Preview" badge appear only while
-   the user is exploring an unbought option, so it never shouts and never crowds the panel. */
-.sanctuary-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.sanctuary-preview-stage {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  padding: 0.2rem;
-  transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease;
-}
-
-.sanctuary-preview-stage.exploring {
-  border-color: #34d399;
-  background: var(--bg-surface);
-}
-
-.sanctuary-preview-stage .sanctuary-svg {
-  width: 4.5rem;
-  height: auto;
-}
-
-.sanctuary-preview-badge {
-  position: absolute;
-  top: -0.4rem;
-  right: -0.4rem;
-  padding: 0.05rem 0.4rem;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  border-radius: 999px;
-  background: #047857;
-  color: #fff;
-}
-
-.sanctuary-preview-caption {
-  font-size: 0.7rem;
-  margin: 0;
-  text-align: center;
-  line-height: 1.3;
-}
-
-.sanctuary-slot {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.4rem 0.55rem 0.55rem;
-  margin: 0;
-}
-
-.sanctuary-slot legend {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  padding: 0 0.3rem;
-}
-
-.sanctuary-slot-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.sanctuary-option {
-  padding: 0.25rem 0.55rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: var(--bg-surface);
-  color: var(--success-text);
-  border: 1px solid #bbf7d0;
-  cursor: pointer;
-  /* Keep each option a clean single-line capsule. Long emoji-suffixed labels (e.g.
-     "Lighthouse keeper's") would otherwise wrap inside the pill at mobile widths, breaking
-     the rounded-pill shape into a lumpy two-line capsule; the wrapping flex row above flows
-     pills to new lines instead. max-width guards against a single pill exceeding the panel. */
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.sanctuary-option.applied {
-  background: #047857;
-  color: #fff;
-  border-color: #047857;
-}
-
-/* A growth rung REACHED via practice, not coins (Tended oak — see
-   docs/design/sanctuary-upgrades-tended.md). It carries `.applied` for the green "done" look,
-   plus this `.reached` accent so it reads as grown-by-practice rather than bought. It's
-   disabled (no buy) and never offers a coin price — practice already displays it. */
-.sanctuary-option.reached {
-  background: #15803d;
-  border-color: #15803d;
-  cursor: default;
-}
-
-.sanctuary-option:disabled:not(.applied) {
-  background: var(--chip-bg);
-  color: var(--text-muted);
-  border-color: var(--border);
-  cursor: not-allowed;
-}
-
-/* A locked (level-gated) or unaffordable option (ADR-0021). It is rendered NOT `disabled`
-   so it still emits hover/focus and can be previewed — the user sees what they're working
-   toward — but it reads as muted and its buy is a no-op (cursor signals it won't purchase). */
-.sanctuary-option.gated {
-  background: var(--chip-bg);
-  color: var(--text-muted);
-  border-color: var(--border);
-  cursor: help;
-}
-
-/* Reset upgrades (ADR-0019) — a calm, low-key action at the foot of the customize panel.
-   The toggle is quiet (text-button) so it never competes with the upgrade options; the
-   confirm states the fee before anything is charged. */
-.sanctuary-reset {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed var(--border);
-}
-
-.sanctuary-reset-toggle {
-  padding: 0.2rem 0.1rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  background: none;
-  border: none;
-  color: var(--text-muted, #94a3b8);
-  cursor: pointer;
-}
-
-.sanctuary-reset-toggle:hover:not(:disabled) {
-  text-decoration: underline;
-}
-
-.sanctuary-reset-toggle:disabled {
-  color: #cbd5e1;
-  cursor: not-allowed;
-}
-
-.sanctuary-reset-note {
-  margin: 0 0 0.45rem;
-  font-size: 0.74rem;
-  line-height: 1.35;
-}
-
-.sanctuary-reset-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.sanctuary-reset-do {
-  padding: 0.25rem 0.6rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: var(--bg-surface);
-  color: var(--warning-text, #b45309);
-  border: 1px solid #fed7aa;
-  cursor: pointer;
-}
-
-.sanctuary-reset-do:disabled {
-  background: var(--chip-bg);
-  color: var(--text-muted);
-  border-color: var(--border);
-  cursor: not-allowed;
-}
-
-.sanctuary-reset-cancel {
-  padding: 0.25rem 0.6rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: none;
-  color: var(--text-muted, #64748b);
-  border: 1px solid var(--border);
-  cursor: pointer;
-}
-
-.sanctuary-reset-cancel:disabled {
-  color: #cbd5e1;
-  cursor: not-allowed;
-}
-
-/* Variant picker modal (buy-time) — sizing override applied BELOW .modal-card
-   (see the .modal-card.sanctuary-modal rule after the modal scaffold block) so
-   the more-specific selector wins. The old .sanctuary-modal-backdrop and the
-   inline .sanctuary-modal block that appeared before .modal-card are removed
-   (they were dead after the shared Modal refactor). */
-
-.sanctuary-modal h3 {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  text-transform: capitalize;
-}
-
-.sanctuary-variant-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-  gap: 0.5rem;
-}
-
-.sanctuary-variant-pick {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.4rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  cursor: pointer;
-}
-
-.sanctuary-variant-pick:hover:not(:disabled) {
-  border-color: #34d399;
-}
-
-.sanctuary-variant-pick:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.sanctuary-variant-pick .sanctuary-svg {
-  width: 3rem;
-  height: auto;
-}
-
-.sanctuary-variant-name {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--success-text);
-}
-
-.sanctuary-modal-cancel {
-  margin-top: 0.9rem;
-  width: 100%;
-  padding: 0.45rem;
-  border-radius: 999px;
-  background: var(--chip-bg);
-  color: var(--text-secondary);
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* --- Personalization touches: name plaque, note, favourite (ADR-0015) --- */
-/* The user's own name reads first; the item/variant becomes a quiet subtitle. */
-.sanctuary-plaque {
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-/* In the garden scene the name now floats over the ground rather than on a card, so the
-   user's plaque gets a soft warm pill to keep it legible and read as a little garden marker —
-   "this one is mine, and it has a name". A gentle backdrop, never a hard label. The shop's
-   own .sanctuary-card-name is untouched (it has no .sanctuary-cell ancestor).
-
-   The pill fill and the name's ink are keyed to the scene's TIME OF DAY (`--garden-plaque` /
-   `--garden-ink`), not the app theme — so on a bright DAY garden the plaque stays a light pill
-   with dark text even in dark mode, and on a NIGHT garden it's a dark pill with light text even
-   in light mode. This is what keeps the now theme-independent scene legible. */
-.sanctuary-cell.sanctuary-card .sanctuary-card-name {
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  color: var(--garden-ink);
-  background: var(--garden-plaque);
-  backdrop-filter: blur(2px);
-  box-shadow: 0 1px 2px var(--garden-shadow);
-}
-
-/* The quieter marks on the scene — the unnamed item's variant tag, and a named item's
-   item/variant subtitle and note — read as soft scene ink rather than theme `--text-muted`,
-   so they stay legible on whatever the time-of-day backdrop is, in both app themes. */
-.sanctuary-cell.sanctuary-card .sanctuary-card-sub,
-.sanctuary-cell.sanctuary-card .sanctuary-card-note,
-.sanctuary-cell.sanctuary-card .sanctuary-variant {
-  color: var(--garden-ink-soft);
-}
-
-.sanctuary-fav-star {
-  color: #b45309;
-}
-
-.sanctuary-card-sub {
-  font-size: 0.72rem;
-  margin: 0;
-}
-
-.sanctuary-card-note {
-  font-size: 0.74rem;
-  font-style: italic;
-  margin: 0.1rem 0 0;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-
-/* A quiet flavour line under a shop item's name (ADR-0016). Small and unobtrusive —
-   personality without clutter. */
-.sanctuary-card-blurb {
-  font-size: 0.7rem;
-  font-style: italic;
-  line-height: 1.3;
-  margin: 0.15rem 0 0.35rem;
-}
-
-/* The calm name/note/favourite editor inside the personalize panel. */
-.sanctuary-personal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding-bottom: 0.2rem;
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: 0.2rem;
-}
-
-.sanctuary-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.sanctuary-field input {
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: var(--text-primary);
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-input);
-}
-
-.sanctuary-field input:focus {
-  outline: none;
-  border-color: #34d399;
-}
-
-/* Name field + its 🎲 "suggest a name" button side by side (ADR-0015). The input flexes
-   to fill; the dice button is a small, quiet square that fills a random example name. */
-.sanctuary-name-input-row {
-  display: flex;
-  align-items: stretch;
-  gap: 0.35rem;
-}
-
-.sanctuary-name-input-row input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.sanctuary-suggest-name {
-  flex: 0 0 auto;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.9rem;
-  line-height: 1;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-input);
-  cursor: pointer;
-}
-
-.sanctuary-suggest-name:hover:not(:disabled) {
-  border-color: #34d399;
-}
-
-.sanctuary-suggest-name:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sanctuary-fav-toggle {
-  align-self: flex-start;
-  padding: 0.25rem 0.6rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: #fff;
-  color: #b45309;
-  border: 1px solid #fcd34d;
-  cursor: pointer;
-}
-
-.sanctuary-fav-toggle.on {
-  background: #fffbeb;
-  border-color: #f59e0b;
-}
-
-.sanctuary-fav-toggle:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.sanctuary-modal-buy {
-  width: 100%;
-}
-
 /* ── Shared modal scaffold (used by the <Modal> primitive) ──
    A centered card over a dark, fading overlay. Per-modal variants below add their
    own width / padding / text-align on top of this base. */
@@ -4305,14 +3167,6 @@ textarea:focus-visible,
   border-radius: 16px;
   padding: 2rem;
   box-shadow: 0 10px 40px var(--shadow-modal);
-}
-
-/* Sanctuary variant-picker modal: narrower card with tighter padding.
-   Placed AFTER .modal-card so this more-specific selector reliably wins. */
-.modal-card.sanctuary-modal {
-  max-width: 24rem;
-  width: 100%;
-  padding: 1.25rem;
 }
 
 .reward-card {
@@ -4726,114 +3580,9 @@ textarea:focus-visible,
   color: var(--success-text);
 }
 
-/* Compact sanctuary teaser — a slim strip linking to the full garden. A couple of plant
-   thumbnails + a label + a "tend it" cue. Deliberately shows no coin count (the level chip
-   above already does). */
-/* Expanded, READ-ONLY garden preview on the calm default home (replaces the old slim
-   teaser strip). The user's actual plants laid out in their grid cells — the same
-   SanctuaryPlant art as the full /sanctuary page, at a calmer size — so the home reads like
-   a real little garden you glance at, then tap through to tend. No interactive chrome
-   (no grab handles, no buy/customize), no coin count. */
-/* The home preview's chrome only — its garden palette (sky/earth/grass/soil/inks/plaque,
-   keyed to `data-daytime`) is defined alongside the full page section up in "The garden
-   scene" block, so both views share one clock-driven palette and never the app theme. */
-.sanctuary-preview-home {
-  margin: 1.25rem 0;
-  padding: 0.85rem 1rem 1rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.sanctuary-preview-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.6rem;
-}
-
-.sanctuary-preview-title {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.sanctuary-preview-link {
-  flex-shrink: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.sanctuary-preview-link:hover,
-.sanctuary-preview-link:focus-visible {
-  text-decoration: underline;
-}
-
-.sanctuary-preview-empty {
-  margin: 0.25rem 0 0;
-  font-size: 0.88rem;
-}
-
-/* The read-only garden plot: items laid out row-major in their cells, mirroring the full
-   page's layout. Columns are set inline from GRID_COLUMNS so the layout maths stays in one
-   place. Static tiles — no drag, no buttons. The grid floats above the scene's ground band. */
-.sanctuary-preview-grid {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 0.4rem;
-}
-
-/* Calm, glanceable cells — smaller than the full page's interactive cards (no min-height,
-   no card chrome) so the home stays light and uncrowded. Each plant casts a soft grounding
-   shadow so it reads as rooted in the same little plot. */
-.sanctuary-preview-cell {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 3.75rem;
-}
-
-.sanctuary-preview-cell:not(.empty)::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0.2rem;
-  width: 52%;
-  height: 0.4rem;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, var(--garden-shadow), transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.sanctuary-preview-cell .sanctuary-svg {
-  position: relative;
-  z-index: 1;
-}
-
-.sanctuary-preview-cell.empty {
-  /* a quiet, barely-there spacer so the grid keeps its shape without drawing attention */
-  min-height: 0;
-}
-
-/* Garden-glance object art: noticeably smaller than the 96px full-page art so a few cells
-   sit nicely across the home without a heavy block. Width-driven (height auto) so the taller
-   plant viewBox keeps its scale rather than being letterboxed into a square. */
-.sanctuary-preview-cell .sanctuary-svg {
-  width: 56px;
-  height: auto;
-  display: block;
-}
-
 /* Collapsible "Show more" drawer — keeps the heavier retrospective/progress detail (full
-   level card, totals, heatmap, weekly review) off the calm default home. Quests and the
-   garden now live on the default view above in compact form. */
+   level card, totals, heatmap, weekly review) off the calm default home. Quests live on the
+   default view above in compact form. */
 .dashboard-more {
   margin-top: 1.75rem;
   text-align: center;
@@ -6104,7 +4853,7 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* Respect a user's reduced-motion preference: drop decorative animation and
-   transitions app-wide (sanctuary pops/glows, fades, the meditate pulse, toasts, …).
+   transitions app-wide (fades, the meditate pulse, toasts, …).
    The breathing pacer's circle is driven by JS (inline transform), so it stays as the
    functional breathing guide — pair it with the breathe page's audio-only mode if even
    that is too much. */
@@ -6973,38 +5722,6 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-muted);
 }
 
-/* ── Sanctuary shop — track grouping ────────────────────────────────────────
-   Quiet section headers, one per track (nature / structure / companion / whimsy).
-   Uses a per-track CSS custom property (--track-accent) set inline by the component.
-   Additive — these classes are all scoped and don't touch existing rules.
- ─────────────────────────────────────────────────────────────────────────── */
-.sanctuary-track-section {
-  /* Breathing room between track groups */
-  margin-bottom: 0.25rem;
-}
-
-.sanctuary-track-section + .sanctuary-track-section {
-  margin-top: 1.25rem;
-}
-
-.sanctuary-track-header {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  /* Accent via the inline custom property; falls back to a neutral muted tone */
-  color: var(--track-accent, #6b7280);
-  margin: 0 0 0.6rem 0;
-  padding: 0;
-  /* A fine underline drawn from the accent rather than a bold divider */
-  border-bottom: 1.5px solid color-mix(in srgb, var(--track-accent, #6b7280) 30%, transparent);
-  padding-bottom: 0.3rem;
-  width: 100%;
-}
-
 /* ── Admin user-management / support tooling ─────────────────────────────── */
 
 .admin-tabs {
@@ -7246,19 +5963,6 @@ details[open] .meditate-disclosure-summary::before {
    surfaces.  The overrides below flip them to dark equivalents without touching
    the light-mode aesthetic.
    ─────────────────────────────────────────────────────────────────────────── */
-:root[data-theme='dark'] .sanctuary,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary {
-  background: #0f2a1e;
-  border-color: #1a3d2a;
-}
-
-:root[data-theme='dark'] .sanctuary-customize-toggle,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-customize-toggle {
-  background: #0f2a1e;
-  color: var(--success-text);
-  border-color: #1a3d2a;
-}
-
 :root[data-theme='dark'] .badge.earned,
 :root:not([data-theme='light']):not([data-theme='dark']) .badge.earned {
   background: var(--bg-surface-raised);
@@ -7279,12 +5983,6 @@ details[open] .meditate-disclosure-summary::before {
 
 :root[data-theme='dark'] .session-recover,
 :root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
-  background: #2a2010;
-  border-color: #3d300a;
-}
-
-:root[data-theme='dark'] .sanctuary-wallet,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-wallet {
   background: #2a2010;
   border-color: #3d300a;
 }
@@ -7349,36 +6047,6 @@ details[open] .meditate-disclosure-summary::before {
 :root[data-theme='dark'] .guided-cues-text,
 :root:not([data-theme='light']):not([data-theme='dark']) .guided-cues-text {
   color: var(--text-secondary);
-}
-
-:root[data-theme='dark'] .sanctuary-wallet .sanctuary-coins,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-wallet .sanctuary-coins {
-  color: #fbbf24;
-}
-
-:root[data-theme='dark'] .sanctuary-buy:disabled,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-buy:disabled {
-  background: var(--chip-hover);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-}
-
-:root[data-theme='dark'] .sanctuary-fav-toggle,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-fav-toggle {
-  background: var(--chip-bg);
-  color: #fbbf24;
-  border-color: #b45309;
-}
-:root[data-theme='dark'] .sanctuary-fav-toggle.on,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-fav-toggle.on {
-  background: var(--accent-subtle);
-  border-color: #f59e0b;
-}
-
-:root[data-theme='dark'] .sanctuary-card-blurb,
-:root:not([data-theme='light']):not([data-theme='dark']) .sanctuary-card-blurb {
-  color: var(--text-secondary);
-  opacity: 1;
 }
 
 :root[data-theme='dark'] .xp-bar,

@@ -18,9 +18,12 @@ import type {
  * `radiant`. The spirit grows down one of three chosen forms, keyed to the chosen `path`
  * (labelled in the UI as the Ayurvedic dosha):
  *
- *  - `stillness` → Kapha — a serene seated mini-Buddha (meditation keeps it nourished).
- *  - `breath`    → Pitta — a fierce fire-and-water blaze of flame tongues (breathwork nourishes it).
- *  - `heart`     → Vata  — an airy wisp of breeze and drifting motes (gratitude + journaling nourish it).
+ * Each form is nourished by the practice that BALANCES its dosha (Ayurveda balances by
+ * opposites — see backend SPIRIT_PRACTICE_FOR_PATH):
+ *
+ *  - `stillness` → Kapha — a serene seated mini-Buddha (resonance BREATHING keeps it nourished).
+ *  - `breath`    → Pitta — a fierce fire-and-water blaze of flame tongues (GRATITUDE + JOURNALING nourish it).
+ *  - `heart`     → Vata  — an airy wisp of breeze and drifting motes (MEDITATION nourishes it).
  *
  * Until the user chooses (path === null), the spirit is a PATHLESS SPARK: a neutral, un-themed
  * glowing mote with no creature form yet — the picker invites the choice.
@@ -296,11 +299,10 @@ function paceToScale(scale: number | undefined): number {
 
 // ── Cosmetics (steps 5 + 6) ──────────────────────────────────────────────────────────────
 // Applied cosmetics — the visible payoff of spending coins — drawn on the art in the same flat
-// vector style. Three slots, matching the backend SPIRIT_COSMETICS_CATALOG exactly:
-//   aura      → soft | warm | starlit   (tints + expands the halo)
-//   accessory → halo | leaf_crown | ribbon (a small adornment on the figure)
-//   habitat   → meadow | dusk | night   (a small backdrop the spirit sits in)
-// Each is static (the step-4 animation layer wraps the whole SVG; cosmetics don't fight it).
+// vector style. The slots and their options track the backend SPIRIT_COSMETICS_CATALOG
+// (aura / accessory / habitat / companion / mount — see that catalog for the live set); the
+// option maps below (AURA_STYLE, etc.) are the authoritative client-side list. Each is static
+// (the step-4 animation layer wraps the whole SVG; cosmetics don't fight it).
 export type SpiritCosmetics = Record<string, string>
 
 // Per-option aura tint + reach. `null` (no aura owned) falls back to the path's own glow in
