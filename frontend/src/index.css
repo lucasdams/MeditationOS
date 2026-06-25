@@ -469,34 +469,13 @@ a:hover { color: var(--accent-hover); }
   color: var(--nav-home-text);
 }
 
-.app-nav a.nav-meditate {
-  background: var(--nav-meditate-bg);
-  color: var(--nav-meditate-text);
-}
-
-.app-nav a.nav-breathe {
-  background: var(--nav-breathe-bg);
-  color: var(--nav-breathe-text);
-}
-
-.app-nav a.nav-gratitude {
-  background: var(--nav-gratitude-bg);
-  color: var(--nav-gratitude-text);
-}
-
-.app-nav a.nav-journal {
-  background: var(--nav-journal-bg);
-  color: var(--nav-journal-text);
-}
+/* Meditate / Breathe / Gratitude / Journal / Candle-gazing moved off the flat nav into the
+   Practice dropdown (styled via --menu-fill); their per-destination colour tokens above are
+   kept since they're reused elsewhere (e.g. journal text). */
 
 .app-nav a.nav-spirit {
   background: var(--nav-spirit-bg);
   color: var(--nav-spirit-text);
-}
-
-.app-nav a.nav-trataka {
-  background: var(--nav-trataka-bg);
-  color: var(--nav-trataka-text);
 }
 
 /* Analytics page */
@@ -653,12 +632,18 @@ a:hover { color: var(--accent-hover); }
   filter: brightness(0.96);
 }
 
-/* "More" overflow menu for secondary destinations */
-.nav-more {
+/* Spirit is the centerpiece — give the standalone link a touch more prominence than the
+   other nav items: a soft glow ring so it reads as the highlighted destination. */
+.app-nav a.nav-spirit-feature {
+  box-shadow: 0 0 0 1px var(--nav-spirit-text), 0 2px 8px var(--shadow-card);
+}
+
+/* Grouped dropdown menus (Practice / Progress) for the secondary destinations. */
+.nav-menu {
   position: relative;
 }
 
-.nav-more-btn {
+.nav-menu-btn {
   margin: 0;
   width: auto;
   padding: 0.4rem 0.85rem;
@@ -667,15 +652,15 @@ a:hover { color: var(--accent-hover); }
   font-weight: 600;
   background: var(--nav-more-bg);
   color: var(--nav-more-text);
-  border: none;
+  border: 1px solid var(--border-strong);
   cursor: pointer;
 }
 
-.nav-more-btn:hover {
+.nav-menu-btn:hover {
   filter: brightness(0.96);
 }
 
-.nav-more-menu {
+.nav-menu-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;
@@ -693,27 +678,27 @@ a:hover { color: var(--accent-hover); }
 
 /* Shared row layout for both the desktop dropdown and the mobile inline list: the emoji
    sits in a fixed-width gutter so every label starts at the same x (no ragged edge).
-   `--more-ink` resolves the per-destination accent (set inline as --more-fill/--more-fill-dark
+   `--menu-ink` resolves the per-destination accent (set inline as --menu-fill/--menu-fill-dark
    in AppHeader) to the right shade for the current theme — same light/dark pairing the home
    tiles use — so each item reads as the app's soft colour-tinted pill, not plain text. */
-.nav-more-link {
+.nav-menu-link {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  --more-ink: var(--more-fill, var(--accent));
+  --menu-ink: var(--menu-fill, var(--accent));
 }
 
-:root[data-theme='dark'] .nav-more-link {
-  --more-ink: var(--more-fill-dark, var(--accent));
+:root[data-theme='dark'] .nav-menu-link {
+  --menu-ink: var(--menu-fill-dark, var(--accent));
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):not([data-theme='dark']) .nav-more-link {
-    --more-ink: var(--more-fill-dark, var(--accent));
+  :root:not([data-theme='light']):not([data-theme='dark']) .nav-menu-link {
+    --menu-ink: var(--menu-fill-dark, var(--accent));
   }
 }
 
-.nav-more-icon {
+.nav-menu-icon {
   flex: none;
   width: 1.25rem;
   text-align: center;
@@ -723,26 +708,26 @@ a:hover { color: var(--accent-hover); }
 
 /* Soft colour-tinted pill — a light tint of the destination's accent with that accent as
    the ink, mirroring the home feature tiles. */
-.nav-more-menu a {
+.nav-menu-dropdown a {
   padding: 0.6rem 0.7rem;
   border-radius: 8px;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--more-ink);
-  background: color-mix(in srgb, var(--more-ink) 12%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--more-ink) 26%, var(--border));
+  color: var(--menu-ink);
+  background: color-mix(in srgb, var(--menu-ink) 12%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--menu-ink) 26%, var(--border));
 }
 
-.nav-more-menu a:hover {
-  background: color-mix(in srgb, var(--more-ink) 20%, var(--bg-surface));
-  border-color: color-mix(in srgb, var(--more-ink) 42%, var(--border));
+.nav-menu-dropdown a:hover {
+  background: color-mix(in srgb, var(--menu-ink) 20%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--menu-ink) 42%, var(--border));
 }
 
 /* Current route — a deeper tint + a small left bar so you can see where you are. */
-.nav-more-menu a.active {
-  background: color-mix(in srgb, var(--more-ink) 22%, var(--bg-surface));
-  box-shadow: inset 0.2rem 0 0 var(--more-ink);
+.nav-menu-dropdown a.active {
+  background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
+  box-shadow: inset 0.2rem 0 0 var(--menu-ink);
 }
 
 .app-user {
@@ -5120,8 +5105,8 @@ details[open] .meditate-disclosure-summary::before {
     padding: 0.6rem 0.85rem;
     font-size: 0.95rem;
   }
-  /* The desktop "More" dropdown is replaced by its links shown inline in the menu. */
-  .app-nav .nav-more {
+  /* The desktop dropdown menus are replaced by their links shown inline, under headings. */
+  .app-nav .nav-menu {
     display: none;
   }
   .nav-mobile-extra {
@@ -5132,22 +5117,34 @@ details[open] .meditate-disclosure-summary::before {
     padding-top: 0.5rem;
     border-top: 1px solid var(--border-light);
   }
+  /* Section labels (Practice / Progress) so the inline links stay grouped on mobile. */
+  .nav-mobile-heading {
+    margin: 0.5rem 0 0.1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  .nav-mobile-heading:first-child {
+    margin-top: 0;
+  }
   .nav-mobile-extra a {
     padding: 0.6rem 0.85rem;
     border-radius: 8px;
     text-decoration: none;
     font-size: 0.95rem;
-    color: var(--more-ink);
-    background: color-mix(in srgb, var(--more-ink) 12%, var(--bg-surface));
-    border: 1px solid color-mix(in srgb, var(--more-ink) 26%, var(--border));
+    color: var(--menu-ink);
+    background: color-mix(in srgb, var(--menu-ink) 12%, var(--bg-surface));
+    border: 1px solid color-mix(in srgb, var(--menu-ink) 26%, var(--border));
   }
   .nav-mobile-extra a:hover {
-    background: color-mix(in srgb, var(--more-ink) 20%, var(--bg-surface));
-    border-color: color-mix(in srgb, var(--more-ink) 42%, var(--border));
+    background: color-mix(in srgb, var(--menu-ink) 20%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--menu-ink) 42%, var(--border));
   }
   .nav-mobile-extra a.active {
-    background: color-mix(in srgb, var(--more-ink) 22%, var(--bg-surface));
-    box-shadow: inset 0.2rem 0 0 var(--more-ink);
+    background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
+    box-shadow: inset 0.2rem 0 0 var(--menu-ink);
   }
 }
 
