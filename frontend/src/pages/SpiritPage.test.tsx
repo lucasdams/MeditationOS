@@ -215,12 +215,14 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     ],
   }
 
+  // The live spirit now renders on the centered customize STAGE (the hero is a compact status
+  // line). Count the night-habitat backdrop rects on that stage's art.
   const nightRectsInHero = () => {
-    const hero = document.querySelector('.spirit-hero-art')
-    return hero ? hero.querySelectorAll('rect[fill="#1e293b"]').length : 0
+    const stage = document.querySelector('.spirit-stage-art')
+    return stage ? stage.querySelectorAll('rect[fill="#1e293b"]').length : 0
   }
 
-  it('renders an applied cosmetic on the hero art', async () => {
+  it('renders an applied cosmetic on the centered customize stage', async () => {
     get.mockResolvedValue(
       spiritWith({ cosmetics: { habitat: 'night' }, available: [habitatSlot] }),
     )
@@ -228,7 +230,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     renderPage()
     await screen.findByRole('button', { name: /Night sky/ })
 
-    // The applied night habitat draws its dark backdrop on the hero art.
+    // The applied night habitat draws its dark backdrop on the centered stage art.
     expect(nightRectsInHero()).toBeGreaterThan(0)
   })
 
@@ -250,6 +252,23 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     fireEvent.mouseLeave(nightBtn)
     expect(nightRectsInHero()).toBe(0)
     expect(screen.queryByText('Preview')).toBeNull()
+  })
+
+  it('renders a SpiritArt on the centered customize stage reflecting a focused option', async () => {
+    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatSlot] }))
+
+    renderPage()
+    const nightBtn = await screen.findByRole('button', { name: /Night sky/ })
+
+    // The stage hosts its own SpiritArt (the prominent, live-previewing render).
+    const stage = document.querySelector('.spirit-stage-art .spirit-svg')
+    expect(stage).not.toBeNull()
+    expect(nightRectsInHero()).toBe(0)
+
+    // Keyboard focus on a side option previews it on the centered stage (not just hover).
+    fireEvent.focus(nightBtn)
+    expect(nightRectsInHero()).toBeGreaterThan(0)
+    expect(screen.getByText('Preview')).toBeInTheDocument()
   })
 })
 
