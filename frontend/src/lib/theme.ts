@@ -76,9 +76,10 @@ export type ColorModePref = 'auto' | 'system' | 'light' | 'dark'
 
 const COLOR_MODE_KEY = 'theme:color-mode'
 
-// The default when a user has never made an explicit choice. "auto" makes the
-// app track the time of day, aligning with the garden scene.
-const DEFAULT_COLOR_MODE: ColorModePref = 'auto'
+// The default when a user has never made an explicit choice. Dark is the app's
+// hero theme — the glowing spirit, breathing visuals, and evening practice all
+// read best on a dim canvas. Users can still pick auto / system / light in Settings.
+const DEFAULT_COLOR_MODE: ColorModePref = 'dark'
 
 /**
  * Resolve "auto" to an explicit light/dark theme from the clock, using the local
