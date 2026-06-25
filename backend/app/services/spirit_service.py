@@ -255,11 +255,11 @@ _NEUTRAL_CONDITION_FACTOR = 0.8
 #
 # Buying a cosmetic stamps `spirits.last_pampered_at = now()`; the needs read then adds a
 # DECAYING bonus to EACH need's 0..1 factor (the whole spirit perks up): full right after the
-# purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. It is PARTIAL and CAPPED — it can lift
-# a neglected need off the floor but can't alone carry it to thriving (factor 1.0 still requires
-# sustained practice; the treat supplements, it doesn't substitute). VISUAL-ONLY, exactly like
-# the needs it lifts (the ADR-0023 guardrail): it never touches coins/stage/level/cosmetics.
-# Tunable in-code (retuning needs no migration).
+# purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. It is PARTIAL and CAPPED (`min(1.0, …)`):
+# from a genuinely NEGLECTED floor it only lifts a need part-way (a treat can't substitute for
+# practice), though from a healthier baseline the +0.35 can briefly read `thriving` — a generous,
+# short-lived reward for spending. VISUAL-ONLY, exactly like the needs it lifts (the ADR-0023
+# guardrail): it never touches coins/stage/level/cosmetics. Tunable in-code (no migration).
 PAMPER_BOOST = 0.35  # added to each need's 0..1 factor at purchase time (before decay)
 PAMPER_WINDOW_DAYS = 3  # days over which the boost decays linearly to 0
 
