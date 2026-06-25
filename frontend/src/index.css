@@ -3215,7 +3215,7 @@ textarea:focus-visible,
 
 /* The centred stage — sticks to the top of the viewport so the spirit stays in view while the
    rails scroll. Decorative (aria-hidden); the rails carry the interactive controls. */
-.spirit-stage {
+.spirit-customize-stage {
   position: sticky;
   top: 1rem;
   display: flex;
@@ -3223,6 +3223,7 @@ textarea:focus-visible,
   align-items: center;
   text-align: center;
   align-self: start;
+  min-width: 0;
 }
 
 /* The pedestal/backdrop: a soft framed surface in the Spirit identity tint, with a gentle glow
@@ -3249,6 +3250,8 @@ textarea:focus-visible,
 .spirit-stage-art {
   display: flex;
   justify-content: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .spirit-stage-art .spirit-svg {
@@ -3272,7 +3275,7 @@ textarea:focus-visible,
   .spirit-customize {
     grid-template-columns: 1fr;
   }
-  .spirit-stage {
+  .spirit-customize-stage {
     /* Order the stage first regardless of source order, and keep it sticky just under the
        app header so it stays in view as the slots scroll past. */
     order: -1;
