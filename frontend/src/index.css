@@ -113,6 +113,18 @@
   --card: rgba(255, 255, 255, 0.6);
   --border-var: rgba(0, 0, 0, 0.28);
   --accent-var: #4f46e5;
+
+  /* ── Game-chrome polish tokens (phase 2) ──────────────────────────────────
+     Cohesive panel/glow finish applied through shared classes. On light the
+     glow is barely-there; the dark palette below dials it up for depth on the
+     deep-slate canvas. All resolve per theme so nothing hardcodes structure. */
+  --panel-radius: 14px;                                   /* shared card corner */
+  --panel-shadow: 0 1px 3px var(--shadow-card);          /* resting card lift */
+  --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.5); /* top sheen */
+  --glow-accent: 0 0 0 0 transparent;                    /* no idle glow on light */
+  --glow-accent-hover: 0 6px 18px rgba(79, 70, 229, 0.18); /* hover lift glow */
+  --ring-accent: var(--accent);                          /* focus-visible ring hue */
+  --ambient-glow: transparent;                           /* no ambient wash on light */
 }
 
 /* ── Dark palette ─────────────────────────────────────────────────────────
@@ -228,6 +240,19 @@
   --card: rgba(30, 33, 48, 0.85);
   --border-var: rgba(255, 255, 255, 0.22);
   --accent-var: #818cf8;
+
+  /* Game-chrome polish — depth on the deep-slate canvas. A faint top sheen reads
+     panels as raised glass; the soft accent glow gives a quiet game-UI lift on
+     hover/active. Kept low-alpha so contrast and calm survive. */
+  --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+  --glow-accent-hover: 0 8px 22px rgba(129, 140, 248, 0.28),
+    0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+  --ambient-glow: radial-gradient(
+    900px 600px at 50% -8%,
+    rgba(129, 140, 248, 0.07),
+    transparent 70%
+  );
 }
 
 /* System dark — applied when user hasn't set an explicit preference */
@@ -306,6 +331,16 @@
     --card: rgba(30, 33, 48, 0.85);
     --border-var: rgba(255, 255, 255, 0.22);
     --accent-var: #818cf8;
+    /* Game-chrome polish (mirrors the explicit dark theme above). */
+    --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+    --glow-accent-hover: 0 8px 22px rgba(129, 140, 248, 0.28),
+      0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+    --ambient-glow: radial-gradient(
+      900px 600px at 50% -8%,
+      rgba(129, 140, 248, 0.07),
+      transparent 70%
+    );
   }
 }
 
@@ -388,6 +423,19 @@ body {
   margin: 0;
   min-height: 100vh;
   background: transparent; /* the gradient is on :root (covers the full canvas) */
+}
+
+/* Ambient depth (chrome phase 2): a single, very faint fixed accent glow near the
+   top of the canvas so the dark page has a touch of dimension instead of reading
+   flat. --ambient-glow resolves to `transparent` on light, so this is dark-only.
+   Pointer-events:none + low alpha keep it purely decorative and legible. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ambient-glow);
 }
 
 /* Global link color — applies in BOTH themes. --accent resolves per theme
@@ -509,15 +557,20 @@ a:hover { color: var(--accent-hover); }
   margin: 0 0 1rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 1px 3px var(--shadow-card);
+  border-radius: var(--panel-radius);
+  /* Resting lift + a faint top sheen so the panel reads as raised glass on dark. */
+  box-shadow: var(--panel-shadow), var(--panel-hairline);
   padding: 1rem 1.15rem 1.15rem;
 }
 
+/* Section header treatment (chrome phase 2): a small accent tick in the gutter so
+   each section reads as a discrete "panel in a hub". Quiet — a 3px bar, not a label. */
 .analytics-section h2 {
   font-size: 1rem;
   margin: 0 0 0.8rem;
   color: var(--text-secondary);
+  padding-left: 0.6rem;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .bars {
@@ -628,8 +681,25 @@ a:hover { color: var(--accent-hover); }
   margin-top: 0.3rem;
 }
 
+.app-nav a {
+  transition: box-shadow 0.12s ease, filter 0.12s ease;
+}
+
 .app-nav a:hover {
   filter: brightness(0.96);
+  box-shadow: var(--glow-accent);
+}
+
+/* Current destination: a soft accent ring so the active nav tile reads as "lit". */
+.app-nav a.active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 2px 8px var(--shadow-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-nav a {
+    transition: filter 0.12s ease;
+  }
 }
 
 /* Spirit is the centerpiece — give the standalone link a touch more prominence than the
@@ -658,6 +728,9 @@ a:hover { color: var(--accent-hover); }
 
 .nav-menu-btn:hover {
   filter: brightness(0.96);
+  /* Quiet nav-scale glow instead of the large primary-button hover lift. */
+  transform: none;
+  box-shadow: var(--glow-accent);
 }
 
 .nav-menu-dropdown {
@@ -789,6 +862,8 @@ a:hover { color: var(--accent-hover); }
 .settings-section h2 {
   margin: 0 0 0.5rem;
   font-size: 1.05rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .settings-section form {
@@ -1783,11 +1858,38 @@ button {
   border: none;
   border-radius: 8px;
   cursor: pointer;
+  /* Chrome phase 2: a gentle accent lift on hover/focus so primary actions feel
+     like game-UI buttons. Subtle — a couple px and a soft glow, not neon. Ghost /
+     text-style buttons opt out below so they keep their flat, quiet look. */
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+/* Solid (default-fill) buttons get the lift + accent glow. The :not() guards exclude
+   the app's ghost / link / chip buttons, which set their own transparent background
+   and shouldn't grow an indigo glow. */
+button:hover:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn) {
+  transform: translateY(-1px);
+  box-shadow: var(--glow-accent-hover);
+  filter: brightness(1.04);
+}
+
+button:active:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn) {
+  transform: translateY(0);
 }
 
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: box-shadow 0.12s ease, filter 0.12s ease;
+  }
+  button:hover:not(:disabled),
+  button:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* ── Accessibility utilities ────────────────────────────────────────────────
@@ -1830,7 +1932,9 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #4f46e5;
+  /* Token-driven so the ring tracks the per-theme accent (indigo on light, the
+     lighter indigo on dark) for a clearly visible keyboard-focus indicator. */
+  outline: 2px solid var(--ring-accent);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -2101,8 +2205,7 @@ textarea:focus-visible,
   background: var(--bg-surface-raised);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 1px 3px var(--shadow-card),
-    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent);
+  box-shadow: var(--panel-shadow), var(--panel-hairline);
 }
 
 /* Level badge + XP bar take the lead; pills tuck to the right. The level group can grow
@@ -2883,8 +2986,8 @@ textarea:focus-visible,
      discrete panel like the rest of the app. */
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 1px 3px var(--shadow-card);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow), var(--panel-hairline);
   padding: 1rem 1.15rem 1.15rem;
 }
 
@@ -2892,9 +2995,12 @@ textarea:focus-visible,
   margin-bottom: 0.5rem;
 }
 
+/* Accent tick in the Spirit hue so the title reads as a panel header (chrome phase 2). */
 .spirit-section-title {
   margin: 0;
   font-size: 1rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid color-mix(in srgb, var(--spirit-accent) 60%, transparent);
 }
 
 .spirit-section-subtitle {
