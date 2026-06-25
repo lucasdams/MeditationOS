@@ -15,13 +15,12 @@ import {
   TRACK_META,
   timeOfDay,
   gardenGreeting,
+  GRID_COLUMNS,
+  GROWTH_STAGES,
+  layoutCells,
 } from '../lib/sanctuaryArt'
 import { playReward } from '../lib/sfx'
 import type { OwnedItem, SanctuaryScene as Scene, ShopItem, TendingStatus } from '../types'
-
-// Grid layout width (must mirror the backend's GRID_COLUMNS). The garden lays items out
-// row-major: cell = row * GRID_COLUMNS + col. One tunable constant maps cell ↔ (row, col).
-const GRID_COLUMNS = 4
 
 // Length caps, mirroring the backend schema (NAME_MAX_LENGTH / NOTE_MAX_LENGTH). The form
 // soft-limits input client-side; the server trims + rejects over-length regardless.
@@ -50,17 +49,13 @@ const RESET_FEE = 10
 // previews automatically, with no per-slot special-casing.
 type PreviewTarget = { slot: string; option: string } | null
 
-// The ordered growth ladder (mirrors the backend GROWTH_STAGES) — the path a Tended item
-// climbs from practice. The oak (the "Tended" MVP) walks this for free as Tending rises.
-const TENDING_PATH = ['grown', 'flourishing', 'mature', 'ancient', 'venerable'] as const
-
 // The "Tended" panel for an item whose growth is driven by practice, not coins (the oak, in
 // the MVP). A quiet path ribbon (the growth ladder with the current stage lit and the next one
 // shown as a goal, reusing the preview-locked look) plus a calm "Tended by N days of practice"
 // meter that fills toward the next stage's Tending threshold. Read-only — it never buys; the
 // stage advances on its own as the user practices. ADR / docs/design/sanctuary-upgrades-tended.md.
 function SanctuaryTendingPath({ tending }: { tending: TendingStatus }) {
-  const currentIndex = tending.stage ? TENDING_PATH.indexOf(tending.stage as (typeof TENDING_PATH)[number]) : -1
+  const currentIndex = tending.stage ? GROWTH_STAGES.indexOf(tending.stage as (typeof GROWTH_STAGES)[number]) : -1
   const atTop = tending.next_stage == null
   return (
     <div className="sanctuary-tending" aria-label="Tended by your practice">
@@ -72,7 +67,7 @@ function SanctuaryTendingPath({ tending }: { tending: TendingStatus }) {
       </div>
       {/* The growth ladder as a ribbon: each stage a pip, the current one lit, the next a goal. */}
       <ol className="sanctuary-tending-ribbon">
-        {TENDING_PATH.map((stage, i) => {
+        {GROWTH_STAGES.map((stage, i) => {
           const reached = i <= currentIndex
           const isNext = stage === tending.next_stage
           return (
@@ -468,11 +463,7 @@ export default function SanctuaryPage() {
             (() => {
               // Lay items out on a row-major grid by `cell`. Show every occupied cell plus a
               // trailing empty row so there's always somewhere to drop into a new spot.
-              const byCell = new Map<number, OwnedItem>()
-              for (const o of scene.owned) byCell.set(o.cell, o)
-              const maxCell = Math.max(...scene.owned.map((o) => o.cell))
-              const rows = Math.floor(maxCell / GRID_COLUMNS) + 2 // occupied rows + one spare
-              const cellCount = rows * GRID_COLUMNS
+              const { byCell, cellCount } = layoutCells(scene.owned, GRID_COLUMNS, 1)
 
               const selectedItem = selected ? scene.owned.find((o) => o.id === selected) : null
 
@@ -541,6 +532,10 @@ export default function SanctuaryPage() {
                             }
                             aria-pressed={picked}
                             title="Move"
+                            // Block grabbing another card while a move PATCH is resolving, so a
+                            // second moveItem can't race (and clobber) the optimistic update of
+                            // the first — mirrors the empty drop-cell guard above.
+                            disabled={busy != null && busy.startsWith('move')}
                             onClick={() => {
                               if (selected && selected !== o.id) moveItem(selected, o.cell)
                               else setSelected(picked ? null : o.id)
@@ -655,6 +650,20 @@ export default function SanctuaryPage() {
                                       // never purchase.
                                       const buyable =
                                         !done && opt.unlocked && opt.affordable
+                                      // Why a gated option can't be bought yet. Surfaced both as a
+                                      // `title` (mouse tooltip) AND via aria-describedby on an
+                                      // sr-only span, so keyboard/screen-reader users — who get no
+                                      // tooltip and for whom Enter is a no-op here — still hear why
+                                      // pressing it did nothing.
+                                      const gatedHint =
+                                        gated && !done
+                                          ? !opt.unlocked
+                                            ? (opt.unlock_hint ?? 'Locked — keep practicing to unlock')
+                                            : 'Not enough coins yet — earn more by practicing'
+                                          : null
+                                      const hintId = gatedHint
+                                        ? `sanctuary-hint-${o.id}-${s.slot}-${opt.option}`
+                                        : undefined
                                       return (
                                         <button
                                           key={opt.option}
@@ -664,14 +673,11 @@ export default function SanctuaryPage() {
                                           }${gated && !done ? ' gated' : ''}`}
                                           disabled={hardDisabled}
                                           aria-disabled={(gated && !done) || undefined}
+                                          aria-describedby={hintId}
                                           title={
                                             reached
                                               ? 'Grown by your practice'
-                                              : !opt.unlocked
-                                                ? (opt.unlock_hint ?? 'Locked')
-                                                : !opt.affordable
-                                                  ? 'Earn more coins'
-                                                  : undefined
+                                              : gatedHint ?? undefined
                                           }
                                           onMouseEnter={showPreview}
                                           onMouseLeave={clearPreview}
@@ -679,6 +685,11 @@ export default function SanctuaryPage() {
                                           onBlur={clearPreview}
                                           onClick={() => buyable && customize(o, s.slot, opt.option)}
                                         >
+                                          {gatedHint && (
+                                            <span id={hintId} className="sr-only">
+                                              {gatedHint}
+                                            </span>
+                                          )}
                                           {opt.applied ? (
                                             `✓ ${optionLabel(opt.option)}`
                                           ) : reached ? (
@@ -687,11 +698,15 @@ export default function SanctuaryPage() {
                                             `🔒 ${optionLabel(opt.option)}`
                                           ) : !opt.affordable ? (
                                             <>
-                                              <CoinIcon /> {opt.cost} (earn more)
+                                              {/* A fixed legible size: at the option button's
+                                                  0.74rem font a 1em coin renders ~10px, where the
+                                                  rim/star muddy into a blob — pin it larger so the
+                                                  coin stays clearly a coin. */}
+                                              <CoinIcon size={14} /> {opt.cost} (earn more)
                                             </>
                                           ) : (
                                             <>
-                                              {optionLabel(opt.option)} · <CoinIcon /> {opt.cost}
+                                              {optionLabel(opt.option)} · <CoinIcon size={14} /> {opt.cost}
                                             </>
                                           )}
                                         </button>
@@ -723,7 +738,7 @@ export default function SanctuaryPage() {
                                             'Resetting…'
                                           ) : (
                                             <>
-                                              Reset · −{RESET_FEE} <CoinIcon />
+                                              Reset · −{RESET_FEE} <CoinIcon size={14} />
                                             </>
                                           )}
                                         </button>

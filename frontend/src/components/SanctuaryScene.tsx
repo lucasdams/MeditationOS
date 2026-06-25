@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { sanctuaryService } from '../services/sanctuary'
-import { itemLabel, variantLabel, VITALITY, timeOfDay } from '../lib/sanctuaryArt'
+import { itemLabel, variantLabel, VITALITY, timeOfDay, GRID_COLUMNS, layoutCells } from '../lib/sanctuaryArt'
 import SanctuaryPlant from './SanctuaryPlant'
 import CoinIcon from './CoinIcon'
-import type { OwnedItem, SanctuaryScene as Scene } from '../types'
+import type { SanctuaryScene as Scene } from '../types'
 
 /**
  * Sanctuary on the dashboard: a preview of the garden linking to the full /sanctuary page
@@ -24,11 +24,6 @@ import type { OwnedItem, SanctuaryScene as Scene } from '../types'
  * directly. When omitted (standalone usage) we fetch it ourselves as a fallback.
  */
 const PREVIEW_LIMIT = 6
-
-// The home preview lays items out on the same row-major grid as the full page (cell = row *
-// GRID_COLUMNS + col), so the glance mirrors the user's chosen layout. Mirrors SanctuaryPage's
-// GRID_COLUMNS; the read-only preview never moves items, so it only ever reads cells.
-const GRID_COLUMNS = 4
 
 export default function SanctuaryScene({
   scene: sceneProp,
@@ -85,12 +80,9 @@ export default function SanctuaryScene({
             // Lay the previewed items out row-major by `cell`, exactly as the full page does,
             // so the home glance mirrors the user's chosen layout. Read-only: every cell is a
             // static tile (no buttons, no drag), filling empty cells in the spanned rows so the
-            // grid reads as a tidy little plot rather than a ragged strip.
-            const byCell = new Map<number, OwnedItem>()
-            for (const o of previewItems) byCell.set(o.cell, o)
-            const maxCell = Math.max(...previewItems.map((o) => o.cell))
-            const rows = Math.floor(maxCell / GRID_COLUMNS) + 1
-            const cellCount = rows * GRID_COLUMNS
+            // grid reads as a tidy little plot rather than a ragged strip. No spare row — the
+            // preview never moves items, so it only renders the occupied rows.
+            const { byCell, cellCount } = layoutCells(previewItems, GRID_COLUMNS, 0)
             return (
               // The same calm garden scene as the full page: a soft backdrop + a grass/soil
               // ground band so the home preview reads as a little garden, not a strip of tiles.

@@ -317,6 +317,9 @@ export interface SanctuaryScene {
   owned: OwnedItem[]
   shop: ShopItem[]
   vitality: Vitality
+  // Part of the scene payload, but currently consumed only backend-side (it drives vitality
+  // server-side); the frontend reads `vitality`, not this raw count. Kept typed so the response
+  // shape stays accurate. Surface it here only if a streak line is later added to the garden.
   current_streak: number
 }
 

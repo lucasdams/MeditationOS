@@ -18,9 +18,18 @@ const GOAL_LABELS: Record<GoalActivity, string> = {
   journal: 'Journal',
   custom: 'Custom habit…',
 }
+// Single source for a goal's display emoji+label so the form dropdown and the
+// cards cannot drift. Custom goals show the user's own label when one is given.
+function goalDisplay(activity: GoalActivity, label?: string | null): { emoji: string; label: string } {
+  return {
+    emoji: ACTIVITY_META[activity].emoji,
+    label: activity === 'custom' && label ? label : GOAL_LABELS[activity],
+  }
+}
+
 const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = (
   ['meditate', 'breathe', 'gratitude', 'journal', 'custom'] as const
-).map((key) => ({ key, label: GOAL_LABELS[key], emoji: ACTIVITY_META[key].emoji }))
+).map((key) => ({ key, ...goalDisplay(key) }))
 
 // Cadence presets — the only "target" is how often, not a number to type.
 const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
@@ -44,7 +53,8 @@ function cadenceLabel(count: number, period: GoalPeriod): string {
 export default function GoalsPage() {
   const { showToast } = useToast()
   const [goals, setGoals] = useState<Goal[] | null>(null)
-  const [error, setError] = useState<string | null>(null) // create/update action errors
+  const [error, setError] = useState<string | null>(null) // create-goal form errors
+  const [actionError, setActionError] = useState<string | null>(null) // check-in/archive/delete errors
   const [loadError, setLoadError] = useState<string | null>(null) // the goals list failing
   const [retrying, setRetrying] = useState(false)
   const [view, setView] = useState<GoalStatus>('active')
@@ -114,7 +124,7 @@ export default function GoalsPage() {
   }
 
   async function toggleCheckin(goal: Goal) {
-    setError(null)
+    setActionError(null)
     try {
       const updated = goal.checked_in_today
         ? await goalService.undoCheckIn(goal.id)
@@ -122,18 +132,18 @@ export default function GoalsPage() {
       setGoals((prev) => prev?.map((g) => (g.id === updated.id ? updated : g)) ?? null)
       showToast(updated.checked_in_today ? 'Marked done today.' : 'Check-in undone.')
     } catch {
-      setError('Could not update that check-in.')
+      setActionError('Could not update that check-in.')
     }
   }
 
   async function archive(id: string, status: GoalStatus) {
-    setError(null)
+    setActionError(null)
     try {
       await goalService.setStatus(id, status)
       setGoals((prev) => prev?.filter((g) => g.id !== id) ?? null)
       showToast(status === 'archived' ? 'Goal archived.' : 'Goal reactivated.')
     } catch {
-      setError('Could not update that goal.')
+      setActionError('Could not update that goal.')
     }
   }
 
@@ -143,7 +153,7 @@ export default function GoalsPage() {
     getId: (g) => g.id,
     remove: (id) => goalService.remove(id),
     messages: { success: 'Goal deleted.', error: 'Could not delete that goal.' },
-    onStart: () => setError(null),
+    onStart: () => setActionError(null),
   })
 
   return (
@@ -224,6 +234,7 @@ export default function GoalsPage() {
 
       <section className="goal-list">
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
+        <ErrorBanner message={actionError} />
         {goals === null && !loadError && <Loading />}
         {goals && goals.length === 0 && (
           <EmptyState>
@@ -233,11 +244,9 @@ export default function GoalsPage() {
           </EmptyState>
         )}
         {goals?.map((g) => {
-          const meta = ACTIVITY_META[g.activity]
+          const display = goalDisplay(g.activity, g.label)
           const when = g.period === 'day' ? 'today' : g.period === 'week' ? 'this week' : 'all-time'
           const isCustomGoal = g.activity === 'custom'
-          // Goal cards use the goals-context label ("Write gratitude") for the canonical
-          // activities; a custom goal shows the user's own label instead.
           return (
             <article
               key={g.id}
@@ -246,7 +255,7 @@ export default function GoalsPage() {
             >
               <div className="goal-card-head">
                 <strong>
-                  {meta.emoji} {isCustomGoal ? g.label : GOAL_LABELS[g.activity]}
+                  {display.emoji} {display.label}
                 </strong>
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
                 {g.achieved && <span className="goal-achieved">✓ Done</span>}

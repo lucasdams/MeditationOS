@@ -43,6 +43,11 @@ export default function Modal({
   useEffect(() => {
     restoreFocusRef.current = document.activeElement
 
+    // Lock background scroll so the page behind the dialog can't scroll through the
+    // backdrop (notably on touch devices). Restored on close.
+    const prevBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
     const card = cardRef.current
     // Focus the first focusable element in the card (falling back to the card),
     // unless the body already moved focus (e.g. an autoFocus input).
@@ -82,6 +87,7 @@ export default function Modal({
     document.addEventListener('keydown', onKeyDown, true)
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
+      document.body.style.overflow = prevBodyOverflow
       const toRestore = restoreFocusRef.current
       if (toRestore instanceof HTMLElement) toRestore.focus()
     }
@@ -129,5 +135,13 @@ function isVisible(el: HTMLElement): boolean {
   if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false
   const style = el.style
   if (style.display === 'none' || style.visibility === 'hidden') return false
+  // Also honour visibility set via a stylesheet class (the common case in this app,
+  // where styling lives in index.css rather than inline). getComputedStyle reflects
+  // class rules in the browser; under jsdom it returns the inline/default values, so
+  // this stays a no-op there and the inline check above remains the source of truth.
+  if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+    const computed = window.getComputedStyle(el)
+    if (computed.display === 'none' || computed.visibility === 'hidden') return false
+  }
   return true
 }

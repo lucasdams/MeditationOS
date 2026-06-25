@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
@@ -9,6 +9,7 @@ import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { ApiError } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
@@ -35,8 +36,15 @@ const TYPE_LABELS: Record<MeditationType, string> = {
   other: 'Other',
 }
 
-// ISO timestamp -> "2026-06-09 07:30"
-const formatWhen = (iso: string) => iso.slice(0, 16).replace('T', ' ')
+// The API serializes timestamps as UTC ISO (with `Z`); render them in the user's
+// local time, matching TimelinePage so the same moment reads identically app-wide.
+const formatWhen = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 const PAGE = 50
@@ -96,38 +104,42 @@ export default function JournalPage() {
       .catch(() => {})
   }, [])
 
+  // Monotonic token for the active list request: any call-path (debounced search or
+  // retry) bumps it, and a response only applies if its token is still current. This
+  // protects every load path — including retryLoad — from a stale response clobbering
+  // newer results.
+  const loadSeq = useRef(0)
+
   // Entries — refetched (debounced) whenever the text search changes. Drop any
   // in-progress edit, since the edited entry may fall out of the new results.
-  function loadInitial(q: string, mood: Mood | '', ignored?: () => boolean) {
+  function loadInitial(q: string, mood: Mood | '') {
+    const token = ++loadSeq.current
+    const current = () => loadSeq.current === token
     journalService
       .list({ q: q || undefined, mood: mood || undefined, limit: PAGE, offset: 0 })
       .then((rows) => {
-        if (ignored?.()) return
+        if (!current()) return
         setEntries(rows)
         setHasMore(rows.length === PAGE)
         setLoadError(null)
       })
       .catch((err) => {
-        if (!ignored?.()) setLoadError(messageForError(err, 'Could not load your journal.'))
+        if (current()) setLoadError(messageForError(err, 'Could not load your journal.'))
       })
       .finally(() => {
-        if (!ignored?.()) setRetrying(false)
+        if (current()) setRetrying(false)
       })
   }
 
   useEffect(() => {
     setEditingId(null)
     setMenuId(null)
-    // Guard against an older search's response landing after a newer one.
-    let ignore = false
+    // Stale responses are guarded by loadSeq; here we just debounce typing.
     const t = setTimeout(
-      () => loadInitial(query, moodFilter, () => ignore),
+      () => loadInitial(query, moodFilter),
       query ? 300 : 0, // debounce typing; load immediately on mount/clear/mood change
     )
-    return () => {
-      ignore = true
-      clearTimeout(t)
-    }
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, moodFilter])
 
@@ -244,16 +256,28 @@ export default function JournalPage() {
   async function resurfaceMemory() {
     setResurfacing(true)
     try {
+      // A 404 means the user genuinely has none of that kind; any other error is a
+      // real failure we must not mistake for "nothing to resurface". Track whether a
+      // non-404 error occurred so we can surface an honest message.
+      let failed = false
+      const swallow404 = (err: unknown) => {
+        if (!(err instanceof ApiError && err.status === 404)) failed = true
+        return null
+      }
       const [j, g] = await Promise.all([
-        journalService.random().catch(() => null),
-        gratitudeService.random().catch(() => null),
+        journalService.random().catch(swallow404),
+        gratitudeService.random().catch(swallow404),
       ])
       const candidates: NonNullable<typeof memory>[] = []
       if (j) candidates.push({ kind: 'journal', text: j.body, mood: j.mood, when: j.created_at })
       if (g) candidates.push({ kind: 'gratitude', text: g.text, when: g.created_at })
       if (candidates.length === 0) {
         setMemory(null)
-        showToast('No past reflections to resurface yet.')
+        showToast(
+          failed
+            ? "Couldn't resurface a memory. Please try again."
+            : 'No past reflections to resurface yet.',
+        )
         return
       }
       setMemory(candidates[Math.floor(Math.random() * candidates.length)])
@@ -285,11 +309,13 @@ export default function JournalPage() {
               type="button"
               className="journal-nudge-text"
               aria-label={`Use prompt: ${currentPrompt.text}`}
+              // Tapping a prompt only fills an empty composer; dim/disable it once the
+              // user has typed so the affordance matches its behavior (no dead taps).
+              disabled={body.trim().length > 0}
+              title={body.trim() ? 'Clear your draft to use a prompt' : undefined}
               onClick={() => {
-                if (!body.trim()) {
-                  setBody(currentPrompt.text + ' ')
-                  setComposing(true)
-                }
+                setBody(currentPrompt.text + ' ')
+                setComposing(true)
               }}
             >
               {currentPrompt.text}
@@ -525,7 +551,6 @@ export default function JournalPage() {
                       type="button"
                       className="journal-entry-menu"
                       aria-label="Entry actions"
-                      aria-haspopup="true"
                       aria-expanded={menuId === j.id}
                       aria-controls={`menu-${j.id}`}
                       onClick={() => setMenuId(menuId === j.id ? null : j.id)}

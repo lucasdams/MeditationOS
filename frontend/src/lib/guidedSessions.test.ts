@@ -132,6 +132,21 @@ describe('currentPhaseIndex', () => {
     expect(currentPhaseIndex(schedule, boundary)).toBe(1)
   })
 
+  it('with loop=true, wraps past the reference span instead of pinning on the last phase', () => {
+    // Open-ended sit: schedule built against the 20-min reference.
+    const open = buildSchedule(structure, 0)
+    const span = open[open.length - 1].endSec // 1200s
+    // Without looping, anything past the span parks on the closing phase.
+    expect(currentPhaseIndex(open, span + 5)).toBe(structure.phases.length - 1)
+    // With looping, just past the span we cycle back to the opening phase.
+    expect(currentPhaseIndex(open, span + 5, true)).toBe(0)
+    // And the wrapped index matches the same offset within the first cycle.
+    const offset = 300
+    expect(currentPhaseIndex(open, span + offset, true)).toBe(
+      currentPhaseIndex(open, offset, true),
+    )
+  })
+
   it('produces consistent results across 5-min and 30-min durations', () => {
     const short = buildSchedule(structure, 300)
     const long = buildSchedule(structure, 1800)

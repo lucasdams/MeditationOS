@@ -23,11 +23,10 @@ const QUEST_LINKS: Record<string, string> = {
   journal: '/journal',
 }
 
-// Quick-action tiles — one tap to the five main features from the dashboard. These are the
-// home screen's primary focal point: each is a bold, full-colour box (saturated fill from
-// TILE_COLORS, white icon + label) so the actions clearly pop. The four activity tiles read
-// their emoji/label from the shared ACTIVITY_META; Sanctuary isn't a tracked activity, so it
-// carries its own emoji/label. `tile` keys into TILE_COLORS for the box fill.
+// Quick-action tiles — one tap to the four core practices from the dashboard, the home
+// screen's primary focal point. Each is a soft-tinted card: a light tint of its activity
+// colour with that colour as the icon + label ink (see .feature-tile). The tiles read their
+// emoji/label from the shared ACTIVITY_META; `tile` keys into TILE_COLORS for the tint/ink.
 const FEATURE_TILES = [
   { ...ACTIVITY_META.meditate, to: '/meditate', tile: 'meditate' as const },
   { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
@@ -214,18 +213,13 @@ export default function DashboardPage() {
           low-chrome: no descriptions, no XP numbers, calm not grindy. */}
       {stats && stats.daily_quests.length > 0 && (
         <section className="quests-compact" aria-labelledby="quests-heading">
-          {(() => {
-            const doneCount = stats.daily_quests.filter((q) => q.done).length
-            return (
-              <p className="quests-heading" id="quests-heading">
-                <span className="quests-heading-icon" aria-hidden="true">🎯</span>
-                <span className="quests-heading-text">Today's quests</span>
-                <span className="quests-heading-count">
-                  {doneCount}/{stats.daily_quests.length}
-                </span>
-              </p>
-            )
-          })()}
+          <p className="quests-heading" id="quests-heading">
+            <span className="quests-heading-icon" aria-hidden="true">🎯</span>
+            <span className="quests-heading-text">Today's quests</span>
+            <span className="quests-heading-count">
+              {stats.daily_quests.filter((q) => q.done).length}/{stats.daily_quests.length}
+            </span>
+          </p>
           <ul className="quest-chips">
             {stats.daily_quests.map((q) => {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
@@ -332,6 +326,7 @@ export default function DashboardPage() {
           <p className="mood-modal-kicker muted">Take a breath</p>
           <MoodCheckin
             heading="How are you arriving?"
+            initial={todayMood}
             onLogged={(mood) => {
               // Reflect the just-logged mood on the home line immediately (no reload),
               // then close the modal.

@@ -8,8 +8,7 @@ import GoogleSignInButton from '../components/GoogleSignInButton'
 import AuthBrand from '../components/AuthBrand'
 import GuestButton from '../components/GuestButton'
 import { ErrorBanner } from '../components/StateViews'
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import { EMAIL_RE } from '../lib/validation'
 
 export default function RegisterPage() {
   const { refresh } = useAuth()

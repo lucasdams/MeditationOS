@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { messageForError } from '../lib/errors'
+import { EMAIL_RE } from '../lib/validation'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import GuestButton from '../components/GuestButton'
@@ -32,13 +33,13 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
 
-    if (!email) {
-      setError('Please enter your email and password.')
+    if (!EMAIL_RE.test(email)) {
+      setError('Please enter a valid email address.')
       emailRef.current?.focus()
       return
     }
     if (!password) {
-      setError('Please enter your email and password.')
+      setError('Please enter your password.')
       passwordRef.current?.focus()
       return
     }
@@ -65,7 +66,7 @@ export default function LoginPage() {
     <main id="main-content" className="auth-card">
       <AuthBrand />
       <h1>Log in</h1>
-      {notice && <p className="auth-notice">{notice}</p>}
+      {notice && <p role="status" className="auth-notice">{notice}</p>}
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="email">Email</label>
         <input

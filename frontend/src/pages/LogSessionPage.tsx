@@ -9,6 +9,7 @@ import RewardOverlay from '../components/RewardOverlay'
 import RatingChips from '../components/RatingChips'
 import { ErrorBanner } from '../components/StateViews'
 import { newClientToken } from '../lib/sessionDraft'
+import { toDatetimeLocal } from '../lib/format'
 import type { DashboardStats, MeditationType } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -30,11 +31,7 @@ const TYPES: { value: MeditationType; label: string; emoji: string; tint: string
 const DURATION_CHIPS = [5, 10, 15, 20, 30, 45, 60]
 
 // Local "now" formatted for a <input type="datetime-local"> (YYYY-MM-DDThh:mm).
-const nowLocal = () => {
-  const d = new Date()
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
-  return d.toISOString().slice(0, 16)
-}
+const nowLocal = () => toDatetimeLocal(new Date())
 
 export default function LogSessionPage() {
   const navigate = useNavigate()

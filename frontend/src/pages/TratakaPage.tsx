@@ -196,8 +196,7 @@ export default function TratakaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
-  function startSoundscape() {
-    const name = soundscapeRef.current
+  function startSoundscape(name: SoundscapeName = soundscapeRef.current) {
     if (name === 'silent') {
       // No ambient sound for this sit — stop any lingering preview.
       soundscapeEngineRef.current?.stop()
@@ -408,13 +407,9 @@ export default function TratakaPage() {
             previewEnabled={!started}
             onSoundscapeChange={(name) => {
               setSoundscape(name)
-              if (running) {
-                soundscapeEngineRef.current?.stop()
-                if (name !== 'silent') {
-                  if (!soundscapeEngineRef.current) soundscapeEngineRef.current = new SoundscapeEngine()
-                  soundscapeEngineRef.current.start(name, soundscapeVolRef.current)
-                }
-              }
+              // Route through startSoundscape so the "don't restart a matching engine"
+              // guard holds here too (state ref lags a render, so pass name explicitly).
+              if (running) startSoundscape(name)
             }}
             onVolumeChange={setSoundscapeVol}
           />

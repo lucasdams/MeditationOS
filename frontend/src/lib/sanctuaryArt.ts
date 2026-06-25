@@ -2,7 +2,33 @@
 // Rendering itself is the procedural SVG in `components/SanctuaryPlant.tsx`; the backend
 // `SANCTUARY_CATALOG` is the source of truth for which keys exist.
 
-import type { Vitality } from '../types'
+import type { OwnedItem, Vitality } from '../types'
+
+// The garden grid width (mirrors the backend's GRID_COLUMNS). Items lay out row-major:
+// cell = row * GRID_COLUMNS + col. Shared by the full page and the home preview so the two
+// layouts can never silently diverge.
+export const GRID_COLUMNS = 4
+
+// Lay owned items out on a row-major grid keyed by `cell`. Returns a cell→item map and the
+// total cell count to render: every occupied row plus `spareRows` of trailing empty cells
+// (the full page wants a spare row to drop into; the read-only home preview wants none).
+// Shared by the page and the preview so the two layouts can never silently diverge.
+export function layoutCells(
+  items: OwnedItem[],
+  columns: number,
+  spareRows: number,
+): { byCell: Map<number, OwnedItem>; cellCount: number } {
+  const byCell = new Map<number, OwnedItem>()
+  for (const o of items) byCell.set(o.cell, o)
+  const maxCell = items.length > 0 ? Math.max(...items.map((o) => o.cell)) : 0
+  const rows = Math.floor(maxCell / columns) + 1 + spareRows
+  return { byCell, cellCount: rows * columns }
+}
+
+// The ordered growth ladder (mirrors the backend GROWTH_STAGES) — the path a Tended item
+// climbs from practice (grown → flourishing → mature → ancient → venerable). Shared by the
+// page's tending ribbon and the plant renderer's stage scaling so they stay in lockstep.
+export const GROWTH_STAGES = ['grown', 'flourishing', 'mature', 'ancient', 'venerable'] as const
 
 export const VITALITY: Record<Vitality, { emoji: string; label: string }> = {
   dormant: { emoji: '🍂', label: 'Dormant — practice to bring it back to life' },

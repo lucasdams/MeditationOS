@@ -27,6 +27,7 @@ Planned capabilities beyond the current roadmap, grouped by theme. Priority may 
 - [ ] Breathing pattern library shared across devices
 - [ ] Session stats per pattern (which rates users practice most, time of day)
 - [x] **Optional breath holds between inhale and exhale** — supported via the preset patterns (box carries its own holds; resonance keeps light 1s holds); a fully custom hold editor remains open
+- [x] **Softer transition chime / bell** — the breathing-pacer transition chime now strikes an octave lower (A4/E4, was A5/E5) with a softer attack, lower gain, and rounder overtone (`frontend/src/lib/breathAudio.ts`); the meditation bell's selectable **Chime** timbre was likewise deepened and quieted (`frontend/src/lib/sfx.ts`). The default Singing-bowl/gong/soft bells were already low and warm, so they were left as-is. All synthesized in Web Audio (no assets).
 - [ ] Haptic or audio-only breathing modes
 - [ ] Custom in:out ratio for resonance breathing (the bpm selector ships a **~2:3 longer-exhale** ratio by default; a user-adjustable ratio for advanced users with a known resonance frequency is the open item)
 

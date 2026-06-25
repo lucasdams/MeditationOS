@@ -7,12 +7,13 @@ import GuestBanner from './GuestBanner'
 import ChooseUsername from '../pages/ChooseUsername'
 import Onboarding from '../pages/Onboarding'
 import LandingPage from '../pages/LandingPage'
+import { Loading } from './StateViews'
 
 export default function ProtectedRoute() {
   const { user, loading, verificationRequired } = useAuth()
   const location = useLocation()
 
-  if (loading) return <p className="centered">Loading…</p>
+  if (loading) return <Loading className="centered" />
   if (!user) {
     // The front door: logged-out visitors to "/" get the marketing landing page;
     // any other protected path sends them to log in.

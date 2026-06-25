@@ -11,8 +11,6 @@ import type {
   BiometricDelta,
   BiometricReading,
   InsightsResponse,
-  MeditationType,
-  Mood,
   WeekRatings,
 } from '../types'
 
@@ -39,7 +37,13 @@ const BUCKET_LABELS: Record<string, string> = {
   night: 'Night',
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-const typeLabel = (t: string) => TYPE_LABELS[t as MeditationType] ?? cap(t)
+const typeLabel = (t: string) => TYPE_LABELS[t] ?? cap(t)
+
+// String-keyed views of the shared color maps. The backend sends plain strings for
+// types/moods, so indexing by string (with a fallback) is honest — no `as Enum` cast
+// pretending an arbitrary value is a member of the union.
+const typeColors: Record<string, string> = TYPE_COLORS
+const moodColors: Record<string, string> = MOOD_COLORS
 
 // A labelled horizontal bar: label + value on the left, the bar fills to the right.
 // `max` normalizes the widths across the group. The visual bar is decorative; the
@@ -87,7 +91,14 @@ function Insights() {
     return () => { ignore = true }
   }, [])
 
-  if (error) return null // stay quiet — the charts below still carry the page
+  if (error) {
+    return (
+      <section className="analytics-section">
+        <h2>Patterns</h2>
+        <p className="muted">Couldn’t load this section.</p>
+      </section>
+    )
+  }
   if (!insights) {
     return (
       <section className="analytics-section">
@@ -171,7 +182,14 @@ function BiometricTrend() {
     return () => { ignore = true }
   }, [])
 
-  if (error) return null // stay quiet — the practice charts still carry the page
+  if (error) {
+    return (
+      <section className="analytics-section">
+        <h2>Heart rate &amp; HRV</h2>
+        <p className="muted">Couldn’t load this section.</p>
+      </section>
+    )
+  }
 
   if (!readings) {
     return (
@@ -189,6 +207,28 @@ function BiometricTrend() {
         <p className="muted">
           No readings yet. Log a quick one after a sit, or{' '}
           <Link to="/biometrics/new">add a resting reading</Link>, to start a trend.
+        </p>
+      </section>
+    )
+  }
+
+  // With a single reading a min→max trend is meaningless (one bar at the floor,
+  // identical end labels), so show a plain "Latest" line until there are ≥2.
+  if (readings.length < 2) {
+    const latest = readings[0]
+    return (
+      <section className="analytics-section">
+        <h2>Heart rate &amp; HRV</h2>
+        <p className="muted biometric-note">
+          A personal wellness signal you log yourself — not a medical measurement.
+        </p>
+        <p className="biometric-delta">
+          Latest: {latest.bpm} bpm
+          {latest.hrv_ms != null ? ` · HRV ${latest.hrv_ms} ms` : ''}
+        </p>
+        <p className="muted">Log one more reading to start a trend.</p>
+        <p className="muted biometric-cta">
+          <Link to="/biometrics/new">Log a resting reading</Link>
         </p>
       </section>
     )
@@ -235,9 +275,9 @@ function BiometricTrend() {
         ))}
       </div>
       <div className="muted analytics-axis">
-        <span>{minBpm} bpm</span>
-        <span>heart rate, oldest → newest</span>
-        <span>{maxBpm} bpm</span>
+        <span>oldest</span>
+        <span>heart rate · range {minBpm}–{maxBpm} bpm</span>
+        <span>newest</span>
       </div>
 
       {hrvReadings.length > 0 && (
@@ -262,9 +302,9 @@ function BiometricTrend() {
             ))}
           </div>
           <div className="muted analytics-axis">
-            <span>{minHrv} ms</span>
-            <span>HRV (when logged)</span>
-            <span>{maxHrv} ms</span>
+            <span>oldest</span>
+            <span>HRV (when logged) · range {minHrv}–{maxHrv} ms</span>
+            <span>newest</span>
           </div>
         </>
       )}
@@ -444,7 +484,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="muted analytics-axis" aria-hidden="true">
               <span>{data.minutes_by_week[0]?.week_start}</span>
-              <span>this week</span>
+              <span>{data.minutes_by_week[data.minutes_by_week.length - 1]?.week_start}</span>
             </div>
           </section>
 
@@ -461,7 +501,7 @@ export default function AnalyticsPage() {
                       value={t.minutes}
                       max={max}
                       suffix=" min"
-                      color={TYPE_COLORS[t.type as MeditationType] ?? PALETTE[i % PALETTE.length]}
+                      color={typeColors[t.type] ?? PALETTE[i % PALETTE.length]}
                     />
                   ))
                 })()}
@@ -517,7 +557,7 @@ export default function AnalyticsPage() {
                       label={cap(m.mood)}
                       value={m.count}
                       max={max}
-                      color={MOOD_COLORS[m.mood as Mood] ?? PALETTE[i % PALETTE.length]}
+                      color={moodColors[m.mood] ?? PALETTE[i % PALETTE.length]}
                     />
                   ))
                 })()}
@@ -566,7 +606,7 @@ export default function AnalyticsPage() {
                                   className="mood-seg"
                                   style={{
                                     height: `${(w.counts[m] / maxTotal) * 100}%`,
-                                    background: MOOD_COLORS[m as Mood] ?? '#9ca3af',
+                                    background: moodColors[m] ?? '#9ca3af',
                                   }}
                                 />
                               ) : null,
@@ -577,14 +617,14 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="muted analytics-axis" aria-hidden="true">
                       <span>{data.mood_by_week[0]?.week_start}</span>
-                      <span>this week</span>
+                      <span>{data.mood_by_week[data.mood_by_week.length - 1]?.week_start}</span>
                     </div>
                     <div className="mood-legend" aria-hidden="true">
                       {present.map((m) => (
                         <span key={m} className="mood-legend-item">
                           <span
                             className="mood-legend-dot"
-                            style={{ background: MOOD_COLORS[m as Mood] ?? '#9ca3af' }}
+                            style={{ background: moodColors[m] ?? '#9ca3af' }}
                           />
                           {cap(m)}
                         </span>

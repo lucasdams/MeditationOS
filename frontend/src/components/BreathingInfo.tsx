@@ -16,8 +16,8 @@ export default function BreathingInfo() {
       <p>
         You breathe in for 2 counts and out for 3 — a slightly <strong>longer exhale</strong>. A
         longer out-breath gently stimulates the vagus nerve and deepens the relaxation response,
-        so the same pace feels calmer. At the <em>Easy</em> setting that's 4 seconds in, 6
-        seconds out.
+        so the same pace feels calmer. At a <em>Gentle</em> pace (6 breaths a minute) that's
+        about 4 seconds in, 6 seconds out; slower paces stretch both.
       </p>
 
       <h2>Benefits</h2>

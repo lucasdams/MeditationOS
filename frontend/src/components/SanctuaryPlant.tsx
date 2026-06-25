@@ -5,19 +5,17 @@
 // was bought; this owns rendering. viewBox is 0 0 80 80, in the existing flat style.
 
 import { memo } from 'react'
-import { itemLabel, variantLabel } from '../lib/sanctuaryArt'
+import { itemLabel, variantLabel, GROWTH_STAGES } from '../lib/sanctuaryArt'
 
 const GROUND = 70
 
 type Cust = Record<string, string>
 
-// The `grown` slot is a sequential growth ladder (backend GROWTH_STAGES): each option keys a
-// stage that renders visibly larger and lusher than the last. Stage 0 is the un-grown base;
-// stages 1–5 are grown → flourishing → mature → ancient → venerable. The first rung is keyed
-// literally "grown" for backward-compat, so a legacy {"grown":"grown"} row maps to stage 1.
-// The fifth rung (venerable, ADR-0021) is a pure addition above the original four.
-const GROWTH_STAGES = ['grown', 'flourishing', 'mature', 'ancient', 'venerable'] as const
-
+// The `grown` slot is a sequential growth ladder (shared GROWTH_STAGES, mirroring the backend):
+// each option keys a stage that renders visibly larger and lusher than the last. Stage 0 is the
+// un-grown base; stages 1–5 are grown → flourishing → mature → ancient → venerable. The first
+// rung is keyed literally "grown" for backward-compat, so a legacy {"grown":"grown"} row maps to
+// stage 1. The fifth rung (venerable, ADR-0021) is a pure addition above the original four.
 function growthStage(cust: Cust): number {
   const i = GROWTH_STAGES.indexOf(cust.grown as (typeof GROWTH_STAGES)[number])
   return i < 0 ? 0 : i + 1 // 0 = un-grown base; 1..5 = the ladder rungs

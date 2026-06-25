@@ -47,6 +47,27 @@ export function saveSoundscapePref(name: SoundscapeName): void {
   }
 }
 
+export const SOUNDSCAPE_VOL_KEY = 'soundscape:volume'
+export const DEFAULT_SOUNDSCAPE_VOL = 0.4
+
+export function loadSoundscapeVolPref(): number {
+  try {
+    const v = Number(localStorage.getItem(SOUNDSCAPE_VOL_KEY))
+    if (Number.isFinite(v) && v >= 0 && v <= 1) return v
+  } catch {
+    // localStorage unavailable
+  }
+  return DEFAULT_SOUNDSCAPE_VOL
+}
+
+export function saveSoundscapeVolPref(vol: number): void {
+  try {
+    localStorage.setItem(SOUNDSCAPE_VOL_KEY, String(vol))
+  } catch {
+    // ignore
+  }
+}
+
 // A running set of nodes that must be stopped together on teardown.
 type StopFn = () => void
 
