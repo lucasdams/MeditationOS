@@ -462,7 +462,7 @@ export default function SpiritPage() {
                   {/* The centred stage — decorative; the interactive controls are the rails. The
                       live render reflects `previewCosmetics`, so hovering/focusing any side option
                       updates THIS spirit. Sticky so it stays in view as the rails scroll. */}
-                  <div className="spirit-stage" aria-hidden="true">
+                  <div className="spirit-customize-stage" aria-hidden="true">
                     <div className="spirit-stage-frame">
                       <div className="spirit-stage-art">
                         <SpiritArt
