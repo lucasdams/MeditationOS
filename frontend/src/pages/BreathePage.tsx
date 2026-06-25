@@ -67,6 +67,17 @@ const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
   resonance: { emoji: '🌊', tint: '#e0f2fe' }, // rolling, longer exhale
   box: { emoji: '🟦', tint: '#e0e7ff' }, // four equal sides
   energizing: { emoji: '☀️', tint: '#fef3c7' }, // brisk, active inhale
+  alternate: { emoji: '🌬️', tint: '#ede9fe' }, // calm violet — Nadi Shodhana
+}
+
+// Nadi Shodhana nostril guidance: on even rounds you inhale LEFT / exhale RIGHT, and the
+// sides flip on odd rounds. Returns the active nostril for the current phase (holds carry
+// the inhale's side), or null when the phase has no side (e.g. the brief empty-hold).
+const nostrilFor = (cycleIndex: number, phase: Segment): 'left' | 'right' | null => {
+  const evenRound = cycleIndex % 2 === 0
+  if (phase === 'inhale' || phase === 'hold-full') return evenRound ? 'left' : 'right'
+  if (phase === 'exhale') return evenRound ? 'right' : 'left'
+  return null // hold-empty — between rounds, no active side
 }
 
 // Breaths-per-minute is the user's primary control for the Resonance preset: stepped
@@ -239,10 +250,16 @@ export default function BreathePage() {
       ? (preset.pattern as Pattern)
       : (preset.derive ?? patternForBpm)(controlValue)
   const { inhale, exhale } = pattern
-  // The energizing preset saves as its own breathwork type; box + resonance stay
-  // resonance_breathing. Both are classified as breathwork by the backend.
+  // The energizing preset saves as its own breathwork type; box + resonance + alternate
+  // stay resonance_breathing (alternate-nostril is calming breathwork). All are
+  // classified as breathwork by the backend.
   const breathType: MeditationType =
     preset.key === 'energizing' ? 'energizing_breathing' : 'resonance_breathing'
+
+  // Alternate-nostril guidance: which side to breathe through this phase, kept in
+  // lock-step with the visual via the same `cycles` + `phase` the rAF loop drives.
+  const isAlternate = preset.key === 'alternate'
+  const nostril = isAlternate ? nostrilFor(cycles, phase) : null
 
   // Remember the chosen pace + preset for next time.
   useEffect(() => {
@@ -735,10 +752,34 @@ export default function BreathePage() {
             celebrate={reward !== null}
           />
           {/* aria-live="polite" announces phase changes (inhale / hold / exhale) to SR
-              users — the primary cue when audio is off or headphones aren't in use. */}
+              users — the primary cue when audio is off or headphones aren't in use. For
+              alternate-nostril, the active side is appended so the announcement carries it
+              too (e.g. "Breathe in · left"). */}
           <div className="breathe-phase" aria-live="polite" aria-atomic="true">
-            {running ? SEGMENT_LABEL[phase] : 'Ready'}
+            {running ? (
+              <>
+                {SEGMENT_LABEL[phase]}
+                {isAlternate && nostril && (
+                  <span className="breathe-nostril-label"> · {nostril}</span>
+                )}
+              </>
+            ) : (
+              'Ready'
+            )}
           </div>
+          {/* Distinctive Nadi Shodhana cue: a calm left/right row where the active side
+              highlights. Reduced-motion safe — only the active class toggles per phase, no
+              animation. Rendered only for the alternate-nostril preset. */}
+          {isAlternate && running && (
+            <div className="breathe-nostrils" aria-hidden="true">
+              <span className={`breathe-nostril${nostril === 'left' ? ' active' : ''}`}>
+                ● left
+              </span>
+              <span className={`breathe-nostril${nostril === 'right' ? ' active' : ''}`}>
+                right ●
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -797,6 +838,12 @@ export default function BreathePage() {
           )
         })}
       </div>
+
+      {isAlternate && (
+        <p className="pattern-note">
+          Close one nostril with your thumb or finger; switch sides each round.
+        </p>
+      )}
 
       {preset.control === 'bpm' && (
         <>

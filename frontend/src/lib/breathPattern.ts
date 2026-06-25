@@ -97,10 +97,16 @@ export type Preset = {
 // 12 breaths/min) — the inverse of resonance's long exhale. Fixed, no pace slider.
 export const ENERGIZING_PATTERN: Pattern = { inhale: 3, holdFull: 0, exhale: 2, holdEmpty: 0 }
 
+// Nadi Shodhana (alternate-nostril): a balanced, calming 4·4·4 breath — inhale, hold,
+// exhale, no empty-hold (12s cycle). Fixed pace; the distinctive part is switching the
+// active nostril each round, which BreathePage surfaces as a left/right cue.
+export const ALTERNATE_NOSTRIL_PATTERN: Pattern = { inhale: 4, holdFull: 4, exhale: 4, holdEmpty: 0 }
+
 export const PRESETS: Preset[] = [
   { key: 'resonance', label: 'Resonance', control: 'bpm', pattern: null, derive: patternForBpm, hint: 'Longer exhale, at your pace' },
   { key: 'box', label: 'Box', control: 'count', pattern: null, derive: boxPatternForCount, hint: 'Equal in · hold · out · hold' },
   { key: 'energizing', label: 'Energizing', control: 'none', pattern: ENERGIZING_PATTERN, hint: 'Active inhale, brisk pace' },
+  { key: 'alternate', label: 'Alternate nostril', control: 'none', pattern: ALTERNATE_NOSTRIL_PATTERN, hint: 'Nadi Shodhana — switch nostrils each round' },
 ]
 
 export const PRESET_STORAGE_KEY = 'breathe.preset'
