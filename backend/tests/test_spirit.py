@@ -23,7 +23,7 @@ state is the active spirit row (chosen path, name, applied cosmetics, and the mo
 - and awaken / collection (radiant gate + retire+spark).
 """
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 
@@ -35,6 +35,8 @@ from app.services.spirit_service import (
     CONDITION_THRIVING,
     CONDITION_UNWELL,
     CONDITION_WINDOW_DAYS,
+    PAMPER_BOOST,
+    PAMPER_WINDOW_DAYS,
     RESET_COST,
     SPIRIT_COSMETICS_CATALOG,
     stage_for_level,
@@ -256,6 +258,17 @@ def _stored_coins_spent(db_session, user_id):
     ).scalar_one()
 
 
+def _stored_last_pampered_at(db_session, user_id):
+    """The active spirit's stored pamper timestamp (ADR-0025) — read off the row (it isn't in
+    SpiritState). NULL until the first cosmetic purchase."""
+    db_session.expire_all()
+    return db_session.execute(
+        select(Spirit.last_pampered_at).where(
+            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
+        )
+    ).scalar_one()
+
+
 # --- Choose the creature (ADR-0023; path is chosen, not auto-detected) ------------------
 
 
@@ -337,7 +350,16 @@ def _recent_days(n):
     return today, [today - timedelta(days=i) for i in range(n)]
 
 
-def _needs(db_session, path, user_id, *, today=None, tz="UTC", current_streak=0):
+def _needs(
+    db_session,
+    path,
+    user_id,
+    *,
+    today=None,
+    tz="UTC",
+    current_streak=0,
+    last_pampered_at=None,
+):
     return spirit_service.needs(
         db_session,
         path,
@@ -345,6 +367,7 @@ def _needs(db_session, path, user_id, *, today=None, tz="UTC", current_streak=0)
         today=today or date.today(),
         tz=tz,
         current_streak=current_streak,
+        last_pampered_at=last_pampered_at,
     )
 
 
@@ -537,6 +560,173 @@ def test_needs_never_change_coins_or_stage(client, db_session):
     assert after["coins"] == before["coins"]
     assert after["stage"] == before["stage"]
     assert after["bond"]["level"] == before["bond"]["level"]
+
+
+# --- Pamper boost (ADR-0025): buying perks the spirit up with a decaying needs boost --------
+#
+# Buying a cosmetic stamps `last_pampered_at`; the needs read then adds a DECAYING bonus to
+# every need's factor — full right after the purchase, fading to 0 over PAMPER_WINDOW_DAYS. It
+# is PARTIAL/CAPPED (can lift off the floor but not alone reach thriving) and VISUAL-ONLY (the
+# ADR-0023 guardrail still holds: needs/condition never touch coins/stage/level/cosmetics).
+
+
+def _aware_now():
+    """A tz-aware 'now' (UTC) — what the DB stores for last_pampered_at. Passed straight to
+    `needs(last_pampered_at=…)` so the boost reads as freshly pampered ('today')."""
+    return datetime.now(UTC)
+
+
+def _need_factors(n):
+    """The three need factors as a tuple — handy for the boost comparisons."""
+    return (n.nourished.factor, n.rested.factor, n.joyful.factor)
+
+
+def test_pamper_boost_lifts_needs_above_the_unpampered_baseline(client, db_session):
+    """A freshly-pampered spirit (last_pampered_at = today) reports HIGHER need factors than the
+    SAME spirit with the SAME activity but un-pampered — the boost lifts every need."""
+    _auth(client, "pamper_lift@example.com")
+    user_id = _user_id(db_session, "pamper_lift@example.com")
+    # A little (but not maxed) signature practice so the needs sit in the middle, with headroom
+    # for the boost to show without clamping.
+    today, days = _recent_days(3)
+    for d in days:
+        _breathe(client, 30, day=d.isoformat())  # feeds nourished (Kapha) + rested + joyful
+
+    baseline = _needs(db_session, "stillness", user_id, today=today)
+    pampered = _needs(
+        db_session, "stillness", user_id, today=today, last_pampered_at=_aware_now()
+    )
+
+    # Every need's factor is strictly higher when freshly pampered.
+    for b, p in zip(_need_factors(baseline), _need_factors(pampered), strict=True):
+        assert p > b
+    # And the boosted factor is exactly the baseline + PAMPER_BOOST, clamped at 1.0.
+    assert pampered.nourished.factor == min(1.0, baseline.nourished.factor + PAMPER_BOOST)
+
+
+def test_pamper_boost_decays_to_nothing_after_the_window(client, db_session):
+    """The boost DECAYS: a spirit pampered PAMPER_WINDOW_DAYS ago (the window has fully elapsed)
+    reads exactly like the un-pampered baseline — no lingering boost."""
+    _auth(client, "pamper_decay@example.com")
+    user_id = _user_id(db_session, "pamper_decay@example.com")
+    today, days = _recent_days(3)
+    for d in days:
+        _breathe(client, 30, day=d.isoformat())
+
+    baseline = _needs(db_session, "stillness", user_id, today=today)
+    # Pampered exactly PAMPER_WINDOW_DAYS ago → factor 1 - days/window = 0 → no boost.
+    stale = _aware_now() - timedelta(days=PAMPER_WINDOW_DAYS)
+    decayed = _needs(
+        db_session, "stillness", user_id, today=today, last_pampered_at=stale
+    )
+    assert _need_factors(decayed) == _need_factors(baseline)
+
+
+def test_pamper_boost_is_partial_lifts_off_the_floor_but_not_to_thriving(db_session):
+    """The boost is PARTIAL: a fully-neglected spirit (every need at the unwell floor) that's
+    just pampered is lifted OFF the floor, but NOT all the way to thriving — practice is still
+    required. Guards against a treat substituting for the work."""
+    user = _make_user(db_session, "pamper_partial@example.com")
+    floor = _needs(db_session, "stillness", user.id)  # no activity → all needs at the floor
+    assert floor.nourished.tier == CONDITION_UNWELL
+    assert floor.rested.tier == CONDITION_UNWELL
+    assert floor.joyful.tier == CONDITION_UNWELL
+
+    pampered = _needs(
+        db_session, "stillness", user.id, last_pampered_at=_aware_now()
+    )
+    for need in (pampered.nourished, pampered.rested, pampered.joyful):
+        # Lifted off the floor...
+        assert need.factor > floor.nourished.factor
+        assert need.tier != CONDITION_UNWELL
+        # ...but a single treat can't reach thriving (factor stays < 1.0 with PAMPER_BOOST=0.35).
+        assert need.tier != CONDITION_THRIVING
+        assert need.factor < 1.0
+
+
+def test_pamper_guardrail_buying_does_not_change_coins_or_stage_beyond_the_spend(
+    client, db_session
+):
+    """THE GUARDRAIL still holds under ADR-0025: pampering (buying) lifts only the visual
+    needs/condition. Coins drop by EXACTLY the option cost (the normal spend) and stage/level
+    are untouched — the boost never adds or removes any progress."""
+    _auth(client, "pamper_guardrail@example.com")
+    user_id = _user_id(db_session, "pamper_guardrail@example.com")
+    assert _choose(client, "stillness").status_code == 200
+
+    before = _spirit(client)
+    cost = _cost("aura", "soft")
+    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    assert res.status_code == 200
+    after = res.json()
+
+    # The ONLY economic effect is the normal cosmetic spend; the pamper boost adds nothing.
+    assert after["coins"] == before["coins"] - cost
+    assert after["stage"] == before["stage"]
+    assert after["bond"]["level"] == before["bond"]["level"]
+    # The visual needs/condition may now read brighter (the boost) — but that's display-only.
+    # Stamp was recorded so the needs read can apply the boost.
+    assert _stored_last_pampered_at(db_session, user_id) is not None
+
+
+def test_buy_cosmetic_stamps_last_pampered_at(client, db_session):
+    """`buy_cosmetic` records `last_pampered_at` (NULL before the first purchase)."""
+    _auth(client, "pamper_stamp@example.com")
+    user_id = _user_id(db_session, "pamper_stamp@example.com")
+    client.get("/api/v1/spirit")  # create the spark
+    assert _stored_last_pampered_at(db_session, user_id) is None
+
+    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    assert res.status_code == 200
+    assert _stored_last_pampered_at(db_session, user_id) is not None
+
+
+def test_paid_resets_do_not_pamper(client, db_session):
+    """Only BUYING pampers — the paid resets must NOT bump `last_pampered_at` (ADR-0025).
+    Buy once to stamp it, then a name reset and an upgrades reset both leave the stamp at the
+    purchase time."""
+    _auth(client, "pamper_resets@example.com")
+    user_id = _user_id(db_session, "pamper_resets@example.com")
+    # Earn enough to afford the buy + two RESET_COST resets.
+    _earn_to_level(client, 10)
+    assert _choose(client, "stillness").status_code == 200
+
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 200
+    stamp_after_buy = _stored_last_pampered_at(db_session, user_id)
+    assert stamp_after_buy is not None
+
+    # A paid name reset does not pamper.
+    assert client.post(
+        "/api/v1/spirit/reset-name", json={"name": "Renamed"}
+    ).status_code == 200
+    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_buy
+
+    # A paid upgrades reset does not pamper either (the soft aura is still applied to reset).
+    assert client.post("/api/v1/spirit/reset-upgrades").status_code == 200
+    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_buy
+
+
+def test_awaken_does_not_pamper(client, db_session):
+    """Awaken starts a fresh spark — it must not be born pampered (last_pampered_at stays NULL
+    on the new active row)."""
+    _auth(client, "pamper_awaken@example.com")
+    user_id = _user_id(db_session, "pamper_awaken@example.com")
+    _earn_to_level(client, 24)  # radiant
+    _choose(client, "breath")
+    assert client.post("/api/v1/spirit/awaken").status_code == 200
+    assert _stored_last_pampered_at(db_session, user_id) is None
+
+
+def test_pathless_spark_is_never_pampered(db_session):
+    """A pathless spark keeps its neutral defaults even if a stray pamper stamp is passed — no
+    boost on a creature-less spark (the neutral path returns before the boost is applied)."""
+    user = _make_user(db_session, "pamper_pathless@example.com")
+    n = _needs(db_session, None, user.id, last_pampered_at=_aware_now())
+    assert n.nourished.tier == CONDITION_CONTENT
+    assert n.rested.tier == CONDITION_CONTENT
+    assert n.joyful.tier == CONDITION_CONTENT
 
 
 def test_awaken_returns_a_pathless_spark(client, db_session):

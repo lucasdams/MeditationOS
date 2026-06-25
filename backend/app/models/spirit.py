@@ -61,6 +61,13 @@ class Spirit(Base):
     coins_spent: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
+    # Last time a cosmetic was BOUGHT for this spirit (ADR-0025). Buying "pampers" the spirit:
+    # the needs read adds a decaying pamper bonus (full right after a purchase, fading to 0 over
+    # PAMPER_WINDOW_DAYS). NULL = never pampered → no bonus. Visual-only, like the needs it lifts;
+    # the paid resets/awaken never set it. Stored (consistent with ADR-0024's coins_spent).
+    last_pampered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     awakened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

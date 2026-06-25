@@ -30,3 +30,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0022](0022-spirit-companion-replaces-sanctuary.md) | Spirit companion replaces the Sanctuary (one living, practice-shaped pet) | Accepted |
 | [0023](0023-spirit-creatures-and-care.md) | Spirit creatures — chosen dosha (Vata/Pitta/Kapha) + three per-creature needs | Proposed |
 | [0024](0024-spirit-identity-committed.md) | Spirit identity committed — required name, locked upgrades, paid resets (stored spend ledger) | Accepted |
+| [0025](0025-buying-pampers-the-spirit.md) | Buying an upgrade pampers the spirit — a decaying, capped needs boost (visual-only) | Accepted |

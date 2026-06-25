@@ -3,8 +3,10 @@ ADR-0022, ADR-0023, ADR-0024). Get-or-create the active spirit, compute its read
 and write the choose / cosmetics / paid-reset / awaken loop.
 
 Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
-chosen `path`, the `name`, the applied `cosmetics`, and the `coins_spent` spend ledger.
-Everything the client sees is derived on read from the user's earned-XP level (via
+chosen `path`, the `name`, the applied `cosmetics`, the `coins_spent` spend ledger, and the
+`last_pampered_at` timestamp (ADR-0025: buying a cosmetic perks the spirit up with a decaying,
+visual-only needs boost). Everything the client sees is derived on read from the user's
+earned-XP level (via
 `dashboard_service.get_wallet_basis`):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
@@ -35,7 +37,7 @@ parallel request — no double-spend, no two active spirits.
 """
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -59,7 +61,7 @@ from app.schemas.spirit import (
     SpiritState,
 )
 from app.services import dashboard_service
-from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date
+from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date, zone
 
 # The spirit's own economy constant: coins earned per level. The derived coin balance is
 # `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
@@ -249,6 +251,18 @@ JOYFUL_TIERS: tuple[tuple[str, int, float], ...] = (
 _NEUTRAL_CONDITION_TIER = CONDITION_CONTENT
 _NEUTRAL_CONDITION_FACTOR = 0.8
 
+# --- Pamper boost (ADR-0025): buying an upgrade perks the spirit up -----------------------
+#
+# Buying a cosmetic stamps `spirits.last_pampered_at = now()`; the needs read then adds a
+# DECAYING bonus to EACH need's 0..1 factor (the whole spirit perks up): full right after the
+# purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. It is PARTIAL and CAPPED — it can lift
+# a neglected need off the floor but can't alone carry it to thriving (factor 1.0 still requires
+# sustained practice; the treat supplements, it doesn't substitute). VISUAL-ONLY, exactly like
+# the needs it lifts (the ADR-0023 guardrail): it never touches coins/stage/level/cosmetics.
+# Tunable in-code (retuning needs no migration).
+PAMPER_BOOST = 0.35  # added to each need's 0..1 factor at purchase time (before decay)
+PAMPER_WINDOW_DAYS = 3  # days over which the boost decays linearly to 0
+
 # Minutes-based practices count a day only once its session time reaches MIN_PRACTICE_SECONDS
 # (the same floor streaks/heatmaps use), so a 1-second sit can't prop up a need.
 
@@ -263,6 +277,43 @@ def _tier_for_count(
             return tier, factor
     # `tiers` always ends at a 0 floor, so this is unreachable; kept for total-ness.
     return CONDITION_UNWELL, tiers[-1][2]
+
+
+def _tier_for_factor(
+    factor: float, tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS
+) -> str:
+    """Map a 0..1 factor back to a tier name using NEED_TIERS' factor thresholds — the best
+    (highest) tier whose factor ≤ the given factor. Used after the pamper bonus (ADR-0025)
+    lifts a need's factor, so the reported tier stays consistent with the boosted factor (the
+    `factor` threshold, not the original count, decides the tier). The tiers are ordered best →
+    worst, so we walk from the worst up and keep the best one we still meet."""
+    chosen = tiers[-1][0]  # the floor tier (unwell)
+    for tier, _min_count, tier_factor in reversed(tiers):
+        if factor >= tier_factor:
+            chosen = tier
+    return chosen
+
+
+def _pamper_bonus(
+    last_pampered_at: datetime | None, *, today: date, tz: str
+) -> float:
+    """The decaying pamper bonus (ADR-0025) added to each need's factor: PAMPER_BOOST right
+    after a purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. 0 when never pampered or
+    once the window has elapsed. `days_since` is computed in LOCAL days (the purchase day → 0 →
+    full boost), mirroring how the needs themselves bucket activity by local day."""
+    if last_pampered_at is None:
+        return 0.0
+    # The DB stores timestamptz; a value read back may be tz-aware (UTC) or, in some test
+    # paths, naive — treat a naive stamp as UTC, then convert into the user's zone for the
+    # local calendar day (the same local-midnight bucketing the needs use).
+    stamp = last_pampered_at
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=UTC)
+    pampered_day = stamp.astimezone(zone(tz)).date()
+    days_since = (today - pampered_day).days
+    if days_since < 0:  # clock skew / future stamp — treat as just pampered
+        days_since = 0
+    return PAMPER_BOOST * max(0.0, 1.0 - days_since / PAMPER_WINDOW_DAYS)
 
 
 def _signature_care_days(
@@ -410,18 +461,25 @@ def needs(
     today: date,
     tz: str,
     current_streak: int = 0,
+    last_pampered_at: datetime | None = None,
 ) -> SpiritNeeds:
     """The active creature's three tended needs (ADR-0023) over the rolling window. Demanding:
     each declines through the tiers when its signal is neglected and recovers only gradually.
 
     A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
-    content-ish default rather than a care requirement.
+    content-ish default rather than a care requirement (and gets NO pamper bonus).
 
     `current_streak` (the dashboard's value) feeds `rested` so a strong streak reads as
     well-rested even before the active-day count fills.
 
-    GUARDRAIL: visual/advisory only — the caller must never let any need affect stage, level,
-    coins, cosmetics, or the collection.
+    `last_pampered_at` (ADR-0025) adds a DECAYING pamper bonus to EACH need's factor — full
+    right after a cosmetic purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS — so the
+    whole spirit perks up when treated. The bonus is partial and capped (`min(1.0, …)`): it can
+    lift a need off the floor but can't alone reach thriving; the boosted tier is re-derived
+    from the boosted factor so tier and factor stay consistent.
+
+    GUARDRAIL: visual/advisory only — the caller must never let any need (or the pamper bonus)
+    affect stage, level, coins, cosmetics, or the collection.
     """
     if path is None or path not in _CHOOSABLE_PATHS:
         neutral = _neutral_need()
@@ -429,11 +487,14 @@ def needs(
 
     window_start = today - timedelta(days=CONDITION_WINDOW_DAYS - 1)
 
+    # The decaying pamper bonus added to each need's factor (0 when never pampered / decayed).
+    pamper = _pamper_bonus(last_pampered_at, today=today, tz=tz)
+
     # nourished — the signature-practice care days.
     care_days = _signature_care_days(
         db, path, user_id, window_start=window_start, today=today, tz=tz
     )
-    nourished_tier, nourished_factor = _tier_for_count(care_days)
+    _, nourished_factor = _tier_for_count(care_days)
 
     # rested — rhythm/consistency: the stronger of recent active days and the current streak
     # (capped at the window so a long streak doesn't overflow the day-count curve).
@@ -441,19 +502,32 @@ def needs(
         db, user_id, window_start=window_start, today=today, tz=tz
     )
     rhythm = min(max(active_days, current_streak), CONDITION_WINDOW_DAYS)
-    rested_tier, rested_factor = _tier_for_count(rhythm)
+    _, rested_factor = _tier_for_count(rhythm)
 
     # joyful — variety: how many distinct practice types were done in the window.
     variety = _distinct_practice_types_in_window(
         db, user_id, window_start=window_start, today=today, tz=tz
     )
-    joyful_tier, joyful_factor = _tier_for_count(variety, JOYFUL_TIERS)
+    _, joyful_factor = _tier_for_count(variety, JOYFUL_TIERS)
 
     return SpiritNeeds(
-        nourished=SpiritNeed(tier=nourished_tier, factor=nourished_factor),
-        rested=SpiritNeed(tier=rested_tier, factor=rested_factor),
-        joyful=SpiritNeed(tier=joyful_tier, factor=joyful_factor),
+        nourished=_boosted_need(nourished_factor, pamper),
+        rested=_boosted_need(rested_factor, pamper),
+        joyful=_boosted_need(joyful_factor, pamper, tiers=JOYFUL_TIERS),
     )
+
+
+def _boosted_need(
+    factor: float,
+    pamper: float,
+    *,
+    tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS,
+) -> SpiritNeed:
+    """Apply the decaying pamper bonus (ADR-0025) to one need's factor, clamped to 1.0, and
+    re-derive its tier from the boosted factor so the two stay consistent. `pamper` is 0 when
+    the spirit hasn't been pampered (or the boost has decayed) → the need is unchanged."""
+    boosted_factor = min(1.0, factor + pamper)
+    return SpiritNeed(tier=_tier_for_factor(boosted_factor, tiers), factor=boosted_factor)
 
 
 def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
@@ -675,6 +749,8 @@ def _build_state(
         today=today,
         tz=tz,
         current_streak=basis.current_streak,
+        # ADR-0025: a recent cosmetic purchase adds a decaying boost to every need (visual-only).
+        last_pampered_at=spirit.last_pampered_at,
     )
 
     return SpiritState(
@@ -796,6 +872,10 @@ def buy_cosmetic(
     updated[data.slot] = data.option
     spirit.cosmetics = updated
     spirit.coins_spent = spirit.coins_spent + cost
+    # ADR-0025: buying PAMPERS the spirit — stamp the purchase time so the needs read adds a
+    # decaying boost (visual-only; the paid resets/awaken do NOT pamper). Same txn + lock as the
+    # cosmetic apply and the coins_spent bump.
+    spirit.last_pampered_at = func.now()
     db.commit()
     db.refresh(spirit)
     return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
