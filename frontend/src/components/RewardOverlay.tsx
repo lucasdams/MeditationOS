@@ -4,12 +4,26 @@ import { playLevelUp, playReward } from '../lib/sfx'
 import CoinIcon from './CoinIcon'
 import type { XpLine } from '../lib/xpBreakdown'
 
+// Honor the OS "reduce motion" setting: when set we skip the count-up, the entrance
+// pop, and the celebratory flourish, and just show the calm static card. Mirrors the
+// gating used elsewhere (BreathePage, TratakaPage, Spirit).
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 /**
  * Post-session reward — a *quiet, non-blocking* inline card (not a modal). It animates
  * the XP bar from (afterXp − xpGained) up to afterXp, playing a fanfare each time a level
  * is crossed. A level earns coins to spend in the sanctuary (the level is the coin/unlock
  * track, not a thing you grow). When the XP comes from more than one source (the activity
  * + a quest + a streak bonus), `breakdown` itemizes how much came from each.
+ *
+ * Game-feel (phase 3): the gained-XP number counts up from 0 with an ease-out, the card
+ * pops in with a gentle spring, a soft accent ring + a few sparkles radiate behind the
+ * total as it lands, and the breakdown lines stagger in. It stays calm — a wellness
+ * flourish, not a slot machine — and `prefers-reduced-motion` strips all of it back to a
+ * static card with the final numbers shown immediately.
  *
  * Presentation (calm/low-pressure): this renders as a fixed card anchored bottom-center —
  * it never covers the screen, never traps focus, and announces itself politely via
@@ -35,8 +49,14 @@ export default function RewardOverlay({
   // on the user dismissing the reward themselves.
   autoDismissMs?: number
 }) {
+  const reduceMotion = prefersReducedMotion()
   const startXp = Math.max(0, afterXp - xpGained)
-  const [shownXp, setShownXp] = useState(startXp)
+  const [shownXp, setShownXp] = useState(reduceMotion ? afterXp : startXp)
+  // The gained-XP counter ticks up independently of the bar so the headline number reads
+  // as the "score" landing. With reduced motion it's the final value from frame one.
+  const [shownGained, setShownGained] = useState(reduceMotion ? xpGained : 0)
+  // Drives the brief glow/pulse on the total as the count-up settles.
+  const [landed, setLanded] = useState(reduceMotion)
   const lastLevelRef = useRef(levelProgress(startXp).level)
   const leveledUp = levelProgress(afterXp).level > levelProgress(startXp).level
 
@@ -47,14 +67,33 @@ export default function RewardOverlay({
   }, [xpGained, leveledUp])
 
   useEffect(() => {
+    // Reduced motion: numbers are already final, level-up chime still fires once. No rAF.
+    if (reduceMotion) {
+      if (leveledUp) playLevelUp()
+      return
+    }
     const duration = 1400
+    // The headline count-up is snappier than the bar so it "lands" first, then the bar
+    // glides the rest of the way and any level crossing fanfares as it passes.
+    const gainDuration = 800
     const t0 = performance.now()
     let raf = 0
+    let settledGained = false
     const tick = (now: number) => {
-      const p = Math.min(1, (now - t0) / duration)
+      const elapsed = now - t0
+      const p = Math.min(1, elapsed / duration)
       const eased = 1 - (1 - p) ** 2 // ease-out
       const cur = startXp + (afterXp - startXp) * eased
       setShownXp(cur)
+
+      const gp = Math.min(1, elapsed / gainDuration)
+      const gEased = 1 - (1 - gp) ** 2
+      setShownGained(Math.round(xpGained * gEased))
+      if (!settledGained && gp >= 1) {
+        settledGained = true
+        setLanded(true)
+      }
+
       const lvl = levelProgress(Math.floor(cur)).level
       if (lvl > lastLevelRef.current) {
         lastLevelRef.current = lvl
@@ -64,7 +103,7 @@ export default function RewardOverlay({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [startXp, afterXp])
+  }, [reduceMotion, startXp, afterXp, xpGained, leveledUp])
 
   // Optional self-dismiss: let the XP bar settle, then hand control back via onClose.
   // Only armed when a page opts in (the confirmation-only pages).
@@ -85,7 +124,9 @@ export default function RewardOverlay({
     // Non-blocking: a polite live region — no backdrop, no focus trap. Sits in the
     // bottom-center "toast lane" but is its own richer card.
     <div className="reward-inline" role="status" aria-live="polite">
-      <div className="reward-inline-card reward-card">
+      <div
+        className={`reward-inline-card reward-card${reduceMotion ? '' : ' reward-card--pop'}`}
+      >
         <button
           type="button"
           className="reward-inline-dismiss"
@@ -98,12 +139,34 @@ export default function RewardOverlay({
           <span className="level-badge-mark">◆</span>
           <span className="level-badge-num">{prog.level}</span>
         </div>
+
+        {/* Celebratory flourish: a soft radiating ring + a few sparkles behind the
+            gained-XP headline. Decorative only, and skipped under reduced motion. */}
+        <div className="reward-headline">
+          {!reduceMotion && (
+            <span className="reward-flourish" aria-hidden="true">
+              <span className="reward-ring" />
+              <span className="reward-spark reward-spark--1" />
+              <span className="reward-spark reward-spark--2" />
+              <span className="reward-spark reward-spark--3" />
+              <span className="reward-spark reward-spark--4" />
+              <span className="reward-spark reward-spark--5" />
+            </span>
+          )}
+          <span
+            className={`reward-gained${landed ? ' reward-gained--landed' : ''}`}
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            +{shownGained} XP
+          </span>
+        </div>
+
         <div className="reward-level">
           Level {prog.level}
           {leveledUp && <span className="reward-up"> · Level up! 🎉</span>}
         </div>
         {leveledUp && (
-          <div className="reward-coins">
+          <div className={`reward-coins${reduceMotion ? '' : ' reward-coins--pop'}`}>
             You've earned coins to spend on your spirit <CoinIcon />
           </div>
         )}
@@ -111,12 +174,12 @@ export default function RewardOverlay({
           <div className="xp-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="xp-text">
-          +{xpGained} XP · {prog.xpIntoLevel} / {prog.xpForNextLevel} to next
+          {prog.xpIntoLevel} / {prog.xpForNextLevel} to next level
         </div>
         {breakdown.length > 1 && (
-          <ul className="reward-breakdown">
-            {breakdown.map((line) => (
-              <li key={line.label}>
+          <ul className={`reward-breakdown${reduceMotion ? '' : ' reward-breakdown--stagger'}`}>
+            {breakdown.map((line, i) => (
+              <li key={line.label} style={reduceMotion ? undefined : { '--reward-stagger-i': i } as React.CSSProperties}>
                 <span>{line.label}</span>
                 <span className="reward-breakdown-xp">+{line.xp}</span>
               </li>
