@@ -157,7 +157,7 @@ export default function SpiritPage() {
       setConfirmBuy(null)
       // Keep the confirmation calm: the hero balance already carries the coin count, so we
       // don't reintroduce a spent/remaining tally here — just a gentle "it's on your spirit".
-      showToast(`${optionLabel(option)} added to your spirit ✨`)
+      showToast(`${optionLabel(option)} added — your spirit is delighted ✨`)
     } catch {
       showToast('Could not apply that yet — earn more coins by practicing.', 'error')
     } finally {

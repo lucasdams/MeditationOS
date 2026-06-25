@@ -151,7 +151,7 @@ describe('SpiritPage personalize panel', () => {
     fireEvent.click(dialog.getByRole('button', { name: /Confirm/ }))
     await waitFor(() => expect(buyCosmetic).toHaveBeenCalledWith({ slot: 'aura', option: 'warm' }))
     await waitFor(() =>
-      expect(screen.getByText(/Warm glow added to your spirit/)).toBeInTheDocument(),
+      expect(screen.getByText(/Warm glow added — your spirit is delighted/)).toBeInTheDocument(),
     )
   })
 
