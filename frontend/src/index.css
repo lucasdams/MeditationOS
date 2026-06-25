@@ -1867,13 +1867,13 @@ button {
 /* Solid (default-fill) buttons get the lift + accent glow. The :not() guards exclude
    the app's ghost / link / chip buttons, which set their own transparent background
    and shouldn't grow an indigo glow. */
-button:hover:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn) {
+button:hover:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link) {
   transform: translateY(-1px);
   box-shadow: var(--glow-accent-hover);
   filter: brightness(1.04);
 }
 
-button:active:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn) {
+button:active:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link) {
   transform: translateY(0);
 }
 

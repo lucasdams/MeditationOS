@@ -37,10 +37,12 @@ Buying a cosmetic **pampers** the spirit:
      joyful**, and each need's reported tier is re-derived from its boosted factor so
      the tier stays consistent with the factor.
 
-3. **The boost is partial (`PAMPER_BOOST`) and capped.** It can lift a neglected spirit
-   *off the floor* but **cannot alone carry it to thriving** — reaching `thriving`
-   (factor `1.0`) still requires sustained practice. The treat is a supplement, not a
-   substitute. A pathless spark keeps its neutral defaults (no pamper).
+3. **The boost is partial (`PAMPER_BOOST`) and capped (`min(1.0, …)`).** From a genuinely
+   *neglected floor* it only lifts a need part-way — a treat **can't substitute** for
+   practice when the spirit has truly been ignored. From a healthier baseline the `+0.35`
+   can briefly read `thriving`: a generous, short-lived reward for spending, not a way to
+   keep a neglected spirit happy without practising. A pathless spark keeps its neutral
+   defaults (no pamper).
 
 Constants live in `spirit_service.py` (retuning needs no migration):
 
