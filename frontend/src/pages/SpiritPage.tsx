@@ -244,8 +244,7 @@ export default function SpiritPage() {
             never arrived. */}
         {spirit && (
           <p className="page-subtitle">
-            A living companion you awaken once and grow through practice. Adorn it, name it, and
-            watch it brighten as you show up.
+            A companion you grow through practice.
           </p>
         )}
       </header>
@@ -427,7 +426,7 @@ export default function SpiritPage() {
                 <header className="spirit-section-head">
                   <h2 className="spirit-section-title">Care</h2>
                   <p className="muted spirit-section-subtitle">
-                    Keep your {PATH_LABEL[spirit.path]} in good shape by doing its kind of practice.
+                    Keep your {PATH_LABEL[spirit.path]} thriving with its kind of practice.
                   </p>
                 </header>
                 <NeedsReadout needs={spirit.needs} />
@@ -443,7 +442,7 @@ export default function SpiritPage() {
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Personalize</h2>
                 <p className="muted spirit-section-subtitle">
-                  Spend coins to adorn your spirit and its space.
+                  Spend coins to adorn your spirit.
                 </p>
               </header>
               {spirit.available.length === 0 ? (
@@ -508,7 +507,7 @@ export default function SpiritPage() {
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Collection</h2>
                 <p className="muted spirit-section-subtitle">
-                  Past spirits you grew to radiance and set free.
+                  Spirits you grew to radiance and set free.
                 </p>
               </header>
               {spirit.collection.length === 0 ? (
@@ -547,7 +546,7 @@ export default function SpiritPage() {
                 reads as a muted sentence with a small text-button — never a prominent section. */}
             <p className="muted spirit-reset-name-line">
               <span>
-                Your companion's name is committed. Reset it for {RESET_COST} coins.
+                Reset your companion's name for {RESET_COST} coins.
               </span>
               <button
                 type="button"
@@ -581,8 +580,7 @@ export default function SpiritPage() {
                 })}
               </ol>
               <p className="muted spirit-journey-note">
-                Practice levels up your bond and grows your spirit — spark to{' '}
-                <strong>radiant</strong>. It never reverses.
+                Practice grows your spirit from spark to <strong>radiant</strong>.
                 {isRadiant && (
                   <> Radiant now — you can <strong>set it free</strong> below.</>
                 )}
@@ -594,8 +592,8 @@ export default function SpiritPage() {
             {isRadiant && (
               <section className="spirit-section spirit-awaken" aria-label="Awaken a new spark">
                 <p className="muted spirit-awaken-note">
-                  Your spirit shines fully. When you’re ready, you can awaken a new spark — this
-                  one will retire into your collection, kept forever.
+                  Awaken a new spark when you’re ready — this one retires into your collection,
+                  kept forever.
                 </p>
                 <button
                   type="button"

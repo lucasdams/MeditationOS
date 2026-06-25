@@ -335,8 +335,7 @@ export default function SettingsPage() {
         <section className="settings-section">
           <h2>Save your account</h2>
           <p className="muted">
-            You’re using a guest account. Add an email and password so you can log back
-            in and keep your progress.
+            Add an email and password so you can log back in and keep your progress.
           </p>
           <form onSubmit={handleClaim} noValidate>
             <label htmlFor="claim-email">Email</label>
@@ -532,8 +531,7 @@ export default function SettingsPage() {
       <section className="settings-section">
         <h2>Practice reminders</h2>
         <p className="muted">
-          A gentle daily email inviting you to take a few quiet minutes for yourself. Sent
-          at your local time; skipped on days you’ve already practiced.
+          A gentle daily email at your local time, skipped on days you’ve already practiced.
         </p>
         <form onSubmit={handleReminders} noValidate>
           <label className="settings-check">
@@ -592,8 +590,8 @@ export default function SettingsPage() {
       <section className="settings-section">
         <h2>Weekly summary</h2>
         <p className="muted">
-          An opt-in email recap of your week — minutes, streak, and the mood you logged
-          most. Sent on your chosen day, in the morning your local time.
+          A weekly email recap — minutes, streak, and your most-logged mood. Sent the morning
+          of your chosen day.
         </p>
         <form onSubmit={handleWeeklySummary} noValidate>
           <label className="settings-check">
@@ -643,8 +641,7 @@ export default function SettingsPage() {
       <section className="settings-section">
         <h2>Timezone</h2>
         <p className="muted">
-          Automatically set from your browser, so streaks and daily quests roll over at
-          your local midnight.
+          Set from your browser, so streaks and quests roll over at your local midnight.
         </p>
         <p className="settings-tz">{user.timezone}</p>
       </section>
@@ -653,8 +650,7 @@ export default function SettingsPage() {
         <h2>Appearance</h2>
 
         <p className="muted settings-section-note">
-          A seasonal tint colors the background. Pick a season, or let it follow
-          the calendar.
+          A seasonal tint colors the background. Pick one, or let it follow the calendar.
         </p>
         <label htmlFor="season">Season</label>
         <select
@@ -693,8 +689,7 @@ export default function SettingsPage() {
       <section className="settings-section">
         <h2>Your data</h2>
         <p className="muted">
-          Download everything in your account as JSON, or permanently delete your
-          account and all of its data.
+          Download your account as JSON, or permanently delete it and all its data.
         </p>
         {dataError && (
           <p role="alert" className="error">

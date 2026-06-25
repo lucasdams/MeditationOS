@@ -74,8 +74,7 @@ export default function SpiritChoosePage() {
       <header className="page-head">
         <h1>Choose your creature</h1>
         <p className="page-subtitle">
-          Pick the companion whose nature fits you — you’ll keep it in good shape by doing its kind
-          of practice. You can choose a new one if you ever set this spirit free.
+          Pick the companion whose nature fits you — keep it thriving with its kind of practice.
         </p>
       </header>
 
@@ -166,10 +165,9 @@ export default function SpiritChoosePage() {
         <summary className="dosha-about-summary">About the doshas</summary>
         <div className="dosha-about-body">
           <p className="muted">
-            In Ayurveda, the three <em>doshas</em> are elemental energies, and each stays healthy
-            through <strong>balance</strong> — by leaning into the <em>opposite</em> of its nature,
-            not more of it (&ldquo;like increases like; opposites bring balance&rdquo;). So each
-            companion is kept in good shape by the practice that <em>counterbalances</em> it:
+            In Ayurveda, the three <em>doshas</em> are elemental energies, each kept healthy through{' '}
+            <strong>balance</strong> — by leaning into the <em>opposite</em> of its nature. So each
+            companion thrives on the practice that <em>counterbalances</em> it:
           </p>
           <ul className="dosha-about-list">
             {PATH_ORDER.map((path) => {
