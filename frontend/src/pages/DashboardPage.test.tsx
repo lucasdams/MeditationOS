@@ -135,9 +135,6 @@ describe('DashboardPage — quick-action feature tiles', () => {
 
 describe('DashboardPage — default (collapsed) calm view', () => {
   beforeEach(() => {
-    // Mark the mood prompt as already shown today so the on-open modal doesn't pop and
-    // interfere with the calm-home assertions (its own gating is tested separately).
-    seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
     getSpirit.mockResolvedValue(fakeSpirit)
   })
@@ -183,12 +180,12 @@ describe('DashboardPage — default (collapsed) calm view', () => {
     ).toBeTruthy()
   })
 
-  it('shows the feature tiles and a quiet "How do you feel?" entry point by default', async () => {
+  it('shows the feature tiles and a quiet "Log today\'s mood" entry point by default', async () => {
     renderPage()
     await screen.findByText(/Level 7/)
     expect(screen.getByRole('navigation', { name: /quick access/i })).toBeInTheDocument()
-    // The mood check-in is no longer an inline section — only a quiet entry-point link.
-    expect(screen.getByRole('button', { name: /how do you feel/i })).toBeInTheDocument()
+    // The mood check-in is a quiet, optional entry-point link — never an auto-popped modal.
+    expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
   })
 
   it('shows the day\'s missions under a clear "Daily missions" heading, no "Today you could…" lead', async () => {
@@ -319,17 +316,17 @@ describe('DashboardPage — today\'s mood reflection', () => {
     // The reflection replaces the prompt; it's still a tappable button (opens the modal).
     const line = await screen.findByRole('button', { name: /you felt calm/i })
     expect(line).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /how do you feel/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /log today's mood/i })).not.toBeInTheDocument()
   })
 
-  it('falls back to the "How do you feel?" prompt when nothing was logged today', async () => {
+  it('falls back to the "Log today\'s mood" prompt when nothing was logged today', async () => {
     // A mood log exists but it's from yesterday → not "today", so we still prompt.
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     listMoodLogs.mockResolvedValue([{ id: 'm0', mood: 'low', created_at: yesterday }])
     renderPage()
     await screen.findByText(/Level 7/)
 
-    expect(screen.getByRole('button', { name: /how do you feel/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /you felt/i })).not.toBeInTheDocument()
   })
 
@@ -339,7 +336,7 @@ describe('DashboardPage — today\'s mood reflection', () => {
     renderPage()
     await screen.findByText(/Level 7/)
 
-    fireEvent.click(screen.getByRole('button', { name: /how do you feel/i }))
+    fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
     // The mock check-in fires onLogged('calm').
     fireEvent.click(await screen.findByRole('button', { name: /mock-pick-mood/i }))
 
@@ -369,15 +366,30 @@ describe('DashboardPage — spirit (coins) single-fetch', () => {
   })
 })
 
-describe('DashboardPage — on-open mood check-in (once per day)', () => {
+describe('DashboardPage — manual mood check-in (no auto-open)', () => {
   beforeEach(() => {
     getSpirit.mockResolvedValue(fakeSpirit)
   })
 
-  it('shows the mood modal on the first open of the day', async () => {
+  it('does NOT auto-open the mood modal on load', async () => {
+    // No prior-prompt seeding — the modal must still stay closed; it never auto-pops now.
     getStats.mockResolvedValue(fakeStats)
     renderPage()
     await screen.findByText(/Level 7/)
+    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
+
+    // The quiet inline mood line is present, but the modal is not auto-opened.
+    expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
+  })
+
+  it('opens the modal when the inline mood line is clicked', async () => {
+    getStats.mockResolvedValue(fakeStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
 
     // The modal (containing the mood check-in) and its Skip affordance are on screen.
     expect(await screen.findByRole('dialog', { name: /how are you arriving/i })).toBeInTheDocument()
@@ -385,29 +397,12 @@ describe('DashboardPage — on-open mood check-in (once per day)', () => {
     expect(screen.getByRole('button', { name: /skip for now/i })).toBeInTheDocument()
   })
 
-  it('does not show the modal again the same day after it was dismissed', async () => {
-    getStats.mockResolvedValue(fakeStats)
-    const { unmount } = renderPage()
-    await screen.findByText(/Level 7/)
-
-    // Skip dismisses the modal and records today's prompt.
-    fireEvent.click(await screen.findByRole('button', { name: /skip for now/i }))
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument(),
-    )
-    expect(localStorage.getItem(moodPromptKey())).toBe('1')
-
-    // A fresh landing on the home the same day (remount) does not re-pop the modal.
-    unmount()
-    renderPage()
-    await screen.findByText(/Level 7/)
-    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
-    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
-  })
-
-  it('closes the modal and records the day when a mood is picked', async () => {
+  it('closes the modal when a mood is picked', async () => {
     getStats.mockResolvedValue(fakeStats)
     renderPage()
+    await screen.findByText(/Level 7/)
+
+    fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
     await screen.findByRole('dialog', { name: /how are you arriving/i })
 
     // The mock check-in fires onLogged when its button is clicked.
@@ -415,28 +410,30 @@ describe('DashboardPage — on-open mood check-in (once per day)', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument(),
     )
-    expect(localStorage.getItem(moodPromptKey())).toBe('1')
+    // The just-logged mood is reflected on the inline line.
+    expect(await screen.findByRole('button', { name: /you felt calm/i })).toBeInTheDocument()
   })
 
-  it('does not stack the modal on a brand-new user who still sees the first-run card', async () => {
-    // session_count 0 and first-run not dismissed → the first-run card leads the page, so
-    // the mood prompt waits for a later day rather than stacking on top of it.
+  it('closes the modal on Skip without re-opening', async () => {
+    getStats.mockResolvedValue(fakeStats)
+    renderPage()
+    await screen.findByText(/Level 7/)
+
+    fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /skip for now/i }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument(),
+    )
+    // Still no auto-reopen; the inline prompt remains for an opt-in retry.
+    expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
+  })
+
+  it('does not auto-open the modal for a brand-new user with the first-run card', async () => {
     getStats.mockResolvedValue({ ...fakeStats, session_count: 0 } as unknown as DashboardStats)
     renderPage()
     await screen.findByText(/Level 7/)
 
     expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
-  })
-
-  it('reopens the modal from the quiet "How do you feel?" entry point after a skip', async () => {
-    seenMoodToday() // already prompted today → no auto-open
-    getStats.mockResolvedValue(fakeStats)
-    renderPage()
-    await screen.findByText(/Level 7/)
-    expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /how do you feel/i }))
-    expect(await screen.findByRole('dialog', { name: /how are you arriving/i })).toBeInTheDocument()
   })
 })
