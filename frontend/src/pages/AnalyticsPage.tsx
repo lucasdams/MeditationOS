@@ -350,8 +350,7 @@ function CalmFocusTrend({ weeks }: { weeks: WeekRatings[] }) {
     <section className="analytics-section">
       <h2>Calm &amp; focus over time</h2>
       <p className="muted">
-        Weekly averages of the calm and focus ratings you give your sits (1–5). Just
-        what you logged — weeks without a rated sit are left out.
+        Weekly averages of the calm and focus ratings you give your sits (1–5).
       </p>
       {/* sr-only text alternative for the color-coded chart */}
       <ul className="sr-only">
@@ -420,7 +419,7 @@ export default function AnalyticsPage() {
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
         <h1>Analytics</h1>
-        <p className="page-subtitle">Patterns in your practice, computed from your activity.</p>
+        <p className="page-subtitle">Patterns in your practice.</p>
       </header>
 
       <RetryableError message={error} onRetry={retry} retrying={retrying} />
