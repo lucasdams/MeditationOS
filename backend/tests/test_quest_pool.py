@@ -192,3 +192,23 @@ def test_gratitude_three_variant_needs_three_entries(client, db_session):
     db_session.add(GratitudeEntry(user_id=uid, category="self", text="x", created_at=when))
     db_session.flush()
     assert _quest(db_session, uid, day, "gratitude").done is True
+
+
+def test_gratitude_custom_variant_needs_a_custom_entry(client, db_session):
+    _auth(client, "gcustom@example.com")
+    day = _date_for("gratitude", "gratitude_custom")
+    uid = _user_id(db_session, "gcustom@example.com")
+    when = datetime(day.year, day.month, day.day, 8, 0, tzinfo=UTC)
+
+    # A prompted-category gratitude doesn't satisfy the write-your-own quest.
+    db_session.add(GratitudeEntry(user_id=uid, category="self", text="x", created_at=when))
+    db_session.flush()
+    gq = _quest(db_session, uid, day, "gratitude")
+    assert gq.variant == "gratitude_custom" and gq.xp == 15 and gq.done is False
+
+    # A "custom" (write-your-own) gratitude completes it.
+    db_session.add(
+        GratitudeEntry(user_id=uid, category="custom", text="my own words", created_at=when)
+    )
+    db_session.flush()
+    assert _quest(db_session, uid, day, "gratitude").done is True
