@@ -97,7 +97,7 @@ export default function SpiritChoosePage() {
                 <p className="muted spirit-picker-element">{d.element}</p>
                 <p className="spirit-picker-vibe">{d.vibe}</p>
                 <p className="muted spirit-picker-practice">
-                  Kept in shape by <strong>{d.practice}</strong>.
+                  Prefers <strong>{d.practice}</strong> — do more of this to keep it thriving.
                 </p>
                 <button
                   type="button"
@@ -130,6 +130,10 @@ export default function SpiritChoosePage() {
             </p>
             <p className="spirit-picker-name">{DOSHA[selected].name}</p>
             <p className="spirit-picker-vibe">{DOSHA[selected].vibe}</p>
+            <p className="muted spirit-picker-practice">
+              Prefers <strong>{DOSHA[selected].practice}</strong> — do more of this to keep it
+              thriving.
+            </p>
           </div>
           <label className="spirit-field spirit-choose-name">
             <span>Name your {DOSHA[selected].name} companion</span>
@@ -138,7 +142,6 @@ export default function SpiritChoosePage() {
               value={name}
               maxLength={NAME_MAX}
               placeholder="e.g. Ember"
-              aria-describedby="spirit-choose-name-hint"
               autoFocus
               disabled={busy != null}
               onChange={(e) => setName(e.target.value)}
@@ -146,9 +149,6 @@ export default function SpiritChoosePage() {
                 if (e.key === 'Enter' && hasName) choose(selected)
               }}
             />
-            <span id="spirit-choose-name-hint" className="spirit-field-hint muted">
-              You can only change this later for a fee.
-            </span>
           </label>
           <button
             type="button"
