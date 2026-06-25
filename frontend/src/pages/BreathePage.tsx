@@ -80,6 +80,41 @@ const nostrilFor = (cycleIndex: number, phase: Segment): 'left' | 'right' | null
   return null // hold-empty — between rounds, no active side
 }
 
+// A simple front-on nose for the alternate-nostril cue: the ACTIVE nostril glows open, the
+// other reads dimmed/closed (as if held shut by a finger). `active` is the user's own left/right
+// (image left = "left"), with text tags below to remove any ambiguity. Decorative (aria-hidden);
+// the phase label carries the spoken cue.
+function NoseCue({ active }: { active: 'left' | 'right' | null }) {
+  return (
+    <svg className="breathe-nose" viewBox="0 0 100 88" aria-hidden="true">
+      {/* Soft nose silhouette — bridge tapering to a rounded tip + two flaring wings. */}
+      <path
+        d="M50 6 C46 6 45 20 43 34 C41 46 30 50 30 64 C30 78 40 82 50 82 C60 82 70 78 70 64
+           C70 50 59 46 57 34 C55 20 54 6 50 6 Z"
+        fill="var(--bg-surface-raised)"
+        stroke="var(--border)"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      {/* Nostrils — the active one glows open; the inactive one is muted (held closed). */}
+      <ellipse
+        className={`breathe-nostril-hole${active === 'left' ? ' is-open' : ''}`}
+        cx="40"
+        cy="66"
+        rx="6.5"
+        ry="5"
+      />
+      <ellipse
+        className={`breathe-nostril-hole${active === 'right' ? ' is-open' : ''}`}
+        cx="60"
+        cy="66"
+        rx="6.5"
+        ry="5"
+      />
+    </svg>
+  )
+}
+
 // Breaths-per-minute is the user's primary control for the Resonance preset: stepped
 // from the fast end (10) down to the deep end (1) in 0.5 increments. Slower is harder
 // (see DIFFICULTY). A pace of N gives a total in/out time of round(60/N) seconds, split
@@ -767,17 +802,20 @@ export default function BreathePage() {
               'Ready'
             )}
           </div>
-          {/* Distinctive Nadi Shodhana cue: a calm left/right row where the active side
-              highlights. Reduced-motion safe — only the active class toggles per phase, no
-              animation. Rendered only for the alternate-nostril preset. */}
+          {/* Distinctive Nadi Shodhana cue: a little nose whose ACTIVE nostril glows open while
+              the other reads closed, with left/right tags beneath. Reduced-motion safe — only the
+              active class toggles per phase, no animation. Rendered only for the alternate preset. */}
           {isAlternate && running && (
-            <div className="breathe-nostrils" aria-hidden="true">
-              <span className={`breathe-nostril${nostril === 'left' ? ' active' : ''}`}>
-                ● left
-              </span>
-              <span className={`breathe-nostril${nostril === 'right' ? ' active' : ''}`}>
-                right ●
-              </span>
+            <div className="breathe-nose-cue" aria-hidden="true">
+              <NoseCue active={nostril} />
+              <div className="breathe-nose-tags">
+                <span className={`breathe-nostril-tag${nostril === 'left' ? ' active' : ''}`}>
+                  left
+                </span>
+                <span className={`breathe-nostril-tag${nostril === 'right' ? ' active' : ''}`}>
+                  right
+                </span>
+              </div>
             </div>
           )}
         </div>
