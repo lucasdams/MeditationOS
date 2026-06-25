@@ -616,7 +616,7 @@ export default function MeditatePage() {
           ) : elapsed > 0 ? (
             'Paused'
           ) : (
-            'Ready when you are'
+            'Ready'
           )}
         </div>
       </div>
@@ -686,10 +686,10 @@ export default function MeditatePage() {
             </label>
             <p className="meditate-spoken-hint">
               {!speechSupported
-                ? 'Voice unavailable on this device — cues show on screen with a soft bell.'
+                ? 'Voice unavailable here — cues show on screen with a soft bell.'
                 : spokenPref
                   ? 'Cues are read aloud so you can keep your eyes closed.'
-                  : 'Cues show on screen with a soft bell between phases.'}
+                  : 'Cues show on screen with a soft bell.'}
             </p>
           </div>
         )}
@@ -709,11 +709,7 @@ export default function MeditatePage() {
             placeholder={intentionPlaceholder}
             value={intention}
             onChange={(e) => setIntention(e.target.value)}
-            aria-describedby="intention-hint"
           />
-          <p id="intention-hint" className="session-intention-hint">
-            A quiet phrase to carry into your sit.
-          </p>
         </div>
       )}
 
@@ -839,7 +835,7 @@ export default function MeditatePage() {
           context="pre"
           sessionId={null}
           title="Log a reading first?"
-          intro="Optional: your heart rate now, so you can see how a sit settles you over time."
+          intro="Optional: your heart rate now, to see how a sit settles you."
           onDone={(reading) => {
             if (reading) preReadingIdRef.current = reading.id
             setShowPreReading(false)
@@ -874,7 +870,7 @@ export default function MeditatePage() {
             </p>
           )}
           <p className="biometric-intro">
-            Optional — rate how your sit felt, or jot a quick note.
+            Optional — rate it, or jot a quick note.
           </p>
 
           <div className="session-reflect-ratings">
@@ -934,7 +930,7 @@ export default function MeditatePage() {
           context="post"
           sessionId={savedSessionIdRef.current}
           title="Log a quick reading?"
-          intro="Optional: your heart rate now, to see how a sit settles you over time."
+          intro="Optional: your heart rate now, to see how a sit settles you."
           onDone={() => {
             showToast('Reading saved.')
             navigate('/')

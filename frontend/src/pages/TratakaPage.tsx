@@ -447,30 +447,21 @@ export default function TratakaPage() {
         <div className="trataka-about-body">
         <p>
           Candle gazing — traditionally called <em>Trataka</em> — is a yogic concentration
-          practice (a form of <em>dharana</em>):
-          you simply rest your open gaze on a single point — classically a candle flame — and
-          let your attention settle there. Unlike a breathing or eyes-closed sit, the screen
-          itself is the practice. When the mind wanders, you gently bring it back to the flame.
+          practice (a form of <em>dharana</em>): you rest your open gaze on a single point,
+          classically a candle flame, and let your attention settle there. When the mind
+          wanders, you gently bring it back to the flame.
         </p>
         <p>
-          It is traditionally used to <strong>train sustained attention</strong>. Many
-          practitioners find that holding a soft, single-point focus is a workout for
-          concentration: the intuitive idea is that steadying your <em>visual</em> focus on one
-          spot can carry over into steadier <em>global</em> attention — the broader ability to
-          stay with one thing. Research into concentration practices is still limited and
-          emerging, so we hold this as a long-standing practice people find helpful, not a
-          proven outcome.
+          It's traditionally used to <strong>train sustained attention</strong> — the idea being
+          that steadying your visual focus on one spot can carry over into steadier attention
+          overall. Research into concentration practices is still emerging, so we hold this as a
+          long-standing practice people find helpful, not a proven outcome.
         </p>
         <p>
-          A nice way to picture it: it mimics how your mind quietly narrows its focus onto the
-          words when you read — pulling a single thread of attention out of everything else in
-          view.
-        </p>
-        <p>
-          Some people who experience attention difficulties find single-point focus practices
-          grounding. That said, candle gazing is <strong>not a treatment for ADHD or any condition</strong>,
-          and it is no substitute for professional care — if you have medical concerns, please
-          speak with a qualified professional.
+          Some people with attention difficulties find single-point focus grounding. That said,
+          candle gazing is <strong>not a treatment for ADHD or any condition</strong> and is no
+          substitute for professional care — if you have medical concerns, please speak with a
+          qualified professional.
         </p>
         <p className="trataka-about-note">
           A gentle, traditional focus practice — supportive, not clinical, and not a medical
@@ -496,7 +487,7 @@ export default function TratakaPage() {
         <Modal ariaLabel="Reflect on your gaze" cardClassName="biometric-card session-reflect-card">
           <h2>How was that?</h2>
           <p className="biometric-intro">
-            Optional — rate how your gaze felt, or jot a quick note.
+            Optional — rate it, or jot a quick note.
           </p>
 
           <div className="session-reflect-ratings">

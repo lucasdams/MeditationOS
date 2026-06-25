@@ -298,7 +298,7 @@ export default function JournalPage() {
       <header className="page-head">
         <h1>Journal</h1>
         <p className="page-subtitle">
-          A space to reflect — on your practice, your day, or anything on your mind.
+          A space to reflect — on your practice, your day, or anything at all.
         </p>
       </header>
 

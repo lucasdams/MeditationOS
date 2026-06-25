@@ -127,7 +127,7 @@ export default function PracticesPage() {
       </Link>
       <header className="page-head">
         <h1>Practices</h1>
-        <p className="page-subtitle">Every way to practice — pick one to begin.</p>
+        <p className="page-subtitle">Every way to practice — pick one.</p>
       </header>
 
       {GROUPS.map((group) => (

@@ -8,16 +8,15 @@ export default function BreathingInfo() {
         Resonance (or "coherence") breathing is slow, paced breathing — around 6 breaths a
         minute or slower. At this pace your heart rate and breath fall into sync, which
         maximizes <strong>heart-rate variability (HRV)</strong> and shifts your nervous system
-        toward "rest and digest" (the parasympathetic side). The result is a calmer, more
-        focused state.
+        toward "rest and digest" for a calmer, more focused state.
       </p>
 
       <h2>Why the 2:3 ratio</h2>
       <p>
-        You breathe in for 2 counts and out for 3 — a slightly <strong>longer exhale</strong>. A
-        longer out-breath gently stimulates the vagus nerve and deepens the relaxation response,
-        so the same pace feels calmer. At a <em>Gentle</em> pace (6 breaths a minute) that's
-        about 4 seconds in, 6 seconds out; slower paces stretch both.
+        You breathe in for 2 counts and out for 3 — a slightly <strong>longer exhale</strong>,
+        which gently stimulates the vagus nerve and deepens relaxation. At a <em>Gentle</em>
+        pace (6 breaths a minute) that's about 4 seconds in, 6 seconds out; slower paces stretch
+        both.
       </p>
 
       <h2>Benefits</h2>
@@ -32,8 +31,8 @@ export default function BreathingInfo() {
       <ol>
         <li>Sit comfortably, shoulders relaxed.</li>
         <li>Breathe through your nose, down into your belly — not your chest.</li>
-        <li>Follow the circle and tone: breathe in as it grows, out as it shrinks.</li>
-        <li>Don't force it. If a pace feels like a strain, choose an easier (faster) one.</li>
+        <li>Follow the circle and tone: in as it grows, out as it shrinks.</li>
+        <li>Don't force it — if a pace strains, choose an easier (faster) one.</li>
         <li>Start with a few minutes and build up over time.</li>
       </ol>
 
