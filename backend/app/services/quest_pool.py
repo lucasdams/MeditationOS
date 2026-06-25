@@ -55,6 +55,10 @@ QUEST_POOL: dict[str, list[Quest]] = {
             "gratitude", "gratitude_three", "Write three gratitudes", 25,
             "gratitude_three", target=3,
         ),
+        Quest(
+            "gratitude", "gratitude_custom", "Write a gratitude in your own words", 15,
+            "gratitude_custom",
+        ),
     ],
     "journal": [
         Quest("journal", "journal", "Write a journal entry", 20, "journal"),
