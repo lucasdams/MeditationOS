@@ -21,6 +21,7 @@ import ZenEgg from './components/ZenEgg'
 import { Loading } from './components/StateViews'
 
 // --- Lazily-loaded routes (heavy pages unlikely to be the first URL visited) ---
+const PracticesPage   = lazy(() => import('./pages/PracticesPage'))
 const TratakaPage     = lazy(() => import('./pages/TratakaPage'))
 const LogSessionPage  = lazy(() => import('./pages/LogSessionPage'))
 const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
@@ -62,6 +63,10 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route
+            path="/practices"
+            element={<Suspense fallback={<PageFallback />}><PracticesPage /></Suspense>}
+          />
           <Route path="/breathe" element={<BreathePage />} />
           <Route path="/meditate" element={<MeditatePage />} />
           <Route

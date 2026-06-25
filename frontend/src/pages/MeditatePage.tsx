@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { biometricsService } from '../services/biometrics'
@@ -100,6 +100,18 @@ function writeGuidedChoice(choice: GuidedChoice) {
   }
 }
 
+// Deep-link support: map a `?guided=` / `?style=` query param to a guided choice, or
+// null when there's no (recognised) param so the caller falls back to the stored
+// preference. `guided=body-scan|loving-kindness` pre-selects that structure;
+// `guided=none` or `style=mindfulness` pre-selects plain unguided sitting.
+export function guidedChoiceFromParams(params: URLSearchParams): GuidedChoice | null {
+  const guided = params.get('guided')
+  if (guided === 'body-scan' || guided === 'loving-kindness') return guided
+  if (guided === 'none') return 'none'
+  if (params.get('style') === 'mindfulness') return 'none'
+  return null
+}
+
 // Spoken guidance (Web Speech) preference for guided sits. On by default; the user
 // can turn it off inline in the guided-session setup. Persisted across sessions.
 const SPOKEN_GUIDANCE_KEY = 'meditate:spoken-guidance'
@@ -124,11 +136,17 @@ function writeSpokenGuidance(on: boolean) {
 export default function MeditatePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const [searchParams] = useSearchParams()
   const [targetMin, setTargetMin] = useState(10)
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
   const [volume, setVolume] = useState(0.6)
-  const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(readGuidedChoice)
+  // A `?guided=` deep-link (from the Practices hub) pre-selects that structure on this
+  // visit, overriding the stored preference; without the param we fall back to it. Read
+  // once at mount so a direct visit behaves exactly as before, and manual changes persist.
+  const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(
+    () => guidedChoiceFromParams(searchParams) ?? readGuidedChoice(),
+  )
   // Spoken guidance toggle (user preference) + whether this device actually has a
   // usable TTS voice. Both must be true for the voice to replace the bell; if the
   // device has no voice we fall back to text + bell even with the toggle on.

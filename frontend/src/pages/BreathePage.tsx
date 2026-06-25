@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
@@ -219,9 +219,17 @@ export default function BreathePage() {
   // Respect the OS reduced-motion preference: when on, keep the circle static so the
   // JS rAF scale animation doesn't override what the global CSS reset can't catch.
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [searchParams] = useSearchParams()
   const [bpm, setBpm] = useState<number>(loadBpm)
   const [boxCount, setBoxCount] = useState<number>(loadBox)
-  const [presetKey, setPresetKey] = useState<string>(loadPreset)
+  // Deep-link support: `/breathe?pattern=<key>` pre-selects that preset, overriding the
+  // localStorage default on this visit. Read once at mount (useState initializer) so a
+  // direct visit without the param behaves exactly as before; manual changes still persist.
+  const [presetKey, setPresetKey] = useState<string>(() => {
+    const param = searchParams.get('pattern')
+    if (param && PRESETS.some((p) => p.key === param)) return param
+    return loadPreset()
+  })
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
   const [scale, setScale] = useState(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
