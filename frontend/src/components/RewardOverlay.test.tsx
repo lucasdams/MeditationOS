@@ -9,8 +9,44 @@ vi.mock('../lib/sfx', () => ({
   playLevelUp: vi.fn(),
 }))
 
+// jsdom doesn't implement matchMedia. Force a prefers-reduced-motion result so the
+// count-up settles synchronously and the final XP value is queryable without driving rAF.
+function forceReducedMotion(reduce: boolean) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: reduce && query.includes('prefers-reduced-motion'),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia
+}
+
 describe('RewardOverlay (quiet, non-blocking presentation)', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    // @ts-expect-error — reset the matchMedia stub between tests
+    delete window.matchMedia
+  })
+
+  it('renders the gained XP value (count-up settles to the final number)', () => {
+    // Under reduced motion the headline shows the final value immediately — no rAF needed.
+    forceReducedMotion(true)
+    render(<RewardOverlay afterXp={120} xpGained={20} onClose={() => {}} />)
+    expect(screen.getByText('+20 XP')).toBeInTheDocument()
+  })
+
+  it('skips the flourish under prefers-reduced-motion', () => {
+    forceReducedMotion(true)
+    const { container } = render(
+      <RewardOverlay afterXp={120} xpGained={20} onClose={() => {}} />,
+    )
+    // No particle burst and no entrance-pop modifier when motion is reduced.
+    expect(container.querySelector('.reward-flourish')).toBeNull()
+    expect(container.querySelector('.reward-card--pop')).toBeNull()
+  })
 
   it('renders a polite status region, not a focus-trapping dialog', () => {
     render(<RewardOverlay afterXp={120} xpGained={20} onClose={() => {}} />)

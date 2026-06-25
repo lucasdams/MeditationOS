@@ -3427,8 +3427,194 @@ textarea:focus-visible,
   margin-top: 0.5rem;
 }
 
+.reward-coins--pop {
+  animation: reward-coins-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s both;
+}
+
+@keyframes reward-coins-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .reward-card .xp-bar {
   height: 14px;
+}
+
+/* ── Game-feel flourish (phase 3): count-up headline, entrance pop, soft burst ──
+   All purely presentational and gated off under prefers-reduced-motion (the component
+   drops the modifier classes / flourish element entirely). Tuned calm, not garish. */
+
+/* Gentle spring entrance on the whole card. Replaces the plain slide-up for the
+   reward card specifically; the base .reward-inline-card keeps its slide for other uses. */
+.reward-card--pop {
+  animation: reward-pop-in 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes reward-pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* The gained-XP headline — the "score" that counts up. */
+.reward-headline {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 0.5rem;
+}
+
+.reward-gained {
+  position: relative;
+  z-index: 1;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  transition: text-shadow 0.3s ease-out;
+}
+
+/* A brief glow as the count-up lands. */
+.reward-gained--landed {
+  animation: reward-gained-land 0.55s ease-out both;
+}
+
+@keyframes reward-gained-land {
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+  }
+  35% {
+    transform: scale(1.12);
+    text-shadow: 0 0 18px var(--breathe-glow);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+/* Decorative burst sitting behind the headline number. */
+.reward-flourish {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+/* A single soft ring that expands and fades — a calm radiate, not a firework. */
+.reward-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin: -1.2rem 0 0 -1.2rem;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  animation: reward-ring 0.9s ease-out 0.45s both;
+}
+
+@keyframes reward-ring {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/* A handful of sparkles drift outward and fade. Each is positioned + delayed below. */
+.reward-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  --reward-spark-x: 0px;
+  --reward-spark-y: 0px;
+  animation: reward-spark 0.85s ease-out 0.45s both;
+}
+
+@keyframes reward-spark {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  25% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--reward-spark-x), var(--reward-spark-y)) scale(0.3);
+  }
+}
+
+.reward-spark--1 {
+  --reward-spark-x: -42px;
+  --reward-spark-y: -16px;
+  animation-delay: 0.45s;
+}
+.reward-spark--2 {
+  --reward-spark-x: 40px;
+  --reward-spark-y: -20px;
+  background: var(--spirit-accent);
+  animation-delay: 0.5s;
+}
+.reward-spark--3 {
+  --reward-spark-x: -34px;
+  --reward-spark-y: 18px;
+  animation-delay: 0.52s;
+}
+.reward-spark--4 {
+  --reward-spark-x: 46px;
+  --reward-spark-y: 14px;
+  background: var(--spirit-accent);
+  animation-delay: 0.48s;
+}
+.reward-spark--5 {
+  --reward-spark-x: 0px;
+  --reward-spark-y: -28px;
+  animation-delay: 0.55s;
+}
+
+/* Breakdown lines stagger in for a touch of life. */
+.reward-breakdown--stagger li {
+  animation: reward-line-in 0.32s ease-out both;
+  animation-delay: calc(0.55s + var(--reward-stagger-i, 0) * 0.08s);
+}
+
+@keyframes reward-line-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* ── Quiet, non-blocking post-session reward ──
