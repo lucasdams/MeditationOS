@@ -309,31 +309,6 @@ export default function SpiritPage() {
             )}
 
 
-            {/* How it grows + set free — a calm explainer of the path to radiance. */}
-            <section className="spirit-section spirit-journey" aria-label="How your spirit grows">
-              <header className="spirit-section-head">
-                <h2 className="spirit-section-title">Growing to radiance</h2>
-              </header>
-              <ol className="spirit-journey-stages">
-                {STAGE_ORDER.map((s, i) => {
-                  const here = STAGE_ORDER.indexOf(spirit.stage)
-                  const cls = i === here ? ' is-current' : i < here ? ' is-done' : ''
-                  return (
-                    <li key={s} className={`spirit-journey-stage${cls}`}>
-                      {STAGE_LABEL[s] ?? s}
-                    </li>
-                  )
-                })}
-              </ol>
-              <p className="muted spirit-journey-note">
-                Practice levels up your bond and grows your spirit — spark to{' '}
-                <strong>radiant</strong>. It never reverses.
-                {isRadiant && (
-                  <> Radiant now — you can <strong>set it free</strong> below.</>
-                )}
-              </p>
-            </section>
-
             {/* Personalize — the cosmetics slots, calm and modest. Preview-on-hover/focus, buy
                 on click; an applied slot is LOCKED (ADR-0024); locked/unaffordable options
                 preview but never submit. */}
@@ -437,16 +412,24 @@ export default function SpiritPage() {
                                 </span>
                               </>
                             ) : !opt.affordable ? (
-                              // Unaffordable: a calm muted hint, no coin tally (the buy-confirm
-                              // modal carries the cost). Keeps the chips uncrowded (calm-UX).
+                              // Unaffordable: show the cost (the price belongs on the upgrade) with
+                              // a quiet "earn more" hint.
                               <>
                                 {optionLabel(opt.option)}
-                                <span className="spirit-option-lock">Earn more</span>
+                                <span className="spirit-option-cost">
+                                  <CoinIcon /> {opt.cost}
+                                </span>
+                                <span className="spirit-option-lock">earn more</span>
                               </>
                             ) : (
-                              // Buyable: just the name. The cost lives on the before/after
-                              // buy-confirm modal, so the panel reads as calm, not a price list.
-                              optionLabel(opt.option)
+                              // Buyable: the name + its coin cost, shown on the chip so the price
+                              // is visible per upgrade.
+                              <>
+                                {optionLabel(opt.option)}
+                                <span className="spirit-option-cost">
+                                  <CoinIcon /> {opt.cost}
+                                </span>
+                              </>
                             )}
                           </button>
                         )
@@ -533,6 +516,32 @@ export default function SpiritPage() {
                 Reset name
               </button>
             </p>
+
+            {/* How it grows — a quiet progress ladder + set-free explainer, low on the page
+                (the hero already shows the current stage, so this needn't lead). */}
+            <section className="spirit-section spirit-journey" aria-label="How your spirit grows">
+              <header className="spirit-section-head">
+                <h2 className="spirit-section-title">Growing to radiance</h2>
+              </header>
+              <ol className="spirit-journey-stages">
+                {STAGE_ORDER.map((s, i) => {
+                  const here = STAGE_ORDER.indexOf(spirit.stage)
+                  const cls = i === here ? ' is-current' : i < here ? ' is-done' : ''
+                  return (
+                    <li key={s} className={`spirit-journey-stage${cls}`}>
+                      {STAGE_LABEL[s] ?? s}
+                    </li>
+                  )
+                })}
+              </ol>
+              <p className="muted spirit-journey-note">
+                Practice levels up your bond and grows your spirit — spark to{' '}
+                <strong>radiant</strong>. It never reverses.
+                {isRadiant && (
+                  <> Radiant now — you can <strong>set it free</strong> below.</>
+                )}
+              </p>
+            </section>
 
             {/* Awaken a new spark — only at radiant. A calm action behind a confirmation that
                 states it retires the current spirit into the collection. */}
