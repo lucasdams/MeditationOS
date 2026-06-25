@@ -1224,6 +1224,24 @@ a:hover { color: var(--accent-hover); }
   margin: 0.75rem 0 0;
 }
 
+/* "Keep me signed in" row — inline checkbox + label, overriding the auth form's
+   full-width input styling so the box doesn't stretch across the card. */
+.auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.auth-remember input {
+  width: auto;
+  margin: 0;
+}
+
 /* A button that reads as an inline link (used for resend/log-out actions in auth flows). */
 .link-button {
   width: auto;

@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     secret_key: str = DEFAULT_SECRET_KEY
     cors_origins: str = "http://localhost:5173"
     access_token_expire_minutes: int = 60
+    # "Keep me signed in" issues a longer-lived access token + cookie (30 days). No
+    # refresh-token machinery, so this is simply a longer single token, opt-in at login.
+    remember_me_expire_minutes: int = 43200  # 30 days
     password_reset_expire_minutes: int = 30
     email_verification_expire_minutes: int = 1440  # 24h
     database_url: str = "postgresql://postgres:postgres@database:5432/meditationos"
