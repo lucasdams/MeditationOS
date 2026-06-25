@@ -65,6 +65,11 @@ def get_entry(db: DBSession, user_id: uuid.UUID, entry_id: uuid.UUID) -> Journal
 def random_entry(db: DBSession, user_id: uuid.UUID) -> Journal | None:
     """A random reflection owned by the user — for the "resurface a memory" feature.
     None if the user has no entries."""
+    # ORDER BY random() scans the user's rows, but the scan is bounded per user (and
+    # row growth is capped by the daily-create limit), so it's cheap at our scale. A
+    # count→random-OFFSET→fetch alternative skips the sort but adds a round-trip and a
+    # race window (the count can shift between the two queries and return None when
+    # entries exist), so it isn't worth the added complexity/risk here.
     stmt = (
         select(Journal)
         .where(Journal.user_id == user_id)
