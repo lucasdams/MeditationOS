@@ -2721,6 +2721,14 @@ textarea:focus-visible,
   margin: 0.5rem auto 1.5rem;
 }
 
+/* The compact hero: with the big render moved to the centered customize stage, the hero is now
+   just a tight status read-out (name / stage / bond / coins) so the page shows ONE prominent
+   spirit, not two competing arts. */
+.spirit-hero--compact {
+  gap: 0.1rem;
+  margin: 0.25rem auto 1rem;
+}
+
 .spirit-hero-art {
   position: relative;
   display: flex;
@@ -2967,6 +2975,116 @@ textarea:focus-visible,
 .spirit-option.gated {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* --- Customization stage (game-like dressing room) ---------------------------------------- */
+/* A 3-column layout inside the Personalize section: the spirit pinned in the CENTRE (large,
+   live-previewing), with the cosmetic slots split across LEFT and RIGHT rails. The Personalize
+   section is allowed to grow wider than the other (reading-width) sections so the stage has room
+   to breathe. Below ~760px it stacks: the stage on top, then the rails in one column. */
+.spirit-personalize {
+  max-width: 52rem;
+}
+
+.spirit-customize {
+  display: grid;
+  /* rails flex, the centre column is a fixed, comfortable stage width */
+  grid-template-columns: 1fr minmax(200px, 15rem) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.spirit-customize-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+/* The rail slots already carry their own bottom margin; drop the last one's so the rail bottoms
+   align tidily with the sticky stage. */
+.spirit-customize-rail .spirit-slot:last-child {
+  margin-bottom: 0;
+}
+
+/* The centred stage — sticks to the top of the viewport so the spirit stays in view while the
+   rails scroll. Decorative (aria-hidden); the rails carry the interactive controls. */
+.spirit-stage {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  align-self: start;
+}
+
+/* The pedestal/backdrop: a soft framed surface in the Spirit identity tint, with a gentle glow
+   pooling under the spirit so it reads as standing on a small stage. */
+.spirit-stage-frame {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(
+      120% 80% at 50% 92%,
+      color-mix(in srgb, var(--spirit-accent) 16%, transparent),
+      transparent 70%
+    ),
+    var(--bg-surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px var(--shadow-card);
+}
+
+.spirit-stage-art {
+  display: flex;
+  justify-content: center;
+}
+
+.spirit-stage-art .spirit-svg {
+  width: 100%;
+  max-width: 200px;
+}
+
+.spirit-stage-caption {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Stack gracefully below ~760px: the stage on top (sticky under the page header so it stays
+   visible while the rails scroll), then the rails in a single column below it. */
+@media (max-width: 760px) {
+  .spirit-personalize {
+    max-width: 36rem;
+  }
+  .spirit-customize {
+    grid-template-columns: 1fr;
+  }
+  .spirit-stage {
+    /* Order the stage first regardless of source order, and keep it sticky just under the
+       app header so it stays in view as the slots scroll past. */
+    order: -1;
+    top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .spirit-stage-frame {
+    max-width: 18rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .spirit-stage-frame {
+    padding: 1rem 0.75rem 0.85rem;
+  }
+  .spirit-stage-art .spirit-svg {
+    max-width: 160px;
+  }
 }
 
 .spirit-collection-grid {
