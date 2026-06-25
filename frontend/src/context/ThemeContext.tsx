@@ -7,14 +7,10 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  applyColorMode,
   dayPhaseFor,
-  readColorModePref,
   readSeasonPref,
   resolveSeason,
-  writeColorModePref,
   writeSeasonPref,
-  type ColorModePref,
   type DayPhase,
   type Season,
   type SeasonPref,
@@ -26,8 +22,6 @@ interface ThemeValue {
   season: Season
   dayPhase: DayPhase
   now: Date
-  colorMode: ColorModePref
-  setColorMode: (mode: ColorModePref) => void
 }
 
 const ThemeContext = createContext<ThemeValue | undefined>(undefined)
@@ -39,7 +33,6 @@ const TICK_MS = 60_000
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [pref, setPrefState] = useState<SeasonPref>(() => readSeasonPref())
   const [now, setNow] = useState(() => new Date())
-  const [colorMode, setColorModeState] = useState<ColorModePref>(() => readColorModePref())
 
   // Keep the clock fresh: tick every minute, and snap to the current time whenever
   // the tab regains focus (it may have been backgrounded across a phase boundary).
@@ -58,34 +51,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const season = resolveSeason(pref, now)
   const dayPhase = dayPhaseFor(now)
 
-  // Drive the CSS purely through data attributes on <html>.
+  // Drive the CSS purely through data attributes on <html>. The app is dark-only,
+  // so keep `data-theme="dark"` pinned here too (React re-asserts it on render).
   useEffect(() => {
     const root = document.documentElement
+    root.dataset.theme = 'dark'
     root.dataset.season = season
     root.dataset.dayphase = dayPhase
   }, [season, dayPhase])
-
-  // Apply color mode on mount, whenever it changes, and — for "auto" — on every
-  // clock tick, so the app flips light↔dark live at dusk/dawn without a reload.
-  // (`now` already refreshes on the minute interval + focus/visibilitychange.)
-  useEffect(() => {
-    applyColorMode(colorMode, now)
-  }, [colorMode, now])
 
   function setPref(next: SeasonPref) {
     setPrefState(next)
     writeSeasonPref(next)
   }
 
-  function setColorMode(next: ColorModePref) {
-    setColorModeState(next)
-    writeColorModePref(next)
-    applyColorMode(next) // apply immediately (no waiting for the next render)
-  }
-
   const value = useMemo(
-    () => ({ pref, setPref, season, dayPhase, now, colorMode, setColorMode }),
-    [pref, season, dayPhase, now, colorMode],
+    () => ({ pref, setPref, season, dayPhase, now }),
+    [pref, season, dayPhase, now],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

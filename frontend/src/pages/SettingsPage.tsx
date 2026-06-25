@@ -7,23 +7,9 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
 import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
-import { SEASON_PREFS, SEASONS, type ColorModePref } from '../lib/theme'
+import { SEASON_PREFS, SEASONS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
-
-export const COLOR_MODE_OPTIONS: { value: ColorModePref; label: string }[] = [
-  { value: 'auto', label: 'Auto (day & night)' },
-  { value: 'system', label: 'System (OS setting)' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-]
-
-const COLOR_MODE_HINTS: Record<ColorModePref, string> = {
-  auto: 'Follows the time of day — light by day, dark at night.',
-  system: "Matches your device's light or dark setting.",
-  light: 'Always light.',
-  dark: 'Always dark.',
-}
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
@@ -44,7 +30,7 @@ function formatHour(h: number): string {
 
 export default function SettingsPage() {
   const { user, refresh, logout } = useAuth()
-  const { pref: seasonPref, setPref: setSeasonPref, season, dayPhase, colorMode, setColorMode } = useTheme()
+  const { pref: seasonPref, setPref: setSeasonPref, season, dayPhase } = useTheme()
   const navigate = useNavigate()
 
   // Username section.
@@ -666,25 +652,9 @@ export default function SettingsPage() {
       <section className="settings-section">
         <h2>Appearance</h2>
 
-        <label htmlFor="color-mode">Color mode</label>
-        <select
-          id="color-mode"
-          value={colorMode}
-          onChange={(e) => setColorMode(e.target.value as ColorModePref)}
-        >
-          {COLOR_MODE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <p className="muted settings-hint">
-          {COLOR_MODE_HINTS[colorMode]}
-        </p>
-
         <p className="muted settings-section-note">
-          A seasonal tint colors the background, and the light shifts with your local
-          time of day. Pick a season, or let it follow the calendar.
+          A seasonal tint colors the background. Pick a season, or let it follow
+          the calendar.
         </p>
         <label htmlFor="season">Season</label>
         <select

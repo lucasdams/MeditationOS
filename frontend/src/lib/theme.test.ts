@@ -1,13 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import {
-  applyColorMode,
-  autoTheme,
-  dayPhaseFromHour,
-  readColorModePref,
-  resolveSeason,
-  seasonFromMonth,
-  writeColorModePref,
-} from './theme'
+import { describe, expect, it } from 'vitest'
+import { dayPhaseFromHour, resolveSeason, seasonFromMonth } from './theme'
 
 describe('seasonFromMonth (northern hemisphere)', () => {
   it('maps months to meteorological seasons', () => {
@@ -49,82 +41,5 @@ describe('resolveSeason', () => {
   it('follows the calendar when set to auto', () => {
     const july = new Date(2026, 6, 1)
     expect(resolveSeason('auto', july)).toBe('summer')
-  })
-})
-
-describe('color mode persistence', () => {
-  afterEach(() => {
-    // Reset so tests don't bleed into each other
-    localStorage.removeItem('theme:color-mode')
-    delete document.documentElement.dataset.theme
-  })
-
-  it('defaults to "dark" when nothing is stored (dark is the hero theme)', () => {
-    expect(readColorModePref()).toBe('dark')
-  })
-
-  it('honors an explicit stored preference over the default', () => {
-    // An explicit choice (incl. "system") still wins; only the unset default changed.
-    writeColorModePref('system')
-    expect(readColorModePref()).toBe('system')
-
-    writeColorModePref('light')
-    expect(readColorModePref()).toBe('light')
-  })
-
-  it('round-trips a written preference', () => {
-    writeColorModePref('dark')
-    expect(readColorModePref()).toBe('dark')
-
-    writeColorModePref('light')
-    expect(readColorModePref()).toBe('light')
-
-    writeColorModePref('system')
-    expect(readColorModePref()).toBe('system')
-
-    writeColorModePref('auto')
-    expect(readColorModePref()).toBe('auto')
-  })
-
-  it('applyColorMode sets data-theme for explicit choices', () => {
-    applyColorMode('dark')
-    expect(document.documentElement.dataset.theme).toBe('dark')
-
-    applyColorMode('light')
-    expect(document.documentElement.dataset.theme).toBe('light')
-  })
-
-  it('applyColorMode removes data-theme for "system"', () => {
-    document.documentElement.dataset.theme = 'dark'
-    applyColorMode('system')
-    expect(document.documentElement.dataset.theme).toBeUndefined()
-  })
-
-  it('applyColorMode resolves "auto" from the clock', () => {
-    applyColorMode('auto', new Date(2026, 0, 1, 23)) // 11pm → dark
-    expect(document.documentElement.dataset.theme).toBe('dark')
-
-    applyColorMode('auto', new Date(2026, 0, 1, 12)) // noon → light
-    expect(document.documentElement.dataset.theme).toBe('light')
-  })
-})
-
-describe('autoTheme (clock-driven light/dark)', () => {
-  it('is dark in the evening and at night', () => {
-    expect(autoTheme(new Date(2026, 0, 1, 19))).toBe('dark') // dusk
-    expect(autoTheme(new Date(2026, 0, 1, 23))).toBe('dark') // night
-    expect(autoTheme(new Date(2026, 0, 1, 3))).toBe('dark') // small hours
-  })
-
-  it('is light during the day and morning', () => {
-    expect(autoTheme(new Date(2026, 0, 1, 6))).toBe('light') // dawn
-    expect(autoTheme(new Date(2026, 0, 1, 12))).toBe('light') // day
-  })
-
-  it('flips at the dusk (18:00) and dawn (05:00) boundaries', () => {
-    expect(autoTheme(new Date(2026, 0, 1, 17, 59))).toBe('light')
-    expect(autoTheme(new Date(2026, 0, 1, 18, 0))).toBe('dark')
-    expect(autoTheme(new Date(2026, 0, 1, 4, 59))).toBe('dark')
-    expect(autoTheme(new Date(2026, 0, 1, 5, 0))).toBe('light')
   })
 })
