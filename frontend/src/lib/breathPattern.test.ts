@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ALTERNATE_NOSTRIL_PATTERN,
   ENERGIZING_PATTERN,
   PRESETS,
   boxPatternForCount,
@@ -82,7 +83,7 @@ describe('PRESETS', () => {
     const byControl = (c: string) => PRESETS.filter((x) => x.control === c).map((x) => x.key)
     expect(byControl('bpm')).toEqual(['resonance'])
     expect(byControl('count')).toEqual(['box'])
-    expect(byControl('none')).toEqual(['energizing'])
+    expect(byControl('none')).toEqual(['energizing', 'alternate'])
     // adjustable presets (bpm/count) carry a derive fn + null pattern; 'none' carries a pattern
     for (const p of PRESETS) {
       if (p.control === 'none') {
@@ -102,6 +103,17 @@ describe('PRESETS', () => {
     // Active inhale, quick exhale, no holds → 5s cycle (12 breaths/min).
     expect(ENERGIZING_PATTERN).toEqual({ inhale: 3, holdFull: 0, exhale: 2, holdEmpty: 0 })
     expect(cycleLength(ENERGIZING_PATTERN)).toBe(5)
+  })
+
+  it('includes the fixed alternate-nostril preset (Nadi Shodhana, calm 4·4·4 breath)', () => {
+    const alternate = PRESETS.find((p) => p.key === 'alternate')
+    expect(alternate).toBeDefined()
+    expect(alternate!.control).toBe('none')
+    expect(alternate!.label).toBe('Alternate nostril')
+    expect(alternate!.pattern).toEqual(ALTERNATE_NOSTRIL_PATTERN)
+    // Balanced, calming pace: inhale 4, hold 4, exhale 4, no empty-hold (12s cycle).
+    expect(ALTERNATE_NOSTRIL_PATTERN).toEqual({ inhale: 4, holdFull: 4, exhale: 4, holdEmpty: 0 })
+    expect(cycleLength(ALTERNATE_NOSTRIL_PATTERN)).toBe(12)
   })
 
   it('patternSummary shows holds only when present', () => {
