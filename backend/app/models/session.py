@@ -58,7 +58,7 @@ class Session(Base):
     focus: Mapped[int | None] = mapped_column(Integer, nullable=True)
     calm: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # Set only for type='resonance_breathing'.
+    # Set for breathing sessions (resonance + energizing); NULL for meditation.
     inhale_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     exhale_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cycles_completed: Mapped[int | None] = mapped_column(Integer, nullable=True)

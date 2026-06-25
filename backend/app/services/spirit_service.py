@@ -475,7 +475,7 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
 # coins_spent`), not the sum of applied cosmetics, so clearing a slot never refunds it.
 #
 # Kept calm and modest, on-theme (docs/design/spirit.md "Coins"): a soft aura, a small
-# accessory, and a habitat/backdrop the spirit sits in. The Sanctuary's progressive
+# accessory, and a habitat/backdrop the spirit sits in. The old progressive
 # anti-hoarding surcharge is intentionally dropped — there is one subject now, so the
 # hoarding problem it solved no longer exists. All costs/unlock levels are tunable in-code
 # constants — retuning needs no migration. An optional per-option `unlock_level` gates a
@@ -554,7 +554,7 @@ def _available_slots(
     cosmetics: dict[str, str], balance: int, level: int
 ) -> list[SpiritAvailableSlot]:
     """The cosmetics catalog with per-option state — the same calm "personalize" shape the
-    Sanctuary panel uses: each option's cost plus unlocked / affordable / applied hints.
+    Spirit personalize panel uses: each option's cost plus unlocked / affordable / applied hints.
 
     ADR-0024: a slot with an applied option is LOCKED — its options can't be bought until
     upgrades are reset — so the slot exposes a `locked` flag for the UI to disable it.

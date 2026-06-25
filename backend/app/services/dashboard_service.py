@@ -148,7 +148,7 @@ def _capped_daily_xp_units(db: DBSession, model, *, user_id: uuid.UUID, tz: str,
 
 
 class _XpBasis(NamedTuple):
-    """The shared XP/streak core that funds BOTH the dashboard and the sanctuary wallet.
+    """The shared XP/streak core that funds BOTH the dashboard and the spirit wallet.
 
     `earned_xp` is total XP *minus* the streak bonus (so the wallet balance never drops
     when a streak lapses); `xp` adds the streak bonus back for the dashboard. The day-set
@@ -174,7 +174,7 @@ class _XpBasis(NamedTuple):
 
 def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _XpBasis:
     """Compute the earned XP, streak bonus, and streak — the single source of truth used
-    by both `get_stats` (dashboard) and `get_wallet_basis` (sanctuary coins/level). This
+    by both `get_stats` (dashboard) and `get_wallet_basis` (spirit coins/level). This
     runs the per-session XP curve, the capped gratitude/journal XP, the daily-quest bonus,
     and the streak; it does NOT build the heatmap, this-week, today-count, or quest-list
     blocks that only `get_stats` needs — so the wallet path skips that work entirely.
@@ -389,7 +389,7 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
 
 
 class WalletBasis(NamedTuple):
-    """The minimal earned-XP/level/streak the sanctuary wallet needs to mint coins.
+    """The minimal earned-XP/level/streak the spirit wallet needs to mint coins.
 
     `xp_into_level`/`xp_for_next` are the earned-XP level-progress read-out (from the same
     `_level_progress(earned_xp)` call that yields `level`), exposed so callers like the
@@ -405,7 +405,7 @@ class WalletBasis(NamedTuple):
 
 def get_wallet_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> WalletBasis:
     """Earned XP, the level it implies, and the current streak — the only values the
-    sanctuary wallet reads. Computed via the SAME `_xp_basis` core as `get_stats`, so the
+    spirit wallet reads. Computed via the SAME `_xp_basis` core as `get_stats`, so the
     coins/level/streak are byte-identical to the dashboard, but WITHOUT the heatmap,
     this-week, today-count, or quest-list work that `get_stats` does and the wallet throws
     away. The level is computed on *earned* XP (total minus the streak bonus) so coins
@@ -430,7 +430,7 @@ TENDING_DAILY_MINUTES_CAP = 60
 
 
 class TendingSignals(NamedTuple):
-    """The monotonic practice signals that fund the Sanctuary "Tending" score (see
+    """The monotonic practice signals that fund the spirit "Tending" score (see
     docs/design/sanctuary-upgrades-tended.md). Every field only ever grows or holds over the
     immutable activity log — distinct practice days, the *longest* (not current) streak, and
     lifetime per-minute-floored, daily-capped breathing/meditation minutes — so any score
@@ -450,7 +450,7 @@ class TendingSignals(NamedTuple):
 def get_tending_signals(
     db: DBSession, user_id: uuid.UUID, *, today: date, tz: str
 ) -> TendingSignals:
-    """The monotonic practice signals behind the Sanctuary Tending score. All read-time,
+    """The monotonic practice signals behind the spirit Tending score. All read-time,
     nothing stored (the same stance as XP/streaks). Practice-day counting reuses the
     MIN_PRACTICE_SECONDS floor; the minute totals are floored per whole minute and capped per
     local day (TENDING_DAILY_MINUTES_CAP) to resist farming, mirroring the existing anti-spam.
@@ -534,7 +534,7 @@ def get_stats(
         ).where(Session.user_id == user_id)
     ).one()
 
-    # The XP/streak core (also drives the sanctuary wallet — single source of truth).
+    # The XP/streak core (also drives the spirit wallet — single source of truth).
     basis = _xp_basis(db, user_id, today=today, tz=tz)
     cond_days = basis.cond_days
     current_streak = basis.current_streak
