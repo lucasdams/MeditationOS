@@ -13,4 +13,5 @@ from app.models.push_subscription import PushSubscription  # noqa: F401
 from app.models.sanctuary import SanctuaryPlanting  # noqa: F401
 from app.models.scheduled_session import ScheduledSession  # noqa: F401
 from app.models.session import Session  # noqa: F401
+from app.models.spirit import Spirit  # noqa: F401
 from app.models.user import User  # noqa: F401

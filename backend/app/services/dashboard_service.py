@@ -389,11 +389,14 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
 
 
 class WalletBasis(NamedTuple):
-    """The minimal earned-XP/level/streak the sanctuary wallet needs to mint coins."""
+    """The minimal earned-XP/level/streak the sanctuary wallet needs to mint coins, plus
+    the within-level progress the spirit bond reads (xp_into_level / xp_for_next)."""
 
     earned_xp: int
     level: int
     current_streak: int
+    xp_into_level: int
+    xp_for_next: int
 
 
 def get_wallet_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> WalletBasis:
@@ -405,11 +408,13 @@ def get_wallet_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str)
     never drop when a streak lapses.
     """
     basis = _xp_basis(db, user_id, today=today, tz=tz)
-    level, _into, _next = _level_progress(basis.earned_xp)
+    level, xp_into_level, xp_for_next = _level_progress(basis.earned_xp)
     return WalletBasis(
         earned_xp=basis.earned_xp,
         level=level,
         current_streak=basis.current_streak,
+        xp_into_level=xp_into_level,
+        xp_for_next=xp_for_next,
     )
 
 
