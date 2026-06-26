@@ -781,9 +781,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
     },
     # An ambient drifting overlay across the whole scene (the "weather") — light particles that
-    # drift over everything, kept subtle so they never obscure the figure. All universal (no
-    # per_path); tiered like the rest of the tree (tier 1 starters → tier 3 capstone) with varied
-    # need affinities.
+    # drift over everything, kept subtle so they never obscure the figure. The universal options
+    # (petals/mist/rain/leaffall/snow/fireflies) are tiered like the rest of the tree (tier 1
+    # starters → tier 3 capstone) with varied need affinities; the three PATH-EXCLUSIVE weathers
+    # carry a `per_path` key so only the matching creature can buy (and see) them — drifting embers
+    # for the fiery Pitta (breath), a golden pollen fall for the grounded Kapha (stillness), and
+    # swirling wind gusts for the airy Vata (heart). The path-exclusive ones are tier-3 capstones.
     "weather": {
         "petals": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
         "mist": {"cost": 45, "unlock_level": 1, "need": RESTED, "tier": 1},
@@ -791,10 +794,23 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "leaffall": {"cost": 110, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "snow": {"cost": 180, "unlock_level": 7, "need": RESTED, "tier": 3},
         "fireflies": {"cost": 200, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        "ember_drift": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+        },
+        "pollenfall": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+        },
+        "galeswirl": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
     # A low foreground base decoration along the very bottom edge (the "ground") — a strip that
-    # reads as the floor the figure rests on. All universal (no per_path); tiered with varied need
-    # affinities.
+    # reads as the floor the figure rests on. The universal options (grass/pebbles/clover/
+    # mushrooms/wildflowers/crystals) are tiered with varied need affinities; the three
+    # PATH-EXCLUSIVE grounds carry a `per_path` key so only the matching creature can buy (and see)
+    # them — a bed of glowing coals for the fiery Pitta (breath), a raked zen stone garden for the
+    # grounded Kapha (stillness), and a soft cloud floor for the airy Vata (heart). The
+    # path-exclusive ones are tier-3 capstones.
     "ground": {
         "grass": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "pebbles": {"cost": 45, "unlock_level": 2, "need": RESTED, "tier": 1},
@@ -802,6 +818,15 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "mushrooms": {"cost": 120, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "wildflowers": {"cost": 190, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         "crystals": {"cost": 210, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "emberbed": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+        },
+        "stonegarden": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+        },
+        "cloudfloor": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
 }
 

@@ -376,6 +376,62 @@ describe('Spirit — weather + ground slots render on the art', () => {
   })
 })
 
+describe('Spirit — path-exclusive weather + ground capstones render on the art', () => {
+  // Each new slot's three per-dosha tier-3 capstones draw their own signature element on their
+  // dosha palette: weather is a front overlay (FIRE / EARTH-GROVE / AIR-SKY), ground a foreground
+  // floor strip. Each carries a colour marker unique to that art so the test stays geometry-free.
+
+  // Weather capstones (the front-most drifting overlay).
+  it('draws the ember_drift weather (Pitta / fire — drifting embers)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { weather: 'ember_drift' } })} />,
+    )
+    // The hot ember spark tops each drift (#fed7aa, the only such circle).
+    expect(container.querySelector('.spirit-svg circle[fill="#fed7aa"]')).not.toBeNull()
+  })
+
+  it('draws the pollenfall weather (Kapha / grove — golden pollen)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { weather: 'pollenfall' } })} />,
+    )
+    // Golden pollen motes are amber-gold circles (#d9c45a).
+    expect(container.querySelector('.spirit-svg circle[fill="#d9c45a"]')).not.toBeNull()
+  })
+
+  it('draws the galeswirl weather (Vata / sky — swirling gusts)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { weather: 'galeswirl' } })} />,
+    )
+    // A soft white mote rides each gust arc (#f0f9ff).
+    expect(container.querySelector('.spirit-svg circle[fill="#f0f9ff"]')).not.toBeNull()
+  })
+
+  // Ground capstones (the foreground floor strip).
+  it('draws the emberbed ground (Pitta / fire — glowing coals)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { ground: 'emberbed' } })} />,
+    )
+    // The dark coal-bed base band (#7c2d12 rect).
+    expect(container.querySelector('.spirit-svg rect[fill="#7c2d12"]')).not.toBeNull()
+  })
+
+  it('draws the stonegarden ground (Kapha / grove — raked zen sand)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { ground: 'stonegarden' } })} />,
+    )
+    // The pale raked-sand base band (#d6d3c4, unique).
+    expect(container.querySelector('.spirit-svg rect[fill="#d6d3c4"]')).not.toBeNull()
+  })
+
+  it('draws the cloudfloor ground (Vata / sky — soft cloud floor)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { ground: 'cloudfloor' } })} />,
+    )
+    // The faint blue cloud-floor base shadow (#bae6fd rect).
+    expect(container.querySelector('.spirit-svg rect[fill="#bae6fd"]')).not.toBeNull()
+  })
+})
+
 describe('Spirit — condition applied as a static brightness (ADR-0023)', () => {
   it('renders a brighter aura at full condition than at a depleted one', () => {
     const haloOpacity = (state: SpiritState): number => {

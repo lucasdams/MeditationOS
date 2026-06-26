@@ -222,6 +222,10 @@ export const OPTION_LABEL: Record<string, string> = {
   leaffall: 'Falling leaves',
   snow: 'Falling snow',
   fireflies: 'Drifting fireflies',
+  // Path-exclusive weathers (one per dosha, per_path in the catalog).
+  ember_drift: 'Drifting embers',
+  pollenfall: 'Pollen fall',
+  galeswirl: 'Gale swirl',
   // Ground — a foreground base strip along the very bottom.
   grass: 'Grassy ground',
   pebbles: 'Pebble bed',
@@ -229,6 +233,10 @@ export const OPTION_LABEL: Record<string, string> = {
   mushrooms: 'Toadstools',
   wildflowers: 'Wildflower bed',
   crystals: 'Crystal cluster',
+  // Path-exclusive grounds (one per dosha, per_path in the catalog).
+  emberbed: 'Ember bed',
+  stonegarden: 'Stone garden',
+  cloudfloor: 'Cloud floor',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -2113,6 +2121,64 @@ function Weather({ weather, g }: { weather: string; g: number }) {
       </g>
     )
   }
+  // PATH-EXCLUSIVE (Pitta / breath) — drifting embers/sparks rising over the scene on a FIRE
+  // palette: each a warm orange halo around a bright ember core, the hottest tinier sparks above.
+  if (weather === 'ember_drift') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {Array.from({ length: 8 }, (_, k) => {
+          const x = 8 + ((k * 23) % 64)
+          const y = 10 + ((k * 29) % 56)
+          return (
+            <g key={k}>
+              <circle cx={x} cy={y} r={2.6} fill="#fb923c" opacity={0.18} />
+              <circle cx={x} cy={y} r={1.1} fill="#f97316" opacity={0.9} />
+              <circle cx={x - 0.3} cy={y - 0.4} r={0.4} fill="#fed7aa" opacity={0.95} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE (Kapha / stillness) — a slow golden pollen/spore fall on an EARTH/GROVE palette:
+  // tiny amber-gold motes drifting down, soft and grounded rather than fiery.
+  if (weather === 'pollenfall') {
+    return (
+      <g opacity={0.85 * g} aria-hidden="true">
+        {Array.from({ length: 11 }, (_, k) => {
+          const x = 6 + ((k * 19) % 68)
+          const y = 7 + ((k * 31) % 60)
+          const r = 0.7 + (k % 3) * 0.35
+          return <circle key={k} cx={x} cy={y} r={r} fill="#d9c45a" opacity={0.8} />
+        })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE (Vata / heart) — swirling wind gusts/motes on an AIR/SKY palette: pale curved
+  // gust arcs sweeping across the scene with a few soft white motes carried along them.
+  if (weather === 'galeswirl') {
+    return (
+      <g opacity={0.8 * g} aria-hidden="true">
+        {Array.from({ length: 5 }, (_, k) => {
+          const x = 8 + ((k * 17) % 52)
+          const y = 12 + ((k * 21) % 52)
+          return (
+            <g key={k}>
+              <path
+                d={`M ${x} ${y} q 9 -5 18 0 q -6 4 -13 1`}
+                stroke="#dbeafe"
+                strokeWidth={0.9}
+                fill="none"
+                strokeLinecap="round"
+                opacity={0.65}
+              />
+              <circle cx={x + 18} cy={y + 1} r={0.9} fill="#f0f9ff" opacity={0.85} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
   return null
 }
 
@@ -2238,6 +2304,68 @@ function Ground({ ground, g }: { ground: string; g: number }) {
             </g>
           )
         })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE (Pitta / breath) — a bed of glowing coals underfoot on a FIRE palette: a dark
+  // ember base band lit by a scatter of bright orange-red coals with the hottest cores on top.
+  if (ground === 'emberbed') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        <rect x={2} y={top + 1} width={76} height={5} rx={2} fill="#7c2d12" opacity={0.55} />
+        {Array.from({ length: 12 }, (_, k) => {
+          const x = 6 + k * 6.2
+          const y = top + 2 + (k % 2)
+          return (
+            <g key={k}>
+              <ellipse cx={x} cy={y} rx={2.4} ry={1.5} fill={k % 2 ? '#ea580c' : '#dc2626'} opacity={0.85} />
+              <circle cx={x} cy={y - 0.3} r={0.7} fill="#fb923c" opacity={0.9} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE (Kapha / stillness) — a raked zen stone garden on an EARTH/GROVE palette: a pale
+  // sand band with curved rake lines and a few grounded jade/grey stones resting on it.
+  if (ground === 'stonegarden') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        <rect x={2} y={top} width={76} height={6} rx={2} fill="#d6d3c4" opacity={0.55} />
+        {[top + 1.5, top + 3.5].map((y, k) => (
+          <path
+            key={`r${k}`}
+            d={`M 4 ${y} q 18 -2 36 0 q 18 2 36 0`}
+            stroke="#a8a29e"
+            strokeWidth={0.5}
+            fill="none"
+            opacity={0.55}
+          />
+        ))}
+        {[16, 40, 62].map((x, k) => (
+          <ellipse
+            key={`s${k}`}
+            cx={x}
+            cy={top + 1}
+            rx={3 + (k % 2)}
+            ry={2}
+            fill={k % 2 ? '#6b7280' : '#3f6212'}
+            opacity={0.8}
+          />
+        ))}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE (Vata / heart) — a soft cloud floor on an AIR/SKY palette: overlapping white
+  // cloud puffs forming a billowy strip the figure rests on, with a faint blue base shadow.
+  if (ground === 'cloudfloor') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        <rect x={2} y={top + 2} width={76} height={4} rx={2} fill="#bae6fd" opacity={0.4} />
+        {[10, 22, 34, 46, 58, 70].map((x, k) => (
+          <circle key={k} cx={x} cy={top + 1} r={4 + (k % 2)} fill="#f8fafc" opacity={0.9} />
+        ))}
+        <rect x={2} y={top + 3} width={76} height={3} rx={1.5} fill="#ffffff" opacity={0.85} />
       </g>
     )
   }
