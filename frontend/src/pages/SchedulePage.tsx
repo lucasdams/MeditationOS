@@ -116,7 +116,7 @@ export default function SchedulePage() {
     <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">← Dashboard</Link>
       <header className="page-head">
-        <h1>Plan your practice</h1>
+        <h1>Schedule</h1>
         <p className="page-subtitle">
           Schedule a sit ahead of time, and add it to your own calendar.
         </p>

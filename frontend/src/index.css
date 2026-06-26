@@ -14,14 +14,21 @@
   /* Text */
   --text-primary: #1c1c1e;
   --text-secondary: #45454a;
-  --text-muted: #5f5f65;
-  --text-faint: #5f5f64;
+  --text-muted: #565660;        /* nudged darker for a comfortable AA margin on white */
+  --text-faint: #56565f;        /* still clearly "muted" but a touch safer than #5f5f64 */
+  --text-disabled: #6b6b73;     /* disabled control text — perceptible (~4.5:1) yet clearly inert */
 
   /* Success text — green that passes AA on both light and dark surfaces */
   --success-text: #047857;
 
+  /* Error text — red that passes AA on the light surface */
+  --error-text: #b00020;
+
   /* Warning text — amber that passes AA on light surfaces */
   --warning-text: #b45309;
+
+  /* Streak accent — the warm orange used by the HUD streak pill */
+  --streak-accent: #f97316;
 
   /* Borders & dividers */
   --border: #e5e5ea;
@@ -86,6 +93,21 @@
   /* Bar track (progress bars) */
   --bar-track: #eef2ff;
 
+  /* Level card — soft green panel (gamified "level" surface). */
+  --level-card-from: #ecfdf5;
+  --level-card-to: #f0fdf4;
+  --level-card-border: #d1fae5;
+
+  /* XP bar — green track + gradient fill (semantic "progress"). */
+  --xp-track: #d1fae5;
+  --xp-fill-from: #34d399;
+  --xp-fill-to: #059669;
+
+  /* Memory card — soft violet panel (resurfaced journal/gratitude memory). */
+  --memory-card-from: #faf5ff;
+  --memory-card-to: #eef2ff;
+  --memory-card-border: #ddd6fe;
+
   /* Chips */
   --chip-bg: #f0f0f3;
   --chip-hover: #e5e5ea;
@@ -149,12 +171,19 @@
   --text-secondary: #b4b4c8;
   --text-muted: #9494b4;
   --text-faint: #a0a0c8;
+  --text-disabled: #8a8aa6;     /* disabled control text on dark — perceptible, clearly inert */
 
   /* Success text */
   --success-text: #34d399;
 
+  /* Error text — red that reads on the dark surface */
+  --error-text: #f87171;
+
   /* Warning text — amber that reads on dark surfaces */
   --warning-text: #fbbf24;
+
+  /* Streak accent — warmer/brighter orange so it reads on the slate surface */
+  --streak-accent: #fb923c;
 
   /* Borders */
   --border: #4a5180;
@@ -209,13 +238,31 @@
   --nav-trataka-bg: #2a1708;
   --nav-trataka-text: #fdba74;
   --nav-more-bg: #1c2030;
-  --nav-more-text: #94a3b8;
+  /* Brightened from slate-400 (#94a3b8) toward slate-200 so the secondary nav
+     buttons (Practice/Progress) read as active items, not disabled, while still
+     sitting visually below the vibrant destination links. */
+  --nav-more-text: #cbd5e1;
 
   /* Analytics */
   --surface-analytics: #1e2130;
 
   /* Bar track */
   --bar-track: #1e2242;
+
+  /* Level card — deep green panel (mirrors the dark .level-card override). */
+  --level-card-from: #0f2a1e;
+  --level-card-to: #132b1a;
+  --level-card-border: #1a3d2a;
+
+  /* XP bar — dark green track; the fill keeps its bright semantic gradient. */
+  --xp-track: #123a2b;
+  --xp-fill-from: #34d399;
+  --xp-fill-to: #059669;
+
+  /* Memory card — deep violet panel (mirrors the dark .memory-card override). */
+  --memory-card-from: #1e1640;
+  --memory-card-to: #1e2242;
+  --memory-card-border: #3730a3;
 
   /* Chips */
   --chip-bg: #252940;
@@ -271,8 +318,11 @@
     --text-secondary: #b4b4c8;
     --text-muted: #9494b4;
     --text-faint: #a0a0c8;
+    --text-disabled: #8a8aa6;
     --success-text: #34d399;
+    --error-text: #f87171;
     --warning-text: #fbbf24;
+    --streak-accent: #fb923c;
     --border: #4a5180;
     --border-strong: #646aa0;
     --border-light: #252940;
@@ -312,9 +362,18 @@
     --nav-trataka-bg: #2a1708;
     --nav-trataka-text: #fdba74;
     --nav-more-bg: #1c2030;
-    --nav-more-text: #94a3b8;
+    --nav-more-text: #cbd5e1;
     --surface-analytics: #1e2130;
     --bar-track: #1e2242;
+    --level-card-from: #0f2a1e;
+    --level-card-to: #132b1a;
+    --level-card-border: #1a3d2a;
+    --xp-track: #123a2b;
+    --xp-fill-from: #34d399;
+    --xp-fill-to: #059669;
+    --memory-card-from: #1e1640;
+    --memory-card-to: #1e2242;
+    --memory-card-border: #3730a3;
     --chip-bg: #252940;
     --chip-hover: #2e3250;
     --chip-soft-bg: #1e2242;
@@ -801,6 +860,14 @@ a:hover { color: var(--accent-hover); }
 .nav-menu-dropdown a.active {
   background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
   box-shadow: inset 0.2rem 0 0 var(--menu-ink);
+}
+
+/* Explicit keyboard-focus rings for the nav trigger + its menu items, in the
+   per-theme accent, so they're clearly reachable by keyboard. */
+.nav-menu-btn:focus-visible,
+.nav-menu-dropdown a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .app-user {
@@ -1516,8 +1583,8 @@ a:hover { color: var(--accent-hover); }
 /* A gentle resurfaced memory — softly tinted so it reads as a special moment, not
    just another log row. */
 .memory-card {
-  background: linear-gradient(135deg, #faf5ff, #eef2ff);
-  border: 1px solid #ddd6fe;
+  background: linear-gradient(135deg, var(--memory-card-from), var(--memory-card-to));
+  border: 1px solid var(--memory-card-border);
   border-radius: 12px;
   padding: 0.75rem 0.95rem;
 }
@@ -1609,13 +1676,13 @@ a:hover { color: var(--accent-hover); }
   background: none;
   border: none;
   border-radius: 6px;
-  color: #6b7280;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
 .journal-entry-menu:hover {
-  color: #4f46e5;
-  background: rgba(79, 70, 229, 0.08);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .journal-body {
@@ -1900,6 +1967,20 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* On dark, 0.6 opacity reads as broken/near-invisible — lift it so the disabled
+   state is still perceptible (~4.5:1) without looking like an error. */
+:root[data-theme='dark'] button:disabled,
+:root:not([data-theme='light']):not([data-theme='dark']) button:disabled {
+  opacity: 0.78;
+}
+
+/* Placeholder text — token-driven so it reads (but stays clearly secondary) in both themes. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
 @media (prefers-reduced-motion: reduce) {
   button {
     transition: box-shadow 0.12s ease, filter 0.12s ease;
@@ -1958,7 +2039,7 @@ textarea:focus-visible,
 }
 
 .error {
-  color: #b00020;
+  color: var(--error-text);
   font-size: 0.9rem;
 }
 
@@ -2132,7 +2213,7 @@ textarea:focus-visible,
   width: auto;
   padding: 0;
   background: none;
-  color: #b00020;
+  color: var(--error-text);
   border: none;
   font-size: 0.9rem;
   cursor: pointer;
@@ -2334,8 +2415,8 @@ textarea:focus-visible,
 }
 
 .hud-pill-streak {
-  border-color: color-mix(in srgb, #f97316 40%, var(--border));
-  background: color-mix(in srgb, #f97316 10%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--streak-accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--streak-accent) 10%, var(--bg-surface));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2350,8 +2431,8 @@ textarea:focus-visible,
   gap: 1.25rem;
   margin: 1.25rem 0;
   padding: 1.25rem;
-  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
-  border: 1px solid #d1fae5;
+  background: linear-gradient(135deg, var(--level-card-from), var(--level-card-to));
+  border: 1px solid var(--level-card-border);
   border-radius: 12px;
 }
 
@@ -2398,14 +2479,14 @@ textarea:focus-visible,
 
 .xp-bar {
   height: 10px;
-  background: #d1fae5;   /* green tint — intentionally semantic, not swapped in dark */
+  background: var(--xp-track);   /* green tint — semantic; dark mode uses a deep-green track */
   border-radius: 999px;
   overflow: hidden;
 }
 
 .xp-fill {
   height: 100%;
-  background: linear-gradient(90deg, #34d399, #059669);
+  background: linear-gradient(90deg, var(--xp-fill-from), var(--xp-fill-to));
   border-radius: 999px;
   transition: width 0.4s ease;
 }
@@ -2610,6 +2691,13 @@ textarea:focus-visible,
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.25);
   overflow: hidden;
+}
+
+/* On dark the faint slate track nearly vanishes against the deep canvas — give the
+   empty portion a readable track so the need's fill level stays legible. */
+:root[data-theme='dark'] .spirit-need-bar,
+:root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-bar {
+  background: rgba(148, 163, 184, 0.4);
 }
 
 .spirit-need-bar-fill {
@@ -2989,7 +3077,8 @@ textarea:focus-visible,
 }
 
 .spirit-hero-art .spirit-svg {
-  width: 200px;
+  width: 100%;
+  max-width: 200px;
 }
 
 .spirit-preview-badge {
@@ -3142,6 +3231,15 @@ textarea:focus-visible,
   background: var(--spirit-accent);
   /* Soft halo in the Spirit identity tint (the cyan nav-tile background). */
   box-shadow: 0 0 0 3px var(--nav-spirit-bg);
+}
+
+/* On the narrowest phones the 3.25rem-min stages overflow the journey row; tighten
+   them so the full stepper fits without clipping. */
+@media (max-width: 380px) {
+  .spirit-journey-stage {
+    min-width: 2.5rem;
+    font-size: 0.62rem;
+  }
 }
 
 .spirit-journey-note {
@@ -3759,6 +3857,29 @@ textarea:focus-visible,
   animation-delay: 0.55s;
 }
 
+/* CSS-level safety net: even if a flourish class slips through, hold the reward
+   decorations static under reduced-motion. They stay visible — just no animation. */
+@media (prefers-reduced-motion: reduce) {
+  .reward-coins--pop,
+  .reward-card--pop,
+  .reward-gained--landed,
+  .reward-ring,
+  .reward-spark,
+  .reward-spark--1,
+  .reward-spark--2,
+  .reward-spark--3,
+  .reward-spark--4,
+  .reward-spark--5,
+  .reward-breakdown--stagger li {
+    animation: none;
+  }
+  /* The sparks start at opacity:0 for their fade-in; with no animation they would
+     never appear, so reveal them statically. */
+  .reward-spark {
+    opacity: 0.6;
+  }
+}
+
 /* Breakdown lines stagger in for a touch of life. */
 .reward-breakdown--stagger li {
   animation: reward-line-in 0.32s ease-out both;
@@ -4010,8 +4131,8 @@ textarea:focus-visible,
 .quest-arrow {
   flex-shrink: 0;
   font-size: 0.85rem;
-  color: var(--activity-accent, #6b7280);
-  opacity: 0.45;
+  color: var(--activity-accent, var(--text-muted));
+  opacity: 0.7;   /* raised from 0.45 so the arrow stays visible on the dark canvas */
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
 
@@ -5493,6 +5614,23 @@ details[open] .meditate-disclosure-summary::before {
     margin: 2rem 1rem;
     padding: 1.5rem;
   }
+
+  /* Comfortable touch targets on phones — at least 44px tall, per platform
+     guidance. Inline text-style buttons (links, chips, menu trigger) keep their
+     natural size via the same exclusion list the hover/active rules use, so they
+     don't balloon into oversized blocks. */
+  button:not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link):not(.journal-entry-menu),
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
 }
 
 /* On phones the nav collapses behind a hamburger — the header stays one compact row,
@@ -5522,6 +5660,10 @@ details[open] .meditate-disclosure-summary::before {
     border-bottom: 1px solid var(--border);
     box-shadow: 0 10px 18px var(--shadow-nav);
     z-index: 20;
+    /* On short viewports the full destination list can run past the bottom of the
+       screen — cap the height and let it scroll so every item stays reachable. */
+    max-height: calc(100vh - 100%);
+    overflow-y: auto;
   }
   .app-nav.open a {
     padding: 0.6rem 0.85rem;
@@ -6901,17 +7043,8 @@ details[open] .meditate-disclosure-summary::before {
   border-color: #3730a3;
 }
 
-:root[data-theme='dark'] .memory-card,
-:root:not([data-theme='light']):not([data-theme='dark']) .memory-card {
-  background: linear-gradient(135deg, #1e1640, #1e2242);
-  border-color: #3730a3;
-}
-
-:root[data-theme='dark'] .level-card,
-:root:not([data-theme='light']):not([data-theme='dark']) .level-card {
-  background: linear-gradient(135deg, #0f2a1e, #132b1a);
-  border-color: #1a3d2a;
-}
+/* .memory-card and .level-card now flip via their --memory-card-* / --level-card-*
+   tokens (defined per theme above), so no explicit dark override is needed here. */
 
 :root[data-theme='dark'] .session-recover,
 :root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
@@ -6943,10 +7076,7 @@ details[open] .meditate-disclosure-summary::before {
    Each rule lists both dark selectors (explicit data-theme + system-pref).
    Light mode is untouched.
    ─────────────────────────────────────────────────────────────────────────── */
-:root[data-theme='dark'] .error,
-:root:not([data-theme='light']):not([data-theme='dark']) .error {
-  color: #f87171;
-}
+/* .error now flips via its --error-text token (red that reads on dark). */
 
 :root[data-theme='dark'] .success,
 :root:not([data-theme='light']):not([data-theme='dark']) .success {
@@ -6981,10 +7111,7 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-secondary);
 }
 
-:root[data-theme='dark'] .xp-bar,
-:root:not([data-theme='light']):not([data-theme='dark']) .xp-bar {
-  background: #123a2b;
-}
+/* .xp-bar now flips via its --xp-track token (deep green on dark). */
 
 :root[data-theme='dark'] .quest.done .quest-check,
 :root:not([data-theme='light']):not([data-theme='dark']) .quest.done .quest-check {

@@ -167,6 +167,47 @@ def test_checkin_marks_done_and_is_idempotent(client):
     assert again["done"] == 1
 
 
+def test_checkin_integrityerror_returns_fresh_done_state(db_session, monkeypatch):
+    """A concurrent duplicate check-in (two requests racing on the same local day)
+    hits uq_goal_checkin_day → IntegrityError → rollback. The returned state must be
+    re-read from the DB, not the stale "not done" the racing request started with."""
+    from app.models.goal import Goal, GoalCheckin
+    from app.models.user import User
+    from app.services import goal_service
+
+    user = User(email="goalrace@example.com", password_hash="x")
+    db_session.add(user)
+    db_session.commit()
+    goal = Goal(user_id=user.id, activity="custom", label="Gym", period="day", count=1)
+    db_session.add(goal)
+    db_session.commit()
+    today = datetime.now(UTC).date()
+
+    # Stand in for the request that won the race: today's check-in already exists.
+    db_session.add(GoalCheckin(goal_id=goal.id, user_id=user.id, checkin_date=today))
+    db_session.commit()
+
+    # Force the losing request down the insert path: its pre-insert guard still sees
+    # "not checked in today" (stale), so it attempts the insert and trips the unique.
+    # _to_read (called after the rollback) uses the real, fresh query.
+    real_checked_in_today = goal_service._checked_in_today
+    calls = {"n": 0}
+
+    def _stale_then_real(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return False
+        return real_checked_in_today(*args, **kwargs)
+
+    monkeypatch.setattr(goal_service, "_checked_in_today", _stale_then_real)
+
+    result = goal_service.add_checkin(db_session, user.id, goal.id, today=today, tz="UTC")
+    assert result is not None
+    assert result.done == 1
+    assert result.achieved is True
+    assert result.checked_in_today is True
+
+
 def test_undo_checkin(client):
     _auth(client, "c5@example.com")
     gid = _goal(client, "custom", "day", 1, label="Walk").json()["id"]

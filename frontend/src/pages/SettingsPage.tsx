@@ -505,25 +505,25 @@ export default function SettingsPage() {
       )}
 
       <section className="settings-section">
-        <h2>Daily quests</h2>
+        <h2>Daily missions</h2>
         <p className="muted">
-          Choose which practices you get daily quests for — at least {MIN_QUEST_FEATURES}.
+          Choose which practices you get daily missions for — at least {MIN_QUEST_FEATURES}.
         </p>
         <form onSubmit={handleQuests} noValidate>
           <QuestPicker
             selected={questFeatures}
             onToggle={toggleQuest}
             optionClassName="settings-check"
-            legend="Daily quest practices"
+            legend="Daily mission practices"
           />
           {questError && (
             <p role="alert" className="error">
               {questError}
             </p>
           )}
-          {questOk && <p role="status" className="success">Quest preferences saved.</p>}
+          {questOk && <p role="status" className="success">Mission preferences saved.</p>}
           <button type="submit" disabled={savingQuests}>
-            {savingQuests ? 'Saving…' : 'Save quests'}
+            {savingQuests ? 'Saving…' : 'Save missions'}
           </button>
         </form>
       </section>

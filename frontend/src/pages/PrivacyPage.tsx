@@ -33,7 +33,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Preferences</strong> — your timezone (synced from your browser so dates
-          roll over at your local midnight), reminder settings, and quest selection.
+          roll over at your local midnight), reminder settings, and mission selection.
         </li>
         <li>
           <strong>Technical data</strong> — limited request metadata (such as IP address)
