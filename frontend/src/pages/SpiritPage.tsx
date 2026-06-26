@@ -84,6 +84,20 @@ const OPTION_LABEL: Record<string, string> = {
   cloud: 'Cloud',
   lotus: 'Lotus',
   leaf: 'Leaf boat',
+  // Path-exclusive cosmetics (aura / accessory / habitat / mount), per_path in the catalog —
+  // each only offered to its matching dosha spirit.
+  emberflame: 'Ember aura',
+  grove: 'Grove aura',
+  zephyr: 'Zephyr aura',
+  ember_crown: 'Ember crown',
+  mossy_circlet: 'Mossy circlet',
+  feather_plume: 'Feather plume',
+  ember_canyon: 'Ember canyon',
+  misty_grove: 'Misty grove',
+  open_sky: 'Open sky',
+  emberstone: 'Ember sun-stone',
+  boulder: 'Mossy boulder',
+  feather: 'Drifting feather',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
