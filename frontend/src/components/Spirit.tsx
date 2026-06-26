@@ -3113,6 +3113,43 @@ export function formFor(spirit: SpiritState): SpiritPath | null {
   return spirit.path
 }
 
+// The "Signature radiance" flourish (ADR-0028) — drawn ONLY when the full signature set is
+// equipped. A subtle endgame touch: a soft extra halo blooming behind the figure plus a faint
+// ring of sparkles around it, tinted to the path's accent. Kept tasteful + low-opacity so it
+// reads as a gentle radiance, never a loud overlay. Condition-responsive (scaled by `g`, the
+// floored glow). The ring only animates when `alive` (not reduced motion) via the
+// `spirit-radiance--alive` class; otherwise it holds static (prefers-reduced-motion safe). No
+// assets — pure procedural SVG, matching the rest of the art.
+function SetRadiance({ path, g, alive }: { path: SpiritPath; g: number; alive: boolean }) {
+  const pal = PATH_PALETTE[path]
+  const sparkles = 10
+  return (
+    <g
+      className={'spirit-radiance' + (alive ? ' spirit-radiance--alive' : '')}
+      aria-hidden="true"
+    >
+      {/* A soft outer halo bloom behind the figure — the radiance itself. */}
+      <circle cx={40} cy={40} r={34} fill={pal.glow} opacity={Math.min(0.18, 0.14 * g)} />
+      <circle cx={40} cy={40} r={28} fill={pal.core} opacity={Math.min(0.16, 0.12 * g)} />
+      {/* A faint sparkle ring around the figure — tiny accents, alternating size, tinted accent. */}
+      {Array.from({ length: sparkles }, (_, k) => {
+        const a = (k / sparkles) * Math.PI * 2 - Math.PI / 2
+        const rr = 33
+        return (
+          <circle
+            key={`radiance-${k}`}
+            cx={40 + Math.cos(a) * rr}
+            cy={40 + Math.sin(a) * rr}
+            r={k % 2 ? 1.1 : 0.7}
+            fill={k % 3 ? pal.accent : '#ffffff'}
+            opacity={0.7 * g}
+          />
+        )
+      })}
+    </g>
+  )
+}
+
 /**
  * The procedural spirit art, branched by the CHOSEN path (ADR-0023). When `path` is null the
  * spirit is a pathless spark, drawn as the neutral, un-themed SparkForm (no creature features
@@ -3141,6 +3178,7 @@ export function SpiritArt({
   celebrate = false,
   reducedMotion,
   previewing = false,
+  setRadiant = false,
 }: {
   stage: SpiritStage
   // The chosen creature, or null for a pathless spark (drawn neutral, no creature form).
@@ -3156,6 +3194,9 @@ export function SpiritArt({
   // True when the art shows a not-yet-bought cosmetic preview — announced to screen readers
   // (via the label + aria-live) so they know they're seeing a preview, not the applied look.
   previewing?: boolean
+  // True when the full SIGNATURE SET is equipped (ADR-0028) — draws an extra subtle "Signature
+  // radiance" flourish (a soft halo + a faint sparkle ring) over the scene. Advisory/visual only.
+  setRadiant?: boolean
 }) {
   const g = clampGlow(glow)
   const aura = cosmetics?.aura
@@ -3264,6 +3305,10 @@ export function SpiritArt({
           habitat/mount so it reads as the floor the figure rests on (but still behind the
           creature, which stands on it). */}
       {ground && <Ground ground={ground} g={g} />}
+      {/* ── SIGNATURE RADIANCE (ADR-0028) ── when the full signature set is equipped, an extra
+          subtle halo + sparkle ring blooms behind the figure (over the background, under the
+          creature). Only for a chosen creature; advisory/visual only, prefers-reduced-motion safe. */}
+      {setRadiant && path && <SetRadiance path={path} g={g} alive={alive} />}
       {/* ── FLOATING creature layer ── only this group moves: idle float, pacer sync, or the
           celebration one-shot. The figure is always legible; the accessory perches on top. */}
       <g ref={creatureRef} className={creatureClass} style={creatureStyle}>
@@ -3367,6 +3412,8 @@ export default function Spirit({
       paceScale={paceScale}
       celebrate={celebrate}
       reducedMotion={reducedMotion}
+      // ADR-0028: the full signature set lights up an extra "Signature radiance" flourish.
+      setRadiant={spirit.set_bonus.active}
     />
   )
 

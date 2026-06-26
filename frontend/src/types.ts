@@ -326,9 +326,21 @@ export interface RetiredSpirit {
   name: string | null // its nickname, if it had one
 }
 
+// The active spirit's SIGNATURE SET status (ADR-0028) — the endgame achievement of equipping every
+// slot's path-exclusive capstone at once. Fully DERIVED from the equipped cosmetics + chosen path
+// (no stored column); visual/advisory only. When `active`, the spirit earns "Signature radiance":
+// a gentle harmony lift to every need. Mirrors backend SpiritSetBonus.
+export interface SpiritSetBonus {
+  active: boolean // the full signature set is equipped → the harmony lift is on
+  kind: 'signature' | null // "signature" when active, else null
+  count: number // signature slots currently equipped with their signature option
+  total: number // signature slots that exist for the chosen path (7 chosen; 0 pathless)
+  label: string // the user-facing bonus name ("Signature radiance")
+}
+
 // The active spirit's computed state, as returned by GET /api/v1/spirit. `available` (the
 // cosmetics catalog with per-option state) and `collection` (retired spirits) are additive
-// (steps 5 + 6); existing fields are unchanged.
+// (steps 5 + 6); `set_bonus` (ADR-0028) is additive too; existing fields are unchanged.
 export interface SpiritState {
   stage: SpiritStage // spark | wisp | fledgling | ascendant | radiant (function of level)
   path: SpiritPath | null // the CHOSEN creature; null until chosen via POST /spirit/choose
@@ -340,6 +352,7 @@ export interface SpiritState {
   cosmetics: Record<string, string> // the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
   available: SpiritAvailableSlot[] // the cosmetics skill tree with per-option state
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
+  set_bonus: SpiritSetBonus // signature-set status + harmony lift (ADR-0028); derived/visual-only
 }
 
 // One option in a path's read-only skill-tree PREVIEW (GET /spirit/preview) — the choose page's
