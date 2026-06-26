@@ -148,6 +148,19 @@ def test_user_detail_404_for_unknown(client, db_session, as_admin):
     )
 
 
+@pytest.mark.parametrize("bad_id", ["not-a-uuid", "123", "abc-def"])
+def test_user_routes_404_for_malformed_id(client, db_session, as_admin, bad_id):
+    """A malformed user_id maps to 404 — never an unhandled 500. The id is parsed in
+    user_service.get_user_by_id, which returns None on a bad UUID → UserNotFoundError."""
+    _become_admin(client, db_session, as_admin)
+    base = f"/api/v1/admin/users/{bad_id}"
+    assert client.get(base).status_code == 404
+    assert client.post(f"{base}/disable").status_code == 404
+    assert client.post(f"{base}/enable").status_code == 404
+    assert client.post(f"{base}/resend-verification").status_code == 404
+    assert client.delete(base).status_code == 404
+
+
 # ── Disable / re-enable ────────────────────────────────────────────────────
 
 
