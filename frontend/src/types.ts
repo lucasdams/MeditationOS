@@ -292,26 +292,28 @@ export interface SpiritBond {
   xp_for_next: number // XP needed to reach the next level
 }
 
-// One option inside a cosmetic slot, with its cost and current state — the same calm
-// "personalize" shape the Sanctuary panel uses. Mirrors backend SpiritSlotOption.
+// One node in a cosmetic slot's skill tree, with its cost and current state (ADR-0027) —
+// the calm "personalize" shape the Spirit panel uses. Mirrors backend SpiritSlotOption.
 export interface SpiritSlotOption {
   option: string
-  cost: number // coins to apply this option
-  unlocked: boolean // level requirement met
-  unlock_hint: string | null // what's needed to unlock (null when unlocked)
-  affordable: boolean // the current balance covers the FULL cost (ADR-0024: no swap math)
-  applied: boolean // this option is the one currently on the spirit
+  cost: number // coins to UNLOCK this option (equipping an owned option is free)
+  unlock_level: number // the level this option unlocks at (1 = always)
+  unlock_hint: string | null // what's needed to reach unlock_level (null when met)
+  tier: number // the skill-tree tier (1|2|3): tier N>1 needs an owned tier N−1 in the same slot
+  affordable: boolean // the current balance covers the unlock cost
+  owned: boolean // the spirit owns this option (unlocked, or legacy-equipped)
+  equipped: boolean // this option is the one currently shown in its slot
+  unlockable: boolean // not owned AND path/level/tier prereqs met (affordability is separate)
   available: boolean // offered to the spirit's chosen path (per-path exclusivity; true = universal)
   need: SpiritNeedKey // the need this option FAVOURS (ADR-0026): nourished | rested | joyful
 }
 
-// A cosmetic axis for the active spirit: the options to mix and match. Once an option is
-// applied the slot LOCKS (ADR-0024) until upgrades are reset. Mirrors backend
-// SpiritAvailableSlot.
+// A cosmetic axis for the active spirit — a small skill tree (ADR-0027). The slot reports its
+// currently EQUIPPED option (or null) and is never "locked": owned options equip freely.
+// Mirrors backend SpiritAvailableSlot.
 export interface SpiritAvailableSlot {
   slot: string
-  applied: string | null // the option currently applied in this slot (null if none)
-  locked: boolean // the slot has an applied option → its options can't be bought (ADR-0024)
+  equipped: string | null // the option currently equipped in this slot (null if none)
   options: SpiritSlotOption[]
 }
 
@@ -335,8 +337,8 @@ export interface SpiritState {
   needs: SpiritNeeds // the three tended needs (nourished / rested / joyful); visual-only
   condition: SpiritCondition // overall care state = the weakest need; visual-only (ADR-0023)
   coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
-  cosmetics: Record<string, string> // owned {slot: option}
-  available: SpiritAvailableSlot[] // the cosmetics catalog with per-option state
+  cosmetics: Record<string, string> // the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
+  available: SpiritAvailableSlot[] // the cosmetics skill tree with per-option state
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
 }
 
@@ -348,11 +350,18 @@ export interface SpiritChooseRequest {
   name: string
 }
 
-// Buy/apply a cosmetic option to a slot on the active spirit (POST /spirit/cosmetics). A slot
-// is applied once and then locked (ADR-0024).
-export interface SpiritCosmeticRequest {
+// Unlock a cosmetic option into the active spirit's owned collection + auto-equip it
+// (POST /spirit/cosmetics, ADR-0027). Charges the option's cost; owned forever.
+export interface SpiritUnlockRequest {
   slot: string
   option: string
+}
+
+// Equip an OWNED cosmetic option into its slot, or clear the slot (POST /spirit/cosmetics/equip,
+// ADR-0027) — FREE. A null `option` clears the slot; a non-null one must be owned.
+export interface SpiritEquipRequest {
+  slot: string
+  option: string | null
 }
 
 // Change the active spirit's name via a PAID reset (POST /spirit/reset-name). The name is

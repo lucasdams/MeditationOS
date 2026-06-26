@@ -2,22 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-import type { SpiritAvailableSlot, SpiritState } from '../types'
+import type { SpiritAvailableSlot, SpiritSlotOption, SpiritState } from '../types'
 
 const get = vi.fn()
 const choose = vi.fn()
-const buyCosmetic = vi.fn()
+const unlock = vi.fn()
+const equip = vi.fn()
 const resetName = vi.fn()
-const resetCosmetics = vi.fn()
 const awaken = vi.fn()
 
 vi.mock('../services/spirit', () => ({
   spiritService: {
     get: (...a: unknown[]) => get(...a),
     choose: (...a: unknown[]) => choose(...a),
-    buyCosmetic: (...a: unknown[]) => buyCosmetic(...a),
+    unlock: (...a: unknown[]) => unlock(...a),
+    equip: (...a: unknown[]) => equip(...a),
     resetName: (...a: unknown[]) => resetName(...a),
-    resetCosmetics: (...a: unknown[]) => resetCosmetics(...a),
     awaken: (...a: unknown[]) => awaken(...a),
   },
 }))
@@ -25,38 +25,47 @@ vi.mock('../services/spirit', () => ({
 import SpiritPage from './SpiritPage'
 import { ToastProvider } from '../context/ToastContext'
 
-// An OPEN (unapplied, ADR-0024) single-slot "aura" catalog with three differently-stated
-// options: a plain buyable one, another buyable one, and a level-locked one. Lets a single
-// fixture exercise buyable / level-locked / affordable rendering on an open slot.
-const auraSlot: SpiritAvailableSlot = {
-  slot: 'aura',
-  applied: null,
-  locked: false,
-  options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true, need: 'rested' },
-    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true, need: 'nourished' },
-    {
-      option: 'starlit',
-      cost: 70,
-      unlocked: false,
-      unlock_hint: 'Reach level 5',
-      affordable: true,
-      applied: false,
-      available: true,
-      need: 'rested',
-    },
-  ],
+// A node-builder so each test states only the flags it cares about; the rest fall to sensible
+// defaults (a tier-1, universal, unowned option). Mirrors the backend SpiritSlotOption (ADR-0027).
+function opt(over: Partial<SpiritSlotOption> & { option: string }): SpiritSlotOption {
+  return {
+    cost: 30,
+    unlock_level: 1,
+    unlock_hint: null,
+    tier: 1,
+    affordable: true,
+    owned: false,
+    equipped: false,
+    unlockable: true,
+    available: true,
+    need: 'rested',
+    ...over,
+  }
 }
 
-// A LOCKED "aura" slot (ADR-0024): `soft` is applied, so the slot is locked and its other
-// options can't be bought until upgrades are reset.
-const lockedAuraSlot: SpiritAvailableSlot = {
+// A single-slot "aura" tree exercising all five node states at once:
+//   warm     — owned + equipped → worn
+//   soft     — owned, not equipped → Equip (free)
+//   frost    — unlockable + affordable → Unlock · cost (auto-equips)
+//   rose     — unlockable but too few coins → Unlock disabled + a coin hint
+//   starlit  — locked (level not met) → greyed, "Reach level 5"
+const auraTree: SpiritAvailableSlot = {
   slot: 'aura',
-  applied: 'soft',
-  locked: true,
+  equipped: 'warm',
   options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true, available: true, need: 'rested' },
-    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: false, applied: false, available: true, need: 'nourished' },
+    opt({ option: 'warm', tier: 1, owned: true, equipped: true, unlockable: false, need: 'nourished' }),
+    opt({ option: 'soft', tier: 1, cost: 30, owned: true, unlockable: false }),
+    opt({ option: 'frost', tier: 1, cost: 45, affordable: true, need: 'nourished' }),
+    opt({ option: 'rose', tier: 1, cost: 999, affordable: false }),
+    opt({
+      option: 'starlit',
+      tier: 2,
+      cost: 70,
+      unlock_level: 5,
+      unlock_hint: 'Reach level 5',
+      unlockable: false,
+      affordable: true,
+    }),
   ],
 }
 
@@ -74,8 +83,8 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     needs: { nourished: okNeed(), rested: okNeed(), joyful: okNeed() },
     condition: okNeed('content', 0.9),
     coins: 120,
-    cosmetics: {},
-    available: [auraSlot],
+    cosmetics: { aura: 'warm' },
+    available: [auraTree],
     collection: [],
     ...overrides,
   }
@@ -92,155 +101,246 @@ const renderPage = () =>
 
 afterEach(cleanup)
 
-describe('SpiritPage personalize panel', () => {
+describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
   beforeEach(() => {
     get.mockReset()
-    buyCosmetic.mockReset()
+    unlock.mockReset()
+    equip.mockReset()
   })
 
-  it('renders option state on an open slot — buyable prices and a level-locked option', async () => {
+  it('shows an equipped option as worn (a badge, not an action) with a free Remove', async () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
 
-    // Two buyable options on the open slot state their coin price in the accessible name.
-    expect(await screen.findByRole('button', { name: /Soft glow — 30 coins/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Warm glow — 45 coins/ })).toBeInTheDocument()
-
-    // A level-locked option is rendered (not disabled, so it can still preview); its name
-    // states the locked status + the unlock reason.
-    const locked = screen.getByRole('button', { name: /Starlit — locked, reach level 5/i })
-    expect(locked).not.toBeDisabled()
+    await screen.findByText('Customize')
+    // The equipped option reads as worn — a badge, not an Equip/Unlock button.
+    const node = document.querySelector('.spirit-node--equipped')
+    expect(node).not.toBeNull()
+    expect(within(node as HTMLElement).getByText(/Worn/)).toBeInTheDocument()
+    expect(within(node as HTMLElement).getByText('Warm glow')).toBeInTheDocument()
+    // A free Remove clears the slot (equip(slot, null)).
+    expect(within(node as HTMLElement).getByRole('button', { name: /Remove Warm glow/ })).toBeInTheDocument()
   })
 
-  it('locks a slot once an option is applied — its other options cannot be bought (ADR-0024)', async () => {
-    get.mockResolvedValue(
-      spiritWith({ cosmetics: { aura: 'soft' }, available: [lockedAuraSlot] }),
-    )
-
-    renderPage()
-
-    // The applied option reads as done and is disabled.
-    const applied = await screen.findByRole('button', { name: /Soft glow — applied/ })
-    expect(applied).toBeDisabled()
-
-    // The other option in the now-locked slot is shown but NOT buyable (disabled, no purchase).
-    const warm = screen.getByRole('button', { name: /Warm glow — locked, reset upgrades/i })
-    expect(warm).toBeDisabled()
-    fireEvent.click(warm)
-    expect(buyCosmetic).not.toHaveBeenCalled()
-  })
-
-  it('buys a cosmetic via a before/after confirm — clicking the option opens the modal, Confirm buys', async () => {
+  it('shows an owned-but-unequipped option as a free Equip', async () => {
     get.mockResolvedValue(spiritWith())
-    buyCosmetic.mockResolvedValue(
-      spiritWith({ coins: 75, cosmetics: { aura: 'warm' } }),
-    )
 
     renderPage()
 
-    // Clicking a buyable option no longer buys directly — it opens the before/after confirm.
-    fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
-    expect(buyCosmetic).not.toHaveBeenCalled()
+    // `soft` is owned but not equipped → a free Equip button.
+    expect(await screen.findByRole('button', { name: /Equip Soft glow/ })).toBeInTheDocument()
+  })
 
-    // The confirm modal shows a before/after preview ("Now" + "With Warm glow") and two arts.
+  it('shows an unlockable + affordable option as Unlock · cost', async () => {
+    get.mockResolvedValue(spiritWith())
+
+    renderPage()
+
+    // `frost` is unlockable and affordable → an Unlock button stating its cost.
+    expect(
+      await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an unlockable but unaffordable option as a disabled Unlock with a coin hint', async () => {
+    get.mockResolvedValue(spiritWith({ coins: 50 }))
+
+    renderPage()
+
+    // `rose` is unlockable but the balance (50) is below its 999 cost → Unlock disabled + a hint.
+    const btn = await screen.findByRole('button', {
+      name: /Unlock Rose glow for 999 coins — need more coins/,
+    })
+    expect(btn).toBeDisabled()
+    // The shortfall hint is shown (999 − 50 = 949).
+    expect(screen.getByText(/need 949 more coins/)).toBeInTheDocument()
+  })
+
+  it('shows a level-locked option greyed with its reason ("Reach level 5")', async () => {
+    get.mockResolvedValue(spiritWith())
+
+    renderPage()
+
+    await screen.findByText('Customize')
+    // `starlit` is locked (level not met) → no Unlock/Equip button, just the reason.
+    expect(screen.queryByRole('button', { name: /Starlit/ })).toBeNull()
+    const locked = document.querySelector('.spirit-node--locked')
+    expect(locked).not.toBeNull()
+    expect(within(locked as HTMLElement).getByText(/Reach level 5/)).toBeInTheDocument()
+  })
+
+  it('shows the tier-prereq reason for a locked higher-tier option whose level IS met', async () => {
+    // A tier-2 option whose level is met but tier prereq is not (unlockable=false, no unlock_hint)
+    // → the reason is the tier prerequisite, not a level.
+    const tieredTree: SpiritAvailableSlot = {
+      slot: 'aura',
+      equipped: null,
+      options: [
+        opt({ option: 'soft', tier: 1, unlockable: true }),
+        opt({ option: 'starlit', tier: 2, unlockable: false, unlock_hint: null }),
+      ],
+    }
+    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [tieredTree] }))
+
+    renderPage()
+
+    await screen.findByText('Customize')
+    const locked = document.querySelector('.spirit-node--locked')
+    expect(locked).not.toBeNull()
+    expect(within(locked as HTMLElement).getByText(/Unlock a tier-1 option first/)).toBeInTheDocument()
+  })
+
+  it('lays out the slot by tier (tier rows in ascending order)', async () => {
+    const tieredTree: SpiritAvailableSlot = {
+      slot: 'aura',
+      equipped: null,
+      options: [
+        opt({ option: 'starlit', tier: 2, unlockable: false, unlock_hint: 'Reach level 5' }),
+        opt({ option: 'soft', tier: 1, unlockable: true }),
+      ],
+    }
+    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [tieredTree] }))
+
+    renderPage()
+
+    await screen.findByText('Customize')
+    const tiers = Array.from(document.querySelectorAll('.spirit-tier')).map((el) =>
+      el.getAttribute('data-tier'),
+    )
+    // Two tier rows, ascending (1 then 2) regardless of option order.
+    expect(tiers).toEqual(['1', '2'])
+  })
+})
+
+describe('SpiritPage unlock flow (ADR-0027)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    unlock.mockReset()
+  })
+
+  it('unlocks via a before/after confirm — clicking Unlock opens the modal, Confirm unlocks', async () => {
+    get.mockResolvedValue(spiritWith())
+    unlock.mockResolvedValue(spiritWith({ coins: 75, cosmetics: { aura: 'frost' } }))
+
+    renderPage()
+
+    // Clicking an unlockable node opens the before/after confirm (it does not unlock directly).
+    fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
+    expect(unlock).not.toHaveBeenCalled()
+
+    // The confirm modal shows the before/after preview ("Now" + "With Frost glow") and two arts.
     const dialog = within(await screen.findByRole('dialog'))
     expect(dialog.getByText('Now')).toBeInTheDocument()
-    expect(dialog.getByText(/With Warm glow/)).toBeInTheDocument()
+    expect(dialog.getByText(/With Frost glow/)).toBeInTheDocument()
     expect(document.querySelectorAll('.spirit-buy-art .spirit-svg').length).toBe(2)
 
-    // Confirm → the purchase goes through and the success toast shows.
-    fireEvent.click(dialog.getByRole('button', { name: /Confirm/ }))
-    await waitFor(() => expect(buyCosmetic).toHaveBeenCalledWith({ slot: 'aura', option: 'warm' }))
+    // Confirm → the unlock goes through and a success toast shows.
+    fireEvent.click(dialog.getByRole('button', { name: /^Unlock$/ }))
+    await waitFor(() => expect(unlock).toHaveBeenCalledWith({ slot: 'aura', option: 'frost' }))
     await waitFor(() =>
-      expect(screen.getByText(/Warm glow added — your spirit is delighted/)).toBeInTheDocument(),
+      expect(screen.getByText(/Frost glow unlocked — your spirit is delighted/)).toBeInTheDocument(),
     )
   })
 
-  it('cancels the buy confirm without purchasing', async () => {
+  it('cancels the unlock confirm without unlocking', async () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
     const dialog = within(await screen.findByRole('dialog'))
 
-    // Cancel closes the modal and nothing is bought.
     fireEvent.click(dialog.getByRole('button', { name: /Cancel/ }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(buyCosmetic).not.toHaveBeenCalled()
+    expect(unlock).not.toHaveBeenCalled()
   })
 
-  it('never buys a locked option on click, but gives quiet feedback (no silent no-op)', async () => {
+  it('shows an error toast when an unlock fails', async () => {
     get.mockResolvedValue(spiritWith())
+    unlock.mockRejectedValue(new Error('nope'))
 
     renderPage()
 
-    const locked = await screen.findByRole('button', { name: /Starlit — locked/ })
-    fireEvent.click(locked)
-    expect(buyCosmetic).not.toHaveBeenCalled()
-    // The click is acknowledged with the unlock reason in a toast (not a silent no-op). The
-    // requirement also shows on the locked chip itself; target the toast message specifically.
-    await waitFor(() => {
-      const toast = document.querySelector('.toast-message')
-      expect(toast?.textContent).toMatch(/Reach level 5/)
-    })
-  })
-
-  it('shows an error toast when a buy fails', async () => {
-    get.mockResolvedValue(spiritWith())
-    buyCosmetic.mockRejectedValue(new Error('nope'))
-
-    renderPage()
-
-    fireEvent.click(await screen.findByRole('button', { name: /Warm glow — 45 coins/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
     const dialog = within(await screen.findByRole('dialog'))
-    fireEvent.click(dialog.getByRole('button', { name: /Confirm/ }))
-    await waitFor(() => expect(screen.getByText(/Could not apply that yet/)).toBeInTheDocument())
+    fireEvent.click(dialog.getByRole('button', { name: /^Unlock$/ }))
+    await waitFor(() => expect(screen.getByText(/Could not unlock that yet/)).toBeInTheDocument())
+  })
+})
+
+describe('SpiritPage equip flow (ADR-0027 — free)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    equip.mockReset()
+  })
+
+  it('equips an owned option for free (no confirm modal)', async () => {
+    get.mockResolvedValue(spiritWith())
+    equip.mockResolvedValue(spiritWith({ cosmetics: { aura: 'soft' } }))
+
+    renderPage()
+
+    // Equipping an owned option is immediate and free — no confirmation modal.
+    fireEvent.click(await screen.findByRole('button', { name: /Equip Soft glow/ }))
+    await waitFor(() => expect(equip).toHaveBeenCalledWith({ slot: 'aura', option: 'soft' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => expect(screen.getByText(/Soft glow equipped/)).toBeInTheDocument())
+  })
+
+  it('clears a slot via the equipped option Remove (equip(slot, null))', async () => {
+    get.mockResolvedValue(spiritWith())
+    equip.mockResolvedValue(spiritWith({ cosmetics: {} }))
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Remove Warm glow/ }))
+    await waitFor(() => expect(equip).toHaveBeenCalledWith({ slot: 'aura', option: null }))
   })
 })
 
 describe('SpiritPage cosmetics on the art (preview)', () => {
   beforeEach(() => {
     get.mockReset()
-    buyCosmetic.mockReset()
+    unlock.mockReset()
   })
 
   // The "night" habitat draws a dark backdrop rect (fill #1e293b). It's a stable marker that an
-  // applied/previewed habitat cosmetic actually renders on the art.
-  const habitatSlot: SpiritAvailableSlot = {
+  // equipped/previewed habitat cosmetic actually renders on the art.
+  const habitatTree: SpiritAvailableSlot = {
     slot: 'habitat',
-    applied: null,
-    locked: false,
-    options: [
-      { option: 'night', cost: 80, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true, need: 'rested' },
-    ],
+    equipped: null,
+    options: [opt({ option: 'night', cost: 80, tier: 1, unlockable: true })],
   }
 
-  // The live spirit now renders on the centered customize STAGE (the hero is a compact status
-  // line). Count the night-habitat backdrop rects on that stage's art.
+  // The live spirit renders on the centered customize STAGE (the hero is a compact status line).
   const nightRectsInHero = () => {
     const stage = document.querySelector('.spirit-stage-art')
     return stage ? stage.querySelectorAll('rect[fill="#1e293b"]').length : 0
   }
 
-  it('renders an applied cosmetic on the centered customize stage', async () => {
+  it('renders an equipped cosmetic on the centered customize stage', async () => {
+    const equippedHabitat: SpiritAvailableSlot = {
+      slot: 'habitat',
+      equipped: 'night',
+      options: [opt({ option: 'night', cost: 80, tier: 1, owned: true, equipped: true, unlockable: false })],
+    }
     get.mockResolvedValue(
-      spiritWith({ cosmetics: { habitat: 'night' }, available: [habitatSlot] }),
+      spiritWith({ cosmetics: { habitat: 'night' }, available: [equippedHabitat] }),
     )
 
     renderPage()
-    await screen.findByRole('button', { name: /Night sky/ })
+    await screen.findByText('Customize')
 
-    // The applied night habitat draws its dark backdrop on the centered stage art.
+    // The equipped night habitat draws its dark backdrop on the centered stage art.
     expect(nightRectsInHero()).toBeGreaterThan(0)
   })
 
   it('previews an unowned cosmetic on hover, then restores on leave (no purchase)', async () => {
-    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatSlot] }))
+    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatTree] }))
 
     renderPage()
-    const nightBtn = await screen.findByRole('button', { name: /Night sky/ })
+    const nightBtn = await screen.findByRole('button', { name: /Unlock Night sky/ })
 
     // Nothing owned/previewed yet → no night backdrop, no Preview badge.
     expect(nightRectsInHero()).toBe(0)
@@ -249,25 +349,23 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     fireEvent.mouseEnter(nightBtn)
     expect(nightRectsInHero()).toBeGreaterThan(0)
     expect(screen.getByText('Preview')).toBeInTheDocument()
-    expect(buyCosmetic).not.toHaveBeenCalled() // view-only
+    expect(unlock).not.toHaveBeenCalled() // view-only
 
     fireEvent.mouseLeave(nightBtn)
     expect(nightRectsInHero()).toBe(0)
     expect(screen.queryByText('Preview')).toBeNull()
   })
 
-  it('renders a SpiritArt on the centered customize stage reflecting a focused option', async () => {
-    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatSlot] }))
+  it('previews on keyboard focus on the centered stage (not just hover)', async () => {
+    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatTree] }))
 
     renderPage()
-    const nightBtn = await screen.findByRole('button', { name: /Night sky/ })
+    const nightBtn = await screen.findByRole('button', { name: /Unlock Night sky/ })
 
-    // The stage hosts its own SpiritArt (the prominent, live-previewing render).
     const stage = document.querySelector('.spirit-stage-art .spirit-svg')
     expect(stage).not.toBeNull()
     expect(nightRectsInHero()).toBe(0)
 
-    // Keyboard focus on a side option previews it on the centered stage (not just hover).
     fireEvent.focus(nightBtn)
     expect(nightRectsInHero()).toBeGreaterThan(0)
     expect(screen.getByText('Preview')).toBeInTheDocument()
@@ -285,10 +383,8 @@ describe('SpiritPage name (immutable; paid reset — ADR-0024)', () => {
 
     renderPage()
 
-    await screen.findByText('Personalize')
-    // The name shows on the hero, read-only.
+    await screen.findByText('Customize')
     expect(document.querySelector('.spirit-hero-name')?.textContent).toBe('Ember')
-    // There is no free editable nickname input anymore.
     expect(screen.queryByPlaceholderText(/Give your spirit a name/)).toBeNull()
   })
 
@@ -298,7 +394,6 @@ describe('SpiritPage name (immutable; paid reset — ADR-0024)', () => {
 
     renderPage()
 
-    // Open the reset-name modal, type a new name, and confirm.
     fireEvent.click(await screen.findByRole('button', { name: /Reset name/ }))
     const dialog = within(await screen.findByRole('dialog'))
     fireEvent.change(dialog.getByPlaceholderText(/A new name/), { target: { value: 'Aster' } })
@@ -317,45 +412,19 @@ describe('SpiritPage name (immutable; paid reset — ADR-0024)', () => {
   })
 })
 
-describe('SpiritPage reset upgrades (paid, no refund — ADR-0024)', () => {
+describe('SpiritPage no longer has a paid upgrades-reset (ADR-0027)', () => {
   beforeEach(() => {
     get.mockReset()
-    resetCosmetics.mockReset()
   })
 
-  it('offers reset-upgrades only when something is applied, and resets after confirmation', async () => {
-    get.mockResolvedValue(
-      spiritWith({ cosmetics: { aura: 'soft' }, available: [lockedAuraSlot], coins: 400 }),
-    )
-    resetCosmetics.mockResolvedValue(spiritWith({ cosmetics: {}, available: [auraSlot] }))
+  it('does not render any reset-upgrades action', async () => {
+    get.mockResolvedValue(spiritWith({ cosmetics: { aura: 'warm' }, coins: 400 }))
 
     renderPage()
+    await screen.findByText('Customize')
 
-    fireEvent.click(await screen.findByRole('button', { name: /Reset upgrades/ }))
-    const dialog = within(await screen.findByRole('dialog'))
-    fireEvent.click(dialog.getByRole('button', { name: /Reset upgrades/ }))
-
-    await waitFor(() => expect(resetCosmetics).toHaveBeenCalledTimes(1))
-  })
-
-  it('hides the reset-upgrades action when no upgrades are applied', async () => {
-    get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [auraSlot] }))
-
-    renderPage()
-    await screen.findByText('Personalize')
-
+    // The paid upgrades-reset (ADR-0024) is removed — only the name reset remains.
     expect(screen.queryByRole('button', { name: /Reset upgrades/ })).toBeNull()
-  })
-
-  it('disables the reset-upgrades action when coins are below the reset cost', async () => {
-    get.mockResolvedValue(
-      spiritWith({ cosmetics: { aura: 'soft' }, available: [lockedAuraSlot], coins: 100 }),
-    )
-
-    renderPage()
-
-    const btn = await screen.findByRole('button', { name: /Reset upgrades/ })
-    expect(btn).toBeDisabled()
   })
 })
 
@@ -377,7 +446,6 @@ describe('SpiritPage collection gallery', () => {
     renderPage()
 
     expect(await screen.findByText('Zephyr')).toBeInTheDocument()
-    // An unnamed retired spirit falls back to a stage label.
     expect(screen.getByText(/Radiant spirit/)).toBeInTheDocument()
   })
 
@@ -386,7 +454,6 @@ describe('SpiritPage collection gallery', () => {
 
     renderPage()
 
-    // The empty-state line is shortened to a single non-redundant line (ADR-0024 copy fix).
     expect(await screen.findByText('None yet.')).toBeInTheDocument()
   })
 })
@@ -401,7 +468,7 @@ describe('SpiritPage awaken (radiant only)', () => {
     get.mockResolvedValue(spiritWith({ stage: 'ascendant' }))
 
     renderPage()
-    await screen.findByText('Personalize')
+    await screen.findByText('Customize')
 
     expect(screen.queryByRole('button', { name: /Awaken a new spark/ })).toBeNull()
   })
@@ -412,17 +479,15 @@ describe('SpiritPage awaken (radiant only)', () => {
 
     renderPage()
 
-    // The action is offered at radiant; clicking opens a confirmation.
     fireEvent.click(await screen.findByRole('button', { name: /Awaken a new spark/ }))
     const dialog = within(await screen.findByRole('dialog'))
 
-    // Confirm → the service is called.
     fireEvent.click(dialog.getByRole('button', { name: /Awaken a new spark/ }))
     await waitFor(() => expect(awaken).toHaveBeenCalledTimes(1))
   })
 })
 
-// --- ADR-0023: dosha picker, needs/care, level-gated upgrades ----------------------------
+// --- ADR-0023: dosha picker, needs/care ---------------------------------------------------
 
 describe('SpiritPage dosha picker (pathless spark)', () => {
   beforeEach(() => {
@@ -435,18 +500,16 @@ describe('SpiritPage dosha picker (pathless spark)', () => {
 
     renderPage()
 
-    // The picker moved to its own /spirit/choose page; a pathless spark redirects there, so
-    // neither the picker nor the Personalize panel renders on /spirit.
     await waitFor(() => expect(get).toHaveBeenCalled())
     expect(screen.queryByText('Choose your creature')).toBeNull()
-    expect(screen.queryByText('Personalize')).toBeNull()
+    expect(screen.queryByText('Customize')).toBeNull()
   })
 
   it('hides the picker once a creature is chosen', async () => {
     get.mockResolvedValue(spiritWith({ path: 'stillness' }))
 
     renderPage()
-    await screen.findByText('Personalize')
+    await screen.findByText('Customize')
 
     expect(screen.queryByText('Choose your creature')).toBeNull()
   })
@@ -473,38 +536,12 @@ describe('SpiritPage care needs (ADR-0023)', () => {
 
     await screen.findByText('Care')
     // Scope the need-label assertions to the Care read-out: the same labels (Nourishment / Rest /
-    // Joy) now also tag the shop's options (ADR-0026 per-item need affinities), so a page-wide
-    // getByText would match more than one.
+    // Joy) also tag the tree's options (ADR-0026), so a page-wide getByText would match more.
     const care = screen.getByRole('region', { name: 'Care' })
     expect(within(care).getByText('Nourishment')).toBeInTheDocument()
     expect(within(care).getByText('Rest')).toBeInTheDocument()
     expect(within(care).getByText('Joy')).toBeInTheDocument()
-    // The nudge names the creature (Pitta) and its reviving practice (gratitude & journaling).
     expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
     expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
-  })
-
-  // (A pathless spark now redirects to /spirit/choose, covered by the dosha-picker describe and
-  // SpiritChoosePage.test — so there's no inline pathless state to assert here.)
-})
-
-describe('SpiritPage level-gated upgrades shown, not hidden (ADR-0023 / task #4)', () => {
-  beforeEach(() => {
-    get.mockReset()
-    buyCosmetic.mockReset()
-  })
-
-  it('surfaces a locked option with its level requirement visibly (a lock + "Reach level N")', async () => {
-    get.mockResolvedValue(spiritWith())
-
-    renderPage()
-
-    // The locked Starlit option is shown (not hidden) with its unlock requirement on the chip.
-    const locked = await screen.findByRole('button', { name: /Starlit — locked, reach level 5/i })
-    expect(locked).toBeInTheDocument()
-    // The requirement text is rendered in the panel, so the user can see what to work toward.
-    expect(within(locked).getByText(/Reach level 5/)).toBeInTheDocument()
-    // It stays non-buyable (a locked click never buys).
-    expect(buyCosmetic).not.toHaveBeenCalled()
   })
 })
