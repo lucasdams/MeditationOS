@@ -2887,6 +2887,21 @@ textarea:focus-visible,
   height: 0.8em;
 }
 
+/* The per-option need affinity tag (ADR-0026) — a subtle chip naming the need the item favours.
+   Kept quiet (muted, small) so it informs without shouting, matching the calm shop UX. */
+.spirit-option-need {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 /* --- Spirit reactivity / animation (docs/design/spirit.md, build step 4; ADR-0023) -------- */
 /* The render is SPLIT into two layers so the background never drifts with the creature:
    - The outer `.spirit-svg` is now a STATIC layer — it carries `--spirit-glow` but does not move.

@@ -8,6 +8,7 @@ import {
   PATH_COPY,
   NeedsReadout,
   CareNudge,
+  NEED_COPY,
   formFor,
   prefersReducedMotion,
 } from '../components/Spirit'
@@ -15,7 +16,7 @@ import CoinIcon from '../components/CoinIcon'
 import Modal from '../components/Modal'
 import { Loading, RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import type { SpiritPath, SpiritState } from '../types'
+import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
 
 /**
  * SpiritPage — the full view of your living companion (docs/design/spirit.md, ADR-0022;
@@ -108,6 +109,18 @@ function titleize(key: string): string {
 
 const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? titleize(slot)
 const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
+
+// A small per-option tag (ADR-0026) showing which need an item favours — reuses the shared
+// NEED_COPY (icon + label) so the shop's tag matches the Care read-out exactly.
+function NeedTag({ need }: { need: SpiritNeedKey }) {
+  const copy = NEED_COPY[need]
+  if (!copy) return null
+  return (
+    <span className="spirit-option-need" title={`Favours ${copy.label}`}>
+      <span aria-hidden="true">{copy.icon}</span> {copy.label}
+    </span>
+  )
+}
 
 // The cosmetic option the user is currently exploring (hovering / keyboard-focusing) in the
 // panel, so the live preview can show what the spirit would look like with it applied — before
@@ -383,19 +396,21 @@ export default function SpiritPage() {
                       </>
                     ) : !opt.affordable ? (
                       // Unaffordable: show the cost (the price belongs on the upgrade) with
-                      // a quiet "earn more" hint.
+                      // a quiet "earn more" hint, plus the need it favours (ADR-0026).
                       <>
                         {optionLabel(opt.option)}
+                        <NeedTag need={opt.need} />
                         <span className="spirit-option-cost">
                           <CoinIcon /> {opt.cost}
                         </span>
                         <span className="spirit-option-lock">earn more</span>
                       </>
                     ) : (
-                      // Buyable: the name + its coin cost, shown on the chip so the price
-                      // is visible per upgrade.
+                      // Buyable: the name + the need it favours (ADR-0026) + its coin cost,
+                      // shown on the chip so both the affinity and the price are visible.
                       <>
                         {optionLabel(opt.option)}
+                        <NeedTag need={opt.need} />
                         <span className="spirit-option-cost">
                           <CoinIcon /> {opt.cost}
                         </span>

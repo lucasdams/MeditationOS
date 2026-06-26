@@ -35,12 +35,21 @@ from app.services.spirit_service import (
     CONDITION_THRIVING,
     CONDITION_UNWELL,
     CONDITION_WINDOW_DAYS,
-    PAMPER_BOOST,
+    NEED_KEYS,
+    PAMPER_PRIMARY,
+    PAMPER_SPILL,
     PAMPER_WINDOW_DAYS,
+    PASSIVE_NEED_CAP,
+    PASSIVE_PER_ITEM,
     RESET_COST,
     SPIRIT_COSMETICS_CATALOG,
     stage_for_level,
 )
+
+# ADR-0025's PAMPER_BOOST was renamed to PAMPER_PRIMARY (the bought item's weighted buy-boost,
+# ADR-0026). The legacy uniform-boost tests below still assert the full primary boost on every
+# need (a row with no recorded need falls back to ADR-0025's uniform behaviour).
+PAMPER_BOOST = PAMPER_PRIMARY
 
 
 def _auth(client, email):
@@ -359,6 +368,8 @@ def _needs(
     tz="UTC",
     current_streak=0,
     last_pampered_at=None,
+    last_pampered_need=None,
+    cosmetics=None,
 ):
     return spirit_service.needs(
         db_session,
@@ -368,6 +379,8 @@ def _needs(
         tz=tz,
         current_streak=current_streak,
         last_pampered_at=last_pampered_at,
+        last_pampered_need=last_pampered_need,
+        cosmetics=cosmetics,
     )
 
 
@@ -727,6 +740,185 @@ def test_pathless_spark_is_never_pampered(db_session):
     assert n.nourished.tier == CONDITION_CONTENT
     assert n.rested.tier == CONDITION_CONTENT
     assert n.joyful.tier == CONDITION_CONTENT
+
+
+# --- Per-item need affinities (ADR-0026): passive while-owned + weighted fading buy-boost ----
+#
+# Each catalog item FAVOURS one need (its `need`). Owning an item adds a small passive lift to
+# that need (PASSIVE_PER_ITEM, capped at PASSIVE_NEED_CAP). Buying it stamps `last_pampered_need`
+# so the decaying buy-boost is WEIGHTED toward that need (PAMPER_PRIMARY) with a smaller spillover
+# to the other two (PAMPER_SPILL). A legacy row (last_pampered_at set, last_pampered_need None)
+# still lifts all three (ADR-0025's uniform boost), so existing pampered spirits don't regress.
+
+
+def _stored_last_pampered_need(db_session, user_id):
+    """The active spirit's stored last-pampered need (ADR-0026) — read off the row (not in
+    SpiritState). NULL until the first cosmetic purchase."""
+    db_session.expire_all()
+    return db_session.execute(
+        select(Spirit.last_pampered_need).where(
+            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
+        )
+    ).scalar_one()
+
+
+def test_every_catalog_option_has_a_need(client):
+    """ADR-0026 invariant: EVERY catalog option declares which need it favours, and it must be
+    one of the three valid need keys. A missing/invalid `need` is a bug."""
+    for slot, options in SPIRIT_COSMETICS_CATALOG.items():
+        for option, spec in options.items():
+            assert "need" in spec, f"{slot}.{option} is missing a `need` affinity"
+            need = spec["need"]
+            assert need in NEED_KEYS, f"{slot}.{option} has an invalid need {need!r}"
+
+
+def test_available_slots_response_includes_need_per_option(client):
+    """The GET `available` catalog state exposes `need` on every option, matching the catalog —
+    so the shop can tag which need each item favours."""
+    _auth(client, "affinity_need_exposed@example.com")
+    body = _spirit(client)
+    for s in body["available"]:
+        for o in s["options"]:
+            assert "need" in o
+            assert o["need"] == SPIRIT_COSMETICS_CATALOG[s["slot"]][o["option"]]["need"]
+
+
+def test_passive_owned_item_raises_its_favoured_need(db_session):
+    """An APPLIED item with need=rested raises the rested factor above an identical spirit with no
+    cosmetics (the passive while-owned lift), and only the rested need moves."""
+    user = _make_user(db_session, "affinity_passive@example.com")
+    today, days = _recent_days(3)
+    # A `frost` aura favours rested. Owning it should lift rested passively (no purchase stamp).
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["frost"]["need"] == "rested"
+
+    bare = _needs(db_session, "stillness", user.id, today=today)
+    owned = _needs(
+        db_session, "stillness", user.id, today=today, cosmetics={"aura": "frost"}
+    )
+    # Rested is lifted by exactly one item's passive step (clamped at 1.0); the other two are
+    # unchanged (no rested-favouring purchase, no other owned items).
+    assert owned.rested.factor == min(1.0, bare.rested.factor + PASSIVE_PER_ITEM)
+    assert owned.rested.factor > bare.rested.factor
+    assert owned.nourished.factor == bare.nourished.factor
+    assert owned.joyful.factor == bare.joyful.factor
+
+
+def test_passive_lift_is_capped_per_need(db_session):
+    """The passive per-need lift is capped at PASSIVE_NEED_CAP — owning many rested-favouring
+    items can't lift rested beyond the cap above the base."""
+    user = _make_user(db_session, "affinity_passive_cap@example.com")
+    today, _ = _recent_days(3)
+    bare = _needs(db_session, "stillness", user.id, today=today)
+    # Four rested-favouring items (soft/frost auras can't coexist in one slot, so use one per
+    # slot): aura frost, accessory scarf, habitat night, mount cloud — all need=rested.
+    rested_items = {
+        "aura": "frost",
+        "accessory": "scarf",
+        "habitat": "night",
+        "mount": "cloud",
+    }
+    for slot, option in rested_items.items():
+        assert SPIRIT_COSMETICS_CATALOG[slot][option]["need"] == "rested"
+    owned = _needs(
+        db_session, "stillness", user.id, today=today, cosmetics=rested_items
+    )
+    # Four items × PASSIVE_PER_ITEM (0.20) would exceed the 0.15 cap → lift is exactly the cap.
+    assert owned.rested.factor == min(1.0, bare.rested.factor + PASSIVE_NEED_CAP)
+
+
+def test_buyboost_is_weighted_toward_the_bought_items_need(db_session):
+    """After buying a rested-affinity item, the rested need gets the LARGER buy-boost
+    (PAMPER_PRIMARY) while the other two get the smaller spillover (PAMPER_SPILL) — and a
+    nourished-affinity purchase favours nourished instead. Compared at the base factor (no owned
+    items), so only the weighted buy-boost is in play."""
+    user = _make_user(db_session, "affinity_buyboost@example.com")
+    today, _ = _recent_days(3)
+    bare = _needs(db_session, "stillness", user.id, today=today)
+
+    # A rested-affinity purchase: rested gets PAMPER_PRIMARY, the others PAMPER_SPILL.
+    rested = _needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=today,
+        last_pampered_at=_aware_now(),
+        last_pampered_need="rested",
+    )
+    assert rested.rested.factor == min(1.0, bare.rested.factor + PAMPER_PRIMARY)
+    assert rested.nourished.factor == min(1.0, bare.nourished.factor + PAMPER_SPILL)
+    assert rested.joyful.factor == min(1.0, bare.joyful.factor + PAMPER_SPILL)
+    # The favoured need is boosted strictly more than each other need's boost.
+    rested_lift = rested.rested.factor - bare.rested.factor
+    other_lift = rested.nourished.factor - bare.nourished.factor
+    assert rested_lift > other_lift
+
+    # A nourished-affinity purchase favours nourished instead (symmetry).
+    nourished = _needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=today,
+        last_pampered_at=_aware_now(),
+        last_pampered_need="nourished",
+    )
+    assert nourished.nourished.factor == min(1.0, bare.nourished.factor + PAMPER_PRIMARY)
+    assert nourished.rested.factor == min(1.0, bare.rested.factor + PAMPER_SPILL)
+
+
+def test_buyboost_spillover_still_helps_overall_condition(db_session):
+    """Non-punishing: even the SPILLOVER lifts the other needs above the un-pampered baseline, so
+    buying any item still helps overall condition somewhat (PAMPER_SPILL > 0)."""
+    user = _make_user(db_session, "affinity_spill@example.com")
+    today, _ = _recent_days(3)
+    bare = _needs(db_session, "stillness", user.id, today=today)
+    pampered = _needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=today,
+        last_pampered_at=_aware_now(),
+        last_pampered_need="rested",
+    )
+    # The two NON-favoured needs are still strictly higher than the baseline (spillover helps).
+    assert pampered.nourished.factor > bare.nourished.factor
+    assert pampered.joyful.factor > bare.joyful.factor
+
+
+def test_legacy_pampered_row_still_lifts_all_three_needs(db_session):
+    """LEGACY FALLBACK (no regression): a row pampered BEFORE this feature has `last_pampered_at`
+    set but `last_pampered_need` None. It still gets ADR-0025's UNIFORM boost — every need lifted
+    by the full PAMPER_PRIMARY — so existing pampered spirits don't regress."""
+    user = _make_user(db_session, "affinity_legacy@example.com")
+    today, _ = _recent_days(3)
+    bare = _needs(db_session, "stillness", user.id, today=today)
+    legacy = _needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=today,
+        last_pampered_at=_aware_now(),
+        last_pampered_need=None,  # legacy: stamped but no recorded need
+    )
+    for need in ("nourished", "rested", "joyful"):
+        base = getattr(bare, need).factor
+        lifted = getattr(legacy, need).factor
+        assert lifted == min(1.0, base + PAMPER_PRIMARY)
+        assert lifted > base
+
+
+def test_buy_cosmetic_stamps_last_pampered_need(client, db_session):
+    """`buy_cosmetic` records `last_pampered_need` = the bought option's catalog need (NULL before
+    the first purchase). A `soft` aura favours rested."""
+    _auth(client, "affinity_stamp_need@example.com")
+    user_id = _user_id(db_session, "affinity_stamp_need@example.com")
+    client.get("/api/v1/spirit")  # create the spark
+    assert _stored_last_pampered_need(db_session, user_id) is None
+
+    assert client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
+    ).status_code == 200
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["soft"]["need"] == "rested"
+    assert _stored_last_pampered_need(db_session, user_id) == "rested"
 
 
 def test_awaken_returns_a_pathless_spark(client, db_session):
