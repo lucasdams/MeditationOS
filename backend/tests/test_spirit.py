@@ -1022,7 +1022,9 @@ def test_catalog_is_exposed_in_get(client):
 # The cosmetic slot mechanic is generic — it iterates SPIRIT_COSMETICS_CATALOG — so the two new
 # cosmetic slots (`weather`, the drifting ambient overlay; `ground`, the foreground base strip)
 # must flow through the available catalog AND the choose preview automatically, and must honour
-# the same per-option invariants (a valid `need` + a tier) as every other slot.
+# the same per-option invariants (a valid `need` + a tier) as every other slot. These are the
+# UNIVERSAL options of each new slot — each slot also carries three PATH-EXCLUSIVE tier-3 capstones
+# (one per dosha), tested with the other per-path cosmetics below.
 _NEW_SLOTS = {
     "weather": {"petals", "mist", "rain", "leaffall", "snow", "fireflies"},
     "ground": {"grass", "pebbles", "clover", "mushrooms", "wildflowers", "crystals"},
@@ -1030,39 +1032,44 @@ _NEW_SLOTS = {
 
 
 def test_new_weather_and_ground_slots_are_in_the_catalog(client):
-    """The two new universal slots and their options appear in the static catalog, each option a
+    """The two new slots appear in the static catalog with every UNIVERSAL option, each a
     well-formed `{cost, unlock_level, tier, need}` with a valid need + tier and no per_path."""
     for slot, options in _NEW_SLOTS.items():
         assert slot in SPIRIT_COSMETICS_CATALOG, f"missing new slot {slot}"
-        assert set(SPIRIT_COSMETICS_CATALOG[slot]) == options
-        for option, spec in SPIRIT_COSMETICS_CATALOG[slot].items():
-            # The generic invariants still hold for the new options.
+        # The universal options are all present (the slot also has the per-path capstones).
+        assert options <= set(SPIRIT_COSMETICS_CATALOG[slot])
+        for option in options:
+            spec = SPIRIT_COSMETICS_CATALOG[slot][option]
+            # The generic invariants still hold for the universal options.
             assert spec["need"] in NEED_KEYS, f"{slot}.{option} has an invalid need"
             assert spec["tier"] in (1, 2, 3), f"{slot}.{option} has an invalid tier"
             assert spec["cost"] > 0
             assert spec["unlock_level"] >= 1
-            # These slots are universal — no path exclusivity.
+            # The universal options carry no path exclusivity.
             assert "per_path" not in spec, f"{slot}.{option} should be universal"
 
 
 def test_new_slots_flow_through_available_catalog(client):
-    """The GET `available` skill-tree (which iterates the catalog) surfaces both new slots with
-    every option, each carrying the same shape (need + tier) as the existing slots."""
+    """The GET `available` skill-tree (which iterates the catalog) surfaces both new slots, each
+    universal option carrying the same shape (need + tier) as the existing slots."""
     _auth(client, "new_slots_available@example.com")
     body = _spirit(client)
     by_slot = {s["slot"]: s for s in body["available"]}
     for slot, options in _NEW_SLOTS.items():
         assert slot in by_slot, f"available is missing the new {slot} slot"
         opts = {o["option"]: o for o in by_slot[slot]["options"]}
-        assert set(opts) == options
-        for option, o in opts.items():
+        # Every universal option is present in the catalog state.
+        assert options <= set(opts)
+        for option in options:
+            o = opts[option]
             assert o["need"] == SPIRIT_COSMETICS_CATALOG[slot][option]["need"]
             assert o["tier"] == SPIRIT_COSMETICS_CATALOG[slot][option]["tier"]
 
 
 def test_new_slots_flow_through_choose_preview(client):
     """The read-only choose-page preview (also catalog-driven) lists both new slots for every
-    path, with all options tier-ordered — the universal slots grow into the same tree per path."""
+    path, with all options tier-ordered — the universal slots grow into the same tree per path
+    (plus that path's own exclusive capstone)."""
     _auth(client, "new_slots_preview@example.com")
     body = client.get("/api/v1/spirit/preview").json()
     for path in _ALL_PATHS:
@@ -1070,7 +1077,8 @@ def test_new_slots_flow_through_choose_preview(client):
         for slot, options in _NEW_SLOTS.items():
             assert slot in by_slot, f"{path} preview missing the new {slot} slot"
             opts = {o["option"] for o in by_slot[slot]["options"]}
-            assert opts == options
+            # Every universal option grows into each path's tree.
+            assert options <= opts
             tiers = [o["tier"] for o in by_slot[slot]["options"]]
             assert tiers == sorted(tiers), f"{path}/{slot} options not tier-ordered"
 
@@ -1686,13 +1694,15 @@ def test_awaken_requires_auth(client):
     assert client.post("/api/v1/spirit/awaken").status_code == 401
 
 
-# --- Path-exclusive cosmetics across the other slots (aura/accessory/habitat/mount) ----------
+# --- Path-exclusive cosmetics across the other slots (aura/accessory/habitat/mount/weather/
+# ground) ----------
 #
 # The same per_path mechanic now powers path-exclusive options in every cosmetic slot — one per
 # dosha, each cost 220 / unlock_level 6. They appear `available` only for the matching path and
-# can only be bought by it.
+# can only be bought by it. weather and ground are the two newest slots, each with its own
+# per-dosha tier-3 capstone (ember_drift/pollenfall/galeswirl; emberbed/stonegarden/cloudfloor).
 
-# (slot, option, owning_path) for each path-exclusive option added across the four slots.
+# (slot, option, owning_path) for each path-exclusive option added across the slots.
 _PATH_SLOT_COSMETICS = [
     ("aura", "emberflame", "breath"),
     ("aura", "grove", "stillness"),
@@ -1706,6 +1716,12 @@ _PATH_SLOT_COSMETICS = [
     ("mount", "emberstone", "breath"),
     ("mount", "boulder", "stillness"),
     ("mount", "feather", "heart"),
+    ("weather", "ember_drift", "breath"),
+    ("weather", "pollenfall", "stillness"),
+    ("weather", "galeswirl", "heart"),
+    ("ground", "emberbed", "breath"),
+    ("ground", "stonegarden", "stillness"),
+    ("ground", "cloudfloor", "heart"),
 ]
 
 
@@ -1727,6 +1743,8 @@ _SLOT_TIER2_PREREQ = {
     "accessory": "scarf",
     "habitat": "dusk",
     "mount": "lotus",
+    "weather": "rain",
+    "ground": "clover",
 }
 
 
@@ -1769,7 +1787,8 @@ def test_unlock_non_matching_path_slot_cosmetic_is_rejected_404(client):
 # their options ordered by tier, including that path's own exclusive capstones and excluding the
 # other paths' exclusives. No spirit row needed.
 
-# The expected EXCLUSIVE tier-3 capstones (the per-path options) per path, by (slot, option).
+# The expected EXCLUSIVE tier-3 capstones (the per-path options) per path, by (slot, option) —
+# one per slot, so every creature grows into seven path-exclusive capstones (one per cosmetic slot).
 _PATH_EXCLUSIVES = {
     "breath": [
         ("aura", "emberflame"),
@@ -1777,6 +1796,8 @@ _PATH_EXCLUSIVES = {
         ("habitat", "ember_canyon"),
         ("companion", "kitsune"),
         ("mount", "emberstone"),
+        ("weather", "ember_drift"),
+        ("ground", "emberbed"),
     ],
     "stillness": [
         ("aura", "grove"),
@@ -1784,6 +1805,8 @@ _PATH_EXCLUSIVES = {
         ("habitat", "misty_grove"),
         ("companion", "tortoise"),
         ("mount", "boulder"),
+        ("weather", "pollenfall"),
+        ("ground", "stonegarden"),
     ],
     "heart": [
         ("aura", "zephyr"),
@@ -1791,6 +1814,8 @@ _PATH_EXCLUSIVES = {
         ("habitat", "open_sky"),
         ("companion", "crane"),
         ("mount", "feather"),
+        ("weather", "galeswirl"),
+        ("ground", "cloudfloor"),
     ],
 }
 
