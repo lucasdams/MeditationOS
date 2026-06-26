@@ -335,6 +335,32 @@ describe('Spirit — new cosmetics render on the art', () => {
     // The lotus pad is a distinctive green ellipse (#86efac).
     expect(container.querySelector('.spirit-svg ellipse[fill="#86efac"]')).not.toBeNull()
   })
+
+  // The quirky personality/hobby accessories (universal) each draw a recognizable worn item. Each
+  // carries a signature colour marker we can assert on without coupling to exact geometry.
+  it('draws the gaming_headset accessory (glowing cyan RGB ear-cup accent)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { accessory: 'gaming_headset' } })} />,
+    )
+    // The RGB accent ring around each ear cup is a cyan stroke (#22d3ee) — the headset's marker.
+    expect(container.querySelector('.spirit-svg rect[stroke="#22d3ee"]')).not.toBeNull()
+  })
+
+  it('draws the beanie accessory (cosy teal knit cap)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'beanie' } })} />,
+    )
+    // The cap dome is a teal path (#14b8a6) — the beanie's signature colour.
+    expect(container.querySelector('.spirit-svg path[fill="#14b8a6"]')).not.toBeNull()
+  })
+
+  it('draws the party_hat accessory (striped magenta cone)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'party_hat' } })} />,
+    )
+    // The cone body is a magenta path (#ec4899) — unique to the party hat.
+    expect(container.querySelector('.spirit-svg path[fill="#ec4899"]')).not.toBeNull()
+  })
 })
 
 describe('Spirit — weather + ground slots render on the art', () => {
@@ -397,6 +423,32 @@ describe('Spirit — legendary tier-4 ultimates render on the art', () => {
     )
     // The ridge of golden back-spines is a yellow path (#fde047) — the dragon's signature marker.
     expect(container.querySelector('.spirit-svg path[fill="#fde047"]')).not.toBeNull()
+  })
+
+  // The quirky HOBBY companions are little props (gym/coffee/reading/gaming/music) that float
+  // beside the figure. Each carries a signature colour marker we can assert on.
+  it('draws the dumbbell companion (slate weight-bells)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'dumbbell' } })} />,
+    )
+    // The weight-bells are slate rects (#475569) — the dumbbell's signature marker.
+    expect(container.querySelector('.spirit-svg rect[fill="#475569"]')).not.toBeNull()
+  })
+
+  it('draws the game_controller companion (teal D-pad)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'game_controller' } })} />,
+    )
+    // The D-pad cross is a teal path (#2dd4bf) — the controller's signature marker.
+    expect(container.querySelector('.spirit-svg path[fill="#2dd4bf"]')).not.toBeNull()
+  })
+
+  it('draws the boombox companion (drifting pink music note)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'boombox' } })} />,
+    )
+    // A drifting music note is a pink ellipse (#f472b6) — the boombox's signature marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#f472b6"]')).not.toBeNull()
   })
 
   it('draws the nebula habitat backdrop (pink stellar gas)', () => {

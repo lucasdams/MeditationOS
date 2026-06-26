@@ -731,6 +731,18 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "tiny_bell": {"cost": 85, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         # Small branching antlers — a calm, woodland crown of rest (tier 3).
         "antlers": {"cost": 170, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # QUIRKY personality/hobby accessories (universal) — playful worn items that express the
+        # practitioner's vibe rather than a nature/dosha theme. Spread across tiers and needs.
+        # Sleek over-ear headphones resting on the head — a calm music vibe (tier 1).
+        "headphones": {"cost": 45, "unlock_level": 1, "need": RESTED, "tier": 1},
+        # Round studious spectacles perched on the brow — the book-loving look (tier 1).
+        "nerd_glasses": {"cost": 50, "unlock_level": 2, "need": RESTED, "tier": 1},
+        # An over-ear gaming headset with a boom mic — ready to play (tier 2).
+        "gaming_headset": {"cost": 95, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        # A cosy knit beanie with a little pom on top — comfy and warm (tier 2).
+        "beanie": {"cost": 80, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # A striped cone party hat topped with a pompom — pure celebration (tier 3).
+        "party_hat": {"cost": 175, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         # LEGENDARY (tier 4) — a crown of stars circling the brow, joyful. Universal; the
         # prestige endgame accessory, gated behind any tier-3 accessory.
         "star_crown": {"cost": 400, "unlock_level": 10, "need": JOYFUL, "tier": 4},
@@ -784,6 +796,14 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "frog": {"cost": 175, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         "cat": {"cost": 240, "unlock_level": 7, "need": RESTED, "tier": 3},
         "owl": {"cost": 250, "unlock_level": 7, "need": NOURISHED, "tier": 3},
+        # QUIRKY HOBBY companions (universal, no per_path) — little personality props that float
+        # beside the spirit rather than animals/nature: gym, gaming, reading, coffee, music. Priced
+        # a touch higher than the creatures and spread across tiers 1–3 with varied need affinities.
+        "dumbbell": {"cost": 95, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "coffee_mug": {"cost": 120, "unlock_level": 2, "need": NOURISHED, "tier": 1},
+        "open_book": {"cost": 165, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "game_controller": {"cost": 185, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        "boombox": {"cost": 250, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         # LEGENDARY (tier 4) — a small mythical curled dragon, nourished. Universal; the prestige
         # endgame companion, gated behind any tier-3 companion.
         "dragon": {"cost": 450, "unlock_level": 10, "need": NOURISHED, "tier": 4},
