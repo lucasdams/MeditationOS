@@ -298,12 +298,21 @@ export default function SpiritPage() {
           // How many of THIS slot's options the user already owns — a tiny "3/6 unlocked" read so
           // each tree shows progress at a glance without shouting. Pure display; derived from flags.
           const ownedCount = visible.filter((opt) => opt.owned).length
+          const equippedOption = visible.find((opt) => opt.equipped)?.option
           return (
-            <fieldset key={s.slot} className="spirit-slot spirit-tree">
-              <legend>{slotLabel(s.slot)}</legend>
-              <p className="spirit-tree-progress muted" aria-hidden="true">
-                {ownedCount}/{visible.length} unlocked
-              </p>
+            // Each slot is a collapsible disclosure (default open) so the long customize panel can be
+            // tidied slot by slot; the summary shows the slot, what's equipped, and unlock progress.
+            <details key={s.slot} className="spirit-slot spirit-tree" open>
+              <summary className="spirit-slot-summary">
+                <span className="spirit-slot-name">{slotLabel(s.slot)}</span>
+                <span className="spirit-slot-equipped muted">
+                  {equippedOption ? optionLabel(equippedOption) : 'none yet'}
+                </span>
+                <span className="spirit-tree-progress muted">
+                  {ownedCount}/{visible.length}
+                </span>
+                <span className="spirit-slot-chevron" aria-hidden="true">▾</span>
+              </summary>
               {/* The tiers stack low → high as a climb; a continuous spine threads them so the
                   progression reads as one tree rather than separate rows. */}
               <div className="spirit-tree-tiers">
@@ -330,7 +339,7 @@ export default function SpiritPage() {
                   </div>
                 ))}
               </div>
-            </fieldset>
+            </details>
           )
         }
 
