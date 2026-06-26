@@ -215,6 +215,14 @@ export const OPTION_LABEL: Record<string, string> = {
   mossy_stump: 'Mossy stump',
   reed_raft: 'Reed raft',
   crystal: 'Floating crystal',
+  // Legendary tier-4 ultimates (one universal capstone per slot — the prestige endgame).
+  prismatic: 'Prismatic halo',
+  star_crown: 'Star crown',
+  nebula: 'Cosmic nebula',
+  dragon: 'Curled dragon',
+  comet: 'Radiant comet',
+  aurora_storm: 'Aurora storm',
+  mandala: 'Sacred mandala',
   // Weather — an ambient drifting overlay across the scene.
   petals: 'Drifting petals',
   mist: 'Soft mist',
@@ -451,6 +459,9 @@ const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number 
   dewlight: { tint: '#86efac', grow: 5, strength: 2.2 },
   twilight: { tint: '#a78bfa', grow: 7, strength: 2.8 },
   aurora: { tint: '#5eead4', grow: 9, strength: 3.2 },
+  // LEGENDARY (tier 4) — the prismatic halo: the widest, brightest aura, a full rainbow radiant
+  // ring layered over this base glow (case below).
+  prismatic: { tint: '#fef9c3', grow: 12, strength: 3.6 },
   // Path-exclusive auras: warm ember halo for Pitta, verdant grove for Kapha, airy zephyr for
   // Vata. Each layers its own procedural motes/leaves/wisps over this base glow (cases below).
   emberflame: { tint: '#ea580c', grow: 9, strength: 3.0 },
@@ -594,6 +605,42 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
                 r={0.7}
                 fill="#f0fdfa"
                 opacity={0.7 * g}
+              />
+            )
+          })}
+        </>
+      )}
+      {/* LEGENDARY (tier 4) — Prismatic: a full rainbow radiant halo. Seven concentric spectral
+          rings sweep the whole circle (the joyful, spectacular endgame aura), with a bright white
+          inner core and a ring of sparkling motes catching every hue. The richest aura in the slot. */}
+      {aura === 'prismatic' && (
+        <>
+          <circle cx={40} cy={40} r={r - 14} fill="#ffffff" opacity={Math.min(0.5, 0.16 * g * strength)} />
+          {['#f87171', '#fb923c', '#fde047', '#4ade80', '#38bdf8', '#818cf8', '#c084fc'].map(
+            (hue, k) => (
+              <circle
+                key={`prism-ring-${k}`}
+                cx={40}
+                cy={40}
+                r={r - k * 1.6}
+                fill="none"
+                stroke={hue}
+                strokeWidth={1.3}
+                opacity={Math.min(0.8, 0.32 * g) * (1 - k * 0.06)}
+              />
+            ),
+          )}
+          {Array.from({ length: 10 }, (_, k) => {
+            const a = (k / 10) * Math.PI * 2 + 0.25
+            const hues = ['#fef08a', '#fca5a5', '#a5b4fc', '#86efac', '#f0abfc']
+            return (
+              <circle
+                key={`prism-mote-${k}`}
+                cx={40 + Math.cos(a) * (r + 1)}
+                cy={40 + Math.sin(a) * (r + 1)}
+                r={k % 2 ? 1.1 : 0.7}
+                fill={hues[k % hues.length]}
+                opacity={0.85 * g}
               />
             )
           })}
@@ -964,6 +1011,52 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
         ))}
         {/* A faint windy bluff banked low at the very bottom, clear of the figure. */}
         <path d="M 4 74 L 4 64 Q 26 56 50 62 T 76 60 L 76 74 Z" fill="#cbd5e1" opacity={0.4} />
+      </g>
+    )
+  }
+  if (habitat === 'nebula') {
+    // LEGENDARY (tier 4) — a cosmic nebula backdrop: deep violet/indigo clouds of stellar gas
+    // billowing over a near-black void, a dense scatter of stars across the whole frame, and a
+    // faint spiral wisp — the rested, awe-filled endgame habitat. The richest backdrop in the slot.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* The deep cosmic void wash, faint so the figure stays bright in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e1b4b" opacity={0.4} />
+        {/* Billowing nebula gas clouds pushed to the corners/edges, clear of the centre. */}
+        {[
+          { cx: 14, cy: 18, rx: 14, ry: 10, c: '#7c3aed' },
+          { cx: 66, cy: 22, rx: 13, ry: 9, c: '#db2777' },
+          { cx: 18, cy: 58, rx: 12, ry: 8, c: '#2563eb' },
+          { cx: 64, cy: 60, rx: 13, ry: 9, c: '#9333ea' },
+        ].map((c, k) => (
+          <ellipse key={`gas-${k}`} cx={c.cx} cy={c.cy} rx={c.rx} ry={c.ry} fill={c.c} opacity={0.26} />
+        ))}
+        {/* A faint spiral wisp threading the upper edge, evoking a distant galaxy arm. */}
+        <path
+          d="M 10 16 Q 30 8 50 14 T 72 24"
+          fill="none"
+          stroke="#c4b5fd"
+          strokeWidth={1}
+          strokeLinecap="round"
+          opacity={0.4}
+        />
+        {/* A dense star field scattered across the whole frame — deterministic positions. */}
+        {Array.from({ length: 22 }, (_, k) => {
+          const a = (k / 22) * Math.PI * 2 * 3.1
+          const rad = 14 + (k % 5) * 6
+          const sx = 40 + Math.cos(a) * rad
+          const sy = 38 + Math.sin(a) * (rad - 2)
+          return (
+            <circle
+              key={`star-${k}`}
+              cx={sx}
+              cy={sy}
+              r={k % 4 === 0 ? 1.2 : 0.7}
+              fill={k % 3 ? '#e0e7ff' : '#fef9c3'}
+              opacity={0.9}
+            />
+          )
+        })}
       </g>
     )
   }
@@ -1368,6 +1461,48 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
       </g>
     )
   }
+  if (accessory === 'star_crown') {
+    // LEGENDARY (tier 4) — a crown of stars: an arc of five-point golden stars set in a band
+    // sweeping over the brow, the tallest at the centre, each with a soft halo glow. Joyful, the
+    // spectacular endgame accessory and the richest in the slot.
+    const star = (cx: number, cy: number, s: number, k: number) => {
+      // A small five-point star built from its outer/inner radius points.
+      const pts = Array.from({ length: 10 }, (_, i) => {
+        const rad = i % 2 === 0 ? s : s * 0.45
+        const a = -Math.PI / 2 + (i / 10) * Math.PI * 2
+        return `${(cx + Math.cos(a) * rad).toFixed(2)},${(cy + Math.sin(a) * rad).toFixed(2)}`
+      }).join(' ')
+      return (
+        <g key={k}>
+          <circle cx={cx} cy={cy} r={s * 1.7} fill="#fde68a" opacity={0.35} />
+          <polygon points={pts} fill={k % 2 === 0 ? '#fde047' : '#fbbf24'} />
+          <circle cx={cx} cy={cy} r={s * 0.3} fill="#fffbeb" />
+        </g>
+      )
+    }
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The faint band the stars are set along, arcing over the brow. */}
+        <path
+          d={`M 31 ${topY + 1} Q 40 ${topY - 6} 49 ${topY + 1}`}
+          fill="none"
+          stroke="#fcd34d"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+          opacity={0.6}
+        />
+        {/* Five stars arched across the band, tallest (largest) at the centre. */}
+        {Array.from({ length: 5 }, (_, k) => {
+          const t = k / 4 // 0..1 across the band
+          const sx = 32 + t * 16
+          const lift = Math.sin(t * Math.PI) * 5 // higher toward the middle
+          const sy = topY - lift
+          const size = 1.6 + Math.sin(t * Math.PI) * 1.4
+          return star(sx, sy, size, k)
+        })}
+      </g>
+    )
+  }
   return null
 }
 
@@ -1705,6 +1840,66 @@ function Companion({ companion, g }: { companion: string; g: number }) {
       </g>
     )
   }
+  if (companion === 'dragon') {
+    // LEGENDARY (tier 4) — a small mythical dragon curled on the ground: a coiled emerald body
+    // with a back ridge of golden spines, little folded wings, a horned head with a bright eye,
+    // and wisps of breath. Nourished, the spectacular endgame companion and the richest in the slot.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The coiled tail looping behind the body. */}
+        <path
+          d={`M ${baseX + 6} ${baseY + 1}
+              Q ${baseX + 11} ${baseY - 2} ${baseX + 8} ${baseY - 6}
+              Q ${baseX + 5} ${baseY - 9} ${baseX + 2} ${baseY - 6}`}
+          fill="none"
+          stroke="#15803d"
+          strokeWidth={2.2}
+          strokeLinecap="round"
+        />
+        {/* The curled body resting on the ground. */}
+        <ellipse cx={baseX} cy={baseY - 2.5} rx={6.5} ry={4.6} fill="#16a34a" />
+        {/* A paler underbelly. */}
+        <ellipse cx={baseX - 0.5} cy={baseY - 0.6} rx={4} ry={2.4} fill="#86efac" opacity={0.9} />
+        {/* A little folded wing lifted over the back. */}
+        <path
+          d={`M ${baseX + 1} ${baseY - 5} q 5 -3 6.5 0.5 q -3 1.6 -6.5 1.2 z`}
+          fill="#22c55e"
+        />
+        <path
+          d={`M ${baseX + 3.5} ${baseY - 5.2} l 0 4`}
+          stroke="#15803d"
+          strokeWidth={0.5}
+          opacity={0.7}
+        />
+        {/* A ridge of golden back-spines running along the spine. */}
+        {[-4, -1.5, 1, 3.5].map((dx, k) => (
+          <path
+            key={`spine-${k}`}
+            d={`M ${baseX + dx} ${baseY - 6.4} l 1 -2.2 l 1 2.2 z`}
+            fill={k % 2 ? '#fbbf24' : '#fde047'}
+          />
+        ))}
+        {/* The horned head turned to face left, with a bright eye and a small horn. */}
+        <circle cx={baseX - 6} cy={baseY - 6} r={3} fill="#16a34a" />
+        <path d={`M ${baseX - 7.6} ${baseY - 8.2} l -0.4 -2 l 1.6 1.2 z`} fill="#fde047" />
+        <path d={`M ${baseX - 8.8} ${baseY - 5.6} l -2.4 0.3 l 2.2 1.2 z`} fill="#15803d" />
+        <circle cx={baseX - 6.6} cy={baseY - 6.4} r={0.7} fill="#fffbeb" />
+        <circle cx={baseX - 6.7} cy={baseY - 6.4} r={0.35} fill="#0f172a" />
+        {/* Two faint wisps of breath drifting from the snout. */}
+        {[0, 1].map((k) => (
+          <path
+            key={`breath-${k}`}
+            d={`M ${baseX - 10.5} ${baseY - 5.6 - k * 1.6} q -2.2 -0.6 -3.6 0.8`}
+            fill="none"
+            stroke="#bbf7d0"
+            strokeWidth={0.7}
+            strokeLinecap="round"
+            opacity={0.6}
+          />
+        ))}
+      </g>
+    )
+  }
   return null
 }
 
@@ -1996,6 +2191,60 @@ function Mount({ mount, g }: { mount: string; g: number }) {
       </g>
     )
   }
+  if (mount === 'comet') {
+    // LEGENDARY (tier 4) — a radiant comet the spirit rides: a blazing star-core haloed in gold,
+    // a long streaming tail trailing back and down, and a scatter of sparks in its wake. Joyful,
+    // the spectacular endgame mount and the richest in the slot.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The long luminous tail streaming back-and-down behind the core, fading outward. */}
+        <path
+          d={`M ${cx} ${cy} Q ${cx - 16} ${cy + 6} ${cx - 26} ${cy + 12}`}
+          fill="none"
+          stroke="#fde68a"
+          strokeWidth={6}
+          strokeLinecap="round"
+          opacity={0.3 * g}
+        />
+        <path
+          d={`M ${cx} ${cy} Q ${cx - 15} ${cy + 5} ${cx - 24} ${cy + 10}`}
+          fill="none"
+          stroke="#fef08a"
+          strokeWidth={3}
+          strokeLinecap="round"
+          opacity={0.6 * g}
+        />
+        <path
+          d={`M ${cx} ${cy} Q ${cx - 14} ${cy + 4} ${cx - 22} ${cy + 8}`}
+          fill="none"
+          stroke="#fffbeb"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+          opacity={0.85 * g}
+        />
+        {/* The blazing comet head — a soft outer glow, a warm halo, a bright core. */}
+        <circle cx={cx} cy={cy} r={9} fill="#fde68a" opacity={0.3 * g} />
+        <circle cx={cx} cy={cy} r={5.5} fill="#fbbf24" opacity={0.7 * g} />
+        <circle cx={cx} cy={cy} r={3} fill="#fffbeb" />
+        {/* A four-point starburst over the core. */}
+        <path
+          d={`M ${cx} ${cy - 7} L ${cx} ${cy + 7} M ${cx - 7} ${cy} L ${cx + 7} ${cy}`}
+          stroke="#fef9c3"
+          strokeWidth={0.9}
+          strokeLinecap="round"
+          opacity={0.9 * g}
+        />
+        {/* A few sparks scattered along the tail's wake. */}
+        {[
+          { x: cx - 12, y: cy + 5 },
+          { x: cx - 18, y: cy + 9 },
+          { x: cx - 23, y: cy + 13 },
+        ].map((s, k) => (
+          <circle key={`comet-spark-${k}`} cx={s.x} cy={s.y} r={k % 2 ? 1.1 : 0.7} fill="#fde047" opacity={0.8 * g} />
+        ))}
+      </g>
+    )
+  }
   return null
 }
 
@@ -2174,6 +2423,56 @@ function Weather({ weather, g }: { weather: string; g: number }) {
               />
               <circle cx={x + 18} cy={y + 1} r={0.9} fill="#f0f9ff" opacity={0.85} />
             </g>
+          )
+        })}
+      </g>
+    )
+  }
+  if (weather === 'aurora_storm') {
+    // LEGENDARY (tier 4) — an auroral storm overlay: broad rippling curtains of teal/violet/rose
+    // light sweeping across the upper scene, with a scatter of bright stars and drifting light
+    // motes. Joyful, the spectacular endgame weather and the richest in the slot.
+    return (
+      <g opacity={0.85 * g} aria-hidden="true">
+        {/* Three layered aurora curtains rippling across the upper field, each a wide wavy band. */}
+        {['#5eead4', '#a78bfa', '#fda4af'].map((hue, k) => {
+          const yBase = 14 + k * 9
+          return (
+            <path
+              key={`curtain-${k}`}
+              d={`M 2 ${yBase} Q 20 ${yBase - 8} 40 ${yBase} T 78 ${yBase}
+                  L 78 ${yBase + 10} Q 58 ${yBase + 4} 40 ${yBase + 11}
+                  T 2 ${yBase + 10} Z`}
+              fill={hue}
+              opacity={0.18}
+            />
+          )
+        })}
+        {/* Thin bright ripple lines threading through the curtains. */}
+        {[16, 26, 36].map((y, k) => (
+          <path
+            key={`ripple-${k}`}
+            d={`M 4 ${y} Q 24 ${y - 5} 44 ${y} T 76 ${y}`}
+            fill="none"
+            stroke={k % 2 ? '#ccfbf1' : '#ede9fe'}
+            strokeWidth={0.8}
+            strokeLinecap="round"
+            opacity={0.5}
+          />
+        ))}
+        {/* A scatter of bright stars and drifting motes over the storm — deterministic positions. */}
+        {Array.from({ length: 12 }, (_, k) => {
+          const x = 6 + ((k * 23) % 66)
+          const y = 6 + ((k * 19) % 44)
+          return (
+            <circle
+              key={`storm-star-${k}`}
+              cx={x}
+              cy={y}
+              r={k % 3 === 0 ? 1.1 : 0.6}
+              fill={k % 2 ? '#f0fdfa' : '#f5f3ff'}
+              opacity={0.85}
+            />
           )
         })}
       </g>
@@ -2366,6 +2665,69 @@ function Ground({ ground, g }: { ground: string; g: number }) {
           <circle key={k} cx={x} cy={top + 1} r={4 + (k % 2)} fill="#f8fafc" opacity={0.9} />
         ))}
         <rect x={2} y={top + 3} width={76} height={3} rx={1.5} fill="#ffffff" opacity={0.85} />
+      </g>
+    )
+  }
+  if (ground === 'mandala') {
+    // LEGENDARY (tier 4) — a glowing sacred mandala floor: concentric golden rings radiating from
+    // a centred lotus motif, a ring of petal spokes, and a faint outer glow, drawn FLATTENED (a
+    // wide, low ellipse) so it reads as a floor seen in perspective. Rested, the richest ground.
+    const mcx = 40
+    // Anchored to the foreground band; flattened vertically so it lies on the floor.
+    const my = top + 1
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A soft outer glow pooled under the figure. */}
+        <ellipse cx={mcx} cy={my} rx={34} ry={6} fill="#fde68a" opacity={0.22} />
+        {/* Concentric golden rings, flattened into the floor plane. */}
+        {[30, 22, 14, 7].map((rx, k) => (
+          <ellipse
+            key={`ring-${k}`}
+            cx={mcx}
+            cy={my}
+            rx={rx}
+            ry={rx * 0.2}
+            fill="none"
+            stroke={k % 2 ? '#fcd34d' : '#fbbf24'}
+            strokeWidth={0.8}
+            opacity={0.7}
+          />
+        ))}
+        {/* A ring of petal spokes radiating outward, set on the mid ring. */}
+        {Array.from({ length: 12 }, (_, k) => {
+          const a = (k / 12) * Math.PI * 2
+          const x1 = mcx + Math.cos(a) * 9
+          const y1 = my + Math.sin(a) * 9 * 0.2
+          const x2 = mcx + Math.cos(a) * 18
+          const y2 = my + Math.sin(a) * 18 * 0.2
+          return (
+            <line
+              key={`spoke-${k}`}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={k % 2 ? '#fde047' : '#f59e0b'}
+              strokeWidth={k % 2 ? 0.6 : 1}
+              strokeLinecap="round"
+              opacity={0.7}
+            />
+          )
+        })}
+        {/* A small centred lotus motif at the heart of the mandala. */}
+        {[-3, 0, 3].map((dx, k) => (
+          <ellipse
+            key={`petal-${k}`}
+            cx={mcx + dx}
+            cy={my - (k === 1 ? 0.6 : 0)}
+            rx={1.4}
+            ry={2.4}
+            fill="#fef08a"
+            opacity={0.85}
+            transform={`rotate(${k === 0 ? -22 : k === 2 ? 22 : 0} ${mcx + dx} ${my})`}
+          />
+        ))}
+        <circle cx={mcx} cy={my} r={1.4} fill="#fffbeb" />
       </g>
     )
   }

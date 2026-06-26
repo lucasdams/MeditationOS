@@ -1541,6 +1541,109 @@ def test_tier_three_requires_an_owned_tier_two(client):
     assert _unlock(client, "habitat", "night").status_code == 200
 
 
+# --- Tier-4 legendary ultimates (the prestige endgame, one universal capstone per slot) -----
+#
+# Each of the 7 slots gains ONE tier-4 "legendary" option (PART 4a): the highest level + cost +
+# richest art, universal (no per_path). The generic tier-prereq logic gates tier 4 automatically
+# (a tier-4 needs an owned tier-3 in the SAME slot), so no new tier/unlock code is needed.
+
+# {slot: (tier-4 legendary option, an owned tier-3 prereq in that slot)}. The tier-3 prereqs are
+# universal options so any path can climb to them (no per_path on the legendary chain).
+_LEGENDARY_TIER4 = {
+    "aura": ("prismatic", "aurora"),
+    "accessory": ("star_crown", "antlers"),
+    "habitat": ("nebula", "starfall"),
+    "companion": ("dragon", "owl"),
+    "mount": ("comet", "crystal"),
+    "weather": ("aurora_storm", "fireflies"),
+    "ground": ("mandala", "crystals"),
+}
+
+
+def test_every_slot_has_one_universal_tier_four_legendary(client):
+    """PART 4a: each of the 7 slots carries exactly the expected tier-4 legendary ultimate, each a
+    well-formed `{cost, unlock_level, tier: 4, need}` — universal (no per_path), with a valid need,
+    a high unlock_level, and a high cost — the prestige endgame option of the slot."""
+    for slot, (option, _prereq) in _LEGENDARY_TIER4.items():
+        assert slot in SPIRIT_COSMETICS_CATALOG, f"missing slot {slot}"
+        assert option in SPIRIT_COSMETICS_CATALOG[slot], f"{slot} missing tier-4 {option}"
+        spec = SPIRIT_COSMETICS_CATALOG[slot][option]
+        assert spec["tier"] == 4, f"{slot}.{option} should be tier 4"
+        assert spec["need"] in NEED_KEYS, f"{slot}.{option} has an invalid need"
+        assert "per_path" not in spec, f"{slot}.{option} legendary must be universal"
+        # The endgame tier: gated higher and pricier than the tier-3 capstones.
+        assert spec["unlock_level"] >= 10, f"{slot}.{option} should gate high"
+        assert spec["cost"] >= 350, f"{slot}.{option} should be the priciest in the slot"
+        # Exactly ONE tier-4 option per slot (the single ultimate).
+        tier4 = [o for o, s in SPIRIT_COSMETICS_CATALOG[slot].items() if s["tier"] == 4]
+        assert tier4 == [option], f"{slot} should have exactly one tier-4 option"
+
+
+def test_tier_four_is_the_top_tier_in_the_catalog(client):
+    """Tier 4 is now the highest tier present anywhere in the catalog (so SpiritPage's generic
+    tier rendering treats it as the new top/capstone row)."""
+    max_tier = max(
+        spec["tier"]
+        for options in SPIRIT_COSMETICS_CATALOG.values()
+        for spec in options.values()
+    )
+    assert max_tier == 4
+
+
+def test_tier_four_legendary_requires_an_owned_tier_three(client):
+    """A tier-4 legendary can't be unlocked until the spirit owns a tier-3 option in the SAME slot
+    (PART 4a — the generic tier prereq handles tier 4). Owning the tier-1/tier-2 chain up to (but
+    not including) the tier-3 is NOT enough; the tier-4 is locked + the unlock 409s. Use the aura
+    slot: prismatic (tier 4) is gated behind the tier-3 aurora."""
+    _auth(client, "tier4_gate@example.com")
+    _earn_to_level(client, 10)  # past prismatic's L10 + plenty of coins, so tier is the only gate
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["prismatic"]["tier"] == 4
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["aurora"]["tier"] == 3
+
+    # Climb the tier-1 → tier-2 chain but stop short of any tier-3: prismatic is NOT unlockable.
+    assert _unlock(client, "aura", "soft").status_code == 200  # tier 1
+    assert _unlock(client, "aura", "frost").status_code == 200  # tier 2
+    assert _option_state(_spirit(client), "aura", "prismatic")["unlockable"] is False
+    assert _unlock(client, "aura", "prismatic").status_code == 409
+
+    # Own a tier-3 aura → the tier-4 prereq is met and prismatic unlocks + auto-equips.
+    assert _unlock(client, "aura", "aurora").status_code == 200  # tier 3
+    assert _option_state(_spirit(client), "aura", "prismatic")["unlockable"] is True
+    assert _unlock(client, "aura", "prismatic").status_code == 200
+    assert _spirit(client)["cosmetics"]["aura"] == "prismatic"  # auto-equipped
+
+
+def test_high_level_spirit_owning_the_tier_three_can_unlock_each_tier_four(client):
+    """A fresh, high-level spirit that owns a slot's tier-3 prereq can then unlock that slot's
+    tier-4 legendary (PART 4a). Walks every slot with a FRESH spirit per slot (so coins reset and
+    affordability never masks the prereq gate): climb to an owned tier-3, then the tier-4 reports
+    unlockable and unlocks. Confirms the generic prereq chain reaches tier 4 in all 7 slots."""
+    for slot, (legendary, tier3) in _LEGENDARY_TIER4.items():
+        # A fresh, radiant-level spirit per slot: every unlock_level (≤ 10) is met and the whole
+        # single-slot climb (tier1 → tier4) is comfortably affordable.
+        _auth(client, f"tier4_climb_{slot}@example.com")
+        _earn_to_level(client, 24)
+        assert _choose(client, "stillness").status_code == 200
+
+        # The tier-3 prereq's own chain: own any universal tier-1 then any universal tier-2 in the
+        # slot so the tier-3 is unlockable, then own the tier-3 itself.
+        for lower_tier in (1, 2):
+            opt = next(
+                o
+                for o, s in SPIRIT_COSMETICS_CATALOG[slot].items()
+                if s["tier"] == lower_tier and "per_path" not in s
+            )
+            assert _unlock(client, slot, opt).status_code == 200, f"{slot} tier-{lower_tier}"
+        assert _unlock(client, slot, tier3).status_code == 200, f"{slot} tier-3 {tier3}"
+
+        # With the tier-3 owned, the tier-4 legendary is unlockable and unlocks (auto-equips).
+        assert _option_state(_spirit(client), slot, legendary)["unlockable"] is True, (
+            f"{slot}.{legendary} should be unlockable once its tier-3 is owned"
+        )
+        assert _unlock(client, slot, legendary).status_code == 200, f"{slot} tier-4 {legendary}"
+        assert _spirit(client)["cosmetics"][slot] == legendary
+
+
 def test_unlock_owns_auto_equips_charges_and_pampers(client, db_session):
     """One unlock does all of ADR-0027's effects: the option is owned, auto-equipped, charged to
     the ledger, and the spirit is pampered (stamp + need recorded)."""

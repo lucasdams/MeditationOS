@@ -22,7 +22,7 @@ vi.mock('../services/spirit', () => ({
   spiritService: { get: (...a: unknown[]) => getSpirit(...a) },
 }))
 
-import Spirit from './Spirit'
+import Spirit, { optionLabel } from './Spirit'
 import type {
   SpiritNeedTier,
   SpiritPath,
@@ -374,6 +374,57 @@ describe('Spirit — weather + ground slots render on the art', () => {
         '.spirit-svg path[fill="#a5f3fc"], .spirit-svg path[fill="#7dd3fc"]',
       ),
     ).not.toBeNull()
+  })
+})
+
+describe('Spirit — legendary tier-4 ultimates render on the art', () => {
+  // PART 4a: each slot's single tier-4 "legendary" ultimate (the prestige endgame option) draws
+  // its own signature element. Each carries a colour marker unique to that art so the test stays
+  // geometry-free. A couple of representative slots are covered here (the catalog/prereq wiring is
+  // exhaustively covered in the backend tests).
+
+  it('draws the prismatic aura (rainbow radiant rings)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { aura: 'prismatic' } })} />,
+    )
+    // The outermost spectral ring is a violet stroked circle (#c084fc) — unique to the prismatic art.
+    expect(container.querySelector('.spirit-svg circle[stroke="#c084fc"]')).not.toBeNull()
+  })
+
+  it('draws the dragon companion (golden back-spines)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'dragon' } })} />,
+    )
+    // The ridge of golden back-spines is a yellow path (#fde047) — the dragon's signature marker.
+    expect(container.querySelector('.spirit-svg path[fill="#fde047"]')).not.toBeNull()
+  })
+
+  it('draws the nebula habitat backdrop (pink stellar gas)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { habitat: 'nebula' } })} />,
+    )
+    // One billowing nebula gas cloud is a magenta ellipse (#db2777) — unique to the nebula art.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#db2777"]')).not.toBeNull()
+  })
+
+  it('draws the comet mount (blazing white star-core)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { mount: 'comet' } })} />,
+    )
+    // The bright comet core is a near-white circle (#fffbeb) — the comet's signature marker.
+    expect(container.querySelector('.spirit-svg circle[fill="#fffbeb"]')).not.toBeNull()
+  })
+
+  it('labels each legendary ultimate in sentence case (OPTION_LABEL coverage)', () => {
+    // The tree/preview reads each option via optionLabel; the legendary keys must resolve to their
+    // own sentence-case labels (not the titleized fallback).
+    expect(optionLabel('prismatic')).toBe('Prismatic halo')
+    expect(optionLabel('star_crown')).toBe('Star crown')
+    expect(optionLabel('nebula')).toBe('Cosmic nebula')
+    expect(optionLabel('dragon')).toBe('Curled dragon')
+    expect(optionLabel('comet')).toBe('Radiant comet')
+    expect(optionLabel('aurora_storm')).toBe('Aurora storm')
+    expect(optionLabel('mandala')).toBe('Sacred mandala')
   })
 })
 
