@@ -68,6 +68,12 @@ class Spirit(Base):
     last_pampered_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # The need the LAST-bought cosmetic FAVOURS (ADR-0026): nourished | rested | joyful. Set
+    # alongside `last_pampered_at` on every buy, so the decaying buy-boost can be WEIGHTED toward
+    # that need (a smaller spillover to the other two). NULL means either never pampered OR a
+    # legacy row pampered before this feature — the needs read then falls back to ADR-0025's
+    # uniform boost so existing pampered spirits don't regress. Nullable, no server default.
+    last_pampered_need: Mapped[str | None] = mapped_column(Text, nullable=True)
     awakened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

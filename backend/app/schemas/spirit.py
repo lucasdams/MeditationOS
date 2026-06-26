@@ -102,6 +102,7 @@ class SpiritSlotOption(BaseModel):
     affordable: bool  # the current balance covers the FULL cost (ADR-0024: no swap math)
     applied: bool  # this option is the one currently on the spirit
     available: bool  # offered to the spirit's chosen path (per-path exclusivity; True = universal)
+    need: str  # the need this option FAVOURS (ADR-0026): nourished | rested | joyful
 
 
 class SpiritAvailableSlot(BaseModel):

@@ -33,8 +33,8 @@ const auraSlot: SpiritAvailableSlot = {
   applied: null,
   locked: false,
   options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true },
-    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true },
+    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true, need: 'rested' },
+    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true, need: 'nourished' },
     {
       option: 'starlit',
       cost: 70,
@@ -43,6 +43,7 @@ const auraSlot: SpiritAvailableSlot = {
       affordable: true,
       applied: false,
       available: true,
+      need: 'rested',
     },
   ],
 }
@@ -54,8 +55,8 @@ const lockedAuraSlot: SpiritAvailableSlot = {
   applied: 'soft',
   locked: true,
   options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true, available: true },
-    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: false, applied: false, available: true },
+    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true, available: true, need: 'rested' },
+    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: false, applied: false, available: true, need: 'nourished' },
   ],
 }
 
@@ -212,7 +213,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     applied: null,
     locked: false,
     options: [
-      { option: 'night', cost: 80, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true },
+      { option: 'night', cost: 80, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true, need: 'rested' },
     ],
   }
 
@@ -471,9 +472,13 @@ describe('SpiritPage care needs (ADR-0023)', () => {
     renderPage()
 
     await screen.findByText('Care')
-    expect(screen.getByText('Nourishment')).toBeInTheDocument()
-    expect(screen.getByText('Rest')).toBeInTheDocument()
-    expect(screen.getByText('Joy')).toBeInTheDocument()
+    // Scope the need-label assertions to the Care read-out: the same labels (Nourishment / Rest /
+    // Joy) now also tag the shop's options (ADR-0026 per-item need affinities), so a page-wide
+    // getByText would match more than one.
+    const care = screen.getByRole('region', { name: 'Care' })
+    expect(within(care).getByText('Nourishment')).toBeInTheDocument()
+    expect(within(care).getByText('Rest')).toBeInTheDocument()
+    expect(within(care).getByText('Joy')).toBeInTheDocument()
     // The nudge names the creature (Pitta) and its reviving practice (gratitude & journaling).
     expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
     expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()

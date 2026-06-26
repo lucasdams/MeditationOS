@@ -180,8 +180,18 @@ HEART = "heart"
 _CHOOSABLE_PATHS: frozenset[str] = frozenset({STILLNESS, BREATH, HEART})
 
 
-# --- The three tended needs (demanding, visual-only care state) --------------------------
+# --- The three tended needs (demanding, visual-only care state) + need keys ---------------
 #
+# The three need KEYS (also the catalog `need` affinity values, ADR-0026). Kept as bare
+# string constants so the catalog, the passive/buy-boost math, and the schema all agree on the
+# exact spelling.
+NOURISHED = "nourished"
+RESTED = "rested"
+JOYFUL = "joyful"
+
+# The full set of need keys, in display order — used to iterate the per-need math (ADR-0026).
+NEED_KEYS: tuple[str, ...] = (NOURISHED, RESTED, JOYFUL)
+
 # ADR-0023 replaces the single `daily_glow` with THREE named needs, each a tier
 # (thriving → content → restless → unwell) plus a 0..1 factor, all computed from the activity
 # log over the same rolling window and all DEMANDING + SLOW TO RECOVER (they reflect a *count
@@ -251,17 +261,37 @@ JOYFUL_TIERS: tuple[tuple[str, int, float], ...] = (
 _NEUTRAL_CONDITION_TIER = CONDITION_CONTENT
 _NEUTRAL_CONDITION_FACTOR = 0.8
 
-# --- Pamper boost (ADR-0025): buying an upgrade perks the spirit up -----------------------
+# --- Per-item need affinities (ADR-0026, extends ADR-0025) --------------------------------
 #
-# Buying a cosmetic stamps `spirits.last_pampered_at = now()`; the needs read then adds a
-# DECAYING bonus to EACH need's 0..1 factor (the whole spirit perks up): full right after the
-# purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. It is PARTIAL and CAPPED (`min(1.0, …)`):
-# from a genuinely NEGLECTED floor it only lifts a need part-way (a treat can't substitute for
-# practice), though from a healthier baseline the +0.35 can briefly read `thriving` — a generous,
-# short-lived reward for spending. VISUAL-ONLY, exactly like the needs it lifts (the ADR-0023
-# guardrail): it never touches coins/stage/level/cosmetics. Tunable in-code (no migration).
-PAMPER_BOOST = 0.35  # added to each need's 0..1 factor at purchase time (before decay)
-PAMPER_WINDOW_DAYS = 3  # days over which the boost decays linearly to 0
+# ADR-0025 gave EVERY purchase a uniform decaying boost to ALL THREE needs. ADR-0026 makes each
+# item FAVOUR ONE need (its catalog `need` affinity) with two effects:
+#
+#   1. PASSIVE (while-owned): a small, permanent lift to the need each currently-applied item
+#      favours — PASSIVE_PER_ITEM per item, capped at PASSIVE_NEED_CAP per need. No decay; it
+#      lasts as long as the item is applied.
+#   2. BUY-BOOST (fading): buying stamps `spirits.last_pampered_at = now()` AND records the bought
+#      item's need in `spirits.last_pampered_need`. The needs read then adds a DECAYING boost,
+#      WEIGHTED toward that need (PAMPER_PRIMARY) with a smaller SPILLOVER to the other two
+#      (PAMPER_SPILL) so buying any item still helps overall condition somewhat. Full right after
+#      the purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS.
+#
+# Both are PARTIAL and CAPPED (the final factor clamps to 1.0): from a genuinely NEGLECTED floor
+# they only lift a need part-way — a treat can't substitute for practice — though from a healthier
+# baseline the weighted boost can briefly read `thriving`. VISUAL-ONLY, exactly like the needs they
+# lift (the ADR-0023 guardrail): they never touch coins/stage/level/cosmetics. Practice stays the
+# primary driver. All tunable in-code (no migration).
+PAMPER_PRIMARY = 0.35  # the buy-boost added to the BOUGHT item's favoured need (before decay)
+PAMPER_SPILL = 0.12  # the smaller buy-boost spillover to the other two needs (before decay)
+PAMPER_WINDOW_DAYS = 3  # days over which the buy-boost decays linearly to 0
+
+# Passive (while-owned) per-need lift: PASSIVE_PER_ITEM per currently-applied item favouring the
+# need, capped at PASSIVE_NEED_CAP per need (so a need can't be propped up by hoarding items).
+PASSIVE_PER_ITEM = 0.05
+PASSIVE_NEED_CAP = 0.15
+
+# Default need affinity for any catalog option missing an explicit `need` (a safety net — every
+# real option gets an explicit one; see SPIRIT_COSMETICS_CATALOG and the catalog-coverage test).
+DEFAULT_ITEM_NEED = JOYFUL
 
 # Minutes-based practices count a day only once its session time reaches MIN_PRACTICE_SECONDS
 # (the same floor streaks/heatmaps use), so a 1-second sit can't prop up a need.
@@ -294,13 +324,15 @@ def _tier_for_factor(
     return chosen
 
 
-def _pamper_bonus(
+def _pamper_decay(
     last_pampered_at: datetime | None, *, today: date, tz: str
 ) -> float:
-    """The decaying pamper bonus (ADR-0025) added to each need's factor: PAMPER_BOOST right
-    after a purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. 0 when never pampered or
-    once the window has elapsed. `days_since` is computed in LOCAL days (the purchase day → 0 →
-    full boost), mirroring how the needs themselves bucket activity by local day."""
+    """The 0..1 decay factor for the fading buy-boost (ADR-0025 / ADR-0026): 1.0 right after a
+    purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. 0 when never pampered or once the
+    window has elapsed. `days_since` is computed in LOCAL days (the purchase day → 0 → full),
+    mirroring how the needs themselves bucket activity by local day. The caller multiplies this
+    decay by the per-need weight (PAMPER_PRIMARY for the bought item's need, PAMPER_SPILL for the
+    others), so the boost is both weighted AND fading."""
     if last_pampered_at is None:
         return 0.0
     # The DB stores timestamptz; a value read back may be tz-aware (UTC) or, in some test
@@ -313,7 +345,7 @@ def _pamper_bonus(
     days_since = (today - pampered_day).days
     if days_since < 0:  # clock skew / future stamp — treat as just pampered
         days_since = 0
-    return PAMPER_BOOST * max(0.0, 1.0 - days_since / PAMPER_WINDOW_DAYS)
+    return max(0.0, 1.0 - days_since / PAMPER_WINDOW_DAYS)
 
 
 def _signature_care_days(
@@ -453,6 +485,29 @@ def _neutral_need() -> SpiritNeed:
     return SpiritNeed(tier=_NEUTRAL_CONDITION_TIER, factor=_NEUTRAL_CONDITION_FACTOR)
 
 
+def _buyboost_for_need(
+    need: str, decay: float, last_pampered_need: str | None, *, has_pamper: bool
+) -> float:
+    """The fading buy-boost added to ONE need's factor (ADR-0026), = `decay` × weight:
+
+    - the BOUGHT item's favoured need (`need == last_pampered_need`) gets PAMPER_PRIMARY;
+    - the other two needs get the smaller PAMPER_SPILL spillover (so buying any item still helps
+      overall condition somewhat — non-punishing);
+    - LEGACY FALLBACK: a spirit pampered BEFORE this feature has `last_pampered_at` set but
+      `last_pampered_need is None` — we then apply the OLD uniform behaviour (every need gets
+      PAMPER_PRIMARY) so existing pampered spirits don't regress.
+
+    `decay` is 0 once the window has elapsed (or there was never a pamper), so the boost is 0 then.
+    """
+    if not has_pamper:
+        return 0.0
+    if last_pampered_need is None:
+        # Legacy row (pampered before ADR-0026): uniform boost, exactly the ADR-0025 behaviour.
+        return decay * PAMPER_PRIMARY
+    weight = PAMPER_PRIMARY if need == last_pampered_need else PAMPER_SPILL
+    return decay * weight
+
+
 def needs(
     db: DBSession,
     path: str | None,
@@ -462,23 +517,31 @@ def needs(
     tz: str,
     current_streak: int = 0,
     last_pampered_at: datetime | None = None,
+    last_pampered_need: str | None = None,
+    cosmetics: dict[str, str] | None = None,
 ) -> SpiritNeeds:
     """The active creature's three tended needs (ADR-0023) over the rolling window. Demanding:
     each declines through the tiers when its signal is neglected and recovers only gradually.
 
     A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
-    content-ish default rather than a care requirement (and gets NO pamper bonus).
+    content-ish default rather than a care requirement (and gets NO item bonuses).
 
     `current_streak` (the dashboard's value) feeds `rested` so a strong streak reads as
     well-rested even before the active-day count fills.
 
-    `last_pampered_at` (ADR-0025) adds a DECAYING pamper bonus to EACH need's factor — full
-    right after a cosmetic purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS — so the
-    whole spirit perks up when treated. The bonus is partial and capped (`min(1.0, …)`): it can
-    lift a need off the floor but can't alone reach thriving; the boosted tier is re-derived
-    from the boosted factor so tier and factor stay consistent.
+    Item bonuses on top of the practice-derived base factor per need (ADR-0026, extends ADR-0025):
 
-    GUARDRAIL: visual/advisory only — the caller must never let any need (or the pamper bonus)
+    - PASSIVE (while-owned): each currently-applied cosmetic adds PASSIVE_PER_ITEM to the need it
+      FAVOURS (capped at PASSIVE_NEED_CAP per need), from `cosmetics`. No decay.
+    - BUY-BOOST (fading): `last_pampered_at` + `last_pampered_need` add a DECAYING boost, WEIGHTED
+      toward the bought item's need (PAMPER_PRIMARY) with a smaller spillover to the other two
+      (PAMPER_SPILL). Legacy rows (`last_pampered_need is None`) keep the old uniform boost.
+
+    The final factor is `base + passive + buyboost`, clamped to 1.0; the tier is re-derived from
+    that final factor so tier and factor stay consistent. The bonuses are partial and capped: they
+    lift a need off the floor but can't alone reach thriving — practice stays the primary driver.
+
+    GUARDRAIL: visual/advisory only — the caller must never let any need (or its item bonuses)
     affect stage, level, coins, cosmetics, or the collection.
     """
     if path is None or path not in _CHOOSABLE_PATHS:
@@ -487,8 +550,17 @@ def needs(
 
     window_start = today - timedelta(days=CONDITION_WINDOW_DAYS - 1)
 
-    # The decaying pamper bonus added to each need's factor (0 when never pampered / decayed).
-    pamper = _pamper_bonus(last_pampered_at, today=today, tz=tz)
+    # The 0..1 decay of the fading buy-boost (0 when never pampered / once the window elapsed),
+    # the passive per-need lifts from currently-applied items, and whether any pamper is active.
+    decay = _pamper_decay(last_pampered_at, today=today, tz=tz)
+    has_pamper = last_pampered_at is not None
+    passive = _passive_need_bonus(cosmetics or {})
+
+    def _bonus(need: str) -> float:
+        # Passive while-owned + the weighted fading buy-boost, summed per need.
+        return passive[need] + _buyboost_for_need(
+            need, decay, last_pampered_need, has_pamper=has_pamper
+        )
 
     # nourished — the signature-practice care days.
     care_days = _signature_care_days(
@@ -511,22 +583,23 @@ def needs(
     _, joyful_factor = _tier_for_count(variety, JOYFUL_TIERS)
 
     return SpiritNeeds(
-        nourished=_boosted_need(nourished_factor, pamper),
-        rested=_boosted_need(rested_factor, pamper),
-        joyful=_boosted_need(joyful_factor, pamper, tiers=JOYFUL_TIERS),
+        nourished=_boosted_need(nourished_factor, _bonus(NOURISHED)),
+        rested=_boosted_need(rested_factor, _bonus(RESTED)),
+        joyful=_boosted_need(joyful_factor, _bonus(JOYFUL), tiers=JOYFUL_TIERS),
     )
 
 
 def _boosted_need(
     factor: float,
-    pamper: float,
+    bonus: float,
     *,
     tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS,
 ) -> SpiritNeed:
-    """Apply the decaying pamper bonus (ADR-0025) to one need's factor, clamped to 1.0, and
-    re-derive its tier from the boosted factor so the two stay consistent. `pamper` is 0 when
-    the spirit hasn't been pampered (or the boost has decayed) → the need is unchanged."""
-    boosted_factor = min(1.0, factor + pamper)
+    """Apply one need's item `bonus` (ADR-0026: passive while-owned + the weighted fading
+    buy-boost) to its practice-derived `factor`, clamped to 1.0, and re-derive its tier from the
+    final factor so the two stay consistent. `bonus` is 0 when the spirit owns no items favouring
+    the need and hasn't been pampered (or the buy-boost has decayed) → the need is unchanged."""
+    boosted_factor = min(1.0, factor + bonus)
     return SpiritNeed(tier=_tier_for_factor(boosted_factor, tiers), factor=boosted_factor)
 
 
@@ -562,39 +635,42 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
 # slots/options, and only re-tune costs of options nobody owns. Test
 # `test_owned_options_all_price_above_zero` guards against an owned key being dropped.
 SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
-    # {slot: {option: {"cost": int, "unlock_level": int, "per_path"?: str}}}
+    # {slot: {option: {"cost": int, "unlock_level": int, "need": str, "per_path"?: str}}}
     # An OPTIONAL `per_path` restricts an option to a single chosen creature (dosha): the option
     # is then bought/seen only by that path (absent → universal, available to all). See the
     # path-exclusive companions below for the only current use.
+    # A REQUIRED `need` (ADR-0026) records the ONE need the item favours (nourished | rested |
+    # joyful) — driving both the passive while-owned lift and the weighted fading buy-boost. Every
+    # option has one (the catalog-coverage test guards this).
     # A soft surrounding glow — the gentlest touch, available from the start.
     "aura": {
-        "soft": {"cost": 30, "unlock_level": 1},
-        "warm": {"cost": 45, "unlock_level": 1},
-        "starlit": {"cost": 70, "unlock_level": 5},
-        "ember": {"cost": 50, "unlock_level": 1},
-        "frost": {"cost": 55, "unlock_level": 2},
-        "rose": {"cost": 45, "unlock_level": 1},
+        "soft": {"cost": 30, "unlock_level": 1, "need": RESTED},
+        "warm": {"cost": 45, "unlock_level": 1, "need": NOURISHED},
+        "starlit": {"cost": 70, "unlock_level": 5, "need": RESTED},
+        "ember": {"cost": 50, "unlock_level": 1, "need": NOURISHED},
+        "frost": {"cost": 55, "unlock_level": 2, "need": RESTED},
+        "rose": {"cost": 45, "unlock_level": 1, "need": JOYFUL},
         # PATH-EXCLUSIVE auras (like the companions above): the ember flames for fiery Pitta
         # (breath), the verdant grove for grounded Kapha (stillness), the airy zephyr for Vata
         # (heart). Only the matching creature can buy/see each.
-        "emberflame": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
-        "grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
-        "zephyr": {"cost": 220, "unlock_level": 6, "per_path": HEART},
+        "emberflame": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
+        "grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": NOURISHED},
+        "zephyr": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
     },
     # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star are universal; the three
     # PATH-EXCLUSIVE accessories carry a `per_path` key so only the matching creature can buy (and
     # see) them — the ember crown for the fiery Pitta (breath), the mossy stone circlet for the
     # grounded Kapha (stillness), the feather plume for the airy Vata (heart).
     "accessory": {
-        "halo": {"cost": 40, "unlock_level": 1},
-        "leaf_crown": {"cost": 55, "unlock_level": 1},
-        "ribbon": {"cost": 35, "unlock_level": 1},
-        "flower": {"cost": 40, "unlock_level": 1},
-        "scarf": {"cost": 45, "unlock_level": 2},
-        "star": {"cost": 60, "unlock_level": 5},
-        "ember_crown": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
-        "mossy_circlet": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
-        "feather_plume": {"cost": 220, "unlock_level": 6, "per_path": HEART},
+        "halo": {"cost": 40, "unlock_level": 1, "need": JOYFUL},
+        "leaf_crown": {"cost": 55, "unlock_level": 1, "need": NOURISHED},
+        "ribbon": {"cost": 35, "unlock_level": 1, "need": JOYFUL},
+        "flower": {"cost": 40, "unlock_level": 1, "need": JOYFUL},
+        "scarf": {"cost": 45, "unlock_level": 2, "need": RESTED},
+        "star": {"cost": 60, "unlock_level": 5, "need": JOYFUL},
+        "ember_crown": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
+        "mossy_circlet": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
+        "feather_plume": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
     },
     # A small backdrop the spirit sits in (the "habitat"). meadow/dusk/night/garden/seaside/
     # cottage are universal; the three PATH-EXCLUSIVE backdrops carry a `per_path` key so only
@@ -602,27 +678,27 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # (breath), the misty grove for the grounded Kapha (stillness), the open sky for the airy
     # Vata (heart).
     "habitat": {
-        "meadow": {"cost": 50, "unlock_level": 1},
-        "dusk": {"cost": 65, "unlock_level": 3},
-        "night": {"cost": 80, "unlock_level": 7},
-        "garden": {"cost": 60, "unlock_level": 1},
-        "seaside": {"cost": 70, "unlock_level": 3},
-        "cottage": {"cost": 90, "unlock_level": 7},
-        "ember_canyon": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
-        "misty_grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
-        "open_sky": {"cost": 220, "unlock_level": 6, "per_path": HEART},
+        "meadow": {"cost": 50, "unlock_level": 1, "need": JOYFUL},
+        "dusk": {"cost": 65, "unlock_level": 3, "need": RESTED},
+        "night": {"cost": 80, "unlock_level": 7, "need": RESTED},
+        "garden": {"cost": 60, "unlock_level": 1, "need": NOURISHED},
+        "seaside": {"cost": 70, "unlock_level": 3, "need": RESTED},
+        "cottage": {"cost": 90, "unlock_level": 7, "need": RESTED},
+        "ember_canyon": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
+        "misty_grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
+        "open_sky": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
     },
     # A small friend that keeps the spirit company (the "companion"). firefly/bird/cat are
     # universal; the three PATH-EXCLUSIVE companions carry a `per_path` key so only the matching
     # creature can buy (and see) them — the nine-tail kitsune for the fiery Pitta (breath), the
     # jade tortoise for the grounded Kapha (stillness), the paper crane for the airy Vata (heart).
     "companion": {
-        "firefly": {"cost": 100, "unlock_level": 1},
-        "bird": {"cost": 160, "unlock_level": 3},
-        "cat": {"cost": 240, "unlock_level": 7},
-        "kitsune": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
-        "tortoise": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
-        "crane": {"cost": 220, "unlock_level": 6, "per_path": HEART},
+        "firefly": {"cost": 100, "unlock_level": 1, "need": JOYFUL},
+        "bird": {"cost": 160, "unlock_level": 3, "need": JOYFUL},
+        "cat": {"cost": 240, "unlock_level": 7, "need": RESTED},
+        "kitsune": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": JOYFUL},
+        "tortoise": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
+        "crane": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
     },
     # A serene thing the spirit floats on / rides — the calm take on a "mount". cloud/lotus/leaf
     # are universal; the three PATH-EXCLUSIVE mounts carry a `per_path` key so only the matching
@@ -630,12 +706,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # mossy boulder for the grounded Kapha (stillness), the breeze-borne feather for the airy
     # Vata (heart).
     "mount": {
-        "cloud": {"cost": 70, "unlock_level": 1},
-        "lotus": {"cost": 90, "unlock_level": 3},
-        "leaf": {"cost": 120, "unlock_level": 7},
-        "emberstone": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
-        "boulder": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
-        "feather": {"cost": 220, "unlock_level": 6, "per_path": HEART},
+        "cloud": {"cost": 70, "unlock_level": 1, "need": RESTED},
+        "lotus": {"cost": 90, "unlock_level": 3, "need": RESTED},
+        "leaf": {"cost": 120, "unlock_level": 7, "need": JOYFUL},
+        "emberstone": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
+        "boulder": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
+        "feather": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
     },
 }
 
@@ -656,6 +732,31 @@ def _option_per_path(slot: str, option: str) -> str | None:
     chosen creature; an absent key means every path may use it. Unknown slot/option → None."""
     per_path = SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("per_path")
     return str(per_path) if per_path is not None else None
+
+
+def _option_need(slot: str, option: str) -> str:
+    """The need a catalog option FAVOURS (ADR-0026) — one of `nourished` / `rested` / `joyful`.
+    Drives both the passive while-owned lift and the weighted buy-boost. Every real option has an
+    explicit `need`; an unknown slot/option (or a missing key) falls back to DEFAULT_ITEM_NEED so
+    the math is never need-less."""
+    need = SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("need")
+    return str(need) if need is not None else DEFAULT_ITEM_NEED
+
+
+def _passive_need_bonus(cosmetics: dict[str, str]) -> dict[str, float]:
+    """The passive (while-owned) per-need lift (ADR-0026): for each need, PASSIVE_PER_ITEM times
+    the number of currently-applied cosmetics that favour it, capped at PASSIVE_NEED_CAP. Iterates
+    the stored `{slot: option}` dict, looking up each option's `need` in the catalog. Returns a
+    {need: bonus} map (0.0 for any need no applied item favours). No decay — it lasts as long as
+    the items are applied."""
+    counts: dict[str, int] = dict.fromkeys(NEED_KEYS, 0)
+    for slot, option in cosmetics.items():
+        need = _option_need(slot, option)
+        if need in counts:
+            counts[need] += 1
+    return {
+        need: min(PASSIVE_NEED_CAP, PASSIVE_PER_ITEM * counts[need]) for need in NEED_KEYS
+    }
 
 
 def _cosmetics(spirit: Spirit) -> dict[str, str]:
@@ -703,6 +804,8 @@ def _available_slots(
                     affordable=balance >= cost,
                     applied=applied == option,
                     available=available,
+                    # The need this option favours (ADR-0026), so the shop can tag it.
+                    need=_option_need(slot, option),
                 )
             )
         # Order so the applied option leads (if any), then unlocked (available) options, then
@@ -801,8 +904,11 @@ def _build_state(
         today=today,
         tz=tz,
         current_streak=basis.current_streak,
-        # ADR-0025: a recent cosmetic purchase adds a decaying boost to every need (visual-only).
+        # ADR-0025/0026: a recent purchase adds a decaying boost WEIGHTED toward the bought item's
+        # favoured need; the owned items each add a small passive lift to the need they favour.
         last_pampered_at=spirit.last_pampered_at,
+        last_pampered_need=spirit.last_pampered_need,
+        cosmetics=cosmetics,
     )
 
     return SpiritState(
@@ -932,10 +1038,12 @@ def buy_cosmetic(
     updated[data.slot] = data.option
     spirit.cosmetics = updated
     spirit.coins_spent = spirit.coins_spent + cost
-    # ADR-0025: buying PAMPERS the spirit — stamp the purchase time so the needs read adds a
-    # decaying boost (visual-only; the paid resets/awaken do NOT pamper). Same txn + lock as the
-    # cosmetic apply and the coins_spent bump.
+    # ADR-0025/0026: buying PAMPERS the spirit — stamp the purchase time AND the bought item's
+    # favoured need, so the needs read adds a decaying boost WEIGHTED toward that need (visual-only;
+    # the paid resets/awaken do NOT pamper). Same txn + lock as the cosmetic apply and the
+    # coins_spent bump.
     spirit.last_pampered_at = func.now()
+    spirit.last_pampered_need = _option_need(data.slot, data.option)
     db.commit()
     db.refresh(spirit)
     return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
