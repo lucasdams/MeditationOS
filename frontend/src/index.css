@@ -2895,15 +2895,47 @@ textarea:focus-visible,
    Default glow factor on the SVG so child layers inherit it if the inline prop is absent. */
 .spirit-svg {
   --spirit-glow: 1;
+  /* --spirit-vitality is the wider-range good↔bad cue (0.4 unwell → 1.0 thriving), set inline by
+     SpiritArt off the RAW condition factor. Default 1 (thriving) so a spirit rendered without an
+     inline value (or in a context that doesn't set it) looks full, never washed-out. */
+  --spirit-vitality: 1;
+}
+
+/* The condition expressed on the CREATURE itself (ADR-0023) — the most-legible good↔bad cue.
+   SATURATION + a touch of brightness key off `--spirit-vitality`: a neglected spirit looks
+   washed-out / greyer, a thriving one vivid. Applied to the floating creature GROUP (not the svg
+   root) so it composes with the aura's own brightness pulse and the celebration filter without
+   clobbering them. Calm and kind: even at the floor (0.4) the creature stays clearly visible and
+   coloured, just muted — never grey-dead or alarming. A gentle transition smooths tier changes. */
+.spirit-creature {
+  filter: saturate(var(--spirit-vitality))
+    brightness(calc(0.92 + 0.08 * var(--spirit-vitality)));
+  transition: filter 0.6s ease;
+}
+
+/* POSTURE (ADR-0023): a still creature carries a baseline droop + slight shrink that eases from
+   full (vitality 1: upright, full size) to a gentle slump (vitality 0.4: ~3px lower, ~4% smaller)
+   when unwell. Gentle by design — a couple of px and a few percent, a soft wilt, never grotesque.
+   This is the resting transform for the static / reduced-motion paths; the float keyframe folds the
+   SAME droop into its own translate so it doesn't get clobbered by the animation. */
+.spirit-creature {
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  /* droop: 0px at vitality 1 → ~3px at 0.4; scale: 1 at vitality 1 → ~0.965 at 0.4. */
+  transform: translateY(calc((1 - var(--spirit-vitality)) * 5px))
+    scale(calc(1 - (1 - var(--spirit-vitality)) * 0.06));
 }
 
 /* The FLOATING creature layer: a gentle, slow wandering drift. Calm by design — long, eased,
-   low-amplitude; the idiom of `zen-float`, never a frantic wobble. `transform-box` keeps it
-   moving about its own centre. The pacer-sync and reduced-motion paths override below. */
+   low-amplitude; the idiom of `zen-float`, never a frantic wobble. LIVELINESS keys off
+   `--spirit-vitality`: when low, the drift is slower (longer period) so a depleted spirit moves
+   sluggishly; the keyframe also scales its bob amplitude down with vitality. `transform-box` keeps
+   it moving about its own centre. The pacer-sync and reduced-motion paths override below. */
 .spirit-creature--alive {
-  transform-origin: center;
+  transform-origin: center bottom;
   transform-box: fill-box;
-  animation: spirit-float 5s ease-in-out infinite;
+  /* Lively (5s) when thriving → slow (~7.5s) when unwell, so low vitality reads as sluggish. */
+  animation: spirit-float calc(5s + (1 - var(--spirit-vitality)) * 4.2s) ease-in-out infinite;
   will-change: transform;
 }
 
