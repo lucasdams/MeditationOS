@@ -1,5 +1,6 @@
-"""Spirit routes (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024). The read API plus the
-choose (creature + name), cosmetics, paid name/upgrade resets, and awaken / collection writes.
+"""Spirit routes (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024, ADR-0027). The read API
+plus the choose (creature + name), cosmetics unlock/equip, paid name reset, and awaken /
+collection writes.
 
 Thin handlers — all business logic lives in `spirit_service`; its domain errors map to HTTP
 status codes here. Scoped to the authenticated user (default-deny via get_current_user); the
@@ -21,17 +22,19 @@ from app.models.user import User
 from app.schemas.spirit import (
     ChoosePathRequest,
     CosmeticsRequest,
+    EquipRequest,
     ResetNameRequest,
     SpiritState,
 )
 from app.services import spirit_service
 from app.services.spirit_service import (
+    AlreadyOwned,
     CosmeticLocked,
-    CosmeticSlotLocked,
     InsufficientCoins,
-    NothingToReset,
+    NotOwned,
     NotRadiant,
     PathAlreadyChosen,
+    PrerequisiteNotMet,
     SpiritConflictError,
     UnknownCosmetic,
 )
@@ -92,33 +95,62 @@ def choose_path(
 
 @router.post("/cosmetics", response_model=SpiritState)
 @limiter.limit(settings.write_rate_limit)
-def buy_cosmetic(
+def unlock_cosmetic(
     request: Request,  # required by the rate limiter
     body: CosmeticsRequest,
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """Buy/apply a cosmetic (slot → option) to the active spirit. The full cost is deducted
-    from the derived coin balance and added to the spend ledger. A slot is applied once and
-    then LOCKED (ADR-0024) — changing it needs a paid upgrades-reset. Unknown slot/option →
-    404; locked-slot / not-unlocked / unaffordable → 409."""
+    """Unlock a cosmetic (slot → option) into the active spirit's owned collection and auto-equip
+    it (ADR-0027). The full cost is deducted from the coin balance and added to the spend ledger
+    (owned forever, never refunded). Unknown / unavailable slot-option → 404; already owned,
+    level-locked, tier-prereq unmet, or unaffordable → 409."""
     today, tz = today_tz
     try:
-        return spirit_service.buy_cosmetic(db, current_user.id, body, today=today, tz=tz)
+        return spirit_service.unlock_cosmetic(db, current_user.id, body, today=today, tz=tz)
     except UnknownCosmetic:
         raise _NOT_FOUND from None
-    except CosmeticSlotLocked:
+    except AlreadyOwned:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="That slot is locked — reset upgrades to change it",
+            detail="Your spirit already owns that cosmetic",
         ) from None
     except CosmeticLocked:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="That cosmetic is not unlocked yet"
         ) from None
+    except PrerequisiteNotMet:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Unlock an earlier option in this slot first",
+        ) from None
     except InsufficientCoins:
         raise _BROKE from None
+
+
+@router.post("/cosmetics/equip", response_model=SpiritState)
+@limiter.limit(settings.write_rate_limit)
+def equip_cosmetic(
+    request: Request,  # required by the rate limiter
+    body: EquipRequest,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
+) -> SpiritState:
+    """Equip an OWNED cosmetic option into its slot, or clear the slot with a null `option`
+    (ADR-0027) — FREE and instant; no coins, no pamper. Unknown slot, or an option that doesn't
+    belong to the slot → 404; an option the spirit doesn't own → 409."""
+    today, tz = today_tz
+    try:
+        return spirit_service.equip_cosmetic(db, current_user.id, body, today=today, tz=tz)
+    except UnknownCosmetic:
+        raise _NOT_FOUND from None
+    except NotOwned:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Your spirit hasn't unlocked that cosmetic yet",
+        ) from None
 
 
 @router.post("/reset-name", response_model=SpiritState)
@@ -136,29 +168,6 @@ def reset_name(
     today, tz = today_tz
     try:
         return spirit_service.reset_name(db, current_user.id, body, today=today, tz=tz)
-    except InsufficientCoins:
-        raise _BROKE from None
-
-
-@router.post("/reset-upgrades", response_model=SpiritState)
-@limiter.limit(settings.write_rate_limit)
-def reset_upgrades(
-    request: Request,  # required by the rate limiter
-    db: DBSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    today_tz: tuple[date, str] = Depends(today_for_user),
-) -> SpiritState:
-    """Clear ALL applied upgrades via a PAID reset (ADR-0024), unlocking every slot. Charges
-    the flat reset fee — too few coins → 409 — and does NOT refund the cleared upgrades. With
-    no upgrades applied there's nothing to reset → 409."""
-    today, tz = today_tz
-    try:
-        return spirit_service.reset_cosmetics(db, current_user.id, today=today, tz=tz)
-    except NothingToReset:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="There are no upgrades to reset",
-        ) from None
     except InsufficientCoins:
         raise _BROKE from None
 

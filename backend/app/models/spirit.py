@@ -49,9 +49,18 @@ class Spirit(Base):
     path: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Optional nickname (cosmetic). Trimmed + length-capped server-side; NULL = unnamed.
     name: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # Owned cosmetics as {slot: option} — the applied upgrades (ADR-0011). Default {} = none.
+    # The EQUIPPED loadout as {slot: option} (ADR-0027): one owned option shown per slot, or the
+    # slot absent when empty. Default {} = nothing equipped. (Pre-ADR-0027 this WAS the owned set;
+    # those already-equipped items still count as owned via the effective-owned union below.)
     cosmetics: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    # The owned COLLECTION as a JSONB list of unlocked option keys (ADR-0027). Unlocking an option
+    # appends its key here (and equips it); ownership is forever. The EFFECTIVE owned set is
+    # `unlocked ∪ values(cosmetics)`, so legacy spirits keep every item they had equipped without a
+    # backfill. Default [] = nothing unlocked yet.
+    unlocked: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     # The STORED, monotonic spend ledger (ADR-0024). Coins are `level × COINS_PER_LEVEL −
     # coins_spent`, clamped ≥ 0. Every upgrade and paid reset only ADDS to this; clearing

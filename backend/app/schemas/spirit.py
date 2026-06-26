@@ -9,16 +9,21 @@ replaces the single `daily_glow` with THREE named `needs` (`nourished` / `rested
 `joyful`), each a tier + factor over a rolling window, plus an overall `condition` derived
 from the weakest need (so the UI can render one summary look).
 
-ADR-0024 makes the name & upgrades a COMMITTED choice: the name is REQUIRED at creation
-(`POST /spirit/choose` now carries it) and immutable thereafter; each cosmetic slot is
-applied once and then LOCKED. Both can only be changed by a paid reset
-(`POST /spirit/reset-name`, `POST /spirit/reset-upgrades`), each costing a flat fee with no
-refund. The free `PATCH /spirit` rename is gone.
+ADR-0024 makes the name a COMMITTED choice: it is REQUIRED at creation
+(`POST /spirit/choose` carries it) and immutable thereafter, changeable only by a paid reset
+(`POST /spirit/reset-name`, a flat fee, no refund). The free `PATCH /spirit` rename is gone.
 
-The writes: choose the creature + name once (`POST /spirit/choose`), buy/apply a cosmetic
-(`POST /spirit/cosmetics`), reset the name (`POST /spirit/reset-name`) or all upgrades
-(`POST /spirit/reset-upgrades`), and awaken a new spark at radiant (`POST /spirit/awaken`).
-The cosmetics catalog state and the retired collection are part of the read shape too.
+ADR-0027 supersedes ADR-0024's locked upgrades + paid upgrades-reset with a per-slot SKILL TREE:
+cosmetics are a COLLECTION you unlock-to-own (`POST /spirit/cosmetics` — charges the option's
+cost, owns it forever, auto-equips it) plus a LOADOUT you equip for FREE
+(`POST /spirit/cosmetics/equip` — equip an owned option or clear a slot). `cosmetics` is now the
+EQUIPPED `{slot: option}` map; the catalog state exposes each option's `tier`, `owned`,
+`equipped`, and `unlockable`.
+
+The writes: choose the creature + name once (`POST /spirit/choose`), unlock a cosmetic
+(`POST /spirit/cosmetics`), equip/clear an owned one (`POST /spirit/cosmetics/equip`), reset the
+name (`POST /spirit/reset-name`), and awaken a new spark at radiant (`POST /spirit/awaken`). The
+cosmetics catalog state and the retired collection are part of the read shape too.
 """
 
 from typing import Annotated, Literal
@@ -92,26 +97,28 @@ class SpiritBond(BaseModel):
 
 
 class SpiritSlotOption(BaseModel):
-    """One option inside a cosmetic slot, with its cost and current state — the same shape
-    the Spirit personalize panel uses (calm, not pushy)."""
+    """One node in a cosmetic slot's skill tree, with its cost and current state (ADR-0027) —
+    the same shape the Spirit personalize panel uses (calm, not pushy)."""
 
     option: str
-    cost: int  # coins to apply this option
-    unlocked: bool  # level requirement met
-    unlock_hint: str | None  # what's needed to unlock (None when unlocked)
-    affordable: bool  # the current balance covers the FULL cost (ADR-0024: no swap math)
-    applied: bool  # this option is the one currently on the spirit
+    cost: int  # coins to UNLOCK this option (equipping an owned option is free)
+    unlock_level: int  # the level this option unlocks at (1 = always)
+    unlock_hint: str | None  # what's needed to reach unlock_level (None when met)
+    tier: int  # the skill-tree tier (1|2|3): tier N>1 needs an owned tier N−1 in the same slot
+    affordable: bool  # the current balance covers the unlock cost
+    owned: bool  # the spirit owns this option (unlocked, or legacy-equipped)
+    equipped: bool  # this option is the one currently shown in its slot
+    unlockable: bool  # not owned AND path/level/tier prereqs met (affordability is separate)
     available: bool  # offered to the spirit's chosen path (per-path exclusivity; True = universal)
     need: str  # the need this option FAVOURS (ADR-0026): nourished | rested | joyful
 
 
 class SpiritAvailableSlot(BaseModel):
-    """A cosmetic axis for the active spirit. Once an option is applied the slot LOCKS
-    (ADR-0024): its options can no longer be bought/swapped until upgrades are reset."""
+    """A cosmetic axis for the active spirit — a small skill tree (ADR-0027). The slot reports
+    its currently EQUIPPED option (or null) and is never "locked": owned options equip freely."""
 
     slot: str
-    applied: str | None  # the option currently applied in this slot (None if none)
-    locked: bool  # the slot already has an applied option → no further buys (ADR-0024)
+    equipped: str | None  # the option currently equipped in this slot (None if none)
     options: list[SpiritSlotOption]
 
 
@@ -139,8 +146,8 @@ class SpiritState(BaseModel):
     needs: SpiritNeeds  # the three tended needs (nourished / rested / joyful); visual-only
     condition: SpiritCondition  # overall care state = the weakest need; visual-only (ADR-0023)
     coins: int  # level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0
-    cosmetics: dict[str, str]  # owned {slot: option} (empty until cosmetics ship)
-    available: list[SpiritAvailableSlot]  # the cosmetics catalog with per-option state
+    cosmetics: dict[str, str]  # the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
+    available: list[SpiritAvailableSlot]  # the cosmetics skill tree with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever
 
 
@@ -158,12 +165,24 @@ class ChoosePathRequest(BaseModel):
 
 
 class CosmeticsRequest(BaseModel):
-    """Buy/apply a cosmetic option to a slot on the active spirit. Forbids extra fields."""
+    """Unlock a cosmetic option into the active spirit's owned collection + auto-equip it
+    (ADR-0027). Charges the option's cost. Forbids extra fields."""
 
     model_config = ConfigDict(extra="forbid")
 
     slot: str
     option: str
+
+
+class EquipRequest(BaseModel):
+    """Equip an OWNED cosmetic option into its slot, or clear the slot (ADR-0027) — FREE. A
+    null `option` clears the slot; a non-null one must be owned and belong to `slot`. Forbids
+    extra fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slot: str
+    option: str | None = None
 
 
 class ResetNameRequest(BaseModel):
