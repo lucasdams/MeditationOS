@@ -207,7 +207,7 @@ export default function Onboarding() {
 
       {step === 'quests' && (
         <>
-          <h1>Your daily quests</h1>
+          <h1>Your daily missions</h1>
           <p className="muted">
             We’ve picked a few based on your goal — pick at least {MIN_QUEST_FEATURES}. Change
             anytime in Settings.
@@ -215,7 +215,7 @@ export default function Onboarding() {
           <QuestPicker
             selected={quests}
             onToggle={toggleQuest}
-            legend="Daily quest practices"
+            legend="Daily mission practices"
           />
           <ErrorBanner message={error} />
           <button type="button" onClick={finish} disabled={submitting}>

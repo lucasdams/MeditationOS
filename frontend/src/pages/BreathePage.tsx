@@ -619,6 +619,9 @@ export default function BreathePage() {
     clearDraft(DRAFT_PAGE)
     setScale(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
     setPhase('inhale')
+    // Drop any captured-but-unlinked pre-reading so it can't link to a later sit
+    // (matches MeditatePage.reset()).
+    preReadingIdRef.current = null
   }
 
   async function saveSession(durationSec: number) {
