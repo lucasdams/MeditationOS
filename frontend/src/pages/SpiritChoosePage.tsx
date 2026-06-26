@@ -2,10 +2,22 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { spiritService } from '../services/spirit'
 import { useToast } from '../context/ToastContext'
-import { DOSHA, PATH_ORDER } from '../components/Spirit'
+import {
+  DOSHA,
+  PATH_ORDER,
+  NEED_COPY,
+  slotLabel,
+  optionLabel,
+} from '../components/Spirit'
 import { Loading, RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import type { SpiritPath, SpiritState } from '../types'
+import type {
+  SpiritOptionPreview,
+  SpiritPath,
+  SpiritPreview,
+  SpiritSlotPreview,
+  SpiritState,
+} from '../types'
 
 /**
  * SpiritChoosePage — the "3 starter choices" (ADR-0023) on a calm page of its own, so the choice
@@ -18,10 +30,91 @@ import type { SpiritPath, SpiritState } from '../types'
 // server trims + rejects blank/over-length regardless.
 const NAME_MAX = 40
 
+// A creature's SIGNATURE set — its path-exclusive tier-3 capstones (one per slot), pulled from
+// the per-path preview. These are the "what it grows into" highlights surfaced on each card.
+function exclusiveCapstones(slots: SpiritSlotPreview[]): SpiritOptionPreview[] {
+  return slots.flatMap((s) => s.options.filter((o) => o.exclusive))
+}
+
+// A tiny need tag (icon + label) reusing the shared NEED_COPY so the choose-page preview matches
+// the Care read-out and the customize tree exactly.
+function PreviewNeed({ need }: { need: SpiritOptionPreview['need'] }) {
+  const copy = NEED_COPY[need]
+  if (!copy) return null
+  return (
+    <span className="spirit-choose-preview-need" title={`Favours ${copy.label}`}>
+      <span aria-hidden="true">{copy.icon}</span> {copy.label}
+    </span>
+  )
+}
+
+/**
+ * GrowsIntoLine — the compact "Grows into" highlights on a creature's pick card (step 1): its
+ * signature exclusive capstones (one per slot), each as a label + need tag. Kept small so the
+ * three cards stay scannable side by side. Renders nothing if the preview hasn't loaded yet.
+ */
+function GrowsIntoLine({ slots }: { slots: SpiritSlotPreview[] | undefined }) {
+  if (!slots) return null
+  const capstones = exclusiveCapstones(slots)
+  if (capstones.length === 0) return null
+  return (
+    <div className="spirit-choose-grows" aria-label="Signature unlocks this creature grows into">
+      <p className="spirit-choose-grows-head muted">Grows into</p>
+      <ul className="spirit-choose-grows-list">
+        {capstones.map((o) => (
+          <li key={o.option} className="spirit-choose-grows-item">
+            <span className="spirit-choose-grows-name">{optionLabel(o.option)}</span>
+            <PreviewNeed need={o.need} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * TreePreview — the fuller, read-only tier preview of a creature's whole tree (step 2): each slot
+ * with its options laid out tier by tier, with the path's exclusive capstones highlighted. A
+ * tasteful read-out so the choice feels informed — not the interactive shop (that lives on
+ * /spirit once the creature is chosen). Renders nothing until the preview has loaded.
+ */
+function TreePreview({ slots }: { slots: SpiritSlotPreview[] | undefined }) {
+  if (!slots) return null
+  return (
+    <div className="spirit-choose-tree" aria-label="Cosmetic tree preview">
+      {slots.map((slot) => (
+        <div key={slot.slot} className="spirit-choose-tree-slot">
+          <p className="spirit-choose-tree-slot-name">{slotLabel(slot.slot)}</p>
+          <ul className="spirit-choose-tree-options">
+            {slot.options.map((o) => (
+              <li
+                key={o.option}
+                className={`spirit-choose-tree-option${
+                  o.exclusive ? ' spirit-choose-tree-option--capstone' : ''
+                }`}
+                data-tier={o.tier}
+              >
+                <span className="spirit-choose-tree-option-name">{optionLabel(o.option)}</span>
+                {o.exclusive && (
+                  <span className="spirit-choose-tree-capstone-tag">Signature</span>
+                )}
+                <PreviewNeed need={o.need} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SpiritChoosePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
+  // The per-path skill-tree preview (what each creature grows into). Fetched once alongside the
+  // spirit; non-blocking — if it fails the page still works, the previews just don't show.
+  const [preview, setPreview] = useState<SpiritPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -40,6 +133,12 @@ export default function SpiritChoosePage() {
       })
       .catch((err) => setError(messageForError(err, 'Could not reach your spirit.')))
       .finally(() => setRetrying(false))
+    // The grows-into preview is a calm enhancement, not load-bearing: fetch it independently and
+    // swallow failures so a preview hiccup never blocks the pick → name → awaken flow.
+    spiritService
+      .preview()
+      .then(setPreview)
+      .catch(() => setPreview(null))
   }
 
   useEffect(() => {
@@ -98,6 +197,7 @@ export default function SpiritChoosePage() {
                 <p className="muted spirit-picker-practice">
                   Prefers <strong>{d.practice}</strong> — do more of this to keep it thriving.
                 </p>
+                <GrowsIntoLine slots={preview?.[path]} />
                 <button
                   type="button"
                   className="spirit-picker-choose"
@@ -134,6 +234,18 @@ export default function SpiritChoosePage() {
               thriving.
             </p>
           </div>
+          {preview?.[selected] && (
+            <section className="spirit-choose-tree-wrap" aria-label="What this creature grows into">
+              <p className="spirit-choose-tree-head">
+                What <strong>{DOSHA[selected].name}</strong> grows into
+              </p>
+              <p className="muted spirit-choose-tree-note">
+                Unlock these as your spirit grows — its <strong>Signature</strong> set is unique to
+                this creature.
+              </p>
+              <TreePreview slots={preview[selected]} />
+            </section>
+          )}
           <label className="spirit-field spirit-choose-name">
             <span>Name your {DOSHA[selected].name} companion</span>
             <input

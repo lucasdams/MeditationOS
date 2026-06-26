@@ -342,6 +342,31 @@ export interface SpiritState {
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
 }
 
+// One option in a path's read-only skill-tree PREVIEW (GET /spirit/preview) — the choose page's
+// "what does this creature grow into" data. State-free (the spirit doesn't exist yet): just the
+// catalog facts plus `exclusive` (this is the path's own per-path tier-3 capstone). Mirrors
+// backend OptionPreview.
+export interface SpiritOptionPreview {
+  option: string
+  tier: number // the skill-tree tier (1|2|3) — options are listed tier-ascending
+  cost: number // coins to unlock it
+  unlock_level: number // the level it unlocks at (1 = always)
+  need: SpiritNeedKey // the need it favours (nourished | rested | joyful)
+  exclusive: boolean // the path's OWN per-path capstone (its signature tier-3 option)
+}
+
+// One cosmetic slot in a path's preview — its options ordered by tier (ADR-0027). Mirrors
+// backend SlotPreview. Only the options the path can ever own appear (universal + its own
+// exclusives; other paths' exclusives are excluded).
+export interface SpiritSlotPreview {
+  slot: string
+  options: SpiritOptionPreview[]
+}
+
+// The full preview returned by GET /spirit/preview — every choosable creature's tree keyed by
+// path, so the choose page can fetch once and show what each one grows into.
+export type SpiritPreview = Record<SpiritPath, SpiritSlotPreview[]>
+
 // Choose the active creature + name it once (POST /spirit/choose). `path` is the internal
 // enum value (the UI relabels it as the dosha); `name` is REQUIRED (ADR-0024) and immutable
 // thereafter. Only settable while the spirit is pathless (re-choose → 409).

@@ -151,6 +151,29 @@ class SpiritState(BaseModel):
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever
 
 
+class OptionPreview(BaseModel):
+    """One option in a path's read-only skill-tree PREVIEW (the choose page). A flat,
+    state-free node — no `owned`/`equipped`/`affordable` (the spirit doesn't exist yet) — just
+    what the option IS: its label key, its skill-tree `tier`, what it costs / unlocks at, the
+    `need` it favours, and whether it's that path's own path-EXCLUSIVE capstone (`exclusive`)."""
+
+    option: str
+    tier: int  # the skill-tree tier (1|2|3) — options are listed tier-ascending
+    cost: int  # coins to unlock it
+    unlock_level: int  # the level it unlocks at (1 = always)
+    need: str  # the need it favours (nourished | rested | joyful)
+    exclusive: bool  # this is the path's OWN per-path capstone (its signature tier-3 option)
+
+
+class SlotPreview(BaseModel):
+    """One cosmetic slot in a path's preview — its options ordered by tier (ADR-0027). Only the
+    options a given path can ever own appear here: universal options + that path's own
+    path-exclusive capstones (other paths' exclusives are excluded)."""
+
+    slot: str
+    options: list[OptionPreview]
+
+
 class ChoosePathRequest(BaseModel):
     """Choose the active creature + name it once (ADR-0023 / ADR-0024). `path` is the internal
     enum value (`stillness | breath | heart`; the UI relabels them as doshas). `name` is

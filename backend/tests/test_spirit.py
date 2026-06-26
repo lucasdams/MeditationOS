@@ -1705,3 +1705,106 @@ def test_unlock_non_matching_path_slot_cosmetic_is_rejected_404(client):
             continue
         res = _unlock(client, slot, option)
         assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"
+
+
+# --- The read-only per-path tree PREVIEW for the choose page (GET /spirit/preview) -------
+#
+# A stateless, catalog-only preview of what each creature GROWS INTO: each path's slots with
+# their options ordered by tier, including that path's own exclusive capstones and excluding the
+# other paths' exclusives. No spirit row needed.
+
+# The expected EXCLUSIVE tier-3 capstones (the per-path options) per path, by (slot, option).
+_PATH_EXCLUSIVES = {
+    "breath": [
+        ("aura", "emberflame"),
+        ("accessory", "ember_crown"),
+        ("habitat", "ember_canyon"),
+        ("companion", "kitsune"),
+        ("mount", "emberstone"),
+    ],
+    "stillness": [
+        ("aura", "grove"),
+        ("accessory", "mossy_circlet"),
+        ("habitat", "misty_grove"),
+        ("companion", "tortoise"),
+        ("mount", "boulder"),
+    ],
+    "heart": [
+        ("aura", "zephyr"),
+        ("accessory", "feather_plume"),
+        ("habitat", "open_sky"),
+        ("companion", "crane"),
+        ("mount", "feather"),
+    ],
+}
+
+
+def test_preview_requires_auth(client):
+    """The choose-page preview is auth-gated like the other spirit routes."""
+    assert client.get("/api/v1/spirit/preview").status_code == 401
+
+
+def test_preview_returns_all_three_paths_with_all_slots(client):
+    """The preview returns every choosable path, each with all five cosmetic slots — so the
+    choose page can fetch once and render every creature's tree."""
+    _auth(client, "preview_shape@example.com")
+    res = client.get("/api/v1/spirit/preview")
+    assert res.status_code == 200
+    body = res.json()
+    assert set(body) == set(_ALL_PATHS)
+    for path in _ALL_PATHS:
+        slots = {s["slot"] for s in body[path]}
+        assert slots == set(SPIRIT_COSMETICS_CATALOG)
+
+
+def test_preview_options_are_tier_ordered(client):
+    """Within each slot the preview lists options tier-ascending (the tree reads low → high)."""
+    _auth(client, "preview_tiers@example.com")
+    body = client.get("/api/v1/spirit/preview").json()
+    for path in _ALL_PATHS:
+        for slot in body[path]:
+            tiers = [o["tier"] for o in slot["options"]]
+            assert tiers == sorted(tiers), f"{path}/{slot['slot']} options not tier-ordered"
+
+
+def test_preview_includes_own_exclusive_capstones_and_excludes_others(client):
+    """Each path's preview includes ITS exclusive tier-3 capstones (flagged `exclusive`) and
+    excludes the other paths' exclusives entirely."""
+    _auth(client, "preview_exclusives@example.com")
+    body = client.get("/api/v1/spirit/preview").json()
+
+    def _slot_options(path, slot):
+        return {o["option"]: o for o in next(s for s in body[path] if s["slot"] == slot)["options"]}
+
+    for path, exclusives in _PATH_EXCLUSIVES.items():
+        # This path's own exclusives are present and flagged exclusive + tier 3.
+        for slot, option in exclusives:
+            opts = _slot_options(path, slot)
+            assert option in opts, f"{path} preview missing its own {slot}/{option}"
+            assert opts[option]["exclusive"] is True
+            assert opts[option]["tier"] == 3
+        # The OTHER paths' exclusives never appear in this path's preview.
+        for other, other_exclusives in _PATH_EXCLUSIVES.items():
+            if other == path:
+                continue
+            for slot, option in other_exclusives:
+                assert option not in _slot_options(path, slot), (
+                    f"{path} preview should not include {other}'s {slot}/{option}"
+                )
+
+
+def test_preview_universal_options_are_not_exclusive(client):
+    """Universal options (no per_path) appear in every path's preview and are never flagged
+    exclusive — only the path's own capstones are."""
+    _auth(client, "preview_universal@example.com")
+    body = client.get("/api/v1/spirit/preview").json()
+    for path in _ALL_PATHS:
+        for slot in body[path]:
+            for opt in slot["options"]:
+                spec = SPIRIT_COSMETICS_CATALOG[slot["slot"]][opt["option"]]
+                if "per_path" not in spec:
+                    assert opt["exclusive"] is False
+                    # Catalog facts are surfaced verbatim for the preview.
+                    assert opt["cost"] == spec["cost"]
+                    assert opt["unlock_level"] == spec["unlock_level"]
+                    assert opt["need"] == spec["need"]
