@@ -1,16 +1,43 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import type { SpiritState } from '../types'
+import type { SpiritPreview, SpiritSlotPreview, SpiritState } from '../types'
 
 const get = vi.fn()
 const choose = vi.fn()
+const preview = vi.fn()
 vi.mock('../services/spirit', () => ({
   spiritService: {
     get: (...a: unknown[]) => get(...a),
     choose: (...a: unknown[]) => choose(...a),
+    preview: (...a: unknown[]) => preview(...a),
   },
 }))
+
+// A minimal per-path preview: one slot per path, a universal tier-1 option plus that path's own
+// exclusive tier-3 capstone (and, for the cross-path test, another path's capstone we must NOT
+// show). Mirrors the GET /spirit/preview shape.
+function slotsFor(
+  exclusiveOption: string,
+  extra: SpiritSlotPreview['options'] = [],
+): SpiritSlotPreview[] {
+  return [
+    {
+      slot: 'companion',
+      options: [
+        { option: 'firefly', tier: 1, cost: 100, unlock_level: 1, need: 'joyful', exclusive: false },
+        { option: exclusiveOption, tier: 3, cost: 220, unlock_level: 6, need: 'joyful', exclusive: true },
+        ...extra,
+      ],
+    },
+  ]
+}
+
+const PREVIEW: SpiritPreview = {
+  stillness: slotsFor('tortoise'),
+  breath: slotsFor('kitsune'),
+  heart: slotsFor('crane'),
+}
 
 const navigate = vi.fn()
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -52,7 +79,10 @@ describe('SpiritChoosePage', () => {
   beforeEach(() => {
     get.mockReset()
     choose.mockReset()
+    preview.mockReset()
     navigate.mockReset()
+    // Default: the grows-into preview resolves. Tests that don't care still get a clean render.
+    preview.mockResolvedValue(PREVIEW)
   })
 
   it('shows the three dosha choices for a pathless spark', async () => {
@@ -95,5 +125,38 @@ describe('SpiritChoosePage', () => {
     renderPage()
     await waitFor(() => expect(get).toHaveBeenCalled())
     expect(screen.queryByRole('button', { name: /Choose Kapha/ })).toBeNull()
+  })
+
+  it('fetches the preview and shows each creature its exclusive capstones on the cards', async () => {
+    get.mockResolvedValue(spiritWith({ path: null }))
+    renderPage()
+    await screen.findByRole('button', { name: /Choose Kapha/ })
+    await waitFor(() => expect(preview).toHaveBeenCalled())
+    // Each creature's card shows its own signature capstone label (one per slot).
+    await screen.findByText('Jade tortoise') // stillness / Kapha
+    expect(screen.getByText('Nine-tail fox')).toBeInTheDocument() // breath / Pitta
+    expect(screen.getByText('Paper crane')).toBeInTheDocument() // heart / Vata
+  })
+
+  it('shows the selected creature its full preview tree on the name step', async () => {
+    get.mockResolvedValue(spiritWith({ path: null }))
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
+    // The name step shows the selected creature's tree heading + its capstone, flagged Signature.
+    const tree = await screen.findByLabelText('Cosmetic tree preview')
+    expect(within(tree).getByText('Nine-tail fox')).toBeInTheDocument()
+    expect(within(tree).getByText('Signature')).toBeInTheDocument()
+    // It also shows a universal (non-exclusive) option from the tree.
+    expect(within(tree).getByText('Firefly')).toBeInTheDocument()
+  })
+
+  it('still works when the preview fetch fails (non-blocking enhancement)', async () => {
+    get.mockResolvedValue(spiritWith({ path: null }))
+    preview.mockRejectedValue(new Error('nope'))
+    renderPage()
+    // The pick flow is unaffected — the cards render, just without the grows-into highlights.
+    await screen.findByRole('button', { name: /Choose Kapha/ })
+    fireEvent.click(screen.getByRole('button', { name: /Choose Pitta/ }))
+    expect(screen.getByRole('button', { name: /Awaken Pitta/ })).toBeInTheDocument()
   })
 })

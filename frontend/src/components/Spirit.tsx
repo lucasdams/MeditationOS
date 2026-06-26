@@ -142,6 +142,72 @@ export const NEED_COPY: Record<
   joyful: { label: 'Joy', icon: '✨' },
 }
 
+// Calm display names for the cosmetic slots and their options (matching the backend catalog
+// SPIRIT_COSMETICS_CATALOG). Unknown keys fall back to a tidied key. Exported as the single
+// source of truth so SpiritPage (the customize tree) and SpiritChoosePage (the grows-into
+// preview) label options identically.
+export const SLOT_LABEL: Record<string, string> = {
+  aura: 'Aura',
+  accessory: 'Accessory',
+  habitat: 'Habitat',
+  companion: 'Companion',
+  mount: 'Mount',
+}
+
+export const OPTION_LABEL: Record<string, string> = {
+  soft: 'Soft glow',
+  warm: 'Warm glow',
+  starlit: 'Starlit',
+  ember: 'Ember glow',
+  frost: 'Frost glow',
+  rose: 'Rose glow',
+  halo: 'Halo',
+  leaf_crown: 'Leaf crown',
+  ribbon: 'Ribbon',
+  flower: 'Flower',
+  scarf: 'Scarf',
+  star: 'Star',
+  meadow: 'Meadow',
+  dusk: 'Dusk',
+  night: 'Night sky',
+  garden: 'Garden',
+  seaside: 'Seaside',
+  cottage: 'Cottage',
+  firefly: 'Firefly',
+  bird: 'Bird',
+  cat: 'Cat',
+  // Path-exclusive companions (only offered to the matching creature, per_path in the catalog).
+  kitsune: 'Nine-tail fox',
+  tortoise: 'Jade tortoise',
+  crane: 'Paper crane',
+  cloud: 'Cloud',
+  lotus: 'Lotus',
+  leaf: 'Leaf boat',
+  // Path-exclusive cosmetics (aura / accessory / habitat / mount), per_path in the catalog —
+  // each only offered to its matching dosha spirit.
+  emberflame: 'Ember aura',
+  grove: 'Grove aura',
+  zephyr: 'Zephyr aura',
+  ember_crown: 'Ember crown',
+  mossy_circlet: 'Mossy circlet',
+  feather_plume: 'Feather plume',
+  ember_canyon: 'Ember canyon',
+  misty_grove: 'Misty grove',
+  open_sky: 'Open sky',
+  emberstone: 'Ember sun-stone',
+  boulder: 'Mossy boulder',
+  feather: 'Drifting feather',
+}
+
+// Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
+export function titleize(key: string): string {
+  const s = key.replace(/_/g, ' ')
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+export const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? titleize(slot)
+export const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
+
 // The practice that revives a given need for a given creature (ADR-0023). Nourished is the
 // signature need (per dosha); rested wants a steady daily rhythm; joyful wants variety.
 export function reviveHint(

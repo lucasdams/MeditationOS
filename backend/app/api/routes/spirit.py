@@ -24,6 +24,7 @@ from app.schemas.spirit import (
     CosmeticsRequest,
     EquipRequest,
     ResetNameRequest,
+    SlotPreview,
     SpiritState,
 )
 from app.services import spirit_service
@@ -69,6 +70,21 @@ def get_spirit(
     get-or-create), so it isn't a pure read."""
     today, tz = today_tz
     return spirit_service.get_spirit(db, current_user.id, today=today, tz=tz)
+
+
+@router.get("/preview", response_model=dict[str, list[SlotPreview]])
+def preview_paths(
+    current_user: User = Depends(get_current_user),
+) -> dict[str, list[SlotPreview]]:
+    """The read-only skill-tree PREVIEW for ALL three creatures at once (ADR-0027), so the
+    choose page can show what each one grows into before the user picks. Keyed by path
+    (`stillness` / `breath` / `heart`); each value is the path's slots with their options ordered
+    by tier, including that path's own exclusive capstones and excluding other paths' exclusives.
+
+    Static catalog data — no DB query and no spirit row needed. Auth-gated (verified email via the
+    router dependency, plus the current-user dependency) like the rest of the spirit routes; not
+    rate-limited since it's a pure, cacheable read."""
+    return spirit_service.all_paths_preview()
 
 
 @router.post("/choose", response_model=SpiritState)

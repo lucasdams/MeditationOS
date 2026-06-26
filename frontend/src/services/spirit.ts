@@ -2,6 +2,7 @@ import { api } from './api'
 import type {
   SpiritChooseRequest,
   SpiritEquipRequest,
+  SpiritPreview,
   SpiritResetNameRequest,
   SpiritState,
   SpiritUnlockRequest,
@@ -16,6 +17,10 @@ import type {
 // just swap in the response (refetch-free).
 export const spiritService = {
   get: () => api.get<SpiritState>('/spirit'),
+  // The read-only skill-tree PREVIEW for all three creatures (ADR-0027), keyed by path — what
+  // each one grows into (slots × tiered options, with the path's own exclusive capstones flagged).
+  // Static catalog data; the choose page fetches it once to preview before the user picks.
+  preview: () => api.get<SpiritPreview>('/spirit/preview'),
   // Choose the active creature + name it once (ADR-0023 / ADR-0024). Only settable while the
   // spirit is pathless; a re-choose is rejected (409), an unknown path or blank name (422).
   // Returns the spirit with its new path + name.

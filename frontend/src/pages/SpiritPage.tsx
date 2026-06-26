@@ -9,6 +9,9 @@ import {
   NeedsReadout,
   CareNudge,
   NEED_COPY,
+  slotLabel,
+  optionLabel,
+  titleize,
   formFor,
   prefersReducedMotion,
 } from '../components/Spirit'
@@ -53,69 +56,8 @@ const STAGE_ORDER = Object.keys(STAGE_LABEL)
 // Path labels reuse Spirit's PATH_COPY (single source of truth).
 const PATH_LABEL = PATH_COPY
 
-// Calm display names for the cosmetic slots and their options (matching the backend catalog
-// SPIRIT_COSMETICS_CATALOG). Unknown keys fall back to a tidied key.
-const SLOT_LABEL: Record<string, string> = {
-  aura: 'Aura',
-  accessory: 'Accessory',
-  habitat: 'Habitat',
-  companion: 'Companion',
-  mount: 'Mount',
-}
-
-const OPTION_LABEL: Record<string, string> = {
-  soft: 'Soft glow',
-  warm: 'Warm glow',
-  starlit: 'Starlit',
-  ember: 'Ember glow',
-  frost: 'Frost glow',
-  rose: 'Rose glow',
-  halo: 'Halo',
-  leaf_crown: 'Leaf crown',
-  ribbon: 'Ribbon',
-  flower: 'Flower',
-  scarf: 'Scarf',
-  star: 'Star',
-  meadow: 'Meadow',
-  dusk: 'Dusk',
-  night: 'Night sky',
-  garden: 'Garden',
-  seaside: 'Seaside',
-  cottage: 'Cottage',
-  firefly: 'Firefly',
-  bird: 'Bird',
-  cat: 'Cat',
-  // Path-exclusive companions (only offered to the matching creature, per_path in the catalog).
-  kitsune: 'Nine-tail fox',
-  tortoise: 'Jade tortoise',
-  crane: 'Paper crane',
-  cloud: 'Cloud',
-  lotus: 'Lotus',
-  leaf: 'Leaf boat',
-  // Path-exclusive cosmetics (aura / accessory / habitat / mount), per_path in the catalog —
-  // each only offered to its matching dosha spirit.
-  emberflame: 'Ember aura',
-  grove: 'Grove aura',
-  zephyr: 'Zephyr aura',
-  ember_crown: 'Ember crown',
-  mossy_circlet: 'Mossy circlet',
-  feather_plume: 'Feather plume',
-  ember_canyon: 'Ember canyon',
-  misty_grove: 'Misty grove',
-  open_sky: 'Open sky',
-  emberstone: 'Ember sun-stone',
-  boulder: 'Mossy boulder',
-  feather: 'Drifting feather',
-}
-
-// Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
-function titleize(key: string): string {
-  const s = key.replace(/_/g, ' ')
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
-const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? titleize(slot)
-const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
+// The cosmetic slot/option label maps + helpers (slotLabel / optionLabel / titleize) now live in
+// Spirit.tsx (the single source of truth, shared with SpiritChoosePage's grows-into preview).
 
 // A small per-option tag (ADR-0026) showing which need an item favours — reuses the shared
 // NEED_COPY (icon + label) so the tree's tag matches the Care read-out exactly.

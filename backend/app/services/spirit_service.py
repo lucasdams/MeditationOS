@@ -51,8 +51,10 @@ from app.schemas.spirit import (
     ChoosePathRequest,
     CosmeticsRequest,
     EquipRequest,
+    OptionPreview,
     ResetNameRequest,
     RetiredSpirit,
+    SlotPreview,
     SpiritAvailableSlot,
     SpiritBond,
     SpiritCondition,
@@ -932,6 +934,51 @@ def _available_slots(
         )
         out.append(SpiritAvailableSlot(slot=slot, equipped=equipped, options=opts))
     return out
+
+
+# --- Read-only per-path tree PREVIEW (the choose page; no spirit state needed) ------------
+#
+# What each creature GROWS INTO, computed straight from the static catalog — no DB, no spirit
+# row. For a given path we list each slot's options it could ever own (universal options + that
+# path's OWN per-path capstones), ordered by tier so the tree reads low → high. Other paths'
+# exclusives are excluded — the choose page only previews what THIS creature can grow into.
+
+
+def path_tree_preview(path: str) -> list[SlotPreview]:
+    """The read-only skill-tree preview for one path (ADR-0027) — every slot with the options
+    that path can own, ordered by tier. An option is included when it's universal (no `per_path`)
+    or path-EXCLUSIVE to this path; other paths' exclusives are dropped. Each option reports its
+    static catalog facts (tier / cost / unlock_level / need) plus `exclusive` = whether it's this
+    path's own per-path capstone. Pure function of the catalog — no spirit needed."""
+    slots: list[SlotPreview] = []
+    for slot, options in SPIRIT_COSMETICS_CATALOG.items():
+        opts: list[OptionPreview] = []
+        for option in options:
+            per_path = _option_per_path(slot, option)
+            # Universal (no per_path) or this path's own exclusive; skip other paths' exclusives.
+            if per_path is not None and per_path != path:
+                continue
+            opts.append(
+                OptionPreview(
+                    option=option,
+                    tier=_option_tier(slot, option),
+                    cost=_option_cost(slot, option),
+                    unlock_level=_option_unlock_level(slot, option),
+                    need=_option_need(slot, option),
+                    exclusive=per_path == path,
+                )
+            )
+        # Tier-ascending so the tree reads low → high; ties broken by cost then option key for a
+        # stable, deterministic order.
+        opts.sort(key=lambda o: (o.tier, o.cost, o.option))
+        slots.append(SlotPreview(slot=slot, options=opts))
+    return slots
+
+
+def all_paths_preview() -> dict[str, list[SlotPreview]]:
+    """Every choosable creature's tree preview at once, keyed by path (the choose page fetches
+    this once to surface what each creature grows into). Static catalog data — no DB query."""
+    return {path: path_tree_preview(path) for path in (STILLNESS, BREATH, HEART)}
 
 
 def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
