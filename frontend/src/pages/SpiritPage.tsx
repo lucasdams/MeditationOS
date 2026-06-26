@@ -365,10 +365,14 @@ export default function SpiritPage() {
             : {}
 
           return (
+            // Preview on the WHOLE cell: hovering/focusing anywhere on the node (label, need tag,
+            // or control) shows what the spirit would look like with this option — not just the
+            // button. `previewHandlers` is {} for the equipped node, so the worn cell never previews.
             <div
               key={opt.option}
               className={`spirit-node spirit-node--${state}`}
               data-state={state}
+              {...previewHandlers}
             >
               <span className="spirit-node-head">
                 <span className="spirit-node-label">{label}</span>
@@ -401,7 +405,6 @@ export default function SpiritPage() {
                   className="spirit-node-btn spirit-node-equip"
                   disabled={busy != null}
                   aria-label={`Equip ${label}`}
-                  {...previewHandlers}
                   onClick={() => equip(slot, opt.option)}
                 >
                   Equip
@@ -416,7 +419,6 @@ export default function SpiritPage() {
                   className="spirit-node-btn spirit-node-unlock"
                   disabled={busy != null}
                   aria-label={`Unlock ${label} for ${opt.cost} coins`}
-                  {...previewHandlers}
                   onClick={() => setConfirmUnlock({ slot, option: opt.option })}
                 >
                   Unlock <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
@@ -426,7 +428,7 @@ export default function SpiritPage() {
               {state === 'unaffordable' && (
                 // Unlockable but the balance is short — Unlock disabled + a calm coin hint. Still
                 // previewable so the user can see the goal look.
-                <span className="spirit-node-controls" {...previewHandlers}>
+                <span className="spirit-node-controls">
                   <button
                     type="button"
                     className="spirit-node-btn spirit-node-unlock"
@@ -445,7 +447,7 @@ export default function SpiritPage() {
                 // Not owned and a prereq unmet — greyed, with the reason (reach a level, or unlock
                 // a lower tier first). Previewable so the user can still see what they're climbing
                 // toward.
-                <span className="spirit-node-controls" {...previewHandlers}>
+                <span className="spirit-node-controls">
                   <span className="spirit-node-locked">
                     <span aria-hidden="true">🔒</span> {lockReason(opt)}
                   </span>
