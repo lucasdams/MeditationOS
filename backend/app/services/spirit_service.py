@@ -670,6 +670,10 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "dewlight": {"cost": 40, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "twilight": {"cost": 90, "unlock_level": 4, "need": RESTED, "tier": 2},
         "aurora": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # LEGENDARY (tier 4, ADR-0027) — the prestige endgame crown of the slot: a full
+        # prismatic/rainbow radiant halo, joyful. Universal; highest level + cost, the richest art.
+        # Gated behind owning any tier-3 aura (the generic tier prereq handles tier 4 too).
+        "prismatic": {"cost": 380, "unlock_level": 10, "need": JOYFUL, "tier": 4},
         # PATH-EXCLUSIVE auras (like the companions above): the ember flames for fiery Pitta
         # (breath), the verdant grove for grounded Kapha (stillness), the airy zephyr for Vata
         # (heart). Only the matching creature can buy/see each. The tier-3 capstones.
@@ -701,6 +705,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "tiny_bell": {"cost": 85, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         # Small branching antlers — a calm, woodland crown of rest (tier 3).
         "antlers": {"cost": 170, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # LEGENDARY (tier 4) — a crown of stars circling the brow, joyful. Universal; the
+        # prestige endgame accessory, gated behind any tier-3 accessory.
+        "star_crown": {"cost": 400, "unlock_level": 10, "need": JOYFUL, "tier": 4},
         "ember_crown": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -727,6 +734,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "lily_pond": {"cost": 55, "unlock_level": 2, "need": RESTED, "tier": 1},
         "autumn_grove": {"cost": 100, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "starfall": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # LEGENDARY (tier 4) — a cosmic nebula backdrop strewn with stars, rested. Universal; the
+        # prestige endgame habitat, gated behind any tier-3 habitat.
+        "nebula": {"cost": 420, "unlock_level": 10, "need": RESTED, "tier": 4},
         "ember_canyon": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -748,6 +758,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "frog": {"cost": 175, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         "cat": {"cost": 240, "unlock_level": 7, "need": RESTED, "tier": 3},
         "owl": {"cost": 250, "unlock_level": 7, "need": NOURISHED, "tier": 3},
+        # LEGENDARY (tier 4) — a small mythical curled dragon, nourished. Universal; the prestige
+        # endgame companion, gated behind any tier-3 companion.
+        "dragon": {"cost": 450, "unlock_level": 10, "need": NOURISHED, "tier": 4},
         "kitsune": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": JOYFUL, "tier": 3,
         },
@@ -770,6 +783,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "reed_raft": {"cost": 130, "unlock_level": 4, "need": RESTED, "tier": 2},
         "leaf": {"cost": 120, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         "crystal": {"cost": 190, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # LEGENDARY (tier 4) — a radiant comet/star the spirit rides, joyful. Universal; the
+        # prestige endgame mount, gated behind any tier-3 mount.
+        "comet": {"cost": 410, "unlock_level": 10, "need": JOYFUL, "tier": 4},
         "emberstone": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -794,6 +810,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "leaffall": {"cost": 110, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "snow": {"cost": 180, "unlock_level": 7, "need": RESTED, "tier": 3},
         "fireflies": {"cost": 200, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # LEGENDARY (tier 4) — an auroral storm overlay rippling across the scene, joyful.
+        # Universal; the prestige endgame weather, gated behind any tier-3 weather.
+        "aurora_storm": {"cost": 390, "unlock_level": 10, "need": JOYFUL, "tier": 4},
         "ember_drift": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -818,6 +837,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "mushrooms": {"cost": 120, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "wildflowers": {"cost": 190, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         "crystals": {"cost": 210, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # LEGENDARY (tier 4) — a glowing sacred mandala floor, rested. Universal; the prestige
+        # endgame ground, gated behind any tier-3 ground.
+        "mandala": {"cost": 400, "unlock_level": 10, "need": RESTED, "tier": 4},
         "emberbed": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
