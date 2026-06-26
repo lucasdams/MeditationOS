@@ -664,6 +664,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "ember": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "frost": {"cost": 55, "unlock_level": 2, "need": RESTED, "tier": 2},
         "rose": {"cost": 45, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        # Universal additions (no per_path) deepening the tree — one per tier with varied needs:
+        # a soft green dew glow (tier 1), a deep-purple dusk glow (tier 2), and a shimmering
+        # multi-hue aurora ribbon (the universal tier-3 crown of the slot, open to every path).
+        "dewlight": {"cost": 40, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "twilight": {"cost": 90, "unlock_level": 4, "need": RESTED, "tier": 2},
+        "aurora": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         # PATH-EXCLUSIVE auras (like the companions above): the ember flames for fiery Pitta
         # (breath), the verdant grove for grounded Kapha (stillness), the airy zephyr for Vata
         # (heart). Only the matching creature can buy/see each. The tier-3 capstones.
@@ -677,17 +683,24 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
     },
-    # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star are universal; the three
-    # PATH-EXCLUSIVE accessories carry a `per_path` key so only the matching creature can buy (and
-    # see) them — the ember crown for the fiery Pitta (breath), the mossy stone circlet for the
-    # grounded Kapha (stillness), the feather plume for the airy Vata (heart).
+    # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star/berry_sprig/tiny_bell/
+    # antlers are universal; the three PATH-EXCLUSIVE accessories carry a `per_path` key so only
+    # the matching creature can buy (and see) them — the ember crown for the fiery Pitta (breath),
+    # the mossy stone circlet for the grounded Kapha (stillness), the feather plume for the airy
+    # Vata (heart).
     "accessory": {
         "halo": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
         "leaf_crown": {"cost": 55, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "ribbon": {"cost": 35, "unlock_level": 1, "need": JOYFUL, "tier": 1},
         "flower": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        # A little berry-and-leaf sprig tucked at the brow — nourishing greenery (tier 1).
+        "berry_sprig": {"cost": 45, "unlock_level": 2, "need": NOURISHED, "tier": 1},
         "scarf": {"cost": 45, "unlock_level": 2, "need": RESTED, "tier": 2},
         "star": {"cost": 60, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        # A small jingle bell on a cord — a cheerful little chime (tier 2).
+        "tiny_bell": {"cost": 85, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        # Small branching antlers — a calm, woodland crown of rest (tier 3).
+        "antlers": {"cost": 170, "unlock_level": 7, "need": RESTED, "tier": 3},
         "ember_crown": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -699,7 +712,8 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
     },
     # A small backdrop the spirit sits in (the "habitat"). meadow/dusk/night/garden/seaside/
-    # cottage are universal; the three PATH-EXCLUSIVE backdrops carry a `per_path` key so only
+    # cottage/lily_pond/autumn_grove/starfall are universal; the three PATH-EXCLUSIVE backdrops
+    # carry a `per_path` key so only
     # the matching creature can buy (and see) them — the ember canyon for the fiery Pitta
     # (breath), the misty grove for the grounded Kapha (stillness), the open sky for the airy
     # Vata (heart).
@@ -710,6 +724,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "garden": {"cost": 60, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "seaside": {"cost": 70, "unlock_level": 3, "need": RESTED, "tier": 2},
         "cottage": {"cost": 90, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "lily_pond": {"cost": 55, "unlock_level": 2, "need": RESTED, "tier": 1},
+        "autumn_grove": {"cost": 100, "unlock_level": 4, "need": NOURISHED, "tier": 2},
+        "starfall": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         "ember_canyon": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -726,8 +743,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # jade tortoise for the grounded Kapha (stillness), the paper crane for the airy Vata (heart).
     "companion": {
         "firefly": {"cost": 100, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "snail": {"cost": 110, "unlock_level": 2, "need": RESTED, "tier": 1},
         "bird": {"cost": 160, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        "frog": {"cost": 175, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         "cat": {"cost": 240, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "owl": {"cost": 250, "unlock_level": 7, "need": NOURISHED, "tier": 3},
         "kitsune": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": JOYFUL, "tier": 3,
         },
@@ -745,8 +765,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # Vata (heart).
     "mount": {
         "cloud": {"cost": 70, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "mossy_stump": {"cost": 75, "unlock_level": 2, "need": NOURISHED, "tier": 1},
         "lotus": {"cost": 90, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "reed_raft": {"cost": 130, "unlock_level": 4, "need": RESTED, "tier": 2},
         "leaf": {"cost": 120, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        "crystal": {"cost": 190, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         "emberstone": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },

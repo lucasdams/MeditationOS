@@ -197,6 +197,22 @@ export const OPTION_LABEL: Record<string, string> = {
   emberstone: 'Ember sun-stone',
   boulder: 'Mossy boulder',
   feather: 'Drifting feather',
+  // Universal tier-deepening options (added to enrich each slot's tree).
+  dewlight: 'Dewlight',
+  twilight: 'Twilight',
+  aurora: 'Aurora',
+  berry_sprig: 'Berry sprig',
+  tiny_bell: 'Jingle bell',
+  antlers: 'Antlers',
+  lily_pond: 'Lily pond',
+  autumn_grove: 'Autumn grove',
+  starfall: 'Starfall',
+  snail: 'Garden snail',
+  frog: 'Little frog',
+  owl: 'Round owl',
+  mossy_stump: 'Mossy stump',
+  reed_raft: 'Reed raft',
+  crystal: 'Floating crystal',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -405,6 +421,12 @@ const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number 
   ember: { tint: '#f97316', grow: 6, strength: 2.6 },
   frost: { tint: '#7dd3fc', grow: 6, strength: 2.4 },
   rose: { tint: '#fda4af', grow: 5, strength: 2.2 },
+  // Universal additions: a soft green dew glow (tier 1), a deep-purple dusk glow (tier 2), and a
+  // shimmering multi-hue aurora ribbon (the universal tier-3 crown). Each layers its own
+  // procedural decor over this base glow (cases below).
+  dewlight: { tint: '#86efac', grow: 5, strength: 2.2 },
+  twilight: { tint: '#a78bfa', grow: 7, strength: 2.8 },
+  aurora: { tint: '#5eead4', grow: 9, strength: 3.2 },
   // Path-exclusive auras: warm ember halo for Pitta, verdant grove for Kapha, airy zephyr for
   // Vata. Each layers its own procedural motes/leaves/wisps over this base glow (cases below).
   emberflame: { tint: '#ea580c', grow: 9, strength: 3.0 },
@@ -440,6 +462,119 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
             />
           )
         })}
+      {/* Soft aura (polish) — keeps its pale-blue identity but gains depth: a faint outer wash
+          beyond the base glow and a brighter inner core, so the halo reads as layered light rather
+          than a flat disc, plus a thin highlight rim for a gentle sheen. */}
+      {aura === 'soft' && (
+        <>
+          <circle cx={40} cy={40} r={r + 3} fill={fill} opacity={Math.min(0.3, 0.07 * g * strength)} />
+          <circle cx={40} cy={38} r={r - 14} fill="#eff6ff" opacity={Math.min(0.5, 0.16 * g * strength)} />
+          <circle cx={40} cy={40} r={r - 4} fill="none" stroke="#dbeafe" strokeWidth={0.8} opacity={0.4 * g} />
+        </>
+      )}
+      {/* Ember aura (polish) — keeps its hot-orange identity but gains depth: a smouldering deep
+          outer wash, a hotter golden core, and a few faint rising sparks so it reads as living
+          warmth rather than a flat orange disc. */}
+      {aura === 'ember' && (
+        <>
+          <circle cx={40} cy={42} r={r + 2} fill="#b45309" opacity={Math.min(0.28, 0.07 * g * strength)} />
+          <circle cx={40} cy={42} r={r - 12} fill="#fbbf24" opacity={Math.min(0.55, 0.18 * g * strength)} />
+          {Array.from({ length: 4 }, (_, k) => {
+            const a = (k / 4) * Math.PI * 2 - Math.PI / 2
+            return (
+              <circle
+                key={`emberspark-${k}`}
+                cx={40 + Math.cos(a) * (r - 2)}
+                cy={40 + Math.sin(a) * (r - 2) - 2}
+                r={k % 2 ? 0.9 : 0.6}
+                fill="#fed7aa"
+                opacity={0.7 * g}
+              />
+            )
+          })}
+        </>
+      )}
+      {/* Dewlight (tier 1, universal) — a soft green dew glow: a fresh inner verdant core under the
+          green base, with a ring of tiny dew droplets catching a pale highlight around the halo. */}
+      {aura === 'dewlight' && (
+        <>
+          <circle cx={40} cy={40} r={r - 11} fill="#bbf7d0" opacity={Math.min(0.55, 0.18 * g * strength)} />
+          {Array.from({ length: 6 }, (_, k) => {
+            const a = (k / 6) * Math.PI * 2 + 0.3
+            const dx = 40 + Math.cos(a) * (r - 2)
+            const dy = 40 + Math.sin(a) * (r - 2)
+            return (
+              <g key={`dew-${k}`}>
+                <circle cx={dx} cy={dy} r={k % 2 ? 1.4 : 1.0} fill="#4ade80" opacity={0.7 * g} />
+                <circle cx={dx - 0.4} cy={dy - 0.5} r={0.4} fill="#f0fdf4" opacity={0.85 * g} />
+              </g>
+            )
+          })}
+        </>
+      )}
+      {/* Twilight (tier 2, universal) — a deep-purple dusk glow: a darker indigo wash bleeding out
+          beyond the violet base into a graded inner core, with a scatter of faint first-stars high
+          in the halo where the dusk is deepest. */}
+      {aura === 'twilight' && (
+        <>
+          <circle cx={40} cy={40} r={r + 2} fill="#4c1d95" opacity={Math.min(0.34, 0.09 * g * strength)} />
+          <circle cx={40} cy={41} r={r - 10} fill="#7c3aed" opacity={Math.min(0.5, 0.16 * g * strength)} />
+          {Array.from({ length: 5 }, (_, k) => {
+            const a = -Math.PI / 2 + (k - 2) * 0.5
+            return (
+              <circle
+                key={`dusk-star-${k}`}
+                cx={40 + Math.cos(a) * (r - 3)}
+                cy={40 + Math.sin(a) * (r - 3)}
+                r={k % 2 ? 0.9 : 0.6}
+                fill={k % 2 ? '#ede9fe' : '#c4b5fd'}
+                opacity={0.85 * g}
+              />
+            )
+          })}
+        </>
+      )}
+      {/* Aurora (tier 3, universal capstone) — a shimmering multi-hue ribbon glow: layered curved
+          bands in teal/violet/rose sweeping across the upper halo like northern lights, over a
+          cool inner wash, with a few drifting light motes. The richest universal aura. */}
+      {aura === 'aurora' && (
+        <>
+          <circle cx={40} cy={40} r={r - 12} fill="#99f6e4" opacity={Math.min(0.45, 0.14 * g * strength)} />
+          {['#5eead4', '#a78bfa', '#fda4af'].map((hue, k) => {
+            const rr = r - 1 - k * 3
+            const x0 = 40 + Math.cos(Math.PI + 0.5) * rr
+            const y0 = 40 + Math.sin(Math.PI + 0.5) * rr
+            const x1 = 40 + Math.cos(-0.5) * rr
+            const y1 = 40 + Math.sin(-0.5) * rr
+            const cx = 40 + (k - 1) * 3
+            const cy = 40 - rr - 4 + k * 2
+            return (
+              <path
+                key={`aurora-band-${k}`}
+                d={`M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y1}`}
+                fill="none"
+                stroke={hue}
+                strokeWidth={2.2 - k * 0.3}
+                strokeLinecap="round"
+                opacity={0.7 * g}
+              />
+            )
+          })}
+          {Array.from({ length: 4 }, (_, k) => {
+            const a = (k / 4) * Math.PI * 2 + 0.4
+            return (
+              <circle
+                key={`aurora-mote-${k}`}
+                cx={40 + Math.cos(a) * (r - 2)}
+                cy={40 + Math.sin(a) * (r - 2)}
+                r={0.7}
+                fill="#f0fdfa"
+                opacity={0.7 * g}
+              />
+            )
+          })}
+        </>
+      )}
       {/* PATH-EXCLUSIVE: Emberflame (Pitta) — a hot orange halo of flickering motes ringing the
           glow, motes nearer the top (the flame rises) and sized to alternate like licking embers,
           with cream sparks lifting just above. */}
@@ -550,12 +685,21 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
   if (habitat === 'meadow') {
     return (
       <g opacity={g} aria-hidden="true">
+        {/* A faint warm-sky wash behind everything, for daytime depth (kept low-opacity so the
+            figure reads clearly in front). */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#dcfce7" opacity={0.22} />
+        {/* Distant rolling hills along the horizon, pushed behind the ground band. */}
+        <path d="M 4 58 Q 20 48 38 56 T 76 54 L 76 60 L 4 60 Z" fill="#86efac" opacity={0.3} />
         {/* Ground band only, kept low at the very bottom — well clear of the figure. */}
         <rect x={6} y={56} width={68} height={18} rx={6} fill="#bbf7d0" opacity={0.55} />
         <rect x={6} y={63} width={68} height={11} rx={6} fill="#86efac" opacity={0.6} />
         {/* A few simple grass blades along the ground. */}
         {Array.from({ length: 7 }, (_, k) => (
           <rect key={k} x={12 + k * 8} y={58} width={1.4} height={6} rx={0.7} fill="#4ade80" opacity={0.6} />
+        ))}
+        {/* A couple of tiny wildflowers tucked into the outer corners for warmth. */}
+        {[10, 70].map((fx, k) => (
+          <circle key={k} cx={fx} cy={61} r={1.1} fill={k % 2 ? '#f9a8d4' : '#fcd34d'} opacity={0.7} />
         ))}
       </g>
     )
@@ -576,6 +720,8 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
       <g opacity={g} aria-hidden="true">
         {/* A faint night wash so the figure stays bright in front of it. */}
         <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e293b" opacity={0.32} />
+        {/* A deeper band up top for sky depth — the night reads darker overhead. */}
+        <rect x={4} y={6} width={72} height={26} rx={10} fill="#0f172a" opacity={0.22} />
         {/* A scattering of stars hugging the outer edge, and a crescent moon in the corner. */}
         {Array.from({ length: 9 }, (_, k) => {
           const a = (k / 9) * Math.PI * 2
@@ -583,6 +729,15 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
             <circle key={k} cx={40 + Math.cos(a) * 31} cy={38 + Math.sin(a) * 28} r={0.9} fill="#e0e7ff" opacity={0.9} />
           )
         })}
+        {/* A couple of brighter twinkles in the corners for atmosphere. */}
+        {[
+          { x: 12, y: 12 },
+          { x: 70, y: 44 },
+        ].map((s, k) => (
+          <circle key={`tw-${k}`} cx={s.x} cy={s.y} r={1.4} fill="#f8fafc" opacity={0.85} />
+        ))}
+        {/* A soft halo around the moon so it glows rather than sits flat. */}
+        <circle cx={64} cy={16} r={9} fill="#fde68a" opacity={0.18} />
         <circle cx={64} cy={16} r={6} fill="#fde68a" opacity={0.85} />
         <circle cx={61} cy={14} r={6} fill="#1e293b" opacity={0.85} />
       </g>
@@ -630,6 +785,96 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
         <rect x={71} y={53} width={3.5} height={3.5} rx={0.5} fill="#bae6fd" opacity={0.7} />
         {/* A wisp of ground to settle the cottage, low at the bottom. */}
         <rect x={6} y={62} width={68} height={12} rx={6} fill="#bbf7d0" opacity={0.45} />
+      </g>
+    )
+  }
+  if (habitat === 'lily_pond') {
+    // A calm lily pond — a still teal water band banked low, with lily pads and a couple of
+    // blooms floating at the edges, and faint reeds in the corners. Restful, rested.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A soft pale wash for air above the water, kept faint behind the figure. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#ccfbf1" opacity={0.24} />
+        {/* The still pond surface banked low at the very bottom, clear of the figure. */}
+        <rect x={6} y={56} width={68} height={18} rx={8} fill="#5eead4" opacity={0.32} />
+        <rect x={6} y={64} width={68} height={10} rx={8} fill="#2dd4bf" opacity={0.3} />
+        {/* Two pale ripple lines across the surface for stillness. */}
+        <rect x={14} y={60} width={18} height={1} rx={0.5} fill="#99f6e4" opacity={0.55} />
+        <rect x={48} y={66} width={16} height={1} rx={0.5} fill="#99f6e4" opacity={0.5} />
+        {/* Lily pads tucked into the outer columns, off the figure's centre. */}
+        {[12, 66].map((px, k) => (
+          <g key={k}>
+            <ellipse cx={px} cy={62} rx={6} ry={3} fill="#34d399" opacity={0.55} />
+            <path d={`M ${px} 62 L ${px + 5} 60`} stroke="#0f766e" strokeWidth={0.8} opacity={0.4} />
+          </g>
+        ))}
+        {/* A single lotus bloom resting on the left pad, low and to the edge. */}
+        <circle cx={12} cy={60} r={1.8} fill="#f9a8d4" opacity={0.7} />
+        <circle cx={12} cy={60} r={0.8} fill="#fbcfe8" opacity={0.8} />
+        {/* Faint reeds rising in the bottom corners. */}
+        {[8, 72].map((rx2, k) => (
+          <rect key={`reed-${k}`} x={rx2} y={52} width={1} height={10} rx={0.5} fill="#15803d" opacity={0.4} />
+        ))}
+      </g>
+    )
+  }
+  if (habitat === 'autumn_grove') {
+    // A warm autumn grove — a golden wash, slim bare trunks pushed to the edges, a leaf-litter
+    // band low at the bottom, and a few warm leaves drifting down the outer columns. Nourished.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A warm golden wash, faint so the figure reads clearly in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#fef3c7" opacity={0.26} />
+        <rect x={4} y={44} width={72} height={30} rx={10} fill="#fcd9b6" opacity={0.24} />
+        {/* Slim trunks at the far edges, clear of the centred figure. */}
+        {[9, 71].map((tx, k) => (
+          <rect key={k} x={tx} y={20} width={2.4} height={42} rx={1} fill="#b45309" opacity={0.4} />
+        ))}
+        {/* A soft canopy of warm foliage hugging the top corners. */}
+        <ellipse cx={11} cy={20} rx={9} ry={6} fill="#ea580c" opacity={0.3} />
+        <ellipse cx={69} cy={18} rx={10} ry={7} fill="#d97706" opacity={0.3} />
+        {/* A leaf-litter band banked low at the very bottom. */}
+        <rect x={6} y={60} width={68} height={14} rx={6} fill="#f59e0b" opacity={0.3} />
+        <rect x={6} y={66} width={68} height={8} rx={6} fill="#c2410c" opacity={0.3} />
+        {/* A few warm leaves drifting down the outer columns, off the figure's centre. */}
+        {[
+          { x: 14, y: 34, c: '#ea580c' },
+          { x: 18, y: 50, c: '#f59e0b' },
+          { x: 64, y: 30, c: '#d97706' },
+          { x: 68, y: 46, c: '#ea580c' },
+        ].map((l, k) => (
+          <ellipse key={`leaf-${k}`} cx={l.x} cy={l.y} rx={2} ry={1.1} fill={l.c} opacity={0.7} transform={`rotate(${k % 2 ? 30 : -25} ${l.x} ${l.y})`} />
+        ))}
+      </g>
+    )
+  }
+  if (habitat === 'starfall') {
+    // Deep night with drifting shooting stars — a darker indigo wash, a dense field of stars at
+    // the edges, and a few streaking meteors raking the corners. Joyful, celebratory.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A deep indigo night wash, faint so the figure stays bright in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e1b4b" opacity={0.34} />
+        <rect x={4} y={6} width={72} height={30} rx={10} fill="#312e81" opacity={0.22} />
+        {/* A dense field of small stars hugging the outer ring, clear of the centre. */}
+        {Array.from({ length: 14 }, (_, k) => {
+          const a = (k / 14) * Math.PI * 2
+          const r = k % 2 ? 33 : 29
+          return (
+            <circle key={k} cx={40 + Math.cos(a) * r} cy={38 + Math.sin(a) * (r - 3)} r={k % 3 ? 0.8 : 1.3} fill="#e0e7ff" opacity={0.9} />
+          )
+        })}
+        {/* Drifting shooting stars raking the corners — a bright head with a fading tail. */}
+        {[
+          { x: 14, y: 14, dx: 8, dy: 4 },
+          { x: 66, y: 20, dx: 7, dy: 5 },
+          { x: 20, y: 50, dx: 9, dy: 3 },
+        ].map((m, k) => (
+          <g key={`meteor-${k}`}>
+            <line x1={m.x} y1={m.y} x2={m.x - m.dx} y2={m.y - m.dy} stroke="#c7d2fe" strokeWidth={0.8} strokeLinecap="round" opacity={0.6} />
+            <circle cx={m.x} cy={m.y} r={1.3} fill="#f8fafc" opacity={0.9} />
+          </g>
+        ))}
       </g>
     )
   }
@@ -708,18 +953,41 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
   // accessories just above that band so they read as worn rather than floating.
   const topY = 24
   if (accessory === 'halo') {
+    // A floating golden ring: a soft outer bloom, the bright gold band itself, and a faint
+    // highlight along the near edge so it reads as a glowing halo rather than a flat outline.
     return (
-      <ellipse
-        cx={40}
-        cy={topY}
-        rx={9}
-        ry={3}
-        fill="none"
-        stroke="#fde68a"
-        strokeWidth={1.8}
-        opacity={0.95 * g}
-        aria-hidden="true"
-      />
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Soft glow blooming around the ring. */}
+        <ellipse
+          cx={40}
+          cy={topY}
+          rx={9}
+          ry={3}
+          fill="none"
+          stroke="#fef9c3"
+          strokeWidth={3.6}
+          opacity={0.4}
+        />
+        {/* The bright gold band — the halo's defining shape, unchanged. */}
+        <ellipse
+          cx={40}
+          cy={topY}
+          rx={9}
+          ry={3}
+          fill="none"
+          stroke="#fde68a"
+          strokeWidth={1.8}
+        />
+        {/* A brighter highlight along the front-lower arc for a touch of shine. */}
+        <path
+          d={`M 31.5 ${topY + 1.2} Q 40 ${topY + 3.6} 48.5 ${topY + 1.2}`}
+          fill="none"
+          stroke="#fffbeb"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+          opacity={0.9}
+        />
+      </g>
     )
   }
   if (accessory === 'leaf_crown') {
@@ -756,22 +1024,43 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
     )
   }
   if (accessory === 'flower') {
+    // A small blossom tucked by the head: five rounded petals each with a soft inner shade and a
+    // tiny highlight, around a golden centre dotted with pollen — fuller and rounder than a flat
+    // ring of dots, but the same little flower.
+    const cx = 48
+    const cy = topY + 1
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* A small blossom tucked by the head. */}
         {Array.from({ length: 5 }, (_, k) => {
           const a = (k / 5) * Math.PI * 2
+          const px = cx + Math.cos(a) * 2.4
+          const py = cy + Math.sin(a) * 2.4
           return (
-            <circle
-              key={k}
-              cx={48 + Math.cos(a) * 2.4}
-              cy={topY + 1 + Math.sin(a) * 2.4}
-              r={1.6}
-              fill="#f9a8d4"
-            />
+            <g key={k}>
+              {/* The petal, with a slightly deeper base tucked toward the centre. */}
+              <circle cx={px} cy={py} r={1.7} fill="#f9a8d4" />
+              <circle
+                cx={px - Math.cos(a) * 0.5}
+                cy={py - Math.sin(a) * 0.5}
+                r={0.9}
+                fill="#f472b6"
+                opacity={0.7}
+              />
+              {/* A small highlight on the outer edge of each petal. */}
+              <circle
+                cx={px + Math.cos(a) * 0.6}
+                cy={py + Math.sin(a) * 0.6}
+                r={0.4}
+                fill="#fce7f3"
+                opacity={0.9}
+              />
+            </g>
           )
         })}
-        <circle cx={48} cy={topY + 1} r={1.3} fill="#fbbf24" />
+        {/* The golden centre with a couple of pollen dots and a soft highlight. */}
+        <circle cx={cx} cy={cy} r={1.4} fill="#fbbf24" />
+        <circle cx={cx - 0.5} cy={cy - 0.5} r={0.4} fill="#fde68a" />
+        <circle cx={cx + 0.6} cy={cy + 0.4} r={0.3} fill="#d97706" />
       </g>
     )
   }
@@ -801,6 +1090,140 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
         opacity={0.95 * g}
         aria-hidden="true"
       />
+    )
+  }
+  if (accessory === 'berry_sprig') {
+    // A little nourishing sprig tucked at the brow: a short stem with a couple of leaves and a
+    // small cluster of red berries, so it reads as foraged greenery even at this scale.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The stem, rising and curving off to one side of the head. */}
+        <path
+          d={`M 45 ${topY + 2} Q 47.5 ${topY - 3} 47 ${topY - 7}`}
+          fill="none"
+          stroke="#3f6212"
+          strokeWidth={1}
+          strokeLinecap="round"
+        />
+        {/* Two leaves off the stem, with a lighter centre vein. */}
+        <ellipse
+          cx={43.4}
+          cy={topY - 1.6}
+          rx={2.6}
+          ry={1.3}
+          fill="#4ade80"
+          transform={`rotate(-32 43.4 ${topY - 1.6})`}
+        />
+        <ellipse
+          cx={49.4}
+          cy={topY - 3.2}
+          rx={2.4}
+          ry={1.2}
+          fill="#22c55e"
+          transform={`rotate(34 49.4 ${topY - 3.2})`}
+        />
+        <line
+          x1={43.4}
+          y1={topY - 1.6}
+          x2={45}
+          y2={topY - 1}
+          stroke="#bbf7d0"
+          strokeWidth={0.4}
+        />
+        {/* A small cluster of berries at the tip, brightest in front. */}
+        <circle cx={46.2} cy={topY - 7.4} r={1.5} fill="#dc2626" />
+        <circle cx={48} cy={topY - 6.6} r={1.4} fill="#ef4444" />
+        <circle cx={47} cy={topY - 8.6} r={1.2} fill="#f87171" />
+        <circle cx={46.6} cy={topY - 7.9} r={0.4} fill="#fecaca" />
+      </g>
+    )
+  }
+  if (accessory === 'tiny_bell') {
+    // A small jingle bell on a cord: a short cord looping down from the brow to a gold bell with
+    // a seam, a slot, and a little clapper bead, so it reads as a cheerful chime.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The cord looping down off the head. */}
+        <path
+          d={`M 44 ${topY + 1} Q 47 ${topY + 3} 47 ${topY + 6}`}
+          fill="none"
+          stroke="#a16207"
+          strokeWidth={0.9}
+          strokeLinecap="round"
+        />
+        {/* The bell cap, then the rounded gold body. */}
+        <rect x={46} y={topY + 5.4} width={2} height={1.4} rx={0.6} fill="#ca8a04" />
+        <path
+          d={`M 43.6 ${topY + 11} Q 43.6 ${topY + 6.6} 47 ${topY + 6.6} Q 50.4 ${topY + 6.6} 50.4 ${topY + 11} Z`}
+          fill="#fbbf24"
+          stroke="#d97706"
+          strokeWidth={0.5}
+        />
+        {/* The mouth band and slot, plus a bright highlight and the clapper bead. */}
+        <rect x={43.4} y={topY + 10.4} width={7.2} height={1.4} rx={0.7} fill="#f59e0b" />
+        <line
+          x1={45.4}
+          y1={topY + 11.1}
+          x2={48.6}
+          y2={topY + 11.1}
+          stroke="#92400e"
+          strokeWidth={0.7}
+        />
+        <circle cx={45.4} cy={topY + 8.4} r={0.9} fill="#fef3c7" opacity={0.85} />
+        <circle cx={47} cy={topY + 12.4} r={1} fill="#b45309" />
+      </g>
+    )
+  }
+  if (accessory === 'antlers') {
+    // Small branching antlers: a pair of warm tawny antlers sweeping up and out from the brow,
+    // each with a couple of short tines, drawn symmetrically so they read as a calm woodland crown.
+    const antler = (dir: 1 | -1) => {
+      const baseX = 40 + dir * 2.5
+      return (
+        <g key={dir}>
+          {/* The main beam, curving up and outward. */}
+          <path
+            d={`M ${baseX} ${topY + 1}
+                Q ${baseX + dir * 4} ${topY - 4} ${baseX + dir * 5.5} ${topY - 11}`}
+            fill="none"
+            stroke="#a16207"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+          />
+          {/* A lower forward tine. */}
+          <path
+            d={`M ${baseX + dir * 2.4} ${topY - 2.4} q ${dir * 3} ${-1.4} ${dir * 3.6} ${-4}`}
+            fill="none"
+            stroke="#b45309"
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
+          {/* An upper tine near the top of the beam. */}
+          <path
+            d={`M ${baseX + dir * 4.6} ${topY - 7.4} q ${dir * 2.6} ${-0.6} ${dir * 3.2} ${-3.2}`}
+            fill="none"
+            stroke="#b45309"
+            strokeWidth={1.3}
+            strokeLinecap="round"
+          />
+          {/* A soft highlight up the front of the beam for a little volume. */}
+          <path
+            d={`M ${baseX - dir * 0.3} ${topY}
+                Q ${baseX + dir * 3.4} ${topY - 4.2} ${baseX + dir * 5} ${topY - 10.4}`}
+            fill="none"
+            stroke="#fcd34d"
+            strokeWidth={0.5}
+            strokeLinecap="round"
+            opacity={0.7}
+          />
+        </g>
+      )
+    }
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {antler(-1)}
+        {antler(1)}
+      </g>
     )
   }
   // --- Path-exclusive accessories (per_path in the catalog) ------------------------------
@@ -934,14 +1357,20 @@ function Companion({ companion, g }: { companion: string; g: number }) {
   if (companion === 'firefly') {
     return (
       <g opacity={g} aria-hidden="true">
-        {/* A couple of soft glowing dots hovering low and left. */}
+        {/* A couple of soft glowing dots hovering low and left — each a layered halo (wide soft
+            glow → warm aura → bright core → white-hot pinpoint) with a faint trailing spark, so
+            the little lights read as living embers rather than flat dots. */}
         {[
           { x: baseX - 2, y: baseY - 6 },
           { x: baseX + 6, y: baseY - 12 },
         ].map((d, k) => (
           <g key={k}>
-            <circle cx={d.x} cy={d.y} r={3} fill="#fde68a" opacity={0.4} />
-            <circle cx={d.x} cy={d.y} r={1.3} fill="#fef08a" opacity={0.95} />
+            <circle cx={d.x} cy={d.y} r={4.4} fill="#fde68a" opacity={0.16} />
+            <circle cx={d.x} cy={d.y} r={3} fill="#fcd34d" opacity={0.42} />
+            <circle cx={d.x} cy={d.y} r={1.6} fill="#fef08a" opacity={0.95} />
+            <circle cx={d.x - 0.4} cy={d.y - 0.4} r={0.7} fill="#fffbeb" opacity={0.95} />
+            {/* A faint trailing spark drifting below the glow. */}
+            <circle cx={d.x - 2.6} cy={d.y + 2.4} r={0.7} fill="#fde68a" opacity={0.5} />
           </g>
         ))}
       </g>
@@ -950,12 +1379,24 @@ function Companion({ companion, g }: { companion: string; g: number }) {
   if (companion === 'bird') {
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* A small perched bird — round body, head, beak, tail. */}
+        {/* A small perched bird — round body, head, beak, tail, now with a paler belly, a
+            darker folded wing, a little chest crest and an eye glint for depth. */}
         <ellipse cx={baseX} cy={baseY - 4} rx={4} ry={3.2} fill="#60a5fa" />
+        {/* Pale belly highlight along the lower front. */}
+        <ellipse cx={baseX - 1} cy={baseY - 2.6} rx={2.6} ry={2} fill="#bfdbfe" opacity={0.85} />
+        {/* A folded wing, slightly darker, lifted over the back. */}
+        <path
+          d={`M ${baseX - 2} ${baseY - 5} q 4 -1.4 5.6 1.6 q -3 1.4 -5.6 0.6 z`}
+          fill="#3b82f6"
+        />
         <circle cx={baseX + 3} cy={baseY - 7} r={2.2} fill="#3b82f6" />
+        {/* A tiny crest tuft on the crown. */}
+        <path d={`M ${baseX + 3} ${baseY - 9} l 0.6 -1.8 l 1 1.4 z`} fill="#2563eb" />
         <path d={`M ${baseX + 5} ${baseY - 7} l 2.4 0.8 l -2.4 0.8 z`} fill="#f59e0b" />
         <path d={`M ${baseX - 4} ${baseY - 4} l -3 1.6 l 3 1 z`} fill="#2563eb" />
         <circle cx={baseX + 3.6} cy={baseY - 7.4} r={0.5} fill="#0f172a" />
+        {/* Eye glint. */}
+        <circle cx={baseX + 3.4} cy={baseY - 7.7} r={0.2} fill="#f8fafc" />
       </g>
     )
   }
@@ -1116,6 +1557,130 @@ function Companion({ companion, g }: { companion: string; g: number }) {
       </g>
     )
   }
+  // --- Universal companions (tiers 1–3, no per_path) -------------------------------------
+  if (companion === 'snail') {
+    // A cute little snail inching along the ground: a soft body with a poking head, two stubby
+    // eye-stalks, and a coiled spiral shell with a glossy highlight.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The soft body resting on the ground, tapering to a tail behind. */}
+        <path
+          d={`M ${baseX - 7} ${baseY + 1}
+              Q ${baseX - 8} ${baseY - 3} ${baseX - 5} ${baseY - 3}
+              L ${baseX + 5} ${baseY - 2}
+              Q ${baseX + 8} ${baseY - 1} ${baseX + 7} ${baseY + 1} Z`}
+          fill="#fcd5b5"
+        />
+        {/* Two stubby eye-stalks with dark tips, poking up at the front. */}
+        <path
+          d={`M ${baseX - 6} ${baseY - 3} l -0.6 -3 M ${baseX - 4.4} ${baseY - 3} l 0.4 -3.2`}
+          fill="none"
+          stroke="#f0a878"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+        <circle cx={baseX - 6.6} cy={baseY - 6.2} r={0.7} fill="#3f2a1d" />
+        <circle cx={baseX - 4} cy={baseY - 6.4} r={0.7} fill="#3f2a1d" />
+        {/* The coiled spiral shell sitting on the body. */}
+        <circle cx={baseX + 1} cy={baseY - 4} r={4.4} fill="#f59e0b" />
+        <circle cx={baseX + 1} cy={baseY - 4} r={4.4} fill="none" stroke="#b45309" strokeWidth={0.6} />
+        <path
+          d={`M ${baseX + 1} ${baseY - 4}
+              m 0 -2.6
+              a 2.6 2.6 0 1 1 -0.1 0
+              M ${baseX + 1} ${baseY - 4}
+              m 0 -1.1
+              a 1.1 1.1 0 1 1 -0.1 0`}
+          fill="none"
+          stroke="#b45309"
+          strokeWidth={0.6}
+        />
+        {/* A glossy highlight on the shell. */}
+        <circle cx={baseX - 0.4} cy={baseY - 5.6} r={1} fill="#fde68a" opacity={0.8} />
+      </g>
+    )
+  }
+  if (companion === 'frog') {
+    // A small sitting frog: a rounded green body, two domed eyes with bright pupils, a wide
+    // smile, and front feet planted on the ground — cheerful and round.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Back haunches just visible behind the body. */}
+        <ellipse cx={baseX - 5} cy={baseY - 1} rx={2.6} ry={2} fill="#16a34a" />
+        <ellipse cx={baseX + 5} cy={baseY - 1} rx={2.6} ry={2} fill="#16a34a" />
+        {/* The rounded body. */}
+        <ellipse cx={baseX} cy={baseY - 2.5} rx={5.6} ry={4.4} fill="#22c55e" />
+        {/* Paler belly. */}
+        <ellipse cx={baseX} cy={baseY - 0.6} rx={3.4} ry={2.2} fill="#bbf7d0" opacity={0.9} />
+        {/* Front feet planted on the ground. */}
+        <ellipse cx={baseX - 3.2} cy={baseY + 1.4} rx={1.6} ry={0.9} fill="#16a34a" />
+        <ellipse cx={baseX + 3.2} cy={baseY + 1.4} rx={1.6} ry={0.9} fill="#16a34a" />
+        {/* Two domed eyes perched on top with bright pupils and glints. */}
+        <circle cx={baseX - 3} cy={baseY - 7} r={2.2} fill="#22c55e" />
+        <circle cx={baseX + 3} cy={baseY - 7} r={2.2} fill="#22c55e" />
+        <circle cx={baseX - 3} cy={baseY - 7} r={1.2} fill="#f8fafc" />
+        <circle cx={baseX + 3} cy={baseY - 7} r={1.2} fill="#f8fafc" />
+        <circle cx={baseX - 2.7} cy={baseY - 6.8} r={0.7} fill="#0f172a" />
+        <circle cx={baseX + 3.3} cy={baseY - 6.8} r={0.7} fill="#0f172a" />
+        {/* A wide friendly smile. */}
+        <path
+          d={`M ${baseX - 3.4} ${baseY - 2.6} q 3.4 2.6 6.8 0`}
+          fill="none"
+          stroke="#15803d"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+      </g>
+    )
+  }
+  if (companion === 'owl') {
+    // A perched round owl: a plump body, a flat-topped head with two ear tufts, big round eyes,
+    // a small triangular beak, a hint of wing feathers, and two little feet gripping the ground.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Two little feet gripping the perch. */}
+        <path
+          d={`M ${baseX - 2.4} ${baseY + 1} l -1.4 1.4 M ${baseX - 2.4} ${baseY + 1} l 0 1.6
+              M ${baseX + 2.4} ${baseY + 1} l 1.4 1.4 M ${baseX + 2.4} ${baseY + 1} l 0 1.6`}
+          fill="none"
+          stroke="#b45309"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+        {/* The plump body. */}
+        <ellipse cx={baseX} cy={baseY - 3} rx={6} ry={7} fill="#92633b" />
+        {/* A paler feathered belly. */}
+        <ellipse cx={baseX} cy={baseY - 1.5} rx={3.6} ry={4.4} fill="#d8b48a" />
+        {/* Hints of folded wings on each side. */}
+        <path
+          d={`M ${baseX - 6} ${baseY - 5} q -1 5 1.4 7.5`}
+          fill="none"
+          stroke="#6b4423"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+        <path
+          d={`M ${baseX + 6} ${baseY - 5} q 1 5 -1.4 7.5`}
+          fill="none"
+          stroke="#6b4423"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+        {/* Two ear tufts on the flat-topped head. */}
+        <path d={`M ${baseX - 4.4} ${baseY - 9} l -0.6 -2.6 l 2 1.4 z`} fill="#6b4423" />
+        <path d={`M ${baseX + 4.4} ${baseY - 9} l 0.6 -2.6 l -2 1.4 z`} fill="#6b4423" />
+        {/* Big round eye discs with bright pupils and glints. */}
+        <circle cx={baseX - 2.6} cy={baseY - 7.5} r={2.4} fill="#f8fafc" />
+        <circle cx={baseX + 2.6} cy={baseY - 7.5} r={2.4} fill="#f8fafc" />
+        <circle cx={baseX - 2.6} cy={baseY - 7.5} r={1.2} fill="#1f2937" />
+        <circle cx={baseX + 2.6} cy={baseY - 7.5} r={1.2} fill="#1f2937" />
+        <circle cx={baseX - 2.2} cy={baseY - 7.9} r={0.4} fill="#f8fafc" />
+        <circle cx={baseX + 3} cy={baseY - 7.9} r={0.4} fill="#f8fafc" />
+        {/* A small triangular beak between the eyes. */}
+        <path d={`M ${baseX} ${baseY - 6} l -1 1.6 l 2 0 z`} fill="#f59e0b" />
+      </g>
+    )
+  }
   return null
 }
 
@@ -1128,20 +1693,28 @@ function Mount({ mount, g }: { mount: string; g: number }) {
   if (mount === 'cloud') {
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* A soft cloud the spirit floats on — overlapping white/sky puffs with a flat base. */}
+        {/* A soft cloud the spirit floats on — overlapping white/sky puffs with a flat base,
+            a faint cast shadow below and a soft top highlight for depth. */}
+        <ellipse cx={cx} cy={cy + 6} rx={15} ry={2.4} fill="#cbd5e1" opacity={0.4} />
         <ellipse cx={cx} cy={cy + 2} rx={18} ry={5} fill="#f1f5f9" />
         <circle cx={cx - 9} cy={cy} r={6} fill="#e0f2fe" />
         <circle cx={cx + 9} cy={cy} r={6} fill="#e0f2fe" />
+        <circle cx={cx - 11} cy={cy + 1.5} r={3.5} fill="#bae6fd" opacity={0.7} />
+        <circle cx={cx + 11} cy={cy + 1.5} r={3.5} fill="#bae6fd" opacity={0.7} />
         <circle cx={cx - 2} cy={cy - 3} r={7.5} fill="#ffffff" />
         <circle cx={cx + 5} cy={cy - 1} r={6.5} fill="#ffffff" />
+        <circle cx={cx - 1} cy={cy - 5} r={2.6} fill="#ffffff" opacity={0.9} />
       </g>
     )
   }
   if (mount === 'lotus') {
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* A lotus the spirit rests on — a green pad with calm pink petals fanned around it. */}
+        {/* A lotus the spirit rests on — a green pad with calm pink petals fanned around it,
+            shaded with a darker rim, petal-tip highlights and golden stamen dots. */}
+        <ellipse cx={cx} cy={cy + 4} rx={16} ry={4} fill="#22c55e" opacity={0.55} />
         <ellipse cx={cx} cy={cy + 3} rx={16} ry={4.5} fill="#86efac" />
+        <ellipse cx={cx} cy={cy + 2.4} rx={10} ry={2.4} fill="#bbf7d0" opacity={0.8} />
         {[-12, -6, 0, 6, 12].map((dx, k) => (
           <path
             key={k}
@@ -1151,7 +1724,21 @@ function Mount({ mount, g }: { mount: string; g: number }) {
             strokeWidth={0.5}
           />
         ))}
+        {[-12, -6, 0, 6, 12].map((dx, k) => (
+          <path
+            key={`hl-${k}`}
+            d={`M ${cx + dx} ${cy - 1} q ${dx * 0.2} -4 0 -7`}
+            stroke="#fdf2f8"
+            strokeWidth={0.6}
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.85}
+          />
+        ))}
         <ellipse cx={cx} cy={cy} rx={4} ry={2.5} fill="#fce7f3" />
+        {[-1.6, 1.6].map((dx, k) => (
+          <circle key={`st-${k}`} cx={cx + dx} cy={cy - 0.4} r={0.9} fill="#fbbf24" />
+        ))}
       </g>
     )
   }
@@ -1178,6 +1765,127 @@ function Mount({ mount, g }: { mount: string; g: number }) {
             stroke="#16a34a"
             strokeWidth={0.7}
             strokeLinecap="round"
+          />
+        ))}
+      </g>
+    )
+  }
+  if (mount === 'mossy_stump') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A flat mossy tree stump the spirit settles on — a woody trunk slab with bark sides,
+            ring grain on the cut top and a jade carpet of moss along the rim. */}
+        <path
+          d={`M ${cx - 16} ${cy + 1} q -1 7 3 8 q 13 3 26 0 q 4 -1 3 -8 z`}
+          fill="#8b5e34"
+          stroke="#5c3a1e"
+          strokeWidth={1}
+        />
+        {[-8, 0, 8].map((dx, k) => (
+          <path
+            key={`bark-${k}`}
+            d={`M ${cx + dx} ${cy + 2} l 0 6`}
+            stroke="#5c3a1e"
+            strokeWidth={0.7}
+            strokeLinecap="round"
+            opacity={0.7}
+          />
+        ))}
+        <ellipse cx={cx} cy={cy} rx={17} ry={5} fill="#a97c50" stroke="#7a5230" strokeWidth={1} />
+        <ellipse cx={cx} cy={cy} rx={11} ry={3.2} fill="none" stroke="#8b5e34" strokeWidth={0.7} />
+        <ellipse cx={cx} cy={cy} rx={6} ry={1.8} fill="none" stroke="#8b5e34" strokeWidth={0.7} />
+        <ellipse cx={cx} cy={cy} rx={2} ry={0.8} fill="#7a5230" />
+        <path
+          d={`M ${cx - 17} ${cy - 1} q 5 -3 12 -2 q 8 -2 14 0 q 6 1 8 2 q -4 3 -17 3 q -13 0 -17 -3 z`}
+          fill="#10b981"
+        />
+        <ellipse cx={cx - 8} cy={cy - 1} rx={3} ry={1.5} fill="#34d399" opacity={0.9} />
+        <ellipse cx={cx + 9} cy={cy} rx={2.4} ry={1.3} fill="#047857" opacity={0.9} />
+      </g>
+    )
+  }
+  if (mount === 'reed_raft') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A little woven reed raft the spirit rests on — straw-gold reeds lashed side by side
+            with two darker binding cords and a faint ripple of water beneath. */}
+        <path
+          d={`M ${cx - 19} ${cy + 5} q 19 5 38 0`}
+          stroke="#7dd3fc"
+          strokeWidth={1}
+          fill="none"
+          strokeLinecap="round"
+          opacity={0.6 * g}
+        />
+        <path
+          d={`M ${cx - 18} ${cy + 3} q 18 4 36 0 q 1 -4 0 -7 q -18 -4 -36 0 q -1 3 0 7 z`}
+          fill="#d9b46a"
+          stroke="#a07d3a"
+          strokeWidth={1}
+        />
+        {[-15, -10.5, -6, -1.5, 3, 7.5, 12, 16.5].map((dx, k) => (
+          <path
+            key={`reed-${k}`}
+            d={`M ${cx + dx} ${cy - 3.5} q 0.6 5 0 9`}
+            stroke="#b8923f"
+            strokeWidth={0.7}
+            fill="none"
+            strokeLinecap="round"
+          />
+        ))}
+        {[-7, 7].map((dx, k) => (
+          <path
+            key={`cord-${k}`}
+            d={`M ${cx + dx} ${cy - 4} q 1 4 0 8`}
+            stroke="#6b4f24"
+            strokeWidth={1.4}
+            fill="none"
+            strokeLinecap="round"
+          />
+        ))}
+        <path
+          d={`M ${cx - 16} ${cy - 2.5} q 16 -3 32 0`}
+          stroke="#f0d98a"
+          strokeWidth={0.8}
+          fill="none"
+          strokeLinecap="round"
+          opacity={0.8}
+        />
+      </g>
+    )
+  }
+  if (mount === 'crystal') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A floating faceted crystal the spirit perches on — a violet gem with a flat upper
+            facet, bright cut faces, a soft glow halo and a few rising sparkles. */}
+        <ellipse cx={cx} cy={cy + 1} rx={15} ry={7} fill="#c4b5fd" opacity={0.35 * g} />
+        <path
+          d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy - 6} L ${cx + 13} ${cy - 2}
+              L ${cx + 8} ${cy + 5} L ${cx} ${cy + 8} L ${cx - 8} ${cy + 5} z`}
+          fill="#8b5cf6"
+          stroke="#6d28d9"
+          strokeWidth={1}
+        />
+        <path
+          d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy - 6} L ${cx + 13} ${cy - 2}
+              L ${cx} ${cy + 1} z`}
+          fill="#c4b5fd"
+        />
+        <path d={`M ${cx} ${cy - 6} L ${cx} ${cy + 8}`} stroke="#ddd6fe" strokeWidth={0.7} />
+        <path d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy + 1}`} stroke="#a78bfa" strokeWidth={0.7} />
+        <path d={`M ${cx + 13} ${cy - 2} L ${cx} ${cy + 1}`} stroke="#a78bfa" strokeWidth={0.7} />
+        <path d={`M ${cx - 8} ${cy + 5} L ${cx} ${cy + 1}`} stroke="#7c3aed" strokeWidth={0.6} />
+        <path d={`M ${cx + 8} ${cy + 5} L ${cx} ${cy + 1}`} stroke="#7c3aed" strokeWidth={0.6} />
+        <path d={`M ${cx - 4} ${cy - 4} l 4 -1`} stroke="#f5f3ff" strokeWidth={1} strokeLinecap="round" />
+        {[-9, 0, 9].map((dx, k) => (
+          <path
+            key={`spark-${k}`}
+            d={`M ${cx + dx} ${cy - 9 - (k % 2) * 2} l 0 -2 M ${cx + dx - 1} ${cy - 10 - (k % 2) * 2} l 2 0`}
+            stroke="#ddd6fe"
+            strokeWidth={0.7}
+            strokeLinecap="round"
+            opacity={0.85 * g}
           />
         ))}
       </g>
