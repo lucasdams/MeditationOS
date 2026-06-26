@@ -631,6 +631,143 @@ function Companion({ companion, g }: { companion: string; g: number }) {
       </g>
     )
   }
+  // --- Path-exclusive companions (per_path in the catalog) -------------------------------
+  // kitsune → breath (Pitta/fire), tortoise → stillness (Kapha), crane → heart (Vata). The
+  // backend only offers each to its matching creature; the art follows the same warm/jade/airy
+  // palettes as the dosha so it reads on-theme. Each is condition-responsive via `g`.
+  if (companion === 'kitsune') {
+    // A sitting nine-tail fox: a fan of nine slender tapered tails swept up/behind, a pointed-ear
+    // head + snout, a small body, and a soft ember glow accent for the fire spirit.
+    const tailRootX = baseX + 4
+    const tailRootY = baseY - 1
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Ember glow accent — a warm halo behind the fox (the fire spirit's signature). */}
+        <circle cx={baseX} cy={baseY - 5} r={9} fill="#fb923c" opacity={0.18} />
+        {/* The fan of nine tails, generated across an angular spread sweeping up and behind. */}
+        {Array.from({ length: 9 }).map((_, k) => {
+          const t = k / 8 // 0..1 across the fan
+          const angle = -150 + t * 90 // degrees: sweeping from low-back up and over
+          const rad = (angle * Math.PI) / 180
+          const len = 11 + Math.sin(t * Math.PI) * 3 // longer in the middle of the fan
+          const tipX = tailRootX + Math.cos(rad) * len
+          const tipY = tailRootY + Math.sin(rad) * len
+          // A control point bows each tail outward for a gentle taper.
+          const ctrlX = tailRootX + Math.cos(rad) * len * 0.55 - 2
+          const ctrlY = tailRootY + Math.sin(rad) * len * 0.55
+          return (
+            <g key={k}>
+              <path
+                d={`M ${tailRootX} ${tailRootY} Q ${ctrlX} ${ctrlY} ${tipX} ${tipY}`}
+                fill="none"
+                stroke={k % 2 === 0 ? '#f97316' : '#fb923c'}
+                strokeWidth={2}
+                strokeLinecap="round"
+              />
+              {/* Cream tail-tip. */}
+              <circle cx={tipX} cy={tipY} r={1.2} fill="#fef3c7" />
+            </g>
+          )
+        })}
+        {/* Body — a small sitting haunch. */}
+        <ellipse cx={baseX} cy={baseY - 2} rx={4.6} ry={4} fill="#f97316" />
+        {/* Head + pointed ears + snout. */}
+        <circle cx={baseX - 3} cy={baseY - 7} r={3} fill="#fb923c" />
+        <path d={`M ${baseX - 5.5} ${baseY - 8.5} l 0.4 -2.6 l 1.8 1.6 z`} fill="#ea580c" />
+        <path d={`M ${baseX - 1.6} ${baseY - 9} l 1.4 -2.4 l 0.9 2.2 z`} fill="#ea580c" />
+        {/* Snout poking forward, with a cream tip. */}
+        <path d={`M ${baseX - 6} ${baseY - 6.4} l -2.6 1 l 2.4 1.2 z`} fill="#fed7aa" />
+        <circle cx={baseX - 8.4} cy={baseY - 5.6} r={0.7} fill="#7c2d12" />
+        {/* Eye. */}
+        <circle cx={baseX - 3.6} cy={baseY - 7.4} r={0.5} fill="#7c2d12" />
+      </g>
+    )
+  }
+  if (companion === 'tortoise') {
+    // A serene jade tortoise: a domed shell with a couple of hexagon ridge lines, head poking
+    // out, stubby legs, and a tiny moss fleck on the shell.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Stubby legs along the ground. */}
+        <ellipse cx={baseX - 4} cy={baseY + 1} rx={1.6} ry={1.1} fill="#047857" />
+        <ellipse cx={baseX + 4} cy={baseY + 1} rx={1.6} ry={1.1} fill="#047857" />
+        {/* Head poking out to the left, with a soft-brown neck. */}
+        <ellipse cx={baseX - 7} cy={baseY - 3} rx={2.4} ry={1.9} fill="#34d399" />
+        <circle cx={baseX - 8.4} cy={baseY - 3.4} r={0.5} fill="#064e3b" />
+        {/* The domed shell. */}
+        <path
+          d={`M ${baseX - 6} ${baseY - 1}
+              Q ${baseX} ${baseY - 10} ${baseX + 6} ${baseY - 1} Z`}
+          fill="#10b981"
+        />
+        {/* Hexagon ridge lines on the shell. */}
+        <path
+          d={`M ${baseX - 2.4} ${baseY - 1} l 1.2 -3.2 l 2.4 0 l 1.2 3.2`}
+          fill="none"
+          stroke="#047857"
+          strokeWidth={0.8}
+          strokeLinejoin="round"
+        />
+        <path
+          d={`M ${baseX} ${baseY - 7} l -1.6 2 M ${baseX} ${baseY - 7} l 1.6 2`}
+          fill="none"
+          stroke="#047857"
+          strokeWidth={0.8}
+        />
+        {/* A tiny moss/leaf fleck on the shell. */}
+        <circle cx={baseX + 2.4} cy={baseY - 5} r={1} fill="#86efac" />
+      </g>
+    )
+  }
+  if (companion === 'crane') {
+    // An elegant standing paper crane (origami): a folded angular body + wing, a long curved
+    // neck, a small head + beak with a little red crown, and one leg.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* One slender leg to the ground. */}
+        <path
+          d={`M ${baseX} ${baseY - 4} l 0.4 5`}
+          fill="none"
+          stroke="#cbd5e1"
+          strokeWidth={1}
+          strokeLinecap="round"
+        />
+        {/* Folded angular body — a paper triangle. */}
+        <path
+          d={`M ${baseX - 6} ${baseY - 5} L ${baseX + 6} ${baseY - 7} L ${baseX + 1} ${baseY - 2} Z`}
+          fill="#f8fafc"
+          stroke="#bae6fd"
+          strokeWidth={0.6}
+          strokeLinejoin="round"
+        />
+        {/* A folded wing lifted over the back. */}
+        <path
+          d={`M ${baseX - 2} ${baseY - 6} L ${baseX + 4} ${baseY - 12} L ${baseX + 5} ${baseY - 6} Z`}
+          fill="#e0f2fe"
+          stroke="#bae6fd"
+          strokeWidth={0.6}
+          strokeLinejoin="round"
+        />
+        {/* A long curved neck sweeping up and forward to the head. */}
+        <path
+          d={`M ${baseX - 5} ${baseY - 5} Q ${baseX - 9} ${baseY - 12} ${baseX - 6} ${baseY - 14}`}
+          fill="none"
+          stroke="#f8fafc"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+        />
+        {/* Head + a small angular beak. */}
+        <circle cx={baseX - 6} cy={baseY - 14.5} r={1.6} fill="#f8fafc" />
+        <path
+          d={`M ${baseX - 7.4} ${baseY - 14.6} l -2.4 0.5 l 2.2 1 z`}
+          fill="#f59e0b"
+        />
+        {/* A little red crown atop the head, and an eye. */}
+        <circle cx={baseX - 5.4} cy={baseY - 16} r={0.9} fill="#ef4444" />
+        <circle cx={baseX - 6.2} cy={baseY - 14.8} r={0.4} fill="#0f172a" />
+      </g>
+    )
+  }
   return null
 }
 

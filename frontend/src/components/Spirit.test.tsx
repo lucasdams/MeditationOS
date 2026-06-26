@@ -277,6 +277,32 @@ describe('Spirit — new cosmetics render on the art', () => {
     expect(container.querySelector('.spirit-svg ellipse[fill="#fbbf24"]')).not.toBeNull()
   })
 
+  // The three PATH-EXCLUSIVE companions (per_path in the catalog) each draw distinctive art.
+  // Each carries a signature colour marker we can assert on without coupling to exact geometry.
+  it('draws the path-exclusive kitsune companion (warm fox body)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { companion: 'kitsune' } })} />,
+    )
+    // The fox body is an orange ellipse (#f97316).
+    expect(container.querySelector('.spirit-svg ellipse[fill="#f97316"]')).not.toBeNull()
+  })
+
+  it('draws the path-exclusive tortoise companion (jade shell)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'tortoise' } })} />,
+    )
+    // The domed shell is a jade path (#10b981).
+    expect(container.querySelector('.spirit-svg path[fill="#10b981"]')).not.toBeNull()
+  })
+
+  it('draws the path-exclusive crane companion (red origami crown)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'crane' } })} />,
+    )
+    // The little crown atop the paper crane's head is a red circle (#ef4444).
+    expect(container.querySelector('.spirit-svg circle[fill="#ef4444"]')).not.toBeNull()
+  })
+
   it('wraps the companion in a .spirit-companion group that animates on its own pace', () => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'cat' } })} />,
