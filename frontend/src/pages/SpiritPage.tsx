@@ -16,23 +16,30 @@ import CoinIcon from '../components/CoinIcon'
 import Modal from '../components/Modal'
 import { Loading, RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
+import type {
+  SpiritNeedKey,
+  SpiritPath,
+  SpiritSlotOption,
+  SpiritState,
+} from '../types'
 
 /**
- * SpiritPage — the full view of your living companion (docs/design/spirit.md, ADR-0022;
- * build-order steps 5 + 6). A page + "Personalize" panel for the single spirit:
+ * SpiritPage — the full view of your living companion (docs/design/spirit.md, ADR-0022,
+ * ADR-0027). A page + a "Customize" skill-tree panel for the single spirit:
  *
  *  - the spirit rendered large with its name / stage / path,
- *  - a quiet Personalize panel — the cosmetics slots (see the backend SPIRIT_COSMETICS_CATALOG)
- *    with each option's applied / locked / affordable state, preview-on-hover-and-focus, and
- *    buy via the service behind a before/after confirm (refetch-free: every write returns the
- *    fresh state),
+ *  - a Customize panel — the cosmetics laid out as a per-slot SKILL TREE (ADR-0027): each
+ *    option is a node placed by `tier` (1 → 2 → 3), so the climb to the tier-3 capstone reads
+ *    as a tree. Each node shows its label + need tag and its state — equipped (worn), owned
+ *    (Equip, free), unlockable+affordable (Unlock · cost, auto-equips), unlockable but too few
+ *    coins (disabled + a hint), or locked (greyed, with the reason: reach a level, or unlock a
+ *    lower tier first). A live preview reflects whatever node is hovered/focused,
  *  - a paid name reset (ADR-0024 — the name is committed at creation, otherwise immutable),
  *  - the coins shown once (no double-show),
  *  - the collection gallery of retired spirits,
  *  - and, only at `radiant`, a calm "awaken a new spark" action behind a confirmation.
  *
- * Calm, low-pressure UX: the panel is a soft set of options, never a shouty shop.
+ * Calm, low-pressure UX: the tree is a soft progression, never a shouty shop.
  */
 
 // Stage labels reuse Spirit's STAGE_COPY (single source of truth) — just the display name here.
@@ -111,7 +118,7 @@ const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? titleize(slot)
 const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
 
 // A small per-option tag (ADR-0026) showing which need an item favours — reuses the shared
-// NEED_COPY (icon + label) so the shop's tag matches the Care read-out exactly.
+// NEED_COPY (icon + label) so the tree's tag matches the Care read-out exactly.
 function NeedTag({ need }: { need: SpiritNeedKey }) {
   const copy = NEED_COPY[need]
   if (!copy) return null
@@ -122,17 +129,40 @@ function NeedTag({ need }: { need: SpiritNeedKey }) {
   )
 }
 
-// The cosmetic option the user is currently exploring (hovering / keyboard-focusing) in the
-// panel, so the live preview can show what the spirit would look like with it applied — before
-// any coins are spent. `null` = nothing explored → the preview shows the spirit as it is now.
+// The five visible states of a tree node (ADR-0027), derived purely from the option flags:
+//   equipped     — worn right now (the one shown in its slot)
+//   owned        — unlocked but not equipped → a free Equip
+//   unlockable   — not owned, all prereqs met, coins cover it → Unlock · cost (auto-equips)
+//   unaffordable — unlockable but the balance is short → Unlock disabled + a coin hint
+//   locked       — not owned, a prereq unmet → greyed, with the reason (level or lower tier)
+type NodeState = 'equipped' | 'owned' | 'unlockable' | 'unaffordable' | 'locked'
+
+function nodeState(opt: SpiritSlotOption): NodeState {
+  if (opt.equipped) return 'equipped'
+  if (opt.owned) return 'owned'
+  if (opt.unlockable) return opt.affordable ? 'unlockable' : 'unaffordable'
+  return 'locked'
+}
+
+// The reason a locked node can't be unlocked yet (ADR-0027). The backend's `unlock_hint` carries
+// the LEVEL gate ("Reach level N") when the level isn't met; otherwise the block is the tier
+// prerequisite — owning a lower-tier option in the same slot first. Kept calm and concrete.
+function lockReason(opt: SpiritSlotOption): string {
+  if (opt.unlock_hint) return opt.unlock_hint
+  if (opt.tier > 1) return `Unlock a tier-${opt.tier - 1} option first`
+  return 'Keep practicing to unlock this'
+}
+
+// The cosmetic option the user is currently exploring (hovering / keyboard-focusing), so the live
+// preview shows what the spirit would look like with it equipped. `null` = nothing explored.
 type PreviewTarget = { slot: string; option: string } | null
 
 // The name cap, mirroring the backend SPIRIT_NAME_MAX_LENGTH. The form soft-limits input; the
 // server trims + rejects blank/over-length regardless.
 const NAME_MAX = 40
 
-// The flat fee for a paid reset (ADR-0024), mirroring the backend RESET_COST — used for both
-// the name reset and the upgrades reset. The server enforces it; this gates the UI calmly.
+// The flat fee for a paid NAME reset (ADR-0024), mirroring the backend RESET_COST. The server
+// enforces it; this gates the UI calmly. (The paid upgrades-reset is gone — ADR-0027.)
 const RESET_COST = 250
 
 export default function SpiritPage() {
@@ -140,23 +170,23 @@ export default function SpiritPage() {
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
-  // A key (`slot:option` or 'reset-name' or 'reset-upgrades' or 'awaken') marking the in-flight
-  // write, so the matching control disables and can't double-submit; null = idle.
+  // A key (`slot:option`, or 'reset-name' / 'awaken') marking the in-flight write, so the
+  // matching control disables and can't double-submit; null = idle.
   const [busy, setBusy] = useState<string | null>(null)
-  // The option being previewed (hovered / focused) in the panel — view-only, never buys.
+  // The option being previewed (hovered / focused) in the tree — view-only, never writes.
   const [preview, setPreview] = useState<PreviewTarget>(null)
   // The awaken confirmation modal (radiant only).
   const [confirmAwaken, setConfirmAwaken] = useState(false)
   // The paid name-reset modal (ADR-0024) + its draft input; null = closed.
   const [resetNameOpen, setResetNameOpen] = useState(false)
   const [resetNameDraft, setResetNameDraft] = useState('')
-  // The paid upgrades-reset confirmation modal (ADR-0024).
-  const [confirmResetUpgrades, setConfirmResetUpgrades] = useState(false)
-  // The cosmetic-buy confirmation modal — set to the {slot, option} the user wants to buy so a
+  // The unlock confirmation modal — set to the {slot, option} the user wants to unlock so a
   // before/after preview can be shown before any coins are spent; null = closed.
-  const [confirmBuy, setConfirmBuy] = useState<{ slot: string; option: string } | null>(null)
+  const [confirmUnlock, setConfirmUnlock] = useState<{ slot: string; option: string } | null>(
+    null,
+  )
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
-  // media query (and any future celebration is honored) — the single source of truth.
+  // media query — the single source of truth.
   const reducedMotion = prefersReducedMotion()
 
   function load() {
@@ -176,42 +206,45 @@ export default function SpiritPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Buy/apply a cosmetic. The write returns the fresh state, so we just swap it in (no refetch).
-  // Guarded client-side so a locked / unaffordable / already-applied option never submits — the
-  // backend still enforces all of this, this is only a calm UX gate.
-  async function buyCosmetic(slot: string, option: string) {
+  // Unlock a cosmetic into the owned collection (ADR-0027) — charges coins and auto-equips it.
+  // The write returns the fresh state, so we just swap it in (no refetch). Guarded client-side so
+  // a locked / unaffordable / already-owned option never submits; the backend still enforces all
+  // of this — this is only a calm UX gate.
+  async function unlock(slot: string, option: string) {
     const key = `${slot}:${option}`
     setBusy(key)
     try {
-      const next = await spiritService.buyCosmetic({ slot, option })
+      const next = await spiritService.unlock({ slot, option })
       setSpirit(next)
-      setConfirmBuy(null)
-      // Keep the confirmation calm: the hero balance already carries the coin count, so we
-      // don't reintroduce a spent/remaining tally here — just a gentle "it's on your spirit".
-      showToast(`${optionLabel(option)} added — your spirit is delighted ✨`)
+      setConfirmUnlock(null)
+      showToast(`${optionLabel(option)} unlocked — your spirit is delighted ✨`)
     } catch {
-      showToast('Could not apply that yet — earn more coins by practicing.', 'error')
+      showToast('Could not unlock that yet — earn more coins by practicing.', 'error')
     } finally {
       setBusy(null)
     }
   }
 
-  // Quiet feedback when a gated (locked / unaffordable) option is activated — so the click
-  // isn't a silent no-op. We surface the unlock requirement or the coins shortfall as a calm
-  // note, while the preview-on-focus affordance still lets the user see the goal look.
-  function notifyGated(opt: { unlocked: boolean; unlock_hint: string | null; affordable: boolean; cost: number }) {
-    if (!opt.unlocked) {
-      showToast(opt.unlock_hint ?? 'Keep practicing to unlock this.')
-      return
-    }
-    if (!opt.affordable && spirit) {
-      const short = Math.max(0, opt.cost - spirit.coins)
-      showToast(short > 0 ? `Earn ${short} more coins to add this.` : 'Earn more coins to add this.')
+  // Equip an OWNED option into its slot (or clear the slot with a null option) — FREE (ADR-0027).
+  // The write returns the fresh state, so we swap it in. The backend enforces ownership.
+  async function equip(slot: string, option: string | null) {
+    const key = `${slot}:${option ?? '∅'}`
+    setBusy(key)
+    try {
+      const next = await spiritService.equip({ slot, option })
+      setSpirit(next)
+      showToast(
+        option ? `${optionLabel(option)} equipped.` : `${slotLabel(slot)} cleared.`,
+      )
+    } catch {
+      showToast('Could not change that right now.', 'error')
+    } finally {
+      setBusy(null)
     }
   }
 
-  // Change the name via a PAID reset (ADR-0024). The name is otherwise immutable. The new
-  // name is required; the server charges the fee and returns the fresh state.
+  // Change the name via a PAID reset (ADR-0024). The name is otherwise immutable. The new name is
+  // required; the server charges the fee and returns the fresh state.
   async function resetName() {
     if (!spirit) return
     const next = resetNameDraft.trim()
@@ -223,22 +256,6 @@ export default function SpiritPage() {
       showToast('Name changed.')
     } catch {
       showToast('Could not change the name — you may need more coins.', 'error')
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  // Clear ALL applied upgrades via a PAID reset (ADR-0024) — no refund. The server charges the
-  // fee and returns the fresh state with every slot unlocked again.
-  async function resetUpgrades() {
-    if (!spirit) return
-    setBusy('reset-upgrades')
-    try {
-      setSpirit(await spiritService.resetCosmetics())
-      setConfirmResetUpgrades(false)
-      showToast('Upgrades reset — your slots are open again.')
-    } catch {
-      showToast('Could not reset upgrades — you may need more coins.', 'error')
     } finally {
       setBusy(null)
     }
@@ -287,141 +304,162 @@ export default function SpiritPage() {
         const form = formFor(spirit)
         const stageLabel = STAGE_LABEL[spirit.stage] ?? titleize(spirit.stage)
         const isRadiant = spirit.stage === 'radiant'
-        // The live preview merges the explored option into the owned cosmetics ({...current,
+        // The live preview merges the explored option into the EQUIPPED cosmetics ({...current,
         // [slot]: option}); with nothing explored it shows the spirit exactly as it is now.
         const previewCosmetics = preview
           ? { ...spirit.cosmetics, [preview.slot]: preview.option }
           : spirit.cosmetics
-        // The caption under the centered customize stage: the previewed option's label while
-        // exploring, otherwise the spirit's name (or its stage when unnamed) — so the stage
-        // always reads as "this is the spirit you're dressing".
+        // The caption under the centered stage: the previewed option's label while exploring,
+        // otherwise the spirit's name (or its stage when unnamed).
         const stageCaption = preview
           ? optionLabel(preview.option)
           : spirit.name ?? stageLabel
-        // Render one cosmetic slot as a compact side-rail menu. This is the SAME per-option
-        // logic as before (applied ✓ / locked 🔒 / level-gated / cost-on-chip / preview-on-
-        // hover-and-focus / buyable → confirm modal) — only re-arranged around the centered
-        // stage. Returns null for an unknown slot so the rail split below stays resilient.
-        const renderSlot = (s: (typeof spirit.available)[number]) => (
-          <fieldset
-            key={s.slot}
-            className={`spirit-slot${s.slot && s.locked ? ' is-locked' : ''}`}
-          >
-            <legend>
-              {slotLabel(s.slot)}
-              {s.locked && (
-                <span className="spirit-slot-locked muted">
-                  {' '}
-                  <span aria-hidden="true">🔒</span> locked
+
+        // Render one cosmetic slot as a small SKILL TREE (ADR-0027): its available options laid
+        // out by tier (1 → 2 → 3) as a progression, so the climb to the tier-3 capstone reads as
+        // a tree. Each node shows its label + need tag and its state (equipped / owned /
+        // unlockable / unaffordable / locked), with preview-on-hover-and-focus. Returns null for a
+        // slot with no available options so the rail split below stays resilient.
+        const renderSlot = (s: (typeof spirit.available)[number]) => {
+          // Per-path exclusivity: only the options offered to this creature (path filter).
+          const visible = s.options.filter((opt) => opt.available)
+          if (visible.length === 0) return null
+          // Group by tier so each tier is its own row in the tree (low → high). The catalog's
+          // tiers are 1|2|3; sort the keys ascending so the progression reads upward.
+          const tiers = Array.from(new Set(visible.map((o) => o.tier))).sort((a, b) => a - b)
+          return (
+            <fieldset key={s.slot} className="spirit-slot spirit-tree">
+              <legend>{slotLabel(s.slot)}</legend>
+              <div className="spirit-tree-tiers">
+                {tiers.map((tier) => (
+                  <div key={tier} className="spirit-tier" data-tier={tier}>
+                    <span className="spirit-tier-label" aria-hidden="true">
+                      Tier {tier}
+                    </span>
+                    <div className="spirit-tier-nodes">
+                      {visible
+                        .filter((opt) => opt.tier === tier)
+                        .map((opt) => renderNode(s.slot, opt))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          )
+        }
+
+        // Render a single tree node (an option) with its state-driven control. Equipped reads as
+        // worn (not a button); owned offers a free Equip; an unlockable+affordable node offers
+        // Unlock · cost (opens a before/after confirm); unaffordable shows Unlock disabled + a
+        // coin hint; a locked node is greyed with its reason. Every node can be PREVIEWED on
+        // hover/focus (except an equipped one, which is already shown), so the spirit reflects it.
+        const renderNode = (slot: string, opt: SpiritSlotOption) => {
+          const state = nodeState(opt)
+          const label = optionLabel(opt.option)
+          const canPreview = state !== 'equipped'
+          const showPreview = () =>
+            canPreview && setPreview({ slot, option: opt.option })
+          const clearPreview = () => setPreview(null)
+          const previewHandlers = canPreview
+            ? {
+                onMouseEnter: showPreview,
+                onMouseLeave: clearPreview,
+                onFocus: showPreview,
+                onBlur: clearPreview,
+              }
+            : {}
+
+          return (
+            <div
+              key={opt.option}
+              className={`spirit-node spirit-node--${state}`}
+              data-state={state}
+            >
+              <span className="spirit-node-head">
+                <span className="spirit-node-label">{label}</span>
+                <NeedTag need={opt.need} />
+              </span>
+
+              {state === 'equipped' && (
+                // Worn now — not a button. A clear badge, plus a free "remove" so a slot can be
+                // cleared (calls equip(slot, null)).
+                <span className="spirit-node-controls">
+                  <span className="spirit-node-worn">
+                    <span aria-hidden="true">✓</span> Worn
+                  </span>
+                  <button
+                    type="button"
+                    className="spirit-node-remove"
+                    disabled={busy != null}
+                    aria-label={`Remove ${label}`}
+                    onClick={() => equip(slot, null)}
+                  >
+                    Remove
+                  </button>
                 </span>
               )}
-            </legend>
-            <div className="spirit-slot-options">
-              {/* Per-path exclusivity: only show options offered to this creature's path. A
-                  path-exclusive option (e.g. another dosha's companion) is filtered out entirely
-                  rather than shown disabled, so the panel stays uncluttered. */}
-              {s.options
-                .filter((opt) => opt.available)
-                .map((opt) => {
-                const applied = opt.applied
-                // ADR-0024: once any option in the slot is applied, the slot LOCKS —
-                // no other option in it can be bought until upgrades are reset.
-                const slotLocked = s.locked
-                const gated = slotLocked || !opt.unlocked || !opt.affordable
-                // Buy only when the slot is open AND the option is unlocked/affordable;
-                // any other click is a no-op (the server enforces this too).
-                const buyable =
-                  !applied && !slotLocked && opt.unlocked && opt.affordable
-                // Hard-disable an already-applied option, an option in a locked slot, or
-                // an in-flight write. A merely-gated (level/coin) option in an OPEN slot
-                // stays enabled so it can be PREVIEWED without spending a coin.
-                const hardDisabled = busy != null || applied || (slotLocked && !applied)
-                const canPreview = !applied && !slotLocked
-                const showPreview = () =>
-                  canPreview && setPreview({ slot: s.slot, option: opt.option })
-                const clearPreview = () => setPreview(null)
-                // A full spoken state for SR/keyboard: name + state + reason, so the
-                // applied/locked/unaffordable status isn't carried only by emoji/colour
-                // and a hover-only `title`.
-                const ariaLabel = applied
-                  ? `${optionLabel(opt.option)} — applied`
-                  : slotLocked
-                    ? `${optionLabel(opt.option)} — locked, reset upgrades to change`
-                    : !opt.unlocked
-                      ? `${optionLabel(opt.option)} — locked, ${(opt.unlock_hint ?? 'keep practicing').toLowerCase()}`
-                      : !opt.affordable
-                        ? `${optionLabel(opt.option)} — ${opt.cost} coins, earn more`
-                        : `${optionLabel(opt.option)} — ${opt.cost} coins`
-                return (
+
+              {state === 'owned' && (
+                // Owned but not worn — a free Equip.
+                <button
+                  type="button"
+                  className="spirit-node-btn spirit-node-equip"
+                  disabled={busy != null}
+                  aria-label={`Equip ${label}`}
+                  {...previewHandlers}
+                  onClick={() => equip(slot, opt.option)}
+                >
+                  Equip
+                </button>
+              )}
+
+              {state === 'unlockable' && (
+                // Affordable + all prereqs met — Unlock for its cost (auto-equips). Opens the
+                // before/after confirm; the unlock only happens on Confirm there.
+                <button
+                  type="button"
+                  className="spirit-node-btn spirit-node-unlock"
+                  disabled={busy != null}
+                  aria-label={`Unlock ${label} for ${opt.cost} coins`}
+                  {...previewHandlers}
+                  onClick={() => setConfirmUnlock({ slot, option: opt.option })}
+                >
+                  Unlock <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
+                </button>
+              )}
+
+              {state === 'unaffordable' && (
+                // Unlockable but the balance is short — Unlock disabled + a calm coin hint. Still
+                // previewable so the user can see the goal look.
+                <span className="spirit-node-controls" {...previewHandlers}>
                   <button
-                    key={opt.option}
                     type="button"
-                    className={`spirit-option${applied ? ' applied' : ''}${
-                      gated && !applied ? ' gated' : ''
-                    }${slotLocked || !opt.unlocked ? ' locked' : ''}`}
-                    disabled={hardDisabled}
-                    aria-disabled={(gated && !applied) || undefined}
-                    aria-label={ariaLabel}
-                    onMouseEnter={showPreview}
-                    onMouseLeave={clearPreview}
-                    onFocus={showPreview}
-                    onBlur={clearPreview}
-                    // Buyable → open the before/after confirm (the purchase happens on
-                    // Confirm there, never directly here); otherwise a no-op in a locked
-                    // slot, or quiet feedback for a level/coin gate (never a silent no-op).
-                    onClick={() =>
-                      buyable
-                        ? setConfirmBuy({ slot: s.slot, option: opt.option })
-                        : !slotLocked && gated && notifyGated(opt)
-                    }
+                    className="spirit-node-btn spirit-node-unlock"
+                    disabled
+                    aria-label={`Unlock ${label} for ${opt.cost} coins — need more coins`}
                   >
-                    {applied ? (
-                      `✓ ${optionLabel(opt.option)}`
-                    ) : slotLocked ? (
-                      // A locked slot (ADR-0024): the unapplied options are shown but not
-                      // buyable, with a small lock hint pointing at the reset.
-                      <>
-                        <span aria-hidden="true">🔒</span> {optionLabel(opt.option)}
-                        <span className="spirit-option-lock">Reset to change</span>
-                      </>
-                    ) : !opt.unlocked ? (
-                      // Level-gated upgrades are shown, NOT hidden (ADR-0023 / task #4):
-                      // a lock badge + the unlock requirement, so the user sees what
-                      // they're working toward. Non-buyable until reached.
-                      <>
-                        <span aria-hidden="true">🔒</span> {optionLabel(opt.option)}
-                        <span className="spirit-option-lock">
-                          {opt.unlock_hint ?? 'Keep practicing'}
-                        </span>
-                      </>
-                    ) : !opt.affordable ? (
-                      // Unaffordable: show the cost (the price belongs on the upgrade) with
-                      // a quiet "earn more" hint, plus the need it favours (ADR-0026).
-                      <>
-                        {optionLabel(opt.option)}
-                        <NeedTag need={opt.need} />
-                        <span className="spirit-option-cost">
-                          <CoinIcon /> {opt.cost}
-                        </span>
-                        <span className="spirit-option-lock">earn more</span>
-                      </>
-                    ) : (
-                      // Buyable: the name + the need it favours (ADR-0026) + its coin cost,
-                      // shown on the chip so both the affinity and the price are visible.
-                      <>
-                        {optionLabel(opt.option)}
-                        <NeedTag need={opt.need} />
-                        <span className="spirit-option-cost">
-                          <CoinIcon /> {opt.cost}
-                        </span>
-                      </>
-                    )}
+                    Unlock <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
                   </button>
-                )
-              })}
+                  <span className="spirit-node-hint">
+                    need {Math.max(0, opt.cost - spirit.coins)} more coins
+                  </span>
+                </span>
+              )}
+
+              {state === 'locked' && (
+                // Not owned and a prereq unmet — greyed, with the reason (reach a level, or unlock
+                // a lower tier first). Previewable so the user can still see what they're climbing
+                // toward.
+                <span className="spirit-node-controls" {...previewHandlers}>
+                  <span className="spirit-node-locked">
+                    <span aria-hidden="true">🔒</span> {lockReason(opt)}
+                  </span>
+                </span>
+              )}
             </div>
-          </fieldset>
-        )
+          )
+        }
+
         // Split the slots across the two side rails so the spirit sits centered between them.
         // We honour a preferred order (left: aura, accessory, mount — right: habitat, companion)
         // but fall back to dealing any leftover/unknown slots alternately, so a changed catalog
@@ -439,8 +477,7 @@ export default function SpiritPage() {
           <>
             {/* The hero: a COMPACT status read-out (name / stage / path / bond) plus the single
                 coin balance (shown once here — never doubled elsewhere on the page). The big
-                spirit render now lives on the centered customization stage below, so the page
-                reads as ONE prominent spirit + this quiet status line, not two competing arts. */}
+                spirit render lives on the centered customization stage below. */}
             <section className="spirit-hero spirit-hero--compact" aria-label="Your spirit">
               {spirit.name && <p className="spirit-hero-name">{spirit.name}</p>}
               <p className="spirit-hero-stage">
@@ -472,15 +509,14 @@ export default function SpiritPage() {
               </section>
             )}
 
-
-            {/* Personalize — the cosmetics slots, calm and modest. Preview-on-hover/focus, buy
-                on click; an applied slot is LOCKED (ADR-0024); locked/unaffordable options
-                preview but never submit. */}
-            <section className="spirit-section spirit-personalize" aria-label="Personalize">
+            {/* Customize — the cosmetics as a per-slot SKILL TREE (ADR-0027). Unlock owned-forever
+                nodes along prerequisite tiers, then equip what you've earned for free. Preview on
+                hover/focus; unlock opens a before/after confirm. */}
+            <section className="spirit-section spirit-personalize" aria-label="Customize">
               <header className="spirit-section-head">
-                <h2 className="spirit-section-title">Personalize</h2>
+                <h2 className="spirit-section-title">Customize</h2>
                 <p className="muted spirit-section-subtitle">
-                  Spend coins to adorn your spirit.
+                  Unlock adornments along each tree, then equip your favourites.
                 </p>
               </header>
               {spirit.available.length === 0 ? (
@@ -489,7 +525,7 @@ export default function SpiritPage() {
                 </p>
               ) : (
                 // The customization stage: the spirit pinned in the CENTRE (large, sticky, live-
-                // previewing whatever side option is hovered/focused), with the cosmetic slots
+                // previewing whatever side node is hovered/focused), with the cosmetic trees
                 // arranged on the LEFT and RIGHT rails around it — a calm, game-like dressing room.
                 <div className="spirit-customize">
                   <div className="spirit-customize-rail" aria-label="Aura, accessory and mount slots">
@@ -497,7 +533,7 @@ export default function SpiritPage() {
                   </div>
 
                   {/* The centred stage — decorative; the interactive controls are the rails. The
-                      live render reflects `previewCosmetics`, so hovering/focusing any side option
+                      live render reflects `previewCosmetics`, so hovering/focusing any side node
                       updates THIS spirit. Sticky so it stays in view as the rails scroll. */}
                   <div className="spirit-customize-stage" aria-hidden="true">
                     <div className="spirit-stage-frame">
@@ -520,23 +556,6 @@ export default function SpiritPage() {
                     {rightRail.map(renderSlot)}
                   </div>
                 </div>
-              )}
-              {/* Reset upgrades — a quiet, paid escape hatch (ADR-0024). Clears every applied
-                  slot (no refund) so they can be chosen afresh. A small, low-emphasis text-link
-                  tucked at the foot of the panel — adorning is the primary action, not this.
-                  Disabled with nothing applied or too few coins. */}
-              {Object.keys(spirit.cosmetics).length > 0 && (
-                <p className="spirit-personalize-foot">
-                  <button
-                    type="button"
-                    className="spirit-reset-quiet"
-                    disabled={busy != null || spirit.coins < RESET_COST}
-                    title={spirit.coins < RESET_COST ? `Needs ${RESET_COST} coins` : undefined}
-                    onClick={() => setConfirmResetUpgrades(true)}
-                  >
-                    Reset upgrades ({RESET_COST} coins)
-                  </button>
-                </p>
               )}
             </section>
 
@@ -676,30 +695,30 @@ export default function SpiritPage() {
               </Modal>
             )}
 
-            {/* Buy a cosmetic — a calm before/after confirmation. Clicking a buyable option
-                opens this; the purchase only happens on Confirm. "Now" shows the spirit with its
-                CURRENT cosmetics; "With X" merges the chosen option in — same stage / form / glow
-                / motion, so the only difference is the adornment being considered. */}
-            {confirmBuy && (() => {
-              const slot = confirmBuy.slot
-              const option = confirmBuy.option
-              // The cost of the option being considered, looked up from the live catalog (the
-              // same source the chips render from). Falls back gracefully if not found.
+            {/* Unlock a cosmetic — a calm before/after confirmation. Clicking an unlockable node
+                opens this; the unlock (which charges coins + auto-equips) only happens on Confirm.
+                "Now" shows the spirit with its CURRENT cosmetics; "With X" merges the chosen option
+                in — same stage / form / glow / motion, so the only difference is the adornment. */}
+            {confirmUnlock && (() => {
+              const slot = confirmUnlock.slot
+              const option = confirmUnlock.option
+              // The cost of the option being considered, looked up from the live catalog (the same
+              // source the nodes render from). Falls back gracefully if not found.
               const cost = spirit.available
                 .find((s) => s.slot === slot)
                 ?.options.find((o) => o.option === option)?.cost
               const afterCosmetics = { ...spirit.cosmetics, [slot]: option }
-              const buying = busy === `${slot}:${option}`
+              const unlocking = busy === `${slot}:${option}`
               return (
                 <Modal
-                  ariaLabel={`Add ${optionLabel(option)} to your spirit`}
-                  onClose={() => setConfirmBuy(null)}
+                  ariaLabel={`Unlock ${optionLabel(option)} for your spirit`}
+                  onClose={() => setConfirmUnlock(null)}
                   closeOnBackdrop
                 >
-                  <h3>Add {optionLabel(option)}?</h3>
+                  <h3>Unlock {optionLabel(option)}?</h3>
                   <p className="muted">
                     See how your spirit looks now and with {slotLabel(slot).toLowerCase()}{' '}
-                    {optionLabel(option)} added.
+                    {optionLabel(option)} equipped. Unlocking owns it forever and equips it now.
                   </p>
                   <div className="spirit-buy-preview">
                     <div className="spirit-buy-art">
@@ -736,15 +755,15 @@ export default function SpiritPage() {
                       type="button"
                       className="spirit-buy-confirm"
                       disabled={busy != null}
-                      onClick={() => buyCosmetic(slot, option)}
+                      onClick={() => unlock(slot, option)}
                     >
-                      {buying ? 'Adding…' : 'Confirm'}
+                      {unlocking ? 'Unlocking…' : 'Unlock'}
                     </button>
                     <button
                       type="button"
                       className="spirit-awaken-cancel"
                       disabled={busy != null}
-                      onClick={() => setConfirmBuy(null)}
+                      onClick={() => setConfirmUnlock(null)}
                     >
                       Cancel
                     </button>
@@ -793,41 +812,6 @@ export default function SpiritPage() {
                     onClick={() => setResetNameOpen(false)}
                   >
                     Cancel
-                  </button>
-                </div>
-              </Modal>
-            )}
-
-            {/* Reset upgrades (ADR-0024) — clears every applied slot, no refund. */}
-            {confirmResetUpgrades && (
-              <Modal
-                ariaLabel="Reset upgrades"
-                onClose={() => setConfirmResetUpgrades(false)}
-                closeOnBackdrop
-              >
-                <h3>Reset all upgrades?</h3>
-                <p className="muted">
-                  This clears every adornment on your spirit so you can choose afresh. It costs{' '}
-                  {RESET_COST} coins and the upgrades you already bought are not refunded.
-                </p>
-                <div className="spirit-awaken-actions">
-                  <button
-                    type="button"
-                    className="settings-danger spirit-awaken-do"
-                    disabled={busy === 'reset-upgrades'}
-                    onClick={resetUpgrades}
-                  >
-                    {busy === 'reset-upgrades'
-                      ? 'Resetting…'
-                      : `Reset upgrades (${RESET_COST} coins)`}
-                  </button>
-                  <button
-                    type="button"
-                    className="spirit-awaken-cancel"
-                    disabled={busy === 'reset-upgrades'}
-                    onClick={() => setConfirmResetUpgrades(false)}
-                  >
-                    Keep them
                   </button>
                 </div>
               </Modal>

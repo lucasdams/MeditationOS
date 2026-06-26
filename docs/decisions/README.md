@@ -32,3 +32,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0024](0024-spirit-identity-committed.md) | Spirit identity committed — required name, locked upgrades, paid resets (stored spend ledger) | Accepted |
 | [0025](0025-buying-pampers-the-spirit.md) | Buying an upgrade pampers the spirit — a decaying, capped needs boost (visual-only) | Accepted |
 | [0026](0026-per-item-need-affinities.md) | Per-item need affinities — each item favours one need (passive while-owned lift + weighted fading buy-boost) | Accepted |
+| [0027](0027-spirit-upgrade-skill-tree.md) | Spirit upgrades as a skill tree — unlock-to-own, free equip, prerequisite tiers (supersedes 0024's locked upgrades + paid reset) | Accepted |

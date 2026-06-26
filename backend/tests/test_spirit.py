@@ -1,8 +1,8 @@
-"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024).
+"""Tests for the Spirit feature (docs/design/spirit.md, ADR-0022, ADR-0023, ADR-0024, ADR-0027).
 
 The spirit's state is computed on read from the user's earned-XP level; the only stored
-state is the active spirit row (chosen path, name, applied cosmetics, and the monotonic
-`coins_spent` ledger). Covered here:
+state is the active spirit row (chosen path, name, the `unlocked` collection + equipped
+`cosmetics` loadout, and the monotonic `coins_spent` ledger). Covered here:
 
 - the GET read API — happy-path shape, auth-required, and lazy get-or-create (first GET
   creates exactly one active spirit; a second GET does not duplicate it);
@@ -15,11 +15,13 @@ state is the active spirit row (chosen path, name, applied cosmetics, and the mo
   nourish it); `rested` reflects rhythm/consistency; `joyful` reflects variety; a depleted need
   doesn't jump to thriving from one session; the overall condition is the WEAKEST need; and the
   GUARDRAIL — needs never change coins/stage;
-- the cosmetics economy (ADR-0024) — buy at FULL cost; an applied slot LOCKS (no swap/re-buy);
-  the stored `coins_spent` ledger only grows; and the catalog/cost invariant;
-- the paid resets (ADR-0024) — reset-name (charges RESET_COST, sets a new name, 409 when
-  broke) and reset-upgrades (charges RESET_COST, clears cosmetics with NO refund, 409 when
-  nothing to reset / broke); the free PATCH rename is gone;
+- the cosmetics skill tree (ADR-0027) — UNLOCK at FULL cost adds to the owned collection +
+  auto-equips + charges the monotonic `coins_spent` ledger + pampers; tier prerequisites gate
+  unlocking (tier2 needs an owned tier1, tier3 an owned tier2); EQUIP is free, only works on
+  owned options, can clear a slot and swap between owned options; a legacy already-equipped item
+  counts as owned; per_path + level + affordability still gate unlock; and the catalog invariant;
+- the paid name reset (ADR-0024) — reset-name (charges RESET_COST, sets a new name, 409 when
+  broke); the free PATCH rename is gone; the removed reset-upgrades route is gone (ADR-0027);
 - and awaken / collection (radiant gate + retire+spark).
 """
 
@@ -694,31 +696,30 @@ def test_buy_cosmetic_stamps_last_pampered_at(client, db_session):
     assert _stored_last_pampered_at(db_session, user_id) is not None
 
 
-def test_paid_resets_do_not_pamper(client, db_session):
-    """Only BUYING pampers — the paid resets must NOT bump `last_pampered_at` (ADR-0025).
-    Buy once to stamp it, then a name reset and an upgrades reset both leave the stamp at the
-    purchase time."""
+def test_name_reset_and_free_equip_do_not_pamper(client, db_session):
+    """Only UNLOCKING pampers — the paid name reset and a FREE equip must NOT bump
+    `last_pampered_at` (ADR-0025/0027). Unlock once to stamp it, then a name reset and a
+    re-equip both leave the stamp at the unlock time."""
     _auth(client, "pamper_resets@example.com")
     user_id = _user_id(db_session, "pamper_resets@example.com")
-    # Earn enough to afford the buy + two RESET_COST resets.
+    # Earn enough to afford the unlock + a RESET_COST name reset.
     _earn_to_level(client, 10)
     assert _choose(client, "stillness").status_code == 200
 
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 200
-    stamp_after_buy = _stored_last_pampered_at(db_session, user_id)
-    assert stamp_after_buy is not None
+    assert _unlock(client, "aura", "soft").status_code == 200
+    stamp_after_unlock = _stored_last_pampered_at(db_session, user_id)
+    assert stamp_after_unlock is not None
 
     # A paid name reset does not pamper.
     assert client.post(
         "/api/v1/spirit/reset-name", json={"name": "Renamed"}
     ).status_code == 200
-    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_buy
+    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_unlock
 
-    # A paid upgrades reset does not pamper either (the soft aura is still applied to reset).
-    assert client.post("/api/v1/spirit/reset-upgrades").status_code == 200
-    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_buy
+    # A free equip (re-equip the owned soft aura, then clear it) does not pamper either.
+    assert _equip(client, "aura", "soft").status_code == 200
+    assert _equip(client, "aura", None).status_code == 200
+    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_unlock
 
 
 def test_awaken_does_not_pamper(client, db_session):
@@ -969,17 +970,17 @@ def _cost(slot, option):
     return SPIRIT_COSMETICS_CATALOG[slot][option]["cost"]
 
 
-def _applied(body, slot):
-    """The option currently applied in `slot` per the GET `available` catalog state."""
+def _equipped(body, slot):
+    """The option currently EQUIPPED in `slot` per the GET `available` catalog state (ADR-0027)."""
     for s in body["available"]:
         if s["slot"] == slot:
-            return s["applied"]
+            return s["equipped"]
     return None
 
 
 def _option_state(body, slot, option):
-    """The per-option state dict (cost / unlocked / affordable / applied) for one catalog
-    option in the GET `available` shape."""
+    """The per-option state dict (cost / tier / owned / equipped / unlockable / affordable) for
+    one catalog option in the GET `available` shape (ADR-0027)."""
     for s in body["available"]:
         if s["slot"] == slot:
             for o in s["options"]:
@@ -988,29 +989,41 @@ def _option_state(body, slot, option):
     return None
 
 
+def _unlock(client, slot, option):
+    """Unlock (+ auto-equip) a cosmetic — the ADR-0027 replacement for buying."""
+    return client.post("/api/v1/spirit/cosmetics", json={"slot": slot, "option": option})
+
+
+def _equip(client, slot, option):
+    """Equip an owned cosmetic (or clear the slot with option=None) — free (ADR-0027)."""
+    return client.post("/api/v1/spirit/cosmetics/equip", json={"slot": slot, "option": option})
+
+
 def test_catalog_is_exposed_in_get(client):
     _auth(client, "cosmetics_catalog@example.com")
     body = _spirit(client)
     slots = {s["slot"] for s in body["available"]}
     assert slots == set(SPIRIT_COSMETICS_CATALOG)
-    # Every catalog option is surfaced with its state hints, none applied on a fresh spirit,
-    # and every slot reports unlocked (ADR-0024 `locked` flag) since nothing is applied yet.
+    # Every catalog option is surfaced with its state hints; a fresh spirit has nothing equipped
+    # and owns nothing, and slots no longer carry a `locked` flag (ADR-0027 removed it).
     for s in body["available"]:
-        assert s["applied"] is None
-        assert s["locked"] is False
+        assert s["equipped"] is None
+        assert "locked" not in s
         opts = {o["option"] for o in s["options"]}
         assert opts == set(SPIRIT_COSMETICS_CATALOG[s["slot"]])
         for o in s["options"]:
-            assert o["applied"] is False
+            assert o["equipped"] is False
+            assert o["owned"] is False
+            # The tier is surfaced, matching the catalog.
+            assert o["tier"] == SPIRIT_COSMETICS_CATALOG[s["slot"]][o["option"]]["tier"]
     assert body["collection"] == []
 
 
-def test_available_options_order_unlocked_before_locked(client):
-    """The Personalize panel orders each slot's options so unlocked (available) ones lead and
-    level-locked ones trail (ties broken by cost). For a fresh level-1 user the `aura` slot's
-    L1 options (`rose`/`ember`/`soft`/`warm`/`frost*`) must all precede the L5-locked `starlit`
-    — previously raw catalog order left the L1 `rose` after the locked `starlit`. (*frost is L2,
-    also locked at level 1, but still ordered after the unlocked ones.)"""
+def test_available_options_unlockable_before_locked(client):
+    """The Personalize panel orders each slot's options so currently-UNLOCKABLE ones lead and
+    level/tier-locked ones trail (ADR-0027; ties broken by tier then cost). For a fresh level-1
+    user the `aura` slot's tier-1 L1 options (`rose`/`ember`/`soft`/`warm`) are unlockable and
+    must precede the L5 tier-2 `starlit` and the L2 tier-2 `frost` (neither level-eligible yet)."""
     _auth(client, "cosmetics_order@example.com")
     body = _spirit(client)
     assert body["bond"]["level"] == 1
@@ -1018,56 +1031,55 @@ def test_available_options_order_unlocked_before_locked(client):
     aura = next(s for s in body["available"] if s["slot"] == "aura")
     order = [o["option"] for o in aura["options"]]
 
-    # Sanity: the fixture still has an L1-unlocked option and the L5-locked `starlit`.
+    # Sanity: the fixture still has a tier-1 L1 option and the L5 tier-2 `starlit`.
     assert SPIRIT_COSMETICS_CATALOG["aura"]["rose"]["unlock_level"] == 1
     assert SPIRIT_COSMETICS_CATALOG["aura"]["starlit"]["unlock_level"] == 5
 
-    # Every unlocked option precedes every locked one.
-    unlocked = [o["option"] for o in aura["options"] if o["unlocked"]]
-    locked = [o["option"] for o in aura["options"] if not o["unlocked"]]
-    assert max(order.index(u) for u in unlocked) < min(order.index(x) for x in locked)
-    # Concretely, the L1 `rose`/`ember` come before the L5-locked `starlit`.
+    # Every unlockable option precedes every non-unlockable one.
+    unlockable = [o["option"] for o in aura["options"] if o["unlockable"]]
+    locked = [o["option"] for o in aura["options"] if not o["unlockable"]]
+    assert max(order.index(u) for u in unlockable) < min(order.index(x) for x in locked)
+    # Concretely, the L1 `rose`/`ember` come before the L5 `starlit`.
     assert order.index("rose") < order.index("starlit")
     assert order.index("ember") < order.index("starlit")
 
 
-def test_available_options_applied_leads_then_cost(client):
-    """The applied option leads its slot; remaining unlocked options are ordered by cost
-    ascending. Buy the warm aura (cost 45), then it must be first, with the cheaper `soft`
-    (30) still ordered ahead of the pricier unlocked options that follow."""
-    _auth(client, "cosmetics_order_applied@example.com")
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
-    ).status_code == 200
+def test_available_options_equipped_leads_then_cost(client):
+    """The EQUIPPED option leads its slot; the remaining options are ordered by ownership then
+    tier then cost (ADR-0027). Unlock the warm aura (cost 45) — it becomes equipped and must be
+    first, with the cheaper tier-1 `soft` (30) still ordered ahead of the pricier `ember` (50)."""
+    _auth(client, "cosmetics_order_equipped@example.com")
+    assert _unlock(client, "aura", "warm").status_code == 200
     body = _spirit(client)
 
     aura = next(s for s in body["available"] if s["slot"] == "aura")
     order = [o["option"] for o in aura["options"]]
-    assert order[0] == "warm"  # the applied option leads
-    # Among the remaining unlocked options, cheaper precedes pricier (soft 30 before ember 50).
+    assert order[0] == "warm"  # the equipped option leads
+    # Among the remaining unlockable options, cheaper precedes pricier (soft 30 before ember 50).
     assert order.index("soft") < order.index("ember")
 
 
-def test_buy_cosmetic_happy_path(client):
-    _auth(client, "cosmetics_buy@example.com")
+def test_unlock_cosmetic_happy_path(client):
+    _auth(client, "cosmetics_unlock@example.com")
     before = _spirit(client)
     coins_before = before["coins"]
 
-    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    res = _unlock(client, "aura", "soft")
     assert res.status_code == 200
     body = res.json()
 
-    # Coins drop by exactly the option cost; the option is owned + shown applied.
+    # Coins drop by exactly the option cost; the option is owned + auto-equipped.
     assert body["coins"] == coins_before - _cost("aura", "soft")
     assert body["cosmetics"]["aura"] == "soft"
-    assert _applied(body, "aura") == "soft"
+    assert _equipped(body, "aura") == "soft"
+    assert _option_state(body, "aura", "soft")["owned"] is True
 
     # And it persists on the next GET.
     assert _spirit(client)["cosmetics"]["aura"] == "soft"
 
 
-def test_buy_companion_firefly_applies(client):
-    # The `companion` slot (the "friends" upgrade) is buyable like any other slot: firefly is
+def test_unlock_companion_firefly_equips(client):
+    # The `companion` slot (the "friends" upgrade) unlocks like any other: firefly is
     # unlock_level 1. Companions are premium-priced (firefly 100 > a fresh level-1 balance of
     # 80), so earn a couple of levels first to afford it.
     _auth(client, "cosmetics_companion@example.com")
@@ -1076,108 +1088,107 @@ def test_buy_companion_firefly_applies(client):
     coins_before = before["coins"]
     assert "companion" in {s["slot"] for s in before["available"]}
 
-    res = client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": "firefly"}
-    )
+    res = _unlock(client, "companion", "firefly")
     assert res.status_code == 200
     body = res.json()
     assert body["coins"] == coins_before - _cost("companion", "firefly")
     assert body["cosmetics"]["companion"] == "firefly"
-    assert _applied(body, "companion") == "firefly"
+    assert _equipped(body, "companion") == "firefly"
     # Persists on the next GET.
     assert _spirit(client)["cosmetics"]["companion"] == "firefly"
 
 
-def test_buy_mount_cloud_applies(client):
-    # The `mount` slot (the calm "vehicle" upgrade) is buyable like any other slot: cloud is
+def test_unlock_mount_cloud_equips(client):
+    # The `mount` slot (the calm "vehicle" upgrade) unlocks like any other: cloud is
     # unlock_level 1 and affordable (cost 70 ≤ a fresh level-1 balance of 80).
     _auth(client, "cosmetics_mount@example.com")
     before = _spirit(client)
     coins_before = before["coins"]
     assert "mount" in {s["slot"] for s in before["available"]}
 
-    res = client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "mount", "option": "cloud"}
-    )
+    res = _unlock(client, "mount", "cloud")
     assert res.status_code == 200
     body = res.json()
     assert body["coins"] == coins_before - _cost("mount", "cloud")
     assert body["cosmetics"]["mount"] == "cloud"
-    assert _applied(body, "mount") == "cloud"
+    assert _equipped(body, "mount") == "cloud"
     # Persists on the next GET.
     assert _spirit(client)["cosmetics"]["mount"] == "cloud"
 
 
-def test_buy_unknown_slot_or_option_404(client):
+def test_unlock_unknown_slot_or_option_404(client):
     _auth(client, "cosmetics_404@example.com")
-    assert (
-        client.post("/api/v1/spirit/cosmetics", json={"slot": "nope", "option": "soft"}).status_code
-        == 404
-    )
-    assert (
-        client.post(
-            "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "nope"}
-        ).status_code
-        == 404
-    )
+    assert _unlock(client, "nope", "soft").status_code == 404
+    assert _unlock(client, "aura", "nope").status_code == 404
 
 
-def test_buy_locked_option_409(client):
-    # `starlit` aura unlocks at level 5; a fresh level-1 user can't apply it.
+def test_unlock_level_locked_option_409(client):
+    # `starlit` aura unlocks at level 5; a fresh level-1 user can't unlock it.
     _auth(client, "cosmetics_locked@example.com")
     assert SPIRIT_COSMETICS_CATALOG["aura"]["starlit"]["unlock_level"] > 1
-    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "starlit"})
+    res = _unlock(client, "aura", "starlit")
     assert res.status_code == 409
 
 
-def test_buy_unaffordable_409(client):
-    # A fresh user has COINS_PER_LEVEL coins. Buy items until the balance can't cover the
-    # next one, then assert the unaffordable purchase is rejected.
+def test_unlock_unaffordable_409(client):
+    # A fresh user has COINS_PER_LEVEL coins. Unlock items until the balance can't cover the
+    # next one, then assert the unaffordable unlock is rejected.
     _auth(client, "cosmetics_broke@example.com")
     # COINS_PER_LEVEL (80) buys at most: aura soft (30) + ribbon (35) = 65; habitat meadow
     # (50) then no longer fits (15 left). Spend down, then try the meadow.
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 200
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "accessory", "option": "ribbon"}
-    ).status_code == 200
-    broke = client.post("/api/v1/spirit/cosmetics", json={"slot": "habitat", "option": "meadow"})
+    assert _unlock(client, "aura", "soft").status_code == 200
+    assert _unlock(client, "accessory", "ribbon").status_code == 200
+    broke = _unlock(client, "habitat", "meadow")
     assert broke.status_code == 409
-    # The failed purchase changed nothing.
+    # The failed unlock changed nothing.
     assert "habitat" not in _spirit(client)["cosmetics"]
 
 
-def test_applied_slot_is_locked_no_rebuy_or_swap(client):
-    """ADR-0024: once a slot has an applied option it LOCKS — buying into it again (the same OR
-    a different option) is a 409, the slot reads `locked`, and the spend ledger doesn't move."""
-    _auth(client, "cosmetics_lock@example.com")
+def test_unlock_already_owned_is_409_and_does_not_recharge(client):
+    """ADR-0027: owned is forever — re-unlocking an option the spirit already owns is a 409 (the
+    free `equip` path is how you re-show it), and the spend ledger doesn't move."""
+    _auth(client, "cosmetics_owned@example.com")
     _earn_to_level(client, 3)  # plenty of coins so affordability isn't the gate
 
-    first = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
+    first = _unlock(client, "aura", "soft")
     assert first.status_code == 200
     body = first.json()
-    assert _applied(body, "aura") == "soft"
-    # The slot now reports locked, and the (would-be cheaper/different) options can't be bought.
+    assert _equipped(body, "aura") == "soft"
+    # Slots no longer carry a `locked` flag (ADR-0027).
     slot = next(s for s in body["available"] if s["slot"] == "aura")
-    assert slot["locked"] is True
+    assert "locked" not in slot
     coins_after_first = body["coins"]
 
-    # Re-buying the same option, or swapping to a different one in the locked slot, both 409.
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 409
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "warm"}
-    ).status_code == 409
-    # Nothing changed: still `soft`, same balance (no second charge).
+    # Re-unlocking the SAME (now-owned) option is a 409; no second charge.
+    assert _unlock(client, "aura", "soft").status_code == 409
     after = _spirit(client)
     assert after["cosmetics"]["aura"] == "soft"
     assert after["coins"] == coins_after_first
 
 
+def test_unlock_swaps_freely_across_owned_options_in_a_slot(client):
+    """ADR-0027 replaces the old slot-lock: a DIFFERENT tier-1 option in the same slot is still
+    unlockable (and equipping owned options is free), so a slot is a collection, not a one-shot."""
+    _auth(client, "cosmetics_swap@example.com")
+    _earn_to_level(client, 3)  # plenty of coins
+
+    assert _unlock(client, "aura", "soft").status_code == 200
+    # A second tier-1 aura is unlockable (no slot-lock); unlocking it auto-equips it.
+    res = _unlock(client, "aura", "warm")
+    assert res.status_code == 200
+    body = res.json()
+    assert _equipped(body, "aura") == "warm"
+    # Both are now owned.
+    assert _option_state(body, "aura", "soft")["owned"] is True
+    assert _option_state(body, "aura", "warm")["owned"] is True
+    # Re-equipping the first owned option is free and instant.
+    back = _equip(client, "aura", "soft")
+    assert back.status_code == 200
+    assert _equipped(back.json(), "aura") == "soft"
+
+
 def test_coins_spent_ledger_only_grows_and_drives_balance(client, db_session):
-    """The stored `coins_spent` ledger (ADR-0024) only GROWS as upgrades are applied, and the
+    """The stored `coins_spent` ledger (ADR-0024) only GROWS as cosmetics are unlocked, and the
     coin balance is exactly `level × COINS_PER_LEVEL − coins_spent`."""
     _auth(client, "cosmetics_ledger@example.com")
     user_id = _user_id(db_session, "cosmetics_ledger@example.com")
@@ -1187,15 +1198,11 @@ def test_coins_spent_ledger_only_grows_and_drives_balance(client, db_session):
     soft = _cost("aura", "soft")
     halo = _cost("accessory", "halo")
 
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 200
+    assert _unlock(client, "aura", "soft").status_code == 200
     assert _stored_coins_spent(db_session, user_id) == soft
 
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "accessory", "option": "halo"}
-    ).status_code == 200
-    # The ledger grew by the full second cost (no swap discounting across slots).
+    assert _unlock(client, "accessory", "halo").status_code == 200
+    # The ledger grew by the full second cost.
     assert _stored_coins_spent(db_session, user_id) == soft + halo
     # And the balance matches the formula exactly.
     body = _spirit(client)
@@ -1282,29 +1289,31 @@ def test_pathless_spark_sees_no_path_exclusive_companion(client):
     assert _option_state(body, "companion", "firefly")["available"] is True
 
 
-def test_buy_matching_path_companion_succeeds_and_locks_slot(client):
-    """Buying the companion that matches the chosen path applies it, charges its full cost, and
-    LOCKS the companion slot like any other purchase (ADR-0024)."""
+def test_unlock_matching_path_companion_succeeds_and_equips(client):
+    """Unlocking the path-exclusive companion that matches the chosen path owns + equips it and
+    charges its full cost (ADR-0027). These tier-3 capstones require an owned tier-2 companion
+    (`bird`) first — the skill-tree prereq."""
     for _slot, option, owner_path in _PATH_COMPANIONS:
         email = f"buy_{option}@example.com"
         _auth(client, email)
         assert _choose(client, owner_path).status_code == 200
         _earn_to_level(client, 6)  # kitsune/tortoise/crane unlock at level 6
+        # The capstones are tier 3 → climb the tree: tier-1 `firefly` then tier-2 `bird` first.
+        assert _unlock(client, "companion", "firefly").status_code == 200, "tier-1 prereq"
+        assert _unlock(client, "companion", "bird").status_code == 200, "tier-2 prereq"
         before = _spirit(client)
         coins_before = before["coins"]
         assert coins_before >= _cost("companion", option)
 
-        res = client.post(
-            "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": option}
-        )
+        res = _unlock(client, "companion", option)
         assert res.status_code == 200, res.text
         body = res.json()
         assert body["coins"] == coins_before - _cost("companion", option)
         assert body["cosmetics"]["companion"] == option
-        assert _applied(body, "companion") == option
-        # The slot locks (no re-buy/swap), and it persists on the next GET.
+        assert _equipped(body, "companion") == option
+        # No slot-lock flag anymore; it persists on the next GET.
         slot_state = next(s for s in body["available"] if s["slot"] == "companion")
-        assert slot_state["locked"] is True
+        assert "locked" not in slot_state
         assert _spirit(client)["cosmetics"]["companion"] == option
 
 
@@ -1318,37 +1327,31 @@ def test_buy_non_matching_path_companion_is_rejected_404(client):
     coins_before = _spirit(client)["coins"]
 
     for option in ("tortoise", "crane"):
-        res = client.post(
-            "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": option}
-        )
+        res = _unlock(client, "companion", option)
         assert res.status_code == 404, res.text
 
     after = _spirit(client)
     assert "companion" not in after["cosmetics"]
-    assert after["coins"] == coins_before  # no charge for the rejected buys
+    assert after["coins"] == coins_before  # no charge for the rejected unlocks
 
 
-def test_pathless_spark_cannot_buy_a_path_exclusive_companion_404(client):
+def test_pathless_spark_cannot_unlock_a_path_exclusive_companion_404(client):
     """A pathless spark matches no path, so even a path-exclusive companion it could afford is a
     404 (it isn't in its catalog)."""
     _auth(client, "pathless_buy_companion@example.com")
     _earn_to_level(client, 6)  # afford + unlock, but never chose a path
-    res = client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": "kitsune"}
-    )
+    res = _unlock(client, "companion", "kitsune")
     assert res.status_code == 404
 
 
-def test_universal_companion_still_buyable_for_any_path(client):
+def test_universal_companion_still_unlockable_for_any_path(client):
     """Per-path exclusivity doesn't touch the universal companions: a creature on any path can
-    still buy firefly (the cheapest, unlock_level 1)."""
+    still unlock firefly (the cheapest, tier-1, unlock_level 1)."""
     for path in _ALL_PATHS:
         _auth(client, f"univ_buy_{path}@example.com")
         assert _choose(client, path).status_code == 200
         _earn_to_level(client, 2)  # firefly costs 100; 2 levels = 160 coins
-        res = client.post(
-            "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": "firefly"}
-        )
+        res = _unlock(client, "companion", "firefly")
         assert res.status_code == 200, res.text
         assert res.json()["cosmetics"]["companion"] == "firefly"
 
@@ -1418,61 +1421,160 @@ def test_reset_name_requires_auth(client):
     assert client.post("/api/v1/spirit/reset-name", json={"name": "Ember"}).status_code == 401
 
 
-def test_reset_upgrades_charges_clears_and_does_not_refund(client, db_session):
-    """The crux of ADR-0024: after buying a cosmetic then resetting upgrades, coins =
-    before_buy − cost − RESET_COST. The cleared upgrade's cost stays SUNK (no refund), and the
-    slot unlocks for a fresh buy."""
-    _auth(client, "reset_upgrades@example.com")
-    user_id = _user_id(db_session, "reset_upgrades@example.com")
-    _earn_to_level(client, 5)
-    before_buy = _spirit(client)["coins"]
-
-    cost = _cost("aura", "soft")
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 200
-
+def test_reset_upgrades_route_is_gone(client):
+    """ADR-0027 removes the paid upgrades-reset entirely — equipping owned options is now free,
+    so the old route 404/405s (never a 200)."""
+    _auth(client, "reset_upgrades_gone@example.com")
     res = client.post("/api/v1/spirit/reset-upgrades")
+    assert res.status_code in {404, 405}
+
+
+# --- Skill-tree tiers + free equip (ADR-0027) -------------------------------------------
+#
+# Each slot is a tree: tier 1 has no prerequisite; tier N>1 needs an owned option of tier N−1 in
+# the same slot. Unlocking owns + auto-equips + charges + pampers; equipping owned options is free.
+
+
+def test_tier_two_requires_an_owned_tier_one_in_the_slot(client):
+    """A tier-2 option can't be unlocked until the spirit owns a tier-1 option in the SAME slot
+    (ADR-0027). `frost` (aura tier 2, L2) is gated behind any owned tier-1 aura."""
+    _auth(client, "tier2_gate@example.com")
+    _earn_to_level(client, 5)  # past frost's L2 + plenty of coins, so tier is the only gate
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["frost"]["tier"] == 2
+    assert SPIRIT_COSMETICS_CATALOG["aura"]["soft"]["tier"] == 1
+
+    # With no owned tier-1 aura, frost is not unlockable → 409, and the GET marks it so.
+    body = _spirit(client)
+    assert _option_state(body, "aura", "frost")["unlockable"] is False
+    assert _unlock(client, "aura", "frost").status_code == 409
+
+    # Own a tier-1 aura → the tier-2 prereq is met and frost unlocks.
+    assert _unlock(client, "aura", "soft").status_code == 200
+    assert _option_state(_spirit(client), "aura", "frost")["unlockable"] is True
+    assert _unlock(client, "aura", "frost").status_code == 200
+    assert _spirit(client)["cosmetics"]["aura"] == "frost"  # auto-equipped
+
+
+def test_tier_three_requires_an_owned_tier_two(client):
+    """A tier-3 capstone needs an owned tier-2 in the slot, not just any tier-1 (ADR-0027).
+    `night` (habitat tier 3, L7) needs a tier-2 habitat (`dusk`/`seaside`), and owning only a
+    tier-1 (`meadow`) is not enough."""
+    _auth(client, "tier3_gate@example.com")
+    _earn_to_level(client, 7)  # past night's L7 + plenty of coins
+    assert SPIRIT_COSMETICS_CATALOG["habitat"]["night"]["tier"] == 3
+    assert SPIRIT_COSMETICS_CATALOG["habitat"]["dusk"]["tier"] == 2
+    assert SPIRIT_COSMETICS_CATALOG["habitat"]["meadow"]["tier"] == 1
+
+    # Owning only a tier-1 habitat does NOT satisfy the tier-3 prereq.
+    assert _unlock(client, "habitat", "meadow").status_code == 200
+    assert _option_state(_spirit(client), "habitat", "night")["unlockable"] is False
+    assert _unlock(client, "habitat", "night").status_code == 409
+
+    # Own a tier-2 habitat → night becomes unlockable.
+    assert _unlock(client, "habitat", "dusk").status_code == 200
+    assert _option_state(_spirit(client), "habitat", "night")["unlockable"] is True
+    assert _unlock(client, "habitat", "night").status_code == 200
+
+
+def test_unlock_owns_auto_equips_charges_and_pampers(client, db_session):
+    """One unlock does all of ADR-0027's effects: the option is owned, auto-equipped, charged to
+    the ledger, and the spirit is pampered (stamp + need recorded)."""
+    _auth(client, "unlock_effects@example.com")
+    user_id = _user_id(db_session, "unlock_effects@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    coins_before = _spirit(client)["coins"]
+
+    res = _unlock(client, "aura", "soft")
     assert res.status_code == 200
     body = res.json()
-    # Cosmetics cleared; the slot is unlocked again (not locked).
-    assert body["cosmetics"] == {}
-    assert _applied(body, "aura") is None
-    assert _option_state(body, "aura", "soft")["applied"] is False
-    # NO REFUND: the cosmetic cost AND the reset fee both stay sunk in the ledger.
-    assert body["coins"] == before_buy - cost - RESET_COST
-    assert _stored_coins_spent(db_session, user_id) == cost + RESET_COST
+    # Owned + auto-equipped.
+    assert _option_state(body, "aura", "soft")["owned"] is True
+    assert body["cosmetics"]["aura"] == "soft"
+    # Charged to the ledger.
+    assert body["coins"] == coins_before - _cost("aura", "soft")
+    assert _stored_coins_spent(db_session, user_id) == _cost("aura", "soft")
+    # Pampered: stamp + the bought option's need recorded (soft favours rested).
+    assert _stored_last_pampered_at(db_session, user_id) is not None
+    assert _stored_last_pampered_need(db_session, user_id) == "rested"
 
 
-def test_reset_upgrades_nothing_to_reset_409(client, db_session):
-    """With no cosmetics applied there's nothing to clear → 409, and no fee is charged (the
-    ledger doesn't move)."""
-    _auth(client, "reset_upgrades_empty@example.com")
-    user_id = _user_id(db_session, "reset_upgrades_empty@example.com")
-    _earn_to_level(client, 5)
+def test_equip_is_free_owned_only_and_can_clear_and_swap(client, db_session):
+    """Equip (ADR-0027) is FREE, only works on OWNED options, can CLEAR a slot, and can SWAP
+    between owned options — none of it touches coins or the ledger."""
+    _auth(client, "equip_flow@example.com")
+    user_id = _user_id(db_session, "equip_flow@example.com")
+    _earn_to_level(client, 3)  # afford two tier-1 auras
+
+    # Equipping an UNOWNED option is rejected (409) and costs nothing.
     spent_before = _stored_coins_spent(db_session, user_id)
-
-    res = client.post("/api/v1/spirit/reset-upgrades")
-    assert res.status_code == 409
-    # No coins spent — the fee is only charged when there's something to reset.
+    assert _equip(client, "aura", "soft").status_code == 409
     assert _stored_coins_spent(db_session, user_id) == spent_before
 
+    # Own two tier-1 auras.
+    assert _unlock(client, "aura", "soft").status_code == 200
+    assert _unlock(client, "aura", "warm").status_code == 200
+    coins_after_unlocks = _spirit(client)["coins"]
+    spent_after_unlocks = _stored_coins_spent(db_session, user_id)
 
-def test_reset_upgrades_insufficient_coins_409(client):
-    """A fresh user buys the cheapest aura (30 of 80 coins), leaving 50 < RESET_COST — so the
-    upgrades reset is rejected and the cosmetic is left in place."""
-    _auth(client, "reset_upgrades_broke@example.com")
-    assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 200
-    res = client.post("/api/v1/spirit/reset-upgrades")
-    assert res.status_code == 409
-    # The cosmetic is untouched (the failed reset changed nothing).
+    # Swap to the other owned option — free (no coin/ledger change).
+    res = _equip(client, "aura", "soft")
+    assert res.status_code == 200
+    assert _equipped(res.json(), "aura") == "soft"
+    assert res.json()["coins"] == coins_after_unlocks
+    assert _stored_coins_spent(db_session, user_id) == spent_after_unlocks
+
+    # Clear the slot — free; the slot reads empty but both options stay OWNED.
+    cleared = _equip(client, "aura", None)
+    assert cleared.status_code == 200
+    body = cleared.json()
+    assert "aura" not in body["cosmetics"]
+    assert _equipped(body, "aura") is None
+    assert _option_state(body, "aura", "soft")["owned"] is True
+    assert _option_state(body, "aura", "warm")["owned"] is True
+    assert body["coins"] == coins_after_unlocks
+
+
+def test_equip_unknown_slot_or_mismatched_option_404(client):
+    """Equip 404s on an unknown slot, and on an option that doesn't belong to the named slot
+    (so a valid option can't be equipped into the wrong slot) — ADR-0027."""
+    _auth(client, "equip_404@example.com")
+    _earn_to_level(client, 3)
+    # `soft` is an aura option, not an accessory — equipping it into `accessory` is a 404.
+    assert _unlock(client, "aura", "soft").status_code == 200
+    assert _equip(client, "nope", "soft").status_code == 404
+    assert _equip(client, "accessory", "soft").status_code == 404
+
+
+def test_equip_requires_auth(client):
+    assert _equip(client, "aura", "soft").status_code == 401
+
+
+def test_legacy_equipped_item_counts_as_owned(client, db_session):
+    """ADR-0027 legacy bridge: a spirit whose item lives only in the equipped `cosmetics` map
+    (not in `unlocked`) — the pre-feature state — still counts that item as OWNED, so it can be
+    re-equipped for free and isn't re-unlockable."""
+    _auth(client, "legacy_owned@example.com")
+    user_id = _user_id(db_session, "legacy_owned@example.com")
+    client.get("/api/v1/spirit")  # create the spark
+
+    # Simulate a legacy row: equipped soft aura but an empty `unlocked` collection.
+    spirit = db_session.execute(
+        select(Spirit).where(Spirit.user_id == user_id, Spirit.retired_at.is_(None))
+    ).scalar_one()
+    spirit.cosmetics = {"aura": "soft"}
+    spirit.unlocked = []
+    db_session.commit()
+
+    body = _spirit(client)
+    # The equipped-only item reads as owned (the union with cosmetics.values()).
+    assert _option_state(body, "aura", "soft")["owned"] is True
+    assert _equipped(body, "aura") == "soft"
+    # Re-unlocking it is rejected (already owned), so no double-charge.
+    assert _unlock(client, "aura", "soft").status_code == 409
+    # And it can be cleared then re-equipped for free (it's owned).
+    assert _equip(client, "aura", None).status_code == 200
+    assert _equip(client, "aura", "soft").status_code == 200
     assert _spirit(client)["cosmetics"]["aura"] == "soft"
-
-
-def test_reset_upgrades_requires_auth(client):
-    assert client.post("/api/v1/spirit/reset-upgrades").status_code == 401
 
 
 # --- Awaken / collection (step 6) -------------------------------------------------------
@@ -1563,24 +1665,43 @@ def test_path_slot_cosmetic_available_only_for_its_path(client):
             assert opt["available"] is (path == owner_path)
 
 
-def test_buy_matching_path_slot_cosmetic_succeeds(client):
-    """Each path-exclusive option, bought on its matching path, applies to its slot."""
+# A universal tier-2 option per slot — owned first to satisfy the tier-3 capstone prereq.
+_SLOT_TIER2_PREREQ = {
+    "aura": "frost",
+    "accessory": "scarf",
+    "habitat": "dusk",
+    "mount": "lotus",
+}
+
+
+def test_unlock_matching_path_slot_cosmetic_succeeds(client):
+    """Each path-exclusive capstone (tier 3), unlocked on its matching path after owning a tier-1
+    then a tier-2 in the slot, owns + equips into its slot (ADR-0027)."""
     for slot, option, owner_path in _PATH_SLOT_COSMETICS:
         _auth(client, f"buyslot_{slot}_{option}@example.com")
         assert _choose(client, owner_path).status_code == 200
         _earn_to_level(client, 6)  # unlock_level 6 + enough coins (6 × 80 = 480 > 220)
-        res = client.post("/api/v1/spirit/cosmetics", json={"slot": slot, "option": option})
+        # Climb the tree: a tier-1 then the universal tier-2 in this slot satisfy the tier-3 prereq.
+        tier2 = _SLOT_TIER2_PREREQ[slot]
+        assert SPIRIT_COSMETICS_CATALOG[slot][tier2]["tier"] == 2
+        tier1 = next(
+            o for o, spec in SPIRIT_COSMETICS_CATALOG[slot].items() if spec["tier"] == 1
+        )
+        assert _unlock(client, slot, tier1).status_code == 200, f"{slot}/{tier1} tier-1"
+        assert _unlock(client, slot, tier2).status_code == 200, f"{slot}/{tier2} tier-2"
+        res = _unlock(client, slot, option)
         assert res.status_code == 200, res.text
         assert res.json()["cosmetics"][slot] == option
 
 
-def test_buy_non_matching_path_slot_cosmetic_is_rejected_404(client):
-    """A Pitta (breath) spirit cannot buy any other path's exclusive option in any slot."""
+def test_unlock_non_matching_path_slot_cosmetic_is_rejected_404(client):
+    """A Pitta (breath) spirit cannot unlock any other path's exclusive option in any slot (the
+    per-path gate is a 404, ahead of any tier check)."""
     _auth(client, "wrongpath_slots@example.com")
     assert _choose(client, "breath").status_code == 200
     _earn_to_level(client, 6)  # so neither coins nor the unlock level is the gate
     for slot, option, owner_path in _PATH_SLOT_COSMETICS:
         if owner_path == "breath":
             continue
-        res = client.post("/api/v1/spirit/cosmetics", json={"slot": slot, "option": option})
+        res = _unlock(client, slot, option)
         assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"

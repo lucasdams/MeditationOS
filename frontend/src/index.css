@@ -2853,40 +2853,6 @@ textarea:focus-visible,
   font-size: 0.95rem;
 }
 
-/* A level-gated cosmetic option (ADR-0023 / task #4): shown, not hidden, with its requirement —
-   so the user can see what they're working toward. The lock chip wraps the requirement so it
-   reads as a clear "Reach level N" badge rather than disappearing into the toast. */
-.spirit-option.locked {
-  border-style: dashed;
-}
-
-.spirit-option-lock {
-  display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  background: var(--chip-bg);
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-/* The per-upgrade coin cost, shown on the option chip so the price is visible at a glance. */
-.spirit-option-cost {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  margin-left: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.spirit-option-cost svg {
-  width: 0.8em;
-  height: 0.8em;
-}
-
 /* The per-option need affinity tag (ADR-0026) — a subtle chip naming the need the item favours.
    Kept quiet (muted, small) so it informs without shouting, matching the calm shop UX. */
 .spirit-option-need {
@@ -3302,48 +3268,192 @@ textarea:focus-visible,
   color: var(--slot-accent);
 }
 
-.spirit-slot-options {
+/* --- Skill tree (ADR-0027) ---------------------------------------------------------------- */
+/* Each cosmetic slot is a small per-slot skill tree: its options laid out by tier (1 → 2 → 3) as
+   a climb, so reaching the tier-3 capstone reads as a progression. A `.spirit-tree` reuses the
+   `.spirit-slot` fieldset frame (border + legend); the tiers stack as connected rows. */
+.spirit-tree-tiers {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
-.spirit-option {
+/* One tier row in the tree. A thin connector line above each tier past the first hints at the
+   climb upward (tier 1 → 2 → 3), without drawing a heavy diagram. */
+.spirit-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: relative;
+}
+
+.spirit-tier + .spirit-tier {
+  padding-top: 0.55rem;
+}
+
+.spirit-tier + .spirit-tier::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0.9rem;
+  width: 1.5px;
+  height: 0.55rem;
+  background: color-mix(in srgb, var(--slot-accent) 45%, transparent);
+}
+
+.spirit-tier-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.spirit-tier-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* A tree node — one cosmetic option, with its label + need tag and a state-driven control. */
+.spirit-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--bg-surface);
+}
+
+.spirit-node-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.spirit-node-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spirit-node-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* The per-node action buttons (Equip / Unlock). Reset the leaked `button { margin-top: 1rem }`
+   so the node owns its own spacing. */
+.spirit-node-btn {
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  /* Reset the global `button { margin-top: 1rem }` so the row's spacing comes from its `gap`
-     / wrap layout, not a leaked top margin. */
-  margin-top: 0;
-  padding: 0.4rem 0.8rem;
+  padding: 0.32rem 0.7rem;
   border-radius: 999px;
-  border: 1.5px solid var(--border);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 0.85rem;
-  font-weight: 500;
+  border: 1.5px solid var(--slot-accent);
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease,
-    background 0.12s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
-.spirit-option:hover:not(.gated):not(.applied) {
-  border-color: var(--slot-accent);
+.spirit-node-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 3px 10px var(--shadow-card);
 }
 
-.spirit-option.applied {
+.spirit-node-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Equip is the free, secondary action — a quiet outlined chip. */
+.spirit-node-equip {
+  background: var(--bg-surface);
+  color: var(--slot-accent);
+}
+
+/* Unlock is the paid, primary action — a filled accent chip so the spend reads as the goal. */
+.spirit-node-unlock {
   background: var(--slot-accent);
   border-color: var(--slot-accent);
   color: #fff;
-  font-weight: 700;
-  cursor: default;
 }
 
-.spirit-option.gated {
-  opacity: 0.6;
+.spirit-node-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.spirit-node-cost svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+/* Equipped (worn now) — a clear badge in the accent, plus a quiet free "Remove". */
+.spirit-node--equipped {
+  border-color: var(--slot-accent);
+  background: color-mix(in srgb, var(--slot-accent) 12%, var(--bg-surface));
+}
+
+.spirit-node-worn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--slot-accent);
+}
+
+.spirit-node-remove {
+  margin-top: 0;
+  padding: 0.2rem 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.spirit-node-remove:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.spirit-node-remove:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* The short coin-shortfall hint beside a disabled Unlock (unaffordable). */
+.spirit-node-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* A locked node — greyed, with its reason (reach a level, or unlock a lower tier first). Dashed
+   so it reads as "not yet" rather than broken. */
+.spirit-node--locked {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.spirit-node-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 /* --- Customization stage (game-like dressing room) ---------------------------------------- */
@@ -3568,13 +3678,6 @@ textarea:focus-visible,
   align-items: baseline;
   gap: 0.35rem;
   margin: 1.25rem 0 0;
-}
-
-/* The foot of the Personalize panel — the quiet reset-upgrades link sits here, set apart from
-   the buyable option chips so adorning reads as the primary action. */
-.spirit-personalize-foot {
-  margin-top: 0.75rem;
-  text-align: right;
 }
 
 /* Before/after buy confirmation — two spirit renders side by side ("Now" vs "With X"), each

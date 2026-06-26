@@ -1,12 +1,12 @@
 """Spirit state — a single living companion grown from practice (docs/design/spirit.md,
-ADR-0022, ADR-0023, ADR-0024). Get-or-create the active spirit, compute its read-only state,
-and write the choose / cosmetics / paid-reset / awaken loop.
+ADR-0022, ADR-0023, ADR-0024, ADR-0027). Get-or-create the active spirit, compute its
+read-only state, and write the choose / unlock / equip / name-reset / awaken loop.
 
 Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
-chosen `path`, the `name`, the applied `cosmetics`, the `coins_spent` spend ledger, and the
-`last_pampered_at` timestamp (ADR-0025: buying a cosmetic perks the spirit up with a decaying,
-visual-only needs boost). Everything the client sees is derived on read from the user's
-earned-XP level (via
+chosen `path`, the `name`, the `unlocked` collection + the equipped `cosmetics` loadout
+(ADR-0027), the `coins_spent` spend ledger, and the `last_pampered_at` timestamp (ADR-0025:
+UNLOCKING a cosmetic perks the spirit up with a decaying, visual-only needs boost). Everything
+the client sees is derived on read from the user's earned-XP level (via
 `dashboard_service.get_wallet_basis`):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
@@ -50,6 +50,7 @@ from app.models.spirit import Spirit
 from app.schemas.spirit import (
     ChoosePathRequest,
     CosmeticsRequest,
+    EquipRequest,
     ResetNameRequest,
     RetiredSpirit,
     SpiritAvailableSlot,
@@ -67,8 +68,8 @@ from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date, zone
 # `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
 COINS_PER_LEVEL = 80
 
-# The flat fee for a paid reset (ADR-0024) — used for BOTH the name reset and the upgrades
-# reset. Charged against the coin balance; never refunded (a committed-choice economy).
+# The flat fee for the paid NAME reset (ADR-0024; the upgrades-reset is removed in ADR-0027 —
+# equipping owned options is now free). Charged against the coin balance; never refunded.
 RESET_COST = 250
 
 
@@ -95,14 +96,20 @@ class InsufficientCoins(Exception):
     """Not enough coins for this cosmetic / reset → 409."""
 
 
-class CosmeticSlotLocked(Exception):
-    """The target slot already has an applied option, so it's locked (ADR-0024). Changing it
-    requires resetting upgrades → 409."""
+class PrerequisiteNotMet(Exception):
+    """The option's skill-tree prerequisite isn't met yet (ADR-0027): its tier>1 needs an owned
+    option of the tier below in the SAME slot → 409."""
 
 
-class NothingToReset(Exception):
-    """A reset-upgrades on a spirit with no applied cosmetics — there's nothing to clear, so we
-    don't waste the reset fee → 409 (ADR-0024)."""
+class NotOwned(Exception):
+    """An equip targeted an option the spirit doesn't own yet (ADR-0027) → 409. Equipping is
+    free but only works on owned options."""
+
+
+class AlreadyOwned(Exception):
+    """An unlock targeted an option the spirit already owns (ADR-0027) → 409. Owned is forever;
+    re-unlocking would double-charge, so it's rejected rather than re-equip-for-free here (equip
+    is the free path)."""
 
 
 class PathAlreadyChosen(Exception):
@@ -613,13 +620,15 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
     return SpiritCondition(tier=weakest.tier, factor=weakest.factor)
 
 
-# --- Cosmetics economy (step 5: repoint the derived wallet at spirit slots) -------------
+# --- Cosmetics economy (ADR-0027: a per-slot skill tree — unlock-to-own, free equip) -------
 #
-# Each slot offers a few mutually-exclusive options. ADR-0024: a slot is applied ONCE and
-# then LOCKED — there is no within-slot swap; changing an applied slot requires a paid
-# upgrades-reset (which clears all slots, no refund). Costs spend from the derived coin
-# balance, which now comes from the STORED `coins_spent` ledger (`level × COINS_PER_LEVEL −
-# coins_spent`), not the sum of applied cosmetics, so clearing a slot never refunds it.
+# Each slot is a small skill tree of options. ADR-0027: UNLOCKING an option (paying its cost,
+# added to the monotonic `coins_spent` ledger, never refunded) adds it to the owned collection
+# forever; equipping an owned option into its slot — or swapping/clearing what's shown — is FREE.
+# An option's `tier` (1|2|3) gates the tree: tier 1 has no prereq; tier N>1 needs an owned option
+# of tier N−1 in the same slot. The old slot-lock + paid upgrades-reset (ADR-0024) are gone. Costs
+# spend from the derived coin balance, which comes from the STORED `coins_spent` ledger
+# (`level × COINS_PER_LEVEL − coins_spent`), not the owned cosmetics, so nothing ever refunds.
 #
 # Kept calm and modest, on-theme (docs/design/spirit.md "Coins"): a soft aura, a small
 # accessory, and a habitat/backdrop the spirit sits in. The old progressive
@@ -635,42 +644,57 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
 # slots/options, and only re-tune costs of options nobody owns. Test
 # `test_owned_options_all_price_above_zero` guards against an owned key being dropped.
 SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
-    # {slot: {option: {"cost": int, "unlock_level": int, "need": str, "per_path"?: str}}}
+    # {slot: {option: {"cost", "unlock_level", "need", "tier" : ..., "per_path"?: str}}}
     # An OPTIONAL `per_path` restricts an option to a single chosen creature (dosha): the option
     # is then bought/seen only by that path (absent → universal, available to all). See the
-    # path-exclusive companions below for the only current use.
+    # path-exclusive capstones below for the only current use.
     # A REQUIRED `need` (ADR-0026) records the ONE need the item favours (nourished | rested |
     # joyful) — driving both the passive while-owned lift and the weighted fading buy-boost. Every
     # option has one (the catalog-coverage test guards this).
+    # A REQUIRED `tier` (1|2|3, ADR-0027) places the option in its slot's skill tree: tier 1 has no
+    # prerequisite (the starters); tier N>1 requires owning ≥1 option of tier N−1 IN THE SAME SLOT.
+    # The path-exclusive capstones are tier 3. Drives the unlock prerequisite chain.
     # A soft surrounding glow — the gentlest touch, available from the start.
     "aura": {
-        "soft": {"cost": 30, "unlock_level": 1, "need": RESTED},
-        "warm": {"cost": 45, "unlock_level": 1, "need": NOURISHED},
-        "starlit": {"cost": 70, "unlock_level": 5, "need": RESTED},
-        "ember": {"cost": 50, "unlock_level": 1, "need": NOURISHED},
-        "frost": {"cost": 55, "unlock_level": 2, "need": RESTED},
-        "rose": {"cost": 45, "unlock_level": 1, "need": JOYFUL},
+        "soft": {"cost": 30, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "warm": {"cost": 45, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "starlit": {"cost": 70, "unlock_level": 5, "need": RESTED, "tier": 2},
+        "ember": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "frost": {"cost": 55, "unlock_level": 2, "need": RESTED, "tier": 2},
+        "rose": {"cost": 45, "unlock_level": 1, "need": JOYFUL, "tier": 1},
         # PATH-EXCLUSIVE auras (like the companions above): the ember flames for fiery Pitta
         # (breath), the verdant grove for grounded Kapha (stillness), the airy zephyr for Vata
-        # (heart). Only the matching creature can buy/see each.
-        "emberflame": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
-        "grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": NOURISHED},
-        "zephyr": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
+        # (heart). Only the matching creature can buy/see each. The tier-3 capstones.
+        "emberflame": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+        },
+        "grove": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": NOURISHED, "tier": 3,
+        },
+        "zephyr": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
     # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star are universal; the three
     # PATH-EXCLUSIVE accessories carry a `per_path` key so only the matching creature can buy (and
     # see) them — the ember crown for the fiery Pitta (breath), the mossy stone circlet for the
     # grounded Kapha (stillness), the feather plume for the airy Vata (heart).
     "accessory": {
-        "halo": {"cost": 40, "unlock_level": 1, "need": JOYFUL},
-        "leaf_crown": {"cost": 55, "unlock_level": 1, "need": NOURISHED},
-        "ribbon": {"cost": 35, "unlock_level": 1, "need": JOYFUL},
-        "flower": {"cost": 40, "unlock_level": 1, "need": JOYFUL},
-        "scarf": {"cost": 45, "unlock_level": 2, "need": RESTED},
-        "star": {"cost": 60, "unlock_level": 5, "need": JOYFUL},
-        "ember_crown": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
-        "mossy_circlet": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
-        "feather_plume": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
+        "halo": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "leaf_crown": {"cost": 55, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "ribbon": {"cost": 35, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "flower": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "scarf": {"cost": 45, "unlock_level": 2, "need": RESTED, "tier": 2},
+        "star": {"cost": 60, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        "ember_crown": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+        },
+        "mossy_circlet": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+        },
+        "feather_plume": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
     # A small backdrop the spirit sits in (the "habitat"). meadow/dusk/night/garden/seaside/
     # cottage are universal; the three PATH-EXCLUSIVE backdrops carry a `per_path` key so only
@@ -678,27 +702,39 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # (breath), the misty grove for the grounded Kapha (stillness), the open sky for the airy
     # Vata (heart).
     "habitat": {
-        "meadow": {"cost": 50, "unlock_level": 1, "need": JOYFUL},
-        "dusk": {"cost": 65, "unlock_level": 3, "need": RESTED},
-        "night": {"cost": 80, "unlock_level": 7, "need": RESTED},
-        "garden": {"cost": 60, "unlock_level": 1, "need": NOURISHED},
-        "seaside": {"cost": 70, "unlock_level": 3, "need": RESTED},
-        "cottage": {"cost": 90, "unlock_level": 7, "need": RESTED},
-        "ember_canyon": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
-        "misty_grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
-        "open_sky": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
+        "meadow": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "dusk": {"cost": 65, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "night": {"cost": 80, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "garden": {"cost": 60, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "seaside": {"cost": 70, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "cottage": {"cost": 90, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "ember_canyon": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+        },
+        "misty_grove": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+        },
+        "open_sky": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
     # A small friend that keeps the spirit company (the "companion"). firefly/bird/cat are
     # universal; the three PATH-EXCLUSIVE companions carry a `per_path` key so only the matching
     # creature can buy (and see) them — the nine-tail kitsune for the fiery Pitta (breath), the
     # jade tortoise for the grounded Kapha (stillness), the paper crane for the airy Vata (heart).
     "companion": {
-        "firefly": {"cost": 100, "unlock_level": 1, "need": JOYFUL},
-        "bird": {"cost": 160, "unlock_level": 3, "need": JOYFUL},
-        "cat": {"cost": 240, "unlock_level": 7, "need": RESTED},
-        "kitsune": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": JOYFUL},
-        "tortoise": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
-        "crane": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
+        "firefly": {"cost": 100, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "bird": {"cost": 160, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        "cat": {"cost": 240, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "kitsune": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": JOYFUL, "tier": 3,
+        },
+        "tortoise": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+        },
+        "crane": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
     # A serene thing the spirit floats on / rides — the calm take on a "mount". cloud/lotus/leaf
     # are universal; the three PATH-EXCLUSIVE mounts carry a `per_path` key so only the matching
@@ -706,12 +742,18 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # mossy boulder for the grounded Kapha (stillness), the breeze-borne feather for the airy
     # Vata (heart).
     "mount": {
-        "cloud": {"cost": 70, "unlock_level": 1, "need": RESTED},
-        "lotus": {"cost": 90, "unlock_level": 3, "need": RESTED},
-        "leaf": {"cost": 120, "unlock_level": 7, "need": JOYFUL},
-        "emberstone": {"cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED},
-        "boulder": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED},
-        "feather": {"cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL},
+        "cloud": {"cost": 70, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "lotus": {"cost": 90, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "leaf": {"cost": 120, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        "emberstone": {
+            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+        },
+        "boulder": {
+            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+        },
+        "feather": {
+            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
     },
 }
 
@@ -743,6 +785,14 @@ def _option_need(slot: str, option: str) -> str:
     return str(need) if need is not None else DEFAULT_ITEM_NEED
 
 
+def _option_tier(slot: str, option: str) -> int:
+    """The skill-tree tier (1 | 2 | 3) of a catalog option within its slot (ADR-0027). Tier 1
+    has no prerequisite; tier N>1 requires owning ≥1 option of tier N−1 in the SAME slot. Unknown
+    slot/option (or a missing key) falls back to tier 1 (no prereq) so the gate never blocks a
+    phantom option."""
+    return int(SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("tier", 1))
+
+
 def _passive_need_bonus(cosmetics: dict[str, str]) -> dict[str, float]:
     """The passive (while-owned) per-need lift (ADR-0026): for each need, PASSIVE_PER_ITEM times
     the number of currently-applied cosmetics that favour it, capped at PASSIVE_NEED_CAP. Iterates
@@ -760,61 +810,127 @@ def _passive_need_bonus(cosmetics: dict[str, str]) -> dict[str, float]:
 
 
 def _cosmetics(spirit: Spirit) -> dict[str, str]:
-    """The spirit's owned cosmetics, defensively normalized to {str: str}. A fresh/legacy
-    spark has {} → no spend, exactly the base form."""
+    """The spirit's EQUIPPED loadout (ADR-0027), defensively normalized to {str: str}. A
+    fresh/legacy spark has {} → nothing equipped, exactly the base form."""
     raw = spirit.cosmetics or {}
     if not isinstance(raw, dict):
         return {}
     return {str(k): str(v) for k, v in raw.items() if isinstance(v, (str, int))}
 
 
+def _unlocked_list(spirit: Spirit) -> list[str]:
+    """The spirit's unlocked-collection list (ADR-0027), defensively normalized to [str]. A
+    fresh/legacy spark has [] (the column defaults to an empty list)."""
+    raw = spirit.unlocked or []
+    if not isinstance(raw, list):
+        return []
+    return [str(v) for v in raw if isinstance(v, (str, int))]
+
+
+def _owned(spirit: Spirit) -> set[str]:
+    """The EFFECTIVE owned set (ADR-0027) = the unlocked collection UNION the equipped loadout's
+    values. The union is the legacy bridge: a spirit that equipped/paid for items before this
+    feature has them only in `cosmetics`, so counting equipped items as owned means no data
+    backfill — those items stay owned (and re-equippable) forever."""
+    return set(_unlocked_list(spirit)) | set(_cosmetics(spirit).values())
+
+
+def _reconciled_unlocked(spirit: Spirit) -> list[str]:
+    """The `unlocked` list folded together with any currently-equipped (legacy) items, preserving
+    order and de-duplicating (ADR-0027). Persisting this on every write makes ownership MONOTONIC:
+    a legacy item that lived only in the equipped `cosmetics` map is captured into `unlocked`, so
+    clearing/swapping its slot can never drop it from the owned set."""
+    out = list(_unlocked_list(spirit))
+    seen = set(out)
+    for option in _cosmetics(spirit).values():
+        if option not in seen:
+            out.append(option)
+            seen.add(option)
+    return out
+
+
+def _tier_prereq_met(slot: str, option: str, owned: set[str]) -> bool:
+    """Whether `option`'s skill-tree prerequisite is satisfied (ADR-0027): tier 1 always is;
+    tier N>1 requires owning AT LEAST ONE option of tier N−1 in the SAME slot. Reads the owned
+    set against the catalog tiers."""
+    tier = _option_tier(slot, option)
+    if tier <= 1:
+        return True
+    prev = tier - 1
+    return any(
+        opt in owned and _option_tier(slot, opt) == prev
+        for opt in SPIRIT_COSMETICS_CATALOG.get(slot, {})
+    )
+
+
+def _is_unlockable(slot: str, option: str, owned: set[str], level: int, path: str | None) -> bool:
+    """Whether `option` is currently UNLOCKABLE (ADR-0027) — every gate EXCEPT affordability:
+    not already owned; per-path available to this creature; level ≥ unlock_level; and the
+    tier prerequisite met. Affordability is reported separately (`affordable`) so the UI can
+    distinguish "can't yet" from "can't afford"."""
+    if option in owned:
+        return False
+    per_path = _option_per_path(slot, option)
+    if per_path is not None and per_path != path:
+        return False
+    if level < _option_unlock_level(slot, option):
+        return False
+    return _tier_prereq_met(slot, option, owned)
+
+
 def _available_slots(
-    cosmetics: dict[str, str], balance: int, level: int, path: str | None
+    cosmetics: dict[str, str],
+    owned: set[str],
+    balance: int,
+    level: int,
+    path: str | None,
 ) -> list[SpiritAvailableSlot]:
-    """The cosmetics catalog with per-option state — the same calm "personalize" shape the
-    Spirit personalize panel uses: each option's cost plus unlocked / affordable / applied hints.
+    """The cosmetics catalog as a per-slot skill tree with per-option state (ADR-0027) — the
+    "personalize" shape the Spirit panel uses. A slot now reports its EQUIPPED option (or null)
+    and is never "locked"; each option reports cost / unlock_level / tier / need plus the state
+    flags `owned`, `equipped`, `unlockable`, `affordable`, and `available` (per-path).
 
-    ADR-0024: a slot with an applied option is LOCKED — its options can't be bought until
-    upgrades are reset — so the slot exposes a `locked` flag for the UI to disable it.
-    `affordable` is the FULL option cost against the balance (no swap/net math anymore), since
-    a slot is applied once and then locked rather than swapped.
-
-    `available` reflects per-path exclusivity: a universal option (no `per_path`) is available to
-    every creature; a path-exclusive option is available only to the matching chosen `path` (and
-    to nobody while pathless). The frontend filters out the unavailable ones so a creature never
-    sees another path's exclusive companion.
+    `unlockable` is true only when the option isn't owned and its path, level, and tier-prereq
+    are all met (affordability is the separate `affordable` flag, so the UI can tell "locked" from
+    "too pricey"). `available` reflects per-path exclusivity: a universal option (no `per_path`)
+    is offered to every creature; a path-exclusive one only to the matching chosen `path` (and to
+    nobody while pathless). The frontend filters out the unavailable ones.
     """
     out: list[SpiritAvailableSlot] = []
     for slot, options in SPIRIT_COSMETICS_CATALOG.items():
-        applied = cosmetics.get(slot)
-        locked = applied is not None
+        equipped = cosmetics.get(slot)
         opts: list[SpiritSlotOption] = []
         for option, spec in options.items():
             unlock_level = int(spec["unlock_level"])
             cost = int(spec["cost"])
-            unlocked = level >= unlock_level
+            tier = _option_tier(slot, option)
             per_path = _option_per_path(slot, option)
             available = per_path is None or per_path == path
+            is_owned = option in owned
             opts.append(
                 SpiritSlotOption(
                     option=option,
                     cost=cost,
-                    unlocked=unlocked,
-                    unlock_hint=None if unlocked else f"Reach level {unlock_level}",
+                    unlock_level=unlock_level,
+                    unlock_hint=(
+                        None if level >= unlock_level else f"Reach level {unlock_level}"
+                    ),
+                    tier=tier,
                     affordable=balance >= cost,
-                    applied=applied == option,
+                    owned=is_owned,
+                    equipped=equipped == option,
+                    unlockable=_is_unlockable(slot, option, owned, level, path),
                     available=available,
                     # The need this option favours (ADR-0026), so the shop can tag it.
                     need=_option_need(slot, option),
                 )
             )
-        # Order so the applied option leads (if any), then unlocked (available) options, then
-        # level-locked ones — ties broken by cost ascending. Otherwise raw catalog-insertion
-        # order can put an unlocked option (e.g. the L1 `rose` aura) after a level-locked one.
-        opts.sort(key=lambda o: (not o.applied, not o.unlocked, o.cost))
-        out.append(
-            SpiritAvailableSlot(slot=slot, applied=applied, locked=locked, options=opts)
+        # Order so the equipped option leads, then owned, then unlockable, then the rest — ties
+        # broken by tier then cost ascending so a slot's tree reads low → high.
+        opts.sort(
+            key=lambda o: (not o.equipped, not o.owned, not o.unlockable, o.tier, o.cost)
         )
+        out.append(SpiritAvailableSlot(slot=slot, equipped=equipped, options=opts))
     return out
 
 
@@ -830,7 +946,7 @@ def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
     if spirit is not None:
         return spirit
 
-    spirit = Spirit(user_id=user_id, path=None, cosmetics={})
+    spirit = Spirit(user_id=user_id, path=None, cosmetics={}, unlocked=[])
     db.add(spirit)
     try:
         db.commit()
@@ -889,6 +1005,9 @@ def _build_state(
     level = basis.level
 
     cosmetics = _cosmetics(spirit)
+    # ADR-0027: the effective owned set = the unlocked collection ∪ the equipped loadout values,
+    # so legacy already-equipped items count as owned with no backfill.
+    owned = _owned(spirit)
     # ADR-0024: the balance comes from the STORED spend ledger, not the applied cosmetics.
     coins = _coin_balance(level, spirit.coins_spent)
 
@@ -930,7 +1049,7 @@ def _build_state(
         condition=overall_condition(spirit_needs),
         coins=coins,
         cosmetics=cosmetics,
-        available=_available_slots(cosmetics, coins, level, spirit.path),
+        available=_available_slots(cosmetics, owned, coins, level, spirit.path),
         collection=_collection(db, user_id),
     )
 
@@ -982,7 +1101,7 @@ def choose_path(
     return _build_state(db, user_id, spirit, today=today, tz=tz)
 
 
-def buy_cosmetic(
+def unlock_cosmetic(
     db: DBSession,
     user_id: uuid.UUID,
     data: CosmeticsRequest,
@@ -990,13 +1109,18 @@ def buy_cosmetic(
     today: date,
     tz: str = "UTC",
 ) -> SpiritState:
-    """Buy/apply a cosmetic option to a slot on the active spirit.
+    """Unlock a cosmetic option into the active spirit's owned collection AND auto-equip it
+    (ADR-0027). Unlocking is the new "buying": it charges the option's full cost (added to the
+    monotonic `coins_spent` ledger, never refunded), adds the option to `unlocked`, equips it in
+    its slot, and PAMPERS the spirit (stamps `last_pampered_at` + the bought item's need).
 
-    ADR-0024 (committed upgrades): a slot is applied ONCE and then LOCKED. Validates: unknown
-    slot/option → UnknownCosmetic (404); the slot already has an applied option →
-    CosmeticSlotLocked (409, no swaps); option not unlocked by level → CosmeticLocked (409);
-    can't afford the FULL cost → InsufficientCoins (409). The full option cost is added to the
-    stored `coins_spent` ledger (monotonic — there is no net-of-swap discount and no refund).
+    Validates: unknown slot/option, or a path-exclusive option this creature can't use →
+    UnknownCosmetic (404, exactly as the GET `available` shape hides it); already owned →
+    AlreadyOwned (409); level below unlock_level → CosmeticLocked (409); tier prerequisite not met
+    → PrerequisiteNotMet (409); can't afford the cost → InsufficientCoins (409).
+
+    The whole read-compute-write runs under the per-user advisory lock, so a concurrent unlock
+    can't double-spend or clobber the JSON columns / ledger (last-writer-wins).
     """
     # Validate the catalog request before taking the lock (pure, no DB).
     if data.slot not in SPIRIT_COSMETICS_CATALOG:
@@ -1004,49 +1128,104 @@ def buy_cosmetic(
     if data.option not in SPIRIT_COSMETICS_CATALOG[data.slot]:
         raise UnknownCosmetic(data.option)
 
-    # Lock FIRST — so the affordability math AND the cosmetics/ledger we read are taken under
-    # the per-user lock; a concurrent buy otherwise reads a stale snapshot and could
-    # double-spend or clobber the JSON column / ledger (last-writer-wins).
+    # Lock FIRST — so the affordability math AND the owned set / ledger we read are taken under
+    # the per-user lock; a concurrent unlock otherwise reads a stale snapshot and could
+    # double-spend or clobber the JSON columns / ledger (last-writer-wins).
     _lock_user_spirit(db, user_id)
     spirit = get_or_create_active_spirit(db, user_id)
 
-    # A path-EXCLUSIVE option can only be bought by the matching chosen creature; for any other
+    # A path-EXCLUSIVE option can only be unlocked by the matching chosen creature; for any other
     # path (or a pathless spark) it isn't in this spirit's catalog at all, so we reject it as an
     # unknown cosmetic (→ 404), exactly as the GET `available` shape hides it.
     per_path = _option_per_path(data.slot, data.option)
     if per_path is not None and per_path != spirit.path:
         raise UnknownCosmetic(data.option)
 
-    current = _cosmetics(spirit)
-    # The slot is applied once, then locked — no swaps, no re-buy (ADR-0024).
-    if data.slot in current:
-        raise CosmeticSlotLocked(data.slot)
+    owned = _owned(spirit)
+    # Owned is forever — re-unlocking would double-charge. The free `equip` path is how you
+    # re-show an already-owned option.
+    if data.option in owned:
+        raise AlreadyOwned(data.option)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
     level = basis.level
     if level < _option_unlock_level(data.slot, data.option):
         raise CosmeticLocked(data.option)
+    # Skill-tree gate (ADR-0027): tier N>1 needs an owned option of tier N−1 in the same slot.
+    if not _tier_prereq_met(data.slot, data.option, owned):
+        raise PrerequisiteNotMet(data.option)
 
-    # Charge the FULL option cost (no swap discount anymore) and add it to the monotonic
-    # spend ledger, so the balance stays consistent with `coins_spent`.
+    # Charge the full option cost and add it to the monotonic spend ledger, so the balance stays
+    # consistent with `coins_spent`.
     cost = _option_cost(data.slot, data.option)
     balance = _coin_balance(level, spirit.coins_spent)
     if balance < cost:
         raise InsufficientCoins(data.option)
 
-    updated = dict(current)
-    updated[data.slot] = data.option
-    spirit.cosmetics = updated
+    # Add to the owned collection AND auto-equip into the slot (ADR-0027). Reconcile first so any
+    # legacy already-equipped item is captured into `unlocked` too (ownership stays monotonic).
+    spirit.unlocked = [*_reconciled_unlocked(spirit), data.option]
+    equipped = dict(_cosmetics(spirit))
+    equipped[data.slot] = data.option
+    spirit.cosmetics = equipped
     spirit.coins_spent = spirit.coins_spent + cost
-    # ADR-0025/0026: buying PAMPERS the spirit — stamp the purchase time AND the bought item's
+    # ADR-0025/0026: UNLOCKING pampers the spirit — stamp the purchase time AND the bought item's
     # favoured need, so the needs read adds a decaying boost WEIGHTED toward that need (visual-only;
-    # the paid resets/awaken do NOT pamper). Same txn + lock as the cosmetic apply and the
-    # coins_spent bump.
+    # the name reset / awaken / a free equip do NOT pamper). Same txn + lock as the unlock/equip and
+    # the coins_spent bump.
     spirit.last_pampered_at = func.now()
     spirit.last_pampered_need = _option_need(data.slot, data.option)
     db.commit()
     db.refresh(spirit)
     return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
+
+
+def equip_cosmetic(
+    db: DBSession,
+    user_id: uuid.UUID,
+    data: EquipRequest,
+    *,
+    today: date,
+    tz: str = "UTC",
+) -> SpiritState:
+    """Equip an OWNED option into its slot, or clear the slot (ADR-0027) — FREE and instant. No
+    coins, no pamper, no ledger change.
+
+    `option is None` clears the slot. Otherwise validates the slot/option exist
+    (UnknownCosmetic → 404), the option belongs to the named slot (UnknownCosmetic → 404, so a
+    mismatched slot/option can't equip), and the spirit currently OWNS it (NotOwned → 409, since
+    equip can only show what you've earned). Serialized under the per-user advisory lock so the
+    read-compute-write is atomic against a concurrent unlock/equip.
+    """
+    # Validate the slot exists before the lock (pure, no DB).
+    if data.slot not in SPIRIT_COSMETICS_CATALOG:
+        raise UnknownCosmetic(data.slot)
+
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+
+    # Capture any legacy already-equipped item into `unlocked` BEFORE we mutate the loadout, so
+    # clearing/swapping a slot can never drop a never-`unlocked` item from the owned set
+    # (ownership stays monotonic — ADR-0027).
+    spirit.unlocked = _reconciled_unlocked(spirit)
+
+    equipped = dict(_cosmetics(spirit))
+    if data.option is None:
+        # Clear the slot (a no-op if already empty).
+        equipped.pop(data.slot, None)
+    else:
+        # The option must exist AND belong to THIS slot (so a valid option from another slot
+        # can't be equipped into the wrong one).
+        if data.option not in SPIRIT_COSMETICS_CATALOG[data.slot]:
+            raise UnknownCosmetic(data.option)
+        if data.option not in _owned(spirit):
+            raise NotOwned(data.option)
+        equipped[data.slot] = data.option
+
+    spirit.cosmetics = equipped
+    db.commit()
+    db.refresh(spirit)
+    return _build_state(db, user_id, spirit, today=today, tz=tz)
 
 
 def reset_name(
@@ -1080,40 +1259,6 @@ def reset_name(
     return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
 
 
-def reset_cosmetics(
-    db: DBSession,
-    user_id: uuid.UUID,
-    *,
-    today: date,
-    tz: str = "UTC",
-) -> SpiritState:
-    """Clear ALL applied upgrades via a PAID reset (ADR-0024), unlocking every slot to be
-    bought afresh. Charges RESET_COST against the balance — raises InsufficientCoins (409)
-    when the balance can't cover it — and adds it to the monotonic `coins_spent` ledger. The
-    cleared cosmetics' cost stays SUNK in the ledger (no refund) — that is the whole point of
-    the committed economy.
-
-    If there are no applied cosmetics there's nothing to reset, so we raise NothingToReset
-    (409) rather than waste the fee. Serialized under the per-user advisory lock so the
-    read-compute-write of the fee is atomic.
-    """
-    _lock_user_spirit(db, user_id)
-    spirit = get_or_create_active_spirit(db, user_id)
-    if not _cosmetics(spirit):
-        raise NothingToReset(str(spirit.id))
-
-    basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    if _coin_balance(basis.level, spirit.coins_spent) < RESET_COST:
-        raise InsufficientCoins("reset-upgrades")
-
-    # Clear the applied upgrades but DO NOT refund their cost — coins_spent only grows.
-    spirit.cosmetics = {}
-    spirit.coins_spent = spirit.coins_spent + RESET_COST
-    db.commit()
-    db.refresh(spirit)
-    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
-
-
 def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -> SpiritState:
     """Retire the active spirit and awaken a fresh pathless spark — but only once it is
     radiant (the long-horizon goal). Raises NotRadiant (409) otherwise.
@@ -1132,7 +1277,7 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
     # Retire the current spirit and insert the new spark together: stamping retired_at frees
     # the partial unique slot (WHERE retired_at IS NULL), so the fresh active row is valid.
     spirit.retired_at = func.now()
-    new_spark = Spirit(user_id=user_id, path=None, cosmetics={})
+    new_spark = Spirit(user_id=user_id, path=None, cosmetics={}, unlocked=[])
     db.add(new_spark)
     try:
         db.commit()
