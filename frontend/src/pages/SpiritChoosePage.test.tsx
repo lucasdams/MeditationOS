@@ -61,6 +61,7 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     cosmetics: {},
     available: [],
     collection: [],
+    set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
     ...overrides,
   }
 }

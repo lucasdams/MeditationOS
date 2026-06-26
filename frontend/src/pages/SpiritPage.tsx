@@ -71,6 +71,32 @@ function NeedTag({ need }: { need: SpiritNeedKey }) {
   )
 }
 
+// The SIGNATURE SET status (ADR-0028) shown near the customize tree. When active, a calm badge
+// announcing "Signature radiance" (all 7 path-exclusive capstones equipped); when not, a quiet
+// progress line nudging the climb to the full set. Pathless sparks (total 0) show nothing — they
+// have no signature set yet. Calm + on-token; no shouting. Reads straight from `set_bonus`.
+function SetBonusStatus({ setBonus }: { setBonus: SpiritState['set_bonus'] }) {
+  // A pathless spark has no signatures (total 0) → nothing to show; the picker leads instead.
+  if (setBonus.total === 0) return null
+  if (setBonus.active) {
+    return (
+      <div className="spirit-setbonus spirit-setbonus--active" role="status">
+        <span className="spirit-setbonus-badge">
+          <span aria-hidden="true">✦ </span>
+          {setBonus.label}
+        </span>
+        <span className="spirit-setbonus-note">all {setBonus.total} signature pieces equipped</span>
+      </div>
+    )
+  }
+  return (
+    <p className="spirit-setbonus spirit-setbonus--progress muted">
+      {setBonus.count}/{setBonus.total} signature pieces equipped — equip your creature's exclusive
+      capstones
+    </p>
+  )
+}
+
 // The five visible states of a tree node (ADR-0027), derived purely from the option flags:
 //   equipped     — worn right now (the one shown in its slot)
 //   owned        — unlocked but not equipped → a free Equip
@@ -476,6 +502,9 @@ export default function SpiritPage() {
                 <p className="muted spirit-section-subtitle">
                   Unlock adornments along each tree, then equip your favourites.
                 </p>
+                {/* Signature set status (ADR-0028) — the active "Signature radiance" badge, or a
+                    quiet progress nudge toward equipping all 7 path-exclusive capstones. */}
+                <SetBonusStatus setBonus={spirit.set_bonus} />
               </header>
               {renderableSlots.length === 0 ? (
                 <p className="muted">
@@ -503,6 +532,9 @@ export default function SpiritPage() {
                           cosmetics={previewCosmetics}
                           reducedMotion={reducedMotion}
                           previewing={preview !== null}
+                          // ADR-0028: the "Signature radiance" flourish, driven by the committed
+                          // set status (an achievement read-out), not the transient hover preview.
+                          setRadiant={spirit.set_bonus.active}
                         />
                       </div>
                       {preview && <span className="spirit-preview-badge">Preview</span>}

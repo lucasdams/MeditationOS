@@ -2730,6 +2730,40 @@ textarea:focus-visible,
   color: var(--text-secondary);
 }
 
+/* --- Signature set status (ADR-0028) ----------------------------------------------------- */
+/* Shown near the customize tree. Calm + on-token, dark-default friendly: an accent-tinted badge
+   when the full signature set is equipped ("Signature radiance"), or a quiet muted progress line
+   nudging the climb. Never a shouty banner — an endgame achievement read-out. */
+.spirit-setbonus {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+}
+
+.spirit-setbonus--progress {
+  color: var(--text-secondary);
+}
+
+/* Active: a soft pill carrying the bonus name + a one-line confirmation, tinted to the accent. */
+.spirit-setbonus--active {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-subtle);
+}
+
+.spirit-setbonus-badge {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.spirit-setbonus-note {
+  color: var(--text-secondary);
+}
+
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
 /* The "3 starter choices" — three calm cards, each with its own dosha accent hue. An invitation,
    not a sale: soft surfaces, one clear choose button each. */
@@ -3150,6 +3184,30 @@ textarea:focus-visible,
   }
 }
 
+/* The SIGNATURE RADIANCE layer (ADR-0028): when the full signature set is equipped, an extra
+   halo + sparkle ring sits behind the figure. When alive it shimmers gently on its OWN slow
+   period (5.4s — distinct from the aura's 4.6s glow and the creature's 5s float), a soft
+   opacity/brightness swell so the radiance breathes. Held static under reduced motion (the guard
+   below). Subtle by design — an endgame touch, never a loud overlay. */
+.spirit-radiance--alive {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-radiance-shimmer 5.4s ease-in-out infinite;
+  will-change: opacity, filter;
+}
+
+@keyframes spirit-radiance-shimmer {
+  0%,
+  100% {
+    opacity: calc(0.8 + 0.05 * var(--spirit-glow));
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(calc(1 + 0.18 * var(--spirit-glow)));
+  }
+}
+
 /* Pacer mode (BreathePage): the creature's inline transform (driven by the breathe-circle's
    `scaleAt` clock) IS the motion, so no idle keyframes run here. A soft transition smooths the
    per-frame scale steps without adding a second, drifting clock. The background stays static. */
@@ -3176,7 +3234,8 @@ textarea:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .spirit-creature--alive,
   .spirit-aura--alive,
-  .spirit-companion--alive {
+  .spirit-companion--alive,
+  .spirit-radiance--alive {
     animation: none;
     opacity: 1;
     filter: none;

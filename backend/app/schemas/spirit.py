@@ -122,6 +122,26 @@ class SpiritAvailableSlot(BaseModel):
     options: list[SpiritSlotOption]
 
 
+class SpiritSetBonus(BaseModel):
+    """The active spirit's SIGNATURE SET status (ADR-0028) — the endgame achievement of equipping
+    every slot's path-exclusive capstone at once. Fully DERIVED from the equipped cosmetics + the
+    chosen path (no stored column, no migration); visual/advisory ONLY, like the needs it lifts.
+
+    - `active` — the full set is equipped (all `total` signature slots wearing their signature),
+      which grants "Signature radiance": a gentle harmony lift to every need (the ADR-0023/0025/0026
+      advisory pattern; never touches stage/level/coins/cosmetics).
+    - `kind` — `"signature"` when active, else null (room for future set kinds).
+    - `count` / `total` — progress: how many of the `total` signature slots are equipped with their
+      signature option. `total` is 7 for a chosen creature; a pathless spark reports `(0, 0)`.
+    - `label` — the user-facing name of the bonus ("Signature radiance")."""
+
+    active: bool  # the full signature set is equipped → the harmony lift is on
+    kind: str | None  # "signature" when active, else null
+    count: int  # signature slots currently equipped with their signature option
+    total: int  # signature slots that exist for the chosen path (7 chosen; 0 pathless)
+    label: str  # the user-facing bonus name ("Signature radiance")
+
+
 class RetiredSpirit(BaseModel):
     """A past spirit in the collection — a radiant companion retired when its successor was
     awakened. Kept forever (the long-term replay loop). Cosmetic read-out only."""
@@ -149,6 +169,7 @@ class SpiritState(BaseModel):
     cosmetics: dict[str, str]  # the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
     available: list[SpiritAvailableSlot]  # the cosmetics skill tree with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever
+    set_bonus: SpiritSetBonus  # signature-set status + harmony lift (ADR-0028); derived/visual-only
 
 
 class OptionPreview(BaseModel):

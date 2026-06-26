@@ -44,6 +44,7 @@ from app.services.spirit_service import (
     PASSIVE_NEED_CAP,
     PASSIVE_PER_ITEM,
     RESET_COST,
+    SET_HARMONY,
     SPIRIT_COSMETICS_CATALOG,
     stage_for_level,
 )
@@ -1889,3 +1890,160 @@ def test_preview_universal_options_are_not_exclusive(client):
                     assert opt["cost"] == spec["cost"]
                     assert opt["unlock_level"] == spec["unlock_level"]
                     assert opt["need"] == spec["need"]
+
+
+# --- ADR-0028: signature SET BONUS --------------------------------------------------------
+
+
+def _full_signature_loadout(path):
+    """Every slot equipped with `path`'s signature (path-exclusive tier-3 capstone) option — the
+    COMPLETE signature set. Built straight from the catalog via the service helper."""
+    return {
+        slot: spirit_service._signature_option(slot, path)
+        for slot in SPIRIT_COSMETICS_CATALOG
+    }
+
+
+def test_signature_option_is_the_path_exclusive_capstone_per_slot():
+    """`_signature_option(slot, path)` returns the slot's path-exclusive option for that path, and
+    None for a pathless spark. Every slot has exactly one signature for a chosen path."""
+    for path in ("stillness", "breath", "heart"):
+        for slot in SPIRIT_COSMETICS_CATALOG:
+            sig = spirit_service._signature_option(slot, path)
+            assert sig is not None
+            assert SPIRIT_COSMETICS_CATALOG[slot][sig].get("per_path") == path
+        # A pathless spark has no signature in any slot.
+        assert spirit_service._signature_option(slot, None) is None
+
+
+def test_incomplete_set_is_inactive_and_does_not_lift_needs(db_session):
+    """A 6/7 signature loadout → the set is INACTIVE (count 6, total 7) and the needs get NO set
+    harmony lift (identical to the same spirit without the set)."""
+    user = _make_user(db_session, "set_incomplete@example.com")
+    today, _ = _recent_days(3)
+    full = _full_signature_loadout("stillness")
+    # Break ONE slot back to a universal option → 6/7, set incomplete.
+    six_of_seven = dict(full)
+    six_of_seven["aura"] = "soft"  # universal, NOT the stillness signature ("grove")
+
+    status = spirit_service._signature_set_bonus(six_of_seven, "stillness")
+    assert status.active is False
+    assert status.kind is None
+    assert status.count == 6
+    assert status.total == 7
+
+    # The needs read with set_bonus_active=False matches the same cosmetics with no set lift —
+    # i.e. an incomplete set adds nothing beyond the (unchanged) passive item lifts.
+    incomplete = _needs(
+        db_session, "stillness", user.id, today=today, cosmetics=six_of_seven
+    )
+    no_set = spirit_service.needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=today,
+        tz="UTC",
+        cosmetics=six_of_seven,
+        set_bonus_active=False,
+    )
+    for need in ("nourished", "rested", "joyful"):
+        assert getattr(incomplete, need).factor == getattr(no_set, need).factor
+
+
+def test_complete_set_is_active_with_kind_signature():
+    """A full 7/7 signature loadout → the set bonus is ACTIVE, kind 'signature', count == total."""
+    full = _full_signature_loadout("breath")
+    status = spirit_service._signature_set_bonus(full, "breath")
+    assert status.active is True
+    assert status.kind == "signature"
+    assert status.count == 7
+    assert status.total == 7
+    assert status.label == "Signature radiance"
+
+
+def test_complete_set_lifts_every_need_by_the_harmony(db_session):
+    """With the full signature set, EACH need's factor is higher than the same spirit (same
+    cosmetics) WITHOUT the set — the gentle SET_HARMONY lift (clamped at 1.0). Compared at the
+    no-practice floor base, which leaves ample headroom for the lift to be strictly visible."""
+    user = _make_user(db_session, "set_lift@example.com")
+    full = _full_signature_loadout("stillness")
+
+    without_set = spirit_service.needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=date.today(),
+        tz="UTC",
+        cosmetics=full,
+        set_bonus_active=False,
+    )
+    with_set = spirit_service.needs(
+        db_session,
+        "stillness",
+        user.id,
+        today=date.today(),
+        tz="UTC",
+        cosmetics=full,
+        set_bonus_active=True,
+    )
+    for need in ("nourished", "rested", "joyful"):
+        base = getattr(without_set, need).factor
+        lifted = getattr(with_set, need).factor
+        assert lifted == min(1.0, base + SET_HARMONY)
+        assert lifted > base  # the floor base leaves room → the harmony strictly lifts each need
+
+
+def test_universal_option_in_a_slot_does_not_count_toward_the_set():
+    """A UNIVERSAL (non-signature) option equipped in a slot does NOT count toward the set — only
+    the path-exclusive signature option does."""
+    # All slots signature EXCEPT one universal tier-3 option (aurora) in the aura slot.
+    full = _full_signature_loadout("stillness")
+    mixed = dict(full)
+    mixed["aura"] = "aurora"  # universal tier-3, not the stillness signature
+    status = spirit_service._signature_set_bonus(mixed, "stillness")
+    assert status.active is False
+    assert status.count == 6  # the aura slot's universal option doesn't count
+    assert status.total == 7
+
+
+def test_pathless_spark_has_no_set(db_session):
+    """A pathless spark → no signature set: count 0, total 0, never active (and the needs read with
+    no path gets neutral defaults regardless)."""
+    status = spirit_service._signature_set_bonus({}, None)
+    assert status.active is False
+    assert status.count == 0
+    assert status.total == 0
+    # Even if (defensively) equipped with another path's signatures, a pathless spirit has no set.
+    other = _full_signature_loadout("heart")
+    assert spirit_service._signature_set_bonus(other, None).count == 0
+
+
+def test_get_response_includes_set_bonus_shape(client):
+    """The GET /spirit response exposes the derived `set_bonus` block (inactive for a fresh,
+    un-decorated chosen creature)."""
+    _auth(client, "set_shape@example.com")
+    _choose(client, "stillness")
+    body = _spirit(client)
+    assert "set_bonus" in body
+    sb = body["set_bonus"]
+    assert sb["active"] is False
+    assert sb["kind"] is None
+    assert sb["count"] == 0
+    assert sb["total"] == 7
+    assert sb["label"] == "Signature radiance"
+
+
+def test_get_response_set_bonus_active_when_full_set_equipped(db_session):
+    """End-to-end through the read state: a spirit whose stored cosmetics ARE the full signature
+    set reports `set_bonus.active` true with kind 'signature' (derived — no stored flag)."""
+    user = _make_user(db_session, "set_e2e@example.com")
+    spirit = spirit_service.get_or_create_active_spirit(db_session, user.id)
+    spirit.path = "heart"
+    spirit.cosmetics = _full_signature_loadout("heart")
+    db_session.commit()
+
+    state = spirit_service.get_spirit(db_session, user.id, today=date.today(), tz="UTC")
+    assert state.set_bonus.active is True
+    assert state.set_bonus.kind == "signature"
+    assert state.set_bonus.count == 7
+    assert state.set_bonus.total == 7

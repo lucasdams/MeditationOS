@@ -60,6 +60,7 @@ from app.schemas.spirit import (
     SpiritCondition,
     SpiritNeed,
     SpiritNeeds,
+    SpiritSetBonus,
     SpiritSlotOption,
     SpiritState,
 )
@@ -302,6 +303,21 @@ PASSIVE_NEED_CAP = 0.15
 # real option gets an explicit one; see SPIRIT_COSMETICS_CATALOG and the catalog-coverage test).
 DEFAULT_ITEM_NEED = JOYFUL
 
+# --- Signature SET BONUS (ADR-0028, extends ADR-0025 / ADR-0026) --------------------------
+#
+# Each chosen creature has exactly ONE path-exclusive (tier-3) capstone per slot — its
+# SIGNATURE option for that slot. When the spirit equips ALL of them at once (every slot wearing
+# its own signature capstone — the full SIGNATURE SET), it earns "Signature radiance": a gentle,
+# advisory harmony lift to ALL THREE needs, layered on the practice-derived base alongside the
+# ADR-0025/0026 passive + buy-boost (same clamp to 1.0, same tier re-derivation). DERIVABLE from
+# the equipped cosmetics + path — no stored flag, no migration. An endgame achievement: completing
+# the set means owning + equipping all 7 path exclusives. Visual/advisory ONLY, exactly like the
+# needs it lifts (the ADR-0023 guardrail): it never touches coins/stage/level/cosmetics. Tunable
+# in-code (no migration). The label is the user-facing name of the bonus.
+SET_HARMONY = 0.08
+SET_BONUS_KIND = "signature"
+SET_BONUS_LABEL = "Signature radiance"
+
 # Minutes-based practices count a day only once its session time reaches MIN_PRACTICE_SECONDS
 # (the same floor streaks/heatmaps use), so a 1-second sit can't prop up a need.
 
@@ -528,6 +544,7 @@ def needs(
     last_pampered_at: datetime | None = None,
     last_pampered_need: str | None = None,
     cosmetics: dict[str, str] | None = None,
+    set_bonus_active: bool = False,
 ) -> SpiritNeeds:
     """The active creature's three tended needs (ADR-0023) over the rolling window. Demanding:
     each declines through the tiers when its signal is neglected and recovers only gradually.
@@ -545,10 +562,14 @@ def needs(
     - BUY-BOOST (fading): `last_pampered_at` + `last_pampered_need` add a DECAYING boost, WEIGHTED
       toward the bought item's need (PAMPER_PRIMARY) with a smaller spillover to the other two
       (PAMPER_SPILL). Legacy rows (`last_pampered_need is None`) keep the old uniform boost.
+    - SET BONUS (ADR-0028): when `set_bonus_active` (the full SIGNATURE SET is equipped — all 7
+      path-exclusive capstones), add a flat SET_HARMONY to ALL THREE needs — a gentle, advisory
+      harmony lift, an endgame reward for completing the set.
 
-    The final factor is `base + passive + buyboost`, clamped to 1.0; the tier is re-derived from
-    that final factor so tier and factor stay consistent. The bonuses are partial and capped: they
-    lift a need off the floor but can't alone reach thriving — practice stays the primary driver.
+    The final factor is `base + passive + buyboost (+ set harmony)`, clamped to 1.0; the tier is
+    re-derived from that final factor so tier and factor stay consistent. The bonuses are partial
+    and capped: they lift a need off the floor but can't alone reach thriving — practice stays the
+    primary driver.
 
     GUARDRAIL: visual/advisory only — the caller must never let any need (or its item bonuses)
     affect stage, level, coins, cosmetics, or the collection.
@@ -564,11 +585,16 @@ def needs(
     decay = _pamper_decay(last_pampered_at, today=today, tz=tz)
     has_pamper = last_pampered_at is not None
     passive = _passive_need_bonus(cosmetics or {})
+    # ADR-0028: the full signature set adds a flat harmony lift to every need (alongside passive +
+    # buy-boost; the same 1.0 clamp + tier re-derivation in `_boosted_need`).
+    set_lift = SET_HARMONY if set_bonus_active else 0.0
 
     def _bonus(need: str) -> float:
-        # Passive while-owned + the weighted fading buy-boost, summed per need.
-        return passive[need] + _buyboost_for_need(
-            need, decay, last_pampered_need, has_pamper=has_pamper
+        # Passive while-owned + the weighted fading buy-boost + the signature-set harmony lift.
+        return (
+            passive[need]
+            + _buyboost_for_need(need, decay, last_pampered_need, has_pamper=has_pamper)
+            + set_lift
         )
 
     # nourished — the signature-practice care days.
@@ -847,6 +873,57 @@ def _option_per_path(slot: str, option: str) -> str | None:
     chosen creature; an absent key means every path may use it. Unknown slot/option → None."""
     per_path = SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("per_path")
     return str(per_path) if per_path is not None else None
+
+
+def _signature_option(slot: str, path: str | None) -> str | None:
+    """The SIGNATURE option for `slot` and chosen `path` (ADR-0028) = the slot's option whose
+    `per_path == path` — its path-exclusive tier-3 capstone. There is exactly one per slot for a
+    chosen path (a catalog invariant; the set-coverage test guards it), so the first match is the
+    signature. None for a pathless spark (no creature → no signature) or an unknown slot."""
+    if path is None or path not in _CHOOSABLE_PATHS:
+        return None
+    for option in SPIRIT_COSMETICS_CATALOG.get(slot, {}):
+        if _option_per_path(slot, option) == path:
+            return option
+    return None
+
+
+def _signature_set_status(cosmetics: dict[str, str], path: str | None) -> tuple[int, int]:
+    """Progress toward the SIGNATURE SET (ADR-0028) as `(owned, total)`:
+
+    - `total` = the number of slots that have a signature option for the chosen `path` (7 for a
+      chosen creature, given the per-slot-per-path catalog invariant);
+    - `owned` = how many of those slots are currently EQUIPPED with their signature option
+      (`cosmetics[slot] == signature(slot)`).
+
+    A pathless spark has no signatures → `(0, 0)`. Pure function of the equipped loadout + path;
+    no DB, no stored flag — fully derivable (no migration)."""
+    total = 0
+    owned = 0
+    for slot in SPIRIT_COSMETICS_CATALOG:
+        signature = _signature_option(slot, path)
+        if signature is None:
+            continue
+        total += 1
+        if cosmetics.get(slot) == signature:
+            owned += 1
+    return owned, total
+
+
+def _signature_set_bonus(cosmetics: dict[str, str], path: str | None) -> SpiritSetBonus:
+    """The SIGNATURE SET BONUS read-out (ADR-0028). The set is COMPLETE — and the bonus ACTIVE —
+    when every slot that has a signature option for the chosen `path` is equipped with it (owned
+    == total, and total > 0). When active, the needs read adds SET_HARMONY to all three needs'
+    factors (see `needs(...)`). Derivable from the equipped cosmetics + path; never stored."""
+    owned, total = _signature_set_status(cosmetics, path)
+    active = total > 0 and owned == total
+    return SpiritSetBonus(
+        active=active,
+        kind=SET_BONUS_KIND if active else None,
+        count=owned,
+        total=total,
+        label=SET_BONUS_LABEL,
+    )
 
 
 def _option_need(slot: str, option: str) -> str:
@@ -1129,6 +1206,10 @@ def _build_state(
     # ADR-0024: the balance comes from the STORED spend ledger, not the applied cosmetics.
     coins = _coin_balance(level, spirit.coins_spent)
 
+    # ADR-0028: the signature-set bonus is fully DERIVED from the equipped cosmetics + path (no
+    # stored flag). When the full set is equipped, the needs read gets a gentle harmony lift.
+    set_bonus = _signature_set_bonus(cosmetics, spirit.path)
+
     # GUARDRAIL (ADR-0023): the three needs (and the overall condition derived from them) are
     # visual-only — they are NOT read by stage/coins above, so a neglected creature never loses
     # progress. Derived from the chosen creature's signature practice / rhythm / variety; a
@@ -1146,6 +1227,8 @@ def _build_state(
         last_pampered_at=spirit.last_pampered_at,
         last_pampered_need=spirit.last_pampered_need,
         cosmetics=cosmetics,
+        # ADR-0028: completing the full signature set adds a gentle harmony lift to every need.
+        set_bonus_active=set_bonus.active,
     )
 
     return SpiritState(
@@ -1169,6 +1252,8 @@ def _build_state(
         cosmetics=cosmetics,
         available=_available_slots(cosmetics, owned, coins, level, spirit.path),
         collection=_collection(db, user_id),
+        # ADR-0028: the signature-set status (active + progress count) — visual/advisory only.
+        set_bonus=set_bonus,
     )
 
 

@@ -86,6 +86,9 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     cosmetics: { aura: 'warm' },
     available: [auraTree],
     collection: [],
+    // Default to no signature set (total 0 → the status renders nothing) so unrelated tests are
+    // unaffected; the ADR-0028 set-bonus tests below override this explicitly.
+    set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
     ...overrides,
   }
 }
@@ -512,6 +515,61 @@ describe('SpiritPage dosha picker (pathless spark)', () => {
     await screen.findByText('Customize')
 
     expect(screen.queryByText('Choose your creature')).toBeNull()
+  })
+})
+
+// --- ADR-0028: signature set bonus --------------------------------------------------------
+
+describe('SpiritPage signature set bonus (ADR-0028)', () => {
+  beforeEach(() => {
+    get.mockReset()
+  })
+
+  it('shows a quiet progress line when the signature set is incomplete', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        set_bonus: {
+          active: false,
+          kind: null,
+          count: 3,
+          total: 7,
+          label: 'Signature radiance',
+        },
+      }),
+    )
+
+    renderPage()
+
+    await screen.findByText('Customize')
+    // The incomplete-set nudge shows progress (3/7) and the "equip your exclusive capstones" hint,
+    // and NO active badge.
+    expect(
+      screen.getByText(/3\/7 signature pieces equipped — equip your creature's exclusive capstones/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Signature radiance')).toBeNull()
+  })
+
+  it('shows the active "Signature radiance" badge when the full set is equipped', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        set_bonus: {
+          active: true,
+          kind: 'signature',
+          count: 7,
+          total: 7,
+          label: 'Signature radiance',
+        },
+      }),
+    )
+
+    renderPage()
+
+    await screen.findByText('Customize')
+    // The active badge names the bonus and confirms all 7 pieces are equipped.
+    expect(screen.getByText('Signature radiance')).toBeInTheDocument()
+    expect(screen.getByText(/all 7 signature pieces equipped/)).toBeInTheDocument()
+    // No progress nudge while complete.
+    expect(screen.queryByText(/signature pieces equipped — equip/)).toBeNull()
   })
 })
 

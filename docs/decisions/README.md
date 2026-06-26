@@ -33,3 +33,4 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0025](0025-buying-pampers-the-spirit.md) | Buying an upgrade pampers the spirit — a decaying, capped needs boost (visual-only) | Accepted |
 | [0026](0026-per-item-need-affinities.md) | Per-item need affinities — each item favours one need (passive while-owned lift + weighted fading buy-boost) | Accepted |
 | [0027](0027-spirit-upgrade-skill-tree.md) | Spirit upgrades as a skill tree — unlock-to-own, free equip, prerequisite tiers (supersedes 0024's locked upgrades + paid reset) | Accepted |
+| [0028](0028-spirit-set-bonuses.md) | Spirit signature set bonuses — full path-exclusive set grants a derived, advisory "Signature radiance" needs lift + flourish (no migration) | Accepted |
