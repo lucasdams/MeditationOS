@@ -561,8 +561,11 @@ def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
 # cost would still misprice the catalog — so never delete or rename an owned key; only add new
 # slots/options, and only re-tune costs of options nobody owns. Test
 # `test_owned_options_all_price_above_zero` guards against an owned key being dropped.
-SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
-    # {slot: {option: {"cost": int, "unlock_level": int}}}
+SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
+    # {slot: {option: {"cost": int, "unlock_level": int, "per_path"?: str}}}
+    # An OPTIONAL `per_path` restricts an option to a single chosen creature (dosha): the option
+    # is then bought/seen only by that path (absent → universal, available to all). See the
+    # path-exclusive companions below for the only current use.
     # A soft surrounding glow — the gentlest touch, available from the start.
     "aura": {
         "soft": {"cost": 30, "unlock_level": 1},
@@ -590,11 +593,17 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int]]] = {
         "seaside": {"cost": 70, "unlock_level": 3},
         "cottage": {"cost": 90, "unlock_level": 7},
     },
-    # A small friend that keeps the spirit company (the "companion").
+    # A small friend that keeps the spirit company (the "companion"). firefly/bird/cat are
+    # universal; the three PATH-EXCLUSIVE companions carry a `per_path` key so only the matching
+    # creature can buy (and see) them — the nine-tail kitsune for the fiery Pitta (breath), the
+    # jade tortoise for the grounded Kapha (stillness), the paper crane for the airy Vata (heart).
     "companion": {
         "firefly": {"cost": 100, "unlock_level": 1},
         "bird": {"cost": 160, "unlock_level": 3},
         "cat": {"cost": 240, "unlock_level": 7},
+        "kitsune": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
+        "tortoise": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
+        "crane": {"cost": 220, "unlock_level": 6, "per_path": HEART},
     },
     # A serene thing the spirit floats on / rides — the calm take on a "mount".
     "mount": {
@@ -612,7 +621,15 @@ def _option_cost(slot: str, option: str) -> int:
 
 def _option_unlock_level(slot: str, option: str) -> int:
     """The level an option unlocks at (1 = always available; unknown → 1)."""
-    return SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("unlock_level", 1)
+    return int(SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("unlock_level", 1))
+
+
+def _option_per_path(slot: str, option: str) -> str | None:
+    """The path an option is EXCLUSIVE to, or None when it's universal (the common case). A
+    `per_path` option (e.g. a path-exclusive companion) can only be seen/bought by the matching
+    chosen creature; an absent key means every path may use it. Unknown slot/option → None."""
+    per_path = SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("per_path")
+    return str(per_path) if per_path is not None else None
 
 
 def _cosmetics(spirit: Spirit) -> dict[str, str]:
@@ -625,7 +642,7 @@ def _cosmetics(spirit: Spirit) -> dict[str, str]:
 
 
 def _available_slots(
-    cosmetics: dict[str, str], balance: int, level: int
+    cosmetics: dict[str, str], balance: int, level: int, path: str | None
 ) -> list[SpiritAvailableSlot]:
     """The cosmetics catalog with per-option state — the same calm "personalize" shape the
     Spirit personalize panel uses: each option's cost plus unlocked / affordable / applied hints.
@@ -634,6 +651,11 @@ def _available_slots(
     upgrades are reset — so the slot exposes a `locked` flag for the UI to disable it.
     `affordable` is the FULL option cost against the balance (no swap/net math anymore), since
     a slot is applied once and then locked rather than swapped.
+
+    `available` reflects per-path exclusivity: a universal option (no `per_path`) is available to
+    every creature; a path-exclusive option is available only to the matching chosen `path` (and
+    to nobody while pathless). The frontend filters out the unavailable ones so a creature never
+    sees another path's exclusive companion.
     """
     out: list[SpiritAvailableSlot] = []
     for slot, options in SPIRIT_COSMETICS_CATALOG.items():
@@ -641,16 +663,20 @@ def _available_slots(
         locked = applied is not None
         opts: list[SpiritSlotOption] = []
         for option, spec in options.items():
-            unlock_level = spec["unlock_level"]
+            unlock_level = int(spec["unlock_level"])
+            cost = int(spec["cost"])
             unlocked = level >= unlock_level
+            per_path = _option_per_path(slot, option)
+            available = per_path is None or per_path == path
             opts.append(
                 SpiritSlotOption(
                     option=option,
-                    cost=spec["cost"],
+                    cost=cost,
                     unlocked=unlocked,
                     unlock_hint=None if unlocked else f"Reach level {unlock_level}",
-                    affordable=balance >= spec["cost"],
+                    affordable=balance >= cost,
                     applied=applied == option,
+                    available=available,
                 )
             )
         # Order so the applied option leads (if any), then unlocked (available) options, then
@@ -772,7 +798,7 @@ def _build_state(
         condition=overall_condition(spirit_needs),
         coins=coins,
         cosmetics=cosmetics,
-        available=_available_slots(cosmetics, coins, level),
+        available=_available_slots(cosmetics, coins, level, spirit.path),
         collection=_collection(db, user_id),
     )
 
@@ -851,6 +877,14 @@ def buy_cosmetic(
     # double-spend or clobber the JSON column / ledger (last-writer-wins).
     _lock_user_spirit(db, user_id)
     spirit = get_or_create_active_spirit(db, user_id)
+
+    # A path-EXCLUSIVE option can only be bought by the matching chosen creature; for any other
+    # path (or a pathless spark) it isn't in this spirit's catalog at all, so we reject it as an
+    # unknown cosmetic (→ 404), exactly as the GET `available` shape hides it.
+    per_path = _option_per_path(data.slot, data.option)
+    if per_path is not None and per_path != spirit.path:
+        raise UnknownCosmetic(data.option)
+
     current = _cosmetics(spirit)
     # The slot is applied once, then locked — no swaps, no re-buy (ADR-0024).
     if data.slot in current:

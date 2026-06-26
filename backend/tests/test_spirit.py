@@ -1035,6 +1035,132 @@ def test_buy_cosmetic_requires_auth(client):
     )
 
 
+# --- Path-exclusive companions (per_path catalog options) -------------------------------
+#
+# Three companions are PATH-EXCLUSIVE via a `per_path` key in the catalog: kitsune → breath
+# (Pitta), tortoise → stillness (Kapha), crane → heart (Vata). Each is cost 220, unlock_level
+# 6. They appear `available` ONLY for the matching path and can only be bought by it; the
+# universal firefly/bird/cat stay available to every path.
+
+# (slot, option, path) for each path-exclusive companion + its owning creature.
+_PATH_COMPANIONS = [
+    ("companion", "kitsune", "breath"),
+    ("companion", "tortoise", "stillness"),
+    ("companion", "crane", "heart"),
+]
+
+_ALL_PATHS = ["stillness", "breath", "heart"]
+
+
+def test_path_companion_available_only_for_its_path(client):
+    """A path-exclusive companion is offered (`available: True`) only to its matching creature;
+    every other path (and the universal options) read correctly."""
+    for slot, option, owner_path in _PATH_COMPANIONS:
+        for path in _ALL_PATHS:
+            email = f"avail_{option}_{path}@example.com"
+            _auth(client, email)
+            assert _choose(client, path).status_code == 200
+            opt = _option_state(_spirit(client), slot, option)
+            assert opt is not None, f"{option} missing from the {path} catalog"
+            assert opt["available"] is (path == owner_path)
+
+
+def test_universal_companions_available_to_every_path(client):
+    """The universal firefly/bird/cat carry no `per_path`, so they stay `available` for all
+    three creatures (and a path-exclusive option never hides them)."""
+    for path in _ALL_PATHS:
+        _auth(client, f"univ_companion_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        body = _spirit(client)
+        for option in ("firefly", "bird", "cat"):
+            opt = _option_state(body, "companion", option)
+            assert opt is not None
+            assert opt["available"] is True
+
+
+def test_pathless_spark_sees_no_path_exclusive_companion(client):
+    """A pathless spark matches no path, so every path-exclusive companion is unavailable to it
+    (while the universal companions remain available)."""
+    _auth(client, "pathless_companion@example.com")
+    body = _spirit(client)  # never chose a path
+    for _slot, option, _owner in _PATH_COMPANIONS:
+        opt = _option_state(body, "companion", option)
+        assert opt is not None
+        assert opt["available"] is False
+    assert _option_state(body, "companion", "firefly")["available"] is True
+
+
+def test_buy_matching_path_companion_succeeds_and_locks_slot(client):
+    """Buying the companion that matches the chosen path applies it, charges its full cost, and
+    LOCKS the companion slot like any other purchase (ADR-0024)."""
+    for _slot, option, owner_path in _PATH_COMPANIONS:
+        email = f"buy_{option}@example.com"
+        _auth(client, email)
+        assert _choose(client, owner_path).status_code == 200
+        _earn_to_level(client, 6)  # kitsune/tortoise/crane unlock at level 6
+        before = _spirit(client)
+        coins_before = before["coins"]
+        assert coins_before >= _cost("companion", option)
+
+        res = client.post(
+            "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": option}
+        )
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["coins"] == coins_before - _cost("companion", option)
+        assert body["cosmetics"]["companion"] == option
+        assert _applied(body, "companion") == option
+        # The slot locks (no re-buy/swap), and it persists on the next GET.
+        slot_state = next(s for s in body["available"] if s["slot"] == "companion")
+        assert slot_state["locked"] is True
+        assert _spirit(client)["cosmetics"]["companion"] == option
+
+
+def test_buy_non_matching_path_companion_is_rejected_404(client):
+    """Buying a companion exclusive to a DIFFERENT path is rejected as an unknown cosmetic (404)
+    — it isn't in this creature's catalog — and nothing is applied or charged."""
+    # A Pitta (breath) spirit trying to buy the Kapha-only tortoise / Vata-only crane.
+    _auth(client, "wrongpath_companion@example.com")
+    assert _choose(client, "breath").status_code == 200
+    _earn_to_level(client, 6)  # plenty of coins + the unlock level, so neither is the gate
+    coins_before = _spirit(client)["coins"]
+
+    for option in ("tortoise", "crane"):
+        res = client.post(
+            "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": option}
+        )
+        assert res.status_code == 404, res.text
+
+    after = _spirit(client)
+    assert "companion" not in after["cosmetics"]
+    assert after["coins"] == coins_before  # no charge for the rejected buys
+
+
+def test_pathless_spark_cannot_buy_a_path_exclusive_companion_404(client):
+    """A pathless spark matches no path, so even a path-exclusive companion it could afford is a
+    404 (it isn't in its catalog)."""
+    _auth(client, "pathless_buy_companion@example.com")
+    _earn_to_level(client, 6)  # afford + unlock, but never chose a path
+    res = client.post(
+        "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": "kitsune"}
+    )
+    assert res.status_code == 404
+
+
+def test_universal_companion_still_buyable_for_any_path(client):
+    """Per-path exclusivity doesn't touch the universal companions: a creature on any path can
+    still buy firefly (the cheapest, unlock_level 1)."""
+    for path in _ALL_PATHS:
+        _auth(client, f"univ_buy_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        _earn_to_level(client, 2)  # firefly costs 100; 2 levels = 160 coins
+        res = client.post(
+            "/api/v1/spirit/cosmetics", json={"slot": "companion", "option": "firefly"}
+        )
+        assert res.status_code == 200, res.text
+        assert res.json()["cosmetics"]["companion"] == "firefly"
+
+
 # --- Name immutability + paid resets (ADR-0024) -----------------------------------------
 
 

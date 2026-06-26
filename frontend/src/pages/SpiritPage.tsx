@@ -77,6 +77,10 @@ const OPTION_LABEL: Record<string, string> = {
   firefly: 'Firefly',
   bird: 'Bird',
   cat: 'Cat',
+  // Path-exclusive companions (only offered to the matching creature, per_path in the catalog).
+  kitsune: 'Nine-tail fox',
+  tortoise: 'Jade tortoise',
+  crane: 'Paper crane',
   cloud: 'Cloud',
   lotus: 'Lotus',
   leaf: 'Leaf boat',
@@ -286,7 +290,12 @@ export default function SpiritPage() {
               )}
             </legend>
             <div className="spirit-slot-options">
-              {s.options.map((opt) => {
+              {/* Per-path exclusivity: only show options offered to this creature's path. A
+                  path-exclusive option (e.g. another dosha's companion) is filtered out entirely
+                  rather than shown disabled, so the panel stays uncluttered. */}
+              {s.options
+                .filter((opt) => opt.available)
+                .map((opt) => {
                 const applied = opt.applied
                 // ADR-0024: once any option in the slot is applied, the slot LOCKS —
                 // no other option in it can be bought until upgrades are reset.

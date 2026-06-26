@@ -101,6 +101,7 @@ class SpiritSlotOption(BaseModel):
     unlock_hint: str | None  # what's needed to unlock (None when unlocked)
     affordable: bool  # the current balance covers the FULL cost (ADR-0024: no swap math)
     applied: bool  # this option is the one currently on the spirit
+    available: bool  # offered to the spirit's chosen path (per-path exclusivity; True = universal)
 
 
 class SpiritAvailableSlot(BaseModel):

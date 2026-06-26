@@ -33,8 +33,8 @@ const auraSlot: SpiritAvailableSlot = {
   applied: null,
   locked: false,
   options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: false },
-    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: true, applied: false },
+    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true },
+    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true },
     {
       option: 'starlit',
       cost: 70,
@@ -42,6 +42,7 @@ const auraSlot: SpiritAvailableSlot = {
       unlock_hint: 'Reach level 5',
       affordable: true,
       applied: false,
+      available: true,
     },
   ],
 }
@@ -53,8 +54,8 @@ const lockedAuraSlot: SpiritAvailableSlot = {
   applied: 'soft',
   locked: true,
   options: [
-    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true },
-    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: false, applied: false },
+    { option: 'soft', cost: 30, unlocked: true, unlock_hint: null, affordable: true, applied: true, available: true },
+    { option: 'warm', cost: 45, unlocked: true, unlock_hint: null, affordable: false, applied: false, available: true },
   ],
 }
 
@@ -211,7 +212,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     applied: null,
     locked: false,
     options: [
-      { option: 'night', cost: 80, unlocked: true, unlock_hint: null, affordable: true, applied: false },
+      { option: 'night', cost: 80, unlocked: true, unlock_hint: null, affordable: true, applied: false, available: true },
     ],
   }
 

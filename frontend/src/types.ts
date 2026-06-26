@@ -298,6 +298,7 @@ export interface SpiritSlotOption {
   unlock_hint: string | null // what's needed to unlock (null when unlocked)
   affordable: boolean // the current balance covers the FULL cost (ADR-0024: no swap math)
   applied: boolean // this option is the one currently on the spirit
+  available: boolean // offered to the spirit's chosen path (per-path exclusivity; true = universal)
 }
 
 // A cosmetic axis for the active spirit: the options to mix and match. Once an option is
