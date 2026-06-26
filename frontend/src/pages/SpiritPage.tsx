@@ -269,14 +269,32 @@ export default function SpiritPage() {
           // Group by tier so each tier is its own row in the tree (low → high). The catalog's
           // tiers are 1|2|3; sort the keys ascending so the progression reads upward.
           const tiers = Array.from(new Set(visible.map((o) => o.tier))).sort((a, b) => a - b)
+          // How many of THIS slot's options the user already owns — a tiny "3/6 unlocked" read so
+          // each tree shows progress at a glance without shouting. Pure display; derived from flags.
+          const ownedCount = visible.filter((opt) => opt.owned).length
           return (
             <fieldset key={s.slot} className="spirit-slot spirit-tree">
               <legend>{slotLabel(s.slot)}</legend>
+              <p className="spirit-tree-progress muted" aria-hidden="true">
+                {ownedCount}/{visible.length} unlocked
+              </p>
+              {/* The tiers stack low → high as a climb; a continuous spine threads them so the
+                  progression reads as one tree rather than separate rows. */}
               <div className="spirit-tree-tiers">
-                {tiers.map((tier) => (
-                  <div key={tier} className="spirit-tier" data-tier={tier}>
+                {tiers.map((tier, i) => (
+                  <div
+                    key={tier}
+                    className="spirit-tier"
+                    data-tier={tier}
+                    data-tier-pos={i === 0 ? 'first' : i === tiers.length - 1 ? 'last' : 'mid'}
+                  >
                     <span className="spirit-tier-label" aria-hidden="true">
-                      Tier {tier}
+                      <span className="spirit-tier-rank">{tier}</span>
+                      <span className="spirit-tier-rank-text">
+                        {tier === tiers[tiers.length - 1] && tiers.length > 1
+                          ? 'Tier ' + tier + ' · capstone'
+                          : 'Tier ' + tier}
+                      </span>
                     </span>
                     <div className="spirit-tier-nodes">
                       {visible
@@ -403,18 +421,16 @@ export default function SpiritPage() {
         }
 
         // Split the slots across the two side rails so the spirit sits centered between them.
-        // We honour a preferred order (left: aura, accessory, mount — right: habitat, companion)
-        // but fall back to dealing any leftover/unknown slots alternately, so a changed catalog
-        // never drops a slot off the page.
-        const LEFT_SLOTS = ['aura', 'accessory', 'mount']
-        const RIGHT_SLOTS = ['habitat', 'companion']
-        const leftRail: typeof spirit.available = []
-        const rightRail: typeof spirit.available = []
-        spirit.available.forEach((s, i) => {
-          if (LEFT_SLOTS.includes(s.slot)) leftRail.push(s)
-          else if (RIGHT_SLOTS.includes(s.slot)) rightRail.push(s)
-          else (i % 2 === 0 ? leftRail : rightRail).push(s)
-        })
+        // This is COUNT-DRIVEN, not name-driven, so the layout stays balanced for ANY catalog: we
+        // only render slots that actually have visible options, then deal the first half to the
+        // left rail and the rest to the right. With an odd total the left rail takes the extra one
+        // (ceil), so e.g. 5 slots → 3 | 2 and 7 slots → 4 | 3 — never a lopsided or dropped slot.
+        const renderableSlots = spirit.available.filter(
+          (s) => s.options.some((opt) => opt.available),
+        )
+        const splitAt = Math.ceil(renderableSlots.length / 2)
+        const leftRail = renderableSlots.slice(0, splitAt)
+        const rightRail = renderableSlots.slice(splitAt)
         return (
           <>
             {/* The hero: a COMPACT status read-out (name / stage / path / bond) plus the single
@@ -461,7 +477,7 @@ export default function SpiritPage() {
                   Unlock adornments along each tree, then equip your favourites.
                 </p>
               </header>
-              {spirit.available.length === 0 ? (
+              {renderableSlots.length === 0 ? (
                 <p className="muted">
                   Keep practicing — adornments unlock as your spirit grows.
                 </p>
@@ -470,7 +486,7 @@ export default function SpiritPage() {
                 // previewing whatever side node is hovered/focused), with the cosmetic trees
                 // arranged on the LEFT and RIGHT rails around it — a calm, game-like dressing room.
                 <div className="spirit-customize">
-                  <div className="spirit-customize-rail" aria-label="Aura, accessory and mount slots">
+                  <div className="spirit-customize-rail" aria-label="Customization slots">
                     {leftRail.map(renderSlot)}
                   </div>
 
@@ -494,7 +510,7 @@ export default function SpiritPage() {
                     <p className="spirit-stage-caption">{stageCaption}</p>
                   </div>
 
-                  <div className="spirit-customize-rail" aria-label="Habitat and companion slots">
+                  <div className="spirit-customize-rail" aria-label="More customization slots">
                     {rightRail.map(renderSlot)}
                   </div>
                 </div>

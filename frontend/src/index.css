@@ -2917,10 +2917,13 @@ textarea:focus-visible,
   align-items: center;
   justify-content: space-between;
   gap: 0.4rem;
-  padding: 0.22rem 0.45rem;
-  border: 1px solid var(--card-accent);
-  border-radius: 0.55rem;
-  background: var(--bg-surface);
+  padding: 0.26rem 0.5rem;
+  /* A soft tint in the creature's hue + a left accent edge, so each signature item reads as part
+     of this creature's set rather than a plain bordered row. */
+  border: 1px solid color-mix(in srgb, var(--card-accent) 35%, var(--border));
+  border-left: 3px solid var(--card-accent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--card-accent) 7%, var(--bg-surface));
 }
 
 .spirit-choose-grows-name {
@@ -2977,17 +2980,34 @@ textarea:focus-visible,
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.22rem 0.5rem;
+  padding: 0.26rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--bg-surface);
   font-size: 0.74rem;
 }
 
-/* The path's signature capstone — its exclusive tier-3 unlock, accented in the creature's hue. */
+/* A faint tier ramp so the read-only preview still reads as a climb: tier 1 plain, tier 3 a touch
+   warmer/accented. Subtle — this is a calm preview, not the interactive tree. */
+.spirit-choose-tree-option[data-tier='2'] {
+  border-color: color-mix(in srgb, var(--card-accent) 30%, var(--border));
+}
+.spirit-choose-tree-option[data-tier='3'] {
+  border-color: color-mix(in srgb, var(--card-accent) 55%, var(--border));
+}
+
+/* The path's signature capstone — its exclusive tier-3 unlock, accented in the creature's hue with
+   a soft wash + a small leading star so it clearly reads as the prize of the climb. */
 .spirit-choose-tree-option--capstone {
   border-color: var(--card-accent);
   border-width: 1.5px;
+  background: color-mix(in srgb, var(--card-accent) 10%, var(--bg-surface));
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--card-accent) 22%, transparent);
+}
+
+.spirit-choose-tree-option--capstone .spirit-choose-tree-option-name::before {
+  content: '★ ';
+  color: var(--card-accent);
 }
 
 .spirit-choose-tree-option-name {
@@ -2996,7 +3016,7 @@ textarea:focus-visible,
 }
 
 .spirit-choose-tree-capstone-tag {
-  padding: 0.02rem 0.36rem;
+  padding: 0.04rem 0.4rem;
   border-radius: 999px;
   background: var(--card-accent);
   color: #fff;
@@ -3409,59 +3429,121 @@ textarea:focus-visible,
 /* --- Skill tree (ADR-0027) ---------------------------------------------------------------- */
 /* Each cosmetic slot is a small per-slot skill tree: its options laid out by tier (1 → 2 → 3) as
    a climb, so reaching the tier-3 capstone reads as a progression. A `.spirit-tree` reuses the
-   `.spirit-slot` fieldset frame (border + legend); the tiers stack as connected rows. */
+   `.spirit-slot` fieldset frame (border + legend); the tiers stack as connected rows, threaded by
+   a continuous spine so the climb reads as one tree rather than separate rows. */
+
+/* A tiny "owned/total" progress read under the legend — quiet, so each tree shows progress at a
+   glance without shouting (calm UX). */
+.spirit-tree-progress {
+  margin: -0.15rem 0 0.55rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
 .spirit-tree-tiers {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.6rem;
 }
 
-/* One tier row in the tree. A thin connector line above each tier past the first hints at the
-   climb upward (tier 1 → 2 → 3), without drawing a heavy diagram. */
+/* One tier row in the tree. The rank badge sits on a vertical SPINE (a left rail) that threads the
+   whole climb tier 1 → 2 → 3, so the progression reads as connected rather than as loose rows. The
+   spine is drawn behind the rank badges via a left padding + an absolute line. */
 .spirit-tier {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  column-gap: 0.55rem;
+  row-gap: 0.3rem;
   position: relative;
 }
 
-.spirit-tier + .spirit-tier {
-  padding-top: 0.55rem;
-}
-
-.spirit-tier + .spirit-tier::before {
+/* The spine segment behind each tier's rank badge. It runs the full row height and overshoots into
+   the gap above/below so adjacent segments visually join into one continuous line. The first tier
+   has no segment above its badge, the last none below. */
+.spirit-tier::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0.9rem;
-  width: 1.5px;
-  height: 0.55rem;
-  background: color-mix(in srgb, var(--slot-accent) 45%, transparent);
+  top: -0.6rem;
+  bottom: -0.6rem;
+  /* center under the 1.4rem rank badge in the first grid column */
+  left: 0.7rem;
+  width: 2px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--slot-accent) 32%, transparent);
 }
 
+.spirit-tier[data-tier-pos='first']::before {
+  top: 0.7rem;
+}
+
+.spirit-tier[data-tier-pos='last']::before {
+  bottom: calc(100% - 0.7rem);
+}
+
+/* The tier label: a numbered rank badge on the spine + its caption. The badge sits above the line
+   so the spine appears to thread through each rank. */
 .spirit-tier-label {
-  font-size: 0.62rem;
+  grid-column: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.spirit-tier-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--slot-accent);
+  background: var(--bg-surface);
+  color: var(--slot-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.spirit-tier-rank-text {
+  /* The "Tier N" caption only shows on the row that owns the nodes; keep it out of the spine
+     column on narrow widths by collapsing to the rank badge alone. */
+  font-size: 0.58rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
+  text-align: center;
+  max-width: 4.2rem;
 }
 
 .spirit-tier-nodes {
+  grid-column: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
-/* A tree node — one cosmetic option, with its label + need tag and a state-driven control. */
+/* A tree node — one cosmetic option, with its label + need tag and a state-driven control. The
+   left edge carries a 3px state stripe (set per-state below) so the five states are legible at a
+   glance even before reading the control. */
 .spirit-node {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  padding: 0.45rem 0.6rem;
+  padding: 0.5rem 0.65rem 0.5rem 0.7rem;
   border: 1.5px solid var(--border);
+  border-left-width: 3px;
+  border-left-color: var(--border);
   border-radius: 0.7rem;
   background: var(--bg-surface);
+  transition: border-color 0.14s ease, background 0.14s ease;
 }
 
 .spirit-node-head {
@@ -3475,6 +3557,7 @@ textarea:focus-visible,
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
+  line-height: 1.25;
 }
 
 .spirit-node-controls {
@@ -3485,13 +3568,16 @@ textarea:focus-visible,
 }
 
 /* The per-node action buttons (Equip / Unlock). Reset the leaked `button { margin-top: 1rem }`
-   so the node owns its own spacing. */
+   so the node owns its own spacing. `min-height` keeps the tap target ≥ the 44px guideline on
+   touch (the chip is centered so the visible pill stays compact). */
 .spirit-node-btn {
   margin-top: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
-  padding: 0.32rem 0.7rem;
+  min-height: 2rem;
+  padding: 0.34rem 0.8rem;
   border-radius: 999px;
   border: 1.5px solid var(--slot-accent);
   font-size: 0.78rem;
@@ -3510,10 +3596,12 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
-/* Equip is the free, secondary action — a quiet outlined chip. */
+/* Equip is the free, secondary action — a quiet outlined chip in the positive (owned) hue, so it
+   reads as "already yours, just wear it" and never competes with the paid Unlock. */
 .spirit-node-equip {
   background: var(--bg-surface);
-  color: var(--slot-accent);
+  border-color: var(--success-text);
+  color: var(--success-text);
 }
 
 /* Unlock is the paid, primary action — a filled accent chip so the spend reads as the goal. */
@@ -3523,10 +3611,17 @@ textarea:focus-visible,
   color: #fff;
 }
 
+/* The cost chip inside an Unlock button — a faint pill around the coin + amount so the spend reads
+   as a distinct unit, not loose text. On the filled Unlock it sits on a translucent white wash. */
 .spirit-node-cost {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 22%, transparent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }
 
 .spirit-node-cost svg {
@@ -3534,19 +3629,39 @@ textarea:focus-visible,
   height: 0.85em;
 }
 
-/* Equipped (worn now) — a clear badge in the accent, plus a quiet free "Remove". */
+/* --- Per-state left stripe + accents (instant legibility of the five states) ----------------
+   The 3px left edge is colored per state; combined with the control idiom this makes equipped /
+   owned / unlockable / unaffordable / locked readable at a glance. */
+
+/* Owned (free Equip available) — a calm positive green stripe (theme-aware success hue). */
+.spirit-node--owned {
+  border-left-color: var(--success-text);
+}
+
+/* Unlockable + affordable — the slot accent stripe, the "ready to unlock" cue. */
+.spirit-node--unlockable {
+  border-left-color: var(--slot-accent);
+}
+
+/* Equipped (worn now) — a clear filled badge in the accent, accent stripe, soft accent wash, plus
+   a quiet free "Remove". Highest-contrast state, since it's the active one. */
 .spirit-node--equipped {
   border-color: var(--slot-accent);
-  background: color-mix(in srgb, var(--slot-accent) 12%, var(--bg-surface));
+  border-left-color: var(--slot-accent);
+  background: color-mix(in srgb, var(--slot-accent) 14%, var(--bg-surface));
 }
 
 .spirit-node-worn {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.78rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--slot-accent);
+  color: #fff;
+  font-size: 0.76rem;
   font-weight: 700;
-  color: var(--slot-accent);
+  letter-spacing: 0.01em;
 }
 
 .spirit-node-remove {
@@ -3572,26 +3687,58 @@ textarea:focus-visible,
   text-decoration: none;
 }
 
-/* The short coin-shortfall hint beside a disabled Unlock (unaffordable). */
-.spirit-node-hint {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+/* Unaffordable — the goal is in reach but coins are short. A warm (amber) stripe distinguishes it
+   from a hard lock; the Unlock is disabled and a coin-shortfall hint sits beside it. */
+.spirit-node--unaffordable {
+  border-left-color: var(--warning-text);
 }
 
-/* A locked node — greyed, with its reason (reach a level, or unlock a lower tier first). Dashed
-   so it reads as "not yet" rather than broken. */
+/* The short coin-shortfall hint beside a disabled Unlock (unaffordable) — a small amber chip so
+   the "earn N more" goal is clear, not just greyed text. */
+.spirit-node-hint {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning-text) 16%, transparent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--warning-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A locked node — greyed, with its reason (reach a level, or unlock a lower tier first). A dashed
+   left stripe + muted fill so it reads as "not yet" rather than broken; the body stays readable
+   (no whole-node opacity fade, which dimmed the label below comfortable contrast). */
 .spirit-node--locked {
-  border-style: dashed;
-  opacity: 0.72;
+  border-left-style: dashed;
+  border-left-color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 7%, var(--bg-surface));
+}
+
+.spirit-node--locked .spirit-node-label {
+  color: var(--text-secondary);
 }
 
 .spirit-node-locked {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   font-size: 0.74rem;
   font-weight: 600;
   color: var(--text-muted);
+}
+
+/* Honour reduced-motion: the node hover lift + the node/button colour transitions are subtle
+   polish, so drop them entirely when the OS asks for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .spirit-node,
+  .spirit-node-btn {
+    transition: none;
+  }
+  .spirit-node-btn:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* --- Customization stage (game-like dressing room) ---------------------------------------- */
@@ -3600,7 +3747,7 @@ textarea:focus-visible,
    section is allowed to grow wider than the other (reading-width) sections so the stage has room
    to breathe. Below ~760px it stacks: the stage on top, then the rails in one column. */
 .spirit-personalize {
-  max-width: 52rem;
+  max-width: 54rem;
 }
 
 .spirit-customize {
@@ -3611,17 +3758,20 @@ textarea:focus-visible,
   align-items: start;
 }
 
+/* Each rail is a responsive auto-fit GRID of slot cards (not a fixed two-column split), so the
+   layout stays balanced for ANY number of slots: a rail holding one slot shows it full-width, a
+   rail wide enough for two flows them side by side, and it never overflows. The slot's own bottom
+   margin is dropped here — the grid `gap` owns the spacing — so rows align tidily. */
 .spirit-customize-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.85rem;
+  align-content: start;
   min-width: 0;
 }
 
-/* The rail slots already carry their own bottom margin; drop the last one's so the rail bottoms
-   align tidily with the sticky stage. */
-.spirit-customize-rail .spirit-slot:last-child {
-  margin-bottom: 0;
+.spirit-customize-rail .spirit-slot {
+  margin: 0;
 }
 
 /* The centred stage — sticks to the top of the viewport so the spirit stays in view while the
@@ -3699,6 +3849,15 @@ textarea:focus-visible,
 }
 
 @media (max-width: 400px) {
+  /* Force a single slot column and let it use the full width — `minmax(13rem, 1fr)` can leave a
+     stray sliver at ~380px otherwise. */
+  .spirit-customize-rail {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+  .spirit-slot {
+    padding: 0.65rem 0.6rem 0.7rem;
+  }
   .spirit-stage-frame {
     padding: 1rem 0.75rem 0.85rem;
   }
