@@ -1019,6 +1019,62 @@ def test_catalog_is_exposed_in_get(client):
     assert body["collection"] == []
 
 
+# The cosmetic slot mechanic is generic — it iterates SPIRIT_COSMETICS_CATALOG — so the two new
+# cosmetic slots (`weather`, the drifting ambient overlay; `ground`, the foreground base strip)
+# must flow through the available catalog AND the choose preview automatically, and must honour
+# the same per-option invariants (a valid `need` + a tier) as every other slot.
+_NEW_SLOTS = {
+    "weather": {"petals", "mist", "rain", "leaffall", "snow", "fireflies"},
+    "ground": {"grass", "pebbles", "clover", "mushrooms", "wildflowers", "crystals"},
+}
+
+
+def test_new_weather_and_ground_slots_are_in_the_catalog(client):
+    """The two new universal slots and their options appear in the static catalog, each option a
+    well-formed `{cost, unlock_level, tier, need}` with a valid need + tier and no per_path."""
+    for slot, options in _NEW_SLOTS.items():
+        assert slot in SPIRIT_COSMETICS_CATALOG, f"missing new slot {slot}"
+        assert set(SPIRIT_COSMETICS_CATALOG[slot]) == options
+        for option, spec in SPIRIT_COSMETICS_CATALOG[slot].items():
+            # The generic invariants still hold for the new options.
+            assert spec["need"] in NEED_KEYS, f"{slot}.{option} has an invalid need"
+            assert spec["tier"] in (1, 2, 3), f"{slot}.{option} has an invalid tier"
+            assert spec["cost"] > 0
+            assert spec["unlock_level"] >= 1
+            # These slots are universal — no path exclusivity.
+            assert "per_path" not in spec, f"{slot}.{option} should be universal"
+
+
+def test_new_slots_flow_through_available_catalog(client):
+    """The GET `available` skill-tree (which iterates the catalog) surfaces both new slots with
+    every option, each carrying the same shape (need + tier) as the existing slots."""
+    _auth(client, "new_slots_available@example.com")
+    body = _spirit(client)
+    by_slot = {s["slot"]: s for s in body["available"]}
+    for slot, options in _NEW_SLOTS.items():
+        assert slot in by_slot, f"available is missing the new {slot} slot"
+        opts = {o["option"]: o for o in by_slot[slot]["options"]}
+        assert set(opts) == options
+        for option, o in opts.items():
+            assert o["need"] == SPIRIT_COSMETICS_CATALOG[slot][option]["need"]
+            assert o["tier"] == SPIRIT_COSMETICS_CATALOG[slot][option]["tier"]
+
+
+def test_new_slots_flow_through_choose_preview(client):
+    """The read-only choose-page preview (also catalog-driven) lists both new slots for every
+    path, with all options tier-ordered — the universal slots grow into the same tree per path."""
+    _auth(client, "new_slots_preview@example.com")
+    body = client.get("/api/v1/spirit/preview").json()
+    for path in _ALL_PATHS:
+        by_slot = {s["slot"]: s for s in body[path]}
+        for slot, options in _NEW_SLOTS.items():
+            assert slot in by_slot, f"{path} preview missing the new {slot} slot"
+            opts = {o["option"] for o in by_slot[slot]["options"]}
+            assert opts == options
+            tiers = [o["tier"] for o in by_slot[slot]["options"]]
+            assert tiers == sorted(tiers), f"{path}/{slot} options not tier-ordered"
+
+
 def test_available_options_unlockable_before_locked(client):
     """The Personalize panel orders each slot's options so currently-UNLOCKABLE ones lead and
     level/tier-locked ones trail (ADR-0027; ties broken by tier then cost). For a fresh level-1

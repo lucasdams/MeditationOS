@@ -152,6 +152,8 @@ export const SLOT_LABEL: Record<string, string> = {
   habitat: 'Habitat',
   companion: 'Companion',
   mount: 'Mount',
+  weather: 'Weather',
+  ground: 'Ground',
 }
 
 export const OPTION_LABEL: Record<string, string> = {
@@ -213,6 +215,20 @@ export const OPTION_LABEL: Record<string, string> = {
   mossy_stump: 'Mossy stump',
   reed_raft: 'Reed raft',
   crystal: 'Floating crystal',
+  // Weather — an ambient drifting overlay across the scene.
+  petals: 'Drifting petals',
+  mist: 'Soft mist',
+  rain: 'Gentle rain',
+  leaffall: 'Falling leaves',
+  snow: 'Falling snow',
+  fireflies: 'Drifting fireflies',
+  // Ground — a foreground base strip along the very bottom.
+  grass: 'Grassy ground',
+  pebbles: 'Pebble bed',
+  clover: 'Clover patch',
+  mushrooms: 'Toadstools',
+  wildflowers: 'Wildflower bed',
+  crystals: 'Crystal cluster',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -1975,6 +1991,259 @@ function Mount({ mount, g }: { mount: string; g: number }) {
   return null
 }
 
+function Weather({ weather, g }: { weather: string; g: number }) {
+  // An ambient overlay drifting OVER the whole 80×80 scene — the FRONT-MOST layer (drawn after
+  // the creature + accessory). Kept light and low-opacity so the figure always reads through it:
+  // a scatter of small particles across the field, never a solid sheet. Procedural like the rest
+  // of the art (anchored coords, condition factor `g`, aria-hidden, no asset imports).
+  if (weather === 'petals') {
+    // Soft pink cherry petals drifting down across the scene.
+    return (
+      <g opacity={0.85 * g} aria-hidden="true">
+        {Array.from({ length: 9 }, (_, k) => {
+          const x = 8 + ((k * 23) % 64)
+          const y = 8 + ((k * 31) % 60)
+          return (
+            <ellipse
+              key={k}
+              cx={x}
+              cy={y}
+              rx={1.8}
+              ry={1}
+              fill="#fbcfe8"
+              opacity={0.7}
+              transform={`rotate(${(k * 40) % 360} ${x} ${y})`}
+            />
+          )
+        })}
+      </g>
+    )
+  }
+  if (weather === 'mist') {
+    // A few pale horizontal wisps of mist banding softly across the scene.
+    return (
+      <g opacity={0.7 * g} aria-hidden="true">
+        {[18, 34, 50, 64].map((y, k) => (
+          <ellipse
+            key={k}
+            cx={k % 2 ? 50 : 32}
+            cy={y}
+            rx={26}
+            ry={2.6}
+            fill="#e2e8f0"
+            opacity={0.32}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (weather === 'rain') {
+    // Thin slanted rain streaks falling across the scene.
+    return (
+      <g opacity={0.8 * g} aria-hidden="true">
+        {Array.from({ length: 11 }, (_, k) => {
+          const x = 6 + ((k * 19) % 68)
+          const y = 6 + ((k * 27) % 56)
+          return (
+            <line
+              key={k}
+              x1={x}
+              y1={y}
+              x2={x - 2}
+              y2={y + 5}
+              stroke="#93c5fd"
+              strokeWidth={0.8}
+              strokeLinecap="round"
+              opacity={0.6}
+            />
+          )
+        })}
+      </g>
+    )
+  }
+  if (weather === 'leaffall') {
+    // Amber autumn leaves drifting down — small tapered leaf shapes scattered across the field.
+    return (
+      <g opacity={0.85 * g} aria-hidden="true">
+        {Array.from({ length: 8 }, (_, k) => {
+          const x = 9 + ((k * 25) % 62)
+          const y = 7 + ((k * 33) % 58)
+          const fill = k % 2 ? '#f59e0b' : '#fb923c'
+          return (
+            <path
+              key={k}
+              d={`M ${x} ${y} q 2 -1.6 3.4 0 q -1.4 1.6 -3.4 0 z`}
+              fill={fill}
+              opacity={0.7}
+              transform={`rotate(${(k * 55) % 360} ${x} ${y})`}
+            />
+          )
+        })}
+      </g>
+    )
+  }
+  if (weather === 'snow') {
+    // Soft white snowflakes drifting down — gentle dots of varied size across the scene.
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {Array.from({ length: 12 }, (_, k) => {
+          const x = 6 + ((k * 17) % 68)
+          const y = 6 + ((k * 29) % 60)
+          const r = 0.8 + (k % 3) * 0.4
+          return <circle key={k} cx={x} cy={y} r={r} fill="#f8fafc" opacity={0.85} />
+        })}
+      </g>
+    )
+  }
+  if (weather === 'fireflies') {
+    // Warm fireflies drifting over the scene — each a soft halo around a bright core.
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {Array.from({ length: 7 }, (_, k) => {
+          const x = 10 + ((k * 21) % 60)
+          const y = 10 + ((k * 26) % 52)
+          return (
+            <g key={k}>
+              <circle cx={x} cy={y} r={3} fill="#fde68a" opacity={0.18} />
+              <circle cx={x} cy={y} r={1.2} fill="#fef08a" opacity={0.9} />
+              <circle cx={x - 0.3} cy={y - 0.3} r={0.5} fill="#fffbeb" opacity={0.95} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  return null
+}
+
+function Ground({ ground, g }: { ground: string; g: number }) {
+  // A low FOREGROUND base strip along the very bottom edge (the "floor"). Drawn in front of the
+  // habitat/mount so it reads as the ground the figure rests on. Anchored to the bottom band
+  // (y≈72), kept short so it never climbs into the figure. Procedural, aria-hidden, no assets.
+  const top = 72
+  if (ground === 'grass') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A soft soil band, then a row of simple grass blades along the very bottom. */}
+        <rect x={2} y={top} width={76} height={6} rx={2} fill="#4ade80" opacity={0.5} />
+        {Array.from({ length: 18 }, (_, k) => (
+          <rect
+            key={k}
+            x={4 + k * 4.2}
+            y={top - 4}
+            width={1.2}
+            height={5 + (k % 3)}
+            rx={0.6}
+            fill="#22c55e"
+            opacity={0.7}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (ground === 'pebbles') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A bed of rounded pebbles in muted greys along the bottom. */}
+        <rect x={2} y={top + 1} width={76} height={5} rx={2} fill="#94a3b8" opacity={0.4} />
+        {Array.from({ length: 12 }, (_, k) => (
+          <ellipse
+            key={k}
+            cx={6 + k * 6.4}
+            cy={top + 2 + (k % 2)}
+            rx={2.4}
+            ry={1.6}
+            fill={k % 2 ? '#cbd5e1' : '#94a3b8'}
+            opacity={0.8}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (ground === 'clover') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A lush clover patch — a green band dotted with little trefoil leaves. */}
+        <rect x={2} y={top} width={76} height={6} rx={2} fill="#34d399" opacity={0.45} />
+        {Array.from({ length: 8 }, (_, k) => {
+          const x = 8 + k * 9
+          const y = top
+          return (
+            <g key={k}>
+              <circle cx={x - 1.4} cy={y} r={1.3} fill="#10b981" opacity={0.85} />
+              <circle cx={x + 1.4} cy={y} r={1.3} fill="#10b981" opacity={0.85} />
+              <circle cx={x} cy={y - 1.6} r={1.3} fill="#10b981" opacity={0.85} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  if (ground === 'mushrooms') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A mossy base with a few red-capped toadstools dotted along it. */}
+        <rect x={2} y={top + 1} width={76} height={5} rx={2} fill="#65a30d" opacity={0.4} />
+        {[12, 30, 50, 68].map((x, k) => (
+          <g key={k}>
+            <rect x={x - 1} y={top - 2} width={2} height={4} rx={1} fill="#fef3c7" opacity={0.9} />
+            <path
+              d={`M ${x - 3.4} ${top - 2} q 3.4 -3.4 6.8 0 z`}
+              fill={k % 2 ? '#ef4444' : '#dc2626'}
+              opacity={0.85}
+            />
+            <circle cx={x - 1} cy={top - 3} r={0.4} fill="#fff7ed" opacity={0.9} />
+            <circle cx={x + 1.2} cy={top - 2.4} r={0.4} fill="#fff7ed" opacity={0.9} />
+          </g>
+        ))}
+      </g>
+    )
+  }
+  if (ground === 'wildflowers') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A flowering meadow strip — a green band with little stemmed blossoms. */}
+        <rect x={2} y={top} width={76} height={6} rx={2} fill="#4ade80" opacity={0.45} />
+        {[8, 20, 32, 44, 56, 68].map((x, k) => {
+          const petal = ['#f472b6', '#fcd34d', '#a78bfa'][k % 3]
+          return (
+            <g key={k}>
+              <rect x={x - 0.4} y={top - 5} width={0.8} height={6} rx={0.4} fill="#16a34a" opacity={0.7} />
+              {[-1.6, 1.6, 0].map((dx, j) => (
+                <circle key={j} cx={x + dx} cy={top - 5 - (j === 2 ? 1.4 : 0)} r={1.1} fill={petal} opacity={0.85} />
+              ))}
+              <circle cx={x} cy={top - 5} r={0.6} fill="#fb923c" opacity={0.9} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  if (ground === 'crystals') {
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        {/* A cluster of upright crystals rising from a cool base band. */}
+        <rect x={2} y={top + 1} width={76} height={5} rx={2} fill="#67e8f9" opacity={0.35} />
+        {[10, 24, 40, 56, 70].map((x, k) => {
+          const h = 5 + (k % 3) * 2
+          const fill = k % 2 ? '#a5f3fc' : '#7dd3fc'
+          return (
+            <g key={k}>
+              <path
+                d={`M ${x} ${top - h} L ${x + 2.2} ${top + 1} L ${x - 2.2} ${top + 1} Z`}
+                fill={fill}
+                opacity={0.85}
+              />
+              <line x1={x} y1={top - h} x2={x} y2={top + 1} stroke="#e0f2fe" strokeWidth={0.4} opacity={0.7} />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  return null
+}
+
 /**
  * `stillness` — a serene seated mini-Buddha. Spark: a tiny glowing seated mote. It gains a
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
@@ -2404,6 +2673,8 @@ export function SpiritArt({
   const habitat = cosmetics?.habitat
   const companion = cosmetics?.companion
   const mount = cosmetics?.mount
+  const weather = cosmetics?.weather
+  const ground = cosmetics?.ground
   // A pathless spark has no creature label yet — describe it as an awakening spark.
   const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
   const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
@@ -2499,6 +2770,10 @@ export function SpiritArt({
       {/* The mount sits centered and low in the static background band, UNDER the creature, so
           the figure appears to rest on / ride it without floating away with it or being hidden. */}
       {mount && <Mount mount={mount} g={g} />}
+      {/* The ground is a FOREGROUND base strip along the very bottom — drawn in FRONT of the
+          habitat/mount so it reads as the floor the figure rests on (but still behind the
+          creature, which stands on it). */}
+      {ground && <Ground ground={ground} g={g} />}
       {/* ── FLOATING creature layer ── only this group moves: idle float, pacer sync, or the
           celebration one-shot. The figure is always legible; the accessory perches on top. */}
       <g ref={creatureRef} className={creatureClass} style={creatureStyle}>
@@ -2512,6 +2787,10 @@ export function SpiritArt({
         )}
         {accessory && <Accessory accessory={accessory} g={g} />}
       </g>
+      {/* The weather is the FRONT-MOST overlay — drawn after everything (incl. the accessory) so
+          its light particles drift OVER the whole scene. Kept subtle so it never obscures the
+          figure. */}
+      {weather && <Weather weather={weather} g={g} />}
     </svg>
   )
 }

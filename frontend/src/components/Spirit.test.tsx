@@ -336,6 +336,46 @@ describe('Spirit — new cosmetics render on the art', () => {
   })
 })
 
+describe('Spirit — weather + ground slots render on the art', () => {
+  // The two new cosmetic slots draw their signature element. Weather is the front-most drifting
+  // overlay; ground is a foreground base strip along the bottom. Each must reach the SVG.
+  it('draws the petals weather overlay (drifting pink petals)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { weather: 'petals' } })} />,
+    )
+    // Petals are pink ellipses (#fbcfe8).
+    expect(container.querySelector('.spirit-svg ellipse[fill="#fbcfe8"]')).not.toBeNull()
+  })
+
+  it('draws the rain weather overlay (slanted blue streaks)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { weather: 'rain' } })} />,
+    )
+    // Rain streaks are blue stroked lines (#93c5fd).
+    expect(container.querySelector('.spirit-svg line[stroke="#93c5fd"]')).not.toBeNull()
+  })
+
+  it('draws the grass ground strip (blades along the bottom)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { ground: 'grass' } })} />,
+    )
+    // Grass blades are green rects (#22c55e).
+    expect(container.querySelector('.spirit-svg rect[fill="#22c55e"]')).not.toBeNull()
+  })
+
+  it('draws the crystals ground strip (cool upright crystals)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { ground: 'crystals' } })} />,
+    )
+    // Crystals are cyan paths (#a5f3fc / #7dd3fc) rising from the base band.
+    expect(
+      container.querySelector(
+        '.spirit-svg path[fill="#a5f3fc"], .spirit-svg path[fill="#7dd3fc"]',
+      ),
+    ).not.toBeNull()
+  })
+})
+
 describe('Spirit — condition applied as a static brightness (ADR-0023)', () => {
   it('renders a brighter aura at full condition than at a depleted one', () => {
     const haloOpacity = (state: SpiritState): number => {
