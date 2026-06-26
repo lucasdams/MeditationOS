@@ -158,6 +158,9 @@ export default function SpiritChoosePage() {
       navigate('/spirit')
     } catch {
       showToast('Could not choose that creature — please try again.', 'error')
+    } finally {
+      // Clear the awakening state even on success, so the button is never left stuck
+      // mid-flight if navigation is interrupted (matches the unlock/equip handlers).
       setBusy(null)
     }
   }
