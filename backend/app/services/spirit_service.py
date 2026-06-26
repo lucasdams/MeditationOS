@@ -574,8 +574,17 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "ember": {"cost": 50, "unlock_level": 1},
         "frost": {"cost": 55, "unlock_level": 2},
         "rose": {"cost": 45, "unlock_level": 1},
+        # PATH-EXCLUSIVE auras (like the companions above): the ember flames for fiery Pitta
+        # (breath), the verdant grove for grounded Kapha (stillness), the airy zephyr for Vata
+        # (heart). Only the matching creature can buy/see each.
+        "emberflame": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
+        "grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
+        "zephyr": {"cost": 220, "unlock_level": 6, "per_path": HEART},
     },
-    # A small worn accessory.
+    # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star are universal; the three
+    # PATH-EXCLUSIVE accessories carry a `per_path` key so only the matching creature can buy (and
+    # see) them — the ember crown for the fiery Pitta (breath), the mossy stone circlet for the
+    # grounded Kapha (stillness), the feather plume for the airy Vata (heart).
     "accessory": {
         "halo": {"cost": 40, "unlock_level": 1},
         "leaf_crown": {"cost": 55, "unlock_level": 1},
@@ -583,8 +592,15 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "flower": {"cost": 40, "unlock_level": 1},
         "scarf": {"cost": 45, "unlock_level": 2},
         "star": {"cost": 60, "unlock_level": 5},
+        "ember_crown": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
+        "mossy_circlet": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
+        "feather_plume": {"cost": 220, "unlock_level": 6, "per_path": HEART},
     },
-    # A small backdrop the spirit sits in (the "habitat").
+    # A small backdrop the spirit sits in (the "habitat"). meadow/dusk/night/garden/seaside/
+    # cottage are universal; the three PATH-EXCLUSIVE backdrops carry a `per_path` key so only
+    # the matching creature can buy (and see) them — the ember canyon for the fiery Pitta
+    # (breath), the misty grove for the grounded Kapha (stillness), the open sky for the airy
+    # Vata (heart).
     "habitat": {
         "meadow": {"cost": 50, "unlock_level": 1},
         "dusk": {"cost": 65, "unlock_level": 3},
@@ -592,6 +608,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "garden": {"cost": 60, "unlock_level": 1},
         "seaside": {"cost": 70, "unlock_level": 3},
         "cottage": {"cost": 90, "unlock_level": 7},
+        "ember_canyon": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
+        "misty_grove": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
+        "open_sky": {"cost": 220, "unlock_level": 6, "per_path": HEART},
     },
     # A small friend that keeps the spirit company (the "companion"). firefly/bird/cat are
     # universal; the three PATH-EXCLUSIVE companions carry a `per_path` key so only the matching
@@ -605,11 +624,18 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "tortoise": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
         "crane": {"cost": 220, "unlock_level": 6, "per_path": HEART},
     },
-    # A serene thing the spirit floats on / rides — the calm take on a "mount".
+    # A serene thing the spirit floats on / rides — the calm take on a "mount". cloud/lotus/leaf
+    # are universal; the three PATH-EXCLUSIVE mounts carry a `per_path` key so only the matching
+    # creature can buy (and see) them — the ember sun-stone for the fiery Pitta (breath), the
+    # mossy boulder for the grounded Kapha (stillness), the breeze-borne feather for the airy
+    # Vata (heart).
     "mount": {
         "cloud": {"cost": 70, "unlock_level": 1},
         "lotus": {"cost": 90, "unlock_level": 3},
         "leaf": {"cost": 120, "unlock_level": 7},
+        "emberstone": {"cost": 220, "unlock_level": 6, "per_path": BREATH},
+        "boulder": {"cost": 220, "unlock_level": 6, "per_path": STILLNESS},
+        "feather": {"cost": 220, "unlock_level": 6, "per_path": HEART},
     },
 }
 

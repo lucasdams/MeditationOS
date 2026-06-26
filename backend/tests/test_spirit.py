@@ -1334,3 +1334,61 @@ def test_awaken_rejects_unexpected_fields(client):
 
 def test_awaken_requires_auth(client):
     assert client.post("/api/v1/spirit/awaken").status_code == 401
+
+
+# --- Path-exclusive cosmetics across the other slots (aura/accessory/habitat/mount) ----------
+#
+# The same per_path mechanic now powers path-exclusive options in every cosmetic slot — one per
+# dosha, each cost 220 / unlock_level 6. They appear `available` only for the matching path and
+# can only be bought by it.
+
+# (slot, option, owning_path) for each path-exclusive option added across the four slots.
+_PATH_SLOT_COSMETICS = [
+    ("aura", "emberflame", "breath"),
+    ("aura", "grove", "stillness"),
+    ("aura", "zephyr", "heart"),
+    ("accessory", "ember_crown", "breath"),
+    ("accessory", "mossy_circlet", "stillness"),
+    ("accessory", "feather_plume", "heart"),
+    ("habitat", "ember_canyon", "breath"),
+    ("habitat", "misty_grove", "stillness"),
+    ("habitat", "open_sky", "heart"),
+    ("mount", "emberstone", "breath"),
+    ("mount", "boulder", "stillness"),
+    ("mount", "feather", "heart"),
+]
+
+
+def test_path_slot_cosmetic_available_only_for_its_path(client):
+    """Every path-exclusive aura/accessory/habitat/mount is offered (`available: True`) only to
+    its matching dosha, and is hidden from the other two paths."""
+    for slot, option, owner_path in _PATH_SLOT_COSMETICS:
+        for path in _ALL_PATHS:
+            _auth(client, f"avail_{slot}_{option}_{path}@example.com")
+            assert _choose(client, path).status_code == 200
+            opt = _option_state(_spirit(client), slot, option)
+            assert opt is not None, f"{slot}/{option} missing from the {path} catalog"
+            assert opt["available"] is (path == owner_path)
+
+
+def test_buy_matching_path_slot_cosmetic_succeeds(client):
+    """Each path-exclusive option, bought on its matching path, applies to its slot."""
+    for slot, option, owner_path in _PATH_SLOT_COSMETICS:
+        _auth(client, f"buyslot_{slot}_{option}@example.com")
+        assert _choose(client, owner_path).status_code == 200
+        _earn_to_level(client, 6)  # unlock_level 6 + enough coins (6 × 80 = 480 > 220)
+        res = client.post("/api/v1/spirit/cosmetics", json={"slot": slot, "option": option})
+        assert res.status_code == 200, res.text
+        assert res.json()["cosmetics"][slot] == option
+
+
+def test_buy_non_matching_path_slot_cosmetic_is_rejected_404(client):
+    """A Pitta (breath) spirit cannot buy any other path's exclusive option in any slot."""
+    _auth(client, "wrongpath_slots@example.com")
+    assert _choose(client, "breath").status_code == 200
+    _earn_to_level(client, 6)  # so neither coins nor the unlock level is the gate
+    for slot, option, owner_path in _PATH_SLOT_COSMETICS:
+        if owner_path == "breath":
+            continue
+        res = client.post("/api/v1/spirit/cosmetics", json={"slot": slot, "option": option})
+        assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"

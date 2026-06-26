@@ -339,6 +339,11 @@ const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number 
   ember: { tint: '#f97316', grow: 6, strength: 2.6 },
   frost: { tint: '#7dd3fc', grow: 6, strength: 2.4 },
   rose: { tint: '#fda4af', grow: 5, strength: 2.2 },
+  // Path-exclusive auras: warm ember halo for Pitta, verdant grove for Kapha, airy zephyr for
+  // Vata. Each layers its own procedural motes/leaves/wisps over this base glow (cases below).
+  emberflame: { tint: '#ea580c', grow: 9, strength: 3.0 },
+  grove: { tint: '#10b981', grow: 9, strength: 2.8 },
+  zephyr: { tint: '#e0f2fe', grow: 9, strength: 2.6 },
 }
 
 // A soft outer aura shared by every path — its opacity carries the static daily-glow read-out.
@@ -369,6 +374,100 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
             />
           )
         })}
+      {/* PATH-EXCLUSIVE: Emberflame (Pitta) — a hot orange halo of flickering motes ringing the
+          glow, motes nearer the top (the flame rises) and sized to alternate like licking embers,
+          with cream sparks lifting just above. */}
+      {aura === 'emberflame' &&
+        Array.from({ length: 8 }, (_, k) => {
+          const a = (k / 8) * Math.PI * 2 - Math.PI / 2
+          const rise = -Math.sin(a) * 2 // motes drift upward (the flame rises)
+          return (
+            <g key={`ember-${k}`}>
+              <circle
+                cx={40 + Math.cos(a) * (r - 3)}
+                cy={40 + Math.sin(a) * (r - 3) + rise}
+                r={k % 2 ? 1.6 : 1.1}
+                fill={k % 3 ? '#fbbf24' : '#f97316'}
+                opacity={0.85 * g}
+              />
+              {k % 2 === 0 && (
+                <circle
+                  cx={40 + Math.cos(a) * (r + 1)}
+                  cy={40 + Math.sin(a) * (r + 1) - 2}
+                  r={0.7}
+                  fill="#fff7ed"
+                  opacity={0.7 * g}
+                />
+              )}
+            </g>
+          )
+        })}
+      {/* PATH-EXCLUSIVE: Grove (Kapha) — a verdant mossy halo, soft leaf buds ringing the glow as
+          little jade ellipses (tilted around the circle so each leaf points outward) over a faint
+          green moss ring. */}
+      {aura === 'grove' && (
+        <>
+          <circle cx={40} cy={40} r={r - 2} fill="none" stroke="#047857" strokeWidth={1.2} opacity={0.3 * g} />
+          {Array.from({ length: 7 }, (_, k) => {
+            const a = (k / 7) * Math.PI * 2
+            const lx = 40 + Math.cos(a) * (r - 1)
+            const ly = 40 + Math.sin(a) * (r - 1)
+            const deg = (a * 180) / Math.PI + 90
+            return (
+              <ellipse
+                key={`leaf-${k}`}
+                cx={lx}
+                cy={ly}
+                rx={1.1}
+                ry={2.4}
+                fill={k % 2 ? '#34d399' : '#10b981'}
+                opacity={0.8 * g}
+                transform={`rotate(${deg} ${lx} ${ly})`}
+              />
+            )
+          })}
+        </>
+      )}
+      {/* PATH-EXCLUSIVE: Zephyr (Vata) — wispy white-blue swirls of air: three thin curved arcs
+          sweeping around the glow like a breeze, with a couple of faint motes carried on the wind. */}
+      {aura === 'zephyr' && (
+        <>
+          {Array.from({ length: 3 }, (_, k) => {
+            const a0 = (k / 3) * Math.PI * 2
+            const rr = r - 1 - k * 2
+            const x0 = 40 + Math.cos(a0) * rr
+            const y0 = 40 + Math.sin(a0) * rr
+            const x1 = 40 + Math.cos(a0 + 1.4) * rr
+            const y1 = 40 + Math.sin(a0 + 1.4) * rr
+            const cx = 40 + Math.cos(a0 + 0.7) * (rr + 4)
+            const cy = 40 + Math.sin(a0 + 0.7) * (rr + 4)
+            return (
+              <path
+                key={`wisp-${k}`}
+                d={`M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y1}`}
+                fill="none"
+                stroke={k % 2 ? '#bae6fd' : '#f8fafc'}
+                strokeWidth={1.1}
+                strokeLinecap="round"
+                opacity={0.75 * g}
+              />
+            )
+          })}
+          {Array.from({ length: 3 }, (_, k) => {
+            const a = (k / 3) * Math.PI * 2 + 0.5
+            return (
+              <circle
+                key={`breeze-${k}`}
+                cx={40 + Math.cos(a) * (r + 1)}
+                cy={40 + Math.sin(a) * (r + 1)}
+                r={0.8}
+                fill="#e0f2fe"
+                opacity={0.6 * g}
+              />
+            )
+          })}
+        </>
+      )}
     </>
   )
 }
@@ -465,6 +564,71 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
         <rect x={71} y={53} width={3.5} height={3.5} rx={0.5} fill="#bae6fd" opacity={0.7} />
         {/* A wisp of ground to settle the cottage, low at the bottom. */}
         <rect x={6} y={62} width={68} height={12} rx={6} fill="#bbf7d0" opacity={0.45} />
+      </g>
+    )
+  }
+  if (habitat === 'ember_canyon') {
+    // PATH-EXCLUSIVE (Pitta / breath) — a warm canyon at dusk: a deep ember-glow wash, a
+    // distant glowing rim pushed to the corners, and a few embers drifting up the edges.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* The warm dusk wash, faint so the figure reads in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#7c2d12" opacity={0.26} />
+        <rect x={4} y={46} width={72} height={28} rx={10} fill="#ea580c" opacity={0.28} />
+        {/* A low ember glow banked along the very bottom — the canyon floor's heat. */}
+        <rect x={4} y={62} width={72} height={12} rx={10} fill="#f97316" opacity={0.32} />
+        {/* Distant canyon walls pushed to the left and right edges, clear of the figure. */}
+        <path d="M 4 74 L 4 30 L 18 38 L 14 74 Z" fill="#7c2d12" opacity={0.4} />
+        <path d="M 76 74 L 76 26 L 60 36 L 66 74 Z" fill="#7c2d12" opacity={0.4} />
+        {/* A few embers drifting up the outer columns, off the figure's centre. */}
+        {[10, 16, 64, 70].map((ex, k) => (
+          <circle key={k} cx={ex} cy={34 + (k % 2) * 14} r={k % 2 ? 0.9 : 1.3} fill="#fbbf24" opacity={0.85} />
+        ))}
+      </g>
+    )
+  }
+  if (habitat === 'misty_grove') {
+    // PATH-EXCLUSIVE (Kapha / stillness) — a grounded, still grove: a soft jade wash, mossy
+    // stones banked low at the bottom, and pale mist drifting across the edges.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A cool jade wash, faint so it recedes behind the figure. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#047857" opacity={0.22} />
+        {/* Mossy ground banked low at the very bottom, clear of the figure. */}
+        <rect x={6} y={58} width={68} height={16} rx={6} fill="#10b981" opacity={0.4} />
+        <rect x={6} y={65} width={68} height={9} rx={6} fill="#047857" opacity={0.45} />
+        {/* Smooth stones tucked into the bottom corners, off the figure's centre. */}
+        <ellipse cx={14} cy={62} rx={9} ry={6} fill="#78716c" opacity={0.55} />
+        <ellipse cx={66} cy={64} rx={8} ry={5} fill="#a16207" opacity={0.45} />
+        <ellipse cx={11} cy={60} rx={4} ry={2.4} fill="#34d399" opacity={0.5} />
+        {/* Two low bands of pale mist drifting across the edges, kept clear of the centre. */}
+        <rect x={4} y={40} width={20} height={3} rx={1.5} fill="#a7f3d0" opacity={0.4} />
+        <rect x={56} y={48} width={20} height={3} rx={1.5} fill="#a7f3d0" opacity={0.4} />
+      </g>
+    )
+  }
+  if (habitat === 'open_sky') {
+    // PATH-EXCLUSIVE (Vata / heart) — an airy open sky: a pale wash with a few soft drifting
+    // clouds pushed to the edges and a faint windy bluff banked low at the bottom.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A pale sky wash, faint so the figure reads clearly in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#e0f2fe" opacity={0.32} />
+        <rect x={4} y={34} width={72} height={40} rx={10} fill="#bae6fd" opacity={0.26} />
+        {/* Soft clouds pushed to the top and side edges, off the figure's centre. */}
+        {[
+          { cx: 14, cy: 18, r: 4 },
+          { cx: 66, cy: 14, r: 4.5 },
+          { cx: 70, cy: 34, r: 3.5 },
+        ].map((c, k) => (
+          <g key={k}>
+            <ellipse cx={c.cx} cy={c.cy} rx={c.r * 1.6} ry={c.r} fill="#f8fafc" opacity={0.7} />
+            <ellipse cx={c.cx - c.r} cy={c.cy + 1} rx={c.r} ry={c.r * 0.7} fill="#f8fafc" opacity={0.7} />
+            <ellipse cx={c.cx + c.r} cy={c.cy + 1} rx={c.r} ry={c.r * 0.7} fill="#f8fafc" opacity={0.7} />
+          </g>
+        ))}
+        {/* A faint windy bluff banked low at the very bottom, clear of the figure. */}
+        <path d="M 4 74 L 4 64 Q 26 56 50 62 T 76 60 L 76 74 Z" fill="#cbd5e1" opacity={0.4} />
       </g>
     )
   }
@@ -571,6 +735,124 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
         opacity={0.95 * g}
         aria-hidden="true"
       />
+    )
+  }
+  // --- Path-exclusive accessories (per_path in the catalog) ------------------------------
+  // ember_crown → breath (Pitta/fire), mossy_circlet → stillness (Kapha/earth), feather_plume →
+  // heart (Vata/air). The backend only offers each to its matching creature; the palette follows
+  // the dosha so it reads on-theme. Each perches on the brow like the universal accessories and is
+  // condition-responsive via `g`.
+  if (accessory === 'ember_crown') {
+    // A small ember crown: a fan of warm flame tongues rising from a low band on the brow, with
+    // a brighter cream core to each so it reads as fire even at this scale.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The low band the flames rise from. */}
+        <path
+          d={`M 32 ${topY + 1} Q 40 ${topY - 1} 48 ${topY + 1}`}
+          fill="none"
+          stroke="#ea580c"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+        />
+        {/* Five flame tongues, tallest in the centre. */}
+        {Array.from({ length: 5 }, (_, k) => {
+          const t = k / 4 // 0..1 across the band
+          const fx = 33 + t * 14
+          const h = 4 + Math.sin(t * Math.PI) * 4 // taller toward the middle
+          return (
+            <g key={k}>
+              <path
+                d={`M ${fx - 1.6} ${topY} Q ${fx} ${topY - h} ${fx + 1.6} ${topY} Z`}
+                fill={k % 2 === 0 ? '#f97316' : '#fb923c'}
+              />
+              <path
+                d={`M ${fx - 0.7} ${topY - 0.4} Q ${fx} ${topY - h * 0.6} ${fx + 0.7} ${topY - 0.4} Z`}
+                fill="#fbbf24"
+              />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+  if (accessory === 'mossy_circlet') {
+    // An earthen circlet: a stone band across the brow, a few rounded pebbles set into it, and
+    // little moss tufts and a leaf so it reads grounded and grove-like.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The stone band. */}
+        <path
+          d={`M 31 ${topY + 1.5} Q 40 ${topY - 2.5} 49 ${topY + 1.5}`}
+          fill="none"
+          stroke="#78716c"
+          strokeWidth={2.2}
+          strokeLinecap="round"
+        />
+        {/* Set pebbles along the band. */}
+        {[34, 40, 46].map((px, k) => (
+          <circle
+            key={k}
+            cx={px}
+            cy={topY - (k === 1 ? 1.6 : 0.4)}
+            r={1.5}
+            fill={k === 1 ? '#a16207' : '#a8a29e'}
+          />
+        ))}
+        {/* Moss tufts and a small leaf nestled on the band. */}
+        <circle cx={37} cy={topY - 0.6} r={1.2} fill="#34d399" />
+        <circle cx={43.4} cy={topY - 0.8} r={1.1} fill="#10b981" />
+        <ellipse
+          cx={48}
+          cy={topY - 0.2}
+          rx={1.8}
+          ry={1}
+          fill="#047857"
+          transform={`rotate(-28 48 ${topY - 0.2})`}
+        />
+      </g>
+    )
+  }
+  if (accessory === 'feather_plume') {
+    // An airy feather plume: a slender white quill curving up off one side of the head with a few
+    // soft barbs, and a tiny floating wisp above to give the air spirit a sense of lift.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The quill, curving up and back from the brow. */}
+        <path
+          d={`M 46 ${topY + 1} Q 49 ${topY - 6} 47.5 ${topY - 11}`}
+          fill="none"
+          stroke="#f8fafc"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+        />
+        {/* A few soft barbs feathering off the quill. */}
+        {Array.from({ length: 4 }, (_, k) => {
+          const t = k / 3 // 0..1 up the quill
+          const qx = 46 + 1.6 * Math.sin(t * Math.PI)
+          const qy = topY + 1 - t * 11.5
+          return (
+            <line
+              key={k}
+              x1={qx}
+              y1={qy}
+              x2={qx + 2.6}
+              y2={qy - 1.4}
+              stroke={k % 2 === 0 ? '#bae6fd' : '#e0f2fe'}
+              strokeWidth={0.9}
+              strokeLinecap="round"
+            />
+          )
+        })}
+        {/* A tiny floating wind wisp above, for lift. */}
+        <path
+          d={`M 41 ${topY - 6} q 2 -1.4 4 0`}
+          fill="none"
+          stroke="#cbd5e1"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+      </g>
     )
   }
   return null
@@ -832,6 +1114,87 @@ function Mount({ mount, g }: { mount: string; g: number }) {
             strokeLinecap="round"
           />
         ))}
+      </g>
+    )
+  }
+  if (mount === 'emberstone') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Pitta (breath): a glowing ember sun-stone — a warm disc with a molten core and a
+            few rising sparks, its heat fading as the spirit dims. */}
+        <ellipse cx={cx} cy={cy + 3} rx={17} ry={4.5} fill="#7c2d12" opacity={0.6} />
+        <ellipse cx={cx} cy={cy} rx={16} ry={6} fill="#ea580c" />
+        <ellipse cx={cx} cy={cy - 0.5} rx={11} ry={4} fill="#f97316" />
+        <ellipse cx={cx} cy={cy - 1} rx={6} ry={2.4} fill="#fbbf24" />
+        {[-7, 0, 7].map((dx, k) => (
+          <circle
+            key={k}
+            cx={cx + dx}
+            cy={cy - 8 - (k % 2) * 2}
+            r={1.2}
+            fill="#fbbf24"
+            opacity={0.85 * g}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (mount === 'boulder') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Kapha (stillness): a flat mossy boulder — a grey-brown stone slab capped with jade
+            moss the spirit settles upon. */}
+        <path
+          d={`M ${cx - 17} ${cy + 4} q -1 -8 6 -9 q 5 -3 11 0 q 8 1 6 9 z`}
+          fill="#78716c"
+          stroke="#57534e"
+          strokeWidth={1}
+        />
+        <path
+          d={`M ${cx - 16} ${cy - 3} q 6 -4 16 0 q 10 -1 15 1 q -3 3 -15 3 q -11 1 -16 -4 z`}
+          fill="#10b981"
+        />
+        <ellipse cx={cx - 6} cy={cy - 3} rx={3} ry={1.6} fill="#34d399" opacity={0.9} />
+        <ellipse cx={cx + 7} cy={cy - 2} rx={2.6} ry={1.4} fill="#047857" opacity={0.9} />
+      </g>
+    )
+  }
+  if (mount === 'feather') {
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Vata (heart): a floating feather adrift on a breeze — a soft white quill with a pale
+            shaft and a wisp of air curling beneath it. */}
+        <path
+          d={`M ${cx - 17} ${cy + 1} q 10 -10 34 -4 q -10 9 -34 4 z`}
+          fill="#f8fafc"
+          stroke="#cbd5e1"
+          strokeWidth={0.8}
+        />
+        <path
+          d={`M ${cx - 15} ${cy} q 14 -5 31 -2`}
+          stroke="#bae6fd"
+          strokeWidth={1}
+          fill="none"
+          strokeLinecap="round"
+        />
+        {[-9, -3, 4, 11].map((dx, k) => (
+          <path
+            key={k}
+            d={`M ${cx + dx} ${cy} q 4 -4 6 -7`}
+            stroke="#e0f2fe"
+            strokeWidth={0.7}
+            fill="none"
+            strokeLinecap="round"
+          />
+        ))}
+        <path
+          d={`M ${cx - 14} ${cy + 6} q 9 4 26 1`}
+          stroke="#e0f2fe"
+          strokeWidth={0.8}
+          fill="none"
+          strokeLinecap="round"
+          opacity={0.7 * g}
+        />
       </g>
     )
   }
