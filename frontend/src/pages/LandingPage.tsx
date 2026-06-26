@@ -12,7 +12,7 @@ const FEATURES = [
   { emoji: '🎯', title: 'Goals', body: 'Set recurring habits — meditate, breathe, journal — and watch progress fill in automatically from your activity.' },
   { emoji: '🪷', title: 'Spirit', body: 'Awaken a living companion that grows with your practice — evolving down a path shaped by how you meditate, and brightening each time you return.' },
   { emoji: '📊', title: 'Dashboard & analytics', body: 'Streaks, levels, a weekly breakdown, an activity heatmap, and trends across type, day, and time.' },
-  { emoji: '🌱', title: 'Streaks, XP & quests', body: 'Rotating daily quests, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
+  { emoji: '🌱', title: 'Streaks, XP & missions', body: 'Rotating daily missions, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
 ]
 
 export default function LandingPage() {

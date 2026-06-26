@@ -355,6 +355,12 @@ export default function GratitudePage() {
                         className="link-danger"
                         onClick={() => {
                           remove(e.id)
+                          // This row came from the server-side window we've already
+                          // paged through, so shrink the cursor to match — otherwise the
+                          // next "Load more" (offset = loadedCount) skips the row that
+                          // shifted up into the deleted one's place. Erring toward a
+                          // re-fetch is safe: the dedup in loadMore drops any repeat.
+                          loadedCount.current = Math.max(0, loadedCount.current - 1)
                           setMenuId(null)
                         }}
                       >

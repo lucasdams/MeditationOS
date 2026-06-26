@@ -137,10 +137,13 @@ export default function DashboardPage() {
           spendable balance). Kept as `.level-topline` so it stays the first child of <main>. */}
       {stats &&
         (() => {
-          const xpPct = Math.min(
-            100,
-            Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100),
-          )
+          const xpPct =
+            stats.xp_for_next_level > 0
+              ? Math.min(
+                  100,
+                  Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100),
+                )
+              : 100
           return (
             <section
               className="level-topline hud"

@@ -107,7 +107,7 @@ export default function ActivityHeatmap() {
               <div key={week[0].iso} className="heatmap-week">
                 {week.map((cell) => {
                   const cellLabel = cell.inRange
-                    ? `${cell.iso}: ${cell.minutes} min${cell.allQuests ? ', all quests completed' : ''}`
+                    ? `${cell.iso}: ${cell.minutes} min${cell.allQuests ? ', all missions completed' : ''}`
                     : undefined
                   return (
                     <div
@@ -126,13 +126,13 @@ export default function ActivityHeatmap() {
       </div>
       <div className="heatmap-legend">
         <span className="muted">
-          {totalMin} min in the last month · {perfectDays} all-quest{' '}
+          {totalMin} min in the last month · {perfectDays} all-mission{' '}
           {perfectDays === 1 ? 'day' : 'days'}
         </span>
         <span className="heatmap-key" aria-hidden="true">
           <i className="heatmap-cell lvl-0" /> None
           <i className="heatmap-cell lvl-1" /> Active
-          <i className="heatmap-cell lvl-2" /> All quests
+          <i className="heatmap-cell lvl-2" /> All missions
         </span>
       </div>
     </section>
