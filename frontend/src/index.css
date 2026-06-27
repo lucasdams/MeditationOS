@@ -3538,11 +3538,45 @@ textarea:focus-visible,
      with the nav tile and adapts to dark mode. Cascades to legend + option hover/applied. */
   --slot-accent: var(--spirit-accent);
   border: 1.5px solid var(--slot-accent);
+  border-left-width: 4px;
   border-radius: 0.85rem;
   padding: 0.7rem 0.85rem 0.85rem;
   margin: 0 0 0.85rem;
-  background: var(--bg-surface);
-  box-shadow: 0 1px 3px var(--shadow-card);
+  /* A faint wash + soft glow in the slot's OWN colour, so each upgrade section reads as a
+     distinct, lit, colour-coded card (especially when collapsed). */
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--slot-accent) 7%, var(--bg-surface)),
+    var(--bg-surface) 68%
+  );
+  box-shadow:
+    0 2px 8px var(--shadow-card),
+    0 0 14px color-mix(in srgb, var(--slot-accent) 12%, transparent);
+}
+
+/* Per-section accent — the whole tree (header, tier dots, connector, node accents, unlock
+   buttons) keys off --slot-accent, so one override colours the entire section. Distinct hues
+   across the wheel so the collapsed list reads as a colour-coded index. */
+.spirit-slot[data-slot='aura'] {
+  --slot-accent: #a78bfa; /* violet */
+}
+.spirit-slot[data-slot='accessory'] {
+  --slot-accent: #f472b6; /* pink */
+}
+.spirit-slot[data-slot='habitat'] {
+  --slot-accent: #34d399; /* emerald */
+}
+.spirit-slot[data-slot='companion'] {
+  --slot-accent: #fbbf24; /* amber */
+}
+.spirit-slot[data-slot='mount'] {
+  --slot-accent: #60a5fa; /* blue */
+}
+.spirit-slot[data-slot='weather'] {
+  --slot-accent: #22d3ee; /* cyan */
+}
+.spirit-slot[data-slot='ground'] {
+  --slot-accent: #a3e635; /* lime */
 }
 
 /* Each slot is a collapsible <details>; the summary is its clickable header (slot name + what's
