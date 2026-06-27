@@ -3948,187 +3948,110 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
-/* ── Capstone / prize nodes — a SPIRITUAL flourish, not generic game polish ─────────────────
-   The prize at the top of each tree should feel like a small awakening, not a loot drop: a soft
-   aura that BREATHES (slow, meditative), a RESONANCE ring that swells outward like a struck
-   singing bowl, and drifting light-MOTES (soul-sparks / incense). SIGNATURE = the creature's OWN
-   capstone, themed to its ELEMENT (Pitta fire / Kapha earth / Vata air). LEGENDARY = a universal
-   tier-4 piece, a PRISMATIC / radiant aura. After the node-state rules so the prize wins;
-   reduced-motion keeps the frame + glow, drops the motion. */
-.spirit-node-prize {
-  display: inline-flex;
-  align-items: center;
-  margin-left: auto;
-  padding: 0.05rem 0.42rem;
-  border-radius: 999px;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.spirit-node-prize--signature {
-  color: #fff;
-  background: var(--prize-accent, var(--slot-accent));
-  box-shadow: 0 0 8px color-mix(in srgb, var(--prize-accent, var(--slot-accent)) 60%, transparent);
-}
-.spirit-node-prize--legendary {
-  color: #161226;
-  /* A prismatic ribbon — radiant, not the generic gold. */
-  background: linear-gradient(110deg, #f472b6, #fbbf24, #34d399, #38bdf8, #a78bfa);
-  box-shadow: 0 0 10px rgba(167, 139, 250, 0.55);
-}
+/* ── Capstone / prize nodes — an ornate RELIC, not a glowing box ─────────────────────────────
+   The prize pieces are framed like illuminated relics: ornamental corner flourishes, a fine inner
+   frame line, and an engraved elemental SIGIL as the seal — the creature's element for a SIGNATURE
+   (Pitta fire / Kapha earth / Vata air), a radiant sun for a universal LEGENDARY. A faint static
+   aura underneath, no shimmer/pulse. After the node-state rules so the prize wins. */
 
-/* The creature's ELEMENT (dosha) drives the SIGNATURE flair — set on the panel from data-path;
-   falls back to the section's slot accent for a pathless spark. */
+/* The creature's ELEMENT (dosha) drives the SIGNATURE accent; legendary pins its own violet. */
 .spirit-personalize[data-path='stillness'] {
-  --element-accent: var(--spirit-kapha); /* earth/water */
+  --element-accent: var(--spirit-kapha);
 }
 .spirit-personalize[data-path='breath'] {
-  --element-accent: var(--spirit-pitta); /* fire */
+  --element-accent: var(--spirit-pitta);
 }
 .spirit-personalize[data-path='heart'] {
-  --element-accent: var(--spirit-vata); /* air/ether */
+  --element-accent: var(--spirit-vata);
 }
 
-/* SIGNATURE — element-themed; a slow breathing aura (the creature's element, fire/earth/air). */
 .spirit-node--signature {
   position: relative;
   --prize-accent: var(--element-accent, var(--slot-accent));
   border-color: var(--prize-accent);
   background: linear-gradient(
     160deg,
-    color-mix(in srgb, var(--prize-accent) 16%, var(--bg-surface)),
-    var(--bg-surface) 62%
+    color-mix(in srgb, var(--prize-accent) 12%, var(--bg-surface)),
+    var(--bg-surface) 66%
   );
-  animation: capstone-breath 5.5s ease-in-out infinite;
+  box-shadow: 0 2px 10px var(--shadow-card),
+    0 0 14px color-mix(in srgb, var(--prize-accent) 22%, transparent);
 }
-@keyframes capstone-breath {
-  0%,
-  100% {
-    box-shadow: 0 2px 10px var(--shadow-card),
-      0 0 12px color-mix(in srgb, var(--prize-accent, #c4b5fd) 24%, transparent);
-  }
-  50% {
-    box-shadow: 0 2px 10px var(--shadow-card),
-      0 0 24px color-mix(in srgb, var(--prize-accent, #c4b5fd) 48%, transparent);
-  }
-}
-
-/* LEGENDARY — prismatic / radiant; the breath drifts gently through the spectrum. */
 .spirit-node--legendary {
   position: relative;
   --prize-accent: #c4b5fd;
   border-color: #c4b5fd;
-  background: linear-gradient(160deg, rgba(196, 181, 253, 0.16), var(--bg-surface) 58%);
-  animation: legendary-breath 6s ease-in-out infinite;
-}
-@keyframes legendary-breath {
-  0%,
-  100% {
-    box-shadow: 0 2px 12px var(--shadow-card), 0 0 14px rgba(249, 168, 212, 0.3),
-      0 0 22px rgba(125, 211, 252, 0.2);
-    border-color: #c4b5fd;
-  }
-  50% {
-    box-shadow: 0 2px 12px var(--shadow-card), 0 0 22px rgba(196, 181, 253, 0.45),
-      0 0 32px rgba(110, 231, 183, 0.3);
-    border-color: #7dd3fc;
-  }
+  background: linear-gradient(160deg, rgba(196, 181, 253, 0.14), var(--bg-surface) 64%);
+  box-shadow: 0 2px 10px var(--shadow-card), 0 0 16px rgba(196, 181, 253, 0.26);
 }
 
-/* RESONANCE — a ring that swells outward and fades, like a struck singing bowl's wave. */
-.spirit-node--signature::before,
-.spirit-node--legendary::before {
+/* A fine inner line, offset from the border — the "framed relic" double edge. */
+.spirit-node--signature::after,
+.spirit-node--legendary::after {
   content: '';
   position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  border: 1.5px solid var(--prize-accent, #c4b5fd);
-  opacity: 0;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--prize-accent) 38%, transparent);
+  border-radius: 0.5rem;
   pointer-events: none;
-  animation: capstone-resonance 5s ease-out infinite;
-}
-@keyframes capstone-resonance {
-  0% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  60%,
-  100% {
-    transform: scale(1.05);
-    opacity: 0;
-  }
 }
 
-/* MOTES — a few soft lights drift up and fade, like soul-sparks or incense rising. */
-.spirit-node-motes {
+/* The ornamental corner flourishes — one SVG rotated into each corner. */
+.capstone-frame {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  border-radius: inherit;
+  color: var(--prize-accent, #c4b5fd);
   pointer-events: none;
 }
-.spirit-node-motes i {
+.capstone-corner {
   position: absolute;
-  bottom: 8%;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--prize-accent, #c4b5fd);
-  box-shadow: 0 0 6px var(--prize-accent, #c4b5fd);
-  opacity: 0;
-  animation: capstone-mote 4.8s ease-in-out infinite;
+  width: 15px;
+  height: 15px;
+  opacity: 0.92;
 }
-.spirit-node-motes i:nth-child(1) {
-  left: 24%;
-  animation-delay: 0s;
+.capstone-corner svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
-.spirit-node-motes i:nth-child(2) {
-  left: 54%;
-  animation-delay: 1.7s;
+.capstone-corner--tl {
+  top: 2px;
+  left: 2px;
 }
-.spirit-node-motes i:nth-child(3) {
-  left: 80%;
-  animation-delay: 3.2s;
+.capstone-corner--tr {
+  top: 2px;
+  right: 2px;
+  transform: rotate(90deg);
 }
-/* Legendary motes drift in prismatic hues. */
-.spirit-node--legendary .spirit-node-motes i:nth-child(1) {
-  background: #f9a8d4;
-  box-shadow: 0 0 6px #f9a8d4;
+.capstone-corner--br {
+  bottom: 2px;
+  right: 2px;
+  transform: rotate(180deg);
 }
-.spirit-node--legendary .spirit-node-motes i:nth-child(2) {
-  background: #7dd3fc;
-  box-shadow: 0 0 6px #7dd3fc;
-}
-.spirit-node--legendary .spirit-node-motes i:nth-child(3) {
-  background: #6ee7b7;
-  box-shadow: 0 0 6px #6ee7b7;
-}
-@keyframes capstone-mote {
-  0% {
-    transform: translateY(0) scale(0.6);
-    opacity: 0;
-  }
-  25% {
-    opacity: 0.85;
-  }
-  100% {
-    transform: translateY(-46px) scale(1);
-    opacity: 0;
-  }
+.capstone-corner--bl {
+  bottom: 2px;
+  left: 2px;
+  transform: rotate(270deg);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .spirit-node--signature,
-  .spirit-node--legendary {
-    animation: none;
-  }
-  .spirit-node--signature::before,
-  .spirit-node--legendary::before,
-  .spirit-node-motes {
-    display: none;
-  }
+/* The engraved sigil seal — a small medallion holding the element mark. */
+.spirit-node-seal {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  margin-left: auto;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  color: var(--prize-accent, #c4b5fd);
+  background: color-mix(in srgb, var(--prize-accent, #c4b5fd) 12%, var(--bg-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prize-accent, #c4b5fd) 48%, transparent),
+    0 0 8px color-mix(in srgb, var(--prize-accent, #c4b5fd) 26%, transparent);
+}
+.spirit-node-seal svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: block;
 }
 
 /* Honour reduced-motion: the node hover lift + the node/button colour transitions are subtle

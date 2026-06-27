@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { spiritService } from '../services/spirit'
 import { useToast } from '../context/ToastContext'
@@ -130,6 +130,82 @@ function lockReason(opt: SpiritSlotOption): string {
   if (opt.unlock_hint) return opt.unlock_hint
   if (opt.tier > 1) return `Unlock a tier-${opt.tier - 1} option first`
   return 'Keep practicing to unlock this'
+}
+
+// ── Capstone relic (ornate frame + engraved elemental sigil) ───────────────────────────────
+// The prize pieces get an illuminated-relic treatment instead of a glowing box: ornamental corner
+// flourishes around the node + a hand-drawn alchemical SIGIL for its element. A SIGNATURE capstone
+// shows its creature's element (Pitta fire / Kapha earth / Vata air); a universal LEGENDARY shows
+// a radiant sun. All line-art (stroke = the prize accent via currentColor), aria-hidden.
+type SigilKind = 'fire' | 'earth' | 'air' | 'radiant'
+
+function prizeSigilKind(prize: 'signature' | 'legendary', path: SpiritPath | null): SigilKind {
+  if (prize === 'legendary') return 'radiant'
+  if (path === 'breath') return 'fire' // Pitta
+  if (path === 'stillness') return 'earth' // Kapha
+  return 'air' // Vata (heart) — and the pathless fallback
+}
+
+// Alchemical-style elemental marks, drawn as fine line-art (the engraved sigil on the relic).
+const SIGILS: Record<SigilKind, ReactNode> = {
+  // Fire — upward triangle with an inner flame.
+  fire: (
+    <>
+      <path d="M12 3 L21 20 H3 Z" />
+      <path d="M12 10 c2.4 2.6 2.4 5.4 0 7.4 c-2.4 -2 -2.4 -4.8 0 -7.4 Z" fill="currentColor" stroke="none" opacity="0.9" />
+    </>
+  ),
+  // Earth — downward triangle crossed by a bar.
+  earth: (
+    <>
+      <path d="M3 6 H21 L12 21 Z" />
+      <line x1="7.5" y1="11.5" x2="16.5" y2="11.5" />
+    </>
+  ),
+  // Air — upward triangle crossed by a bar.
+  air: (
+    <>
+      <path d="M12 3 L21 20 H3 Z" />
+      <line x1="7.5" y1="14.5" x2="16.5" y2="14.5" />
+    </>
+  ),
+  // Radiant — a sun: a centre disc with eight rays.
+  radiant: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 1.5 V4.5 M12 19.5 V22.5 M1.5 12 H4.5 M19.5 12 H22.5 M4.4 4.4 l2.1 2.1 M17.5 17.5 l2.1 2.1 M19.6 4.4 l-2.1 2.1 M6.5 17.5 l-2.1 2.1" />
+    </>
+  ),
+}
+
+// One ornamental corner flourish; placed at all four corners (rotated via CSS).
+const RELIC_CORNER = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+    <path d="M3 13 V6 Q3 3 6 3 H13" />
+    <circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M3.5 12.5 Q6 11 6 6.5" strokeWidth="0.9" opacity="0.55" />
+  </svg>
+)
+
+// The ornamental corner flourishes that frame a capstone node (an absolute overlay).
+function CapstoneFrame(): ReactNode {
+  return (
+    <span className="capstone-frame" aria-hidden="true">
+      <span className="capstone-corner capstone-corner--tl">{RELIC_CORNER}</span>
+      <span className="capstone-corner capstone-corner--tr">{RELIC_CORNER}</span>
+      <span className="capstone-corner capstone-corner--bl">{RELIC_CORNER}</span>
+      <span className="capstone-corner capstone-corner--br">{RELIC_CORNER}</span>
+    </span>
+  )
+}
+
+// The engraved elemental sigil — the node's seal/mark.
+function CapstoneSigil({ kind }: { kind: SigilKind }): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
+      {SIGILS[kind]}
+    </svg>
+  )
 }
 
 // The cosmetic option the user is currently exploring (hovering / keyboard-focusing), so the live
@@ -470,23 +546,20 @@ export default function SpiritPage() {
               data-state={state}
               {...previewHandlers}
             >
+              {/* Ornate corner flourishes that frame the relic. */}
+              {prize && <CapstoneFrame />}
               <span className="spirit-node-head">
                 <span className="spirit-node-label">{label}</span>
                 {prize && (
-                  <span className={`spirit-node-prize spirit-node-prize--${prize}`}>
-                    {prize === 'legendary' ? '🪷 Radiant' : '✦ Signature'}
+                  <span
+                    className={`spirit-node-seal spirit-node-seal--${prize}`}
+                    title={prize === 'legendary' ? 'Radiant capstone' : 'Signature capstone'}
+                  >
+                    <CapstoneSigil kind={prizeSigilKind(prize, spirit.path)} />
                   </span>
                 )}
                 <NeedTag need={opt.need} />
               </span>
-              {/* Drifting light-motes (souls / incense) — the spiritual flourish on a prize node. */}
-              {prize && (
-                <span className="spirit-node-motes" aria-hidden="true">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-              )}
 
               {state === 'equipped' && (
                 // Worn now — not a button. A clear badge, plus a free "remove" so a slot can be
