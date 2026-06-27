@@ -10,7 +10,11 @@ import RatingChips from '../components/RatingChips'
 import { ErrorBanner } from '../components/StateViews'
 import { newClientToken } from '../lib/sessionDraft'
 import { toDatetimeLocal } from '../lib/format'
+import { dailySuggestion } from '../lib/intentionPrompts'
 import type { DashboardStats, MeditationType } from '../types'
+
+// Pre-session intention cap — mirrors the backend (INTENTION_MAX_LENGTH = 140).
+const INTENTION_MAX = 140
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
 const ZERO_STATS: DashboardStats = {
@@ -41,6 +45,7 @@ export default function LogSessionPage() {
   const [customMinutes, setCustomMinutes] = useState('')
   const [occurredAt, setOccurredAt] = useState(nowLocal())
   const [notes, setNotes] = useState('')
+  const [intention, setIntention] = useState('')
   const [focus, setFocus] = useState('') // '' = not rated
   const [calm, setCalm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +62,9 @@ export default function LogSessionPage() {
 
   // Whether the user is entering a custom duration (not one of the preset chips).
   const isCustom = !DURATION_CHIPS.map(String).includes(minutes)
+
+  // Stable daily suggestion for the intention placeholder (matches Meditate / Breathe).
+  const intentionPlaceholder = dailySuggestion(new Date())
 
   function pickDuration(min: number) {
     setMinutes(String(min))
@@ -97,6 +105,8 @@ export default function LogSessionPage() {
         // user's local day, matching MeditatePage / BiometricCapture.
         occurred_at: new Date(occurredAt).toISOString(),
         notes: notes.trim() || null,
+        // Optional pre-session intention — trimmed; blank is omitted (sent null).
+        intention: intention.trim() || null,
         focus: focus ? Number(focus) : null,
         calm: calm ? Number(calm) : null,
         // Stable per-load token so a retry after a transient error won't create a
@@ -208,6 +218,23 @@ export default function LogSessionPage() {
           value={occurredAt}
           onChange={(e) => setOccurredAt(e.target.value)}
         />
+
+        {/* Pre-session intention — optional; trimmed and omitted when blank. */}
+        <label htmlFor="intention" className="session-intention-label">
+          Intention <span className="session-intention-opt">(optional)</span>
+        </label>
+        <textarea
+          id="intention"
+          className="session-intention-input"
+          rows={2}
+          maxLength={INTENTION_MAX}
+          placeholder={intentionPlaceholder}
+          value={intention}
+          onChange={(e) => setIntention(e.target.value)}
+        />
+        <p className="session-intention-counter" aria-live="polite">
+          {intention.length}/{INTENTION_MAX}
+        </p>
 
         {/* Focus rating — inline 1–5 buttons instead of a dropdown */}
         <label>Focus (optional)</label>
