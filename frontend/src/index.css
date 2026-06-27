@@ -2730,6 +2730,89 @@ textarea:focus-visible,
   color: var(--text-secondary);
 }
 
+/* --- Spirit tending + survival stakes (ADR-0029) ----------------------------------------- */
+/* The Feed / Rest / Play tend actions — calm, game-like cards under the needs read-out. Each
+   tops up one survival meter; the row stays low-pressure (no shouting) but the stakes are legible
+   via the ailing banner above. */
+.spirit-tend {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+}
+
+.spirit-tend-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 0;
+  padding: 0.6rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius, 12px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+}
+
+.spirit-tend-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--spirit-accent, var(--accent)) 55%, var(--border));
+  transform: translateY(-1px);
+}
+
+.spirit-tend-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.spirit-tend-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.spirit-tend-label {
+  font-size: 0.85rem;
+}
+
+.spirit-tend-need {
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.spirit-tend-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* The ailing warning — clear-but-calm; the stakes must be legible without alarm-red shouting. A
+   warm amber-edged panel reads as "needs care today", not a crisis. Shown on the page (banner)
+   and the home widget (a tighter nudge). */
+.spirit-ailing-banner {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #f59e0b;
+  border-radius: var(--panel-radius, 12px);
+  background: color-mix(in srgb, #f59e0b 12%, var(--bg-surface));
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.spirit-ailing-nudge {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+:root[data-theme='dark'] .spirit-ailing-nudge,
+:root:not([data-theme='light']):not([data-theme='dark']) .spirit-ailing-nudge {
+  color: #fbbf24;
+}
+
 /* --- Signature set status (ADR-0028) ----------------------------------------------------- */
 /* Shown near the customize tree. Calm + on-token, dark-default friendly: an accent-tinted badge
    when the full signature set is equipped ("Signature radiance"), or a quiet muted progress line
@@ -3068,6 +3151,58 @@ textarea:focus-visible,
   }
 }
 
+/* AILING (ADR-0029): the creature is unwell but not yet dead. It droops harder and sighs slowly —
+   a heavy, low rise-and-fall instead of the lively wandering float, plus a deeper desaturation
+   (vitality is already pinned low by the component). Reads as "needs care", never alarming. The
+   `--alive` float class is NOT applied while ailing, so this won't be clobbered. */
+.spirit-creature--ailing {
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  /* A pronounced wilt: lower + a touch smaller than the vitality droop alone. */
+  animation: spirit-sigh 4.8s ease-in-out infinite;
+  filter: saturate(0.35) brightness(0.9);
+}
+
+/* A slow, heavy sigh — sinks, holds low, rises a little. Calm, weary, never twitchy. */
+@keyframes spirit-sigh {
+  0%,
+  100% {
+    transform: translateY(3px) scale(0.97) rotate(0deg);
+  }
+  50% {
+    transform: translateY(6px) scale(0.955) rotate(-1.5deg);
+  }
+}
+
+/* The faint sweat-drop tell beside the head — a tiny slow trickle, prefers-reduced-motion safe
+   (the guard below holds it still). */
+.spirit-ailing-drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-drop 3.6s ease-in-out infinite;
+}
+
+@keyframes spirit-drop {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(1.5px);
+    opacity: 0.55;
+  }
+}
+
+/* DEAD (ADR-0029): a calm, still, faded silhouette — no motion at all, drained of colour, resting
+   low. The memorial scene (halo + headstone) sits behind it. Respectful, never gory. */
+.spirit-creature--dead {
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  transform: translateY(7px) scale(0.95);
+  filter: saturate(0) brightness(0.92) opacity(0.7);
+}
+
 /* The COMPANION layer: the little friend in the corner bobs/sways gently on ITS OWN pace — a
    longer, distinct period (6.8s) from the creature's float (5s) and the aura's glow (4.6s), so the
    layers are visibly out of sync ("at their own pace"). Calm and low-amplitude, never frantic;
@@ -3154,6 +3289,12 @@ textarea:focus-visible,
   }
   .spirit-creature--pacing {
     transition: none;
+  }
+  /* The ailing sigh + the sweat-drop trickle hold static under reduced motion (ADR-0029); the
+     droop/desaturation still SHOW (the unwell look is information, not motion) — just frozen. */
+  .spirit-creature--ailing,
+  .spirit-ailing-drop {
+    animation: none;
   }
 }
 
@@ -3908,6 +4049,57 @@ textarea:focus-visible,
 
 .spirit-collection-path {
   font-size: 0.72rem;
+}
+
+/* A died (memorial) collection entry (ADR-0029) — distinct from a radiant graduate: a quiet
+   muted treatment so the gallery reads the difference at a glance. */
+.spirit-collection-item--memorial {
+  opacity: 0.85;
+}
+
+.spirit-collection-lifespan {
+  font-size: 0.72rem;
+}
+
+/* --- Spirit memorial panel (ADR-0029, dead) ---------------------------------------------- */
+/* Replaces the normal page body when the spirit has died: the passed art, the name, its lifespan,
+   a kind line, and a single "awaken a new spark" action. Calm + respectful, centred. */
+.spirit-memorial-panel {
+  text-align: center;
+}
+
+.spirit-memorial-art {
+  margin: 0 auto;
+  width: 180px;
+  max-width: 60%;
+}
+
+.spirit-memorial-art .spirit-svg {
+  width: 100%;
+}
+
+.spirit-memorial-name {
+  margin: 0.5rem 0 0.1rem;
+  font-size: 1.1rem;
+}
+
+.spirit-memorial-lifespan {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.spirit-memorial-line {
+  margin: 0.75rem auto 1rem;
+  max-width: 24rem;
+  font-size: 0.85rem;
+}
+
+/* The single primary action to begin again — the ordinary indigo primary (not a danger idiom):
+   awakening a new spark after a loss is a gentle, hopeful step, not a destructive one. */
+.spirit-memorial-awaken {
+  margin-top: 0;
 }
 
 .spirit-awaken {

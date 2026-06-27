@@ -22,7 +22,7 @@ vi.mock('../services/spirit', () => ({
   spiritService: { get: (...a: unknown[]) => getSpirit(...a) },
 }))
 
-import Spirit, { optionLabel } from './Spirit'
+import Spirit, { lifespanCopy, optionLabel } from './Spirit'
 import type {
   SpiritNeedTier,
   SpiritPath,
@@ -48,6 +48,11 @@ function spiritState(over: Partial<SpiritState> = {}): SpiritState {
     available: [],
     collection: [],
     set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
+    // Tamagotchi survival state (ADR-0029) — alive + healthy by default; ailing/dead tests override.
+    awakened_at: '2026-06-01T00:00:00Z',
+    ailing: false,
+    dead: false,
+    died_at: null,
     ...over,
   }
 }
@@ -256,6 +261,71 @@ describe('Spirit — stage read-out (calm, no shouting)', () => {
     for (const meter of screen.queryAllByRole('progressbar')) {
       expect(meter.getAttribute('aria-label') ?? '').not.toMatch(/xp|level|bond/i)
     }
+  })
+})
+
+describe('lifespanCopy (ADR-0029)', () => {
+  it('rounds to whole days and pluralizes', () => {
+    expect(lifespanCopy('2026-06-01T00:00:00Z', '2026-06-06T00:00:00Z')).toBe('Lived 5 days')
+    expect(lifespanCopy('2026-06-01T00:00:00Z', '2026-06-02T00:00:00Z')).toBe('Lived 1 day')
+  })
+
+  it('reads "less than a day" under 24h and defends bad/negative ranges', () => {
+    expect(lifespanCopy('2026-06-06T08:00:00Z', '2026-06-06T20:00:00Z')).toBe(
+      'Lived less than a day',
+    )
+    // A death-before-birth (clock skew) and a malformed date both fall back gently.
+    expect(lifespanCopy('2026-06-06T00:00:00Z', '2026-06-01T00:00:00Z')).toBe(
+      'Lived less than a day',
+    )
+    expect(lifespanCopy('not-a-date', 'also-bad')).toBe('Lived less than a day')
+  })
+})
+
+describe('Spirit — survival states on the home widget (ADR-0029)', () => {
+  it('shows an ailing nudge and an unwell look (data-state="ailing") when ailing', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'wisp', path: 'breath', name: 'Ash', ailing: true })} />,
+    )
+    // A legible-but-calm nudge leads, and the art is flagged unwell.
+    expect(screen.getByText(/Ash is ailing — feed it or practice today/)).toBeInTheDocument()
+    expect(container.querySelector('.spirit-svg[data-state="ailing"]')).not.toBeNull()
+    // The unwell creature carries the wilt class (and is NOT running the lively float).
+    expect(container.querySelector('.spirit-creature--ailing')).not.toBeNull()
+    expect(container.querySelector('.spirit-creature--alive')).toBeNull()
+  })
+
+  it('shows a small memorial + a pointer to begin again when dead', () => {
+    const { container } = renderSpirit(
+      <Spirit
+        spirit={spiritState({
+          stage: 'fledgling',
+          path: 'heart',
+          name: 'Sol',
+          dead: true,
+          awakened_at: '2026-06-01T00:00:00Z',
+          died_at: '2026-06-04T00:00:00Z', // three days
+        })}
+      />,
+    )
+    expect(screen.getByText(/Sol has passed/)).toBeInTheDocument()
+    expect(screen.getByText('Lived 3 days')).toBeInTheDocument()
+    // A clear link points to the spirit page to awaken a new spark.
+    const link = screen.getByRole('link', { name: /awaken a new spark/i })
+    expect(link).toHaveAttribute('href', '/spirit')
+    // The art renders as a passed memorial (data-state + the resting creature class), no float.
+    expect(container.querySelector('.spirit-svg[data-state="dead"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-creature--dead')).not.toBeNull()
+    expect(container.querySelector('.spirit-creature--alive')).toBeNull()
+    // The memorial scene (headstone group) is drawn.
+    expect(container.querySelector('.spirit-memorial')).not.toBeNull()
+  })
+
+  it('does not crash and renders the normal read-out for a healthy alive spirit', () => {
+    renderSpirit(<Spirit spirit={spiritState({ stage: 'wisp', path: 'breath' })} />)
+    // No ailing/dead messaging when healthy.
+    expect(screen.queryByText(/ailing/i)).toBeNull()
+    expect(screen.queryByText(/has passed/i)).toBeNull()
   })
 })
 

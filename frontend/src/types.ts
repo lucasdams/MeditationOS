@@ -317,13 +317,17 @@ export interface SpiritAvailableSlot {
   options: SpiritSlotOption[]
 }
 
-// A past spirit in the collection — a radiant companion retired when its successor was
-// awakened, kept forever (the long-term replay loop). Mirrors backend RetiredSpirit.
+// A past spirit in the collection — a companion retired when its successor was awakened, kept
+// forever (the long-term replay loop). Mirrors backend RetiredSpirit. A spirit retires either by
+// GRADUATING (grown to radiant + set free) or by DYING of neglect (ADR-0029) — `died_at` is set
+// only in the latter case, so the gallery can render it as a memorial with its lifespan.
 export interface RetiredSpirit {
   id: string
-  stage: SpiritStage // the stage it retired at (radiant, in practice)
+  stage: SpiritStage // the stage it retired at (radiant for graduates; its stage at death otherwise)
   path: SpiritPath | null // its committed path (stillness | breath | heart), or null
   name: string | null // its nickname, if it had one
+  awakened_at: string // ISO birth moment — the start of its lifespan (ADR-0029)
+  died_at: string | null // ISO death moment if it DIED of neglect; null for a radiant graduate (ADR-0029)
 }
 
 // The active spirit's SIGNATURE SET status (ADR-0028) — the endgame achievement of equipping every
@@ -346,14 +350,23 @@ export interface SpiritState {
   path: SpiritPath | null // the CHOSEN creature; null until chosen via POST /spirit/choose
   name: string | null // the active spirit's nickname, if set (pre-fills / displays in the UI)
   bond: SpiritBond // level + XP-into-level + XP-for-next
-  needs: SpiritNeeds // the three tended needs (nourished / rested / joyful); visual-only
+  needs: SpiritNeeds // the three tended needs (nourished / rested / joyful) — survival meters (ADR-0029)
   condition: SpiritCondition // overall care state = the weakest need; visual-only (ADR-0023)
   coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
   cosmetics: Record<string, string> // the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
   available: SpiritAvailableSlot[] // the cosmetics skill tree with per-option state
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
   set_bonus: SpiritSetBonus // signature-set status + harmony lift (ADR-0028); derived/visual-only
+  // ── Tamagotchi survival state (ADR-0029) ── needs decay in real time; neglect can be fatal.
+  awakened_at: string // ISO birth moment — anchors lifespan + decay
+  ailing: boolean // the weakest need has hit ~0 (health gone) but the spirit hasn't died yet
+  dead: boolean // it died of neglect — the page becomes a memorial (terminal; awaken a new one)
+  died_at: string | null // the frozen ISO death moment when `dead`; null while alive
 }
+
+// Which need a tend action tops up (ADR-0029): feed → nourished, rest → rested, play → joyful.
+// The body sent to POST /spirit/tend.
+export type SpiritTendKind = 'feed' | 'rest' | 'play'
 
 // One option in a path's read-only skill-tree PREVIEW (GET /spirit/preview) — the choose page's
 // "what does this creature grow into" data. State-free (the spirit doesn't exist yet): just the

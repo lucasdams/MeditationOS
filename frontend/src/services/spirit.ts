@@ -5,6 +5,7 @@ import type {
   SpiritPreview,
   SpiritResetNameRequest,
   SpiritState,
+  SpiritTendKind,
   SpiritUnlockRequest,
 } from '../types'
 
@@ -41,7 +42,13 @@ export const spiritService = {
   // Charges a flat fee — too few coins → 409; blank/over-length name → 422.
   resetName: (body: SpiritResetNameRequest) =>
     api.post<SpiritState>('/spirit/reset-name', body),
-  // Retire the active radiant spirit and awaken a fresh pathless spark. Requires the active
-  // spirit to be at radiant — otherwise 409.
+  // Tend the active spirit — a light top-up of one survival need (ADR-0029): feed → nourished,
+  // rest → rested, play → joyful. Tops the need to the tend cap (~60%); only practice fills it
+  // fully. Resets the death clock. A dead spirit can't be tended → 409. Returns the fresh state.
+  tend: (kind: SpiritTendKind) =>
+    api.post<SpiritState>('/spirit/tend', { kind }),
+  // Retire the active spirit and awaken a fresh pathless spark. Reachable when the active spirit
+  // is at radiant (set it free) OR has DIED of neglect (ADR-0029 — begin again from a memorial).
+  // Otherwise 409.
   awaken: () => api.post<SpiritState>('/spirit/awaken'),
 }

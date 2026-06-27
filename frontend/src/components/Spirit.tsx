@@ -436,6 +436,20 @@ function conditionTier(factor: number): SpiritNeedTier {
   return 'unwell'
 }
 
+// A kind, human lifespan read-out (ADR-0029) from a spirit's birth → death timestamps. Rounds to
+// whole days; under a day reads "Lived less than a day", so a short-lived spirit isn't shown as
+// "lived 0 days". Defends against malformed/missing dates by falling back to the gentle <1 copy.
+// Shared by the dead-spirit memorial on SpiritPage and the collection gallery's died entries.
+export function lifespanCopy(awakenedAt: string, diedAt: string): string {
+  const start = new Date(awakenedAt).getTime()
+  const end = new Date(diedAt).getTime()
+  const ms = end - start
+  // Under a full day (or a malformed / clock-skewed range) reads kindly, never "0 days".
+  if (!Number.isFinite(ms) || ms < 86_400_000) return 'Lived less than a day'
+  const days = Math.round(ms / 86_400_000)
+  return `Lived ${days} ${days === 1 ? 'day' : 'days'}`
+}
+
 // True when the OS asks for reduced motion. Read at render (a one-shot, like BreathePage),
 // so the static path is chosen before any animation class / inline transform is applied.
 // Exported so SpiritPage threads the same real value into its hero art.
@@ -3490,6 +3504,53 @@ export function formFor(spirit: SpiritState): SpiritPath | null {
   return spirit.path
 }
 
+// AilingCue (ADR-0029) — a small "unwell" tell drawn beside the creature's head when it is ailing
+// (health gone, not yet dead). A single faint blue sweat-drop, so the sick state reads even where
+// colour/desaturation alone might not. Tiny + low-opacity — it says "needs care", never alarming.
+// Procedural, aria-hidden, no asset imports. The slow wobble is CSS (prefers-reduced-motion safe).
+function AilingCue() {
+  return (
+    <g className="spirit-ailing-drop" aria-hidden="true">
+      {/* A rounded teardrop perched up by the head (the figures top out around y≈26-30). */}
+      <path
+        d="M 52 26 q -2.6 3.4 0 5.4 q 2.6 -2 0 -5.4 Z"
+        fill="#7dd3fc"
+        opacity={0.85}
+      />
+      <circle cx={51.4} cy={29.4} r={0.7} fill="#e0f2fe" opacity={0.9} />
+    </g>
+  )
+}
+
+// Memorial (ADR-0029) — the calm, respectful resting scene drawn behind a DEAD spirit's faded
+// silhouette: a soft pale halo of light (the spirit returning to stillness) and a small rounded
+// headstone low at the bottom, with a faint engraved rest-mark. Tasteful and gentle, never gory
+// (no graves-dirt, no crosses). Procedural SVG, aria-hidden, no asset imports.
+function Memorial() {
+  return (
+    <g className="spirit-memorial" aria-hidden="true">
+      {/* A soft halo of light around where the spirit rests — it fades into stillness, not dark. */}
+      <circle cx={40} cy={38} r={26} fill="#e2e8f0" opacity={0.18} />
+      <circle cx={40} cy={38} r={18} fill="#f8fafc" opacity={0.22} />
+      {/* A small rounded headstone, low and centred, behind the resting figure. A calm marker. */}
+      <path
+        d="M 31 70 L 31 58 Q 31 50 40 50 Q 49 50 49 58 L 49 70 Z"
+        fill="#94a3b8"
+        opacity={0.55}
+      />
+      <path
+        d="M 33 68 L 33 58 Q 33 52 40 52 Q 47 52 47 58 L 47 68 Z"
+        fill="#cbd5e1"
+        opacity={0.5}
+      />
+      {/* A faint engraved rest-mark (a gentle dash, not a cross or letters). */}
+      <rect x={36} y={59} width={8} height={1.4} rx={0.7} fill="#64748b" opacity={0.5} />
+      {/* A soft mound the stone settles into, very low at the bottom. */}
+      <ellipse cx={40} cy={71} rx={16} ry={2.6} fill="#94a3b8" opacity={0.32} />
+    </g>
+  )
+}
+
 // The "Signature radiance" flourish (ADR-0028) — drawn ONLY when the full signature set is
 // equipped. A subtle endgame touch: a soft extra halo blooming behind the figure plus a faint
 // ring of sparkles around it, tinted to the path's accent. Kept tasteful + low-opacity so it
@@ -3556,6 +3617,8 @@ export function SpiritArt({
   reducedMotion,
   previewing = false,
   setRadiant = false,
+  ailing = false,
+  dead = false,
 }: {
   stage: SpiritStage
   // The chosen creature, or null for a pathless spark (drawn neutral, no creature form).
@@ -3574,6 +3637,13 @@ export function SpiritArt({
   // True when the full SIGNATURE SET is equipped (ADR-0028) — draws an extra subtle "Signature
   // radiance" flourish (a soft halo + a faint sparkle ring) over the scene. Advisory/visual only.
   setRadiant?: boolean
+  // ── Tamagotchi states (ADR-0029) ──
+  // `ailing` — health gone but not yet dead: the creature looks unwell (desaturated, drooping, a
+  // faint sweat-drop + a slow sigh), reading as "needs care", never grotesque. Recovers on tend.
+  ailing?: boolean
+  // `dead` — a calm, respectful memorial: the creature fades to a pale resting silhouette under a
+  // soft halo, behind a small headstone. The lively idle/pacer motion stops. Tasteful, not gory.
+  dead?: boolean
 }) {
   const g = clampGlow(glow)
   const aura = cosmetics?.aura
@@ -3585,7 +3655,10 @@ export function SpiritArt({
   const ground = cosmetics?.ground
   // A pathless spark has no creature label yet — describe it as an awakening spark.
   const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
-  const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
+  // The accessible label reflects the survival state (ADR-0029) so a screen-reader user hears that
+  // the spirit is unwell or at rest, not just its stage.
+  const stateNote = dead ? ', at rest' : ailing ? ', unwell' : ''
+  const label = `${STAGE_COPY[stage].name} ${creature}${stateNote}${previewing ? ' (preview)' : ''}`
   // The celebration + pacer transform now target the CREATURE group, so the static background
   // (habitat + aura) never swells with the one-shot or drifts with the breath.
   const creatureRef = useRef<SVGGElement | null>(null)
@@ -3619,8 +3692,13 @@ export function SpiritArt({
   // `--spirit-vitality` is the SECOND, wider-range cue off the RAW factor (0.4 unwell → 1.0
   // thriving): CSS uses it for the stronger good↔bad expression (saturation, liveliness, posture).
   // `data-condition` exposes the coarse tier so CSS can add discrete touches if useful.
-  const vitality = conditionVitality(glow)
+  // When dead or ailing the creature should read clearly unwell (ADR-0029): drop the vitality cue
+  // hard (desaturated, washed-out, drooping) regardless of the raw glow — a dead spirit reads as
+  // grey/still, an ailing one as muted/wilted. Otherwise vitality tracks the condition factor.
+  const vitality = dead ? 0 : ailing ? Math.min(conditionVitality(glow), 0.2) : conditionVitality(glow)
   const tier = conditionTier(glow)
+  // `data-state` exposes the survival state so CSS can add discrete grey/dim touches (ADR-0029).
+  const dataState = dead ? 'dead' : ailing ? 'ailing' : 'alive'
   const svgStyle: CSSProperties = {
     ['--spirit-glow' as string]: g,
     ['--spirit-vitality' as string]: vitality,
@@ -3628,12 +3706,20 @@ export function SpiritArt({
 
   // The float / glow / pace only run when alive (not reduced-motion). The OUTER svg is now a
   // STATIC layer — it never floats. The creature layer floats (or paces); the aura layer glows.
-  const alive = !reducedMotion
-  // The creature group: idle float when alive & not pacing; a pacer transform when pacing.
+  // A DEAD spirit never runs the lively idle/pacer motion (ADR-0029) — the memorial holds still.
+  const alive = !reducedMotion && !dead
+  // The LIVELY idle float is for a healthy creature only — an ailing or dead one drops it for its
+  // own wilt/rest motion (ADR-0029), so the two never run at once. The aura/companion still glow
+  // off `alive` (a sick spirit's halo isn't frozen), but the creature itself doesn't bounce.
+  const lively = alive && !ailing
+  // The creature group: idle float when lively & not pacing; a pacer transform when pacing. An
+  // `ailing` creature carries a wilt class (a slow, heavy sigh instead of the lively float) and a
+  // `dead` one a resting class — both styled in CSS, prefers-reduced-motion safe (ADR-0029).
   const creatureClass =
     'spirit-creature' +
-    (alive && !inPacerMode ? ' spirit-creature--alive' : '') +
-    (inPacerMode ? ' spirit-creature--pacing' : '')
+    (lively && !inPacerMode ? ' spirit-creature--alive' : '') +
+    (inPacerMode ? ' spirit-creature--pacing' : '') +
+    (dead ? ' spirit-creature--dead' : ailing ? ' spirit-creature--ailing' : '')
   const creatureStyle: CSSProperties | undefined = inPacerMode
     ? { transform: `scale(${liveScale})` }
     : undefined
@@ -3651,6 +3737,7 @@ export function SpiritArt({
       className="spirit-svg"
       style={svgStyle}
       data-condition={tier}
+      data-state={dataState}
       viewBox="0 0 80 80"
       role="img"
       aria-label={label}
@@ -3684,10 +3771,15 @@ export function SpiritArt({
       {ground && <Ground ground={ground} g={g} />}
       {/* ── SIGNATURE RADIANCE (ADR-0028) ── when the full signature set is equipped, an extra
           subtle halo + sparkle ring blooms behind the figure (over the background, under the
-          creature). Only for a chosen creature; advisory/visual only, prefers-reduced-motion safe. */}
-      {setRadiant && path && <SetRadiance path={path} g={g} alive={alive} />}
-      {/* ── FLOATING creature layer ── only this group moves: idle float, pacer sync, or the
-          celebration one-shot. The figure is always legible; the accessory perches on top. */}
+          creature). Suppressed while dead — the memorial isn't a celebration (ADR-0029). */}
+      {setRadiant && path && !dead && <SetRadiance path={path} g={g} alive={alive} />}
+      {/* ── MEMORIAL (ADR-0029, dead) ── a calm, respectful resting scene behind the faded figure:
+          a soft halo of light and a small rounded headstone, drawn under the creature so the
+          (greyed, still) silhouette rests in front of it. Tasteful, never gory; aria-hidden. */}
+      {dead && <Memorial />}
+      {/* ── FLOATING creature layer ── only this group moves (and only when alive): idle float,
+          pacer sync, or the celebration one-shot. The figure is always legible; the accessory
+          perches on top. When ailing/dead the group carries a wilt/rest class instead. */}
       <g ref={creatureRef} className={creatureClass} style={creatureStyle}>
         {path ? (
           (() => {
@@ -3698,6 +3790,9 @@ export function SpiritArt({
           <SparkForm g={g} />
         )}
         {accessory && <Accessory accessory={accessory} g={g} />}
+        {/* ── AILING cue (ADR-0029) ── a single faint sweat-drop beside the head, so the unwell
+            state reads even without colour. Only when ailing (a dead spirit is past this). */}
+        {ailing && !dead && <AilingCue />}
       </g>
       {/* The weather is the FRONT-MOST overlay — drawn after everything (incl. the accessory) so
           its light particles drift OVER the whole scene. Kept subtle so it never obscures the
@@ -3771,11 +3866,13 @@ export default function Spirit({
     return null
   }
 
-  const { stage, condition, needs, bond, path, cosmetics } = spirit
+  const { stage, condition, needs, bond, path, cosmetics, ailing, dead } = spirit
   const copy = STAGE_COPY[stage]
   // The form is the CHOSEN path (ADR-0023); null = a pathless spark (neutral SparkForm). The
   // overall look (glow/vibrancy) reads from the condition factor — the weakest of the needs.
   const form: SpiritPath | null = formFor(spirit)
+  // A kind display name for the survival messaging (the spirit's nickname, or its dosha).
+  const displayName = spirit.name ?? (path ? `Your ${PATH_COPY[path]}` : 'Your spark')
 
   // Read the OS reduced-motion preference once here and thread it down, so every motion path
   // (idle float, glow pulse, celebration, pacer sync) is gated by the single source of truth.
@@ -3791,6 +3888,9 @@ export default function Spirit({
       reducedMotion={reducedMotion}
       // ADR-0028: the full signature set lights up an extra "Signature radiance" flourish.
       setRadiant={spirit.set_bonus.active}
+      // ADR-0029: sick / passed visuals reflect the survival state.
+      ailing={ailing}
+      dead={dead}
     />
   )
 
@@ -3814,7 +3914,23 @@ export default function Spirit({
       <div className="spirit-art">{art}</div>
       {/* Quiet, calm read-out — the stage name, a gentle note, and the bond level. No XP bar,
           no shouted numbers; consistent with the app's low-pressure stance. */}
-      {path === null ? (
+      {dead ? (
+        // Dead (ADR-0029): a small, respectful memorial pointing to the spirit page to begin
+        // again. Kind + brief — no guilt, no clinical language.
+        <>
+          <p className="spirit-stage">{displayName} has passed</p>
+          <p className="spirit-note muted">
+            {spirit.died_at
+              ? lifespanCopy(spirit.awakened_at, spirit.died_at)
+              : 'Returned to stillness.'}
+          </p>
+          <p className="spirit-choose-prompt">
+            <Link to="/spirit" className="spirit-choose-cta">
+              Awaken a new spark →
+            </Link>
+          </p>
+        </>
+      ) : path === null ? (
         // Choose-first (ADR-0023): lead with the CHOICE, not a faint default spark — picking a
         // companion is the first step. The picker lives on its own focused page.
         <>
@@ -3828,11 +3944,19 @@ export default function Spirit({
         </>
       ) : (
         // A chosen creature: its stage, a tidy needs read-out + a single kind care nudge, bond.
+        // When ailing (ADR-0029) a gentle but legible warning leads — the stakes are real.
         <>
           <p className="spirit-stage">{copy.name}</p>
-          <p className="spirit-note muted">{copy.note}</p>
+          {ailing ? (
+            <p className="spirit-ailing-nudge" role="status">
+              <span aria-hidden="true">⚠️ </span>
+              {displayName} is ailing — feed it or practice today, or it may not make it.
+            </p>
+          ) : (
+            <p className="spirit-note muted">{copy.note}</p>
+          )}
           <NeedsReadout needs={needs} />
-          <CareNudge needs={needs} path={path} />
+          {!ailing && <CareNudge needs={needs} path={path} />}
           <p className="spirit-bond muted">Bond level {bond.level}</p>
         </>
       )}

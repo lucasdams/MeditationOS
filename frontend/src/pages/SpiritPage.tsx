@@ -13,6 +13,7 @@ import {
   optionLabel,
   titleize,
   formFor,
+  lifespanCopy,
   prefersReducedMotion,
 } from '../components/Spirit'
 import CoinIcon from '../components/CoinIcon'
@@ -24,7 +25,17 @@ import type {
   SpiritPath,
   SpiritSlotOption,
   SpiritState,
+  SpiritTendKind,
 } from '../types'
+
+// The three calm tend actions (ADR-0029) — each tops up one survival need. Labelled with the
+// matching NEED_COPY icon + need name so it's clear which meter it fills. Order mirrors the needs
+// read-out (Nourishment / Rest / Joy).
+const TEND_ACTIONS: { kind: SpiritTendKind; need: SpiritNeedKey; label: string }[] = [
+  { kind: 'feed', need: 'nourished', label: 'Feed' },
+  { kind: 'rest', need: 'rested', label: 'Rest' },
+  { kind: 'play', need: 'joyful', label: 'Play' },
+]
 
 /**
  * SpiritPage — the full view of your living companion (docs/design/spirit.md, ADR-0022,
@@ -245,8 +256,43 @@ export default function SpiritPage() {
     }
   }
 
-  // A pathless spark picks its creature on a dedicated, focused page (not crammed in here).
-  if (spirit && spirit.path === null) return <Navigate to="/spirit/choose" replace />
+  // Tend a survival need (ADR-0029) — feed / rest / play tops one meter to the tend cap. The write
+  // returns the fresh state, so we just swap it in. Disabled while in flight (busy key `tend:kind`)
+  // and when the spirit is dead (the backend 409s a dead spirit; this is the calm UX gate).
+  async function tend(kind: SpiritTendKind, need: SpiritNeedKey) {
+    setBusy(`tend:${kind}`)
+    try {
+      const next = await spiritService.tend(kind)
+      setSpirit(next)
+      const copy = NEED_COPY[need]
+      showToast(`${copy.icon} ${copy.label} topped up — practice fills it fully.`)
+    } catch {
+      showToast('Could not tend your spirit right now.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Begin again after death (ADR-0029) — the death→awaken reuses the existing set-free service
+  // method (it now also works on a dead spirit), retiring the memorial and minting a fresh pathless
+  // spark. Swapping the fresh (pathless, not-dead) state in trips the redirect above, routing to
+  // /spirit/choose so the user names + picks their new companion.
+  async function reviveFromDeath() {
+    setBusy('awaken')
+    try {
+      const next = await spiritService.awaken()
+      setSpirit(next)
+    } catch {
+      showToast('Could not awaken a new spark right now.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // A pathless spark picks its creature on a dedicated, focused page (not crammed in here). A DEAD
+  // spirit is NOT redirected — it still has a path; the page shows its memorial instead (below).
+  if (spirit && spirit.path === null && !spirit.dead)
+    return <Navigate to="/spirit/choose" replace />
 
   return (
     <main id="main-content" className="dashboard spirit-page">
@@ -272,6 +318,47 @@ export default function SpiritPage() {
         const form = formFor(spirit)
         const stageLabel = STAGE_LABEL[spirit.stage] ?? titleize(spirit.stage)
         const isRadiant = spirit.stage === 'radiant'
+
+        // ── Dead (ADR-0029) ── a respectful memorial REPLACES the normal page body: no customize
+        // tree, no tend buttons, no name reset. Just the passed art, the name + lifespan, a kind
+        // line, and a single "awaken a new spark" action that begins again (death→awaken).
+        if (spirit.dead) {
+          const memorialName =
+            spirit.name ??
+            `${stageLabel}${spirit.path ? ' ' + PATH_LABEL[spirit.path] : ''} spirit`
+          // "{name} lived N days" — the lifespan, computed birth → death (ADR-0029).
+          const lifespanLine = spirit.died_at
+            ? `${memorialName} ${lifespanCopy(spirit.awakened_at, spirit.died_at)
+                .replace(/^Lived/, 'lived')}`
+            : `${memorialName} has returned to stillness`
+          return (
+            <section className="spirit-section spirit-memorial-panel" aria-label="In memory">
+              <div className="spirit-memorial-art">
+                <SpiritArt
+                  stage={spirit.stage}
+                  path={form}
+                  glow={spirit.condition.factor}
+                  cosmetics={spirit.cosmetics}
+                  reducedMotion={reducedMotion}
+                  dead
+                />
+              </div>
+              <h2 className="spirit-memorial-name">{memorialName}</h2>
+              <p className="spirit-memorial-lifespan">{lifespanLine}</p>
+              <p className="muted spirit-memorial-line">
+                Even tended spirits return to stillness. When you're ready, begin again.
+              </p>
+              <button
+                type="button"
+                className="spirit-memorial-awaken"
+                disabled={busy != null}
+                onClick={reviveFromDeath}
+              >
+                {busy === 'awaken' ? 'Awakening…' : 'Awaken a new spark'}
+              </button>
+            </section>
+          )
+        }
         // The live preview merges the explored option into the EQUIPPED cosmetics ({...current,
         // [slot]: option}); with nothing explored it shows the spirit exactly as it is now.
         const previewCosmetics = preview
@@ -489,18 +576,58 @@ export default function SpiritPage() {
               </p>
             </section>
 
-            {/* Care (ADR-0023) — the three tended needs + a single kind nudge when one is low.
-                Only for a chosen creature; a pathless spark has no needs yet (the picker leads). */}
+            {/* Care (ADR-0023 / ADR-0029) — the three needs are now survival meters that decay; a
+                kind nudge when one is low, an ailing warning when health is gone, and the Feed /
+                Rest / Play tend actions that keep your companion alive between sessions. Only for a
+                chosen creature; a pathless spark has no needs yet (the picker leads). */}
             {spirit.path && (
               <section className="spirit-section spirit-care" aria-label="Care">
                 <header className="spirit-section-head">
                   <h2 className="spirit-section-title">Care</h2>
                   <p className="muted spirit-section-subtitle">
-                    Keep your {PATH_LABEL[spirit.path]} thriving with its kind of practice.
+                    These meters run low over time — tend them, or practice to fill them fully.
                   </p>
                 </header>
+
+                {/* Ailing (ADR-0029) — a clear-but-calm warning that the companion is in trouble.
+                    Tending or practice recovers it. Legible stakes, never a guilt-trip. */}
+                {spirit.ailing && (
+                  <p className="spirit-ailing-banner" role="alert">
+                    <span aria-hidden="true">⚠️ </span>
+                    {spirit.name ?? `Your ${PATH_LABEL[spirit.path]}`} is ailing — feed it or
+                    practice today, or it may not make it.
+                  </p>
+                )}
+
                 <NeedsReadout needs={spirit.needs} />
-                <CareNudge needs={spirit.needs} path={spirit.path} />
+                {!spirit.ailing && <CareNudge needs={spirit.needs} path={spirit.path} />}
+
+                {/* The tend actions — Feed → nourished, Rest → rested, Play → joyful. Each tops its
+                    need to ~60%; only practice fills it fully (the subtitle + toast convey this).
+                    Disabled while a tend is in flight; the whole row is unreachable when dead (the
+                    memorial replaces this body). */}
+                <div className="spirit-tend" role="group" aria-label="Tend your spirit">
+                  {TEND_ACTIONS.map(({ kind, need, label }) => {
+                    const copy = NEED_COPY[need]
+                    return (
+                      <button
+                        key={kind}
+                        type="button"
+                        className="spirit-tend-btn"
+                        disabled={busy != null}
+                        aria-label={`${label} — top up ${copy.label}`}
+                        onClick={() => tend(kind, need)}
+                      >
+                        <span className="spirit-tend-icon" aria-hidden="true">
+                          {copy.icon}
+                        </span>
+                        <span className="spirit-tend-label">{label}</span>
+                        <span className="spirit-tend-need muted">{copy.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="muted spirit-tend-hint">Practice fills a need fully; tending tops it up.</p>
               </section>
             )}
 
@@ -546,6 +673,8 @@ export default function SpiritPage() {
                           // ADR-0028: the "Signature radiance" flourish, driven by the committed
                           // set status (an achievement read-out), not the transient hover preview.
                           setRadiant={spirit.set_bonus.active}
+                          // ADR-0029: the hero looks unwell when ailing (dead is handled above).
+                          ailing={spirit.ailing}
                         />
                       </div>
                       {preview && <span className="spirit-preview-badge">Preview</span>}
@@ -560,12 +689,14 @@ export default function SpiritPage() {
               )}
             </section>
 
-            {/* Collection — the gallery of retired (past radiant) spirits, kept forever. */}
+            {/* Collection — the gallery of retired spirits, kept forever: radiant graduates you set
+                free, and memorials for those that passed (ADR-0029). A died entry (its `died_at`
+                set) renders as a memorial with its lifespan; a graduate shows its radiant stage. */}
             <section className="spirit-section spirit-collection" aria-label="Collection">
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Collection</h2>
                 <p className="muted spirit-section-subtitle">
-                  Spirits you grew to radiance and set free.
+                  Spirits you grew to radiance and set free, and those you remember.
                 </p>
               </header>
               {spirit.collection.length === 0 ? (
@@ -574,23 +705,37 @@ export default function SpiritPage() {
                 <ul className="spirit-collection-grid">
                   {spirit.collection.map((r) => {
                     const rForm: SpiritPath = r.path ?? 'stillness'
+                    const died = r.died_at != null
                     return (
-                      <li key={r.id} className="spirit-collection-item">
+                      <li
+                        key={r.id}
+                        className={
+                          'spirit-collection-item' +
+                          (died ? ' spirit-collection-item--memorial' : '')
+                        }
+                      >
                         <div className="spirit-collection-art">
                           <SpiritArt
                             stage={r.stage}
                             path={rForm}
                             glow={1}
                             reducedMotion
+                            dead={died}
                           />
                         </div>
                         <span className="spirit-collection-name">
                           {r.name ?? `${STAGE_LABEL[r.stage] ?? titleize(r.stage)} spirit`}
                         </span>
-                        {r.path && (
-                          <span className="muted spirit-collection-path">
-                            {PATH_LABEL[r.path]}
+                        {died && r.died_at ? (
+                          <span className="muted spirit-collection-lifespan">
+                            {lifespanCopy(r.awakened_at, r.died_at)}
                           </span>
+                        ) : (
+                          r.path && (
+                            <span className="muted spirit-collection-path">
+                              {PATH_LABEL[r.path]}
+                            </span>
+                          )
                         )}
                       </li>
                     )
