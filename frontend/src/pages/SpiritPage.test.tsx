@@ -130,6 +130,17 @@ const renderPage = () =>
 
 afterEach(cleanup)
 
+// The page now shows ONE area at a time via tabs (Care is the default). Click a tab to show its
+// section; the tab button doubles as the load signal. (After a section is active, its name appears
+// as BOTH a tab and an <h2>, so don't use findByText for the section name once switched.)
+async function showTab(tab: 'Care' | 'Customize' | 'Collection') {
+  fireEvent.click(await screen.findByRole('button', { name: tab }))
+}
+// Reveal a slot's level-LOCKED future options (hidden behind the quiet "+ N more" toggle by default).
+function revealLocked() {
+  fireEvent.click(screen.getByRole('button', { name: /more unlock as you grow/ }))
+}
+
 describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
   beforeEach(() => {
     get.mockReset()
@@ -141,8 +152,8 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
+    await showTab('Customize')
 
-    await screen.findByText('Customize')
     // The equipped option reads as worn — a badge, not an Equip/Unlock button.
     const node = document.querySelector('.spirit-node--equipped')
     expect(node).not.toBeNull()
@@ -156,6 +167,7 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
+    await showTab('Customize')
 
     // `soft` is owned but not equipped → a free Equip button.
     expect(await screen.findByRole('button', { name: /Equip Soft glow/ })).toBeInTheDocument()
@@ -165,6 +177,7 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
+    await showTab('Customize')
 
     // `frost` is unlockable and affordable → an Unlock button stating its cost.
     expect(
@@ -176,6 +189,7 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith({ coins: 50 }))
 
     renderPage()
+    await showTab('Customize')
 
     // `rose` is unlockable but the balance (50) is below its 999 cost → Unlock disabled + a hint.
     const btn = await screen.findByRole('button', {
@@ -190,8 +204,9 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
+    await showTab('Customize')
+    revealLocked()
 
-    await screen.findByText('Customize')
     // `starlit` is locked (level not met) → no Unlock/Equip button, just the reason.
     expect(screen.queryByRole('button', { name: /Starlit/ })).toBeNull()
     const locked = document.querySelector('.spirit-node--locked')
@@ -213,14 +228,15 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [tieredTree] }))
 
     renderPage()
+    await showTab('Customize')
+    revealLocked()
 
-    await screen.findByText('Customize')
     const locked = document.querySelector('.spirit-node--locked')
     expect(locked).not.toBeNull()
     expect(within(locked as HTMLElement).getByText(/Unlock a tier-1 option first/)).toBeInTheDocument()
   })
 
-  it('lays out the slot by tier (tier rows in ascending order)', async () => {
+  it('shows actionable options only, tucks locked ones behind a reveal, ascending by tier', async () => {
     const tieredTree: SpiritAvailableSlot = {
       slot: 'aura',
       equipped: null,
@@ -232,13 +248,21 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [tieredTree] }))
 
     renderPage()
+    await showTab('Customize')
 
-    await screen.findByText('Customize')
-    const tiers = Array.from(document.querySelectorAll('.spirit-tier')).map((el) =>
-      el.getAttribute('data-tier'),
-    )
-    // Two tier rows, ascending (1 then 2) regardless of option order.
-    expect(tiers).toEqual(['1', '2'])
+    // Only the actionable tier-1 option shows; the locked tier-2 one hides behind "+ 1 more".
+    const slot = document.querySelector('.spirit-slot[data-slot="aura"]') as HTMLElement
+    expect(within(slot).getByText('Soft glow')).toBeInTheDocument()
+    expect(within(slot).queryByText('Starlit')).toBeNull()
+    expect(
+      within(slot).getByRole('button', { name: /1 more unlock as you grow/ }),
+    ).toBeInTheDocument()
+
+    // Revealing shows both, ascending by tier (soft tier-1 before starlit tier-2).
+    revealLocked()
+    const labels = Array.from(slot.querySelectorAll('.spirit-node-label')).map((el) => el.textContent)
+    expect(labels[0]).toMatch(/Soft glow/)
+    expect(labels[1]).toMatch(/Starlit/)
   })
 })
 
@@ -253,6 +277,7 @@ describe('SpiritPage unlock flow (ADR-0027)', () => {
     unlock.mockResolvedValue(spiritWith({ coins: 75, cosmetics: { aura: 'frost' } }))
 
     renderPage()
+    await showTab('Customize')
 
     // Clicking an unlockable node opens the before/after confirm (it does not unlock directly).
     fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
@@ -276,6 +301,7 @@ describe('SpiritPage unlock flow (ADR-0027)', () => {
     get.mockResolvedValue(spiritWith())
 
     renderPage()
+    await showTab('Customize')
 
     fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
     const dialog = within(await screen.findByRole('dialog'))
@@ -290,6 +316,7 @@ describe('SpiritPage unlock flow (ADR-0027)', () => {
     unlock.mockRejectedValue(new Error('nope'))
 
     renderPage()
+    await showTab('Customize')
 
     fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
     const dialog = within(await screen.findByRole('dialog'))
@@ -309,6 +336,7 @@ describe('SpiritPage equip flow (ADR-0027 — free)', () => {
     equip.mockResolvedValue(spiritWith({ cosmetics: { aura: 'soft' } }))
 
     renderPage()
+    await showTab('Customize')
 
     // Equipping an owned option is immediate and free — no confirmation modal.
     fireEvent.click(await screen.findByRole('button', { name: /Equip Soft glow/ }))
@@ -322,6 +350,7 @@ describe('SpiritPage equip flow (ADR-0027 — free)', () => {
     equip.mockResolvedValue(spiritWith({ cosmetics: {} }))
 
     renderPage()
+    await showTab('Customize')
 
     fireEvent.click(await screen.findByRole('button', { name: /Remove Warm glow/ }))
     await waitFor(() => expect(equip).toHaveBeenCalledWith({ slot: 'aura', option: null }))
@@ -359,7 +388,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     )
 
     renderPage()
-    await screen.findByText('Customize')
+    await showTab('Customize')
 
     // The equipped night habitat draws its dark backdrop on the centered stage art.
     expect(nightRectsInHero()).toBeGreaterThan(0)
@@ -369,6 +398,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatTree] }))
 
     renderPage()
+    await showTab('Customize')
     const nightBtn = await screen.findByRole('button', { name: /Unlock Night sky/ })
 
     // Nothing owned/previewed yet → no night backdrop, no Preview badge.
@@ -389,6 +419,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     get.mockResolvedValue(spiritWith({ cosmetics: {}, available: [habitatTree] }))
 
     renderPage()
+    await showTab('Customize')
     const nightBtn = await screen.findByRole('button', { name: /Unlock Night sky/ })
 
     const stage = document.querySelector('.spirit-stage-art .spirit-svg')
@@ -473,6 +504,7 @@ describe('SpiritPage collection gallery', () => {
     )
 
     renderPage()
+    await showTab('Collection')
 
     expect(await screen.findByText('Zephyr')).toBeInTheDocument()
     expect(screen.getByText(/Radiant spirit/)).toBeInTheDocument()
@@ -495,6 +527,7 @@ describe('SpiritPage collection gallery', () => {
     )
 
     renderPage()
+    await showTab('Collection')
 
     expect(await screen.findByText('Sol')).toBeInTheDocument()
     // The died entry shows its lifespan and is flagged as a memorial (not a radiant-stage label).
@@ -506,6 +539,7 @@ describe('SpiritPage collection gallery', () => {
     get.mockResolvedValue(spiritWith({ collection: [] }))
 
     renderPage()
+    await showTab('Collection')
 
     expect(await screen.findByText('Empty for now — past companions rest here.')).toBeInTheDocument()
   })
@@ -554,7 +588,7 @@ describe('SpiritPage tend loop (ADR-0029)', () => {
     tend.mockResolvedValue(spiritWith())
 
     renderPage()
-    await screen.findByText('Care')
+    await showTab('Care')
 
     fireEvent.click(screen.getByRole('button', { name: /Feed — top up Nourishment/ }))
     await waitFor(() => expect(tend).toHaveBeenCalledWith('feed'))
@@ -571,7 +605,7 @@ describe('SpiritPage tend loop (ADR-0029)', () => {
     tend.mockResolvedValue(spiritWith())
 
     renderPage()
-    await screen.findByText('Care')
+    await showTab('Care')
 
     fireEvent.click(screen.getByRole('button', { name: /Feed — top up Nourishment/ }))
     await waitFor(() =>
@@ -583,7 +617,7 @@ describe('SpiritPage tend loop (ADR-0029)', () => {
     get.mockResolvedValue(spiritWith({ name: 'Ash', ailing: true }))
 
     renderPage()
-    await screen.findByText('Care')
+    await showTab('Care')
 
     expect(screen.getByText(/Ash is ailing — feed it or practice today/)).toBeInTheDocument()
   })
@@ -696,8 +730,8 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
     )
 
     renderPage()
+    await showTab('Customize')
 
-    await screen.findByText('Customize')
     // The incomplete-set nudge shows progress (3/7) and the "equip your exclusive capstones" hint,
     // and NO active badge.
     expect(
@@ -720,8 +754,8 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
     )
 
     renderPage()
+    await showTab('Customize')
 
-    await screen.findByText('Customize')
     // The active badge names the bonus and confirms all 7 pieces are equipped.
     expect(screen.getByText('Signature radiance')).toBeInTheDocument()
     expect(screen.getByText(/all 7 signature pieces equipped/)).toBeInTheDocument()
@@ -749,7 +783,7 @@ describe('SpiritPage care needs (ADR-0023)', () => {
 
     renderPage()
 
-    await screen.findByText('Care')
+    await showTab('Care')
     // Scope the need-label assertions to the needs READ-OUT (the meter list): the same labels
     // (Nourishment / Rest / Joy) also tag the tree's options (ADR-0026) AND the Feed/Rest/Play
     // tend buttons (ADR-0029), so even a Care-region getByText would match more than one.

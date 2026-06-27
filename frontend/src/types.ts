@@ -323,6 +323,7 @@ export interface SpiritSlotOption {
   equipped: boolean // this option is the one currently shown in its slot
   unlockable: boolean // not owned AND path/level/tier prereqs met (affordability is separate)
   available: boolean // offered to the spirit's chosen path (per-path exclusivity; true = universal)
+  exclusive: boolean // the chosen creature's OWN per-path SIGNATURE capstone (vs a universal option)
   need: SpiritNeedKey // the need this option FAVOURS (ADR-0026): nourished | rested | joyful
 }
 

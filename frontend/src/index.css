@@ -3543,25 +3543,50 @@ textarea:focus-visible,
   color: var(--text-primary);
 }
 
+/* Section tabs — Care / Customize / Collection shown one at a time, so the page reads as one
+   focused area instead of a long scroll. A quiet segmented control. */
+.spirit-tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0 0 1.1rem;
+  padding: 0.25rem;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+}
+.spirit-tab {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  background: none;
+  border: none;
+  border-radius: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.spirit-tab:hover {
+  color: var(--text-primary);
+}
+.spirit-tab--active {
+  background: var(--bg-surface-raised);
+  color: var(--spirit-accent);
+  box-shadow: 0 1px 3px var(--shadow-card);
+}
+
 .spirit-slot {
-  /* Structural accent — the Spirit identity (cyan), shared by every slot so the panel agrees
-     with the nav tile and adapts to dark mode. Cascades to legend + option hover/applied. */
+  /* Each section's accent (--slot-accent, set per data-slot below) reads quietly now — a thin
+     coloured LEFT edge + a coloured header label for identity, on a plain neutral card. The full
+     glowing coloured border + wash were too busy across seven sections. Calm by default. */
   --slot-accent: var(--spirit-accent);
-  border: 1.5px solid var(--slot-accent);
-  border-left-width: 4px;
-  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--slot-accent);
+  border-radius: 0.7rem;
   padding: 0.7rem 0.85rem 0.85rem;
-  margin: 0 0 0.85rem;
-  /* A faint wash + soft glow in the slot's OWN colour, so each upgrade section reads as a
-     distinct, lit, colour-coded card (especially when collapsed). */
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--slot-accent) 7%, var(--bg-surface)),
-    var(--bg-surface) 68%
-  );
-  box-shadow:
-    0 2px 8px var(--shadow-card),
-    0 0 14px color-mix(in srgb, var(--slot-accent) 12%, transparent);
+  margin: 0 0 0.6rem;
+  background: var(--bg-surface);
+  box-shadow: 0 1px 3px var(--shadow-card);
 }
 
 /* Per-section accent — the whole tree (header, tier dots, connector, node accents, unlock
@@ -3639,11 +3664,11 @@ textarea:focus-visible,
   }
 }
 
-/* --- Skill tree (ADR-0027) ---------------------------------------------------------------- */
-/* Each cosmetic slot is a small per-slot skill tree: its options laid out by tier (1 → 2 → 3) as
-   a climb, so reaching the tier-3 capstone reads as a progression. A `.spirit-tree` reuses the
-   `.spirit-slot` fieldset frame (border + legend); the tiers stack as connected rows, threaded by
-   a continuous spine so the climb reads as one tree rather than separate rows. */
+/* --- Cosmetic slots (ADR-0027) ------------------------------------------------------------ */
+/* Each cosmetic slot is a collapsible section listing its ACTIONABLE options (owned / unlockable),
+   ascending by tier, as a calm flat list; level-locked future options hide behind a quiet
+   "+ N more" reveal. (The earlier tier-tree scaffolding — spine, rank badges, tier rows — was
+   removed to keep the panel uncrowded.) */
 
 /* A tiny "owned/total" progress read under the legend — quiet, so each tree shows progress at a
    glance without shouting (calm UX). */
@@ -3654,93 +3679,30 @@ textarea:focus-visible,
   letter-spacing: 0.03em;
 }
 
-.spirit-tree-tiers {
+/* A calm flat list of the slot's ACTIONABLE options (no tier-tree scaffolding); locked future
+   options are tucked behind the quiet toggle below. */
+.spirit-slot-options {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.45rem;
+  padding-top: 0.55rem;
 }
 
-/* One tier row in the tree. The rank badge sits on a vertical SPINE (a left rail) that threads the
-   whole climb tier 1 → 2 → 3, so the progression reads as connected rather than as loose rows. The
-   spine is drawn behind the rank badges via a left padding + an absolute line. */
-.spirit-tier {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  column-gap: 0.55rem;
-  row-gap: 0.3rem;
-  position: relative;
-}
-
-/* The spine segment behind each tier's rank badge. It runs the full row height and overshoots into
-   the gap above/below so adjacent segments visually join into one continuous line. The first tier
-   has no segment above its badge, the last none below. */
-.spirit-tier::before {
-  content: '';
-  position: absolute;
-  top: -0.6rem;
-  bottom: -0.6rem;
-  /* center under the 1.4rem rank badge in the first grid column */
-  left: 0.7rem;
-  width: 2px;
-  transform: translateX(-50%);
-  background: color-mix(in srgb, var(--slot-accent) 32%, transparent);
-}
-
-.spirit-tier[data-tier-pos='first']::before {
-  top: 0.7rem;
-}
-
-.spirit-tier[data-tier-pos='last']::before {
-  bottom: calc(100% - 0.7rem);
-}
-
-/* The tier label: a numbered rank badge on the spine + its caption. The badge sits above the line
-   so the spine appears to thread through each rank. */
-.spirit-tier-label {
-  grid-column: 1;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  position: relative;
-  z-index: 1;
-}
-
-.spirit-tier-rank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 999px;
-  border: 1.5px solid var(--slot-accent);
-  background: var(--bg-surface);
-  color: var(--slot-accent);
-  font-size: 0.78rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.spirit-tier-rank-text {
-  /* The "Tier N" caption only shows on the row that owns the nodes; keep it out of the spine
-     column on narrow widths by collapsing to the rank badge alone. */
-  font-size: 0.58rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* The quiet "+ N more unlock as you grow" reveal — a plain text button, never shouty. */
+.spirit-locked-toggle {
+  align-self: flex-start;
+  margin-top: 0.05rem;
+  padding: 0.2rem 0.05rem;
+  background: none;
+  border: none;
   color: var(--text-muted);
-  text-align: center;
-  max-width: 4.2rem;
+  font-size: 0.8rem;
+  cursor: pointer;
 }
-
-.spirit-tier-nodes {
-  grid-column: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 0;
+.spirit-locked-toggle:hover,
+.spirit-locked-toggle:focus-visible {
+  color: var(--text-secondary);
+  text-decoration: underline;
 }
 
 /* A tree node — one cosmetic option, with its label + need tag and a state-driven control. The
@@ -3751,18 +3713,13 @@ textarea:focus-visible,
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.5rem 0.65rem 0.5rem 0.7rem;
-  border: 1.5px solid var(--border);
-  border-left-width: 3px;
-  border-left-color: var(--border);
-  border-radius: 0.7rem;
-  /* A faint top-lit gradient + a soft lift so the tree reads as a stack of cards, not flat rows. */
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--accent) 5%, var(--bg-surface)),
-    var(--bg-surface) 68%
-  );
-  box-shadow: 0 2px 6px var(--shadow-card);
-  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 0.6rem;
+  /* Plain + quiet — a simple list row, not a glowing card. State (owned/unlockable/etc.) still
+     tints the border below; calm by default. */
+  background: var(--bg-surface);
+  transition: border-color 0.14s ease, background 0.14s ease;
 }
 
 .spirit-node-head {
@@ -3946,6 +3903,112 @@ textarea:focus-visible,
   font-size: 0.74rem;
   font-weight: 600;
   color: var(--text-muted);
+}
+
+/* ── Capstone / prize nodes — an ornate RELIC, not a glowing box ─────────────────────────────
+   The prize pieces are framed like illuminated relics: ornamental corner flourishes, a fine inner
+   frame line, and an engraved elemental SIGIL as the seal — the creature's element for a SIGNATURE
+   (Pitta fire / Kapha earth / Vata air), a radiant sun for a universal LEGENDARY. A faint static
+   aura underneath, no shimmer/pulse. After the node-state rules so the prize wins. */
+
+/* The creature's ELEMENT (dosha) drives the SIGNATURE accent; legendary pins its own violet. */
+.spirit-personalize[data-path='stillness'] {
+  --element-accent: var(--spirit-kapha);
+}
+.spirit-personalize[data-path='breath'] {
+  --element-accent: var(--spirit-pitta);
+}
+.spirit-personalize[data-path='heart'] {
+  --element-accent: var(--spirit-vata);
+}
+
+.spirit-node--signature {
+  position: relative;
+  --prize-accent: var(--element-accent, var(--slot-accent));
+  border-color: var(--prize-accent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--prize-accent) 12%, var(--bg-surface)),
+    var(--bg-surface) 66%
+  );
+  box-shadow: 0 2px 10px var(--shadow-card),
+    0 0 14px color-mix(in srgb, var(--prize-accent) 22%, transparent);
+}
+.spirit-node--legendary {
+  position: relative;
+  --prize-accent: #c4b5fd;
+  border-color: #c4b5fd;
+  background: linear-gradient(160deg, rgba(196, 181, 253, 0.14), var(--bg-surface) 64%);
+  box-shadow: 0 2px 10px var(--shadow-card), 0 0 16px rgba(196, 181, 253, 0.26);
+}
+
+/* A fine inner line, offset from the border — the "framed relic" double edge. */
+.spirit-node--signature::after,
+.spirit-node--legendary::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--prize-accent) 38%, transparent);
+  border-radius: 0.5rem;
+  pointer-events: none;
+}
+
+/* The ornamental corner flourishes — one SVG rotated into each corner. */
+.capstone-frame {
+  position: absolute;
+  inset: 0;
+  color: var(--prize-accent, #c4b5fd);
+  pointer-events: none;
+}
+.capstone-corner {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  opacity: 0.92;
+}
+.capstone-corner svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.capstone-corner--tl {
+  top: 2px;
+  left: 2px;
+}
+.capstone-corner--tr {
+  top: 2px;
+  right: 2px;
+  transform: rotate(90deg);
+}
+.capstone-corner--br {
+  bottom: 2px;
+  right: 2px;
+  transform: rotate(180deg);
+}
+.capstone-corner--bl {
+  bottom: 2px;
+  left: 2px;
+  transform: rotate(270deg);
+}
+
+/* The engraved sigil seal — a small medallion holding the element mark. */
+.spirit-node-seal {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  margin-left: auto;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  color: var(--prize-accent, #c4b5fd);
+  background: color-mix(in srgb, var(--prize-accent, #c4b5fd) 12%, var(--bg-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prize-accent, #c4b5fd) 48%, transparent),
+    0 0 8px color-mix(in srgb, var(--prize-accent, #c4b5fd) 26%, transparent);
+}
+.spirit-node-seal svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: block;
 }
 
 /* Honour reduced-motion: the node hover lift + the node/button colour transitions are subtle

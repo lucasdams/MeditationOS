@@ -1006,6 +1006,9 @@ def _available_slots(
                     equipped=equipped == option,
                     unlockable=_is_unlockable(slot, option, owned, level, path),
                     available=available,
+                    # This is the chosen creature's OWN per-path signature capstone (vs a universal
+                    # option) — surfaced so the tree can give the prize pieces a flashier treatment.
+                    exclusive=per_path is not None and per_path == path,
                     # The need this option favours (ADR-0026), so the shop can tag it.
                     need=_option_need(slot, option),
                 )
