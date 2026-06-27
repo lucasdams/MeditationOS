@@ -1958,8 +1958,14 @@ button:hover:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutra
   filter: brightness(1.04);
 }
 
-button:active:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link) {
-  transform: translateY(0);
+/* Universal press feedback — a quick squish + dim the instant ANY button is activated, of any
+   style (solid, link-style, chip, back-link…). This is the acknowledgement that ALWAYS fires:
+   the click *tick* can be off or audio-blocked, and on touch there's no hover, so a visible
+   press is what tells you the tap registered. Overrides the hover-lift (so a held button reads
+   as pushed-in, not floating). */
+button:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+  filter: brightness(0.96);
 }
 
 button:disabled {
@@ -1988,6 +1994,10 @@ textarea::placeholder {
   button:hover:not(:disabled),
   button:active:not(:disabled) {
     transform: none;
+  }
+  /* No motion, but still acknowledge the press — a brief dim. */
+  button:active:not(:disabled):not([aria-disabled='true']) {
+    filter: brightness(0.9);
   }
 }
 
