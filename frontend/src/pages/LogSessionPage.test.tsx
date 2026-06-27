@@ -108,6 +108,34 @@ describe('LogSessionPage', () => {
     expect(screen.getByLabelText(/notes/i)).toBeInTheDocument()
   })
 
+  it('renders an optional Intention textarea (≤140 chars)', () => {
+    renderPage()
+    const intention = screen.getByLabelText(/intention/i) as HTMLTextAreaElement
+    expect(intention).toBeInTheDocument()
+    expect(intention.maxLength).toBe(140)
+  })
+
+  it('includes a trimmed intention in the create payload when set', async () => {
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText(/intention/i), {
+      target: { value: '  Return to the breath.  ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+    expect(mockCreate.mock.calls[0][0].intention).toBe('Return to the breath.')
+  })
+
+  it('omits a blank intention (sends null) from the create payload', async () => {
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /save session/i }))
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+    expect(mockCreate.mock.calls[0][0].intention).toBeNull()
+  })
+
   it('submits the correct payload for a mindfulness session', async () => {
     renderPage()
 

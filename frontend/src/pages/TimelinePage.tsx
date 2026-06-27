@@ -34,12 +34,13 @@ const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
 
 // CSV export (sessions only) — quote per RFC 4180; injection-safe via csvEscape.
 function toCsv(rows: Session[]): string {
-  const header = ['type', 'duration_minutes', 'occurred_at', 'focus', 'calm', 'breaths_per_minute', 'notes']
+  const header = ['type', 'duration_minutes', 'occurred_at', 'intention', 'focus', 'calm', 'breaths_per_minute', 'notes']
   const lines = rows.map((s) =>
     [
       s.type,
       String(Math.round(s.duration_seconds / 60)),
       s.occurred_at,
+      s.intention ?? '',
       s.focus != null ? String(s.focus) : '',
       s.calm != null ? String(s.calm) : '',
       s.breaths_per_minute != null ? String(s.breaths_per_minute) : '',
@@ -74,6 +75,7 @@ export default function TimelinePage() {
   const [editMin, setEditMin] = useState(10)
   const [editWhen, setEditWhen] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [editIntention, setEditIntention] = useState('')
   const [editFocus, setEditFocus] = useState('')
   const [editCalm, setEditCalm] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
@@ -169,6 +171,7 @@ export default function TimelinePage() {
     setEditMin(Math.max(1, Math.round(s.duration_seconds / 60)))
     setEditWhen(toDatetimeLocal(new Date(s.occurred_at)))
     setEditNotes(s.notes ?? '')
+    setEditIntention(s.intention ?? '')
     setEditFocus(s.focus != null ? String(s.focus) : '')
     setEditCalm(s.calm != null ? String(s.calm) : '')
     setError(null)
@@ -185,6 +188,7 @@ export default function TimelinePage() {
         // (mirrors LogSessionPage / MeditatePage).
         occurred_at: new Date(editWhen).toISOString(),
         notes: editNotes.trim() || null,
+        intention: editIntention.trim() || null,
         focus: editFocus ? Number(editFocus) : null,
         calm: editCalm ? Number(editCalm) : null,
       })
@@ -342,6 +346,16 @@ export default function TimelinePage() {
                       <RatingChips ariaLabel="Calm rating" value={editCalm} onChange={setEditCalm} />
                     </label>
                     <label>
+                      Intention
+                      <textarea
+                        rows={2}
+                        value={editIntention}
+                        maxLength={140}
+                        placeholder="An intention for this sit…"
+                        onChange={(e) => setEditIntention(e.target.value)}
+                      />
+                    </label>
+                    <label>
                       Notes
                       <textarea rows={2} value={editNotes} maxLength={2000} onChange={(e) => setEditNotes(e.target.value)} />
                     </label>
@@ -424,6 +438,24 @@ export default function TimelinePage() {
                       </span>
                     )}
                   </div>
+                  {/* Captured intention + focus/calm self-ratings, shown when present. */}
+                  {item.kind === 'session' && item.session.intention && (
+                    <p className="timeline-intention">
+                      <span className="timeline-intention-icon" aria-hidden="true">✦</span>{' '}
+                      {item.session.intention}
+                    </p>
+                  )}
+                  {item.kind === 'session' &&
+                    (item.session.focus != null || item.session.calm != null) && (
+                      <span className="timeline-ratings muted">
+                        {item.session.focus != null && (
+                          <span>Focus {item.session.focus}/5</span>
+                        )}
+                        {item.session.calm != null && (
+                          <span>Calm {item.session.calm}/5</span>
+                        )}
+                      </span>
+                    )}
                   <span className="timeline-meta muted">
                     {item.kind === 'session'
                       ? 'Practice'

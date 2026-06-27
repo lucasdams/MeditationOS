@@ -5272,6 +5272,30 @@ textarea:focus-visible,
   font-size: 0.72rem;
 }
 
+/* A session's captured intention, shown quietly under the practice line. */
+.timeline-intention {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.timeline-intention-icon {
+  color: var(--accent);
+  font-style: normal;
+}
+
+/* The focus / calm self-ratings read-out — small pills set apart by a gap. */
+.timeline-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  margin-top: 0.05rem;
+}
+
 /* Gratitude */
 .gratitude {
   max-width: 40rem;
@@ -6483,6 +6507,14 @@ details[open] .meditate-disclosure-summary::before {
   margin: 0.25rem 0 0;
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+/* Character counter under the intention field (Log a session). */
+.session-intention-counter {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
 }
 
 /* Optional pre-session reading prompt — a quiet, skippable affordance in the setup. */
