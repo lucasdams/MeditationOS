@@ -1,13 +1,12 @@
 """Spirit state — a single living companion grown from practice (docs/design/spirit.md,
-ADR-0022, ADR-0023, ADR-0024, ADR-0027). Get-or-create the active spirit, compute its
-read-only state, and write the choose / unlock / equip / name-reset / awaken loop.
+ADR-0022, ADR-0023, ADR-0024, ADR-0027, ADR-0029). Get-or-create the active spirit, compute its
+read-only state, and write the choose / tend / unlock / equip / name-reset / awaken loop.
 
-Maximally computed (ADR-0009/0011): the only stored state is the active spirit row's
-chosen `path`, the `name`, the `unlocked` collection + the equipped `cosmetics` loadout
-(ADR-0027), the `coins_spent` spend ledger, and the `last_pampered_at` timestamp (ADR-0025:
-UNLOCKING a cosmetic perks the spirit up with a decaying, visual-only needs boost). Everything
-the client sees is derived on read from the user's earned-XP level (via
-`dashboard_service.get_wallet_basis`):
+Mostly computed (ADR-0009/0011): the stored state is the active spirit row's chosen `path`, the
+`name`, the `unlocked` collection + the equipped `cosmetics` loadout (ADR-0027), the `coins_spent`
+spend ledger, and — ADR-0029, the Tamagotchi turn — the needs decay anchors: `needs_baseline_at`
+(born-fed), the per-need `*_tended_at` stamps, and `died_at`. Stage / bond / coins are still
+derived on read from the user's earned-XP level (via `dashboard_service.get_wallet_basis`):
 
 - **Stage** — the level band the user's level falls into (spark…radiant). A pure function
   of level, so it is monotonic and can never be lost.
@@ -16,19 +15,18 @@ the client sees is derived on read from the user's earned-XP level (via
   ADR-0024: the balance comes from the STORED, monotonic `coins_spent` ledger (every upgrade
   and paid reset only ADDS to it; clearing an upgrade never refunds), so a committed choice
   can't be undone for free. Self-contained: this module owns its own `COINS_PER_LEVEL`.
-- **Needs** (ADR-0023) — THREE named care states (`nourished` / `rested` / `joyful`), each a
-  tier + 0..1 factor, computed from the activity log over a rolling window. Demanding: they
-  decline through tiers when neglected and recover only gradually on a concave curve.
-  `nourished` tracks the CHOSEN creature's signature practice, `rested` its rhythm/consistency,
-  `joyful` its variety. An overall **condition** is the weakest of the three. Together they
-  replace ADR-0022's single `daily_glow`. GUARDRAIL: visual/advisory only — needs never touch
-  stage, level, coins, cosmetics, or the collection, so progress stays monotonic and a
-  neglected creature never loses anything.
+- **Needs** (ADR-0029, supersedes ADR-0023 and the cosmetic modifiers of ADR-0025/0026/0028) —
+  THREE SURVIVAL meters (`nourished` / `rested` / `joyful`), each a tier + 0..1 factor that DECAYS
+  in real time off the born-fed baseline + the most-recent relevant practice (and a lighter,
+  capped manual tend). `nourished` ← the chosen creature's signature practice, `rested` ← any sit,
+  `joyful` ← a gratitude/journal entry. The overall **condition** = the weakest need = HEALTH:
+  when it hits 0 the spirit is ailing, and after DEATH_DAYS it DIES (`died_at` persisted lazily;
+  death is terminal). XP/level/coins stay decoupled from needs, so practice progress is never lost.
 
 ADR-0023 also makes the `path` USER-CHOSEN (set once via `choose_path` while pathless)
 instead of auto-detected from the practice mix; the ADR-0022 `path_lean` and commit-on-read
-are retired. The active spirit is lazily created (a pathless spark) on first read, so both
-new users and migrated users get one without a heavy backfill.
+are retired. The active spirit is lazily created (a pathless spark, born fed) on first read, so
+both new users and migrated users get one without a heavy backfill.
 
 Steps 5 + 6 add the writes — all user-scoped, default-deny at the route. Mutations serialize
 concurrent same-user writes via a per-user, txn-scoped Postgres advisory lock so the
@@ -65,7 +63,10 @@ from app.schemas.spirit import (
     SpiritState,
 )
 from app.services import dashboard_service
-from app.services.time_utils import MIN_PRACTICE_SECONDS, local_date, zone
+
+# ADR-0029 replaced the rolling-window day-bucketing (the old time_utils local_date/zone +
+# MIN_PRACTICE_SECONDS helpers) with real-time decay off raw activity timestamps, so those
+# local-day helpers are no longer imported here.
 
 # The spirit's own economy constant: coins earned per level. The derived coin balance is
 # `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
@@ -120,7 +121,13 @@ class PathAlreadyChosen(Exception):
 
 
 class NotRadiant(Exception):
-    """Awaken requires the active spirit to be at the radiant stage → 409."""
+    """Awaken requires the active spirit to be at the radiant stage → 409. (ADR-0029 also lets a
+    DEAD spirit awaken — that path checks `died_at`, not this error.)"""
+
+
+class SpiritDead(Exception):
+    """A tend (Feed / Rest / Play) targeted a spirit that has already died (ADR-0029). Death is
+    terminal — you must awaken a new spirit. The route maps this to 409."""
 
 
 class SpiritConflictError(Exception):
@@ -190,44 +197,27 @@ HEART = "heart"
 _CHOOSABLE_PATHS: frozenset[str] = frozenset({STILLNESS, BREATH, HEART})
 
 
-# --- The three tended needs (demanding, visual-only care state) + need keys ---------------
+# --- The three needs (ADR-0029 survival meters) + need keys -------------------------------
 #
-# The three need KEYS (also the catalog `need` affinity values, ADR-0026). Kept as bare
-# string constants so the catalog, the passive/buy-boost math, and the schema all agree on the
-# exact spelling.
+# The three need KEYS (also the catalog `need` affinity tag, ADR-0026 → a display tag only under
+# ADR-0029). Kept as bare string constants so the catalog, the needs read, and the schema all
+# agree on the exact spelling.
 NOURISHED = "nourished"
 RESTED = "rested"
 JOYFUL = "joyful"
 
-# The full set of need keys, in display order — used to iterate the per-need math (ADR-0026).
+# The full set of need keys, in display order — the valid `need` affinity values for the catalog
+# (a display tag under ADR-0029) and the keys the schema/needs read agree on.
 NEED_KEYS: tuple[str, ...] = (NOURISHED, RESTED, JOYFUL)
 
-# ADR-0023 replaces the single `daily_glow` with THREE named needs, each a tier
-# (thriving → content → restless → unwell) plus a 0..1 factor, all computed from the activity
-# log over the same rolling window and all DEMANDING + SLOW TO RECOVER (they reflect a *count
-# of distinct recent days*, mapped through a concave threshold curve, so one token session
-# can't jump a depleted need to thriving — recovery is gradual and reflects sustained practice):
-#
-#   nourished — the chosen creature's SIGNATURE practice (the identity need):
-#       stillness → non-breathing meditation days; breath → resonance-breathing days;
-#       heart → gratitude-OR-journal days. ONLY this practice feeds it — doing a different
-#       creature's practice does NOT nourish it.
-#   rested  — practice RHYTHM / consistency: how steady the recent routine is. We take the
-#       stronger of (distinct active days in the window) and (the current streak), so a solid
-#       streak or a well-covered week both read as well-rested.
-#   joyful  — practice VARIETY: how many DISTINCT practice types (meditate / breathe /
-#       gratitude / journal) were done in the window — not overdoing one thing.
-#
-# All three share the SAME window and the SAME day→(tier,factor) curve (NEED_TIERS); the
-# difference is only the signal each measures. The window length, the tier thresholds, and the
-# concave factors are the tunable knobs (retuning needs no migration).
-#
-# GUARDRAIL (ADR-0023): needs are ADVISORY / VISUAL ONLY. They are never read by stage, level,
-# coins, cosmetics, or the collection — those stay derived from earned XP and remain monotonic.
-# `unwell` is the floor; the creature never dies and the right practice always recovers it.
-
-# The rolling window: how many days back (including today) recent activity counts.
-CONDITION_WINDOW_DAYS = 7
+# ADR-0029 makes the three needs SURVIVAL meters that decay in real time (see the decay block
+# below). Each is still reported as a tier (thriving → content → restless → unwell) + a 0..1
+# factor, but the factor is now the decayed VALUE, not a rolling activity-day count. The tier is
+# banded from that value via NEED_TIERS' factor thresholds (`_tier_for_factor`). What feeds each
+# need (ADR-0029):
+#   nourished — the chosen creature's SIGNATURE practice (the balancing one).
+#   rested    — ANY practice session (a sit of any kind).
+#   joyful    — a gratitude or journal entry.
 
 # Tiers, best → worst.
 CONDITION_THRIVING = "thriving"
@@ -243,24 +233,12 @@ _TIER_RANK: dict[str, int] = {
     CONDITION_THRIVING: 3,
 }
 
-# Each need maps a COUNT (of distinct recent days, or of distinct practice types for joyful)
-# to a (tier, factor) on a concave/demanding curve. Thriving needs the signal sustained across
-# most of the window, while a single recent day only lifts a need off the unwell floor — so a
-# token session can't jump a depleted need to the top. Ordered best → worst; first satisfied
-# threshold wins. Shared by all three needs (the signals differ, the curve does not).
-#   (tier, min count for this tier, factor for this tier)
+# The factor → tier band thresholds (`_tier_for_factor`): the best tier whose factor ≤ a need's
+# value. ADR-0029 reuses only the factor column (the middle `min_count` is now vestigial — kept so
+# the tuple shape stays stable). A value at/above 1.0 → thriving, ≥0.8 → content, ≥0.6 → restless,
+# anything lower (down to 0) → unwell, the natural floor for a depleted (or dead-bound) need.
 NEED_TIERS: tuple[tuple[str, int, float], ...] = (
     (CONDITION_THRIVING, 5, 1.0),
-    (CONDITION_CONTENT, 3, 0.8),
-    (CONDITION_RESTLESS, 1, 0.6),
-    (CONDITION_UNWELL, 0, 0.4),
-)
-
-# The variety (`joyful`) need saturates faster than the day-count needs — there are only four
-# practice types, so its thresholds are scaled down: all four types → thriving, etc. Same
-# concave shape, just keyed to "distinct types done" instead of "distinct days practiced".
-JOYFUL_TIERS: tuple[tuple[str, int, float], ...] = (
-    (CONDITION_THRIVING, 4, 1.0),
     (CONDITION_CONTENT, 3, 0.8),
     (CONDITION_RESTLESS, 1, 0.6),
     (CONDITION_UNWELL, 0, 0.4),
@@ -271,77 +249,56 @@ JOYFUL_TIERS: tuple[tuple[str, int, float], ...] = (
 _NEUTRAL_CONDITION_TIER = CONDITION_CONTENT
 _NEUTRAL_CONDITION_FACTOR = 0.8
 
-# --- Per-item need affinities (ADR-0026, extends ADR-0025) --------------------------------
+# --- ADR-0029: real-time decay + sickness/death (the Tamagotchi turn) ---------------------
 #
-# ADR-0025 gave EVERY purchase a uniform decaying boost to ALL THREE needs. ADR-0026 makes each
-# item FAVOUR ONE need (its catalog `need` affinity) with two effects:
+# Needs no longer read a rolling activity-day count off the log (ADR-0023); each is a 0..1 meter
+# that FALLS ON A CLOCK. Two ways to feed it:
+#   - PRACTICE fills it to 1.0. The "last fed by practice" time is the most recent relevant
+#     activity (nourished ← the dosha's signature practice, rested ← any sit, joyful ←
+#     gratitude/journal), floored at `needs_baseline_at` (the born-fed anchor).
+#   - A TEND (Feed / Rest / Play) tops it up to TEND_CAP. Stored as a per-need `*_tended_at`.
+# A need's value = `max(practice_value, tend_value)`, each = cap − elapsed_days/DECAY_DAYS, clamped.
+# There is NO floor — a need can reach 0 (the old non-punishing floor is intentionally gone).
 #
-#   1. PASSIVE (while-owned): a small, permanent lift to the need each currently-applied item
-#      favours — PASSIVE_PER_ITEM per item, capped at PASSIVE_NEED_CAP per need. No decay; it
-#      lasts as long as the item is applied.
-#   2. BUY-BOOST (fading): buying stamps `spirits.last_pampered_at = now()` AND records the bought
-#      item's need in `spirits.last_pampered_need`. The needs read then adds a DECAYING boost,
-#      WEIGHTED toward that need (PAMPER_PRIMARY) with a smaller SPILLOVER to the other two
-#      (PAMPER_SPILL) so buying any item still helps overall condition somewhat. Full right after
-#      the purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS.
-#
-# Both are PARTIAL and CAPPED (the final factor clamps to 1.0): from a genuinely NEGLECTED floor
-# they only lift a need part-way — a treat can't substitute for practice — though from a healthier
-# baseline the weighted boost can briefly read `thriving`. VISUAL-ONLY, exactly like the needs they
-# lift (the ADR-0023 guardrail): they never touch coins/stage/level/cosmetics. Practice stays the
-# primary driver. All tunable in-code (no migration).
-PAMPER_PRIMARY = 0.35  # the buy-boost added to the BOUGHT item's favoured need (before decay)
-PAMPER_SPILL = 0.12  # the smaller buy-boost spillover to the other two needs (before decay)
-PAMPER_WINDOW_DAYS = 3  # days over which the buy-boost decays linearly to 0
+# Overall HEALTH = the weakest need. When it hits 0 the spirit is AILING; if it stays ailing for
+# DEATH_DAYS it DIES (~5 days of total neglect). Both onsets are computable from the fed timestamps
+# (so "ailing" needs no stored column); `died_at` is persisted lazily on the first read that detects
+# death, freezing it (death is terminal — practice/tend can't revive a dead spirit).
+DECAY_DAYS = 3.0  # full → empty over this many days since a need was last fed
+TEND_CAP = 0.6  # a manual tend tops a need up only to here (practice fills to 1.0)
+DEATH_DAYS = 2.0  # days a spirit stays ailing (health 0) before it dies
 
-# Passive (while-owned) per-need lift: PASSIVE_PER_ITEM per currently-applied item favouring the
-# need, capped at PASSIVE_NEED_CAP per need (so a need can't be propped up by hoarding items).
-PASSIVE_PER_ITEM = 0.05
-PASSIVE_NEED_CAP = 0.15
-
+# --- Per-item need affinity (ADR-0026 → ADR-0029) -----------------------------------------
+#
+# Each catalog option still declares the ONE need it FAVOURS (its `need`), used by the shop tags
+# and the choose-page preview. ADR-0029 REMOVES the gameplay effect of that affinity: cosmetics no
+# longer modify needs at all (no passive lift, no buy-boost) — needs are now the survival meters,
+# driven only by practice + tending. The affinity is kept purely as a display tag (`_option_need`),
+# and `last_pampered_need` is still STAMPED on unlock for forward-compat, but nothing reads it for
+# the needs computation anymore.
+#
 # Default need affinity for any catalog option missing an explicit `need` (a safety net — every
 # real option gets an explicit one; see SPIRIT_COSMETICS_CATALOG and the catalog-coverage test).
 DEFAULT_ITEM_NEED = JOYFUL
 
-# --- Signature SET BONUS (ADR-0028, extends ADR-0025 / ADR-0026) --------------------------
+# --- Signature SET BONUS status (ADR-0028 → ADR-0029) -------------------------------------
 #
-# Each chosen creature has exactly ONE path-exclusive (tier-3) capstone per slot — its
-# SIGNATURE option for that slot. When the spirit equips ALL of them at once (every slot wearing
-# its own signature capstone — the full SIGNATURE SET), it earns "Signature radiance": a gentle,
-# advisory harmony lift to ALL THREE needs, layered on the practice-derived base alongside the
-# ADR-0025/0026 passive + buy-boost (same clamp to 1.0, same tier re-derivation). DERIVABLE from
-# the equipped cosmetics + path — no stored flag, no migration. An endgame achievement: completing
-# the set means owning + equipping all 7 path exclusives. Visual/advisory ONLY, exactly like the
-# needs it lifts (the ADR-0023 guardrail): it never touches coins/stage/level/cosmetics. Tunable
-# in-code (no migration). The label is the user-facing name of the bonus.
-SET_HARMONY = 0.08
+# Each chosen creature has exactly ONE path-exclusive (tier-3) capstone per slot — its SIGNATURE
+# option for that slot. Equipping ALL of them (the full SIGNATURE SET) lights "Signature radiance".
+# ADR-0029 REMOVES its needs effect (the harmony lift is gone — cosmetics are purely cosmetic now);
+# the `set_bonus` STATUS object stays as a visual flourish only (active/kind/count/total/label),
+# fully DERIVED from the equipped cosmetics + path (no stored flag, no migration).
 SET_BONUS_KIND = "signature"
 SET_BONUS_LABEL = "Signature radiance"
-
-# Minutes-based practices count a day only once its session time reaches MIN_PRACTICE_SECONDS
-# (the same floor streaks/heatmaps use), so a 1-second sit can't prop up a need.
-
-
-def _tier_for_count(
-    count: int, tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS
-) -> tuple[str, float]:
-    """Map a count to a (tier, factor) on the demanding curve. The first threshold (best →
-    worst) the count satisfies wins; the floor is always `unwell` (count 0)."""
-    for tier, min_count, factor in tiers:
-        if count >= min_count:
-            return tier, factor
-    # `tiers` always ends at a 0 floor, so this is unreachable; kept for total-ness.
-    return CONDITION_UNWELL, tiers[-1][2]
 
 
 def _tier_for_factor(
     factor: float, tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS
 ) -> str:
     """Map a 0..1 factor back to a tier name using NEED_TIERS' factor thresholds — the best
-    (highest) tier whose factor ≤ the given factor. Used after the pamper bonus (ADR-0025)
-    lifts a need's factor, so the reported tier stays consistent with the boosted factor (the
-    `factor` threshold, not the original count, decides the tier). The tiers are ordered best →
-    worst, so we walk from the worst up and keep the best one we still meet."""
+    (highest) tier whose factor ≤ the given factor. ADR-0029 uses this to band each need's decayed
+    value into a tier (so a value below the unwell threshold reads `unwell`, the floor). The tiers
+    are ordered best → worst, so we walk from the worst up and keep the best one we still meet."""
     chosen = tiers[-1][0]  # the floor tier (unwell)
     for tier, _min_count, tier_factor in reversed(tiers):
         if factor >= tier_factor:
@@ -349,159 +306,63 @@ def _tier_for_factor(
     return chosen
 
 
-def _pamper_decay(
-    last_pampered_at: datetime | None, *, today: date, tz: str
-) -> float:
-    """The 0..1 decay factor for the fading buy-boost (ADR-0025 / ADR-0026): 1.0 right after a
-    purchase, fading linearly to 0 over PAMPER_WINDOW_DAYS. 0 when never pampered or once the
-    window has elapsed. `days_since` is computed in LOCAL days (the purchase day → 0 → full),
-    mirroring how the needs themselves bucket activity by local day. The caller multiplies this
-    decay by the per-need weight (PAMPER_PRIMARY for the bought item's need, PAMPER_SPILL for the
-    others), so the boost is both weighted AND fading."""
-    if last_pampered_at is None:
-        return 0.0
-    # The DB stores timestamptz; a value read back may be tz-aware (UTC) or, in some test
-    # paths, naive — treat a naive stamp as UTC, then convert into the user's zone for the
-    # local calendar day (the same local-midnight bucketing the needs use).
-    stamp = last_pampered_at
-    if stamp.tzinfo is None:
-        stamp = stamp.replace(tzinfo=UTC)
-    pampered_day = stamp.astimezone(zone(tz)).date()
-    days_since = (today - pampered_day).days
-    if days_since < 0:  # clock skew / future stamp — treat as just pampered
-        days_since = 0
-    return max(0.0, 1.0 - days_since / PAMPER_WINDOW_DAYS)
+# --- ADR-0029: latest-activity-timestamp queries (the "last fed by practice" per need) -----
+#
+# Unlike the ADR-0023 helpers above (which count distinct active DAYS in a window), the decay
+# model needs the single MOST-RECENT matching timestamp per need. Each is a small user-scoped
+# query returning the latest `occurred_at` / `created_at`, or None when there's no such activity.
 
 
-def _signature_care_days(
-    db: DBSession, path: str, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
-) -> int:
-    """Distinct recent local days the user did `path`'s SIGNATURE practice, in the window. The
-    `nourished` signal — only the chosen creature's own practice counts. The practice is the one
-    that BALANCES that dosha (Ayurveda balances by *opposites*), not the one matching its element:
-
-    - stillness (Kapha — heavy/slow) → resonance BREATHING (energizing balances Kapha)
-    - breath    (Pitta — hot/intense) → a GRATITUDE or JOURNAL entry (cooling balances Pitta)
-    - heart     (Vata — light/scattered) → non-breathing MEDITATION (grounding balances Vata)
-    """
+def _last_signature_practice_at(
+    db: DBSession, path: str, user_id: uuid.UUID
+) -> datetime | None:
+    """The most recent timestamp of the chosen creature's SIGNATURE practice — what feeds
+    `nourished` (ADR-0029). The signature is the practice that BALANCES that dosha (by opposites):
+    stillness (Kapha) ← resonance/energizing breathing; heart (Vata) ← non-breathing meditation;
+    breath (Pitta) ← the latest of a gratitude OR a journal entry. None if never done."""
     if path in (STILLNESS, HEART):
-        # Session-based signatures: Kapha (stillness) is energized by resonance breathing; Vata
-        # (heart) is grounded by non-breathing meditation.
         is_breathing = path == STILLNESS
-        session_day = local_date(tz, Session.occurred_at)
-        days = db.execute(
-            select(session_day)
-            .where(
+        return db.execute(
+            select(func.max(Session.occurred_at)).where(
                 Session.user_id == user_id,
                 (Session.type.in_(BREATHING_SESSION_TYPES))
                 if is_breathing
                 else (Session.type.notin_(BREATHING_SESSION_TYPES)),
-                session_day >= window_start,
-                session_day <= today,
             )
-            .group_by(session_day)
-            # A day counts only once its signature-practice time meets the floor.
-            .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
-        ).all()
-        return len(days)
+        ).scalar_one_or_none()
 
-    # breath (Pitta) → distinct local days with a gratitude OR journal entry (cooling).
-    grat_day = local_date(tz, GratitudeEntry.created_at)
-    grat_days = db.execute(
-        select(grat_day)
-        .where(
-            GratitudeEntry.user_id == user_id,
-            grat_day >= window_start,
-            grat_day <= today,
+    # breath (Pitta) → the most recent gratitude OR journal entry (its cooling balancing practice).
+    last_grat = db.execute(
+        select(func.max(GratitudeEntry.created_at)).where(
+            GratitudeEntry.user_id == user_id
         )
-        .group_by(grat_day)
-    ).scalars().all()
-    journal_day = local_date(tz, Journal.created_at)
-    journal_days = db.execute(
-        select(journal_day)
-        .where(
-            Journal.user_id == user_id,
-            journal_day >= window_start,
-            journal_day <= today,
-        )
-        .group_by(journal_day)
-    ).scalars().all()
-    return len(set(grat_days) | set(journal_days))
+    ).scalar_one_or_none()
+    last_journal = db.execute(
+        select(func.max(Journal.created_at)).where(Journal.user_id == user_id)
+    ).scalar_one_or_none()
+    return _latest(last_grat, last_journal)
 
 
-def _active_days_in_window(
-    db: DBSession, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
-) -> int:
-    """Distinct local days in the window with real practice (any session totalling at least
-    MIN_PRACTICE_SECONDS) — the consistency half of the `rested` signal, mirroring the
-    streak/heatmap practice-day rule the dashboard already uses."""
-    session_day = local_date(tz, Session.occurred_at)
-    rows = db.execute(
-        select(session_day)
-        .where(
-            Session.user_id == user_id,
-            session_day >= window_start,
-            session_day <= today,
-        )
-        .group_by(session_day)
-        .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
-    ).all()
-    return len(rows)
+def _last_any_session_at(db: DBSession, user_id: uuid.UUID) -> datetime | None:
+    """The most recent timestamp of ANY practice session (a sit of any kind) — what feeds
+    `rested` (ADR-0029). None if the user has never sat."""
+    return db.execute(
+        select(func.max(Session.occurred_at)).where(Session.user_id == user_id)
+    ).scalar_one_or_none()
 
 
-def _distinct_practice_types_in_window(
-    db: DBSession, user_id: uuid.UUID, *, window_start: date, today: date, tz: str
-) -> int:
-    """How many of the four practice TYPES (meditate / breathe / gratitude / journal) the user
-    did in the window — the `joyful` (variety) signal. Meditate vs breathe split the same way
-    the rest of the app does (resonance_breathing vs everything else); each minutes-based type
-    must clear MIN_PRACTICE_SECONDS total in-window so a 1-second sit can't pad variety."""
-    types = 0
-    session_day = local_date(tz, Session.occurred_at)
-    # Meditate (non-breathing) and breathe (resonance) — each counts as a type once its
-    # in-window total clears the practice floor.
-    secs_by_kind = db.execute(
-        select(
-            (Session.type.in_(BREATHING_SESSION_TYPES)).label("is_breathing"),
-            func.sum(Session.duration_seconds),
+def _last_reflection_at(db: DBSession, user_id: uuid.UUID) -> datetime | None:
+    """The most recent timestamp of a gratitude OR journal entry — what feeds `joyful`
+    (ADR-0029). None if the user has never written either."""
+    last_grat = db.execute(
+        select(func.max(GratitudeEntry.created_at)).where(
+            GratitudeEntry.user_id == user_id
         )
-        .where(
-            Session.user_id == user_id,
-            session_day >= window_start,
-            session_day <= today,
-        )
-        .group_by("is_breathing")
-    ).all()
-    for _is_breathing, total in secs_by_kind:
-        if int(total or 0) >= MIN_PRACTICE_SECONDS:
-            types += 1
-
-    # Gratitude and journal — any entry in the window counts that type.
-    grat_day = local_date(tz, GratitudeEntry.created_at)
-    has_gratitude = db.execute(
-        select(GratitudeEntry.id)
-        .where(
-            GratitudeEntry.user_id == user_id,
-            grat_day >= window_start,
-            grat_day <= today,
-        )
-        .limit(1)
-    ).first()
-    if has_gratitude is not None:
-        types += 1
-    journal_day = local_date(tz, Journal.created_at)
-    has_journal = db.execute(
-        select(Journal.id)
-        .where(
-            Journal.user_id == user_id,
-            journal_day >= window_start,
-            journal_day <= today,
-        )
-        .limit(1)
-    ).first()
-    if has_journal is not None:
-        types += 1
-    return types
+    ).scalar_one_or_none()
+    last_journal = db.execute(
+        select(func.max(Journal.created_at)).where(Journal.user_id == user_id)
+    ).scalar_one_or_none()
+    return _latest(last_grat, last_journal)
 
 
 def _neutral_need() -> SpiritNeed:
@@ -510,27 +371,69 @@ def _neutral_need() -> SpiritNeed:
     return SpiritNeed(tier=_NEUTRAL_CONDITION_TIER, factor=_NEUTRAL_CONDITION_FACTOR)
 
 
-def _buyboost_for_need(
-    need: str, decay: float, last_pampered_need: str | None, *, has_pamper: bool
-) -> float:
-    """The fading buy-boost added to ONE need's factor (ADR-0026), = `decay` × weight:
+def _as_aware(stamp: datetime | None) -> datetime | None:
+    """Normalize a stored timestamp to tz-aware UTC. The DB stores timestamptz (tz-aware), but a
+    naive value can sneak in via some test paths — treat a naive stamp as UTC so the decay math is
+    always over comparable, aware datetimes. None passes through."""
+    if stamp is None:
+        return None
+    return stamp if stamp.tzinfo is not None else stamp.replace(tzinfo=UTC)
 
-    - the BOUGHT item's favoured need (`need == last_pampered_need`) gets PAMPER_PRIMARY;
-    - the other two needs get the smaller PAMPER_SPILL spillover (so buying any item still helps
-      overall condition somewhat — non-punishing);
-    - LEGACY FALLBACK: a spirit pampered BEFORE this feature has `last_pampered_at` set but
-      `last_pampered_need is None` — we then apply the OLD uniform behaviour (every need gets
-      PAMPER_PRIMARY) so existing pampered spirits don't regress.
 
-    `decay` is 0 once the window has elapsed (or there was never a pamper), so the boost is 0 then.
-    """
-    if not has_pamper:
-        return 0.0
-    if last_pampered_need is None:
-        # Legacy row (pampered before ADR-0026): uniform boost, exactly the ADR-0025 behaviour.
-        return decay * PAMPER_PRIMARY
-    weight = PAMPER_PRIMARY if need == last_pampered_need else PAMPER_SPILL
-    return decay * weight
+def _latest(*stamps: datetime | None) -> datetime | None:
+    """The most recent of the given (possibly-None) timestamps, normalized to aware UTC. None
+    when every argument is None — used to fold gratitude+journal into one 'last reflection'."""
+    aware = [s for s in (_as_aware(s) for s in stamps) if s is not None]
+    return max(aware) if aware else None
+
+
+def _elapsed_days(now: datetime, then: datetime) -> float:
+    """Fractional days elapsed from `then` to `now` (both tz-aware). Negative (a future `then`,
+    e.g. clock skew) is clamped to 0 so a stamp 'ahead of now' reads as just-fed, not over-full."""
+    seconds = (now - then).total_seconds()
+    return max(0.0, seconds) / 86400.0
+
+
+def _clamp(value: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, value))
+
+
+def _need_value_and_zero_time(
+    now: datetime,
+    practice_fed_at: datetime,
+    tended_at: datetime | None,
+) -> tuple[float, datetime]:
+    """One need's current 0..1 value AND the instant it reaches 0 (ADR-0029).
+
+    - `practice_value = clamp(1 − elapsed(now, practice_fed_at) / DECAY_DAYS, 0, 1)` — practice
+      fills to 1.0 and decays over DECAY_DAYS.
+    - `tend_value = clamp(TEND_CAP − elapsed(now, tended_at) / DECAY_DAYS, 0, TEND_CAP)` when the
+      need was tended, else 0.0 — a tend tops up only to TEND_CAP and decays at the same rate.
+    - `value = max(practice_value, tend_value)` — the stronger of the two.
+
+    `zero_time` = the latest instant either source still has value left:
+    `max(practice_fed_at + DECAY_DAYS, (tended_at + TEND_CAP·DECAY_DAYS) if tended)` — the moment
+    this need's `value` hits 0 (used to derive ailing-onset / death). Both are pure functions of
+    the fed timestamps, so health/ailing/death are computable without a stored 'ailing' column."""
+    decay = timedelta(days=DECAY_DAYS)
+    practice_value = _clamp(1.0 - _elapsed_days(now, practice_fed_at) / DECAY_DAYS, 0.0, 1.0)
+    practice_zero = practice_fed_at + decay
+
+    if tended_at is not None:
+        tend_value = _clamp(
+            TEND_CAP - _elapsed_days(now, tended_at) / DECAY_DAYS, 0.0, TEND_CAP
+        )
+        tend_zero = tended_at + timedelta(days=TEND_CAP * DECAY_DAYS)
+        return max(practice_value, tend_value), max(practice_zero, tend_zero)
+
+    return practice_value, practice_zero
+
+
+def _need_from_value(value: float) -> SpiritNeed:
+    """Wrap a 0..1 decayed `value` as a SpiritNeed: `factor = value`, `tier` re-derived from the
+    factor via the existing NEED_TIERS factor→tier mapping (so a value below the unwell threshold
+    reads `unwell`, the natural floor for a depleted-but-not-yet-dead need)."""
+    return SpiritNeed(tier=_tier_for_factor(value), factor=value)
 
 
 def needs(
@@ -538,104 +441,103 @@ def needs(
     path: str | None,
     user_id: uuid.UUID,
     *,
-    today: date,
-    tz: str,
-    current_streak: int = 0,
-    last_pampered_at: datetime | None = None,
-    last_pampered_need: str | None = None,
-    cosmetics: dict[str, str] | None = None,
-    set_bonus_active: bool = False,
+    now: datetime,
+    needs_baseline_at: datetime,
+    nourished_tended_at: datetime | None = None,
+    rested_tended_at: datetime | None = None,
+    joyful_tended_at: datetime | None = None,
 ) -> SpiritNeeds:
-    """The active creature's three tended needs (ADR-0023) over the rolling window. Demanding:
-    each declines through the tiers when its signal is neglected and recovers only gradually.
+    """The active creature's three SURVIVAL needs, decayed in real time (ADR-0029 — supersedes
+    ADR-0023's rolling-window advisory needs and the cosmetic modifiers of ADR-0025/0026/0028).
 
     A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
-    content-ish default rather than a care requirement (and gets NO item bonuses).
+    content-ish default rather than decaying.
 
-    `current_streak` (the dashboard's value) feeds `rested` so a strong streak reads as
-    well-rested even before the active-day count fills.
-
-    Item bonuses on top of the practice-derived base factor per need (ADR-0026, extends ADR-0025):
-
-    - PASSIVE (while-owned): each currently-applied cosmetic adds PASSIVE_PER_ITEM to the need it
-      FAVOURS (capped at PASSIVE_NEED_CAP per need), from `cosmetics`. No decay.
-    - BUY-BOOST (fading): `last_pampered_at` + `last_pampered_need` add a DECAYING boost, WEIGHTED
-      toward the bought item's need (PAMPER_PRIMARY) with a smaller spillover to the other two
-      (PAMPER_SPILL). Legacy rows (`last_pampered_need is None`) keep the old uniform boost.
-    - SET BONUS (ADR-0028): when `set_bonus_active` (the full SIGNATURE SET is equipped — all 7
-      path-exclusive capstones), add a flat SET_HARMONY to ALL THREE needs — a gentle, advisory
-      harmony lift, an endgame reward for completing the set.
-
-    The final factor is `base + passive + buyboost (+ set harmony)`, clamped to 1.0; the tier is
-    re-derived from that final factor so tier and factor stay consistent. The bonuses are partial
-    and capped: they lift a need off the floor but can't alone reach thriving — practice stays the
-    primary driver.
-
-    GUARDRAIL: visual/advisory only — the caller must never let any need (or its item bonuses)
-    affect stage, level, coins, cosmetics, or the collection.
+    Otherwise each need's 0..1 value = `max(practice_value, tend_value)` (see
+    `_need_value_and_zero_time`), where the practice "last fed" time is
+    `max(needs_baseline_at, last_relevant_activity)`:
+    - nourished ← the dosha's SIGNATURE practice (the balancing one);
+    - rested    ← ANY practice session (a sit of any kind);
+    - joyful    ← a gratitude or journal entry.
+    Practice fills to 1.0; a tend (`*_tended_at`) tops up to TEND_CAP. There is NO floor — a need
+    can decay to 0 (the non-punishing floor of ADR-0023 is intentionally removed).
     """
     if path is None or path not in _CHOOSABLE_PATHS:
         neutral = _neutral_need()
         return SpiritNeeds(nourished=neutral, rested=neutral, joyful=neutral)
 
-    window_start = today - timedelta(days=CONDITION_WINDOW_DAYS - 1)
+    baseline = _as_aware(needs_baseline_at)
+    now = _as_aware(now)
 
-    # The 0..1 decay of the fading buy-boost (0 when never pampered / once the window elapsed),
-    # the passive per-need lifts from currently-applied items, and whether any pamper is active.
-    decay = _pamper_decay(last_pampered_at, today=today, tz=tz)
-    has_pamper = last_pampered_at is not None
-    passive = _passive_need_bonus(cosmetics or {})
-    # ADR-0028: the full signature set adds a flat harmony lift to every need (alongside passive +
-    # buy-boost; the same 1.0 clamp + tier re-derivation in `_boosted_need`).
-    set_lift = SET_HARMONY if set_bonus_active else 0.0
+    # "Last fed by practice" per need = the later of the born-fed baseline and the most recent
+    # relevant activity (None activity → just the baseline).
+    nourished_fed = _latest(baseline, _last_signature_practice_at(db, path, user_id))
+    rested_fed = _latest(baseline, _last_any_session_at(db, user_id))
+    joyful_fed = _latest(baseline, _last_reflection_at(db, user_id))
 
-    def _bonus(need: str) -> float:
-        # Passive while-owned + the weighted fading buy-boost + the signature-set harmony lift.
-        return (
-            passive[need]
-            + _buyboost_for_need(need, decay, last_pampered_need, has_pamper=has_pamper)
-            + set_lift
-        )
-
-    # nourished — the signature-practice care days.
-    care_days = _signature_care_days(
-        db, path, user_id, window_start=window_start, today=today, tz=tz
+    nourished_value, _ = _need_value_and_zero_time(
+        now, nourished_fed, _as_aware(nourished_tended_at)
     )
-    _, nourished_factor = _tier_for_count(care_days)
-
-    # rested — rhythm/consistency: the stronger of recent active days and the current streak
-    # (capped at the window so a long streak doesn't overflow the day-count curve).
-    active_days = _active_days_in_window(
-        db, user_id, window_start=window_start, today=today, tz=tz
+    rested_value, _ = _need_value_and_zero_time(
+        now, rested_fed, _as_aware(rested_tended_at)
     )
-    rhythm = min(max(active_days, current_streak), CONDITION_WINDOW_DAYS)
-    _, rested_factor = _tier_for_count(rhythm)
-
-    # joyful — variety: how many distinct practice types were done in the window.
-    variety = _distinct_practice_types_in_window(
-        db, user_id, window_start=window_start, today=today, tz=tz
+    joyful_value, _ = _need_value_and_zero_time(
+        now, joyful_fed, _as_aware(joyful_tended_at)
     )
-    _, joyful_factor = _tier_for_count(variety, JOYFUL_TIERS)
 
     return SpiritNeeds(
-        nourished=_boosted_need(nourished_factor, _bonus(NOURISHED)),
-        rested=_boosted_need(rested_factor, _bonus(RESTED)),
-        joyful=_boosted_need(joyful_factor, _bonus(JOYFUL), tiers=JOYFUL_TIERS),
+        nourished=_need_from_value(nourished_value),
+        rested=_need_from_value(rested_value),
+        joyful=_need_from_value(joyful_value),
     )
 
 
-def _boosted_need(
-    factor: float,
-    bonus: float,
+def _health_state(
+    db: DBSession,
+    path: str | None,
+    user_id: uuid.UUID,
     *,
-    tiers: tuple[tuple[str, int, float], ...] = NEED_TIERS,
-) -> SpiritNeed:
-    """Apply one need's item `bonus` (ADR-0026: passive while-owned + the weighted fading
-    buy-boost) to its practice-derived `factor`, clamped to 1.0, and re-derive its tier from the
-    final factor so the two stay consistent. `bonus` is 0 when the spirit owns no items favouring
-    the need and hasn't been pampered (or the buy-boost has decayed) → the need is unchanged."""
-    boosted_factor = min(1.0, factor + bonus)
-    return SpiritNeed(tier=_tier_for_factor(boosted_factor, tiers), factor=boosted_factor)
+    now: datetime,
+    needs_baseline_at: datetime,
+    nourished_tended_at: datetime | None,
+    rested_tended_at: datetime | None,
+    joyful_tended_at: datetime | None,
+) -> tuple[bool, datetime | None]:
+    """Compute the spirit's sickness/death state from the fed timestamps (ADR-0029), returning
+    `(is_dead, death_time)`:
+
+    - per need, `zero_time` is when its value hits 0;
+    - `ailing_onset = min(zero_time over the 3 needs)` — when the WEAKEST need first empties, i.e.
+      health (the weakest need) hits 0;
+    - `death_time = ailing_onset + DEATH_DAYS`;
+    - `is_dead = now >= death_time`.
+
+    A pathless spark never sickens (no creature → no care requirement) → `(False, None)`. The
+    caller persists `died_at = death_time` lazily and treats the spirit as ailing when health is 0
+    but `now < death_time`."""
+    if path is None or path not in _CHOOSABLE_PATHS:
+        return False, None
+
+    baseline = _as_aware(needs_baseline_at)
+    now = _as_aware(now)
+
+    nourished_fed = _latest(baseline, _last_signature_practice_at(db, path, user_id))
+    rested_fed = _latest(baseline, _last_any_session_at(db, user_id))
+    joyful_fed = _latest(baseline, _last_reflection_at(db, user_id))
+
+    _, nourished_zero = _need_value_and_zero_time(
+        now, nourished_fed, _as_aware(nourished_tended_at)
+    )
+    _, rested_zero = _need_value_and_zero_time(
+        now, rested_fed, _as_aware(rested_tended_at)
+    )
+    _, joyful_zero = _need_value_and_zero_time(
+        now, joyful_fed, _as_aware(joyful_tended_at)
+    )
+
+    ailing_onset = min(nourished_zero, rested_zero, joyful_zero)
+    death_time = ailing_onset + timedelta(days=DEATH_DAYS)
+    return now >= death_time, death_time
 
 
 def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
@@ -953,10 +855,10 @@ def _signature_set_status(cosmetics: dict[str, str], path: str | None) -> tuple[
 
 
 def _signature_set_bonus(cosmetics: dict[str, str], path: str | None) -> SpiritSetBonus:
-    """The SIGNATURE SET BONUS read-out (ADR-0028). The set is COMPLETE — and the bonus ACTIVE —
-    when every slot that has a signature option for the chosen `path` is equipped with it (owned
-    == total, and total > 0). When active, the needs read adds SET_HARMONY to all three needs'
-    factors (see `needs(...)`). Derivable from the equipped cosmetics + path; never stored."""
+    """The SIGNATURE SET BONUS read-out (ADR-0028; needs-effect removed by ADR-0029). The set is
+    COMPLETE — and the status ACTIVE — when every slot that has a signature option for the chosen
+    `path` is equipped with it (owned == total, and total > 0). It is now a purely visual flourish
+    (no needs lift). Derivable from the equipped cosmetics + path; never stored."""
     owned, total = _signature_set_status(cosmetics, path)
     active = total > 0 and owned == total
     return SpiritSetBonus(
@@ -970,9 +872,9 @@ def _signature_set_bonus(cosmetics: dict[str, str], path: str | None) -> SpiritS
 
 def _option_need(slot: str, option: str) -> str:
     """The need a catalog option FAVOURS (ADR-0026) — one of `nourished` / `rested` / `joyful`.
-    Drives both the passive while-owned lift and the weighted buy-boost. Every real option has an
-    explicit `need`; an unknown slot/option (or a missing key) falls back to DEFAULT_ITEM_NEED so
-    the math is never need-less."""
+    A display tag only now (ADR-0029 removed its needs effect): the shop and choose-page preview
+    surface it. Every real option has an explicit `need`; an unknown slot/option (or a missing key)
+    falls back to DEFAULT_ITEM_NEED so the tag is never need-less."""
     need = SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("need")
     return str(need) if need is not None else DEFAULT_ITEM_NEED
 
@@ -983,22 +885,6 @@ def _option_tier(slot: str, option: str) -> int:
     slot/option (or a missing key) falls back to tier 1 (no prereq) so the gate never blocks a
     phantom option."""
     return int(SPIRIT_COSMETICS_CATALOG.get(slot, {}).get(option, {}).get("tier", 1))
-
-
-def _passive_need_bonus(cosmetics: dict[str, str]) -> dict[str, float]:
-    """The passive (while-owned) per-need lift (ADR-0026): for each need, PASSIVE_PER_ITEM times
-    the number of currently-applied cosmetics that favour it, capped at PASSIVE_NEED_CAP. Iterates
-    the stored `{slot: option}` dict, looking up each option's `need` in the catalog. Returns a
-    {need: bonus} map (0.0 for any need no applied item favours). No decay — it lasts as long as
-    the items are applied."""
-    counts: dict[str, int] = dict.fromkeys(NEED_KEYS, 0)
-    for slot, option in cosmetics.items():
-        need = _option_need(slot, option)
-        if need in counts:
-            counts[need] += 1
-    return {
-        need: min(PASSIVE_NEED_CAP, PASSIVE_PER_ITEM * counts[need]) for need in NEED_KEYS
-    }
 
 
 def _cosmetics(spirit: Spirit) -> dict[str, str]:
@@ -1183,7 +1069,11 @@ def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
     if spirit is not None:
         return spirit
 
-    spirit = Spirit(user_id=user_id, path=None, cosmetics={}, unlocked=[])
+    # ADR-0029: a fresh spark is BORN FED — `needs_baseline_at = now()` anchors the decay so every
+    # need starts full (the server_default also covers this; set explicitly for clarity).
+    spirit = Spirit(
+        user_id=user_id, path=None, cosmetics={}, unlocked=[], needs_baseline_at=func.now()
+    )
     db.add(spirit)
     try:
         db.commit()
@@ -1200,9 +1090,10 @@ def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
 
 
 def _collection(db: DBSession, user_id: uuid.UUID) -> list[RetiredSpirit]:
-    """The user's retired spirits — past radiant companions, kept forever (the replay loop).
-    A retired spirit is stamped at radiant, so it reports the radiant stage; ordered most
-    recently retired first. Empty for a user who has never awakened a new spark."""
+    """The user's retired spirits — past companions kept forever (the replay loop): graduates that
+    reached radiant AND, since ADR-0029, ones that DIED of neglect (carrying `died_at` so the
+    gallery can memorialize them with their lifespan). Ordered most recently retired first. Empty
+    for a user who has never awakened a new spark."""
     rows = db.execute(
         select(Spirit)
         .where(Spirit.user_id == user_id, Spirit.retired_at.is_not(None))
@@ -1213,9 +1104,14 @@ def _collection(db: DBSession, user_id: uuid.UUID) -> list[RetiredSpirit]:
     return [
         RetiredSpirit(
             id=str(row.id),
-            stage=STAGE_BANDS[-1][0],  # retired only at radiant (the final stage)
+            # A graduate retired at radiant (the final stage); a DIED spirit (ADR-0029) didn't
+            # necessarily — its exact death stage isn't stored, so the gallery keys off `died_at`
+            # (memorial + lifespan) rather than the stage for those.
+            stage=STAGE_BANDS[-1][0],
             path=row.path,
             name=row.name,
+            died_at=_as_aware(row.died_at) if row.died_at is not None else None,
+            awakened_at=_as_aware(row.awakened_at),
         )
         for row in rows
     ]
@@ -1240,6 +1136,7 @@ def _build_state(
     if basis is None:
         basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
     level = basis.level
+    now = datetime.now(UTC)
 
     cosmetics = _cosmetics(spirit)
     # ADR-0027: the effective owned set = the unlocked collection ∪ the equipped loadout values,
@@ -1248,30 +1145,30 @@ def _build_state(
     # ADR-0024: the balance comes from the STORED spend ledger, not the applied cosmetics.
     coins = _coin_balance(level, spirit.coins_spent)
 
-    # ADR-0028: the signature-set bonus is fully DERIVED from the equipped cosmetics + path (no
-    # stored flag). When the full set is equipped, the needs read gets a gentle harmony lift.
+    # ADR-0028 (status only, ADR-0029): the signature-set bonus is DERIVED from the equipped
+    # cosmetics + path; it's a visual flourish now (no needs lift).
     set_bonus = _signature_set_bonus(cosmetics, spirit.path)
 
-    # GUARDRAIL (ADR-0023): the three needs (and the overall condition derived from them) are
-    # visual-only — they are NOT read by stage/coins above, so a neglected creature never loses
-    # progress. Derived from the chosen creature's signature practice / rhythm / variety; a
-    # pathless spark gets neutral defaults. `current_streak` (from the same wallet basis) feeds
-    # the `rested` rhythm signal.
+    # ADR-0029: the three needs are SURVIVAL meters decayed in real time off the born-fed baseline,
+    # the most-recent relevant practice, and the per-need tend stamps. A pathless spark gets neutral
+    # defaults.
+    baseline = spirit.needs_baseline_at
     spirit_needs = needs(
         db,
         spirit.path,
         user_id,
-        today=today,
-        tz=tz,
-        current_streak=basis.current_streak,
-        # ADR-0025/0026: a recent purchase adds a decaying boost WEIGHTED toward the bought item's
-        # favoured need; the owned items each add a small passive lift to the need they favour.
-        last_pampered_at=spirit.last_pampered_at,
-        last_pampered_need=spirit.last_pampered_need,
-        cosmetics=cosmetics,
-        # ADR-0028: completing the full signature set adds a gentle harmony lift to every need.
-        set_bonus_active=set_bonus.active,
+        now=now,
+        needs_baseline_at=baseline,
+        nourished_tended_at=spirit.nourished_tended_at,
+        rested_tended_at=spirit.rested_tended_at,
+        joyful_tended_at=spirit.joyful_tended_at,
     )
+
+    # ADR-0029 sickness/death: health = the weakest need. When it has been empty for DEATH_DAYS the
+    # spirit dies; `died_at` is the frozen real moment (may be in the past), persisted LAZILY here
+    # the first time death is detected (the established write-on-read pattern). Death is TERMINAL —
+    # once `died_at` is set we never recompute or clear it.
+    dead, ailing, died_at = _resolve_health(db, user_id, spirit, now=now)
 
     return SpiritState(
         stage=stage_for_level(level),
@@ -1288,15 +1185,65 @@ def _build_state(
             xp_for_next=basis.xp_for_next,
         ),
         needs=spirit_needs,
-        # The overall condition is the weakest of the three needs — one summary look for the UI.
+        # The overall condition is the weakest of the three needs (ADR-0029: = health).
         condition=overall_condition(spirit_needs),
         coins=coins,
         cosmetics=cosmetics,
         available=_available_slots(cosmetics, owned, coins, level, spirit.path),
         collection=_collection(db, user_id),
-        # ADR-0028: the signature-set status (active + progress count) — visual/advisory only.
         set_bonus=set_bonus,
+        dead=dead,
+        died_at=died_at,
+        ailing=ailing,
+        awakened_at=spirit.awakened_at,
     )
+
+
+def _resolve_health(
+    db: DBSession, user_id: uuid.UUID, spirit: Spirit, *, now: datetime
+) -> tuple[bool, bool, datetime | None]:
+    """Resolve `(dead, ailing, died_at)` for the active spirit (ADR-0029), persisting death lazily.
+
+    - If `died_at` is already set, the spirit stays dead (terminal) — return it as-is.
+    - Otherwise compute death from the fed timestamps. If `now` has reached the death time, PERSIST
+      `died_at = death_time` (the real moment, possibly in the past) and commit, then report dead.
+    - `ailing` = health (the weakest need) is at 0 but the spirit is not yet dead. Derived from the
+      same needs read; no stored column.
+    A pathless spark never sickens."""
+    if spirit.died_at is not None:
+        return True, False, _as_aware(spirit.died_at)
+
+    is_dead, death_time = _health_state(
+        db,
+        spirit.path,
+        user_id,
+        now=now,
+        needs_baseline_at=spirit.needs_baseline_at,
+        nourished_tended_at=spirit.nourished_tended_at,
+        rested_tended_at=spirit.rested_tended_at,
+        joyful_tended_at=spirit.joyful_tended_at,
+    )
+    if is_dead and death_time is not None:
+        # First detection — freeze the real death moment and commit (write-on-read).
+        spirit.died_at = death_time
+        db.commit()
+        db.refresh(spirit)
+        return True, False, _as_aware(spirit.died_at)
+
+    # Not dead. Ailing = health (the weakest need) has hit 0 but the death window hasn't elapsed.
+    spirit_needs = needs(
+        db,
+        spirit.path,
+        user_id,
+        now=now,
+        needs_baseline_at=spirit.needs_baseline_at,
+        nourished_tended_at=spirit.nourished_tended_at,
+        rested_tended_at=spirit.rested_tended_at,
+        joyful_tended_at=spirit.joyful_tended_at,
+    )
+    health = overall_condition(spirit_needs).factor
+    ailing = health <= 0.0
+    return False, ailing, None
 
 
 def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> SpiritState:
@@ -1356,8 +1303,9 @@ def unlock_cosmetic(
 ) -> SpiritState:
     """Unlock a cosmetic option into the active spirit's owned collection AND auto-equip it
     (ADR-0027). Unlocking is the new "buying": it charges the option's full cost (added to the
-    monotonic `coins_spent` ledger, never refunded), adds the option to `unlocked`, equips it in
-    its slot, and PAMPERS the spirit (stamps `last_pampered_at` + the bought item's need).
+    monotonic `coins_spent` ledger, never refunded), adds the option to `unlocked`, and equips it
+    in its slot. It still STAMPS `last_pampered_at` + the bought item's need for forward-compat,
+    but ADR-0029 removed the pamper needs effect (cosmetics are purely cosmetic now).
 
     Validates: unknown slot/option, or a path-exclusive option this creature can't use →
     UnknownCosmetic (404, exactly as the GET `available` shape hides it); already owned →
@@ -1414,10 +1362,10 @@ def unlock_cosmetic(
     equipped[data.slot] = data.option
     spirit.cosmetics = equipped
     spirit.coins_spent = spirit.coins_spent + cost
-    # ADR-0025/0026: UNLOCKING pampers the spirit — stamp the purchase time AND the bought item's
-    # favoured need, so the needs read adds a decaying boost WEIGHTED toward that need (visual-only;
-    # the name reset / awaken / a free equip do NOT pamper). Same txn + lock as the unlock/equip and
-    # the coins_spent bump.
+    # ADR-0025/0026 stamped the unlock time + the bought item's need to drive a decaying needs
+    # boost; ADR-0029 removed that effect, so these are now forward-compat-only stamps (read by
+    # nothing). Kept so the columns/route behaviour stay stable. Same txn + lock as the
+    # unlock/equip and the coins_spent bump.
     spirit.last_pampered_at = func.now()
     spirit.last_pampered_need = _option_need(data.slot, data.option)
     db.commit()
@@ -1505,24 +1453,35 @@ def reset_name(
 
 
 def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -> SpiritState:
-    """Retire the active spirit and awaken a fresh pathless spark — but only once it is
-    radiant (the long-horizon goal). Raises NotRadiant (409) otherwise.
+    """Retire the active spirit and awaken a fresh pathless spark — reachable when the spirit is
+    radiant (the long-horizon goal) OR when it has DIED (ADR-0029: the "set free a new one" path
+    from the memorial). Raises NotRadiant (409) when it is neither.
 
-    Done in ONE transaction: the current row's `retired_at` is stamped and a new pathless
-    spark is inserted, so the partial unique index (one active spirit per user) is never
-    violated. A concurrent awaken loses the race on that index → SpiritConflictError (409).
+    Done in ONE transaction: the current row's `retired_at` is stamped and a new pathless spark is
+    inserted, so the partial unique index (one active spirit per user) is never violated. A
+    concurrent awaken loses the race on that index → SpiritConflictError (409). The fresh spark is
+    genuinely new (coins_spent 0, empty unlocked, pathless, born fed).
     """
     _lock_user_spirit(db, user_id)
     spirit = get_or_create_active_spirit(db, user_id)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    if stage_for_level(basis.level) != STAGE_BANDS[-1][0]:  # not radiant
+    is_radiant = stage_for_level(basis.level) == STAGE_BANDS[-1][0]
+    # ADR-0029: a dead spirit can also be retired+awakened. Compute death here (lazily persisting
+    # `died_at`) so the gate sees it even on the first read after death.
+    dead, _ailing, _died_at = _resolve_health(
+        db, user_id, spirit, now=datetime.now(UTC)
+    )
+    if not is_radiant and not dead:
         raise NotRadiant(str(spirit.id))
 
     # Retire the current spirit and insert the new spark together: stamping retired_at frees
-    # the partial unique slot (WHERE retired_at IS NULL), so the fresh active row is valid.
+    # the partial unique slot (WHERE retired_at IS NULL), so the fresh active row is valid. The new
+    # spark is BORN FED (needs_baseline_at = now()), so it starts with full needs.
     spirit.retired_at = func.now()
-    new_spark = Spirit(user_id=user_id, path=None, cosmetics={}, unlocked=[])
+    new_spark = Spirit(
+        user_id=user_id, path=None, cosmetics={}, unlocked=[], needs_baseline_at=func.now()
+    )
     db.add(new_spark)
     try:
         db.commit()
@@ -1533,3 +1492,43 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
         raise SpiritConflictError(str(user_id)) from err
     db.refresh(new_spark)
     return _build_state(db, user_id, new_spark, today=today, tz=tz, basis=basis)
+
+
+# The tend `kind` → the need (and its stored stamp column) it tops up (ADR-0029).
+_TEND_KIND_TO_COLUMN: dict[str, str] = {
+    "feed": "nourished_tended_at",
+    "rest": "rested_tended_at",
+    "play": "joyful_tended_at",
+}
+
+
+def tend_spirit(
+    db: DBSession, user_id: uuid.UUID, kind: str, *, today: date, tz: str = "UTC"
+) -> SpiritState:
+    """A manual TEND action (ADR-0029): Feed / Rest / Play. `kind` (`feed` | `rest` | `play`) maps
+    to one need — feed → nourished, rest → rested, play → joyful — and stamps that need's
+    `*_tended_at = now()`, lifting it to TEND_CAP via the decay formula (it then decays like
+    practice). Tending an already-full-by-practice need is a harmless near-no-op (the `max` keeps
+    the higher value). Returns the freshly built spirit state.
+
+    A DEAD spirit cannot be tended → SpiritDead (the route maps it to a 409): death is terminal,
+    so the user must awaken a new spirit. Serialized under the per-user advisory lock like the
+    other writes. Tending is free (no coins) and works even on a pathless spark (it just feeds the
+    stamp; a pathless spark's needs still read neutral)."""
+    column = _TEND_KIND_TO_COLUMN.get(kind)
+    if column is None:  # defensive — the schema already constrains `kind` to the three literals.
+        raise ValueError(f"unknown tend kind {kind!r}")
+
+    _lock_user_spirit(db, user_id)
+    spirit = get_or_create_active_spirit(db, user_id)
+
+    # A dead spirit is terminal — reject the tend (the memorial offers awaken instead). Compute
+    # death lazily (persisting `died_at` if newly detected) so even a first read sees it.
+    dead, _ailing, _died_at = _resolve_health(db, user_id, spirit, now=datetime.now(UTC))
+    if dead:
+        raise SpiritDead(str(spirit.id))
+
+    setattr(spirit, column, func.now())
+    db.commit()
+    db.refresh(spirit)
+    return _build_state(db, user_id, spirit, today=today, tz=tz)

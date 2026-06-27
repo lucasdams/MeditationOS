@@ -32,17 +32,21 @@ trade-off.
    - A need's value = `max(practice_value, tend_value)`, each `= cap − elapsed/DECAY_DAYS` clamped.
 
 3. **Sickness → death.** Overall **health = the weakest need.** When health hits ~0 the spirit is
-   **ailing** (`ailing_since` set). If it stays ailing for `DEATH_DAYS` (~2) it **dies**
-   (`died_at` set) — ~5 days of total neglect is fatal. Any practice or tend clears `ailing_since`
-   and resets the clock. (Death and ailing are detected lazily on read and persisted.)
+   **ailing**; if it stays ailing for `DEATH_DAYS` (~2) it **dies** — ~5 days of total neglect is
+   fatal. Both onsets are **computable from the fed timestamps** (ailing-onset = when the weakest
+   need decays to 0; death = ailing-onset + `DEATH_DAYS`), so "ailing" needs no stored column;
+   `died_at` is persisted lazily the first time death is detected, freezing it (death is terminal —
+   practice can't revive a dead spirit). Any practice/tend before death resets the clock.
 
-4. **Death is real but the account survives.** A dead spirit is shown as a **memorial** with its
-   lifespan; the user **awakens a new one** (the existing choose/awaken flow, now also reachable
-   from death) — fresh full needs, re-named, re-equipped. What **persists** (v1): coins, the
-   unlocked-cosmetics collection, and growth/stage — so the new spirit **reincarnates at your
-   level** (not a literal baby). The cost of death is losing *that* companion: its name, its
-   decorated look, its life. (A future option: tie growth to the spirit's own life so death resets
-   to a spark — deferred to keep the level/coin/unlock system intact for v1.)
+4. **Death is real; your account level survives.** A dead spirit is shown as a **memorial** with
+   its lifespan, and the user **awakens a new one** — the *existing* retire-then-awaken flow (today
+   gated to `radiant`), now also reachable from death. Per the existing model, `coins_spent` and
+   `unlocked` are **per-spirit**, so the new spirit is genuinely fresh: full needs, a fresh full
+   coin budget (`coins_spent` 0), an empty unlocked set, and a new name. What **persists** is your
+   **lifetime level → stage** (so the new spirit *reincarnates at your level*, not a baby) and your
+   coin *budget* (level-derived). The cost of death is losing *that* companion — its name, its
+   decorated look, its unlocked set, its life — and having to re-grow it. (A future v2: tie growth
+   to the spirit's own life so death resets to a literal spark.)
 
 5. **No migration mass-death.** A `needs_baseline_at` (default `now()` at migration / `awakened_at`
    for new spirits) anchors decay, so every existing spirit starts fed — none dies on deploy.
@@ -55,8 +59,8 @@ trade-off.
 ## Stored state (new `spirits` columns)
 
 `needs_baseline_at` (tz, default now), `nourished_tended_at` / `rested_tended_at` /
-`joyful_tended_at` (tz null), `ailing_since` (tz null), `died_at` (tz null). XP/level/coins and the
-cosmetics collection are unchanged.
+`joyful_tended_at` (tz null), `died_at` (tz null). XP/level/coins are unchanged ("ailing" is
+derived, not stored).
 
 ## Consequences
 

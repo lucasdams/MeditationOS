@@ -36,23 +36,14 @@ from app.services.spirit_service import (
     CONDITION_CONTENT,
     CONDITION_THRIVING,
     CONDITION_UNWELL,
-    CONDITION_WINDOW_DAYS,
+    DEATH_DAYS,
+    DECAY_DAYS,
     NEED_KEYS,
-    PAMPER_PRIMARY,
-    PAMPER_SPILL,
-    PAMPER_WINDOW_DAYS,
-    PASSIVE_NEED_CAP,
-    PASSIVE_PER_ITEM,
     RESET_COST,
-    SET_HARMONY,
     SPIRIT_COSMETICS_CATALOG,
+    TEND_CAP,
     stage_for_level,
 )
-
-# ADR-0025's PAMPER_BOOST was renamed to PAMPER_PRIMARY (the bought item's weighted buy-boost,
-# ADR-0026). The legacy uniform-boost tests below still assert the full primary boost on every
-# need (a row with no recorded need falls back to ADR-0025's uniform behaviour).
-PAMPER_BOOST = PAMPER_PRIMARY
 
 
 def _auth(client, email):
@@ -272,10 +263,23 @@ def _stored_coins_spent(db_session, user_id):
 
 def _stored_last_pampered_at(db_session, user_id):
     """The active spirit's stored pamper timestamp (ADR-0025) — read off the row (it isn't in
-    SpiritState). NULL until the first cosmetic purchase."""
+    SpiritState). NULL until the first cosmetic purchase. ADR-0029 still STAMPS it on unlock for
+    forward-compat, even though it no longer affects needs, so the unlock tests still check it."""
     db_session.expire_all()
     return db_session.execute(
         select(Spirit.last_pampered_at).where(
+            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
+        )
+    ).scalar_one()
+
+
+def _stored_last_pampered_need(db_session, user_id):
+    """The active spirit's stored last-pampered need (ADR-0026) — read off the row (not in
+    SpiritState). NULL until the first cosmetic purchase. Still STAMPED on unlock under ADR-0029
+    (forward-compat only; it no longer affects needs)."""
+    db_session.expire_all()
+    return db_session.execute(
+        select(Spirit.last_pampered_need).where(
             Spirit.user_id == user_id, Spirit.retired_at.is_(None)
         )
     ).scalar_one()
@@ -347,51 +351,65 @@ def test_choose_rejects_unexpected_fields(client):
     assert res.status_code == 422
 
 
-# --- The three tended needs (ADR-0023; demanding, visual-only care state) ----------------
+# --- Real-time decay needs (ADR-0029: the Tamagotchi turn) -------------------------------
 #
-# Each need is derived from the activity log over a rolling CONDITION_WINDOW_DAYS window:
-# `nourished` from the chosen creature's SIGNATURE practice, `rested` from rhythm/consistency,
-# `joyful` from variety. We call the service directly with an explicit `today` so the window
-# lines up with the dated practice we log (and the test is date-independent).
+# Needs are now SURVIVAL meters that decay on a clock since last fed. We test the pure decay math
+# by calling the service directly with an explicit `now` + `needs_baseline_at` (and per-need tend
+# stamps), and the end-to-end behaviour by setting the stored row's timestamps in the PAST (we do
+# NOT mock `now` — elapsed time is simulated by backdating the anchors).
+
+_AWARE = datetime.now(UTC)  # a stable aware "now" for the direct-call decay tests
 
 
-def _recent_days(n):
-    """`n` distinct recent days ending today, all inside the window — for logging practice
-    that the rolling window will count."""
-    today = date.today()
-    return today, [today - timedelta(days=i) for i in range(n)]
-
-
-def _needs(
+def _decayed_needs(
     db_session,
     path,
     user_id,
     *,
-    today=None,
-    tz="UTC",
-    current_streak=0,
-    last_pampered_at=None,
-    last_pampered_need=None,
-    cosmetics=None,
+    now=None,
+    baseline=None,
+    nourished_tended_at=None,
+    rested_tended_at=None,
+    joyful_tended_at=None,
 ):
+    """Call the ADR-0029 decay `needs(...)` with an explicit `now` + born-fed `baseline` (defaulting
+    to now), so decay is deterministic and date-independent."""
+    now = now or datetime.now(UTC)
     return spirit_service.needs(
         db_session,
         path,
         user_id,
-        today=today or date.today(),
-        tz=tz,
-        current_streak=current_streak,
-        last_pampered_at=last_pampered_at,
-        last_pampered_need=last_pampered_need,
-        cosmetics=cosmetics,
+        now=now,
+        needs_baseline_at=baseline or now,
+        nourished_tended_at=nourished_tended_at,
+        rested_tended_at=rested_tended_at,
+        joyful_tended_at=joyful_tended_at,
     )
+
+
+def _active_spirit(db_session, user_id):
+    return db_session.execute(
+        select(Spirit).where(Spirit.user_id == user_id, Spirit.retired_at.is_(None))
+    ).scalar_one()
+
+
+def _backdate_baseline(db_session, user_id, *, days_ago):
+    """Backdate the active spirit's needs_baseline_at by `days_ago` days and clear any tend stamps
+    — simulating that much elapsed time with no activity/tend (no `now` mocking)."""
+    spirit = _active_spirit(db_session, user_id)
+    spirit.needs_baseline_at = datetime.now(UTC) - timedelta(days=days_ago)
+    spirit.nourished_tended_at = None
+    spirit.rested_tended_at = None
+    spirit.joyful_tended_at = None
+    db_session.commit()
+    return spirit
 
 
 def test_pathless_spark_has_neutral_needs(client, db_session):
     _auth(client, "needs_pathless@example.com")
     user_id = _user_id(db_session, "needs_pathless@example.com")
     client.get("/api/v1/spirit")  # create the spark
-    n = _needs(db_session, None, user_id)
+    n = _decayed_needs(db_session, None, user_id)
     # No creature chosen → no care requirement → every need is the neutral content-ish default.
     assert n.nourished.tier == CONDITION_CONTENT
     assert n.rested.tier == CONDITION_CONTENT
@@ -400,527 +418,430 @@ def test_pathless_spark_has_neutral_needs(client, db_session):
     assert spirit_service.overall_condition(n).tier == CONDITION_CONTENT
 
 
-def test_nourished_rises_with_the_signature_practice(client, db_session):
-    """A `stillness` (Kapha) creature's `nourished` thrives when fed enough recent BREATHING
-    (its balancing practice) across distinct days."""
-    _auth(client, "needs_nourish_rise@example.com")
-    user_id = _user_id(db_session, "needs_nourish_rise@example.com")
-    today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    for d in days:
-        _breathe(client, 30, day=d.isoformat())  # breathing = the Kapha (stillness) creature's food
-    n = _needs(db_session, "stillness", user_id, today=today)
-    assert n.nourished.tier == CONDITION_THRIVING
-    assert n.nourished.factor == 1.0
+def test_born_fed_baseline_starts_full_and_healthy(client, db_session):
+    """A spirit with `needs_baseline_at` ~now (the migration / fresh-spark semantics) reads with
+    every need at full and is neither ailing nor dead — the no-mass-death guarantee."""
+    _auth(client, "needs_bornfed@example.com")
+    user_id = _user_id(db_session, "needs_bornfed@example.com")
+    now = datetime.now(UTC)
+    # No activity at all, baseline = now → practice_value = 1.0 for all three.
+    n = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=now)
+    for need in (n.nourished, n.rested, n.joyful):
+        assert need.factor == 1.0
+        assert need.tier == CONDITION_THRIVING
+    # And it isn't sick: the weakest need is full.
+    assert spirit_service.overall_condition(n).factor == 1.0
+    is_dead, _ = spirit_service._health_state(
+        db_session,
+        "stillness",
+        user_id,
+        now=now,
+        needs_baseline_at=now,
+        nourished_tended_at=None,
+        rested_tended_at=None,
+        joyful_tended_at=None,
+    )
+    assert is_dead is False
 
 
-def test_energizing_breath_nourishes_the_kapha_creature(client, db_session):
-    """Energizing breath is breathwork too: feeding a `stillness` (Kapha) creature enough
-    recent energizing-breath days thrives its `nourished`, exactly like resonance does."""
-    _auth(client, "needs_energize_kapha@example.com")
-    user_id = _user_id(db_session, "needs_energize_kapha@example.com")
-    today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    for d in days:
-        _energize(client, 30, day=d.isoformat())  # energizing breath = Kapha's food too
-    n = _needs(db_session, "stillness", user_id, today=today)
-    assert n.nourished.tier == CONDITION_THRIVING
-    assert n.nourished.factor == 1.0
+def test_needs_decay_partway_after_some_days(db_session):
+    """A baseline ~DECAY_DAYS/2 in the past with no activity/tend → needs decay PARTWAY (value
+    ≈ 0.5), strictly between full and empty — the clock is running."""
+    user = _make_user(db_session, "needs_decay_partway@example.com")
+    now = datetime.now(UTC)
+    baseline = now - timedelta(days=DECAY_DAYS / 2)
+    n = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=baseline)
+    for need in (n.nourished, n.rested, n.joyful):
+        # value = 1 - (DECAY_DAYS/2)/DECAY_DAYS = 0.5.
+        assert abs(need.factor - 0.5) < 1e-9
+        assert 0.0 < need.factor < 1.0
 
 
-def test_energizing_breath_does_not_nourish_the_vata_creature_as_meditation(client, db_session):
-    """Energizing breath is breathwork, NOT meditation — so a `heart` (Vata) creature, whose
-    food is non-breathing MEDITATION, stays at the `unwell` floor when fed only energizing
-    breath. This guards the classifier: energizing must never count as meditation."""
-    _auth(client, "needs_energize_vata@example.com")
-    user_id = _user_id(db_session, "needs_energize_vata@example.com")
-    today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    for d in days:
-        _energize(client, 30, day=d.isoformat())  # breathwork, not the Vata creature's food
-    n = _needs(db_session, "heart", user_id, today=today)
-    assert n.nourished.tier == CONDITION_UNWELL
+def test_needs_reach_zero_after_decay_days_without_activity(db_session):
+    """Past DECAY_DAYS with no activity and no tend → a need decays all the way to 0 (NO floor —
+    the ADR-0023 non-punishing floor is gone)."""
+    user = _make_user(db_session, "needs_zero@example.com")
+    now = datetime.now(UTC)
+    baseline = now - timedelta(days=DECAY_DAYS + 0.5)
+    n = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=baseline)
+    for need in (n.nourished, n.rested, n.joyful):
+        assert need.factor == 0.0
+        assert need.tier == CONDITION_UNWELL
 
 
-def test_nourished_declines_to_unwell_without_the_signature_practice(db_session):
-    """No signature practice in the window → `nourished` declines to the `unwell` floor."""
-    user = _make_user(db_session, "needs_nourish_decline@example.com")
-    n = _needs(db_session, "stillness", user.id)
-    assert n.nourished.tier == CONDITION_UNWELL
+def test_recent_signature_practice_keeps_nourished_full(client, db_session):
+    """A recent matching session resets the nourished clock: a `stillness` (Kapha) creature fed
+    BREATHING just now reads nourished ≈ full even when the baseline is old (practice beats it)."""
+    _auth(client, "needs_recent_practice@example.com")
+    user_id = _user_id(db_session, "needs_recent_practice@example.com")
+    now = datetime.now(UTC)
+    # Practice today; an old baseline that would otherwise have decayed nourished to 0.
+    _breathe(client, 30, day=now.date().isoformat())  # breathing = the Kapha creature's food
+    old_baseline = now - timedelta(days=DECAY_DAYS + 5)
+    n = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=old_baseline)
+    # The recent breathing session refills nourished (and rested — any sit feeds rested too).
+    assert n.nourished.factor > 0.9
+    assert n.rested.factor > 0.9
+    # joyful is fed by gratitude/journal, which we didn't do → it stays decayed to the floor.
+    assert n.joyful.factor == 0.0
 
 
-def test_other_practices_do_not_nourish_a_creature(client, db_session):
-    """`nourished` is fed ONLY by the SIGNATURE practice: lots of meditation must not nourish a
-    `stillness` (Kapha) creature — its food is energizing BREATHING, so it stays at the neglected
-    floor. (Variety/rhythm may climb, but identity does not.)"""
-    _auth(client, "needs_wrongfood@example.com")
-    user_id = _user_id(db_session, "needs_wrongfood@example.com")
-    today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    for d in days:
-        _practice(client, 10, day=d.isoformat())  # meditation, not the Kapha creature's food
-    n = _needs(db_session, "stillness", user_id, today=today)
-    assert n.nourished.tier == CONDITION_UNWELL  # the wrong practice never nourishes it
+def test_rested_fed_by_any_session_joyful_by_reflection(client, db_session):
+    """`rested` is fed by ANY sit; `joyful` by a gratitude/journal entry. A meditation today keeps
+    rested full while joyful (no reflection) decays; a gratitude entry keeps joyful full."""
+    _auth(client, "needs_signals@example.com")
+    user_id = _user_id(db_session, "needs_signals@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)
+
+    _practice(client, 10, day=now.date().isoformat())  # a meditation sit → feeds rested
+    rested_only = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
+    assert rested_only.rested.factor > 0.9  # any sit feeds rested
+    assert rested_only.joyful.factor == 0.0  # no reflection → joyful decayed
+
+    _gratitude(client)  # a gratitude entry → feeds joyful
+    with_joy = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
+    assert with_joy.joyful.factor > 0.9
 
 
-def test_nourished_one_token_session_does_not_jump_to_thriving(client, db_session):
-    """Demanding/slow-recovery: a single recent care day lifts `nourished` off the floor but
-    NOT all the way to thriving — recovery reflects sustained recent practice."""
-    _auth(client, "needs_token@example.com")
-    user_id = _user_id(db_session, "needs_token@example.com")
-    today = date.today()
-    _breathe(client, 30, day=today.isoformat())  # one big breathing session, but only one care day
-    n = _needs(db_session, "stillness", user_id, today=today)
-    assert n.nourished.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
-    assert n.nourished.factor < 1.0
+def test_signature_practice_is_path_specific(client, db_session):
+    """nourished is fed ONLY by the chosen creature's signature practice. Meditation feeds a
+    `heart` (Vata) creature's nourished but NOT a `stillness` (Kapha) one (whose food is
+    breathing)."""
+    _auth(client, "needs_pathfood@example.com")
+    user_id = _user_id(db_session, "needs_pathfood@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)
+    _practice(client, 10, day=now.date().isoformat())  # meditation
+
+    heart = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
+    assert heart.nourished.factor > 0.9  # meditation IS the Vata creature's food
+
+    kapha = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=old)
+    assert kapha.nourished.factor == 0.0  # meditation is NOT the Kapha creature's food
 
 
-def test_nourished_breath_counts_gratitude_and_journal(client, db_session):
-    """The `breath` (Pitta) creature's signature practice is gratitude + journaling (its cooling
-    balancing practice); a single reflection day is off the floor but not thriving (demanding
-    day-distinct signal)."""
-    _auth(client, "needs_pitta@example.com")
-    user_id = _user_id(db_session, "needs_pitta@example.com")
-    # Gratitude/journal stamp created_at = now, so they all land on today's window day.
-    for _ in range(8):
-        _gratitude(client)
-        _journal(client)
-    n = _needs(db_session, "breath", user_id)
-    # Only one distinct care day (all today) → off the floor but not thriving.
-    assert n.nourished.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
-    assert n.nourished.tier != CONDITION_UNWELL
+def test_tend_value_caps_at_tend_cap(db_session):
+    """A manual tend lifts a need only to TEND_CAP (not full): a need with an old baseline (decayed
+    to 0) but tended just now reads ≈ TEND_CAP, not 1.0 — practice is required to thrive."""
+    user = _make_user(db_session, "needs_tend_cap@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)  # practice value would be 0
+    n = _decayed_needs(
+        db_session, "stillness", user.id, now=now, baseline=old, nourished_tended_at=now
+    )
+    assert abs(n.nourished.factor - TEND_CAP) < 1e-9
+    # The un-tended needs are still at the decayed floor.
+    assert n.rested.factor == 0.0
+    assert n.joyful.factor == 0.0
 
 
-def test_rested_reflects_consistency(client, db_session):
-    """`rested` tracks practice RHYTHM: enough distinct active days in the window thrives it,
-    independent of WHICH practice (breathing here, on a stillness creature) — consistency, not
-    identity. The current streak also feeds it."""
-    _auth(client, "needs_rested@example.com")
-    user_id = _user_id(db_session, "needs_rested@example.com")
-    today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    for d in days:
-        _breathe(client, 10, day=d.isoformat())  # a full week of active days
-    n = _needs(db_session, "stillness", user_id, today=today)
-    assert n.rested.tier == CONDITION_THRIVING
-
-    # And a strong current streak alone reads as well-rested even before active-days fill.
-    user2 = _make_user(db_session, "needs_rested_streak@example.com")
-    streaked = _needs(db_session, "stillness", user2.id, current_streak=6)
-    assert streaked.rested.tier == CONDITION_THRIVING
-
-
-def test_rested_declines_without_recent_practice(db_session):
-    """No recent active days and no streak → `rested` falls to the `unwell` floor."""
-    user = _make_user(db_session, "needs_rested_decline@example.com")
-    n = _needs(db_session, "stillness", user.id, current_streak=0)
-    assert n.rested.tier == CONDITION_UNWELL
+def test_tend_value_decays_too(db_session):
+    """A tend decays at the same rate as practice: tended TEND_CAP·DECAY_DAYS days ago → its
+    contribution is back to 0 (so a single tend doesn't keep a need up forever)."""
+    user = _make_user(db_session, "needs_tend_decay@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)
+    tended_long_ago = now - timedelta(days=TEND_CAP * DECAY_DAYS + 0.1)
+    n = _decayed_needs(
+        db_session,
+        "stillness",
+        user.id,
+        now=now,
+        baseline=old,
+        nourished_tended_at=tended_long_ago,
+    )
+    assert n.nourished.factor == 0.0  # the tend has fully decayed
 
 
-def test_joyful_reflects_variety(client, db_session):
-    """`joyful` tracks VARIETY: practising all four distinct types (meditate / breathe /
-    gratitude / journal) recently thrives it; doing only ONE type does not."""
-    _auth(client, "needs_joyful@example.com")
-    user_id = _user_id(db_session, "needs_joyful@example.com")
-    today = date.today()
-    # All four practice types, today (in-window).
-    _practice(client, 5, day=today.isoformat())  # meditate
-    _breathe(client, 5, day=today.isoformat())  # breathe
-    _gratitude(client)  # gratitude
-    _journal(client)  # journal
-    n = _needs(db_session, "heart", user_id, today=today)
-    assert n.joyful.tier == CONDITION_THRIVING
-
-    # A user who only ever meditates has low variety — joyful stays off thriving.
-    _auth(client, "needs_monotone@example.com")
-    mono_id = _user_id(db_session, "needs_monotone@example.com")
-    for d in _recent_days(CONDITION_WINDOW_DAYS)[1]:
-        _practice(client, 10, day=d.isoformat())  # one type only
-    mono = _needs(db_session, "heart", mono_id, today=today)
-    assert mono.joyful.tier not in {CONDITION_THRIVING, CONDITION_CONTENT}
-
-
-def test_overall_condition_is_the_weakest_need(client, db_session):
-    """The overall `condition` summarises the three needs as their WEAKEST tier — so a single
-    neglected need shows even if the others thrive."""
-    _auth(client, "needs_overall@example.com")
-    user_id = _user_id(db_session, "needs_overall@example.com")
-    today, days = _recent_days(CONDITION_WINDOW_DAYS)
-    # Feed ONLY meditation every day: a `stillness` (Kapha) creature is well-RESTED (consistency
-    # counts any practice) but NOT nourished (its food is energizing breathing, not meditation).
-    # So nourished is the floor and drives the overall condition.
-    for d in days:
-        _practice(client, 10, day=d.isoformat())
-    n = _needs(db_session, "stillness", user_id, today=today)
+def test_overall_condition_is_the_weakest_need(db_session):
+    """Health = the WEAKEST need. With nourished fully fed but joyful decayed to 0, the overall
+    condition (health) follows the weakest."""
+    user = _make_user(db_session, "needs_overall@example.com")
+    now = datetime.now(UTC)
+    # Tend nourished + rested to TEND_CAP now, but leave joyful decayed via an old baseline.
+    old = now - timedelta(days=DECAY_DAYS + 5)
+    n = _decayed_needs(
+        db_session,
+        "stillness",
+        user.id,
+        now=now,
+        baseline=old,
+        nourished_tended_at=now,
+        rested_tended_at=now,
+    )
+    assert n.joyful.factor == 0.0  # the weakest need
     overall = spirit_service.overall_condition(n)
-    assert n.nourished.tier == CONDITION_UNWELL  # the weakest need
-    assert n.rested.tier == CONDITION_THRIVING  # a well-tended need
-    assert overall.tier == n.nourished.tier  # overall = the weakest
+    assert overall.factor == n.joyful.factor
 
 
 def test_needs_never_change_coins_or_stage(client, db_session):
-    """THE GUARDRAIL (ADR-0023): needs are visual-only. A fully-neglected creature (every need
-    at `unwell`) has the SAME coins and stage as the moment it was earned — needs never reduce
-    any progress."""
+    """Needs are still un-coupled from progress: a fully-decayed creature has the SAME coins and
+    stage as the moment they were earned (ADR-0029 keeps XP/level/coins computed from activity)."""
     _auth(client, "needs_guardrail@example.com")
     user_id = _user_id(db_session, "needs_guardrail@example.com")
-    # Earn some coins/levels, then choose a creature and never feed it.
     _earn_to_level(client, 3)
     assert _choose(client, "stillness").status_code == 200
 
     before = _spirit(client)
-    # Drive every need to the floor by computing them with a `today` far past any practice.
-    far_future = date.today() + timedelta(days=400)
-    floor = _needs(db_session, "stillness", user_id, today=far_future)
-    assert floor.nourished.tier == CONDITION_UNWELL
-    assert floor.rested.tier == CONDITION_UNWELL
-    assert floor.joyful.tier == CONDITION_UNWELL
+    # Drive every need to 0 by computing with an old baseline.
+    now = datetime.now(UTC)
+    floored = _decayed_needs(
+        db_session, "stillness", user_id, now=now, baseline=now - timedelta(days=DECAY_DAYS + 5)
+    )
+    assert floored.nourished.factor == 0.0
+    assert floored.rested.factor == 0.0
+    assert floored.joyful.factor == 0.0
 
     after = _spirit(client)
-    # Coins and stage are unchanged — derived from earned XP, never from any need.
     assert after["coins"] == before["coins"]
     assert after["stage"] == before["stage"]
     assert after["bond"]["level"] == before["bond"]["level"]
 
 
-# --- Pamper boost (ADR-0025): buying perks the spirit up with a decaying needs boost --------
+# --- Sickness + death (ADR-0029) ----------------------------------------------------------
 #
-# Buying a cosmetic stamps `last_pampered_at`; the needs read then adds a DECAYING bonus to
-# every need's factor — full right after the purchase, fading to 0 over PAMPER_WINDOW_DAYS. It
-# is PARTIAL/CAPPED (can lift off the floor but not alone reach thriving) and VISUAL-ONLY (the
-# ADR-0023 guardrail still holds: needs/condition never touch coins/stage/level/cosmetics).
+# Health (the weakest need) hitting 0 makes the spirit AILING; staying ailing for DEATH_DAYS kills
+# it (~DECAY_DAYS + DEATH_DAYS ≈ 5 days of total neglect). `died_at` is persisted lazily on read.
 
 
-def _aware_now():
-    """A tz-aware 'now' (UTC) — what the DB stores for last_pampered_at. Passed straight to
-    `needs(last_pampered_at=…)` so the boost reads as freshly pampered ('today')."""
-    return datetime.now(UTC)
-
-
-def _need_factors(n):
-    """The three need factors as a tuple — handy for the boost comparisons."""
-    return (n.nourished.factor, n.rested.factor, n.joyful.factor)
-
-
-def test_pamper_boost_lifts_needs_above_the_unpampered_baseline(client, db_session):
-    """A freshly-pampered spirit (last_pampered_at = today) reports HIGHER need factors than the
-    SAME spirit with the SAME activity but un-pampered — the boost lifts every need."""
-    _auth(client, "pamper_lift@example.com")
-    user_id = _user_id(db_session, "pamper_lift@example.com")
-    # A little (but not maxed) signature practice so the needs sit in the middle, with headroom
-    # for the boost to show without clamping.
-    today, days = _recent_days(3)
-    for d in days:
-        _breathe(client, 30, day=d.isoformat())  # feeds nourished (Kapha) + rested + joyful
-
-    baseline = _needs(db_session, "stillness", user_id, today=today)
-    pampered = _needs(
-        db_session, "stillness", user_id, today=today, last_pampered_at=_aware_now()
-    )
-
-    # Every need's factor is strictly higher when freshly pampered.
-    for b, p in zip(_need_factors(baseline), _need_factors(pampered), strict=True):
-        assert p > b
-    # And the boosted factor is exactly the baseline + PAMPER_BOOST, clamped at 1.0.
-    assert pampered.nourished.factor == min(1.0, baseline.nourished.factor + PAMPER_BOOST)
-
-
-def test_pamper_boost_decays_to_nothing_after_the_window(client, db_session):
-    """The boost DECAYS: a spirit pampered PAMPER_WINDOW_DAYS ago (the window has fully elapsed)
-    reads exactly like the un-pampered baseline — no lingering boost."""
-    _auth(client, "pamper_decay@example.com")
-    user_id = _user_id(db_session, "pamper_decay@example.com")
-    today, days = _recent_days(3)
-    for d in days:
-        _breathe(client, 30, day=d.isoformat())
-
-    baseline = _needs(db_session, "stillness", user_id, today=today)
-    # Pampered exactly PAMPER_WINDOW_DAYS ago → factor 1 - days/window = 0 → no boost.
-    stale = _aware_now() - timedelta(days=PAMPER_WINDOW_DAYS)
-    decayed = _needs(
-        db_session, "stillness", user_id, today=today, last_pampered_at=stale
-    )
-    assert _need_factors(decayed) == _need_factors(baseline)
-
-
-def test_pamper_boost_is_partial_lifts_off_the_floor_but_not_to_thriving(db_session):
-    """The boost is PARTIAL: a fully-neglected spirit (every need at the unwell floor) that's
-    just pampered is lifted OFF the floor, but NOT all the way to thriving — practice is still
-    required. Guards against a treat substituting for the work."""
-    user = _make_user(db_session, "pamper_partial@example.com")
-    floor = _needs(db_session, "stillness", user.id)  # no activity → all needs at the floor
-    assert floor.nourished.tier == CONDITION_UNWELL
-    assert floor.rested.tier == CONDITION_UNWELL
-    assert floor.joyful.tier == CONDITION_UNWELL
-
-    pampered = _needs(
-        db_session, "stillness", user.id, last_pampered_at=_aware_now()
-    )
-    for need in (pampered.nourished, pampered.rested, pampered.joyful):
-        # Lifted off the floor...
-        assert need.factor > floor.nourished.factor
-        assert need.tier != CONDITION_UNWELL
-        # ...but a single treat can't reach thriving (factor stays < 1.0 with PAMPER_BOOST=0.35).
-        assert need.tier != CONDITION_THRIVING
-        assert need.factor < 1.0
-
-
-def test_pamper_guardrail_buying_does_not_change_coins_or_stage_beyond_the_spend(
-    client, db_session
-):
-    """THE GUARDRAIL still holds under ADR-0025: pampering (buying) lifts only the visual
-    needs/condition. Coins drop by EXACTLY the option cost (the normal spend) and stage/level
-    are untouched — the boost never adds or removes any progress."""
-    _auth(client, "pamper_guardrail@example.com")
-    user_id = _user_id(db_session, "pamper_guardrail@example.com")
+def test_spirit_becomes_ailing_when_a_need_empties(client, db_session):
+    """A baseline just past DECAY_DAYS (so the weakest need has emptied) but within the death
+    window → the spirit is AILING (health 0) but NOT dead, and the GET reports it."""
+    _auth(client, "death_ailing@example.com")
+    user_id = _user_id(db_session, "death_ailing@example.com")
     assert _choose(client, "stillness").status_code == 200
+    # ~DECAY_DAYS + a touch: every need is at 0 but the death window (DEATH_DAYS) hasn't elapsed.
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.1)
 
-    before = _spirit(client)
-    cost = _cost("aura", "soft")
-    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
-    assert res.status_code == 200
-    after = res.json()
-
-    # The ONLY economic effect is the normal cosmetic spend; the pamper boost adds nothing.
-    assert after["coins"] == before["coins"] - cost
-    assert after["stage"] == before["stage"]
-    assert after["bond"]["level"] == before["bond"]["level"]
-    # The visual needs/condition may now read brighter (the boost) — but that's display-only.
-    # Stamp was recorded so the needs read can apply the boost.
-    assert _stored_last_pampered_at(db_session, user_id) is not None
-
-
-def test_buy_cosmetic_stamps_last_pampered_at(client, db_session):
-    """`buy_cosmetic` records `last_pampered_at` (NULL before the first purchase)."""
-    _auth(client, "pamper_stamp@example.com")
-    user_id = _user_id(db_session, "pamper_stamp@example.com")
-    client.get("/api/v1/spirit")  # create the spark
-    assert _stored_last_pampered_at(db_session, user_id) is None
-
-    res = client.post("/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"})
-    assert res.status_code == 200
-    assert _stored_last_pampered_at(db_session, user_id) is not None
-
-
-def test_name_reset_and_free_equip_do_not_pamper(client, db_session):
-    """Only UNLOCKING pampers — the paid name reset and a FREE equip must NOT bump
-    `last_pampered_at` (ADR-0025/0027). Unlock once to stamp it, then a name reset and a
-    re-equip both leave the stamp at the unlock time."""
-    _auth(client, "pamper_resets@example.com")
-    user_id = _user_id(db_session, "pamper_resets@example.com")
-    # Earn enough to afford the unlock + a RESET_COST name reset.
-    _earn_to_level(client, 10)
-    assert _choose(client, "stillness").status_code == 200
-
-    assert _unlock(client, "aura", "soft").status_code == 200
-    stamp_after_unlock = _stored_last_pampered_at(db_session, user_id)
-    assert stamp_after_unlock is not None
-
-    # A paid name reset does not pamper.
-    assert client.post(
-        "/api/v1/spirit/reset-name", json={"name": "Renamed"}
-    ).status_code == 200
-    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_unlock
-
-    # A free equip (re-equip the owned soft aura, then clear it) does not pamper either.
-    assert _equip(client, "aura", "soft").status_code == 200
-    assert _equip(client, "aura", None).status_code == 200
-    assert _stored_last_pampered_at(db_session, user_id) == stamp_after_unlock
-
-
-def test_awaken_does_not_pamper(client, db_session):
-    """Awaken starts a fresh spark — it must not be born pampered (last_pampered_at stays NULL
-    on the new active row)."""
-    _auth(client, "pamper_awaken@example.com")
-    user_id = _user_id(db_session, "pamper_awaken@example.com")
-    _earn_to_level(client, 24)  # radiant
-    _choose(client, "breath")
-    assert client.post("/api/v1/spirit/awaken").status_code == 200
-    assert _stored_last_pampered_at(db_session, user_id) is None
-
-
-def test_pathless_spark_is_never_pampered(db_session):
-    """A pathless spark keeps its neutral defaults even if a stray pamper stamp is passed — no
-    boost on a creature-less spark (the neutral path returns before the boost is applied)."""
-    user = _make_user(db_session, "pamper_pathless@example.com")
-    n = _needs(db_session, None, user.id, last_pampered_at=_aware_now())
-    assert n.nourished.tier == CONDITION_CONTENT
-    assert n.rested.tier == CONDITION_CONTENT
-    assert n.joyful.tier == CONDITION_CONTENT
-
-
-# --- Per-item need affinities (ADR-0026): passive while-owned + weighted fading buy-boost ----
-#
-# Each catalog item FAVOURS one need (its `need`). Owning an item adds a small passive lift to
-# that need (PASSIVE_PER_ITEM, capped at PASSIVE_NEED_CAP). Buying it stamps `last_pampered_need`
-# so the decaying buy-boost is WEIGHTED toward that need (PAMPER_PRIMARY) with a smaller spillover
-# to the other two (PAMPER_SPILL). A legacy row (last_pampered_at set, last_pampered_need None)
-# still lifts all three (ADR-0025's uniform boost), so existing pampered spirits don't regress.
-
-
-def _stored_last_pampered_need(db_session, user_id):
-    """The active spirit's stored last-pampered need (ADR-0026) — read off the row (not in
-    SpiritState). NULL until the first cosmetic purchase."""
-    db_session.expire_all()
-    return db_session.execute(
-        select(Spirit.last_pampered_need).where(
-            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
-        )
-    ).scalar_one()
-
-
-def test_every_catalog_option_has_a_need(client):
-    """ADR-0026 invariant: EVERY catalog option declares which need it favours, and it must be
-    one of the three valid need keys. A missing/invalid `need` is a bug."""
-    for slot, options in SPIRIT_COSMETICS_CATALOG.items():
-        for option, spec in options.items():
-            assert "need" in spec, f"{slot}.{option} is missing a `need` affinity"
-            need = spec["need"]
-            assert need in NEED_KEYS, f"{slot}.{option} has an invalid need {need!r}"
-
-
-def test_available_slots_response_includes_need_per_option(client):
-    """The GET `available` catalog state exposes `need` on every option, matching the catalog —
-    so the shop can tag which need each item favours."""
-    _auth(client, "affinity_need_exposed@example.com")
     body = _spirit(client)
-    for s in body["available"]:
-        for o in s["options"]:
-            assert "need" in o
-            assert o["need"] == SPIRIT_COSMETICS_CATALOG[s["slot"]][o["option"]]["need"]
+    assert body["ailing"] is True
+    assert body["dead"] is False
+    assert body["died_at"] is None
+    assert body["condition"]["factor"] == 0.0
 
 
-def test_passive_owned_item_raises_its_favoured_need(db_session):
-    """An APPLIED item with need=rested raises the rested factor above an identical spirit with no
-    cosmetics (the passive while-owned lift), and only the rested need moves."""
-    user = _make_user(db_session, "affinity_passive@example.com")
-    today, days = _recent_days(3)
-    # A `frost` aura favours rested. Owning it should lift rested passively (no purchase stamp).
-    assert SPIRIT_COSMETICS_CATALOG["aura"]["frost"]["need"] == "rested"
+def test_spirit_dies_after_the_death_window_and_persists_died_at(client, db_session):
+    """A baseline past DECAY_DAYS + DEATH_DAYS → the spirit is DEAD on the next read, and `died_at`
+    is PERSISTED (frozen) to the real death moment."""
+    _auth(client, "death_dead@example.com")
+    user_id = _user_id(db_session, "death_dead@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 0.5)
 
-    bare = _needs(db_session, "stillness", user.id, today=today)
-    owned = _needs(
-        db_session, "stillness", user.id, today=today, cosmetics={"aura": "frost"}
-    )
-    # Rested is lifted by exactly one item's passive step (clamped at 1.0); the other two are
-    # unchanged (no rested-favouring purchase, no other owned items).
-    assert owned.rested.factor == min(1.0, bare.rested.factor + PASSIVE_PER_ITEM)
-    assert owned.rested.factor > bare.rested.factor
-    assert owned.nourished.factor == bare.nourished.factor
-    assert owned.joyful.factor == bare.joyful.factor
+    body = _spirit(client)
+    assert body["dead"] is True
+    assert body["ailing"] is False
+    assert body["died_at"] is not None
+    # Persisted on the row (lazy write-on-read), not just computed.
+    assert _active_spirit(db_session, user_id).died_at is not None
 
 
-def test_passive_lift_is_capped_per_need(db_session):
-    """The passive per-need lift is capped at PASSIVE_NEED_CAP — owning many rested-favouring
-    items can't lift rested beyond the cap above the base."""
-    user = _make_user(db_session, "affinity_passive_cap@example.com")
-    today, _ = _recent_days(3)
-    bare = _needs(db_session, "stillness", user.id, today=today)
-    # Four rested-favouring items (soft/frost auras can't coexist in one slot, so use one per
-    # slot): aura frost, accessory scarf, habitat night, mount cloud — all need=rested.
-    rested_items = {
-        "aura": "frost",
-        "accessory": "scarf",
-        "habitat": "night",
-        "mount": "cloud",
-    }
-    for slot, option in rested_items.items():
-        assert SPIRIT_COSMETICS_CATALOG[slot][option]["need"] == "rested"
-    owned = _needs(
-        db_session, "stillness", user.id, today=today, cosmetics=rested_items
-    )
-    # Four items × PASSIVE_PER_ITEM (0.20) would exceed the 0.15 cap → lift is exactly the cap.
-    assert owned.rested.factor == min(1.0, bare.rested.factor + PASSIVE_NEED_CAP)
+def test_death_is_terminal_practice_does_not_revive(client, db_session):
+    """Once dead, `died_at` is frozen and later practice/tend can't revive: a fresh sit after death
+    leaves the spirit dead (death is terminal)."""
+    _auth(client, "death_terminal@example.com")
+    user_id = _user_id(db_session, "death_terminal@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
+
+    first = _spirit(client)
+    assert first["dead"] is True
+    died_at = _active_spirit(db_session, user_id).died_at
+
+    # Practice now (would refill needs on a living spirit) — but death is terminal.
+    _breathe(client, 30, day=date.today().isoformat())
+    after = _spirit(client)
+    assert after["dead"] is True
+    # `died_at` is unchanged (frozen at the original death moment).
+    assert _active_spirit(db_session, user_id).died_at == died_at
 
 
-def test_buyboost_is_weighted_toward_the_bought_items_need(db_session):
-    """After buying a rested-affinity item, the rested need gets the LARGER buy-boost
-    (PAMPER_PRIMARY) while the other two get the smaller spillover (PAMPER_SPILL) — and a
-    nourished-affinity purchase favours nourished instead. Compared at the base factor (no owned
-    items), so only the weighted buy-boost is in play."""
-    user = _make_user(db_session, "affinity_buyboost@example.com")
-    today, _ = _recent_days(3)
-    bare = _needs(db_session, "stillness", user.id, today=today)
+def test_health_state_pure_function(db_session):
+    """`_health_state` is computable from the fed timestamps: not-dead just past ailing-onset, dead
+    once past ailing-onset + DEATH_DAYS."""
+    user = _make_user(db_session, "death_pure@example.com")
+    now = datetime.now(UTC)
 
-    # A rested-affinity purchase: rested gets PAMPER_PRIMARY, the others PAMPER_SPILL.
-    rested = _needs(
+    # Just ailing (past DECAY_DAYS, within DEATH_DAYS) → not dead.
+    dead, death_time = spirit_service._health_state(
         db_session,
         "stillness",
         user.id,
-        today=today,
-        last_pampered_at=_aware_now(),
-        last_pampered_need="rested",
+        now=now,
+        needs_baseline_at=now - timedelta(days=DECAY_DAYS + 0.1),
+        nourished_tended_at=None,
+        rested_tended_at=None,
+        joyful_tended_at=None,
     )
-    assert rested.rested.factor == min(1.0, bare.rested.factor + PAMPER_PRIMARY)
-    assert rested.nourished.factor == min(1.0, bare.nourished.factor + PAMPER_SPILL)
-    assert rested.joyful.factor == min(1.0, bare.joyful.factor + PAMPER_SPILL)
-    # The favoured need is boosted strictly more than each other need's boost.
-    rested_lift = rested.rested.factor - bare.rested.factor
-    other_lift = rested.nourished.factor - bare.nourished.factor
-    assert rested_lift > other_lift
+    assert dead is False
+    assert death_time is not None
 
-    # A nourished-affinity purchase favours nourished instead (symmetry).
-    nourished = _needs(
+    # Past the death window → dead.
+    dead2, _ = spirit_service._health_state(
         db_session,
         "stillness",
         user.id,
-        today=today,
-        last_pampered_at=_aware_now(),
-        last_pampered_need="nourished",
+        now=now,
+        needs_baseline_at=now - timedelta(days=DECAY_DAYS + DEATH_DAYS + 0.1),
+        nourished_tended_at=None,
+        rested_tended_at=None,
+        joyful_tended_at=None,
     )
-    assert nourished.nourished.factor == min(1.0, bare.nourished.factor + PAMPER_PRIMARY)
-    assert nourished.rested.factor == min(1.0, bare.rested.factor + PAMPER_SPILL)
+    assert dead2 is True
 
 
-def test_buyboost_spillover_still_helps_overall_condition(db_session):
-    """Non-punishing: even the SPILLOVER lifts the other needs above the un-pampered baseline, so
-    buying any item still helps overall condition somewhat (PAMPER_SPILL > 0)."""
-    user = _make_user(db_session, "affinity_spill@example.com")
-    today, _ = _recent_days(3)
-    bare = _needs(db_session, "stillness", user.id, today=today)
-    pampered = _needs(
-        db_session,
-        "stillness",
-        user.id,
-        today=today,
-        last_pampered_at=_aware_now(),
-        last_pampered_need="rested",
-    )
-    # The two NON-favoured needs are still strictly higher than the baseline (spillover helps).
-    assert pampered.nourished.factor > bare.nourished.factor
-    assert pampered.joyful.factor > bare.joyful.factor
+# --- Tend action (ADR-0029: Feed / Rest / Play) -------------------------------------------
 
 
-def test_legacy_pampered_row_still_lifts_all_three_needs(db_session):
-    """LEGACY FALLBACK (no regression): a row pampered BEFORE this feature has `last_pampered_at`
-    set but `last_pampered_need` None. It still gets ADR-0025's UNIFORM boost — every need lifted
-    by the full PAMPER_PRIMARY — so existing pampered spirits don't regress."""
-    user = _make_user(db_session, "affinity_legacy@example.com")
-    today, _ = _recent_days(3)
-    bare = _needs(db_session, "stillness", user.id, today=today)
-    legacy = _needs(
-        db_session,
-        "stillness",
-        user.id,
-        today=today,
-        last_pampered_at=_aware_now(),
-        last_pampered_need=None,  # legacy: stamped but no recorded need
-    )
-    for need in ("nourished", "rested", "joyful"):
-        base = getattr(bare, need).factor
-        lifted = getattr(legacy, need).factor
-        assert lifted == min(1.0, base + PAMPER_PRIMARY)
-        assert lifted > base
+def _tend(client, kind):
+    return client.post("/api/v1/spirit/tend", json={"kind": kind})
 
 
-def test_buy_cosmetic_stamps_last_pampered_need(client, db_session):
-    """`buy_cosmetic` records `last_pampered_need` = the bought option's catalog need (NULL before
-    the first purchase). A `soft` aura favours rested."""
-    _auth(client, "affinity_stamp_need@example.com")
-    user_id = _user_id(db_session, "affinity_stamp_need@example.com")
-    client.get("/api/v1/spirit")  # create the spark
-    assert _stored_last_pampered_need(db_session, user_id) is None
+def test_tend_feed_lifts_nourished_to_the_cap(client, db_session):
+    """`POST /spirit/tend {feed}` stamps nourished_tended_at and lifts nourished to ≈ TEND_CAP (from
+    a decayed-to-0 baseline)."""
+    _auth(client, "tend_feed@example.com")
+    user_id = _user_id(db_session, "tend_feed@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    # Decay everything to 0 first.
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.5)
+    assert _spirit(client)["needs"]["nourished"]["factor"] == 0.0
 
+    res = _tend(client, "feed")
+    assert res.status_code == 200
+    body = res.json()
+    # nourished is lifted to ≈ TEND_CAP (just tended; the tiny gap is the ms between the stamp's
+    # now() and the read's now()); rested/joyful stay decayed.
+    assert abs(body["needs"]["nourished"]["factor"] - TEND_CAP) < 1e-3
+    assert body["needs"]["nourished"]["factor"] <= TEND_CAP
+    assert body["needs"]["rested"]["factor"] == 0.0
+    # The stamp persisted on the row.
+    assert _active_spirit(db_session, user_id).nourished_tended_at is not None
+
+
+def test_tend_rest_and_play_target_their_needs(client, db_session):
+    """`rest` lifts rested, `play` lifts joyful (the kind→need mapping)."""
+    _auth(client, "tend_rest_play@example.com")
+    user_id = _user_id(db_session, "tend_rest_play@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.5)
+
+    rest = _tend(client, "rest").json()
+    assert abs(rest["needs"]["rested"]["factor"] - TEND_CAP) < 1e-3
+    play = _tend(client, "play").json()
+    assert abs(play["needs"]["joyful"]["factor"] - TEND_CAP) < 1e-3
+
+
+def test_tend_clears_just_ailing(client, db_session):
+    """Tending a just-ailing spirit (health 0, not yet dead) lifts the weakest need off 0, so the
+    spirit is no longer ailing."""
+    _auth(client, "tend_clears_ailing@example.com")
+    user_id = _user_id(db_session, "tend_clears_ailing@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    # All three needs at 0 (ailing) but not yet dead.
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.1)
+    assert _spirit(client)["ailing"] is True
+
+    # Tend each need so the weakest is no longer 0.
+    _tend(client, "feed")
+    _tend(client, "rest")
+    body = _tend(client, "play").json()
+    assert body["ailing"] is False
+    assert body["condition"]["factor"] > 0.0
+
+
+def test_tend_rejects_unknown_kind_422(client):
+    _auth(client, "tend_bad_kind@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    assert client.post("/api/v1/spirit/tend", json={"kind": "hug"}).status_code == 422
+    # Missing kind and unexpected fields are 422 too.
+    assert client.post("/api/v1/spirit/tend", json={}).status_code == 422
     assert client.post(
-        "/api/v1/spirit/cosmetics", json={"slot": "aura", "option": "soft"}
-    ).status_code == 200
-    assert SPIRIT_COSMETICS_CATALOG["aura"]["soft"]["need"] == "rested"
-    assert _stored_last_pampered_need(db_session, user_id) == "rested"
+        "/api/v1/spirit/tend", json={"kind": "feed", "x": 1}
+    ).status_code == 422
+
+
+def test_tend_on_a_dead_spirit_is_409(client, db_session):
+    """A dead spirit cannot be tended (death is terminal) → 409."""
+    _auth(client, "tend_dead@example.com")
+    user_id = _user_id(db_session, "tend_dead@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
+    assert _spirit(client)["dead"] is True
+
+    assert _tend(client, "feed").status_code == 409
+
+
+def test_tend_requires_auth(client):
+    assert _tend(client, "feed").status_code == 401
+
+
+def test_tend_is_user_scoped(client, db_session):
+    """Tending only ever touches the authenticated user's own spirit. Two users tend independently;
+    user A's feed doesn't stamp user B's row."""
+    _auth(client, "tend_scope_a@example.com")
+    a_id = _user_id(db_session, "tend_scope_a@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    _auth(client, "tend_scope_b@example.com")
+    b_id = _user_id(db_session, "tend_scope_b@example.com")
+    assert _choose(client, "stillness").status_code == 200
+
+    # User B (currently authed) feeds — only B's row is stamped.
+    assert _tend(client, "feed").status_code == 200
+    assert _active_spirit(db_session, b_id).nourished_tended_at is not None
+    assert _active_spirit(db_session, a_id).nourished_tended_at is None
+
+
+def test_tend_pathless_spark_is_fine(client, db_session):
+    """Tending a pathless spark (no creature) still works — it just stamps the need (a pathless
+    spark's needs read neutral regardless)."""
+    _auth(client, "tend_pathless@example.com")
+    user_id = _user_id(db_session, "tend_pathless@example.com")
+    client.get("/api/v1/spirit")  # create the pathless spark
+    assert _tend(client, "feed").status_code == 200
+    assert _active_spirit(db_session, user_id).nourished_tended_at is not None
+
+
+# --- Death → awaken (ADR-0029: the memorial's "awaken a new one") --------------------------
+
+
+def test_dead_spirit_can_awaken_a_fresh_spark(client, db_session):
+    """A DEAD spirit can use the awaken/set-free flow (even below radiant) → a fresh pathless,
+    born-fed spark, and the old one is retired into the collection."""
+    _auth(client, "death_awaken@example.com")
+    user_id = _user_id(db_session, "death_awaken@example.com")
+    assert _choose(client, "stillness", name="Mori").status_code == 200
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
+    assert _spirit(client)["dead"] is True
+
+    res = client.post("/api/v1/spirit/awaken")
+    assert res.status_code == 200
+    fresh = res.json()
+    # The new spark is pathless, alive, and genuinely fresh (coins reset, empty unlocked/equipped).
+    assert fresh["path"] is None
+    assert fresh["dead"] is False
+    assert fresh["died_at"] is None
+    assert fresh["ailing"] is False
+    assert fresh["coins"] == fresh["bond"]["level"] * COINS_PER_LEVEL  # coins_spent 0
+    assert fresh["cosmetics"] == {}  # empty unlocked/equipped
+    # A pathless spark reports neutral (content) needs — no care requirement until a creature is
+    # chosen — and is healthy (not ailing/dead). Choosing a path then starts it BORN FED.
+    for need in ("nourished", "rested", "joyful"):
+        assert fresh["needs"][need]["tier"] == CONDITION_CONTENT
+    chosen = _choose(client, "heart").json()
+    for need in ("nourished", "rested", "joyful"):
+        # Born fed from the new baseline — full (a hair under 1.0 only for the ms since awaken).
+        assert chosen["needs"][need]["factor"] > 0.99
+    # The dead one is now in the collection.
+    assert len(chosen["collection"]) == 1
+
+
+def test_living_non_radiant_spirit_still_cannot_awaken(client, db_session):
+    """A LIVING, non-radiant spirit still cannot awaken (the death path is the only new gate)."""
+    _auth(client, "awaken_living_early@example.com")
+    assert _choose(client, "stillness").status_code == 200
+    assert client.post("/api/v1/spirit/awaken").status_code == 409
 
 
 def test_awaken_returns_a_pathless_spark(client, db_session):
@@ -2019,11 +1940,9 @@ def test_signature_option_is_the_path_exclusive_capstone_per_slot():
         assert spirit_service._signature_option(slot, None) is None
 
 
-def test_incomplete_set_is_inactive_and_does_not_lift_needs(db_session):
-    """A 6/7 signature loadout → the set is INACTIVE (count 6, total 7) and the needs get NO set
-    harmony lift (identical to the same spirit without the set)."""
-    user = _make_user(db_session, "set_incomplete@example.com")
-    today, _ = _recent_days(3)
+def test_incomplete_set_is_inactive_status(db_session):
+    """A 6/7 signature loadout → the set STATUS is INACTIVE (count 6, total 7). ADR-0029: the set
+    bonus no longer affects needs, so this is purely the derived status object."""
     full = _full_signature_loadout("stillness")
     # Break ONE slot back to a universal option → 6/7, set incomplete.
     six_of_seven = dict(full)
@@ -2035,26 +1954,9 @@ def test_incomplete_set_is_inactive_and_does_not_lift_needs(db_session):
     assert status.count == 6
     assert status.total == 7
 
-    # The needs read with set_bonus_active=False matches the same cosmetics with no set lift —
-    # i.e. an incomplete set adds nothing beyond the (unchanged) passive item lifts.
-    incomplete = _needs(
-        db_session, "stillness", user.id, today=today, cosmetics=six_of_seven
-    )
-    no_set = spirit_service.needs(
-        db_session,
-        "stillness",
-        user.id,
-        today=today,
-        tz="UTC",
-        cosmetics=six_of_seven,
-        set_bonus_active=False,
-    )
-    for need in ("nourished", "rested", "joyful"):
-        assert getattr(incomplete, need).factor == getattr(no_set, need).factor
-
 
 def test_complete_set_is_active_with_kind_signature():
-    """A full 7/7 signature loadout → the set bonus is ACTIVE, kind 'signature', count == total."""
+    """A full 7/7 signature loadout → the set status is ACTIVE, kind 'signature', count == total."""
     full = _full_signature_loadout("breath")
     status = spirit_service._signature_set_bonus(full, "breath")
     assert status.active is True
@@ -2064,36 +1966,19 @@ def test_complete_set_is_active_with_kind_signature():
     assert status.label == "Signature radiance"
 
 
-def test_complete_set_lifts_every_need_by_the_harmony(db_session):
-    """With the full signature set, EACH need's factor is higher than the same spirit (same
-    cosmetics) WITHOUT the set — the gentle SET_HARMONY lift (clamped at 1.0). Compared at the
-    no-practice floor base, which leaves ample headroom for the lift to be strictly visible."""
-    user = _make_user(db_session, "set_lift@example.com")
-    full = _full_signature_loadout("stillness")
-
-    without_set = spirit_service.needs(
-        db_session,
-        "stillness",
-        user.id,
-        today=date.today(),
-        tz="UTC",
-        cosmetics=full,
-        set_bonus_active=False,
-    )
-    with_set = spirit_service.needs(
-        db_session,
-        "stillness",
-        user.id,
-        today=date.today(),
-        tz="UTC",
-        cosmetics=full,
-        set_bonus_active=True,
-    )
+def test_complete_set_does_not_lift_needs(db_session):
+    """ADR-0029 supersedes ADR-0028's harmony lift: cosmetics are purely cosmetic now, so a spirit
+    wearing the FULL signature set reads the SAME decayed needs as a bare spirit (same activity).
+    The `needs()` signature no longer takes cosmetics or a set-bonus flag at all."""
+    user = _make_user(db_session, "set_no_lift@example.com")
+    now = datetime.now(UTC)
+    # An old baseline so needs have decayed (room for any lift to show, if one existed).
+    old = now - timedelta(days=DECAY_DAYS / 2)
+    # The decay `needs()` takes no cosmetics — the same call regardless of the loadout.
+    decayed = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=old)
     for need in ("nourished", "rested", "joyful"):
-        base = getattr(without_set, need).factor
-        lifted = getattr(with_set, need).factor
-        assert lifted == min(1.0, base + SET_HARMONY)
-        assert lifted > base  # the floor base leaves room → the harmony strictly lifts each need
+        # ~0.5 decayed value, unaffected by any set (there's no set parameter anymore).
+        assert abs(getattr(decayed, need).factor - 0.5) < 1e-9
 
 
 def test_universal_option_in_a_slot_does_not_count_toward_the_set():

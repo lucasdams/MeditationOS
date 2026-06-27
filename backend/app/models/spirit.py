@@ -70,21 +70,47 @@ class Spirit(Base):
     coins_spent: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
-    # Last time a cosmetic was BOUGHT for this spirit (ADR-0025). Buying "pampers" the spirit:
-    # the needs read adds a decaying pamper bonus (full right after a purchase, fading to 0 over
-    # PAMPER_WINDOW_DAYS). NULL = never pampered → no bonus. Visual-only, like the needs it lifts;
-    # the paid resets/awaken never set it. Stored (consistent with ADR-0024's coins_spent).
+    # Last time a cosmetic was UNLOCKED for this spirit (ADR-0025). It once added a decaying,
+    # visual-only "pamper" needs boost; ADR-0029 REMOVED that effect (cosmetics are purely cosmetic
+    # now). Still STAMPED on unlock for forward-compat, but nothing reads it. Kept (not dropped) to
+    # avoid a needless migration. NULL = never unlocked a cosmetic.
     last_pampered_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    # The need the LAST-bought cosmetic FAVOURS (ADR-0026): nourished | rested | joyful. Set
-    # alongside `last_pampered_at` on every buy, so the decaying buy-boost can be WEIGHTED toward
-    # that need (a smaller spillover to the other two). NULL means either never pampered OR a
-    # legacy row pampered before this feature — the needs read then falls back to ADR-0025's
-    # uniform boost so existing pampered spirits don't regress. Nullable, no server default.
+    # The need the LAST-unlocked cosmetic FAVOURS (ADR-0026): nourished | rested | joyful. Set
+    # alongside `last_pampered_at` on every unlock. Like `last_pampered_at`, its needs effect was
+    # removed by ADR-0029 — stamped for forward-compat only, read by nothing. Kept, not dropped.
     last_pampered_need: Mapped[str | None] = mapped_column(Text, nullable=True)
     awakened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # The "born fed" anchor for the real-time needs decay (ADR-0029, the Tamagotchi turn). Each
+    # need's value falls from full to empty over DECAY_DAYS since it was last fed; the fed time is
+    # `max(needs_baseline_at, last relevant practice)`, so this baseline guarantees a need starts
+    # full at awaken (and, via the migration's server_default = now(), that EXISTING spirits start
+    # fed on deploy — no mass-death). Set to the awaken/creation time for a new spirit.
+    needs_baseline_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # Last manual TEND per need (ADR-0029): the Feed / Rest / Play actions stamp these. A tend lifts
+    # that need to TEND_CAP and then decays like practice (over DECAY_DAYS), so it keeps the spirit
+    # alive between sessions without making it thrive. NULL = never tended that need.
+    nourished_tended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    rested_tended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    joyful_tended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Death timestamp (ADR-0029): NULL = alive. When the weakest need has been empty for DEATH_DAYS
+    # the spirit dies; the real death moment (which may be in the past) is PERSISTED here lazily on
+    # the first read that detects it, freezing it. Death is TERMINAL — once set, later practice/tend
+    # can't revive it; the user must awaken a new spirit (the retire→awaken flow, now reachable from
+    # death as well as radiant).
+    died_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     # Set when a radiant spirit is retired (user awakens a new one). NULL = the active spirit.
     retired_at: Mapped[datetime | None] = mapped_column(
