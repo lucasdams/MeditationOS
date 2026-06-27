@@ -3476,13 +3476,54 @@ textarea:focus-visible,
   box-shadow: 0 1px 3px var(--shadow-card);
 }
 
-.spirit-slot legend {
-  padding: 0 0.45rem;
+/* Each slot is a collapsible <details>; the summary is its clickable header (slot name + what's
+   equipped + unlock progress + a chevron). The native disclosure triangle is hidden in favour of
+   our own chevron, which flips when the slot is open. */
+.spirit-slot > summary.spirit-slot-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.05rem 0.1rem;
+}
+.spirit-slot > summary.spirit-slot-summary::-webkit-details-marker {
+  display: none;
+}
+.spirit-slot[open] > summary.spirit-slot-summary {
+  margin-bottom: 0.4rem;
+}
+.spirit-slot-name {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--slot-accent);
+  white-space: nowrap;
+}
+.spirit-slot-equipped {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spirit-slot-summary .spirit-tree-progress {
+  margin: 0;
+}
+.spirit-slot-chevron {
+  color: var(--slot-accent);
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+}
+.spirit-slot[open] > summary .spirit-slot-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .spirit-slot-chevron {
+    transition: none;
+  }
 }
 
 /* --- Skill tree (ADR-0027) ---------------------------------------------------------------- */
@@ -3837,7 +3878,9 @@ textarea:focus-visible,
    rails scroll. Decorative (aria-hidden); the rails carry the interactive controls. */
 .spirit-customize-stage {
   position: sticky;
-  top: 1rem;
+  /* Keep the spirit roughly CENTRED in the viewport while the option rails scroll, rather than
+     pinned to the very top. max() keeps it sensible on short viewports. */
+  top: max(1rem, calc(50vh - 8rem));
   display: flex;
   flex-direction: column;
   align-items: center;

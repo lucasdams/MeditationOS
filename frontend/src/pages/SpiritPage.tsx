@@ -298,12 +298,21 @@ export default function SpiritPage() {
           // How many of THIS slot's options the user already owns — a tiny "3/6 unlocked" read so
           // each tree shows progress at a glance without shouting. Pure display; derived from flags.
           const ownedCount = visible.filter((opt) => opt.owned).length
+          const equippedOption = visible.find((opt) => opt.equipped)?.option
           return (
-            <fieldset key={s.slot} className="spirit-slot spirit-tree">
-              <legend>{slotLabel(s.slot)}</legend>
-              <p className="spirit-tree-progress muted" aria-hidden="true">
-                {ownedCount}/{visible.length} unlocked
-              </p>
+            // Each slot is a collapsible disclosure (default open) so the long customize panel can be
+            // tidied slot by slot; the summary shows the slot, what's equipped, and unlock progress.
+            <details key={s.slot} className="spirit-slot spirit-tree" open>
+              <summary className="spirit-slot-summary">
+                <span className="spirit-slot-name">{slotLabel(s.slot)}</span>
+                <span className="spirit-slot-equipped muted">
+                  {equippedOption ? optionLabel(equippedOption) : 'none yet'}
+                </span>
+                <span className="spirit-tree-progress muted">
+                  {ownedCount}/{visible.length}
+                </span>
+                <span className="spirit-slot-chevron" aria-hidden="true">▾</span>
+              </summary>
               {/* The tiers stack low → high as a climb; a continuous spine threads them so the
                   progression reads as one tree rather than separate rows. */}
               <div className="spirit-tree-tiers">
@@ -330,7 +339,7 @@ export default function SpiritPage() {
                   </div>
                 ))}
               </div>
-            </fieldset>
+            </details>
           )
         }
 
@@ -356,10 +365,14 @@ export default function SpiritPage() {
             : {}
 
           return (
+            // Preview on the WHOLE cell: hovering/focusing anywhere on the node (label, need tag,
+            // or control) shows what the spirit would look like with this option — not just the
+            // button. `previewHandlers` is {} for the equipped node, so the worn cell never previews.
             <div
               key={opt.option}
               className={`spirit-node spirit-node--${state}`}
               data-state={state}
+              {...previewHandlers}
             >
               <span className="spirit-node-head">
                 <span className="spirit-node-label">{label}</span>
@@ -392,7 +405,6 @@ export default function SpiritPage() {
                   className="spirit-node-btn spirit-node-equip"
                   disabled={busy != null}
                   aria-label={`Equip ${label}`}
-                  {...previewHandlers}
                   onClick={() => equip(slot, opt.option)}
                 >
                   Equip
@@ -407,7 +419,6 @@ export default function SpiritPage() {
                   className="spirit-node-btn spirit-node-unlock"
                   disabled={busy != null}
                   aria-label={`Unlock ${label} for ${opt.cost} coins`}
-                  {...previewHandlers}
                   onClick={() => setConfirmUnlock({ slot, option: opt.option })}
                 >
                   Unlock <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
@@ -417,7 +428,7 @@ export default function SpiritPage() {
               {state === 'unaffordable' && (
                 // Unlockable but the balance is short — Unlock disabled + a calm coin hint. Still
                 // previewable so the user can see the goal look.
-                <span className="spirit-node-controls" {...previewHandlers}>
+                <span className="spirit-node-controls">
                   <button
                     type="button"
                     className="spirit-node-btn spirit-node-unlock"
@@ -436,7 +447,7 @@ export default function SpiritPage() {
                 // Not owned and a prereq unmet — greyed, with the reason (reach a level, or unlock
                 // a lower tier first). Previewable so the user can still see what they're climbing
                 // toward.
-                <span className="spirit-node-controls" {...previewHandlers}>
+                <span className="spirit-node-controls">
                   <span className="spirit-node-locked">
                     <span aria-hidden="true">🔒</span> {lockReason(opt)}
                   </span>
