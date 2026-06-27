@@ -3948,10 +3948,12 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
-/* ── Capstone / prize nodes — the top of each tree, made to feel significant ────────────────
-   SIGNATURE = the creature's OWN per-path capstone; LEGENDARY = a universal tier-4 piece. Both
-   get a lit frame + a slow shimmer sweep + a glow; legendary adds a golden, pulsing treatment.
-   Placed AFTER the node-state rules so the prize frame wins. Reduced-motion drops the motion. */
+/* ── Capstone / prize nodes — thematic, not the generic gold cliché ─────────────────────────
+   SIGNATURE = the creature's OWN per-path capstone → a lit frame + glow + shimmer in its ELEMENT
+   (Pitta fire / Kapha earth / Vata air, via --element-accent from the path). LEGENDARY = a
+   universal tier-4 piece → a PRISMATIC / radiant aura that drifts through the spectrum + a rainbow
+   shimmer, echoing the `radiant` stage. After the node-state rules so the prize frame wins;
+   reduced-motion keeps the frame/glow, drops the motion. */
 .spirit-node-prize {
   display: inline-flex;
   align-items: center;
@@ -3970,53 +3972,93 @@ textarea:focus-visible,
   box-shadow: 0 0 8px color-mix(in srgb, var(--slot-accent) 60%, transparent);
 }
 .spirit-node-prize--legendary {
-  color: #3a2606;
-  background: linear-gradient(135deg, #fde68a, #f59e0b, #fcd34d);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+  color: #161226;
+  /* A prismatic ribbon — radiant, not the generic gold. */
+  background: linear-gradient(110deg, #f472b6, #fbbf24, #34d399, #38bdf8, #a78bfa);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.55);
+}
+
+/* The creature's ELEMENT (dosha) drives the SIGNATURE flair — set on the panel from data-path;
+   falls back to the section's slot accent for a pathless spark. */
+.spirit-personalize[data-path='stillness'] {
+  --element-accent: var(--spirit-kapha); /* earth/water */
+}
+.spirit-personalize[data-path='breath'] {
+  --element-accent: var(--spirit-pitta); /* fire */
+}
+.spirit-personalize[data-path='heart'] {
+  --element-accent: var(--spirit-vata); /* air/ether */
 }
 
 .spirit-node--signature {
   position: relative;
   overflow: hidden;
-  border-color: var(--slot-accent);
+  /* The creature's element (or the slot accent if pathless) — a fire spirit's signature glows fire. */
+  --prize-accent: var(--element-accent, var(--slot-accent));
+  border-color: var(--prize-accent);
   background: linear-gradient(
     160deg,
-    color-mix(in srgb, var(--slot-accent) 16%, var(--bg-surface)),
-    var(--bg-surface) 62%
+    color-mix(in srgb, var(--prize-accent) 18%, var(--bg-surface)),
+    var(--bg-surface) 60%
   );
   box-shadow:
     0 2px 10px var(--shadow-card),
-    0 0 16px color-mix(in srgb, var(--slot-accent) 30%, transparent);
+    0 0 16px color-mix(in srgb, var(--prize-accent) 34%, transparent);
 }
 
 .spirit-node--legendary {
   position: relative;
   overflow: hidden;
-  border-color: #f59e0b;
-  background: linear-gradient(160deg, rgba(245, 158, 11, 0.18), var(--bg-surface) 60%);
-  box-shadow:
-    0 2px 12px var(--shadow-card),
-    0 0 18px rgba(245, 158, 11, 0.35);
-  animation: capstone-pulse 2.6s ease-in-out infinite;
+  /* Prismatic / radiant — a multi-hue aura that drifts through the spectrum + a rainbow shimmer,
+     echoing the `radiant` stage and the "Prismatic" pieces (not the generic gold cliché). */
+  border-color: #c084fc;
+  background: linear-gradient(160deg, rgba(192, 132, 252, 0.16), var(--bg-surface) 58%);
+  animation: legendary-aura 3s ease-in-out infinite;
 }
-@keyframes capstone-pulse {
+@keyframes legendary-aura {
   0%,
   100% {
-    box-shadow: 0 2px 12px var(--shadow-card), 0 0 16px rgba(245, 158, 11, 0.3);
+    box-shadow: 0 2px 12px var(--shadow-card), 0 0 14px rgba(244, 114, 182, 0.32),
+      0 0 22px rgba(56, 189, 248, 0.22);
+    border-color: #c084fc;
   }
   50% {
-    box-shadow: 0 2px 12px var(--shadow-card), 0 0 30px rgba(245, 158, 11, 0.6);
+    box-shadow: 0 2px 12px var(--shadow-card), 0 0 22px rgba(167, 139, 250, 0.5),
+      0 0 32px rgba(52, 211, 153, 0.32);
+    border-color: #38bdf8;
   }
 }
 
-/* A diagonal light band that drifts across — the "shimmer" on both prize types. */
-.spirit-node--signature::after,
+/* A diagonal light band that drifts across — element-tinted for SIGNATURE, prismatic for LEGENDARY. */
+.spirit-node--signature::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 33%,
+    color-mix(in srgb, var(--prize-accent) 55%, rgba(255, 255, 255, 0.5)) 50%,
+    transparent 67%
+  );
+  background-size: 250% 100%;
+  background-position: 200% 0;
+  animation: capstone-shimmer 3.6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
 .spirit-node--legendary::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.16) 50%, transparent 64%);
+  background: linear-gradient(
+    115deg,
+    transparent 28%,
+    rgba(244, 114, 182, 0.2) 42%,
+    rgba(251, 191, 36, 0.2) 50%,
+    rgba(56, 189, 248, 0.2) 58%,
+    transparent 72%
+  );
   background-size: 250% 100%;
   background-position: 200% 0;
   animation: capstone-shimmer 3.6s ease-in-out infinite;

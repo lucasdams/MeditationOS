@@ -648,7 +648,13 @@ export default function SpiritPage() {
             {/* Customize — the cosmetics as a per-slot SKILL TREE (ADR-0027). Unlock owned-forever
                 nodes along prerequisite tiers, then equip what you've earned for free. Preview on
                 hover/focus; unlock opens a before/after confirm. */}
-            <section className="spirit-section spirit-personalize" aria-label="Customize">
+            <section
+              className="spirit-section spirit-personalize"
+              aria-label="Customize"
+              // The creature's element (dosha) — drives the SIGNATURE capstones' thematic glow
+              // (Pitta fire / Kapha earth / Vata air) so a fire spirit's signature reads as fire.
+              data-path={spirit.path ?? undefined}
+            >
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Customize</h2>
                 <p className="muted spirit-section-subtitle">
