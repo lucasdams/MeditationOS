@@ -1,5 +1,6 @@
 """Tests for /api/v1/breathing-patterns."""
 
+from app.core.config import settings
 from app.models.breathing_pattern import BreathingPattern
 
 CUSTOM = {"name": "My slow", "inhale_seconds": 6, "exhale_seconds": 9}
@@ -50,6 +51,14 @@ def test_create_validates_range(client):
     _auth(client, "p3@example.com")
     bad = {**CUSTOM, "inhale_seconds": 99}
     assert client.post("/api/v1/breathing-patterns", json=bad).status_code == 422
+
+
+def test_create_daily_cap(client, monkeypatch):
+    # Per-user, per-day creation cap (anti-spam) — mirrors sessions/gratitude/journals/goals.
+    monkeypatch.setattr(settings, "daily_create_limit", 1)
+    _auth(client, "pcap@example.com")
+    assert client.post("/api/v1/breathing-patterns", json=CUSTOM).status_code == 201
+    assert client.post("/api/v1/breathing-patterns", json=CUSTOM).status_code == 429
 
 
 def test_delete_own_pattern(client):

@@ -35,7 +35,11 @@ def engine():
         conn.execute(text("CREATE DATABASE meditationos_test"))
     admin.dispose()
 
-    eng = create_engine(TEST_DB_URL)
+    # Pin the session TimeZone to UTC so NAIVE timestamps in tests (e.g. "2025-01-15T07:00:00")
+    # land deterministically — Postgres interprets a naive value in the session TimeZone, so a
+    # non-UTC dev machine would otherwise shift the local date/hour and flake the date/time-bucket
+    # tests (dashboard quests, analytics, insights). CI's Postgres defaults to UTC; this matches it.
+    eng = create_engine(TEST_DB_URL, connect_args={"options": "-c timezone=UTC"})
     with eng.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
     Base.metadata.create_all(eng)

@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session as DBSession
 
+from app.core.limits import enforce_daily_create_cap
 from app.models.breathing_pattern import BreathingPattern
 from app.schemas.breathing_pattern import BreathingPatternCreate
 
@@ -24,6 +25,8 @@ def list_patterns(db: DBSession, user_id: uuid.UUID) -> list[BreathingPattern]:
 def create_pattern(
     db: DBSession, user_id: uuid.UUID, data: BreathingPatternCreate
 ) -> BreathingPattern:
+    # Per-user, per-day creation cap (anti-spam) — mirrors sessions/gratitude/journals/goals.
+    enforce_daily_create_cap(db, BreathingPattern, user_id)
     pattern = BreathingPattern(
         user_id=user_id,
         name=data.name,

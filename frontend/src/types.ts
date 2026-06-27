@@ -248,26 +248,27 @@ export interface GratitudeSuggestions {
 export type SpiritStage = 'spark' | 'wisp' | 'fledgling' | 'ascendant' | 'radiant'
 
 // The chosen creature/path. NULL until the user chooses one (POST /spirit/choose). Labelled in
-// the UI as the Ayurvedic dosha; the internal value is unchanged:
-//   stillness → Kapha — a serene mini Buddha  (meditation keeps it nourished)
-//   breath    → Pitta — an airy wind spirit   (resonance breathwork keeps it nourished)
-//   heart     → Vata  — a blooming heart spirit (gratitude + journaling keeps it nourished)
+// the UI as the Ayurvedic dosha (balanced by its OPPOSITE practice — see DOSHA in Spirit.tsx):
+//   stillness → Kapha (earth + water) — breathwork keeps it nourished
+//   breath    → Pitta (fire + water)  — gratitude & journaling keeps it nourished
+//   heart     → Vata  (air + ether)   — meditation keeps it nourished
 export type SpiritPath = 'stillness' | 'breath' | 'heart'
 
 // A care-need tier, best → worst (ADR-0023). Drives the per-need pill + the overall condition.
 export type SpiritNeedTier = 'thriving' | 'content' | 'restless' | 'unwell'
 
-// One tended need (ADR-0023) — a visual-only care signal over a rolling window. `factor` is a
-// 0..1 vibrancy multiplier (concave). Advisory only; never reduces progress.
+// One survival need (ADR-0029) — a meter that DECAYS in real time. `factor` is a 0..1 vibrancy
+// multiplier; practice fills it, tending tops it up, and at 0 the spirit ails (sustained neglect
+// kills it). No longer the visual-only / always-recovering signal of ADR-0023.
 export interface SpiritNeed {
   tier: SpiritNeedTier // thriving | content | restless | unwell
-  factor: number // 0..1 vibrancy multiplier (concave)
+  factor: number // 0..1 (decays over time; 0 = empty → ailing)
 }
 
-// The active creature's three tended needs (ADR-0023), replacing the single `daily_glow`:
-//   nourished — its signature practice (the identity need; per the chosen path)
-//   rested    — practice rhythm / consistency (recent active days + streak)
-//   joyful    — practice variety (distinct practice types done recently)
+// The active creature's three survival needs (ADR-0029), each fed by a kind of practice + tending:
+//   nourished — its signature practice (per the chosen path: breathwork / gratitude+journal / meditation)
+//   rested    — any sit (a practice session of any kind)
+//   joyful    — gratitude or journal entries
 export interface SpiritNeeds {
   nourished: SpiritNeed
   rested: SpiritNeed
@@ -277,17 +278,18 @@ export interface SpiritNeeds {
 // The three need KEYS (ADR-0026) — also the per-item `need` affinity on each cosmetic option.
 export type SpiritNeedKey = keyof SpiritNeeds
 
-// The overall care state = the weakest of the three needs (ADR-0023), so the UI can render one
-// summary look (the glow/vibrancy) without inspecting each need. Visual-only.
+// The overall care state = the weakest of the three needs (= HEALTH, ADR-0029), so the UI can
+// render one summary look (the glow/vibrancy) without inspecting each need. At 0 the spirit ails.
 export interface SpiritCondition {
   tier: SpiritNeedTier // the weakest need's tier
-  factor: number // its 0..1 vibrancy multiplier
+  factor: number // its 0..1 vibrancy multiplier (= health)
 }
 
-// A friendly level read-out — the same level + XP-into-level the wallet basis exposes,
-// surfaced as the spirit's "bond" with the practitioner.
+// A friendly level read-out, surfaced as the spirit's "bond" with the practitioner. Since ADR-0030
+// this is the SPIRIT-LEVEL — the spirit's OWN growth (earned XP since it was awakened) — which can
+// DIFFER from the account/header level (a reborn spark starts at bond level 1).
 export interface SpiritBond {
-  level: number // the user's level (from earned XP — monotonic)
+  level: number // the spirit-level: earned XP since awakened_at (ADR-0030; not the account level)
   xp_into_level: number // XP accumulated within the current level
   xp_for_next: number // XP needed to reach the next level
 }
