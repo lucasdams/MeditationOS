@@ -3,19 +3,29 @@ always scoped to the authenticated user.
 """
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api._http import not_found
-from app.api.deps import get_current_user, require_verified_email
+from app.api.deps import (
+    get_current_user,
+    require_verified_email,
+    today_for_user,
+)
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import LinkedSessionNotFoundError
 from app.core.rate_limit import limiter
 from app.models.user import User
-from app.schemas.journal import JournalCreate, JournalRead, JournalUpdate
-from app.services import journal_service
+from app.schemas.journal import (
+    JournalCreate,
+    JournalPromptRead,
+    JournalRead,
+    JournalUpdate,
+)
+from app.services import journal_prompt_service, journal_service
 
 router = APIRouter(
     prefix="/journals",
@@ -66,6 +76,19 @@ def random_journal(
     if entry is None:
         raise _NOT_FOUND
     return entry
+
+
+# Declared before /{journal_id} so "prompt" isn't parsed as a UUID path param.
+@router.get("/prompt", response_model=JournalPromptRead)
+def journal_prompt(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
+) -> JournalPromptRead:
+    """Today's journaling nudge, tuned to the user's recent practice (with a
+    generic fallback). Read-only; no data is stored."""
+    today, tz = today_tz
+    return journal_prompt_service.get_prompt(db, current_user.id, today=today, tz=tz)
 
 
 # Unowned (or missing) IDs return 404 — never 403 — to avoid leaking which IDs exist.

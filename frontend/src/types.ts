@@ -149,6 +149,21 @@ export interface WeekRatings {
   rated_sessions: number // sessions with at least one rating that week
 }
 
+export interface MonthTotals {
+  month_start: string // first day of the month (user's local month)
+  minutes: number
+  sessions: number
+  days_practiced: number
+}
+
+export interface MonthComparison {
+  this_month: MonthTotals
+  last_month: MonthTotals
+  minutes_delta: number // this − last (positive ⇒ more than last month)
+  sessions_delta: number
+  days_practiced_delta: number
+}
+
 export interface AnalyticsSummary {
   total_sessions: number
   total_minutes: number
@@ -159,6 +174,7 @@ export interface AnalyticsSummary {
   minutes_by_week: WeekMinutes[]
   moods: MoodCount[]
   mood_by_week: WeekMoods[]
+  monthly_comparison: MonthComparison // this calendar month vs the previous
   ratings_by_week: WeekRatings[] // only weeks with rated sessions
 }
 
@@ -455,6 +471,13 @@ export interface Journal {
   mood: Mood | null
   session_id: string | null
   created_at: string
+}
+
+// A journaling nudge tuned to the user's recent practice (with a generic fallback).
+export interface JournalPromptResponse {
+  text: string
+  context: string // stable machine key: after_breathing | streak_7 | generic | …
+  contextual: boolean // false when we fell back to a generic prompt
 }
 
 export interface JournalCreate {

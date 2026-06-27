@@ -61,3 +61,17 @@ class JournalRead(BaseModel):
     mood: str | None
     session_id: uuid.UUID | None
     created_at: datetime
+
+
+class JournalPromptRead(BaseModel):
+    """A single journaling nudge.
+
+    ``context`` is a stable machine key ("after_breathing", "streak_7", "generic",
+    …) so the frontend can pick an icon/label; ``text`` is the user-facing copy.
+    ``contextual`` is False when we fell back to a generic prompt (no usable
+    recent-activity context), so the UI can label it honestly if it wants to.
+    """
+
+    text: str
+    context: str
+    contextual: bool

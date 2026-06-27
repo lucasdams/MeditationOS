@@ -7329,6 +7329,61 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-muted);
 }
 
+/* "This month vs last" summary card (see AnalyticsPage.tsx → MonthVsLast). */
+.month-compare {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.month-compare-row {
+  display: grid;
+  grid-template-columns: 8rem max-content 1fr;
+  align-items: baseline;
+  gap: 0.3rem 0.7rem;
+  font-size: 0.88rem;
+}
+
+.month-metric-label {
+  color: var(--text-secondary);
+}
+
+.month-metric-value {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-delta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Up reads as a gentle green; a quieter month stays muted (no alarm red) — wellness
+   nudges shouldn't scold. */
+.month-delta-up {
+  color: var(--success-text);
+}
+
+.month-delta-down,
+.month-delta-flat {
+  color: var(--text-faint);
+}
+
+@media (max-width: 30rem) {
+  /* Stack the delta under the value on narrow screens so nothing truncates. */
+  .month-compare-row {
+    grid-template-columns: 1fr max-content;
+  }
+  .month-delta {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Gentle journaling prompt nudge (see JournalPage.tsx). */
 .journal-nudge {
   display: flex;

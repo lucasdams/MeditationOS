@@ -36,6 +36,30 @@ class WeekMoods(BaseModel):
     counts: dict[str, int]  # mood -> number of mood logs + journal entries that week
 
 
+class MonthTotals(BaseModel):
+    """Practice totals for one calendar month, in the user's timezone."""
+
+    month_start: date  # first day of the month (user's local month)
+    minutes: int
+    sessions: int
+    days_practiced: int  # distinct local days with a session that month
+
+
+class MonthComparison(BaseModel):
+    """This calendar month vs the previous one — totals plus signed deltas.
+
+    Deltas are ``this − previous`` so a positive value means more than last month.
+    Always present (zero-filled for an empty month) so the frontend can render a
+    stable "this month vs last" card without guarding for missing months.
+    """
+
+    this_month: MonthTotals
+    last_month: MonthTotals
+    minutes_delta: int
+    sessions_delta: int
+    days_practiced_delta: int
+
+
 class WeekRatings(BaseModel):
     week_start: date  # Monday of the week (user's local week)
     # Weekly averages of session self-ratings (1–5), rounded to one decimal, or None
@@ -77,5 +101,7 @@ class AnalyticsSummary(BaseModel):
     minutes_by_week: list[WeekMinutes]  # last N weeks, zero-filled, oldest → newest
     moods: list[MoodCount]  # mood distribution (mood check-ins + journal moods)
     mood_by_week: list[WeekMoods]  # last N weeks of moods (check-ins + journal)
+    # This calendar month vs the previous one (user's tz) — totals + signed deltas.
+    monthly_comparison: MonthComparison
     # Weekly calm/focus self-rating averages — only weeks with rated sessions.
     ratings_by_week: list[WeekRatings]

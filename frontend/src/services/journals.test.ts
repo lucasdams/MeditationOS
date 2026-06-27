@@ -36,3 +36,15 @@ describe('journalService.list', () => {
     expect(mockGet).toHaveBeenCalledWith('/journals?mood=calm&q=breath&limit=50&offset=100')
   })
 })
+
+describe('journalService.prompt', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockGet.mockResolvedValue({ text: 'x', context: 'generic', contextual: false })
+  })
+
+  it('fetches the contextual prompt endpoint', async () => {
+    await journalService.prompt()
+    expect(mockGet).toHaveBeenCalledWith('/journals/prompt')
+  })
+})
