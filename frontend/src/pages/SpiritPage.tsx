@@ -387,9 +387,11 @@ export default function SpiritPage() {
           const ownedCount = visible.filter((opt) => opt.owned).length
           const equippedOption = visible.find((opt) => opt.equipped)?.option
           return (
-            // Each slot is a collapsible disclosure (default open) so the long customize panel can be
-            // tidied slot by slot; the summary shows the slot, what's equipped, and unlock progress.
-            <details key={s.slot} className="spirit-slot spirit-tree" open>
+            // Each slot is a collapsible disclosure — COLLAPSED by default so the long customize
+            // panel reads as a tidy, colour-coded list of sections you expand on demand. `data-slot`
+            // drives each section's own accent colour (see `.spirit-slot[data-slot=…]` in the CSS).
+            // The summary shows the slot, what's equipped, and unlock progress.
+            <details key={s.slot} className="spirit-slot spirit-tree" data-slot={s.slot}>
               <summary className="spirit-slot-summary">
                 <span className="spirit-slot-name">{slotLabel(s.slot)}</span>
                 <span className="spirit-slot-equipped muted">
