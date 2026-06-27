@@ -30,7 +30,8 @@ Short records of the **why** behind significant technical choices. Each ADR is i
 | [0022](0022-spirit-companion-replaces-sanctuary.md) | Spirit companion replaces the Sanctuary (one living, practice-shaped pet) | Accepted |
 | [0023](0023-spirit-creatures-and-care.md) | Spirit creatures — chosen dosha (Vata/Pitta/Kapha) + three per-creature needs | Proposed |
 | [0024](0024-spirit-identity-committed.md) | Spirit identity committed — required name, locked upgrades, paid resets (stored spend ledger) | Accepted |
-| [0025](0025-buying-pampers-the-spirit.md) | Buying an upgrade pampers the spirit — a decaying, capped needs boost (visual-only) | Accepted |
-| [0026](0026-per-item-need-affinities.md) | Per-item need affinities — each item favours one need (passive while-owned lift + weighted fading buy-boost) | Accepted |
+| [0025](0025-buying-pampers-the-spirit.md) | Buying an upgrade pampers the spirit — a decaying, capped needs boost (visual-only) | Superseded by 0029 |
+| [0026](0026-per-item-need-affinities.md) | Per-item need affinities — each item favours one need (passive while-owned lift + weighted fading buy-boost) | Superseded by 0029 |
 | [0027](0027-spirit-upgrade-skill-tree.md) | Spirit upgrades as a skill tree — unlock-to-own, free equip, prerequisite tiers (supersedes 0024's locked upgrades + paid reset) | Accepted |
-| [0028](0028-spirit-set-bonuses.md) | Spirit signature set bonuses — full path-exclusive set grants a derived, advisory "Signature radiance" needs lift + flourish (no migration) | Accepted |
+| [0028](0028-spirit-set-bonuses.md) | Spirit signature set bonuses — full path-exclusive set grants a derived, advisory "Signature radiance" needs lift + flourish (no migration) | Superseded by 0029 |
+| [0029](0029-spirit-tamagotchi.md) | The spirit becomes a Tamagotchi — real-time need decay, sickness, and death from neglect (reverses the 0022/0023 non-punishing core; supersedes the 0025/0026/0028 needs-modifiers) | Accepted |

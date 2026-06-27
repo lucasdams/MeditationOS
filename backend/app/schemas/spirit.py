@@ -26,6 +26,7 @@ name (`POST /spirit/reset-name`), and awaken a new spark at radiant (`POST /spir
 cosmetics catalog state and the retired collection are part of the read shape too.
 """
 
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict
@@ -44,30 +45,33 @@ SpiritRequiredName = Annotated[
 
 
 class SpiritNeed(BaseModel):
-    """One tended need (ADR-0023) — a demanding, visual-only care signal derived from the
-    activity log over a rolling window.
+    """One survival need (ADR-0029, the Tamagotchi turn — supersedes ADR-0023's advisory needs).
 
-    `tier` is one of `thriving | content | restless | unwell` (best → worst); `factor` is a
-    0..1 brightness/vibrancy multiplier on a concave curve. The three needs are `nourished`
-    (the chosen creature's signature practice), `rested` (practice rhythm / consistency), and
-    `joyful` (practice variety). GUARDRAIL: advisory/visual only — needs never affect stage,
-    level, coins, cosmetics, or the collection (those stay derived from earned XP and remain
-    monotonic). A pathless spark (no creature chosen) reports neutral, content-ish needs."""
+    Each need is now a 0..1 SURVIVAL meter that DECAYS in real time: full to empty over
+    `DECAY_DAYS` since it was last fed by the relevant practice (or, lighter, a manual tend capped
+    at `TEND_CAP`). `factor` is that 0..1 value; `tier` is its band
+    (`thriving | content | restless | unwell`, best → worst). The three needs are `nourished` (the
+    chosen creature's signature practice), `rested` (any sit), and `joyful` (gratitude/journal).
+    Unlike the old advisory needs there is NO floor — a need can reach 0, and the weakest need
+    reaching 0 makes the spirit ailing, then dead if neglected. A pathless spark reports neutral,
+    content-ish needs."""
 
     tier: str  # thriving | content | restless | unwell
-    factor: float  # 0..1 vibrancy multiplier (concave); never reduces progress
+    factor: float  # 0..1 survival value (decays in real time); can reach 0
 
 
 class SpiritNeeds(BaseModel):
-    """The active creature's three tended needs (ADR-0023), replacing the single `daily_glow`.
+    """The active creature's three survival needs (ADR-0029, real-time decay).
 
-    - `nourished` — the chosen path's SIGNATURE practice (the identity need), the one that
-      BALANCES that dosha (Ayurveda balances by opposites): stillness (Kapha) ← breathing
-      minutes, breath (Pitta) ← gratitude + journal, heart (Vata) ← meditation minutes.
-    - `rested` — practice rhythm / consistency: recent active days and the current streak.
-    - `joyful` — practice variety: how many distinct practice types were done recently.
+    Each decays over DECAY_DAYS since last fed; the fed time is the most recent of:
+    - `nourished` — the chosen path's SIGNATURE practice (the one that BALANCES that dosha):
+      stillness (Kapha) ← resonance breathing, breath (Pitta) ← gratitude/journal, heart (Vata)
+      ← non-breathing meditation.
+    - `rested` — ANY practice session (a sit of any kind).
+    - `joyful` — a gratitude or journal entry.
 
-    All three are visual-only (the guardrail) and a pathless spark reports neutral defaults."""
+    Practice fills a need to 1.0; a manual tend tops it up to TEND_CAP. A pathless spark reports
+    neutral defaults."""
 
     nourished: SpiritNeed
     rested: SpiritNeed
@@ -143,19 +147,24 @@ class SpiritSetBonus(BaseModel):
 
 
 class RetiredSpirit(BaseModel):
-    """A past spirit in the collection — a radiant companion retired when its successor was
-    awakened. Kept forever (the long-term replay loop). Cosmetic read-out only."""
+    """A past spirit in the collection — either a radiant companion graduated when its successor
+    was awakened, or one that DIED of neglect (ADR-0029) and was laid to rest. Kept forever (the
+    long-term replay loop). Cosmetic read-out only."""
 
     id: str
-    stage: str  # the stage it retired at (radiant, in practice)
+    stage: str  # the stage it retired at (radiant for a graduate; its death stage otherwise)
     path: str | None  # its committed path (stillness | breath | heart), or None
     name: str | None  # its nickname, if it had one
+    # ADR-0029: set when this spirit DIED of neglect (vs graduating at radiant) → the gallery can
+    # render it as a memorial with its lifespan (awakened_at → died_at). None for a graduate.
+    died_at: datetime | None
+    awakened_at: datetime  # its birth, for the memorial lifespan
 
 
 class SpiritState(BaseModel):
     """The active spirit's computed state. Forbids extra fields so the response stays a
-    stable, explicit contract. The `available` catalog state and `collection` are additive
-    (steps 5 + 6) — existing fields are unchanged."""
+    stable, explicit contract. ADR-0029 adds the Tamagotchi survival fields (`dead` / `died_at` /
+    `ailing` / `awakened_at`); the existing fields are unchanged."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -163,13 +172,20 @@ class SpiritState(BaseModel):
     path: str | None  # the CHOSEN creature (stillness | breath | heart); NULL until chosen
     name: str | None  # the active spirit's nickname, if set (so the UI can pre-fill / display)
     bond: SpiritBond  # level + XP-into-level + XP-for-next
-    needs: SpiritNeeds  # the three tended needs (nourished / rested / joyful); visual-only
-    condition: SpiritCondition  # overall care state = the weakest need; visual-only (ADR-0023)
+    needs: SpiritNeeds  # the three survival needs (nourished / rested / joyful); decay in real time
+    condition: SpiritCondition  # overall care state = the weakest need (ADR-0029: = health)
     coins: int  # level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0
     cosmetics: dict[str, str]  # the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
     available: list[SpiritAvailableSlot]  # the cosmetics skill tree with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever
-    set_bonus: SpiritSetBonus  # signature-set status + harmony lift (ADR-0028); derived/visual-only
+    set_bonus: SpiritSetBonus  # signature-set status (ADR-0028); derived, visual-only
+    # ADR-0029 (Tamagotchi): survival state. `dead` once neglect ran past the death window (terminal
+    # — awaken a new spirit); `died_at` is the frozen death moment (None while alive). `ailing` is
+    # sick-but-not-dead (health, the weakest need, has hit 0 but the death window hasn't elapsed).
+    dead: bool  # the spirit has died of neglect (terminal); see `died_at`
+    died_at: datetime | None  # the death moment (frozen); None while alive
+    ailing: bool  # health (the weakest need) is at 0 but the spirit is not yet dead
+    awakened_at: datetime  # when this spirit was awakened — its birth, for the memorial lifespan
 
 
 class OptionPreview(BaseModel):
@@ -238,3 +254,13 @@ class ResetNameRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: SpiritRequiredName
+
+
+class TendRequest(BaseModel):
+    """A manual TEND action (ADR-0029): the Feed / Rest / Play buttons. `kind` maps to one need —
+    `feed` → nourished, `rest` → rested, `play` → joyful — and tops that need up to TEND_CAP (it
+    then decays like practice). An unknown kind → 422. Forbids extra fields. Free; no coins."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["feed", "rest", "play"]

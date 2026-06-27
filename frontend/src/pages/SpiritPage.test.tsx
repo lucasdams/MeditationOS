@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-import type { SpiritAvailableSlot, SpiritSlotOption, SpiritState } from '../types'
+import type {
+  RetiredSpirit,
+  SpiritAvailableSlot,
+  SpiritSlotOption,
+  SpiritState,
+} from '../types'
 
 const get = vi.fn()
 const choose = vi.fn()
@@ -10,6 +15,7 @@ const unlock = vi.fn()
 const equip = vi.fn()
 const resetName = vi.fn()
 const awaken = vi.fn()
+const tend = vi.fn()
 
 vi.mock('../services/spirit', () => ({
   spiritService: {
@@ -19,6 +25,7 @@ vi.mock('../services/spirit', () => ({
     equip: (...a: unknown[]) => equip(...a),
     resetName: (...a: unknown[]) => resetName(...a),
     awaken: (...a: unknown[]) => awaken(...a),
+    tend: (...a: unknown[]) => tend(...a),
   },
 }))
 
@@ -89,7 +96,26 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     // Default to no signature set (total 0 → the status renders nothing) so unrelated tests are
     // unaffected; the ADR-0028 set-bonus tests below override this explicitly.
     set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
+    // Tamagotchi survival state (ADR-0029) — a healthy, alive spirit by default; the death/ailing
+    // tests below override these explicitly.
+    awakened_at: '2026-06-01T00:00:00Z',
+    ailing: false,
+    dead: false,
+    died_at: null,
     ...overrides,
+  }
+}
+
+// A retired-spirit builder (ADR-0029) — a radiant graduate by default (no died_at). The memorial
+// test below overrides `died_at` + `awakened_at`. Mirrors the backend RetiredSpirit.
+function retired(over: Partial<RetiredSpirit> & { id: string }): RetiredSpirit {
+  return {
+    stage: 'radiant',
+    path: 'breath',
+    name: null,
+    awakened_at: '2026-05-01T00:00:00Z',
+    died_at: null,
+    ...over,
   }
 }
 
@@ -440,8 +466,8 @@ describe('SpiritPage collection gallery', () => {
     get.mockResolvedValue(
       spiritWith({
         collection: [
-          { id: 'r1', stage: 'radiant', path: 'breath', name: 'Zephyr' },
-          { id: 'r2', stage: 'radiant', path: 'heart', name: null },
+          retired({ id: 'r1', stage: 'radiant', path: 'breath', name: 'Zephyr' }),
+          retired({ id: 'r2', stage: 'radiant', path: 'heart', name: null }),
         ],
       }),
     )
@@ -450,6 +476,30 @@ describe('SpiritPage collection gallery', () => {
 
     expect(await screen.findByText('Zephyr')).toBeInTheDocument()
     expect(screen.getByText(/Radiant spirit/)).toBeInTheDocument()
+  })
+
+  it('renders a died spirit as a memorial with its lifespan (ADR-0029)', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        collection: [
+          retired({
+            id: 'm1',
+            stage: 'fledgling',
+            path: 'heart',
+            name: 'Sol',
+            awakened_at: '2026-06-01T00:00:00Z',
+            died_at: '2026-06-05T00:00:00Z', // four days
+          }),
+        ],
+      }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Sol')).toBeInTheDocument()
+    // The died entry shows its lifespan and is flagged as a memorial (not a radiant-stage label).
+    expect(screen.getByText('Lived 4 days')).toBeInTheDocument()
+    expect(document.querySelector('.spirit-collection-item--memorial')).not.toBeNull()
   })
 
   it('shows a concise empty-collection note when there are no retired spirits', async () => {
@@ -486,6 +536,113 @@ describe('SpiritPage awaken (radiant only)', () => {
     const dialog = within(await screen.findByRole('dialog'))
 
     fireEvent.click(dialog.getByRole('button', { name: /Awaken a new spark/ }))
+    await waitFor(() => expect(awaken).toHaveBeenCalledTimes(1))
+  })
+})
+
+// --- ADR-0029: Tamagotchi — tend loop, ailing, death --------------------------------------
+
+describe('SpiritPage tend loop (ADR-0029)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    tend.mockReset()
+  })
+
+  it('feeds / rests / plays via spiritService.tend, swapping in the fresh state', async () => {
+    get.mockResolvedValue(spiritWith())
+    // Each tend returns a fresh state; we just need it to resolve.
+    tend.mockResolvedValue(spiritWith())
+
+    renderPage()
+    await screen.findByText('Care')
+
+    fireEvent.click(screen.getByRole('button', { name: /Feed — top up Nourishment/ }))
+    await waitFor(() => expect(tend).toHaveBeenCalledWith('feed'))
+
+    fireEvent.click(screen.getByRole('button', { name: /Rest — top up Rest/ }))
+    await waitFor(() => expect(tend).toHaveBeenCalledWith('rest'))
+
+    fireEvent.click(screen.getByRole('button', { name: /Play — top up Joy/ }))
+    await waitFor(() => expect(tend).toHaveBeenCalledWith('play'))
+  })
+
+  it('shows a gentle toast after tending', async () => {
+    get.mockResolvedValue(spiritWith())
+    tend.mockResolvedValue(spiritWith())
+
+    renderPage()
+    await screen.findByText('Care')
+
+    fireEvent.click(screen.getByRole('button', { name: /Feed — top up Nourishment/ }))
+    await waitFor(() =>
+      expect(screen.getByText(/Nourishment topped up — practice fills it fully/)).toBeInTheDocument(),
+    )
+  })
+
+  it('shows the ailing banner (legible stakes) when the spirit is ailing', async () => {
+    get.mockResolvedValue(spiritWith({ name: 'Ash', ailing: true }))
+
+    renderPage()
+    await screen.findByText('Care')
+
+    expect(screen.getByText(/Ash is ailing — feed it or practice today/)).toBeInTheDocument()
+  })
+})
+
+describe('SpiritPage death memorial (ADR-0029)', () => {
+  beforeEach(() => {
+    get.mockReset()
+    awaken.mockReset()
+    tend.mockReset()
+  })
+
+  it('replaces the page body with a memorial: name, lifespan, and Awaken; hides the tree', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        name: 'Ash',
+        dead: true,
+        awakened_at: '2026-06-01T00:00:00Z',
+        died_at: '2026-06-06T00:00:00Z', // five days
+      }),
+    )
+
+    renderPage()
+
+    // The memorial shows the name + "lived N days" + the begin-again action.
+    expect(await screen.findByText('Ash')).toBeInTheDocument()
+    expect(screen.getByText(/Ash lived 5 days/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Awaken a new spark/ })).toBeInTheDocument()
+    // The customize tree, the Care section, and the name reset are all hidden while dead.
+    expect(screen.queryByText('Customize')).toBeNull()
+    expect(screen.queryByText('Care')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Reset name/ })).toBeNull()
+  })
+
+  it('reads "lived less than a day" for a spirit that died within a day', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        name: 'Mote',
+        dead: true,
+        awakened_at: '2026-06-06T08:00:00Z',
+        died_at: '2026-06-06T20:00:00Z', // twelve hours
+      }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText(/Mote Lived less than a day/i)).toBeInTheDocument()
+  })
+
+  it('awakens a new spark from death via the set-free service method', async () => {
+    get.mockResolvedValue(
+      spiritWith({ name: 'Ash', dead: true, died_at: '2026-06-06T00:00:00Z' }),
+    )
+    // The fresh, pathless, not-dead spark — swapping it in trips the choose redirect.
+    awaken.mockResolvedValue(spiritWith({ stage: 'spark', path: null, dead: false, died_at: null }))
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /Awaken a new spark/ }))
     await waitFor(() => expect(awaken).toHaveBeenCalledTimes(1))
   })
 })
@@ -593,12 +750,13 @@ describe('SpiritPage care needs (ADR-0023)', () => {
     renderPage()
 
     await screen.findByText('Care')
-    // Scope the need-label assertions to the Care read-out: the same labels (Nourishment / Rest /
-    // Joy) also tag the tree's options (ADR-0026), so a page-wide getByText would match more.
-    const care = screen.getByRole('region', { name: 'Care' })
-    expect(within(care).getByText('Nourishment')).toBeInTheDocument()
-    expect(within(care).getByText('Rest')).toBeInTheDocument()
-    expect(within(care).getByText('Joy')).toBeInTheDocument()
+    // Scope the need-label assertions to the needs READ-OUT (the meter list): the same labels
+    // (Nourishment / Rest / Joy) also tag the tree's options (ADR-0026) AND the Feed/Rest/Play
+    // tend buttons (ADR-0029), so even a Care-region getByText would match more than one.
+    const needsList = document.querySelector('.spirit-needs') as HTMLElement
+    expect(within(needsList).getByText('Nourishment')).toBeInTheDocument()
+    expect(within(needsList).getByText('Rest')).toBeInTheDocument()
+    expect(within(needsList).getByText('Joy')).toBeInTheDocument()
     expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
     expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
   })
