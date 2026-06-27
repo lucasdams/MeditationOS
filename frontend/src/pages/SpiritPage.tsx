@@ -240,6 +240,21 @@ export default function SpiritPage() {
   const [confirmUnlock, setConfirmUnlock] = useState<{ slot: string; option: string } | null>(
     null,
   )
+  // Slots whose level-LOCKED future options the user has chosen to reveal. By default a slot shows
+  // only its ACTIONABLE options (owned / unlockable) so the panel stays calm; locked ones are
+  // tucked behind a quiet "+ N more" toggle (keyed by slot name).
+  const [revealLocked, setRevealLocked] = useState<Set<string>>(() => new Set())
+  function toggleLocked(slot: string) {
+    setRevealLocked((prev) => {
+      const next = new Set(prev)
+      if (next.has(slot)) next.delete(slot)
+      else next.add(slot)
+      return next
+    })
+  }
+  // Which area is showing — Care / Customize / Collection — so the page reads one thing at a time
+  // instead of one long scroll (the hero stays on top always).
+  const [tab, setTab] = useState<'care' | 'customize' | 'collection'>('care')
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
   // media query — the single source of truth.
   const reducedMotion = prefersReducedMotion()
@@ -455,19 +470,20 @@ export default function SpiritPage() {
           // Per-path exclusivity: only the options offered to this creature (path filter).
           const visible = s.options.filter((opt) => opt.available)
           if (visible.length === 0) return null
-          // Group by tier so each tier is its own row in the tree (low → high). The catalog's
-          // tiers are 1|2|3; sort the keys ascending so the progression reads upward.
-          const tiers = Array.from(new Set(visible.map((o) => o.tier))).sort((a, b) => a - b)
-          // How many of THIS slot's options the user already owns — a tiny "3/6 unlocked" read so
-          // each tree shows progress at a glance without shouting. Pure display; derived from flags.
           const ownedCount = visible.filter((opt) => opt.owned).length
           const equippedOption = visible.find((opt) => opt.equipped)?.option
+          // CALM by default: show only ACTIONABLE options (owned / unlockable / equipped). The
+          // level-LOCKED future ones are hidden behind a quiet "+ N more" toggle so the panel isn't
+          // a wall of "Reach level N". Sorted by tier so the climb still reads top → bottom.
+          const locked = visible.filter((opt) => nodeState(opt) === 'locked')
+          const showLocked = revealLocked.has(s.slot)
+          const shown = (showLocked ? visible : visible.filter((opt) => nodeState(opt) !== 'locked'))
+            .slice()
+            .sort((a, b) => a.tier - b.tier)
           return (
-            // Each slot is a collapsible disclosure — COLLAPSED by default so the long customize
-            // panel reads as a tidy, colour-coded list of sections you expand on demand. `data-slot`
-            // drives each section's own accent colour (see `.spirit-slot[data-slot=…]` in the CSS).
-            // The summary shows the slot, what's equipped, and unlock progress.
-            <details key={s.slot} className="spirit-slot spirit-tree" data-slot={s.slot}>
+            // Each slot is a collapsible disclosure — COLLAPSED by default so the panel reads as a
+            // tidy list of sections you expand on demand. `data-slot` sets each section's accent.
+            <details key={s.slot} className="spirit-slot" data-slot={s.slot}>
               <summary className="spirit-slot-summary">
                 <span className="spirit-slot-name">{slotLabel(s.slot)}</span>
                 <span className="spirit-slot-equipped muted">
@@ -478,31 +494,17 @@ export default function SpiritPage() {
                 </span>
                 <span className="spirit-slot-chevron" aria-hidden="true">▾</span>
               </summary>
-              {/* The tiers stack low → high as a climb; a continuous spine threads them so the
-                  progression reads as one tree rather than separate rows. */}
-              <div className="spirit-tree-tiers">
-                {tiers.map((tier, i) => (
-                  <div
-                    key={tier}
-                    className="spirit-tier"
-                    data-tier={tier}
-                    data-tier-pos={i === 0 ? 'first' : i === tiers.length - 1 ? 'last' : 'mid'}
+              <div className="spirit-slot-options">
+                {shown.map((opt) => renderNode(s.slot, opt))}
+                {locked.length > 0 && (
+                  <button
+                    type="button"
+                    className="spirit-locked-toggle"
+                    onClick={() => toggleLocked(s.slot)}
                   >
-                    <span className="spirit-tier-label" aria-hidden="true">
-                      <span className="spirit-tier-rank">{tier}</span>
-                      <span className="spirit-tier-rank-text">
-                        {tier === tiers[tiers.length - 1] && tiers.length > 1
-                          ? 'Tier ' + tier + ' · capstone'
-                          : 'Tier ' + tier}
-                      </span>
-                    </span>
-                    <div className="spirit-tier-nodes">
-                      {visible
-                        .filter((opt) => opt.tier === tier)
-                        .map((opt) => renderNode(s.slot, opt))}
-                    </div>
-                  </div>
-                ))}
+                    {showLocked ? 'Show fewer' : `+ ${locked.length} more unlock as you grow`}
+                  </button>
+                )}
               </div>
             </details>
           )
@@ -671,11 +673,28 @@ export default function SpiritPage() {
               </p>
             </section>
 
+            {/* Tabs — show Care / Customize / Collection one at a time so the page stays calm. */}
+            {spirit.path && (
+              <nav className="spirit-tabs" aria-label="Spirit sections">
+                {(['care', 'customize', 'collection'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`spirit-tab${tab === t ? ' spirit-tab--active' : ''}`}
+                    aria-current={tab === t ? 'page' : undefined}
+                    onClick={() => setTab(t)}
+                  >
+                    {t === 'care' ? 'Care' : t === 'customize' ? 'Customize' : 'Collection'}
+                  </button>
+                ))}
+              </nav>
+            )}
+
             {/* Care (ADR-0023 / ADR-0029) — the three needs are now survival meters that decay; a
                 kind nudge when one is low, an ailing warning when health is gone, and the Feed /
                 Rest / Play tend actions that keep your companion alive between sessions. Only for a
                 chosen creature; a pathless spark has no needs yet (the picker leads). */}
-            {spirit.path && (
+            {spirit.path && tab === 'care' && (
               <section className="spirit-section spirit-care" aria-label="Care">
                 <header className="spirit-section-head">
                   <h2 className="spirit-section-title">Care</h2>
@@ -729,6 +748,7 @@ export default function SpiritPage() {
             {/* Customize — the cosmetics as a per-slot SKILL TREE (ADR-0027). Unlock owned-forever
                 nodes along prerequisite tiers, then equip what you've earned for free. Preview on
                 hover/focus; unlock opens a before/after confirm. */}
+            {tab === 'customize' && (
             <section
               className="spirit-section spirit-personalize"
               aria-label="Customize"
@@ -789,10 +809,12 @@ export default function SpiritPage() {
                 </div>
               )}
             </section>
+            )}
 
             {/* Collection — the gallery of retired spirits, kept forever: radiant graduates you set
                 free, and memorials for those that passed (ADR-0029). A died entry (its `died_at`
                 set) renders as a memorial with its lifespan; a graduate shows its radiant stage. */}
+            {tab === 'collection' && (
             <section className="spirit-section spirit-collection" aria-label="Collection">
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Collection</h2>
@@ -848,6 +870,7 @@ export default function SpiritPage() {
                 </ul>
               )}
             </section>
+            )}
 
             {/* Name reset — a minor, quiet line near the foot of the page (ADR-0024). The name
                 is committed at creation and immutable; changing it is a rare, paid action, so it
