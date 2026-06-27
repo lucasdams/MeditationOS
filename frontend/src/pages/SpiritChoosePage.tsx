@@ -5,14 +5,13 @@ import { useToast } from '../context/ToastContext'
 import {
   DOSHA,
   PATH_ORDER,
-  NEED_COPY,
-  slotLabel,
+  SpiritArt,
   optionLabel,
+  prefersReducedMotion,
 } from '../components/Spirit'
 import { Loading, RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import type {
-  SpiritOptionPreview,
   SpiritPath,
   SpiritPreview,
   SpiritSlotPreview,
@@ -20,108 +19,47 @@ import type {
 } from '../types'
 
 /**
- * SpiritChoosePage — the "3 starter choices" (ADR-0023) on a calm page of its own, so the choice
- * is a focused moment rather than one busy section crammed onto the full /spirit panel. Shown
- * while the spirit is pathless (first awakening, or again after set-free). Picking a dosha sets
- * the creature and returns to /spirit. If the spirit already has a creature, this redirects to
- * /spirit (nothing to choose).
+ * SpiritChoosePage — the "3 starter choices" (ADR-0023) on a calm page of its own. Shown while the
+ * spirit is pathless. Each creature is shown as its actual (rendered) self with a one-line reason
+ * its favoured practice suits it; hovering a creature's "looks" morphs its art so you can see what
+ * it can wear. Picking a dosha sets the creature and returns to /spirit.
  */
 // The name cap, mirroring the backend SPIRIT_NAME_MAX_LENGTH. The form soft-limits input; the
 // server trims + rejects blank/over-length regardless.
 const NAME_MAX = 40
 
-// A creature's SIGNATURE set — its path-exclusive tier-3 capstones (one per slot), pulled from
-// the per-path preview. These are the "what it grows into" highlights surfaced on each card.
-function exclusiveCapstones(slots: SpiritSlotPreview[]): SpiritOptionPreview[] {
-  return slots.flatMap((s) => s.options.filter((o) => o.exclusive))
-}
+// A fixed, developed stage for the choose-page previews so each creature reads as a clear, finished
+// form (the real spirit starts a spark and grows — here we just want a good likeness to choose by).
+const PREVIEW_STAGE = 'fledgling'
 
-// A tiny need tag (icon + label) reusing the shared NEED_COPY so the choose-page preview matches
-// the Care read-out and the customize tree exactly.
-function PreviewNeed({ need }: { need: SpiritOptionPreview['need'] }) {
-  const copy = NEED_COPY[need]
-  if (!copy) return null
-  return (
-    <span className="spirit-choose-preview-need" title={`Favours ${copy.label}`}>
-      <span aria-hidden="true">{copy.icon}</span> {copy.label}
-    </span>
-  )
-}
-
-/**
- * GrowsIntoLine — the compact "Grows into" highlights on a creature's pick card (step 1): its
- * signature exclusive capstones (one per slot), each as a label + need tag. Kept small so the
- * three cards stay scannable side by side. Renders nothing if the preview hasn't loaded yet.
- */
-function GrowsIntoLine({ slots }: { slots: SpiritSlotPreview[] | undefined }) {
-  if (!slots) return null
-  const capstones = exclusiveCapstones(slots)
-  if (capstones.length === 0) return null
-  return (
-    <div className="spirit-choose-grows" aria-label="Signature unlocks this creature grows into">
-      <p className="spirit-choose-grows-head muted">Grows into</p>
-      <ul className="spirit-choose-grows-list">
-        {capstones.map((o) => (
-          <li key={o.option} className="spirit-choose-grows-item">
-            <span className="spirit-choose-grows-name">{optionLabel(o.option)}</span>
-            <PreviewNeed need={o.need} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-/**
- * TreePreview — the fuller, read-only tier preview of a creature's whole tree (step 2): each slot
- * with its options laid out tier by tier, with the path's exclusive capstones highlighted. A
- * tasteful read-out so the choice feels informed — not the interactive shop (that lives on
- * /spirit once the creature is chosen). Renders nothing until the preview has loaded.
- */
-function TreePreview({ slots }: { slots: SpiritSlotPreview[] | undefined }) {
-  if (!slots) return null
-  return (
-    <div className="spirit-choose-tree" aria-label="Cosmetic tree preview">
-      {slots.map((slot) => (
-        <div key={slot.slot} className="spirit-choose-tree-slot">
-          <p className="spirit-choose-tree-slot-name">{slotLabel(slot.slot)}</p>
-          <ul className="spirit-choose-tree-options">
-            {slot.options.map((o) => (
-              <li
-                key={o.option}
-                className={`spirit-choose-tree-option${
-                  o.exclusive ? ' spirit-choose-tree-option--capstone' : ''
-                }`}
-                data-tier={o.tier}
-              >
-                <span className="spirit-choose-tree-option-name">{optionLabel(o.option)}</span>
-                {o.exclusive && (
-                  <span className="spirit-choose-tree-capstone-tag">Signature</span>
-                )}
-                <PreviewNeed need={o.need} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
+// A creature's distinctive "looks" — its path-exclusive capstones (one per slot), flattened from
+// the per-path preview to {slot, option}. These drive the hover-to-try-on chips. (We surface the
+// signature pieces rather than the whole catalog so the chips stay scannable.)
+function signatureLooks(slots: SpiritSlotPreview[]): { slot: string; option: string }[] {
+  return slots.flatMap((s) =>
+    s.options.filter((o) => o.exclusive).map((o) => ({ slot: s.slot, option: o.option })),
   )
 }
 
 export default function SpiritChoosePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const reducedMotion = prefersReducedMotion()
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
-  // The per-path skill-tree preview (what each creature grows into). Fetched once alongside the
-  // spirit; non-blocking — if it fails the page still works, the previews just don't show.
+  // The per-path catalog preview — drives the hoverable "try a look" chips on each card. Fetched
+  // alongside the spirit; non-blocking, so a preview hiccup never blocks the pick → name → awaken.
   const [preview, setPreview] = useState<SpiritPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
-  // Two-step flow — pick a creature FIRST, then name it. `selected` holds the picked creature
-  // (step 2); the name (ADR-0024) is committed at creation and immutable thereafter.
+  // Two-step flow — pick a creature FIRST, then name it. `selected` holds the picked creature.
   const [selected, setSelected] = useState<SpiritPath | null>(null)
   const [name, setName] = useState('')
+  // The look being tried on a specific creature (hover/focus a chip). Per-card: only the matching
+  // card's art reflects it. null = every creature shows its bare base look.
+  const [tryOn, setTryOn] = useState<{ path: SpiritPath; slot: string; option: string } | null>(
+    null,
+  )
 
   function load() {
     setRetrying(true)
@@ -133,8 +71,6 @@ export default function SpiritChoosePage() {
       })
       .catch((err) => setError(messageForError(err, 'Could not reach your spirit.')))
       .finally(() => setRetrying(false))
-    // The grows-into preview is a calm enhancement, not load-bearing: fetch it independently and
-    // swallow failures so a preview hiccup never blocks the pick → name → awaken flow.
     spiritService
       .preview()
       .then(setPreview)
@@ -159,10 +95,39 @@ export default function SpiritChoosePage() {
     } catch {
       showToast('Could not choose that creature — please try again.', 'error')
     } finally {
-      // Clear the awakening state even on success, so the button is never left stuck
-      // mid-flight if navigation is interrupted (matches the unlock/equip handlers).
+      // Clear the awakening state even on success, so the button is never left stuck mid-flight.
       setBusy(null)
     }
+  }
+
+  // The live art for a creature — its bare base look, or whatever look is being tried on (only when
+  // the hovered chip belongs to THIS creature). Bright + a fixed developed stage.
+  function creatureArt(path: SpiritPath) {
+    const looking = tryOn?.path === path
+    return (
+      <SpiritArt
+        stage={PREVIEW_STAGE}
+        path={path}
+        glow={1}
+        cosmetics={looking && tryOn ? { [tryOn.slot]: tryOn.option } : {}}
+        previewing={looking}
+        reducedMotion={reducedMotion}
+      />
+    )
+  }
+
+  // Per-creature: favoured practice + the plain-language reason it balances this element. The real
+  // basis for the choice (which the cosmetic preview is not).
+  function favoursCopy(path: SpiritPath) {
+    const d = DOSHA[path]
+    return (
+      <>
+        <p className="spirit-choose-favours">
+          Favours <strong>{d.practice}</strong>
+        </p>
+        <p className="muted spirit-choose-why">{d.why}</p>
+      </>
+    )
   }
 
   // Already chose a creature — there's nothing to pick here.
@@ -176,7 +141,8 @@ export default function SpiritChoosePage() {
       <header className="page-head">
         <h1>Choose your creature</h1>
         <p className="page-subtitle">
-          Pick the companion whose nature fits you — keep it thriving with its kind of practice.
+          Each creature thrives on the practice that balances its nature — pick the one whose rhythm
+          fits yours.
         </p>
       </header>
 
@@ -185,22 +151,42 @@ export default function SpiritChoosePage() {
       ) : !spirit ? (
         <Loading label="Waking your spirit…" />
       ) : selected === null ? (
-        // Step 1 — pick a creature. Naming comes after, on the next step.
+        // Step 1 — pick a creature. Each card shows the live creature, why its practice suits it,
+        // and hoverable "looks" that morph the art.
         <ul className="spirit-picker-grid spirit-choose-grid">
           {PATH_ORDER.map((path) => {
             const d = DOSHA[path]
+            const looks = preview?.[path] ? signatureLooks(preview[path]) : []
             return (
               <li key={path} className={`spirit-picker-card spirit-picker-card--${path}`}>
-                <p className="spirit-picker-glyph" aria-hidden="true">
-                  {d.glyph}
-                </p>
+                <div className="spirit-choose-art" aria-hidden="true">
+                  {creatureArt(path)}
+                </div>
                 <p className="spirit-picker-name">{d.name}</p>
-                <p className="muted spirit-picker-element">{d.element}</p>
-                <p className="spirit-picker-vibe">{d.vibe}</p>
-                <p className="muted spirit-picker-practice">
-                  Prefers <strong>{d.practice}</strong> — do more of this to keep it thriving.
+                <p className="muted spirit-picker-element">
+                  {d.element} · {d.vibe.replace(/\.$/, '')}
                 </p>
-                <GrowsIntoLine slots={preview?.[path]} />
+                {favoursCopy(path)}
+                {looks.length > 0 && (
+                  <div className="spirit-choose-tryons" aria-label={`Preview ${d.name}'s looks`}>
+                    <span className="spirit-choose-tryons-head muted">Hover to try a look</span>
+                    <div className="spirit-choose-tryons-chips">
+                      {looks.map((l) => (
+                        <button
+                          key={l.option}
+                          type="button"
+                          className="spirit-choose-tryon"
+                          onMouseEnter={() => setTryOn({ path, ...l })}
+                          onMouseLeave={() => setTryOn(null)}
+                          onFocus={() => setTryOn({ path, ...l })}
+                          onBlur={() => setTryOn(null)}
+                        >
+                          {optionLabel(l.option)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   className="spirit-picker-choose"
@@ -222,33 +208,19 @@ export default function SpiritChoosePage() {
             onClick={() => {
               setSelected(null)
               setName('')
+              setTryOn(null)
             }}
           >
             ← Choose a different creature
           </button>
           <div className={`spirit-picker-card spirit-picker-card--${selected} spirit-name-chosen`}>
-            <p className="spirit-picker-glyph" aria-hidden="true">
-              {DOSHA[selected].glyph}
-            </p>
+            <div className="spirit-choose-art" aria-hidden="true">
+              {creatureArt(selected)}
+            </div>
             <p className="spirit-picker-name">{DOSHA[selected].name}</p>
-            <p className="spirit-picker-vibe">{DOSHA[selected].vibe}</p>
-            <p className="muted spirit-picker-practice">
-              Prefers <strong>{DOSHA[selected].practice}</strong> — do more of this to keep it
-              thriving.
-            </p>
+            <p className="muted spirit-picker-element">{DOSHA[selected].element}</p>
+            {favoursCopy(selected)}
           </div>
-          {preview?.[selected] && (
-            <section className="spirit-choose-tree-wrap" aria-label="What this creature grows into">
-              <p className="spirit-choose-tree-head">
-                What <strong>{DOSHA[selected].name}</strong> grows into
-              </p>
-              <p className="muted spirit-choose-tree-note">
-                Unlock these as your spirit grows — its <strong>Signature</strong> set is unique to
-                this creature.
-              </p>
-              <TreePreview slots={preview[selected]} />
-            </section>
-          )}
           <label className="spirit-field spirit-choose-name">
             <span>Name your {DOSHA[selected].name} companion</span>
             <input
