@@ -4985,17 +4985,17 @@ textarea:focus-visible,
   padding: 0.05rem 0.45rem;
 }
 
-/* Equal-width columns via grid (not flex-grow): every quest is the same size regardless of
-   label length or how the row wraps. auto-fit fills the row when they all fit on one line,
-   and a lone wrapped quest keeps its column width instead of stretching to the full width
-   (the old flex `flex: 1 1` bug, where a longer label like "Breathe slow for 5+ min" wrapped
-   to its own row and ballooned to ~2× the others). minmax stacks them gracefully when narrow. */
+/* A single-column stack. The quests are horizontal cards (icon · label · meta pushed right),
+   so a full-width vertical list reads cleanly AND never orphans a lone third quest onto its own
+   half-row — which the old 2-up grid did whenever 3 are surfaced (up to DAILY_QUEST_LIMIT). One
+   column is also wrap-proof: no narrow column to make "Breathe slow for 5+ min" spill to a 2nd
+   line. Works the same for 1, 2, or 3 quests. */
 .quest-chips {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.6rem;
 }
 
