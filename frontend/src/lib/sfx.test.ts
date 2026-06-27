@@ -30,6 +30,7 @@ const fakeCtx = {
 
 vi.mock('./audioContext', () => ({
   getAudioContext: () => fakeCtx,
+  getMasterBus: () => ({ connect: () => {} }),
 }))
 
 import { installButtonClickSfx, setInterfaceSounds } from './sfx'

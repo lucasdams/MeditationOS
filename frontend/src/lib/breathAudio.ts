@@ -6,7 +6,7 @@
 // there are no clicks). Gain/filter are ramped from a *tracked* rest value (not a
 // read of AudioParam.value, which is ambiguous across browsers).
 
-import { getAudioContext } from './audioContext'
+import { getAudioContext, getMasterBus } from './audioContext'
 
 type Phase = 'inhale' | 'exhale'
 
@@ -121,7 +121,7 @@ export class BreathAudio {
       const gain = ctx.createGain()
       this.gainTarget = 0.0001
       gain.gain.setValueAtTime(this.gainTarget, begin)
-      source.connect(filter).connect(gain).connect(ctx.destination)
+      source.connect(filter).connect(gain).connect(getMasterBus())
       source.start(begin)
       this.source = source
       this.filter = filter
@@ -198,7 +198,7 @@ export class BreathAudio {
     out.gain.setValueAtTime(0.0001, now)
     out.gain.linearRampToValueAtTime(peak, now + 0.03) // soft swell, not a hard strike
     out.gain.setTargetAtTime(0, now + 0.03, 0.5) // slow, natural bell decay
-    out.connect(ctx.destination)
+    out.connect(getMasterBus())
 
     for (const [mult, level] of [
       [1, 1],

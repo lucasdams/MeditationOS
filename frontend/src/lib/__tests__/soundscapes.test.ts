@@ -8,15 +8,28 @@ import {
   type SoundscapeName,
 } from '../soundscapes'
 
-// Mock the shared AudioContext — we test selection/state, not synthesis.
+// Shared, hoist-safe audio state so a test can move the clock and count scheduled events.
+const audioState = vi.hoisted(() => ({ clock: 0, events: 0 }))
+
+// Mock the shared AudioContext — we test selection/state + scheduling, not synthesis.
 vi.mock('../audioContext', () => ({
   getAudioContext: () => ({
     state: 'running',
-    currentTime: 0,
+    get currentTime() {
+      return audioState.clock
+    },
     sampleRate: 44100,
     destination: {},
     createGain: () => ({
-      gain: { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+      gain: {
+        value: 1,
+        // Count every scheduled gain event so a test can assert a scape keeps scheduling.
+        setValueAtTime: () => {
+          audioState.events++
+        },
+        linearRampToValueAtTime: vi.fn(),
+        setTargetAtTime: vi.fn(),
+      },
       connect: vi.fn().mockReturnThis(),
       disconnect: vi.fn(),
     }),
@@ -45,6 +58,8 @@ vi.mock('../audioContext', () => ({
     }),
     resume: vi.fn().mockResolvedValue(undefined),
   }),
+  // The shared master limiter — a node that just accepts connections in tests.
+  getMasterBus: () => ({ connect: vi.fn().mockReturnThis() }),
 }))
 
 describe('SOUNDSCAPES list', () => {
@@ -130,5 +145,30 @@ describe('SoundscapeEngine', () => {
       engine.stop()
       engine.stop()
     }).not.toThrow()
+  })
+
+  // The core fix: a procedural scape (night crickets) must keep scheduling for the WHOLE
+  // session, not run dry after the first batch (the old fixed-count bug). With a re-arming
+  // scheduler, advancing the audio clock past the first horizon schedules MORE events.
+  it('keeps scheduling events for a long session — a scape never runs dry', () => {
+    vi.useFakeTimers()
+    try {
+      audioState.clock = 0
+      audioState.events = 0
+      const engine = new SoundscapeEngine()
+      engine.start('night', 0.5) // crickets = purely scheduled gain events
+      const initial = audioState.events
+      expect(initial).toBeGreaterThan(0) // the first horizon was scheduled up front
+
+      // Jump the audio clock far ahead and let the re-arming timer fire: the scheduler refills,
+      // so the event count grows. A fixed-count scape would be frozen at `initial`.
+      audioState.clock = 600
+      vi.advanceTimersByTime(60_000)
+      expect(audioState.events).toBeGreaterThan(initial)
+
+      engine.stop()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

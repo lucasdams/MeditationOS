@@ -2,7 +2,7 @@
 // All synthesis is via Web Audio (no samples); shares the app's single AudioContext.
 // API: start(name, volume), stop(), setVolume(vol). Clean teardown on stop().
 
-import { getAudioContext } from './audioContext'
+import { getAudioContext, getMasterBus } from './audioContext'
 
 export type SoundscapeName =
   | 'silent'
@@ -84,11 +84,39 @@ function makeNoise(ctx: AudioContext, colour: 'brown' | 'white'): AudioBufferSou
       last = (last + 0.02 * white) / 1.02
       data[i] = last * 3.5
     }
+    // Brown noise random-walks, so a buffer collects a DC offset (and a level imbalance at the
+    // loop seam). Subtract the mean so it sits centred on zero — cleaner low end, no thump.
+    let sum = 0
+    for (let i = 0; i < size; i++) sum += data[i]
+    const mean = sum / size
+    for (let i = 0; i < size; i++) data[i] -= mean
   }
   const src = ctx.createBufferSource()
   src.buffer = buffer
   src.loop = true
   return src
+}
+
+// Keep a procedural scape's events flowing for the WHOLE session. `fill(from, to)` schedules
+// every event that lands in the audio-clock window [from, to); `sustain` runs it immediately,
+// then re-arms on a timer so the schedule always stays ~HORIZON seconds ahead. This replaces the
+// old "queue a fixed number of events up front" approach, which made crickets/birds/crackles fall
+// silent after a minute or few (the events simply ran out). Windows are contiguous and
+// non-overlapping, so each event is scheduled exactly once. Returns a stop that halts the timer
+// (the caller stops the oscillators separately).
+const SCHEDULE_HORIZON = 16 // seconds scheduled ahead of the clock
+function sustain(ctx: AudioContext, fill: (from: number, to: number) => void): StopFn {
+  let cursor = ctx.currentTime
+  const advance = (): void => {
+    const to = ctx.currentTime + SCHEDULE_HORIZON
+    if (to > cursor) {
+      fill(cursor, to)
+      cursor = to
+    }
+  }
+  advance()
+  const id = setInterval(advance, (SCHEDULE_HORIZON * 1000) / 2)
+  return () => clearInterval(id)
 }
 
 function startOcean(ctx: AudioContext, out: GainNode): StopFn {
@@ -162,9 +190,11 @@ function startForest(ctx: AudioContext, out: GainNode): StopFn {
   noise.start()
   stops.push(() => { try { noise.stop() } catch { /* already stopped */ } })
 
-  // Sparse birdsong: 4 oscillators with random intervals + tremolos
+  // Sparse birdsong: 4 warbling tones, each chirping on its own slow cycle. Built once, then a
+  // single scheduler keeps the chirps coming for the whole session.
   const birdFreqs = [2400, 3100, 1800, 2700]
-  birdFreqs.forEach((freq, i) => {
+  const now = ctx.currentTime
+  const built = birdFreqs.map((freq, i) => {
     const osc = ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = freq + i * 130
@@ -172,7 +202,6 @@ function startForest(ctx: AudioContext, out: GainNode): StopFn {
     const trem = ctx.createOscillator()
     trem.type = 'sine'
     trem.frequency.value = 7 + i * 1.5 // warble rate
-
     const tremGain = ctx.createGain()
     tremGain.gain.value = 0.08
     trem.connect(tremGain).connect(osc.frequency)
@@ -180,27 +209,27 @@ function startForest(ctx: AudioContext, out: GainNode): StopFn {
 
     const env = ctx.createGain()
     env.gain.value = 0
-
-    // Schedule on/off chirp cycles with offsets
-    const period = 4.5 + i * 1.1
-    const offset = i * 0.9
-    const now = ctx.currentTime
-
-    // Queue several chirp bursts ahead of time
-    for (let n = 0; n < 60; n++) {
-      const t = now + offset + n * period
-      env.gain.setValueAtTime(0, t)
-      env.gain.linearRampToValueAtTime(0.06, t + 0.04)
-      env.gain.setTargetAtTime(0, t + 0.12, 0.15)
-    }
-
     osc.connect(env).connect(out)
     osc.start()
     stops.push(() => {
       try { osc.stop() } catch { /* already stopped */ }
       try { trem.stop() } catch { /* already stopped */ }
     })
+    return { env, period: 4.5 + i * 1.1, base: now + i * 0.9 }
   })
+  stops.push(
+    sustain(ctx, (from, to) => {
+      for (const { env, period, base } of built) {
+        let n = Math.max(0, Math.ceil((from - base) / period))
+        for (let t = base + n * period; t < to; n++, t = base + n * period) {
+          if (t < from) continue
+          env.gain.setValueAtTime(0, t)
+          env.gain.linearRampToValueAtTime(0.06, t + 0.04)
+          env.gain.setTargetAtTime(0, t + 0.12, 0.15)
+        }
+      }
+    }),
+  )
 
   return () => stops.forEach((s) => s())
 }
@@ -225,27 +254,33 @@ function startNight(ctx: AudioContext, out: GainNode): StopFn {
     { freq: 4200, rate: 18, offset: 0.7 },
     { freq: 3600, rate: 25, offset: 0.3 },
   ]
-  layers.forEach(({ freq, rate, offset }) => {
+  const pulseLen = 0.012
+  const now = ctx.currentTime
+  // Build each chirp layer once; a single scheduler then keeps their pulses flowing forever.
+  const built = layers.map(({ freq, rate, offset }) => {
     const osc = ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = freq
     const env = ctx.createGain()
     env.gain.value = 0
-
-    const pulseLen = 0.012
-    const period = 1 / rate
-    const now = ctx.currentTime
-    for (let n = 0; n < 1200; n++) {
-      const t = now + offset + n * period
-      env.gain.setValueAtTime(0, t)
-      env.gain.linearRampToValueAtTime(0.055, t + pulseLen * 0.4)
-      env.gain.linearRampToValueAtTime(0, t + pulseLen)
-    }
-
     osc.connect(env).connect(out)
     osc.start()
     stops.push(() => { try { osc.stop() } catch { /* already stopped */ } })
+    return { env, period: 1 / rate, base: now + offset }
   })
+  stops.push(
+    sustain(ctx, (from, to) => {
+      for (const { env, period, base } of built) {
+        let n = Math.max(0, Math.ceil((from - base) / period))
+        for (let t = base + n * period; t < to; n++, t = base + n * period) {
+          if (t < from) continue
+          env.gain.setValueAtTime(0, t)
+          env.gain.linearRampToValueAtTime(0.055, t + pulseLen * 0.4)
+          env.gain.linearRampToValueAtTime(0, t + pulseLen)
+        }
+      }
+    }),
+  )
 
   return () => stops.forEach((s) => s())
 }
@@ -285,21 +320,30 @@ function startFire(ctx: AudioContext, out: GainNode): StopFn {
   cEnv.gain.value = 0
 
   const now = ctx.currentTime
-  // Irregular crackle pattern
+  // Irregular crackle pattern, looping every `cycle`.
   const times = [0.4, 0.9, 1.55, 2.1, 2.6, 3.2, 3.55, 4.3, 4.9, 5.5, 6.1, 6.8, 7.4, 8.0]
   const cycle = 8.5
-  for (let rep = 0; rep < 30; rep++) {
-    times.forEach((t) => {
-      const at = now + t + rep * cycle + (Math.random() * 0.15 - 0.075)
-      cEnv.gain.setValueAtTime(0, at)
-      cEnv.gain.linearRampToValueAtTime(0.04 + Math.random() * 0.03, at + 0.008)
-      cEnv.gain.linearRampToValueAtTime(0, at + 0.04)
-    })
-  }
-
   crackle.connect(cf).connect(cEnv).connect(out)
   crackle.start()
   stops.push(() => { try { crackle.stop() } catch { /* already stopped */ } })
+  stops.push(
+    sustain(ctx, (from, to) => {
+      // Membership is decided by each crackle's BASE time (so a given pop lands in exactly one
+      // window, never double-scheduled); a small jitter then humanises the actual strike.
+      const firstRep = Math.max(0, Math.floor((from - now) / cycle) - 1)
+      const lastRep = Math.ceil((to - now) / cycle) + 1
+      for (let rep = firstRep; rep <= lastRep; rep++) {
+        for (const tt of times) {
+          const base = now + tt + rep * cycle
+          if (base < from || base >= to) continue
+          const at = base + (Math.random() * 0.15 - 0.075)
+          cEnv.gain.setValueAtTime(0, at)
+          cEnv.gain.linearRampToValueAtTime(0.04 + Math.random() * 0.03, at + 0.008)
+          cEnv.gain.linearRampToValueAtTime(0, at + 0.04)
+        }
+      }
+    }),
+  )
 
   return () => stops.forEach((s) => s())
 }
@@ -416,7 +460,9 @@ export class SoundscapeEngine {
 
       const master = ctx.createGain()
       master.gain.value = Math.max(0, Math.min(1, volume))
-      master.connect(ctx.destination)
+      // Through the shared limiter, so layered scapes (fire roar + crackles, birds over a
+      // noise bed) never sum into a clipped, harsh edge.
+      master.connect(getMasterBus())
       this.masterGain = master
 
       this.stopNodes = builder(ctx, master)
