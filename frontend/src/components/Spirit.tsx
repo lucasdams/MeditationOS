@@ -245,6 +245,17 @@ export const OPTION_LABEL: Record<string, string> = {
   emberbed: 'Ember bed',
   stonegarden: 'Stone garden',
   cloudfloor: 'Cloud floor',
+  // Quirky / hobby cosmetics — personality, not nature.
+  headphones: 'Headphones',
+  nerd_glasses: 'Nerd glasses',
+  gaming_headset: 'Gaming headset',
+  beanie: 'Beanie',
+  party_hat: 'Party hat',
+  dumbbell: 'Floating dumbbell',
+  coffee_mug: 'Steaming mug',
+  open_book: 'Open book',
+  game_controller: 'Game controller',
+  boombox: 'Boombox',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -1343,6 +1354,174 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
       </g>
     )
   }
+  // --- Quirky personality / hobby accessories (universal) --------------------------------
+  // Playful worn items that express the practitioner's vibe (music, study, gaming, cosy,
+  // celebration) rather than a nature/dosha theme. Each perches on the head like the others and
+  // is condition-responsive via `g`.
+  if (accessory === 'headphones') {
+    // Sleek over-ear headphones: a slim band arcing over the crown into two rounded ear cups, each
+    // with a soft cushion and a highlight so they read as worn cans.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The headband arcing over the head. */}
+        <path
+          d={`M 31 ${topY + 4} Q 40 ${topY - 7} 49 ${topY + 4}`}
+          fill="none"
+          stroke="#1e3a8a"
+          strokeWidth={2.2}
+          strokeLinecap="round"
+        />
+        <path
+          d={`M 31.5 ${topY + 3.6} Q 40 ${topY - 6} 48.5 ${topY + 3.6}`}
+          fill="none"
+          stroke="#60a5fa"
+          strokeWidth={0.7}
+          strokeLinecap="round"
+          opacity={0.8}
+        />
+        {/* The two ear cups, each a rounded blue shell with a paler cushion. */}
+        {[30.6, 49.4].map((ex, k) => (
+          <g key={k}>
+            <rect x={ex - 2} y={topY + 3} width={4} height={6} rx={2} fill="#2563eb" />
+            <rect x={ex - 1.1} y={topY + 4} width={2.2} height={4} rx={1.1} fill="#93c5fd" />
+          </g>
+        ))}
+      </g>
+    )
+  }
+  if (accessory === 'nerd_glasses') {
+    // Round studious spectacles: two circular dark frames joined by a bridge, with a faint lens
+    // glint, sitting low on the brow like worn specs.
+    const lensY = topY + 8
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The two round frames. */}
+        {[35.4, 44.6].map((lx, k) => (
+          <g key={k}>
+            <circle
+              cx={lx}
+              cy={lensY}
+              r={3.2}
+              fill="#bfdbfe"
+              fillOpacity={0.25}
+              stroke="#1f2937"
+              strokeWidth={1.1}
+            />
+            {/* A small lens glint, upper-left of each lens. */}
+            <line
+              x1={lx - 1.4}
+              y1={lensY - 1.4}
+              x2={lx - 0.2}
+              y2={lensY - 0.2}
+              stroke="#f8fafc"
+              strokeWidth={0.6}
+              strokeLinecap="round"
+              opacity={0.85}
+            />
+          </g>
+        ))}
+        {/* The bridge between the lenses. */}
+        <line x1={38.4} y1={lensY - 0.4} x2={41.6} y2={lensY - 0.4} stroke="#1f2937" strokeWidth={1} />
+        {/* Stubby temple arms reaching to the sides. */}
+        <line x1={32.4} y1={lensY - 0.8} x2={30} y2={lensY - 1.6} stroke="#1f2937" strokeWidth={0.9} strokeLinecap="round" />
+        <line x1={47.6} y1={lensY - 0.8} x2={50} y2={lensY - 1.6} stroke="#1f2937" strokeWidth={0.9} strokeLinecap="round" />
+      </g>
+    )
+  }
+  if (accessory === 'gaming_headset') {
+    // An over-ear gaming headset: a chunky dark band over the crown, two big ear cups with a glowing
+    // cyan RGB accent ring, and a boom mic curving down to the mouth with a red foam tip.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The thick headband arcing over the head. */}
+        <path
+          d={`M 30 ${topY + 4} Q 40 ${topY - 8} 50 ${topY + 4}`}
+          fill="none"
+          stroke="#111827"
+          strokeWidth={2.8}
+          strokeLinecap="round"
+        />
+        {/* The two ear cups — dark shells, each ringed with a glowing cyan RGB accent. */}
+        {[29.6, 50.4].map((ex, k) => (
+          <g key={k}>
+            <rect x={ex - 2.4} y={topY + 2.6} width={4.8} height={7} rx={2.2} fill="#1f2937" />
+            <rect
+              x={ex - 1.5}
+              y={topY + 3.6}
+              width={3}
+              height={5}
+              rx={1.5}
+              fill="none"
+              stroke="#22d3ee"
+              strokeWidth={0.9}
+            />
+          </g>
+        ))}
+        {/* The boom mic swinging down from the left cup to the mouth, tipped with a red foam ball. */}
+        <path
+          d={`M 30 ${topY + 9} Q 31 ${topY + 15} 36 ${topY + 16}`}
+          fill="none"
+          stroke="#111827"
+          strokeWidth={1.4}
+          strokeLinecap="round"
+        />
+        <circle cx={36.4} cy={topY + 16.2} r={1.8} fill="#ef4444" />
+        <circle cx={35.8} cy={topY + 15.6} r={0.5} fill="#fecaca" opacity={0.9} />
+      </g>
+    )
+  }
+  if (accessory === 'beanie') {
+    // A cosy knit beanie: a rounded teal cap pulled over the crown with a ribbed fold band and a
+    // couple of knit lines, topped with a soft cream pompom.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The cap dome over the top of the head. */}
+        <path
+          d={`M 31 ${topY + 6} Q 31 ${topY - 8} 40 ${topY - 8} Q 49 ${topY - 8} 49 ${topY + 6} Z`}
+          fill="#14b8a6"
+        />
+        {/* A couple of knit lines up the cap for a stitched feel. */}
+        <path d={`M 36 ${topY + 5} Q 35 ${topY - 4} 38 ${topY - 7}`} fill="none" stroke="#0d9488" strokeWidth={0.6} opacity={0.8} />
+        <path d={`M 44 ${topY + 5} Q 45 ${topY - 4} 42 ${topY - 7}`} fill="none" stroke="#0d9488" strokeWidth={0.6} opacity={0.8} />
+        {/* The ribbed fold band at the brim. */}
+        <rect x={30.6} y={topY + 4} width={18.8} height={3.4} rx={1.7} fill="#2dd4bf" />
+        <line x1={34} y1={topY + 4.4} x2={34} y2={topY + 7} stroke="#0d9488" strokeWidth={0.5} opacity={0.7} />
+        <line x1={40} y1={topY + 4.4} x2={40} y2={topY + 7} stroke="#0d9488" strokeWidth={0.5} opacity={0.7} />
+        <line x1={46} y1={topY + 4.4} x2={46} y2={topY + 7} stroke="#0d9488" strokeWidth={0.5} opacity={0.7} />
+        {/* The soft pompom on top. */}
+        <circle cx={40} cy={topY - 9} r={2.4} fill="#f1f5f9" />
+        <circle cx={39.2} cy={topY - 9.8} r={0.7} fill="#ffffff" opacity={0.9} />
+      </g>
+    )
+  }
+  if (accessory === 'party_hat') {
+    // A striped cone party hat: a tall triangle of alternating magenta and yellow stripes balanced
+    // on the crown, topped with a little pompom and a row of confetti dots.
+    const apexX = 40
+    const apexY = topY - 14
+    const baseL = 33.5
+    const baseR = 46.5
+    const baseY = topY + 1
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The cone body, magenta. */}
+        <path
+          d={`M ${apexX} ${apexY} L ${baseL} ${baseY} L ${baseR} ${baseY} Z`}
+          fill="#ec4899"
+        />
+        {/* A couple of yellow chevron stripes banding the cone. */}
+        <path d={`M 36.6 ${topY - 7.4} L 43.4 ${topY - 7.4} L 42 ${topY - 5} L 38 ${topY - 5} Z`} fill="#fde047" />
+        <path d={`M 35 ${topY - 2.4} L 45 ${topY - 2.4} L 46.5 ${baseY} L 33.5 ${baseY} Z`} fill="#fde047" />
+        {/* A few confetti dots drifting beside the hat. */}
+        <circle cx={49} cy={topY - 8} r={0.9} fill="#38bdf8" />
+        <circle cx={32} cy={topY - 4} r={0.8} fill="#a3e635" />
+        <circle cx={47} cy={topY - 12} r={0.7} fill="#fb7185" />
+        {/* The pompom topping the cone. */}
+        <circle cx={apexX} cy={apexY} r={2.2} fill="#f8fafc" />
+        <circle cx={apexX - 0.7} cy={apexY - 0.7} r={0.6} fill="#ffffff" opacity={0.9} />
+      </g>
+    )
+  }
   // --- Path-exclusive accessories (per_path in the catalog) ------------------------------
   // ember_crown → breath (Pitta/fire), mossy_circlet → stillness (Kapha/earth), feather_plume →
   // heart (Vata/air). The backend only offers each to its matching creature; the palette follows
@@ -1837,6 +2016,191 @@ function Companion({ companion, g }: { companion: string; g: number }) {
         <circle cx={baseX + 3} cy={baseY - 7.9} r={0.4} fill="#f8fafc" />
         {/* A small triangular beak between the eyes. */}
         <path d={`M ${baseX} ${baseY - 6} l -1 1.6 l 2 0 z`} fill="#f59e0b" />
+      </g>
+    )
+  }
+  // --- Quirky HOBBY companions (universal, no per_path) ----------------------------------
+  // Little personality props that float beside the spirit instead of animals/nature — gym,
+  // coffee, reading, gaming, music. Each is a small, recognizable object on a fun palette and
+  // condition-responsive via `g`.
+  if (companion === 'dumbbell') {
+    // A small floating dumbbell (gym): two slate weight-bells on a steel bar, a knurled grip and
+    // a soft highlight, with a tiny motion glint so it reads as hovering.
+    const cy = baseY - 6
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The steel bar across the middle. */}
+        <rect x={baseX - 4} y={cy - 1.1} width={8} height={2.2} rx={1} fill="#94a3b8" />
+        {/* Knurled grip lines on the bar. */}
+        <path
+          d={`M ${baseX - 2} ${cy - 1} l 0 2 M ${baseX} ${cy - 1} l 0 2 M ${baseX + 2} ${cy - 1} l 0 2`}
+          stroke="#64748b"
+          strokeWidth={0.5}
+        />
+        {/* The two weight-bells at each end. */}
+        <rect x={baseX - 7.5} y={cy - 4} width={3.5} height={8} rx={1.4} fill="#475569" />
+        <rect x={baseX + 4} y={cy - 4} width={3.5} height={8} rx={1.4} fill="#475569" />
+        {/* Inner collars, a shade lighter. */}
+        <rect x={baseX - 5} y={cy - 3} width={1.6} height={6} rx={0.7} fill="#64748b" />
+        <rect x={baseX + 3.4} y={cy - 3} width={1.6} height={6} rx={0.7} fill="#64748b" />
+        {/* A soft highlight on the left bell and a tiny hover glint. */}
+        <rect x={baseX - 6.8} y={cy - 3.2} width={1} height={3} rx={0.5} fill="#cbd5e1" opacity={0.8} />
+        <circle cx={baseX + 7} cy={cy - 5.5} r={0.7} fill="#e2e8f0" opacity={0.7} />
+      </g>
+    )
+  }
+  if (companion === 'coffee_mug') {
+    // A steaming coffee mug (cosy): a warm terracotta mug with a handle, a dark coffee surface,
+    // and two curling wisps of steam rising above it.
+    const cy = baseY - 2
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The mug body. */}
+        <path
+          d={`M ${baseX - 4.5} ${cy - 5}
+              L ${baseX + 4.5} ${cy - 5}
+              L ${baseX + 3.6} ${cy + 1}
+              Q ${baseX} ${cy + 2.4} ${baseX - 3.6} ${cy + 1} Z`}
+          fill="#ea580c"
+        />
+        {/* A paler rim band at the top. */}
+        <ellipse cx={baseX} cy={cy - 5} rx={4.5} ry={1.2} fill="#fb923c" />
+        {/* The dark coffee surface inside. */}
+        <ellipse cx={baseX} cy={cy - 5} rx={3.4} ry={0.9} fill="#3f2a1d" />
+        {/* The handle on the right. */}
+        <path
+          d={`M ${baseX + 4.2} ${cy - 4} q 4 0.5 0 5`}
+          fill="none"
+          stroke="#ea580c"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+        />
+        {/* A glossy highlight down the front. */}
+        <path d={`M ${baseX - 2.6} ${cy - 4} l -0.4 4`} stroke="#fdba74" strokeWidth={0.8} opacity={0.7} />
+        {/* Two curling wisps of steam rising above the cup. */}
+        {[-1.6, 1.6].map((dx, k) => (
+          <path
+            key={`steam-${k}`}
+            d={`M ${baseX + dx} ${cy - 6.5} q ${k ? 2 : -2} -2 0 -4 q ${k ? -2 : 2} -2 0 -4`}
+            fill="none"
+            stroke="#fed7aa"
+            strokeWidth={0.8}
+            strokeLinecap="round"
+            opacity={0.7}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (companion === 'open_book') {
+    // An open book / floating tome (reading): two cream pages spread from an indigo spine, a few
+    // text lines on each leaf, and a thin ribbon bookmark trailing below.
+    const cy = baseY - 5
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The two open pages, fanning out from the centre spine. */}
+        <path
+          d={`M ${baseX} ${cy - 3}
+              Q ${baseX - 5} ${cy - 4} ${baseX - 8} ${cy - 1}
+              L ${baseX - 7} ${cy + 4}
+              Q ${baseX - 4} ${cy + 2} ${baseX} ${cy + 3} Z`}
+          fill="#f8fafc"
+          stroke="#cbd5e1"
+          strokeWidth={0.5}
+          strokeLinejoin="round"
+        />
+        <path
+          d={`M ${baseX} ${cy - 3}
+              Q ${baseX + 5} ${cy - 4} ${baseX + 8} ${cy - 1}
+              L ${baseX + 7} ${cy + 4}
+              Q ${baseX + 4} ${cy + 2} ${baseX} ${cy + 3} Z`}
+          fill="#f1f5f9"
+          stroke="#cbd5e1"
+          strokeWidth={0.5}
+          strokeLinejoin="round"
+        />
+        {/* The indigo spine/cover ridge down the middle. */}
+        <path d={`M ${baseX} ${cy - 3} l 0 6`} stroke="#4f46e5" strokeWidth={1.4} strokeLinecap="round" />
+        {/* A few faint text lines on each page. */}
+        {[0, 1.6, 3.2].map((dy, k) => (
+          <g key={`line-${k}`}>
+            <path d={`M ${baseX - 6.5} ${cy - 0.5 + dy} l 4.4 0`} stroke="#94a3b8" strokeWidth={0.4} />
+            <path d={`M ${baseX + 2.1} ${cy - 0.5 + dy} l 4.4 0`} stroke="#94a3b8" strokeWidth={0.4} />
+          </g>
+        ))}
+        {/* A thin red ribbon bookmark trailing below the spine. */}
+        <path d={`M ${baseX} ${cy + 3} l 0 4 l -1 -1.4 l 1 0.4 l 1 -1.8 z`} fill="#ef4444" />
+      </g>
+    )
+  }
+  if (companion === 'game_controller') {
+    // A little game controller (gaming): a rounded slate gamepad with a teal D-pad, two coloured
+    // face buttons, twin thumbsticks and a glowing status dot.
+    const cy = baseY - 5
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The gamepad body — a rounded bar with two grip lobes. */}
+        <path
+          d={`M ${baseX - 8} ${cy}
+              Q ${baseX - 9} ${cy + 4} ${baseX - 5} ${cy + 4}
+              Q ${baseX - 2} ${cy + 3.5} ${baseX} ${cy + 3}
+              Q ${baseX + 2} ${cy + 3.5} ${baseX + 5} ${cy + 4}
+              Q ${baseX + 9} ${cy + 4} ${baseX + 8} ${cy}
+              Q ${baseX + 7} ${cy - 3} ${baseX + 3} ${cy - 2.5}
+              L ${baseX - 3} ${cy - 2.5}
+              Q ${baseX - 7} ${cy - 3} ${baseX - 8} ${cy} Z`}
+          fill="#334155"
+        />
+        {/* The teal D-pad cross on the left. */}
+        <path
+          d={`M ${baseX - 5.4} ${cy - 0.6} h 1.4 v -1.4 h 1.4 v 1.4 h 1.4 v 1.4 h -1.4 v 1.4 h -1.4 v -1.4 h -1.4 z`}
+          fill="#2dd4bf"
+        />
+        {/* Two coloured face buttons on the right. */}
+        <circle cx={baseX + 4.4} cy={cy - 0.4} r={1.1} fill="#f43f5e" />
+        <circle cx={baseX + 2.4} cy={cy + 1.4} r={1.1} fill="#fbbf24" />
+        {/* Twin thumbsticks. */}
+        <circle cx={baseX - 1.5} cy={cy + 2.2} r={1.2} fill="#0f172a" />
+        <circle cx={baseX + 1.5} cy={cy + 2.2} r={1.2} fill="#0f172a" />
+        {/* A glowing status dot in the centre. */}
+        <circle cx={baseX} cy={cy - 1} r={0.7} fill="#a3e635" />
+      </g>
+    )
+  }
+  if (companion === 'boombox') {
+    // A tiny boombox with music notes (music): a charcoal stereo with two speaker cones, a thin
+    // handle, and a couple of pink-violet music notes drifting up out of it.
+    const cy = baseY - 3
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A thin carry handle arcing over the top. */}
+        <path
+          d={`M ${baseX - 5} ${cy - 4} q 5 -3 10 0`}
+          fill="none"
+          stroke="#475569"
+          strokeWidth={0.9}
+          strokeLinecap="round"
+        />
+        {/* The charcoal body. */}
+        <rect x={baseX - 7} y={cy - 4} width={14} height={8} rx={1.4} fill="#1f2937" />
+        {/* A lighter top control strip. */}
+        <rect x={baseX - 6} y={cy - 3.2} width={12} height={1.6} rx={0.6} fill="#374151" />
+        {/* Two speaker cones. */}
+        <circle cx={baseX - 3.4} cy={cy + 1} r={2.4} fill="#4b5563" />
+        <circle cx={baseX + 3.4} cy={cy + 1} r={2.4} fill="#4b5563" />
+        <circle cx={baseX - 3.4} cy={cy + 1} r={1} fill="#9ca3af" />
+        <circle cx={baseX + 3.4} cy={cy + 1} r={1} fill="#9ca3af" />
+        {/* A couple of music notes drifting up out of the boombox. */}
+        {[
+          { x: baseX + 5, y: cy - 6, c: '#f472b6' },
+          { x: baseX + 8, y: cy - 9, c: '#a78bfa' },
+        ].map((n, k) => (
+          <g key={`note-${k}`}>
+            <ellipse cx={n.x} cy={n.y} rx={1.3} ry={1} fill={n.c} />
+            <path d={`M ${n.x + 1.2} ${n.y} l 0 -3.4`} stroke={n.c} strokeWidth={0.8} strokeLinecap="round" />
+            <path d={`M ${n.x + 1.2} ${n.y - 3.4} l 1.6 0.7`} stroke={n.c} strokeWidth={0.8} strokeLinecap="round" />
+          </g>
+        ))}
       </g>
     )
   }
