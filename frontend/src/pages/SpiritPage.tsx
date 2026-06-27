@@ -716,7 +716,11 @@ export default function SpiritPage() {
                       >
                         <div className="spirit-collection-art">
                           <SpiritArt
-                            stage={r.stage}
+                            // A graduate keeps its (radiant) stage; a spirit that DIED of neglect
+                            // didn't necessarily reach radiant and its death stage isn't stored, so
+                            // memorials render at a neutral mid-form rather than the grand radiant
+                            // silhouette the backend stamps (ADR-0029).
+                            stage={died ? 'fledgling' : r.stage}
                             path={rForm}
                             glow={1}
                             reducedMotion

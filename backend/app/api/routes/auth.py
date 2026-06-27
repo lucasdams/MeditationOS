@@ -223,7 +223,9 @@ def set_username(
 
 
 @router.post("/password", response_model=UserRead)
+@limiter.limit(settings.login_rate_limit)  # re-checks the current password — throttle brute force
 def change_password(
+    request: Request,  # required by the rate limiter
     data: PasswordUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

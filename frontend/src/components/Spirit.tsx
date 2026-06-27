@@ -94,7 +94,7 @@ export const DOSHA: Record<
     practice: 'breathwork',
     balance: 'energizing',
     glyph: '🪷',
-    why: 'Earth-and-water Kapha can grow heavy and sluggish — energizing breathwork gets its energy moving and keeps it bright.',
+    why: 'Earth-and-water Kapha can grow heavy and sluggish — breathwork gets its energy moving and keeps it bright.',
   },
   breath: {
     name: 'Pitta',
@@ -3683,7 +3683,9 @@ export function SpiritArt({
 
   // In pacer mode the creature follows the breath via an inline transform on the SAME clock as
   // the breathe-circle (no idle float — the breath IS the motion). Reduced motion holds it at 1.
-  const inPacerMode = paceScale !== undefined
+  // A DEAD or AILING spirit never paces — death rests still (the memorial), and an ailing spirit
+  // keeps its wilt rather than breathing along with the circle.
+  const inPacerMode = paceScale !== undefined && !dead && !ailing
   const liveScale = reducedMotion ? 1 : paceToScale(paceScale)
 
   // `--spirit-glow` lets the aura glow breathe a touch harder when the condition is high and
