@@ -68,10 +68,37 @@ export default function JournalPage() {
   const [query, setQuery] = useState('') // text search over reflections
   const [moodFilter, setMoodFilter] = useState<Mood | ''>('') // filter the list by mood
 
-  // Journaling prompt nudge — stable daily default, shuffleable, dismissible.
+  // Journaling prompt nudge — stable daily default, shuffleable, dismissible. The
+  // backend serves a prompt tuned to recent practice (last session type / streak
+  // milestone); we start from the local daily prompt so the nudge is instant, then
+  // swap in the contextual one when it arrives. "another" always shuffles the local
+  // pool, so the affordance keeps working regardless of the contextual fetch.
   const todayPrompt = useMemo(() => dailyPrompt(new Date()), [])
   const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt>(todayPrompt)
+  // True once the user has shuffled/replaced the prompt — so a late-arriving
+  // contextual prompt doesn't clobber a prompt they deliberately picked.
+  const promptTouched = useRef(false)
   const [promptDismissed, setPromptDismissed] = useState(false)
+
+  // Fetch the contextual prompt once; fall back silently to the local daily prompt.
+  useEffect(() => {
+    let ignore = false
+    journalService
+      .prompt()
+      .then((p) => {
+        if (!ignore && !promptTouched.current) {
+          // `theme` is internal pool metadata, never rendered; the contextual prompt
+          // carries its own server-side context, so we keep a neutral placeholder
+          // here purely to satisfy the shared JournalPrompt shape (shuffle excludes
+          // by text, not theme, so this never affects behavior).
+          setCurrentPrompt({ text: p.text, theme: 'practice' })
+        }
+      })
+      .catch(() => {})
+    return () => {
+      ignore = true
+    }
+  }, [])
   const [reward, setReward] = useState<{
     afterXp: number
     xpGained: number
@@ -326,7 +353,10 @@ export default function JournalPage() {
                 type="button"
                 className="journal-nudge-shuffle"
                 aria-label="Show another prompt"
-                onClick={() => setCurrentPrompt((p) => randomPrompt(p))}
+                onClick={() => {
+                  promptTouched.current = true
+                  setCurrentPrompt((p) => randomPrompt(p))
+                }}
               >
                 another
               </button>

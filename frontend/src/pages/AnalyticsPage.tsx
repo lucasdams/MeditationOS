@@ -11,6 +11,7 @@ import type {
   BiometricDelta,
   BiometricReading,
   InsightsResponse,
+  MonthComparison,
   WeekRatings,
 } from '../types'
 
@@ -388,6 +389,64 @@ function CalmFocusTrend({ weeks }: { weeks: WeekRatings[] }) {
   )
 }
 
+// Mood-over-time needs at least this many tagged entries across the window before we
+// surface the per-week stacked chart — mirrors the insights' minimum-sample guards so
+// a near-empty chart never implies a trend that isn't there.
+const MOOD_OVER_TIME_MIN_ENTRIES = 6
+
+// "This month vs last" — a clear, honest summary card. The delta is this − last, so a
+// positive number reads as ▲ (more than last month) and a negative as ▼.
+function MonthVsLast({ data }: { data: MonthComparison }) {
+  const { this_month: now, last_month: prev } = data
+
+  // A signed delta line: an arrow + magnitude + plain-language comparison, or a calm
+  // "same as last month" when unchanged. Decorative arrow is aria-hidden; the text
+  // (e.g. "12 more than last month") carries the meaning for screen readers.
+  const Delta = ({ delta, unit }: { delta: number; unit: string }) => {
+    if (delta === 0) {
+      return <span className="month-delta month-delta-flat">same as last month</span>
+    }
+    const up = delta > 0
+    const mag = Math.abs(delta)
+    return (
+      <span className={`month-delta ${up ? 'month-delta-up' : 'month-delta-down'}`}>
+        <span aria-hidden="true">{up ? '▲' : '▼'}</span> {mag} {unit}{' '}
+        {up ? 'more' : 'fewer'} than last month
+      </span>
+    )
+  }
+
+  const rows: { label: string; now: number; delta: number; unit: string }[] = [
+    { label: 'Minutes', now: now.minutes, delta: data.minutes_delta, unit: 'min' },
+    { label: 'Sessions', now: now.sessions, delta: data.sessions_delta, unit: 'sessions' },
+    {
+      label: 'Days practiced',
+      now: now.days_practiced,
+      delta: data.days_practiced_delta,
+      unit: 'days',
+    },
+  ]
+
+  return (
+    <section className="analytics-section">
+      <h2>This month vs last</h2>
+      <ul className="month-compare">
+        {rows.map((r) => (
+          <li key={r.label} className="month-compare-row">
+            <span className="month-metric-label">{r.label}</span>
+            <span className="month-metric-value">{r.now}</span>
+            <Delta delta={r.delta} unit={r.unit} />
+          </li>
+        ))}
+      </ul>
+      <p className="muted">
+        This calendar month so far, compared with all of last month
+        {prev.sessions === 0 ? ' (no practice last month yet)' : ''}.
+      </p>
+    </section>
+  )
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -456,6 +515,8 @@ export default function AnalyticsPage() {
               Lives here with the rest of the stats (moved off the calm home). Self-fetches
               and carries its own loading/empty/error states. */}
           <ActivityHeatmap />
+
+          <MonthVsLast data={data.monthly_comparison} />
 
           <Insights />
 
@@ -565,7 +626,10 @@ export default function AnalyticsPage() {
             </section>
           )}
 
-          {data.mood_by_week.some((w) => Object.keys(w.counts).length > 0) && (
+          {data.mood_by_week.reduce(
+            (sum, w) => sum + Object.values(w.counts).reduce((a, b) => a + b, 0),
+            0,
+          ) >= MOOD_OVER_TIME_MIN_ENTRIES && (
             <section className="analytics-section">
               <h2>Mood over time</h2>
               {(() => {

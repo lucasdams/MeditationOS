@@ -1,6 +1,15 @@
 """Tests for GET /api/v1/analytics."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
+
+
+def _first_of_month(d: date) -> date:
+    return d.replace(day=1)
+
+
+def _prev_month_day(d: date) -> date:
+    """A safe day inside the previous calendar month (the 15th of it)."""
+    return _first_of_month(_first_of_month(d) - timedelta(days=1)).replace(day=15)
 
 
 def _auth(client, email):
@@ -8,12 +17,14 @@ def _auth(client, email):
     client.post("/api/v1/auth/login", json={"email": email, "password": "correct horse"})
 
 
-def _session(client, hour=8, type="mindfulness", calm=None, focus=None):
-    today = datetime.now(UTC).date()
+def _session(
+    client, hour=8, type="mindfulness", calm=None, focus=None, on=None, seconds=600
+):
+    day = on or datetime.now(UTC).date()
     body = {
         "type": type,
-        "duration_seconds": 600,
-        "occurred_at": f"{today.isoformat()}T{hour:02d}:00:00",
+        "duration_seconds": seconds,
+        "occurred_at": f"{day.isoformat()}T{hour:02d}:00:00",
     }
     if calm is not None:
         body["calm"] = calm
@@ -49,6 +60,19 @@ def test_empty_user(client):
     assert body["moods"] == []
     assert len(body["mood_by_week"]) == 12 and all(w["counts"] == {} for w in body["mood_by_week"])
     assert body["ratings_by_week"] == []
+
+    # Month-vs-month is always present, zero-filled, with correct local-month boundaries.
+    mc = body["monthly_comparison"]
+    today = datetime.now(UTC).date()
+    assert mc["this_month"]["month_start"] == _first_of_month(today).isoformat()
+    assert mc["last_month"]["month_start"] == _prev_month_day(today).replace(day=1).isoformat()
+    for side in ("this_month", "last_month"):
+        assert mc[side]["minutes"] == 0
+        assert mc[side]["sessions"] == 0
+        assert mc[side]["days_practiced"] == 0
+    assert mc["minutes_delta"] == 0
+    assert mc["sessions_delta"] == 0
+    assert mc["days_practiced_delta"] == 0
 
 
 def test_aggregates(client):
@@ -135,3 +159,72 @@ def test_user_scoped(client):
     _session(client)
     _auth(client, "otherA@example.com")
     assert client.get("/api/v1/analytics").json()["total_sessions"] == 0
+
+
+# --- Month-vs-month report ------------------------------------------------------
+
+
+def test_monthly_comparison_counts_and_delta(client):
+    """This-month vs last-month totals and a signed delta (▲/▼ vs last month)."""
+    _auth(client, "an_month@example.com")
+    today = datetime.now(UTC).date()
+    last = _prev_month_day(today)
+
+    # This month: two sessions on two distinct days, 10 + 10 minutes.
+    _session(client, on=today, seconds=600)
+    _session(client, on=_first_of_month(today), seconds=600)  # the 1st — a different day
+    # Last month: one 10-minute session on one day.
+    _session(client, on=last, seconds=600)
+
+    mc = client.get("/api/v1/analytics").json()["monthly_comparison"]
+    assert mc["this_month"]["minutes"] == 20
+    assert mc["this_month"]["sessions"] == 2
+    assert mc["this_month"]["days_practiced"] == 2
+    assert mc["last_month"]["minutes"] == 10
+    assert mc["last_month"]["sessions"] == 1
+    assert mc["last_month"]["days_practiced"] == 1
+    # Deltas are this − last (positive ⇒ more than last month).
+    assert mc["minutes_delta"] == 10
+    assert mc["sessions_delta"] == 1
+    assert mc["days_practiced_delta"] == 1
+
+
+def test_monthly_comparison_negative_delta(client):
+    """A quieter month than the last reads as a negative (▼) delta."""
+    _auth(client, "an_month_down@example.com")
+    today = datetime.now(UTC).date()
+    last = _prev_month_day(today)
+
+    _session(client, on=today, seconds=600)  # this month: 10 min
+    _session(client, on=last, seconds=600)
+    _session(client, on=last.replace(day=16), seconds=600)  # last month: 20 min, 2 days
+
+    mc = client.get("/api/v1/analytics").json()["monthly_comparison"]
+    assert mc["this_month"]["minutes"] == 10
+    assert mc["last_month"]["minutes"] == 20
+    assert mc["minutes_delta"] == -10
+    assert mc["days_practiced_delta"] == -1
+
+
+def test_monthly_comparison_excludes_older_months(client):
+    """Sessions older than last month don't leak into either bucket."""
+    _auth(client, "an_month_old@example.com")
+    today = datetime.now(UTC).date()
+    # Two months ago, mid-month — outside both this-month and last-month windows.
+    two_months_ago = _first_of_month(_prev_month_day(today)).replace(day=1)
+    older = _first_of_month(two_months_ago - timedelta(days=1)).replace(day=15)
+    _session(client, on=older, seconds=600)
+
+    mc = client.get("/api/v1/analytics").json()["monthly_comparison"]
+    assert mc["this_month"]["sessions"] == 0
+    assert mc["last_month"]["sessions"] == 0
+
+
+def test_monthly_comparison_user_scoped(client):
+    """One user's sessions never count toward another's monthly comparison."""
+    _auth(client, "an_month_owner@example.com")
+    _session(client, on=datetime.now(UTC).date(), seconds=600)
+    _auth(client, "an_month_other@example.com")
+    mc = client.get("/api/v1/analytics").json()["monthly_comparison"]
+    assert mc["this_month"]["sessions"] == 0
+    assert mc["minutes_delta"] == 0
