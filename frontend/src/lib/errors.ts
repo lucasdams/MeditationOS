@@ -11,7 +11,7 @@
 const NETWORK_MESSAGE =
   "Can't reach the server — check your connection and try again."
 const SERVER_MESSAGE =
-  'Something went wrong on our end. Please try again in a moment.'
+  'Something stumbled on our end. Give it a moment and try again.'
 
 // True when the error means the request never reached the server (offline / DNS /
 // connection refused). The browser throws a TypeError for these; the message text

@@ -74,7 +74,7 @@ export default function GoalsPage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (!ignored?.()) setLoadError(messageForError(err, 'Could not load your goals.'))
+        if (!ignored?.()) setLoadError(messageForError(err, "Couldn't load your goals."))
       })
       .finally(() => {
         if (!ignored?.()) setRetrying(false)
@@ -114,10 +114,10 @@ export default function GoalsPage() {
         ...(isCustom ? { label: trimmedLabel } : {}),
       })
       if (view === 'active') setGoals((prev) => [created, ...(prev ?? [])])
-      showToast('Goal created.')
+      showToast('Habit set. Now just keep showing up.')
       if (isCustom) setLabel('')
     } catch {
-      setError('Could not create that goal.')
+      setError("Couldn't create that goal.")
     } finally {
       setSubmitting(false)
     }
@@ -130,9 +130,9 @@ export default function GoalsPage() {
         ? await goalService.undoCheckIn(goal.id)
         : await goalService.checkIn(goal.id)
       setGoals((prev) => prev?.map((g) => (g.id === updated.id ? updated : g)) ?? null)
-      showToast(updated.checked_in_today ? 'Marked done today.' : 'Check-in undone.')
+      showToast(updated.checked_in_today ? 'Done for today. ✓' : 'Undone — no harm.')
     } catch {
-      setActionError('Could not update that check-in.')
+      setActionError("Couldn't update that check-in.")
     }
   }
 
@@ -141,9 +141,9 @@ export default function GoalsPage() {
     try {
       await goalService.setStatus(id, status)
       setGoals((prev) => prev?.filter((g) => g.id !== id) ?? null)
-      showToast(status === 'archived' ? 'Goal archived.' : 'Goal reactivated.')
+      showToast(status === 'archived' ? 'Tucked away.' : 'Back in rotation.')
     } catch {
-      setActionError('Could not update that goal.')
+      setActionError("Couldn't update that goal.")
     }
   }
 
@@ -152,7 +152,7 @@ export default function GoalsPage() {
     setList: setGoals,
     getId: (g) => g.id,
     remove: (id) => goalService.remove(id),
-    messages: { success: 'Goal deleted.', error: 'Could not delete that goal.' },
+    messages: { success: 'Goal deleted.', error: "Couldn't delete that goal." },
     onStart: () => setActionError(null),
   })
 
@@ -239,7 +239,7 @@ export default function GoalsPage() {
         {goals && goals.length === 0 && (
           <EmptyState>
             {view === 'active'
-              ? 'No active goals yet. Pick an activity and how often to build a habit.'
+              ? 'No habits yet. Pick one and a rhythm — small and repeatable beats grand.'
               : 'No archived goals.'}
           </EmptyState>
         )}

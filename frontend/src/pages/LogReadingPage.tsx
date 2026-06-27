@@ -26,7 +26,7 @@ export default function LogReadingPage() {
         intro="A baseline measure, taken while calm and still."
         inline
         onDone={() => {
-          showToast('Reading saved.')
+          showToast('Noted — your heart, on the record.')
           navigate('/analytics')
         }}
       />

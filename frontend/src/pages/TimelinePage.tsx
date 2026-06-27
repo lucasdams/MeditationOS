@@ -124,7 +124,7 @@ export default function TimelinePage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (!ignored?.()) setLoadError(messageForError(err, 'Could not load your timeline.'))
+        if (!ignored?.()) setLoadError(messageForError(err, "Couldn't load your timeline."))
       })
       .finally(() => setRetrying(false))
   }
@@ -203,9 +203,9 @@ export default function TimelinePage() {
             .sort(sortByWhenDesc) ?? null,
       )
       setEditingId(null)
-      showToast('Session updated.')
+      showToast('Updated.')
     } catch {
-      setError('Could not update that session.')
+      setError("Couldn't update that session.")
     } finally {
       setSavingEdit(false)
     }
@@ -218,7 +218,7 @@ export default function TimelinePage() {
     setList: setItems,
     getId: (it) => it.id,
     remove: (id) => sessionService.remove(id),
-    messages: { success: 'Session deleted.', error: 'Could not delete that session.' },
+    messages: { success: 'Session deleted.', error: "Couldn't delete that session." },
     onStart: () => {
       setMenuId(null)
       setError(null)
@@ -230,7 +230,7 @@ export default function TimelinePage() {
     setList: setItems,
     getId: (it) => it.id,
     remove: (id) => moodLogService.remove(id),
-    messages: { success: 'Mood check-in removed.', error: 'Could not remove that check-in.' },
+    messages: { success: 'Mood check-in removed.', error: "Couldn't remove that check-in." },
     onStart: () => {
       setMenuId(null)
       setError(null)
@@ -254,9 +254,9 @@ export default function TimelinePage() {
       a.download = 'meditation-sessions.csv'
       a.click()
       URL.revokeObjectURL(url)
-      showToast('Sessions exported.')
+      showToast("Exported — it's on your device.")
     } catch {
-      setError('Could not export your sessions.')
+      setError("Couldn't export your sessions.")
     } finally {
       setExporting(false)
     }
@@ -281,9 +281,9 @@ export default function TimelinePage() {
 
       {items && items.length === 0 && (
         <EmptyState>
-          Nothing logged yet. <Link to="/meditate">Meditate</Link>,{' '}
-          <Link to="/journal">journal</Link>, or <Link to="/gratitude">add a gratitude</Link> to
-          begin.
+          Nothing here yet — your first <Link to="/meditate">sit</Link>,{' '}
+          <Link to="/journal">note</Link>, or <Link to="/gratitude">gratitude</Link> starts the
+          story.
         </EmptyState>
       )}
 

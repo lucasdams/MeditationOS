@@ -77,7 +77,7 @@ export default function BiometricCapture({
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? 'Could not save the reading. Please try again.'
+          ? "Couldn't save the reading. Try again."
           : messageForError(err),
       )
       setSaving(false)

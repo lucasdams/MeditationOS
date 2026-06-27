@@ -238,7 +238,7 @@ export default function SettingsPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      setDataError('Could not export your data. Please try again.')
+      setDataError("Couldn't export your data. Try again.")
     } finally {
       setExporting(false)
     }
@@ -252,7 +252,7 @@ export default function SettingsPage() {
       await logout() // clears the (already-cleared) session + local user state
       navigate('/login')
     } catch {
-      setDataError('Could not delete your account. Please try again.')
+      setDataError("Couldn't delete your account. Try again.")
       setDeleting(false)
     }
   }

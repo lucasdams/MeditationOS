@@ -123,7 +123,7 @@ describe('AdminPage', () => {
     metrics.mockRejectedValue(new Error('boom'))
     renderPage()
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(/could not load admin metrics/i),
+      expect(screen.getByRole('alert')).toHaveTextContent(/couldn't load admin metrics/i),
     )
   })
 

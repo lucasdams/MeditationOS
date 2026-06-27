@@ -117,7 +117,7 @@ export default function GratitudePage() {
     setList: setEntries,
     getId: (e) => e.id,
     remove: (id) => gratitudeService.remove(id),
-    messages: { success: 'Entry deleted.', error: 'Could not delete that entry.' },
+    messages: { success: 'Entry deleted.', error: "Couldn't delete that entry." },
     onStart: () => setError(null),
   })
 
@@ -131,7 +131,7 @@ export default function GratitudePage() {
         setLoadError(null)
       })
       .catch((err) =>
-        setLoadError(messageForError(err, 'Could not load your gratitude journal.')),
+        setLoadError(messageForError(err, "Couldn't load your gratitude journal.")),
       )
       .finally(() => setRetrying(false))
   }
@@ -159,7 +159,7 @@ export default function GratitudePage() {
       })
       setHasMore(rows.length === GRAT_PAGE)
     } catch {
-      setError('Could not load more entries.')
+      setError("Couldn't load more entries.")
     } finally {
       setLoadingMore(false)
     }
@@ -219,7 +219,7 @@ export default function GratitudePage() {
       setText('')
       setOptions([])
     } catch {
-      setError('Could not save. Please try again.')
+      setError("Couldn't save. Try again.")
     } finally {
       setSaving(false)
     }
@@ -328,7 +328,7 @@ export default function GratitudePage() {
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         {!entries && !loadError && <Loading />}
         {entries && entries.length === 0 && (
-          <EmptyState>No entries yet — start with one above.</EmptyState>
+          <EmptyState>Nothing noted yet — name one small good thing above.</EmptyState>
         )}
         {entries && entries.length > 0 && (
           <ul className="journal-list grat-log">

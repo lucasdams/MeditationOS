@@ -116,7 +116,7 @@ export default function LogSessionPage() {
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? 'Could not save the session. Please try again.'
+          ? "Couldn't save the session. Try again."
           : messageForError(err),
       )
       setSubmitting(false)

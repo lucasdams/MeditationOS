@@ -32,7 +32,7 @@ export default function PushToggle() {
         setMsg('Push notifications are on for this device.')
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not change push notifications.')
+      setErr(e instanceof Error ? e.message : "Couldn't change push notifications.")
     } finally {
       setBusy(false)
     }

@@ -17,7 +17,7 @@ export default function GuestButton({ onError }: { onError: (msg: string) => voi
       await refresh()
       navigate('/')
     } catch {
-      onError('Could not start a guest session. Please try again.')
+      onError("Couldn't start a guest session. Try again.")
       setLoading(false)
     }
   }

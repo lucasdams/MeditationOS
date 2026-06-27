@@ -69,7 +69,7 @@ export default function SpiritChoosePage() {
         setSpirit(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, 'Could not reach your spirit.')))
+      .catch((err) => setError(messageForError(err, "Couldn't reach your spirit.")))
       .finally(() => setRetrying(false))
     spiritService
       .preview()
@@ -93,7 +93,7 @@ export default function SpiritChoosePage() {
       showToast(`Your ${DOSHA[path].name} spirit awakens. ${DOSHA[path].glyph}`)
       navigate('/spirit')
     } catch {
-      showToast('Could not choose that creature — please try again.', 'error')
+      showToast("Couldn't choose that creature — please try again.", 'error')
     } finally {
       // Clear the awakening state even on success, so the button is never left stuck mid-flight.
       setBusy(null)

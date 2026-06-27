@@ -3831,7 +3831,7 @@ export default function Spirit({
         setFetched(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, 'Could not reach your spirit.')))
+      .catch((err) => setError(messageForError(err, "Couldn't reach your spirit.")))
       .finally(() => {
         setRetrying(false)
         setLoading(false)
