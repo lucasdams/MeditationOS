@@ -120,6 +120,7 @@ class SpiritSlotOption(BaseModel):
     equipped: bool  # this option is the one currently shown in its slot
     unlockable: bool  # not owned AND path/level/tier prereqs met (affordability is separate)
     available: bool  # offered to the spirit's chosen path (per-path exclusivity; True = universal)
+    exclusive: bool  # the chosen creature's OWN per-path SIGNATURE capstone (vs a universal option)
     need: str  # the need this option FAVOURS (ADR-0026): nourished | rested | joyful
 
 

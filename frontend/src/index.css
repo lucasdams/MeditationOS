@@ -3948,6 +3948,101 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
+/* ── Capstone / prize nodes — the top of each tree, made to feel significant ────────────────
+   SIGNATURE = the creature's OWN per-path capstone; LEGENDARY = a universal tier-4 piece. Both
+   get a lit frame + a slow shimmer sweep + a glow; legendary adds a golden, pulsing treatment.
+   Placed AFTER the node-state rules so the prize frame wins. Reduced-motion drops the motion. */
+.spirit-node-prize {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0.05rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.spirit-node-prize--signature {
+  color: #fff;
+  background: var(--slot-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--slot-accent) 60%, transparent);
+}
+.spirit-node-prize--legendary {
+  color: #3a2606;
+  background: linear-gradient(135deg, #fde68a, #f59e0b, #fcd34d);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+}
+
+.spirit-node--signature {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--slot-accent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--slot-accent) 16%, var(--bg-surface)),
+    var(--bg-surface) 62%
+  );
+  box-shadow:
+    0 2px 10px var(--shadow-card),
+    0 0 16px color-mix(in srgb, var(--slot-accent) 30%, transparent);
+}
+
+.spirit-node--legendary {
+  position: relative;
+  overflow: hidden;
+  border-color: #f59e0b;
+  background: linear-gradient(160deg, rgba(245, 158, 11, 0.18), var(--bg-surface) 60%);
+  box-shadow:
+    0 2px 12px var(--shadow-card),
+    0 0 18px rgba(245, 158, 11, 0.35);
+  animation: capstone-pulse 2.6s ease-in-out infinite;
+}
+@keyframes capstone-pulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 12px var(--shadow-card), 0 0 16px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 12px var(--shadow-card), 0 0 30px rgba(245, 158, 11, 0.6);
+  }
+}
+
+/* A diagonal light band that drifts across — the "shimmer" on both prize types. */
+.spirit-node--signature::after,
+.spirit-node--legendary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.16) 50%, transparent 64%);
+  background-size: 250% 100%;
+  background-position: 200% 0;
+  animation: capstone-shimmer 3.6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes capstone-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  55%,
+  100% {
+    background-position: -130% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spirit-node--legendary {
+    animation: none;
+  }
+  .spirit-node--signature::after,
+  .spirit-node--legendary::after {
+    animation: none;
+    background: none;
+  }
+}
+
 /* Honour reduced-motion: the node hover lift + the node/button colour transitions are subtle
    polish, so drop them entirely when the OS asks for less motion. */
 @media (prefers-reduced-motion: reduce) {

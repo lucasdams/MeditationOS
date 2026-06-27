@@ -440,6 +440,13 @@ export default function SpiritPage() {
         const renderNode = (slot: string, opt: SpiritSlotOption) => {
           const state = nodeState(opt)
           const label = optionLabel(opt.option)
+          // A PRIZE piece — the path's own SIGNATURE capstone, or a universal LEGENDARY (tier 4).
+          // These get a flashier, animated treatment so the top of the climb feels significant.
+          const prize: 'signature' | 'legendary' | null = opt.exclusive
+            ? 'signature'
+            : opt.tier >= 4
+              ? 'legendary'
+              : null
           const canPreview = state !== 'equipped'
           const showPreview = () =>
             canPreview && setPreview({ slot, option: opt.option })
@@ -459,12 +466,17 @@ export default function SpiritPage() {
             // button. `previewHandlers` is {} for the equipped node, so the worn cell never previews.
             <div
               key={opt.option}
-              className={`spirit-node spirit-node--${state}`}
+              className={`spirit-node spirit-node--${state}${prize ? ` spirit-node--${prize}` : ''}`}
               data-state={state}
               {...previewHandlers}
             >
               <span className="spirit-node-head">
                 <span className="spirit-node-label">{label}</span>
+                {prize && (
+                  <span className={`spirit-node-prize spirit-node-prize--${prize}`}>
+                    {prize === 'legendary' ? '★ Legendary' : '✦ Signature'}
+                  </span>
+                )}
                 <NeedTag need={opt.need} />
               </span>
 
