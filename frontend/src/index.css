@@ -278,7 +278,7 @@
   --heatmap-cell-edge: rgba(255, 255, 255, 0.12);
 
   /* Shadows — lighter to avoid fully opaque blobs on dark */
-  --shadow-card: rgba(0, 0, 0, 0.25);
+  --shadow-card: rgba(0, 0, 0, 0.42);
   --shadow-modal: rgba(0, 0, 0, 0.5);
   --shadow-nav: rgba(0, 0, 0, 0.35);
   --overlay: rgba(0, 0, 0, 0.6);
@@ -295,11 +295,10 @@
   --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
   --glow-accent-hover: 0 8px 22px rgba(129, 140, 248, 0.28),
     0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
-  --ambient-glow: radial-gradient(
-    900px 600px at 50% -8%,
-    rgba(129, 140, 248, 0.07),
-    transparent 70%
-  );
+  --ambient-glow:
+    radial-gradient(1000px 680px at 50% -10%, rgba(129, 140, 248, 0.18), transparent 66%),
+    radial-gradient(760px 520px at 85% 4%, rgba(167, 139, 250, 0.12), transparent 60%),
+    radial-gradient(900px 700px at 12% 22%, rgba(56, 189, 248, 0.07), transparent 62%);
 }
 
 /* System dark — applied when user hasn't set an explicit preference */
@@ -383,7 +382,7 @@
     --heatmap-cell-active: #818cf8;
     --heatmap-cell-quests: #34d399;
     --heatmap-cell-edge: rgba(255, 255, 255, 0.12);
-    --shadow-card: rgba(0, 0, 0, 0.25);
+    --shadow-card: rgba(0, 0, 0, 0.42);
     --shadow-modal: rgba(0, 0, 0, 0.5);
     --shadow-nav: rgba(0, 0, 0, 0.35);
     --overlay: rgba(0, 0, 0, 0.6);
@@ -2301,10 +2300,19 @@ textarea:focus-visible,
   gap: 0.85rem 1.25rem;
   margin: 0 0 1.25rem;
   padding: 0.85rem 1rem;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border);
+  /* A faint accent gradient + an accent-tinted edge + a soft outer glow so the stat HUD reads as
+     a game header, not a flat panel. */
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 13%, var(--bg-surface-raised)),
+    var(--bg-surface-raised) 62%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
   border-radius: 16px;
-  box-shadow: var(--panel-shadow), var(--panel-hairline);
+  box-shadow:
+    var(--panel-shadow),
+    var(--panel-hairline),
+    0 0 26px color-mix(in srgb, var(--accent) 13%, transparent);
 }
 
 /* Level badge + XP bar take the lead; pills tuck to the right. The level group can grow
@@ -2434,6 +2442,9 @@ textarea:focus-visible,
   background: linear-gradient(135deg, var(--level-card-from), var(--level-card-to));
   border: 1px solid var(--level-card-border);
   border-radius: 12px;
+  box-shadow:
+    0 4px 16px var(--shadow-card),
+    0 0 22px color-mix(in srgb, var(--level-card-border) 32%, transparent);
 }
 
 .level-badge {
@@ -2705,7 +2716,13 @@ textarea:focus-visible,
   height: 100%;
   min-width: 4px;
   border-radius: 999px;
-  background: var(--need-accent, var(--border-strong));
+  /* A lit gradient + a soft glow in the need's hue, so the meters read as charged, not flat. */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--need-accent, var(--border-strong)) 65%, #fff),
+    var(--need-accent, var(--border-strong))
+  );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--need-accent, var(--border-strong)) 55%, transparent);
   transition: width 0.45s ease;
 }
 
@@ -4889,10 +4906,18 @@ textarea:focus-visible,
   font-weight: 600;
   color: var(--text-secondary);
   text-decoration: none;
-  background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--activity-accent) 35%, var(--border));
+  /* A faint wash of the mission's own feature colour + a soft glow in that hue, so each card
+     reads as a lit, identity-coloured tile rather than a flat panel. */
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--activity-accent) 13%, var(--bg-surface)),
+    var(--bg-surface) 66%
+  );
+  border: 1px solid color-mix(in srgb, var(--activity-accent) 42%, var(--border));
   border-radius: 14px;
-  box-shadow: 0 1px 2px var(--shadow-card);
+  box-shadow:
+    0 2px 8px var(--shadow-card),
+    0 0 14px color-mix(in srgb, var(--activity-accent) 13%, transparent);
   overflow: hidden;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
     transform 0.12s ease, box-shadow 0.12s ease;
