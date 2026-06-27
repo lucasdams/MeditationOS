@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { SpiritPreview, SpiritSlotPreview, SpiritState } from '../types'
 
@@ -128,27 +128,29 @@ describe('SpiritChoosePage', () => {
     expect(screen.queryByRole('button', { name: /Choose Kapha/ })).toBeNull()
   })
 
-  it('fetches the preview and shows each creature its exclusive capstones on the cards', async () => {
+  it('shows each creature its favoured practice + hoverable look chips', async () => {
     get.mockResolvedValue(spiritWith({ path: null }))
     renderPage()
     await screen.findByRole('button', { name: /Choose Kapha/ })
+    // The real basis for the choice: each creature shows its favoured practice + a "try a look" row.
+    expect(screen.getAllByText(/Favours/)).toHaveLength(3)
+    expect(screen.getAllByText(/Hover to try a look/)).toHaveLength(3)
     await waitFor(() => expect(preview).toHaveBeenCalled())
-    // Each creature's card shows its own signature capstone label (one per slot).
+    // The try-a-look chips are each creature's signature pieces (hovering morphs that card's art).
     await screen.findByText('Jade tortoise') // stillness / Kapha
     expect(screen.getByText('Nine-tail fox')).toBeInTheDocument() // breath / Pitta
     expect(screen.getByText('Paper crane')).toBeInTheDocument() // heart / Vata
   })
 
-  it('shows the selected creature its full preview tree on the name step', async () => {
+  it('shows the chosen creature and its favoured-practice reason on the name step', async () => {
     get.mockResolvedValue(spiritWith({ path: null }))
     renderPage()
     fireEvent.click(await screen.findByRole('button', { name: /Choose Pitta/ }))
-    // The name step shows the selected creature's tree heading + its capstone, flagged Signature.
-    const tree = await screen.findByLabelText('Cosmetic tree preview')
-    expect(within(tree).getByText('Nine-tail fox')).toBeInTheDocument()
-    expect(within(tree).getByText('Signature')).toBeInTheDocument()
-    // It also shows a universal (non-exclusive) option from the tree.
-    expect(within(tree).getByText('Firefly')).toBeInTheDocument()
+    // The name step focuses the choice: a name field + the creature's favoured practice and the
+    // plain-language reason it suits it — no repetitive "grows into" tree.
+    expect(await screen.findByPlaceholderText(/Ember/)).toBeInTheDocument()
+    expect(screen.getByText(/Favours/)).toBeInTheDocument()
+    expect(screen.getByText(/cooling, reflective gratitude/)).toBeInTheDocument() // Pitta's "why"
   })
 
   it('still works when the preview fetch fails (non-blocking enhancement)', async () => {

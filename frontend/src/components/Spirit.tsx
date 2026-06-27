@@ -75,7 +75,17 @@ export const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
 // provides it.
 export const DOSHA: Record<
   SpiritPath,
-  { name: string; element: string; vibe: string; practice: string; balance: string; glyph: string }
+  {
+    name: string
+    element: string
+    vibe: string
+    practice: string
+    balance: string
+    glyph: string
+    // Why its favoured practice helps — the balance-by-opposites rationale, in plain language, for
+    // the choose page (so the choice is about a real practice fit, not a cosmetic preview).
+    why: string
+  }
 > = {
   stillness: {
     name: 'Kapha',
@@ -84,6 +94,7 @@ export const DOSHA: Record<
     practice: 'breathwork',
     balance: 'energizing',
     glyph: '🪷',
+    why: 'Earth-and-water Kapha can grow heavy and sluggish — energizing breathwork gets its energy moving and keeps it bright.',
   },
   breath: {
     name: 'Pitta',
@@ -92,6 +103,7 @@ export const DOSHA: Record<
     practice: 'gratitude & journaling',
     balance: 'cooling',
     glyph: '🔥',
+    why: 'Fiery Pitta runs hot and sharp — cooling, reflective gratitude & journaling soothes it so it doesn’t burn out.',
   },
   heart: {
     name: 'Vata',
@@ -100,6 +112,7 @@ export const DOSHA: Record<
     practice: 'meditation',
     balance: 'grounding',
     glyph: '🍃',
+    why: 'Airy Vata is light and easily scattered — grounding meditation settles and steadies it.',
   },
 }
 
