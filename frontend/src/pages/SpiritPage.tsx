@@ -176,7 +176,7 @@ export default function SpiritPage() {
         setSpirit(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, 'Could not reach your spirit.')))
+      .catch((err) => setError(messageForError(err, "Couldn't reach your spirit.")))
       .finally(() => setRetrying(false))
   }
 
@@ -198,7 +198,7 @@ export default function SpiritPage() {
       setConfirmUnlock(null)
       showToast(`${optionLabel(option)} unlocked — your spirit is delighted ✨`)
     } catch {
-      showToast('Could not unlock that yet — earn more coins by practicing.', 'error')
+      showToast('Not unlocked yet — practice earns the coins for it.', 'error')
     } finally {
       setBusy(null)
     }
@@ -213,10 +213,10 @@ export default function SpiritPage() {
       const next = await spiritService.equip({ slot, option })
       setSpirit(next)
       showToast(
-        option ? `${optionLabel(option)} equipped.` : `${slotLabel(slot)} cleared.`,
+        option ? `${optionLabel(option)} on.` : `${slotLabel(slot)} set aside.`,
       )
     } catch {
-      showToast('Could not change that right now.', 'error')
+      showToast("Couldn't change that right now.", 'error')
     } finally {
       setBusy(null)
     }
@@ -232,9 +232,9 @@ export default function SpiritPage() {
     try {
       setSpirit(await spiritService.resetName({ name: next }))
       setResetNameOpen(false)
-      showToast('Name changed.')
+      showToast('Renamed. It answers to that now.')
     } catch {
-      showToast('Could not change the name — you may need more coins.', 'error')
+      showToast("Couldn't change the name — you may need more coins.", 'error')
     } finally {
       setBusy(null)
     }
@@ -267,7 +267,7 @@ export default function SpiritPage() {
       const copy = NEED_COPY[need]
       showToast(`${copy.icon} ${copy.label} topped up — practice fills it fully.`)
     } catch {
-      showToast('Could not tend your spirit right now.', 'error')
+      showToast("Couldn't tend it just now — try once more.", 'error')
     } finally {
       setBusy(null)
     }
@@ -283,7 +283,7 @@ export default function SpiritPage() {
       const next = await spiritService.awaken()
       setSpirit(next)
     } catch {
-      showToast('Could not awaken a new spark right now.', 'error')
+      showToast("Couldn't awaken a new spark right now.", 'error')
     } finally {
       setBusy(null)
     }
@@ -700,7 +700,7 @@ export default function SpiritPage() {
                 </p>
               </header>
               {spirit.collection.length === 0 ? (
-                <p className="muted">None yet.</p>
+                <p className="muted">Empty for now — past companions rest here.</p>
               ) : (
                 <ul className="spirit-collection-grid">
                   {spirit.collection.map((r) => {

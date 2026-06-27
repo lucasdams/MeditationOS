@@ -258,7 +258,7 @@ export default function TratakaPage() {
         client_token: tokenRef.current ?? undefined,
       })
     } catch (err) {
-      setError(err instanceof ApiError ? 'Could not save the session.' : messageForError(err))
+      setError(err instanceof ApiError ? "Couldn't save the session." : messageForError(err))
       setSaving(false)
       return
     }
@@ -290,9 +290,9 @@ export default function TratakaPage() {
       await sessionService.create(restorable.payload)
       clearDraft(DRAFT_PAGE)
       setRestorable(null)
-      showToast('Session saved.')
+      showToast('That sit is yours.')
     } catch {
-      setError('Could not save that session.')
+      setError("Couldn't save that session.")
     } finally {
       setSaving(false)
     }
@@ -326,7 +326,7 @@ export default function TratakaPage() {
       navigate('/')
     } catch (err) {
       setReflectError(
-        err instanceof ApiError ? 'Could not save reflection.' : messageForError(err),
+        err instanceof ApiError ? "Couldn't save reflection." : messageForError(err),
       )
       setReflectSaving(false)
     }
@@ -528,7 +528,7 @@ export default function TratakaPage() {
 
           <div className="biometric-actions">
             <button type="button" onClick={saveReflection} disabled={reflectSaving}>
-              {reflectSaving ? 'Saving…' : 'Save'}
+              {reflectSaving ? 'Saving…' : 'Keep it'}
             </button>
             <button
               type="button"

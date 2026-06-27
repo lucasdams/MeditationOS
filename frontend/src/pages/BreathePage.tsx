@@ -663,7 +663,7 @@ export default function BreathePage() {
       const bd = buildXpBreakdown(before, after, '🫁 Breathing')
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
-      setError(err instanceof ApiError ? 'Could not save the session.' : messageForError(err))
+      setError(err instanceof ApiError ? "Couldn't save the session." : messageForError(err))
       setSaving(false)
     }
   }
@@ -689,9 +689,9 @@ export default function BreathePage() {
       await sessionService.create(restorable.payload)
       clearDraft(DRAFT_PAGE)
       setRestorable(null)
-      showToast('Session saved.')
+      showToast('That breath is yours. 🌬️')
     } catch {
-      setError('Could not save that session.')
+      setError("Couldn't save that session.")
     } finally {
       setSaving(false)
     }
@@ -726,7 +726,7 @@ export default function BreathePage() {
       advanceToReading()
     } catch (err) {
       setReflectError(
-        err instanceof ApiError ? 'Could not save reflection.' : messageForError(err),
+        err instanceof ApiError ? "Couldn't save reflection." : messageForError(err),
       )
       setReflectSaving(false)
     }
@@ -1092,7 +1092,7 @@ export default function BreathePage() {
           onDone={(reading) => {
             if (reading) preReadingIdRef.current = reading.id
             setShowPreReading(false)
-            showToast('Reading saved.')
+            showToast('Noted — your heart, on the record.')
           }}
           onSkip={() => setShowPreReading(false)}
         />
@@ -1150,7 +1150,7 @@ export default function BreathePage() {
 
           <div className="biometric-actions">
             <button type="button" onClick={saveReflection} disabled={reflectSaving}>
-              {reflectSaving ? 'Saving…' : 'Save'}
+              {reflectSaving ? 'Saving…' : 'Keep it'}
             </button>
             <button
               type="button"
@@ -1171,7 +1171,7 @@ export default function BreathePage() {
           title="Log a quick reading?"
           intro="Optional: your heart rate now, to see how a breathing sit settles you."
           onDone={() => {
-            showToast('Reading saved.')
+            showToast('Noted — your heart, on the record.')
             navigate('/')
           }}
           onSkip={() => navigate('/')}

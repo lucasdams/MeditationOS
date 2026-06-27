@@ -36,10 +36,10 @@ export default function MoodCheckin({ heading = 'How do you feel?', initial = nu
       await moodLogService.create(mood)
       setLogged(mood)
       setJustLogged(true)
-      showToast('Mood logged. 🌱')
+      showToast('Noted. 🌱')
       onLogged?.(mood)
     } catch {
-      showToast('Could not log your mood.', 'error')
+      showToast("Couldn't log that mood — try again.", 'error')
     } finally {
       setSaving(null)
     }

@@ -90,7 +90,7 @@ export default function DashboardPage() {
         setStats(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, 'Could not load your stats.')))
+      .catch((err) => setError(messageForError(err, "Couldn't load your stats.")))
       .finally(() => setRetrying(false))
   }
 

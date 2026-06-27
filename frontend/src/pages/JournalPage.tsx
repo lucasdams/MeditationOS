@@ -152,7 +152,7 @@ export default function JournalPage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (current()) setLoadError(messageForError(err, 'Could not load your journal.'))
+        if (current()) setLoadError(messageForError(err, "Couldn't load your journal."))
       })
       .finally(() => {
         if (current()) setRetrying(false)
@@ -193,7 +193,7 @@ export default function JournalPage() {
       })
       setHasMore(rows.length === PAGE)
     } catch {
-      setError('Could not load more reflections.')
+      setError("Couldn't load more reflections.")
     } finally {
       setLoadingMore(false)
     }
@@ -229,7 +229,7 @@ export default function JournalPage() {
       const bd = buildXpBreakdown(before, after, '📓 Journal entry')
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch {
-      setError('Could not save your reflection.')
+      setError("Couldn't save your reflection.")
     } finally {
       setSubmitting(false)
     }
@@ -259,9 +259,9 @@ export default function JournalPage() {
       })
       setEntries((prev) => prev?.map((j) => (j.id === id ? updated : j)) ?? null)
       cancelEdit()
-      showToast('Reflection updated.')
+      showToast('Updated. Your words, kept.')
     } catch {
-      setError('Could not update that reflection.')
+      setError("Couldn't update that reflection.")
     } finally {
       setSavingEdit(false)
     }
@@ -274,7 +274,7 @@ export default function JournalPage() {
     remove: (id) => journalService.remove(id),
     messages: {
       success: 'Reflection deleted.',
-      error: 'Could not delete that reflection.',
+      error: "Couldn't delete that reflection.",
     },
     onStart: () => setError(null),
   })
@@ -303,8 +303,8 @@ export default function JournalPage() {
         setMemory(null)
         showToast(
           failed
-            ? "Couldn't resurface a memory. Please try again."
-            : 'No past reflections to resurface yet.',
+            ? "Couldn't resurface a memory — try again."
+            : 'Nothing to resurface yet — give it a few entries.',
         )
         return
       }
@@ -530,7 +530,7 @@ export default function JournalPage() {
                 ]
                   .filter(Boolean)
                   .join(' · ')}.`
-              : 'No reflections yet. Write your first one above.'}
+              : 'A blank page, for now. Your first reflection goes up top.'}
           </EmptyState>
         )}
         {entries?.map((j) => {

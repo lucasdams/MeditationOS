@@ -294,7 +294,7 @@ describe('SpiritPage unlock flow (ADR-0027)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Unlock Frost glow for 45 coins/ }))
     const dialog = within(await screen.findByRole('dialog'))
     fireEvent.click(dialog.getByRole('button', { name: /^Unlock$/ }))
-    await waitFor(() => expect(screen.getByText(/Could not unlock that yet/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Not unlocked yet/)).toBeInTheDocument())
   })
 })
 
@@ -314,7 +314,7 @@ describe('SpiritPage equip flow (ADR-0027 — free)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Equip Soft glow/ }))
     await waitFor(() => expect(equip).toHaveBeenCalledWith({ slot: 'aura', option: 'soft' }))
     expect(screen.queryByRole('dialog')).toBeNull()
-    await waitFor(() => expect(screen.getByText(/Soft glow equipped/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Soft glow on\./)).toBeInTheDocument())
   })
 
   it('clears a slot via the equipped option Remove (equip(slot, null))', async () => {
@@ -507,7 +507,7 @@ describe('SpiritPage collection gallery', () => {
 
     renderPage()
 
-    expect(await screen.findByText('None yet.')).toBeInTheDocument()
+    expect(await screen.findByText('Empty for now — past companions rest here.')).toBeInTheDocument()
   })
 })
 

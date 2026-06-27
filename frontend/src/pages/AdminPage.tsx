@@ -44,7 +44,7 @@ function MetricsView() {
     adminService
       .metrics()
       .then((d) => { if (!ignore) setData(d) })
-      .catch(() => { if (!ignore) setError('Could not load admin metrics.') })
+      .catch(() => { if (!ignore) setError("Couldn't load admin metrics.") })
     return () => { ignore = true }
   }, [])
 
@@ -324,7 +324,7 @@ function UsersView({ selfId }: { selfId: string | undefined }) {
       setResults(data.users)
       setTotal(data.total)
     } catch {
-      setError('Could not load users.')
+      setError("Couldn't load users.")
     } finally {
       setLoading(false)
     }
@@ -335,7 +335,7 @@ function UsersView({ selfId }: { selfId: string | undefined }) {
     try {
       setSelected(await adminService.getUser(id))
     } catch {
-      setError('Could not load that user.')
+      setError("Couldn't load that user.")
     }
   }
 
@@ -450,7 +450,7 @@ function AuditView() {
     adminService
       .audit({ limit: 100 })
       .then((d) => { if (!ignore) setEntries(d.entries) })
-      .catch(() => { if (!ignore) setError('Could not load the audit log.') })
+      .catch(() => { if (!ignore) setError("Couldn't load the audit log.") })
     return () => { ignore = true }
   }, [])
 

@@ -226,7 +226,7 @@ describe('BreathePage — post-session reflection', () => {
     )!
     fireEvent.click(chip4)
 
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^keep it$/i }))
     await vi.waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1))
 
     expect(mockUpdate).toHaveBeenCalledWith(

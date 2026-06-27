@@ -54,7 +54,7 @@ export default function SchedulePage() {
     remove: (id) => scheduledSessionService.remove(id),
     messages: {
       success: 'Removed from your schedule.',
-      error: 'Could not remove that session.',
+      error: "Couldn't remove that session.",
     },
     onStart: () => setError(null),
   })
@@ -66,7 +66,7 @@ export default function SchedulePage() {
         setItems(rows)
         setLoadError(null)
       })
-      .catch((err) => setLoadError(messageForError(err, 'Could not load your schedule.')))
+      .catch((err) => setLoadError(messageForError(err, "Couldn't load your schedule.")))
       .finally(() => setRetrying(false))
   }
 
@@ -104,9 +104,9 @@ export default function SchedulePage() {
       const rows = await scheduledSessionService.list()
       setItems(rows)
       setNote('')
-      showToast('Session scheduled.')
+      showToast('On the calendar. See you then.')
     } catch {
-      setError('Could not schedule that session.')
+      setError("Couldn't schedule that session.")
     } finally {
       setSubmitting(false)
     }
@@ -174,7 +174,7 @@ export default function SchedulePage() {
       <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
       {!items && !loadError && <Loading />}
       {items && items.length === 0 && (
-        <EmptyState>Nothing planned yet — schedule your first session above. 🗓️</EmptyState>
+        <EmptyState>Nothing on the horizon — plan your first sit above. 🗓️</EmptyState>
       )}
       {items && items.length > 0 && (
         <ul className="schedule-list">

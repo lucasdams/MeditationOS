@@ -7,7 +7,7 @@ export default function NotFoundPage() {
     <main id="main-content" className="auth-card">
       <AuthBrand />
       <h1>Page not found</h1>
-      <p className="muted">The page you’re looking for doesn’t exist or has moved.</p>
+      <p className="muted">This path leads nowhere — it’s gone or never was.</p>
       <p className="auth-aux">
         <Link to="/">← Back to home</Link>
       </p>

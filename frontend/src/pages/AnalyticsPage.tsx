@@ -197,7 +197,7 @@ function BiometricTrend() {
     return (
       <section className="analytics-section">
         <h2>Heart rate &amp; HRV</h2>
-        <p className="muted">Loading your readings…</p>
+        <p className="muted">Reading the tea leaves…</p>
       </section>
     )
   }
@@ -459,7 +459,7 @@ export default function AnalyticsPage() {
         setData(d)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, 'Could not load your analytics.')))
+      .catch((err) => setError(messageForError(err, "Couldn't load your analytics.")))
       .finally(() => setRetrying(false))
   }
 
@@ -487,7 +487,7 @@ export default function AnalyticsPage() {
       {data && data.total_sessions === 0 && data.moods.length === 0 && (
         <>
           <EmptyState>
-            No practice data yet — practice a little and your trends will appear here.
+            Nothing to chart yet. Practice a few times and your patterns surface here.
           </EmptyState>
           {/* Readings can exist independently of sessions, so still offer the trend. */}
           <BiometricTrend />

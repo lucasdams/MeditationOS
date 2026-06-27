@@ -313,7 +313,7 @@ describe('MeditatePage — post-session reflection', () => {
     fireEvent.click(chip4)
 
     // Submit.
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^keep it$/i }))
     await vi.waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1))
 
     // Must PATCH the already-saved session — not create a new one.
