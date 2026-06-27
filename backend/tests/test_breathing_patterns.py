@@ -53,7 +53,7 @@ def test_create_validates_range(client):
     assert client.post("/api/v1/breathing-patterns", json=bad).status_code == 422
 
 
-def test_create_daily_cap(client, monkeypatch):
+def test_daily_create_cap(client, monkeypatch):
     # Per-user, per-day creation cap (anti-spam) — mirrors sessions/gratitude/journals/goals.
     monkeypatch.setattr(settings, "daily_create_limit", 1)
     _auth(client, "pcap@example.com")

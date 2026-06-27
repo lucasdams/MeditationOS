@@ -236,7 +236,7 @@ export interface GratitudeSuggestions {
   options: string[]
 }
 
-// --- Spirit (docs/design/spirit.md, ADR-0022, ADR-0023) ---------------------------------
+// --- Spirit (docs/design/spirit.md; ADR-0022/0023, 0027 skill tree, 0029 Tamagotchi, 0030 rebirth) ---
 // The Spirit is a single living companion grown from practice. Its state is *maximally
 // computed* on read: only the CHOSEN path, optional name, and owned cosmetics are stored;
 // stage, bond, needs, and coins are all derived. ADR-0023 makes the `path` user-CHOSEN (set
@@ -353,12 +353,12 @@ export interface SpiritState {
   name: string | null // the active spirit's nickname, if set (pre-fills / displays in the UI)
   bond: SpiritBond // level + XP-into-level + XP-for-next
   needs: SpiritNeeds // the three tended needs (nourished / rested / joyful) — survival meters (ADR-0029)
-  condition: SpiritCondition // overall care state = the weakest need; visual-only (ADR-0023)
-  coins: number // level × COINS_PER_LEVEL − Σ cosmetics spent, clamped ≥ 0
+  condition: SpiritCondition // overall care state = the weakest need (= health, ADR-0029)
+  coins: number // lifetime level × COINS_PER_LEVEL − coins_spent (stored spend ledger), clamped ≥ 0
   cosmetics: Record<string, string> // the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
   available: SpiritAvailableSlot[] // the cosmetics skill tree with per-option state
   collection: RetiredSpirit[] // past (retired) spirits, kept forever
-  set_bonus: SpiritSetBonus // signature-set status + harmony lift (ADR-0028); derived/visual-only
+  set_bonus: SpiritSetBonus // signature-set status (ADR-0028; needs effect removed by 0029) — visual
   // ── Tamagotchi survival state (ADR-0029) ── needs decay in real time; neglect can be fatal.
   awakened_at: string // ISO birth moment — anchors lifespan + decay
   ailing: boolean // the weakest need has hit ~0 (health gone) but the spirit hasn't died yet
