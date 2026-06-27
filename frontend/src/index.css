@@ -6990,6 +6990,97 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-muted);
 }
 
+/* --- Spirit-aware practices (ADR-0029) ------------------------------------------------------
+   Each card shows which of the spirit's needs it feeds; the practices that fill its WEAKEST need
+   right now are highlighted. The "needed" accent is a warm amber (distinct from each card's own
+   hue), set on the page so the nudge banner + cards share it. */
+.practices-page {
+  --needed-accent: #d97706;
+}
+:root[data-theme='dark'] .practices-page {
+  --needed-accent: #fbbf24;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .practices-page {
+    --needed-accent: #fbbf24;
+  }
+}
+
+/* The "your spirit needs X" banner — a small live spirit + the nudge. */
+.practices-spirit-nudge {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0 0 1.3rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--needed-accent) 35%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--needed-accent) 7%, var(--bg-surface));
+}
+.practices-spirit-nudge-art {
+  flex: none;
+  width: 4.5rem;
+}
+.practices-spirit-nudge-art .spirit-svg {
+  width: 100%;
+  height: auto;
+}
+.practices-spirit-nudge-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.practices-need-name {
+  white-space: nowrap;
+}
+
+/* The "what it gives your spirit" badges under each card's copy. */
+.practice-card-feeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.practice-feed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.42rem;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.practice-feed-badge--current {
+  background: color-mix(in srgb, var(--needed-accent) 22%, var(--bg-surface));
+  color: var(--text-primary);
+}
+
+/* A practice the spirit needs MOST right now — an amber attention ring + a corner tag. */
+.practice-card--needed {
+  border-color: var(--needed-accent);
+  border-left-color: var(--needed-accent);
+  box-shadow:
+    0 0 0 1px var(--needed-accent),
+    0 4px 14px color-mix(in srgb, var(--needed-accent) 28%, var(--shadow-card));
+}
+.practice-card-needed {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.1rem 0.45rem;
+  border-bottom-left-radius: 10px;
+  background: var(--needed-accent);
+  color: #1a1205;
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  z-index: 1;
+}
+
 /* Dark mode: the deep light fills go muddy on the slate canvas, so swap each card's accent to
    the brighter --card-fill-dark (mirrors the home tiles' light→dark swap). */
 :root[data-theme='dark'] .practice-card {
