@@ -23,6 +23,33 @@ export function getAudioContext(): AudioContext {
   return ctx
 }
 
+// A single shared MASTER BUS that all audible sound routes through (bells, the breathing
+// wash, soundscapes, UI ticks, fanfares) on its way to the speakers. It's a gentle limiter
+// (DynamicsCompressor with a soft knee) so that when sounds OVERLAP — a bell ringing over an
+// ocean scape, a fire's roar plus its crackles — the sum is caught and rounded instead of
+// clipping into a harsh digital edge. Created lazily once; survives for the context's life.
+// Older Safari may lack createDynamicsCompressor — fall back to the raw destination so audio
+// still plays (just unlimited).
+let masterBus: AudioNode | null = null
+export function getMasterBus(): AudioNode {
+  const c = getAudioContext()
+  if (!masterBus) {
+    try {
+      const limiter = c.createDynamicsCompressor()
+      limiter.threshold.value = -3 // start easing peaks just below 0 dBFS
+      limiter.knee.value = 6 // soft knee → transparent on quiet passages
+      limiter.ratio.value = 12 // firm enough to catch transients (a struck bell)
+      limiter.attack.value = 0.003 // grab fast peaks
+      limiter.release.value = 0.25 // let go gently, no pumping
+      limiter.connect(c.destination)
+      masterBus = limiter
+    } catch {
+      masterBus = c.destination // no compressor available — play unlimited rather than silent
+    }
+  }
+  return masterBus
+}
+
 // A silent, looping keep-alive source. Once started (from a gesture) it keeps the
 // context "running" for good, so sounds scheduled later from timers/async — interval
 // bells, the breathing wash, chimes, the level-up fanfare, the XP reward — aren't

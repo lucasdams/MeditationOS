@@ -1,7 +1,7 @@
 // Small one-off sound effects (Web Audio). Gracefully no-ops if audio is blocked.
 // Uses the shared, gesture-unlocked context (see audioContext.ts).
 
-import { getAudioContext } from './audioContext'
+import { getAudioContext, getMasterBus } from './audioContext'
 
 // Interface-sounds preference (the stepper tick, the reward / level-up fanfare, and
 // any future UI ticks). Kept as a module-level flag, read once from localStorage at
@@ -65,7 +65,7 @@ export function playClick(volume = 0.5): void {
     g.gain.setValueAtTime(0, t)
     g.gain.linearRampToValueAtTime(peak, t + 0.005) // quick attack
     g.gain.linearRampToValueAtTime(0, t + 0.05) // short decay
-    osc.connect(g).connect(ctx.destination)
+    osc.connect(g).connect(getMasterBus())
     osc.start(t)
     osc.stop(t + 0.06)
   } catch {
@@ -176,19 +176,25 @@ export function playBell(volume = 0.6, sound: BellSound = 'bowl'): void {
     const t = ctx.currentTime
     const spec = BELLS[sound] ?? BELLS.bowl
     const vol = Math.max(0, Math.min(1, volume))
+    const fundamental = spec.partials[0].freq
     spec.partials.forEach(({ freq, gain }) => {
       const osc = ctx.createOscillator()
       const g = ctx.createGain()
       osc.type = 'sine'
       osc.frequency.value = freq
       const peak = spec.peak * gain * vol
-      // Linear ramps (Safari mishandles exponential ramps from near-zero values).
+      // A real bowl decays EXPONENTIALLY (a quick drop into a long, soft tail), and its
+      // higher partials fade faster than the fundamental — so the timbre warms as it rings.
+      // `setTargetAtTime` gives that natural curve; the old linear fade sounded mechanical.
+      // (The soft attack still uses a linear ramp — Safari mishandles exponential ramps from
+      // near-zero, and a struck bell wants an instant-ish onset anyway.)
+      const tc = (spec.decay / 5) * Math.sqrt(fundamental / freq)
       g.gain.setValueAtTime(0, t)
-      g.gain.linearRampToValueAtTime(peak, t + 0.01)
-      g.gain.linearRampToValueAtTime(0, t + spec.decay)
-      osc.connect(g).connect(ctx.destination)
+      g.gain.linearRampToValueAtTime(peak, t + 0.01) // soft strike
+      g.gain.setTargetAtTime(0, t + 0.01, tc) // exponential tail
+      osc.connect(g).connect(getMasterBus())
       osc.start(t)
-      osc.stop(t + spec.decay + 0.1)
+      osc.stop(t + spec.decay * 1.5 + 0.2) // room for the exponential tail to reach silence
     })
   } catch {
     // audio unavailable — skip silently
@@ -217,7 +223,7 @@ export function playReward(): void {
       gain.gain.setValueAtTime(0, t)
       gain.gain.linearRampToValueAtTime(0.22, t + 0.02)
       gain.gain.linearRampToValueAtTime(0, t + 0.45)
-      osc.connect(gain).connect(ctx.destination)
+      osc.connect(gain).connect(getMasterBus())
       osc.start(t)
       osc.stop(t + 0.5)
     })
@@ -246,7 +252,7 @@ export function playLevelUp(): void {
       gain.gain.setValueAtTime(0, t)
       gain.gain.linearRampToValueAtTime(0.25, t + 0.02)
       gain.gain.linearRampToValueAtTime(0, t + 0.25)
-      osc.connect(gain).connect(ctx.destination)
+      osc.connect(gain).connect(getMasterBus())
       osc.start(t)
       osc.stop(t + 0.3)
     })
