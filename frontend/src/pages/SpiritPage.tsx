@@ -474,11 +474,19 @@ export default function SpiritPage() {
                 <span className="spirit-node-label">{label}</span>
                 {prize && (
                   <span className={`spirit-node-prize spirit-node-prize--${prize}`}>
-                    {prize === 'legendary' ? '★ Legendary' : '✦ Signature'}
+                    {prize === 'legendary' ? '🪷 Radiant' : '✦ Signature'}
                   </span>
                 )}
                 <NeedTag need={opt.need} />
               </span>
+              {/* Drifting light-motes (souls / incense) — the spiritual flourish on a prize node. */}
+              {prize && (
+                <span className="spirit-node-motes" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              )}
 
               {state === 'equipped' && (
                 // Worn now — not a button. A clear badge, plus a free "remove" so a slot can be

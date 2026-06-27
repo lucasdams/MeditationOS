@@ -3948,12 +3948,13 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
-/* ── Capstone / prize nodes — thematic, not the generic gold cliché ─────────────────────────
-   SIGNATURE = the creature's OWN per-path capstone → a lit frame + glow + shimmer in its ELEMENT
-   (Pitta fire / Kapha earth / Vata air, via --element-accent from the path). LEGENDARY = a
-   universal tier-4 piece → a PRISMATIC / radiant aura that drifts through the spectrum + a rainbow
-   shimmer, echoing the `radiant` stage. After the node-state rules so the prize frame wins;
-   reduced-motion keeps the frame/glow, drops the motion. */
+/* ── Capstone / prize nodes — a SPIRITUAL flourish, not generic game polish ─────────────────
+   The prize at the top of each tree should feel like a small awakening, not a loot drop: a soft
+   aura that BREATHES (slow, meditative), a RESONANCE ring that swells outward like a struck
+   singing bowl, and drifting light-MOTES (soul-sparks / incense). SIGNATURE = the creature's OWN
+   capstone, themed to its ELEMENT (Pitta fire / Kapha earth / Vata air). LEGENDARY = a universal
+   tier-4 piece, a PRISMATIC / radiant aura. After the node-state rules so the prize wins;
+   reduced-motion keeps the frame + glow, drops the motion. */
 .spirit-node-prize {
   display: inline-flex;
   align-items: center;
@@ -3968,8 +3969,8 @@ textarea:focus-visible,
 }
 .spirit-node-prize--signature {
   color: #fff;
-  background: var(--slot-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--slot-accent) 60%, transparent);
+  background: var(--prize-accent, var(--slot-accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--prize-accent, var(--slot-accent)) 60%, transparent);
 }
 .spirit-node-prize--legendary {
   color: #161226;
@@ -3990,98 +3991,143 @@ textarea:focus-visible,
   --element-accent: var(--spirit-vata); /* air/ether */
 }
 
+/* SIGNATURE — element-themed; a slow breathing aura (the creature's element, fire/earth/air). */
 .spirit-node--signature {
   position: relative;
-  overflow: hidden;
-  /* The creature's element (or the slot accent if pathless) — a fire spirit's signature glows fire. */
   --prize-accent: var(--element-accent, var(--slot-accent));
   border-color: var(--prize-accent);
   background: linear-gradient(
     160deg,
-    color-mix(in srgb, var(--prize-accent) 18%, var(--bg-surface)),
-    var(--bg-surface) 60%
+    color-mix(in srgb, var(--prize-accent) 16%, var(--bg-surface)),
+    var(--bg-surface) 62%
   );
-  box-shadow:
-    0 2px 10px var(--shadow-card),
-    0 0 16px color-mix(in srgb, var(--prize-accent) 34%, transparent);
+  animation: capstone-breath 5.5s ease-in-out infinite;
 }
-
-.spirit-node--legendary {
-  position: relative;
-  overflow: hidden;
-  /* Prismatic / radiant — a multi-hue aura that drifts through the spectrum + a rainbow shimmer,
-     echoing the `radiant` stage and the "Prismatic" pieces (not the generic gold cliché). */
-  border-color: #c084fc;
-  background: linear-gradient(160deg, rgba(192, 132, 252, 0.16), var(--bg-surface) 58%);
-  animation: legendary-aura 3s ease-in-out infinite;
-}
-@keyframes legendary-aura {
+@keyframes capstone-breath {
   0%,
   100% {
-    box-shadow: 0 2px 12px var(--shadow-card), 0 0 14px rgba(244, 114, 182, 0.32),
-      0 0 22px rgba(56, 189, 248, 0.22);
-    border-color: #c084fc;
+    box-shadow: 0 2px 10px var(--shadow-card),
+      0 0 12px color-mix(in srgb, var(--prize-accent, #c4b5fd) 24%, transparent);
   }
   50% {
-    box-shadow: 0 2px 12px var(--shadow-card), 0 0 22px rgba(167, 139, 250, 0.5),
-      0 0 32px rgba(52, 211, 153, 0.32);
-    border-color: #38bdf8;
+    box-shadow: 0 2px 10px var(--shadow-card),
+      0 0 24px color-mix(in srgb, var(--prize-accent, #c4b5fd) 48%, transparent);
   }
 }
 
-/* A diagonal light band that drifts across — element-tinted for SIGNATURE, prismatic for LEGENDARY. */
-.spirit-node--signature::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    transparent 33%,
-    color-mix(in srgb, var(--prize-accent) 55%, rgba(255, 255, 255, 0.5)) 50%,
-    transparent 67%
-  );
-  background-size: 250% 100%;
-  background-position: 200% 0;
-  animation: capstone-shimmer 3.6s ease-in-out infinite;
-  mix-blend-mode: screen;
+/* LEGENDARY — prismatic / radiant; the breath drifts gently through the spectrum. */
+.spirit-node--legendary {
+  position: relative;
+  --prize-accent: #c4b5fd;
+  border-color: #c4b5fd;
+  background: linear-gradient(160deg, rgba(196, 181, 253, 0.16), var(--bg-surface) 58%);
+  animation: legendary-breath 6s ease-in-out infinite;
 }
-.spirit-node--legendary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    transparent 28%,
-    rgba(244, 114, 182, 0.2) 42%,
-    rgba(251, 191, 36, 0.2) 50%,
-    rgba(56, 189, 248, 0.2) 58%,
-    transparent 72%
-  );
-  background-size: 250% 100%;
-  background-position: 200% 0;
-  animation: capstone-shimmer 3.6s ease-in-out infinite;
-  mix-blend-mode: screen;
-}
-@keyframes capstone-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  55%,
+@keyframes legendary-breath {
+  0%,
   100% {
-    background-position: -130% 0;
+    box-shadow: 0 2px 12px var(--shadow-card), 0 0 14px rgba(249, 168, 212, 0.3),
+      0 0 22px rgba(125, 211, 252, 0.2);
+    border-color: #c4b5fd;
+  }
+  50% {
+    box-shadow: 0 2px 12px var(--shadow-card), 0 0 22px rgba(196, 181, 253, 0.45),
+      0 0 32px rgba(110, 231, 183, 0.3);
+    border-color: #7dd3fc;
+  }
+}
+
+/* RESONANCE — a ring that swells outward and fades, like a struck singing bowl's wave. */
+.spirit-node--signature::before,
+.spirit-node--legendary::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 1.5px solid var(--prize-accent, #c4b5fd);
+  opacity: 0;
+  pointer-events: none;
+  animation: capstone-resonance 5s ease-out infinite;
+}
+@keyframes capstone-resonance {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  60%,
+  100% {
+    transform: scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* MOTES — a few soft lights drift up and fade, like soul-sparks or incense rising. */
+.spirit-node-motes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.spirit-node-motes i {
+  position: absolute;
+  bottom: 8%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--prize-accent, #c4b5fd);
+  box-shadow: 0 0 6px var(--prize-accent, #c4b5fd);
+  opacity: 0;
+  animation: capstone-mote 4.8s ease-in-out infinite;
+}
+.spirit-node-motes i:nth-child(1) {
+  left: 24%;
+  animation-delay: 0s;
+}
+.spirit-node-motes i:nth-child(2) {
+  left: 54%;
+  animation-delay: 1.7s;
+}
+.spirit-node-motes i:nth-child(3) {
+  left: 80%;
+  animation-delay: 3.2s;
+}
+/* Legendary motes drift in prismatic hues. */
+.spirit-node--legendary .spirit-node-motes i:nth-child(1) {
+  background: #f9a8d4;
+  box-shadow: 0 0 6px #f9a8d4;
+}
+.spirit-node--legendary .spirit-node-motes i:nth-child(2) {
+  background: #7dd3fc;
+  box-shadow: 0 0 6px #7dd3fc;
+}
+.spirit-node--legendary .spirit-node-motes i:nth-child(3) {
+  background: #6ee7b7;
+  box-shadow: 0 0 6px #6ee7b7;
+}
+@keyframes capstone-mote {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-46px) scale(1);
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .spirit-node--signature,
   .spirit-node--legendary {
     animation: none;
   }
-  .spirit-node--signature::after,
-  .spirit-node--legendary::after {
-    animation: none;
-    background: none;
+  .spirit-node--signature::before,
+  .spirit-node--legendary::before,
+  .spirit-node-motes {
+    display: none;
   }
 }
 
