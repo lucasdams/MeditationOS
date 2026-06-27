@@ -6,7 +6,7 @@ distinct calendar dates of `occurred_at` in the **user's timezone** (Postgres
 """
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import NamedTuple
 
 from sqlalchemy import func, select
@@ -133,17 +133,28 @@ def _level_progress(xp: int) -> tuple[int, int, int]:
     return level, xp_into_level, xp_for_next_level
 
 
-def _capped_daily_xp_units(db: DBSession, model, *, user_id: uuid.UUID, tz: str, cap: int) -> int:
+def _capped_daily_xp_units(
+    db: DBSession,
+    model,
+    *,
+    user_id: uuid.UUID,
+    tz: str,
+    cap: int,
+    since: datetime | None = None,
+) -> int:
     """Sum of per-local-day row counts for `model`, each capped at `cap`. Only the first
     `cap` entries on a day earn XP, so spamming trivial entries stops paying (anti-farm).
+
+    `since` (ADR-0030) scopes the count to rows CREATED at/after a datetime — used to compute
+    a spirit's own-life XP (XP since `awakened_at`). `None` keeps the lifetime behaviour.
     """
     day = _local_date(tz, model.created_at)
-    per_day = (
-        select(func.least(func.count(model.id), cap).label("c"))
-        .where(model.user_id == user_id)
-        .group_by(day)
-        .subquery()
+    stmt = select(func.least(func.count(model.id), cap).label("c")).where(
+        model.user_id == user_id
     )
+    if since is not None:
+        stmt = stmt.where(model.created_at >= since)
+    per_day = stmt.group_by(day).subquery()
     return int(db.execute(select(func.coalesce(func.sum(per_day.c.c), 0))).scalar_one())
 
 
@@ -172,26 +183,44 @@ class _XpBasis(NamedTuple):
         return self.earned_xp + self.streak_bonus_xp
 
 
-def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _XpBasis:
+def _xp_basis(
+    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str, since: datetime | None = None
+) -> _XpBasis:
     """Compute the earned XP, streak bonus, and streak — the single source of truth used
     by both `get_stats` (dashboard) and `get_wallet_basis` (spirit coins/level). This
     runs the per-session XP curve, the capped gratitude/journal XP, the daily-quest bonus,
     and the streak; it does NOT build the heatmap, this-week, today-count, or quest-list
     blocks that only `get_stats` needs — so the wallet path skips that work entirely.
+
+    `since` (ADR-0030 — "rebirth from a spark") scopes EVERY XP-source query to activity
+    CREATED at/after that datetime (`created_at >= since`), so the result is the XP earned
+    SINCE a moment — used to derive a spirit's OWN-life XP/level (XP since `awakened_at`)
+    rather than the user's lifetime XP. `since=None` keeps today's exact lifetime behaviour
+    (every XP source counts all the user's activity). The `created_at` filter (not the
+    user-supplied `occurred_at`) anchors "since birth" to when the row was actually recorded,
+    so a back-dated session can't retroactively age a young spark.
     """
+    # `since` scopes every XP-source query to rows created at/after the spirit's birth
+    # (ADR-0030). A tiny helper applies the same `created_at >= since` clause everywhere so
+    # the spirit basis stays byte-consistent with the lifetime one when `since` is None.
+    def _scoped(stmt, model):
+        return stmt.where(model.created_at >= since) if since is not None else stmt
+
     # Practice XP is computed PER SESSION (front-loaded curve), so we need each session's
     # duration and whether it's resonance breathing — not a single SUM. Resonance
     # breathing earns extra XP per minute (it's the harder, signature practice).
     practice_rows = db.execute(
-        select(Session.duration_seconds, Session.type).where(Session.user_id == user_id)
+        _scoped(
+            select(Session.duration_seconds, Session.type).where(Session.user_id == user_id),
+            Session,
+        )
     ).all()
 
     # Practice days (for streaks): a day counts only once its total session time reaches
     # MIN_PRACTICE_SECONDS, so a 1-second sit can't keep a streak alive.
     session_local_day = _local_date(tz, Session.occurred_at)
     day_rows = db.execute(
-        select(session_local_day)
-        .where(Session.user_id == user_id)
+        _scoped(select(session_local_day).where(Session.user_id == user_id), Session)
         .group_by(session_local_day)
         .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
     ).all()
@@ -200,22 +229,34 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
 
     # Days with a gratitude entry (the "write a gratitude" quest).
     grat_day_rows = db.execute(
-        select(_local_date(tz, GratitudeEntry.created_at))
-        .where(GratitudeEntry.user_id == user_id)
-        .distinct()
+        _scoped(
+            select(_local_date(tz, GratitudeEntry.created_at)).where(
+                GratitudeEntry.user_id == user_id
+            ),
+            GratitudeEntry,
+        ).distinct()
     ).all()
     gratitude_days = {row[0] for row in grat_day_rows}
     gratitude_count = int(
         db.execute(
-            select(func.count(GratitudeEntry.id)).where(GratitudeEntry.user_id == user_id)
+            _scoped(
+                select(func.count(GratitudeEntry.id)).where(
+                    GratitudeEntry.user_id == user_id
+                ),
+                GratitudeEntry,
+            )
         ).scalar_one()
     )
 
     # Days with at least a minute of resonance breathing (the "breathe" quest).
     breathing_local_day = _local_date(tz, Session.occurred_at)
     breathing_day_rows = db.execute(
-        select(breathing_local_day)
-        .where(Session.user_id == user_id, Session.type.in_(BREATHING_SESSION_TYPES))
+        _scoped(
+            select(breathing_local_day).where(
+                Session.user_id == user_id, Session.type.in_(BREATHING_SESSION_TYPES)
+            ),
+            Session,
+        )
         .group_by(breathing_local_day)
         .having(func.sum(Session.duration_seconds) >= BREATHE_QUEST_SECONDS)
     ).all()
@@ -226,8 +267,12 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     # nothing. Distinct from "breathe" so a user can opt into either or both.
     meditation_local_day = _local_date(tz, Session.occurred_at)
     meditation_day_rows = db.execute(
-        select(meditation_local_day)
-        .where(Session.user_id == user_id, Session.type.notin_(BREATHING_SESSION_TYPES))
+        _scoped(
+            select(meditation_local_day).where(
+                Session.user_id == user_id, Session.type.notin_(BREATHING_SESSION_TYPES)
+            ),
+            Session,
+        )
         .group_by(meditation_local_day)
         .having(func.sum(Session.duration_seconds) >= MEDITATE_QUEST_SECONDS)
     ).all()
@@ -235,9 +280,10 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
 
     # Days with a journal entry — the "journal" quest.
     journal_day_rows = db.execute(
-        select(_local_date(tz, Journal.created_at))
-        .where(Journal.user_id == user_id)
-        .distinct()
+        _scoped(
+            select(_local_date(tz, Journal.created_at)).where(Journal.user_id == user_id),
+            Journal,
+        ).distinct()
     ).all()
     journal_days = {row[0] for row in journal_day_rows}
 
@@ -250,13 +296,14 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     long_sit_days = {
         r[0]
         for r in db.execute(
-            select(_local_date(tz, Session.occurred_at))
-            .where(
-                Session.user_id == user_id,
-                Session.type.notin_(BREATHING_SESSION_TYPES),
-                Session.duration_seconds >= LONG_SIT_SECONDS,
-            )
-            .distinct()
+            _scoped(
+                select(_local_date(tz, Session.occurred_at)).where(
+                    Session.user_id == user_id,
+                    Session.type.notin_(BREATHING_SESSION_TYPES),
+                    Session.duration_seconds >= LONG_SIT_SECONDS,
+                ),
+                Session,
+            ).distinct()
         ).all()
     }
     # "Meditate twice today": ≥2 non-breathing sessions on the day.
@@ -264,8 +311,13 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     double_sit_days = {
         r[0]
         for r in db.execute(
-            select(double_sit_local_day)
-            .where(Session.user_id == user_id, Session.type.notin_(BREATHING_SESSION_TYPES))
+            _scoped(
+                select(double_sit_local_day).where(
+                    Session.user_id == user_id,
+                    Session.type.notin_(BREATHING_SESSION_TYPES),
+                ),
+                Session,
+            )
             .group_by(double_sit_local_day)
             .having(func.count(Session.id) >= 2)
         ).all()
@@ -274,8 +326,12 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     deep_breathe_days = {
         r[0]
         for r in db.execute(
-            select(breathing_local_day)
-            .where(Session.user_id == user_id, Session.type.in_(BREATHING_SESSION_TYPES))
+            _scoped(
+                select(breathing_local_day).where(
+                    Session.user_id == user_id, Session.type.in_(BREATHING_SESSION_TYPES)
+                ),
+                Session,
+            )
             .group_by(breathing_local_day)
             .having(func.sum(Session.duration_seconds) >= DEEP_BREATHE_SECONDS)
         ).all()
@@ -284,15 +340,16 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     slow_breathe_days = {
         r[0]
         for r in db.execute(
-            select(_local_date(tz, Session.occurred_at))
-            .where(
-                Session.user_id == user_id,
-                Session.type.in_(BREATHING_SESSION_TYPES),
-                Session.inhale_seconds.isnot(None),
-                Session.exhale_seconds.isnot(None),
-                (Session.inhale_seconds + Session.exhale_seconds) >= SLOW_BREATH_SECONDS,
-            )
-            .distinct()
+            _scoped(
+                select(_local_date(tz, Session.occurred_at)).where(
+                    Session.user_id == user_id,
+                    Session.type.in_(BREATHING_SESSION_TYPES),
+                    Session.inhale_seconds.isnot(None),
+                    Session.exhale_seconds.isnot(None),
+                    (Session.inhale_seconds + Session.exhale_seconds) >= SLOW_BREATH_SECONDS,
+                ),
+                Session,
+            ).distinct()
         ).all()
     }
     # "Write three gratitudes": ≥3 gratitude entries on the day.
@@ -300,8 +357,10 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     gratitude_three_days = {
         r[0]
         for r in db.execute(
-            select(grat_three_local_day)
-            .where(GratitudeEntry.user_id == user_id)
+            _scoped(
+                select(grat_three_local_day).where(GratitudeEntry.user_id == user_id),
+                GratitudeEntry,
+            )
             .group_by(grat_three_local_day)
             .having(func.count(GratitudeEntry.id) >= 3)
         ).all()
@@ -312,21 +371,25 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     gratitude_custom_days = {
         r[0]
         for r in db.execute(
-            select(grat_custom_local_day)
-            .where(
-                GratitudeEntry.user_id == user_id,
-                GratitudeEntry.category == "custom",
-            )
-            .distinct()
+            _scoped(
+                select(grat_custom_local_day).where(
+                    GratitudeEntry.user_id == user_id,
+                    GratitudeEntry.category == "custom",
+                ),
+                GratitudeEntry,
+            ).distinct()
         ).all()
     }
     # "Journal with a mood": a journal entry carrying a mood tag.
     mood_journal_days = {
         r[0]
         for r in db.execute(
-            select(_local_date(tz, Journal.created_at))
-            .where(Journal.user_id == user_id, Journal.mood.isnot(None))
-            .distinct()
+            _scoped(
+                select(_local_date(tz, Journal.created_at)).where(
+                    Journal.user_id == user_id, Journal.mood.isnot(None)
+                ),
+                Journal,
+            ).distinct()
         ).all()
     }
 
@@ -368,10 +431,10 @@ def _xp_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> _Xp
     # Gratitude/journal XP is capped per day (only the first N entries each day pay), so
     # a flood of trivial entries can't farm XP. The displayed totals stay uncapped.
     gratitude_xp_units = _capped_daily_xp_units(
-        db, GratitudeEntry, user_id=user_id, tz=tz, cap=GRATITUDE_XP_DAILY_CAP
+        db, GratitudeEntry, user_id=user_id, tz=tz, cap=GRATITUDE_XP_DAILY_CAP, since=since
     )
     journal_xp_units = _capped_daily_xp_units(
-        db, Journal, user_id=user_id, tz=tz, cap=JOURNAL_XP_DAILY_CAP
+        db, Journal, user_id=user_id, tz=tz, cap=JOURNAL_XP_DAILY_CAP, since=since
     )
 
     # Practice XP: each session is run through the front-loaded curve (sub-minute sits
@@ -418,15 +481,27 @@ class WalletBasis(NamedTuple):
     xp_for_next: int
 
 
-def get_wallet_basis(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> WalletBasis:
+def get_wallet_basis(
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str,
+    since: datetime | None = None,
+) -> WalletBasis:
     """Earned XP, the level it implies, and the current streak — the only values the
     spirit wallet reads. Computed via the SAME `_xp_basis` core as `get_stats`, so the
     coins/level/streak are byte-identical to the dashboard, but WITHOUT the heatmap,
     this-week, today-count, or quest-list work that `get_stats` does and the wallet throws
     away. The level is computed on *earned* XP (total minus the streak bonus) so coins
     never drop when a streak lapses.
+
+    `since` (ADR-0030) scopes every XP source to activity created at/after that datetime, so
+    the returned `earned_xp`/`level`/`xp_into_level`/`xp_for_next` describe the XP earned
+    SINCE a moment — the spirit's OWN-life basis (XP since `awakened_at`). `since=None` is the
+    lifetime basis (unchanged) that funds the dashboard level and the spirit's coin budget.
     """
-    basis = _xp_basis(db, user_id, today=today, tz=tz)
+    basis = _xp_basis(db, user_id, today=today, tz=tz, since=since)
     level, xp_into_level, xp_for_next = _level_progress(basis.earned_xp)
     return WalletBasis(
         earned_xp=basis.earned_xp,

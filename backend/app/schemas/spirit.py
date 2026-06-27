@@ -92,12 +92,18 @@ class SpiritCondition(BaseModel):
 
 
 class SpiritBond(BaseModel):
-    """A friendly level read-out — the same level + XP-into-level the wallet basis exposes,
-    surfaced as the spirit's "bond" with the practitioner."""
+    """A friendly level read-out, surfaced as the spirit's "bond" with the practitioner.
 
-    level: int  # the user's level (from earned XP — monotonic)
-    xp_into_level: int  # XP accumulated within the current level
-    xp_for_next: int  # XP needed to reach the next level
+    ADR-0030 ("rebirth from a spark"): `level` is the SPIRIT-LEVEL — this pet's OWN growth, derived
+    from the XP earned SINCE `awakened_at` — NOT the dashboard's lifetime level (a separate
+    concept). A just-awakened spark is bond level 1 even on a seasoned account; the level then
+    climbs with practice done after awakening. For a first/never-died spirit (awakened ≈ account
+    start) it equals the lifetime level. Like the lifetime basis it rides EARNED XP (streak-bonus
+    XP excluded), so this pet's progress is un-loseable over its own life."""
+
+    level: int  # the SPIRIT-LEVEL (XP earned since awakened_at — this pet's own growth)
+    xp_into_level: int  # XP accumulated within the current spirit-level
+    xp_for_next: int  # XP needed to reach the next spirit-level
 
 
 class SpiritSlotOption(BaseModel):
@@ -164,17 +170,19 @@ class RetiredSpirit(BaseModel):
 class SpiritState(BaseModel):
     """The active spirit's computed state. Forbids extra fields so the response stays a
     stable, explicit contract. ADR-0029 adds the Tamagotchi survival fields (`dead` / `died_at` /
-    `ailing` / `awakened_at`); the existing fields are unchanged."""
+    `ailing` / `awakened_at`). ADR-0030 ("rebirth from a spark") re-keys `stage` and `bond.level`
+    to the SPIRIT-LEVEL (XP since `awakened_at` — this pet's own growth), distinct from the
+    dashboard's lifetime level; `coins` stays on the lifetime level. No field shape changes."""
 
     model_config = ConfigDict(extra="forbid")
 
-    stage: str  # spark | wisp | fledgling | ascendant | radiant (pure function of level)
+    stage: str  # spark | wisp | fledgling | ascendant | radiant (from the SPIRIT-LEVEL, ADR-0030)
     path: str | None  # the CHOSEN creature (stillness | breath | heart); NULL until chosen
     name: str | None  # the active spirit's nickname, if set (so the UI can pre-fill / display)
-    bond: SpiritBond  # level + XP-into-level + XP-for-next
+    bond: SpiritBond  # SPIRIT-LEVEL (XP since awakened_at) + XP-into-level + XP-for-next
     needs: SpiritNeeds  # the three survival needs (nourished / rested / joyful); decay in real time
     condition: SpiritCondition  # overall care state = the weakest need (ADR-0029: = health)
-    coins: int  # level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0
+    coins: int  # lifetime_level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0 (ADR-0030: lifetime)
     cosmetics: dict[str, str]  # the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
     available: list[SpiritAvailableSlot]  # the cosmetics skill tree with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever

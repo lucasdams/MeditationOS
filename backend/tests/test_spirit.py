@@ -856,6 +856,174 @@ def test_awaken_returns_a_pathless_spark(client, db_session):
     assert _choose(client, "heart").status_code == 200
 
 
+# --- ADR-0030: rebirth from a spark — growth on the spirit's OWN life ----------------------
+#
+# The spirit's stage / bond.level / unlock-LEVEL gates key off the SPIRIT-LEVEL: the XP earned
+# SINCE `awakened_at` (this pet's own life), NOT the user's lifetime XP. COINS stay on the
+# lifetime level (the account budget). To simulate a seasoned account whose spirit just awakened,
+# we seed lots of past activity dated (both occurred_at AND created_at) BEFORE the spirit's
+# `awakened_at`: that lifetime XP funds the coin budget, but it predates this spark's birth, so it
+# doesn't count toward its growth. (Activity seeded via the API has created_at≈now, AFTER awaken,
+# so it DOES grow the spirit — that's the first/never-died, backward-compatible case.)
+
+
+def _seed_past_breathing(db_session, user_id, *, minutes_each, count, created_before):
+    """Insert `count` resonance-breathing sessions whose occurred_at AND created_at are dated
+    BEFORE `created_before` (so the `since=awakened_at` filter excludes them from the spirit's
+    own-life XP, while they still count toward the user's lifetime XP / coin budget)."""
+    from app.models.session import Session as SessionModel
+
+    for i in range(count):
+        # Spread the past sessions across distinct days well before the cutoff.
+        when = created_before - timedelta(days=10 + i)
+        db_session.add(
+            SessionModel(
+                user_id=user_id,
+                type="resonance_breathing",
+                duration_seconds=minutes_each * 60,
+                occurred_at=when,
+                created_at=when,
+                inhale_seconds=6,
+                exhale_seconds=6,
+            )
+        )
+    db_session.commit()
+
+
+def _set_awakened_now(db_session, user_id):
+    """Stamp the active spirit's awakened_at (and needs baseline) to ~now, so its own-life XP
+    window starts here — any activity created earlier is pre-birth and ignored for growth."""
+    spirit = _active_spirit(db_session, user_id)
+    spirit.awakened_at = datetime.now(UTC)
+    spirit.needs_baseline_at = datetime.now(UTC)
+    db_session.commit()
+
+
+def test_seasoned_account_just_awakened_reads_as_spark(client, db_session):
+    """A spirit awakened JUST NOW on a HIGH-lifetime-XP account reads as spark / bond level 1 —
+    growth ignores pre-birth XP (ADR-0030)."""
+    _auth(client, "rebirth_seasoned@example.com")
+    user_id = _user_id(db_session, "rebirth_seasoned@example.com")
+    # Create the spark, then bank a big pile of lifetime XP dated BEFORE its birth.
+    assert client.get("/api/v1/spirit").status_code == 200
+    now = datetime.now(UTC)
+    _seed_past_breathing(db_session, user_id, minutes_each=200, count=30, created_before=now)
+    _set_awakened_now(db_session, user_id)
+
+    body = _spirit(client)
+    # Stage + bond key off the SPIRIT-level (own life ≈ 0 XP) → spark, level 1.
+    assert body["stage"] == "spark"
+    assert body["bond"]["level"] == 1
+
+
+def test_seasoned_just_awakened_keeps_lifetime_coin_budget(client, db_session):
+    """COINS stay on the LIFETIME level: the same just-awakened-but-seasoned spirit still holds the
+    full lifetime coin budget, not a spark's worth (ADR-0030 — keep your coin budget)."""
+    _auth(client, "rebirth_coins@example.com")
+    user_id = _user_id(db_session, "rebirth_coins@example.com")
+    assert client.get("/api/v1/spirit").status_code == 200
+    now = datetime.now(UTC)
+    _seed_past_breathing(db_session, user_id, minutes_each=200, count=30, created_before=now)
+    _set_awakened_now(db_session, user_id)
+
+    # Read the lifetime level straight off the dashboard (the coin-budget basis).
+    lifetime_level = client.get("/api/v1/dashboard/stats").json()["level"]
+    assert lifetime_level >= 24  # the seed is enough to be a seasoned account
+
+    body = _spirit(client)
+    # A spark by growth, but the coin budget is lifetime_level × COINS_PER_LEVEL (coins_spent 0).
+    assert body["bond"]["level"] == 1
+    assert body["coins"] == lifetime_level * COINS_PER_LEVEL
+    assert body["coins"] > 1 * COINS_PER_LEVEL  # NOT a spark's worth
+
+
+def test_unlock_gates_use_spirit_level_not_lifetime(client, db_session):
+    """The unlock-LEVEL gates use the SPIRIT-level: a young (just-awakened) spark sees a
+    high-`unlock_level` option as locked ("reach level N"), even with plenty of coins (ADR-0030)."""
+    _auth(client, "rebirth_gates@example.com")
+    user_id = _user_id(db_session, "rebirth_gates@example.com")
+    assert client.get("/api/v1/spirit").status_code == 200
+    now = datetime.now(UTC)
+    _seed_past_breathing(db_session, user_id, minutes_each=200, count=30, created_before=now)
+    _set_awakened_now(db_session, user_id)
+    _choose(client, "stillness", name="Spark")
+
+    body = _spirit(client)
+    # Plenty of coins (lifetime budget) but a young spark by growth.
+    assert body["coins"] > 200
+    # A high-unlock_level option (aura/aurora @ level 7) is NOT unlockable, with a level hint —
+    # even though it's affordable. The gate is the SPIRIT-level (1), not the lifetime level.
+    aurora = _option_state(body, "aura", "aurora")
+    assert aurora["affordable"] is True
+    assert aurora["unlockable"] is False
+    assert aurora["unlock_hint"] == "Reach level 7"
+
+    # And the write path refuses it too → CosmeticLocked (409), not InsufficientCoins.
+    res = _unlock(client, "aura", "aurora")
+    assert res.status_code == 409
+
+
+def test_first_spark_grows_on_its_own_life(client, db_session):
+    """A first/never-died spirit (awakened ≈ account start) grows on activity done AFTER awaken —
+    backward-compatible: practice after birth raises the spirit-level/stage, enough advances it."""
+    _auth(client, "rebirth_firstspark@example.com")
+    # All earning happens via the API (created_at≈now, AFTER the spark's birth), so it grows.
+    base = _spirit(client)
+    assert base["bond"]["level"] == 1 and base["stage"] == "spark"
+
+    body = _earn_to_level(client, 3)  # enough own-life XP to advance past spark → wisp
+    assert body["bond"]["level"] >= 3
+    assert body["stage"] == "wisp"
+
+
+def test_long_awakened_spirit_reads_like_lifetime_level(client, db_session):
+    """A spirit awakened LONG ago (so its life ≈ the account's lifetime) reads ≈ the lifetime level
+    — backward-compatible (ADR-0030 point 4)."""
+    _auth(client, "rebirth_oldspirit@example.com")
+    user_id = _user_id(db_session, "rebirth_oldspirit@example.com")
+    # Backdate the spark's birth far into the past, THEN earn (API activity, created_at≈now, well
+    # after that ancient awaken) — so all of it falls inside the spirit's own life.
+    assert client.get("/api/v1/spirit").status_code == 200
+    spirit = _active_spirit(db_session, user_id)
+    spirit.awakened_at = datetime.now(UTC) - timedelta(days=365)
+    db_session.commit()
+
+    _earn_to_level(client, 5)
+    lifetime_level = client.get("/api/v1/dashboard/stats").json()["level"]
+    body = _spirit(client)
+    # Own-life XP ≈ lifetime XP (all activity is after the ancient awaken), so the levels match.
+    assert body["bond"]["level"] == lifetime_level
+
+
+def test_death_then_awaken_is_a_fresh_spark_at_high_lifetime_xp(client, db_session):
+    """Death → awaken yields a fresh SPARK (spirit-level 1) even at high lifetime XP (ADR-0030 — a
+    true restart). The new spark's awakened_at = now(), so its own-life XP is 0.
+
+    Pre-death XP is seeded with a BACK-DATED `created_at` (not via the API): in the test fixture
+    Postgres `now()` is frozen per transaction, so the new spark's `awakened_at = now()` would tie
+    with API-seeded activity (created_at = the same frozen now()) and the `created_at >= since`
+    filter would let it through. Back-dating the seed makes it strictly pre-birth — which is also
+    exactly the production timeline (the past activity committed before the later awaken txn)."""
+    _auth(client, "rebirth_death@example.com")
+    user_id = _user_id(db_session, "rebirth_death@example.com")
+    # Seed a big, seasoned, BACK-DATED lifetime XP pile, then choose a path and kill the spirit.
+    now = datetime.now(UTC)
+    _seed_past_breathing(db_session, user_id, minutes_each=200, count=30, created_before=now)
+    assert _choose(client, "stillness", name="Mori").status_code == 200
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
+    assert _spirit(client)["dead"] is True
+
+    fresh = client.post("/api/v1/spirit/awaken").json()
+    # The new spark reads as a spark / level 1 by GROWTH despite the high lifetime XP...
+    assert fresh["stage"] == "spark"
+    assert fresh["bond"]["level"] == 1
+    # ...but keeps the full lifetime coin budget (coins_spent reset to 0).
+    lifetime_level = client.get("/api/v1/dashboard/stats").json()["level"]
+    assert lifetime_level >= 24
+    assert fresh["coins"] == lifetime_level * COINS_PER_LEVEL
+    assert fresh["coins"] > 1 * COINS_PER_LEVEL
+
+
 # --- Cosmetics economy (ADR-0024: committed upgrades, stored spend ledger) --------------
 #
 # Buying a cosmetic drops the derived coin balance (now `level × COINS_PER_LEVEL −

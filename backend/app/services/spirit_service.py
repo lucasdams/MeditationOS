@@ -6,12 +6,19 @@ Mostly computed (ADR-0009/0011): the stored state is the active spirit row's cho
 `name`, the `unlocked` collection + the equipped `cosmetics` loadout (ADR-0027), the `coins_spent`
 spend ledger, and — ADR-0029, the Tamagotchi turn — the needs decay anchors: `needs_baseline_at`
 (born-fed), the per-need `*_tended_at` stamps, and `died_at`. Stage / bond / coins are still
-derived on read from the user's earned-XP level (via `dashboard_service.get_wallet_basis`):
+derived on read (via `dashboard_service.get_wallet_basis`), but ADR-0030 ("rebirth from a spark")
+splits which LEVEL each reads:
 
-- **Stage** — the level band the user's level falls into (spark…radiant). A pure function
-  of level, so it is monotonic and can never be lost.
-- **Bond** — a friendly level read-out (level + XP-into-level + XP-for-next).
-- **Coins** — `level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
+- **Stage / Bond / unlock-level gates** — derived from the SPIRIT-LEVEL: the XP earned SINCE
+  `awakened_at` (this spirit's OWN life), via `get_wallet_basis(..., since=awakened_at)`. So a
+  freshly awakened spark starts at level 1 → `spark` and must be RE-GROWN, even on a seasoned
+  account; death is a true restart. A pure function of (own-life) level, so it's still monotonic
+  over this spirit's life and can't be lost. For a first/never-died spirit (awakened ≈ account
+  start) the spirit-level ≈ the lifetime level, so its stage/level are unchanged (no migration).
+- **Coins** — `lifetime_level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
+  ADR-0030 keeps coins on the LIFETIME level (the user's whole journey) — the owner's "keep your
+  coin budget" choice — so a young spark holds the full account budget and `coins_spent` resets to
+  0 on awaken.
   ADR-0024: the balance comes from the STORED, monotonic `coins_spent` ledger (every upgrade
   and paid reset only ADDS to it; clearing an upgrade never refunds), so a committed choice
   can't be undone for free. Self-contained: this module owns its own `COINS_PER_LEVEL`.
@@ -1135,15 +1142,28 @@ def _build_state(
     """
     if basis is None:
         basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    level = basis.level
+    # ADR-0030 ("rebirth from a spark"): the spirit GROWS on its OWN life — the XP earned SINCE
+    # `awakened_at` (this spirit's birth), not the user's lifetime XP. We compute a SECOND wallet
+    # basis scoped to that window (`since=awakened_at`): its level is the SPIRIT-LEVEL, which drives
+    # the stage, the bond, and the cosmetic unlock-level gates, so a freshly awakened spark starts
+    # at level 1 (→ `spark`) even on a seasoned account and must be re-grown. The LIFETIME basis
+    # still funds COINS (the owner's "keep your coin budget" choice — a young spark keeps the full
+    # account budget). For a first/never-died spirit (awakened ≈ account start) the two bases match,
+    # so its stage/level are unchanged (backward-compatible — no migration).
+    lifetime_level = basis.level
+    spirit_basis = dashboard_service.get_wallet_basis(
+        db, user_id, today=today, tz=tz, since=_as_aware(spirit.awakened_at)
+    )
+    level = spirit_basis.level
     now = datetime.now(UTC)
 
     cosmetics = _cosmetics(spirit)
     # ADR-0027: the effective owned set = the unlocked collection ∪ the equipped loadout values,
     # so legacy already-equipped items count as owned with no backfill.
     owned = _owned(spirit)
-    # ADR-0024: the balance comes from the STORED spend ledger, not the applied cosmetics.
-    coins = _coin_balance(level, spirit.coins_spent)
+    # ADR-0024 + ADR-0030: the balance comes from the STORED spend ledger and the LIFETIME level —
+    # coins are an account budget, NOT scoped to the spirit's own life.
+    coins = _coin_balance(lifetime_level, spirit.coins_spent)
 
     # ADR-0028 (status only, ADR-0029): the signature-set bonus is DERIVED from the equipped
     # cosmetics + path; it's a visual flourish now (no needs lift).
@@ -1171,18 +1191,20 @@ def _build_state(
     dead, ailing, died_at = _resolve_health(db, user_id, spirit, now=now)
 
     return SpiritState(
+        # ADR-0030: `stage` and `bond` key off the SPIRIT-LEVEL (XP earned since `awakened_at`),
+        # so a just-awakened spark reads as `spark`/level 1 even at high lifetime XP.
         stage=stage_for_level(level),
         path=spirit.path,
         name=spirit.name,
-        # `bond.level` is the user's *earned-XP* level (the same basis that funds stage and
-        # coins), so the spirit stays monotonic with its own economy. This is deliberately the
-        # earned-XP basis and can read LOWER than the dashboard's headline level during an
-        # active streak (the dashboard adds streak-bonus XP that earned XP excludes). Intended,
-        # not a bug — keeping the spirit on earned XP makes its progress un-loseable.
+        # `bond.level` is the SPIRIT-LEVEL — this pet's OWN growth (earned XP since `awakened_at`,
+        # ADR-0030), NOT the dashboard's lifetime level. Like the lifetime basis it is the
+        # *earned-XP* level (streak-bonus XP excluded), so the spirit's progress is un-loseable; it
+        # just measures only the spirit's own life. For a first/never-died spirit it equals the
+        # lifetime level (backward-compatible).
         bond=SpiritBond(
             level=level,
-            xp_into_level=basis.xp_into_level,
-            xp_for_next=basis.xp_for_next,
+            xp_into_level=spirit_basis.xp_into_level,
+            xp_for_next=spirit_basis.xp_for_next,
         ),
         needs=spirit_needs,
         # The overall condition is the weakest of the three needs (ADR-0029: = health).
@@ -1341,17 +1363,25 @@ def unlock_cosmetic(
         raise AlreadyOwned(data.option)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    level = basis.level
-    if level < _option_unlock_level(data.slot, data.option):
+    # ADR-0030: the unlock-LEVEL gate keys off the SPIRIT-LEVEL (XP since `awakened_at`), so a young
+    # spark can't unlock high-`unlock_level` cosmetics until it grows — matching the GET `available`
+    # gating. COINS stay on the LIFETIME level (the account budget), so a seasoned account can still
+    # afford an option once its spark has grown enough to unlock it.
+    spirit_basis = dashboard_service.get_wallet_basis(
+        db, user_id, today=today, tz=tz, since=_as_aware(spirit.awakened_at)
+    )
+    spirit_level = spirit_basis.level
+    if spirit_level < _option_unlock_level(data.slot, data.option):
         raise CosmeticLocked(data.option)
     # Skill-tree gate (ADR-0027): tier N>1 needs an owned option of tier N−1 in the same slot.
     if not _tier_prereq_met(data.slot, data.option, owned):
         raise PrerequisiteNotMet(data.option)
 
     # Charge the full option cost and add it to the monotonic spend ledger, so the balance stays
-    # consistent with `coins_spent`.
+    # consistent with `coins_spent`. The balance uses the LIFETIME level (coins are the account
+    # budget, ADR-0030).
     cost = _option_cost(data.slot, data.option)
-    balance = _coin_balance(level, spirit.coins_spent)
+    balance = _coin_balance(basis.level, spirit.coins_spent)
     if balance < cost:
         raise InsufficientCoins(data.option)
 
@@ -1466,7 +1496,13 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
     spirit = get_or_create_active_spirit(db, user_id)
 
     basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
-    is_radiant = stage_for_level(basis.level) == STAGE_BANDS[-1][0]
+    # ADR-0030: the radiant gate keys off the SPIRIT-LEVEL (its own life, XP since `awakened_at`) —
+    # the same level that drives the stage — so a spirit graduates only once IT has grown to
+    # radiant, not merely because the account's lifetime XP is high.
+    spirit_basis = dashboard_service.get_wallet_basis(
+        db, user_id, today=today, tz=tz, since=_as_aware(spirit.awakened_at)
+    )
+    is_radiant = stage_for_level(spirit_basis.level) == STAGE_BANDS[-1][0]
     # ADR-0029: a dead spirit can also be retired+awakened. Compute death here (lazily persisting
     # `died_at`) so the gate sees it even on the first read after death.
     dead, _ailing, _died_at = _resolve_health(
