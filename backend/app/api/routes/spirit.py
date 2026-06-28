@@ -38,7 +38,6 @@ from app.services.spirit_service import (
     PathAlreadyChosen,
     PrerequisiteNotMet,
     SpiritConflictError,
-    SpiritDead,
     UnknownCosmetic,
 )
 
@@ -120,18 +119,12 @@ def tend_spirit(
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """A manual TEND action (ADR-0029): Feed / Rest / Play. `kind` (`feed` | `rest` | `play`) tops
-    up the matching need (nourished / rested / joyful) to TEND_CAP, enough to keep the spirit alive
-    between sessions. An unknown kind is rejected as 422 by the schema. A DEAD spirit cannot be
-    tended → 409 (awaken a new one). Returns the fresh spirit state, same shape as GET /spirit."""
+    """A gentle, optional TEND action (ADR-0031): Feed / Rest / Play. `kind` (`feed` | `rest` |
+    `play`) tops up the matching need (nourished / rested / joyful) to TEND_CAP — a calm touch of
+    care, never a survival action (the spirit can't die or sicken). An unknown kind is rejected as
+    422 by the schema. Returns the fresh spirit state, same shape as GET /spirit."""
     today, tz = today_tz
-    try:
-        return spirit_service.tend_spirit(db, current_user.id, body.kind, today=today, tz=tz)
-    except SpiritDead:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Your spirit has died — awaken a new one to care for it",
-        ) from None
+    return spirit_service.tend_spirit(db, current_user.id, body.kind, today=today, tz=tz)
 
 
 @router.post("/cosmetics", response_model=SpiritState)
@@ -221,9 +214,9 @@ def awaken_spirit(
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> SpiritState:
-    """Retire the active spirit and awaken a fresh pathless spark. Reachable when the spirit is
-    radiant (step 6) OR when it has DIED (ADR-0029: the memorial's "awaken a new one"). When it is
-    neither → 409; a concurrent awaken is also 409."""
+    """Retire the active spirit and awaken a fresh pathless spark. Reachable only when the spirit is
+    radiant (graduation; ADR-0031 removed the death-triggered awaken path). Otherwise → 409; a
+    concurrent awaken is also 409."""
     today, tz = today_tz
     try:
         return spirit_service.awaken(db, current_user.id, today=today, tz=tz)

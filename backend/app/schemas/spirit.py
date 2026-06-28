@@ -45,25 +45,25 @@ SpiritRequiredName = Annotated[
 
 
 class SpiritNeed(BaseModel):
-    """One survival need (ADR-0029, the Tamagotchi turn — supersedes ADR-0023's advisory needs).
+    """One gentle care need (ADR-0031 — the companion stops being mortal; re-adopts the
+    non-punishing stance of ADR-0023, reversing ADR-0029's survival meters).
 
-    Each need is now a 0..1 SURVIVAL meter that DECAYS in real time: full to empty over
-    `DECAY_DAYS` since it was last fed by the relevant practice (or, lighter, a manual tend capped
-    at `TEND_CAP`). `factor` is that 0..1 value; `tier` is its band
-    (`thriving | content | restless | unwell`, best → worst). The three needs are `nourished` (the
-    chosen creature's signature practice), `rested` (any sit), and `joyful` (gratitude/journal).
-    Unlike the old advisory needs there is NO floor — a need can reach 0, and the weakest need
-    reaching 0 makes the spirit ailing, then dead if neglected. A pathless spark reports neutral,
-    content-ish needs."""
+    Each need is a 0..1 meter that eases down over `DECAY_DAYS` since it was last fed by the
+    relevant practice (or, lighter, a manual tend capped at `TEND_CAP`), but is FLOORED so it never
+    drops below a calm tier. `factor` is that 0..1 value; `tier` is its band
+    (`thriving | content | restless | unwell`, best → worst) — in practice the worst it ever reads
+    is `content`. The three needs are `nourished` (the chosen creature's signature practice),
+    `rested` (any sit), and `joyful` (gratitude/journal). There is no "ailing", no death — the
+    companion only ever roots for you. A pathless spark reports neutral, content-ish needs."""
 
-    tier: str  # thriving | content | restless | unwell
-    factor: float  # 0..1 survival value (decays in real time); can reach 0
+    tier: str  # thriving | content | restless | unwell (floored: worst reachable is content)
+    factor: float  # 0..1 care value (eases down over time, floored; never empties)
 
 
 class SpiritNeeds(BaseModel):
-    """The active creature's three survival needs (ADR-0029, real-time decay).
+    """The active creature's three gentle care needs (ADR-0031, floored — never punishing).
 
-    Each decays over DECAY_DAYS since last fed; the fed time is the most recent of:
+    Each eases down over DECAY_DAYS since last fed; the fed time is the most recent of:
     - `nourished` — the chosen path's SIGNATURE practice (the one that BALANCES that dosha):
       stillness (Kapha) ← resonance breathing, breath (Pitta) ← gratitude/journal, heart (Vata)
       ← non-breathing meditation.
@@ -154,26 +154,24 @@ class SpiritSetBonus(BaseModel):
 
 
 class RetiredSpirit(BaseModel):
-    """A past spirit in the collection — either a radiant companion graduated when its successor
-    was awakened, or one that DIED of neglect (ADR-0029) and was laid to rest. Kept forever (the
-    long-term replay loop). Cosmetic read-out only."""
+    """A past spirit in the collection — a radiant companion graduated and set free when its
+    successor was awakened (ADR-0031 removed the death path, so every retired spirit is a radiant
+    graduate). Kept forever (the long-term replay loop). Cosmetic read-out only."""
 
     id: str
-    stage: str  # the stage it retired at (radiant for a graduate; its death stage otherwise)
+    stage: str  # the stage it retired at (radiant — graduates only)
     path: str | None  # its committed path (stillness | breath | heart), or None
     name: str | None  # its nickname, if it had one
-    # ADR-0029: set when this spirit DIED of neglect (vs graduating at radiant) → the gallery can
-    # render it as a memorial with its lifespan (awakened_at → died_at). None for a graduate.
-    died_at: datetime | None
-    awakened_at: datetime  # its birth, for the memorial lifespan
+    awakened_at: datetime  # its birth
 
 
 class SpiritState(BaseModel):
     """The active spirit's computed state. Forbids extra fields so the response stays a
-    stable, explicit contract. ADR-0029 adds the Tamagotchi survival fields (`dead` / `died_at` /
-    `ailing` / `awakened_at`). ADR-0030 ("rebirth from a spark") re-keys `stage` and `bond.level`
-    to the SPIRIT-LEVEL (XP since `awakened_at` — this pet's own growth), distinct from the
-    dashboard's lifetime level; `coins` stays on the lifetime level. No field shape changes."""
+    stable, explicit contract. ADR-0031 ("the companion stops being mortal") removed the survival
+    fields (`dead` / `died_at` / `ailing`) — the spirit can never die or be ailing. ADR-0030
+    ("rebirth from a spark") keys `stage` and `bond.level` to the SPIRIT-LEVEL (XP since
+    `awakened_at` — this pet's own growth), distinct from the dashboard's lifetime level; `coins`
+    stays on the lifetime level."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -181,20 +179,14 @@ class SpiritState(BaseModel):
     path: str | None  # the CHOSEN creature (stillness | breath | heart); NULL until chosen
     name: str | None  # the active spirit's nickname, if set (so the UI can pre-fill / display)
     bond: SpiritBond  # SPIRIT-LEVEL (XP since awakened_at) + XP-into-level + XP-for-next
-    needs: SpiritNeeds  # the three survival needs (nourished / rested / joyful); decay in real time
-    condition: SpiritCondition  # overall care state = the weakest need (ADR-0029: = health)
+    needs: SpiritNeeds  # the three gentle needs (nourished / rested / joyful); floored, never empty
+    condition: SpiritCondition  # overall care state = the weakest need (a calm visual read-out)
     coins: int  # lifetime_level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0 (ADR-0030: lifetime)
     cosmetics: dict[str, str]  # the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
     available: list[SpiritAvailableSlot]  # the cosmetics skill tree with per-option state
     collection: list[RetiredSpirit]  # past (retired) spirits, kept forever
     set_bonus: SpiritSetBonus  # signature-set status (ADR-0028); derived, visual-only
-    # ADR-0029 (Tamagotchi): survival state. `dead` once neglect ran past the death window (terminal
-    # — awaken a new spirit); `died_at` is the frozen death moment (None while alive). `ailing` is
-    # sick-but-not-dead (health, the weakest need, has hit 0 but the death window hasn't elapsed).
-    dead: bool  # the spirit has died of neglect (terminal); see `died_at`
-    died_at: datetime | None  # the death moment (frozen); None while alive
-    ailing: bool  # health (the weakest need) is at 0 but the spirit is not yet dead
-    awakened_at: datetime  # when this spirit was awakened — its birth, for the memorial lifespan
+    awakened_at: datetime  # when this spirit was awakened — its birth
 
 
 class OptionPreview(BaseModel):
@@ -266,9 +258,9 @@ class ResetNameRequest(BaseModel):
 
 
 class TendRequest(BaseModel):
-    """A manual TEND action (ADR-0029): the Feed / Rest / Play buttons. `kind` maps to one need —
-    `feed` → nourished, `rest` → rested, `play` → joyful — and tops that need up to TEND_CAP (it
-    then decays like practice). An unknown kind → 422. Forbids extra fields. Free; no coins."""
+    """A gentle, optional TEND action (ADR-0031): the Feed / Rest / Play buttons. `kind` maps to one
+    need — `feed` → nourished, `rest` → rested, `play` → joyful — and tops that need up to TEND_CAP
+    (it then eases like practice). An unknown kind → 422. Forbids extra fields. Free; no coins."""
 
     model_config = ConfigDict(extra="forbid")
 

@@ -33,9 +33,6 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     available: [],
     collection: [],
     set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
-    dead: false,
-    died_at: null,
-    ailing: false,
     awakened_at: '2026-06-01T00:00:00Z',
     ...overrides,
   }
@@ -129,8 +126,8 @@ describe('PracticesPage', () => {
     expect(screen.getAllByText('Nourishment').length).toBeGreaterThan(0)
   })
 
-  it('shows no spirit nudge for a dead spirit (list still renders)', async () => {
-    get.mockResolvedValue(spiritWith({ dead: true, died_at: '2026-06-20T00:00:00Z' }))
+  it('shows no spirit nudge for a pathless spark (list still renders)', async () => {
+    get.mockResolvedValue(spiritWith({ path: null }))
     renderPage()
     await waitFor(() => expect(get).toHaveBeenCalled())
     expect(screen.queryByText(/needs more/i)).toBeNull()

@@ -96,25 +96,19 @@ function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
     // Default to no signature set (total 0 → the status renders nothing) so unrelated tests are
     // unaffected; the ADR-0028 set-bonus tests below override this explicitly.
     set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
-    // Tamagotchi survival state (ADR-0029) — a healthy, alive spirit by default; the death/ailing
-    // tests below override these explicitly.
     awakened_at: '2026-06-01T00:00:00Z',
-    ailing: false,
-    dead: false,
-    died_at: null,
     ...overrides,
   }
 }
 
-// A retired-spirit builder (ADR-0029) — a radiant graduate by default (no died_at). The memorial
-// test below overrides `died_at` + `awakened_at`. Mirrors the backend RetiredSpirit.
+// A retired-spirit builder (ADR-0031) — a radiant graduate (the only kind, now death is gone).
+// Mirrors the backend RetiredSpirit.
 function retired(over: Partial<RetiredSpirit> & { id: string }): RetiredSpirit {
   return {
     stage: 'radiant',
     path: 'breath',
     name: null,
     awakened_at: '2026-05-01T00:00:00Z',
-    died_at: null,
     ...over,
   }
 }
@@ -510,19 +504,10 @@ describe('SpiritPage collection gallery', () => {
     expect(screen.getByText(/Radiant spirit/)).toBeInTheDocument()
   })
 
-  it('renders a died spirit as a memorial with its lifespan (ADR-0029)', async () => {
+  it('never renders a memorial in the collection — every entry is a radiant graduate (ADR-0031)', async () => {
     get.mockResolvedValue(
       spiritWith({
-        collection: [
-          retired({
-            id: 'm1',
-            stage: 'fledgling',
-            path: 'heart',
-            name: 'Sol',
-            awakened_at: '2026-06-01T00:00:00Z',
-            died_at: '2026-06-05T00:00:00Z', // four days
-          }),
-        ],
+        collection: [retired({ id: 'g1', stage: 'radiant', path: 'heart', name: 'Sol' })],
       }),
     )
 
@@ -530,9 +515,9 @@ describe('SpiritPage collection gallery', () => {
     await showTab('Collection')
 
     expect(await screen.findByText('Sol')).toBeInTheDocument()
-    // The died entry shows its lifespan and is flagged as a memorial (not a radiant-stage label).
-    expect(screen.getByText('Lived 4 days')).toBeInTheDocument()
-    expect(document.querySelector('.spirit-collection-item--memorial')).not.toBeNull()
+    // No memorial markers, no lifespan copy anywhere.
+    expect(document.querySelector('.spirit-collection-item--memorial')).toBeNull()
+    expect(screen.queryByText(/Lived/)).toBeNull()
   })
 
   it('shows a concise empty-collection note when there are no retired spirits', async () => {
@@ -574,9 +559,9 @@ describe('SpiritPage awaken (radiant only)', () => {
   })
 })
 
-// --- ADR-0029: Tamagotchi — tend loop, ailing, death --------------------------------------
+// --- ADR-0031: gentle, optional tend loop (no ailing, no death) ----------------------------
 
-describe('SpiritPage tend loop (ADR-0029)', () => {
+describe('SpiritPage tend loop (ADR-0031)', () => {
   beforeEach(() => {
     get.mockReset()
     tend.mockReset()
@@ -613,71 +598,23 @@ describe('SpiritPage tend loop (ADR-0029)', () => {
     )
   })
 
-  it('shows the ailing banner (legible stakes) when the spirit is ailing', async () => {
-    get.mockResolvedValue(spiritWith({ name: 'Ash', ailing: true }))
+  it('never shows an ailing banner, even at the lowest (floored) condition (ADR-0031)', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        name: 'Ash',
+        // The lowest the floored needs read (content); the companion is never "ailing".
+        needs: { nourished: okNeed('content', 0.8), rested: okNeed('content', 0.8), joyful: okNeed('content', 0.8) },
+        condition: okNeed('content', 0.8),
+      }),
+    )
 
     renderPage()
     await showTab('Care')
 
-    expect(screen.getByText(/Ash is ailing — feed it or practice today/)).toBeInTheDocument()
-  })
-})
-
-describe('SpiritPage death memorial (ADR-0029)', () => {
-  beforeEach(() => {
-    get.mockReset()
-    awaken.mockReset()
-    tend.mockReset()
-  })
-
-  it('replaces the page body with a memorial: name, lifespan, and Awaken; hides the tree', async () => {
-    get.mockResolvedValue(
-      spiritWith({
-        name: 'Ash',
-        dead: true,
-        awakened_at: '2026-06-01T00:00:00Z',
-        died_at: '2026-06-06T00:00:00Z', // five days
-      }),
-    )
-
-    renderPage()
-
-    // The memorial shows the name + "lived N days" + the begin-again action.
-    expect(await screen.findByText('Ash')).toBeInTheDocument()
-    expect(screen.getByText(/Ash lived 5 days/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Awaken a new spark/ })).toBeInTheDocument()
-    // The customize tree, the Care section, and the name reset are all hidden while dead.
-    expect(screen.queryByText('Customize')).toBeNull()
-    expect(screen.queryByText('Care')).toBeNull()
-    expect(screen.queryByRole('button', { name: /Reset name/ })).toBeNull()
-  })
-
-  it('reads "lived less than a day" for a spirit that died within a day', async () => {
-    get.mockResolvedValue(
-      spiritWith({
-        name: 'Mote',
-        dead: true,
-        awakened_at: '2026-06-06T08:00:00Z',
-        died_at: '2026-06-06T20:00:00Z', // twelve hours
-      }),
-    )
-
-    renderPage()
-
-    expect(await screen.findByText(/Mote Lived less than a day/i)).toBeInTheDocument()
-  })
-
-  it('awakens a new spark from death via the set-free service method', async () => {
-    get.mockResolvedValue(
-      spiritWith({ name: 'Ash', dead: true, died_at: '2026-06-06T00:00:00Z' }),
-    )
-    // The fresh, pathless, not-dead spark — swapping it in trips the choose redirect.
-    awaken.mockResolvedValue(spiritWith({ stage: 'spark', path: null, dead: false, died_at: null }))
-
-    renderPage()
-
-    fireEvent.click(await screen.findByRole('button', { name: /Awaken a new spark/ }))
-    await waitFor(() => expect(awaken).toHaveBeenCalledTimes(1))
+    // No survival/death/sickness copy; the Care section + tend buttons still render normally.
+    expect(screen.queryByText(/is ailing/)).toBeNull()
+    expect(screen.queryByText(/may not make it/)).toBeNull()
+    expect(screen.getByRole('button', { name: /Feed — top up Nourishment/ })).toBeInTheDocument()
   })
 })
 

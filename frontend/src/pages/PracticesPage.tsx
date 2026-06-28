@@ -115,9 +115,9 @@ export default function PracticesPage() {
       .catch(() => setSpirit(null))
   }, [])
 
-  // Only guide by needs for a LIVING creature (an alive spirit that has chosen a path). A pathless
-  // spark or a dead spirit shows the practices + their generic feeds, but no "needs now" highlight.
-  const guiding = spirit != null && !spirit.dead && spirit.path != null
+  // Only guide by needs for a creature that has chosen a path. A pathless spark shows the practices
+  // + their generic feeds, but no "needs now" highlight (ADR-0031: the spirit is always alive).
+  const guiding = spirit != null && spirit.path != null
   const need = guiding ? weakestNeed(spirit) : null
 
   return (
@@ -138,7 +138,6 @@ export default function PracticesPage() {
               path={spirit.path}
               glow={spirit.condition.factor}
               cosmetics={spirit.cosmetics}
-              ailing={spirit.ailing}
               reducedMotion={reducedMotion}
             />
           </div>

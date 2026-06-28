@@ -1,20 +1,23 @@
 """Spirit state — a single living companion grown from practice (docs/design/spirit.md,
-ADR-0022, ADR-0023, ADR-0024, ADR-0027, ADR-0029). Get-or-create the active spirit, compute its
+ADR-0022, ADR-0023, ADR-0024, ADR-0027, ADR-0031). Get-or-create the active spirit, compute its
 read-only state, and write the choose / tend / unlock / equip / name-reset / awaken loop.
 
 Mostly computed (ADR-0009/0011): the stored state is the active spirit row's chosen `path`, the
 `name`, the `unlocked` collection + the equipped `cosmetics` loadout (ADR-0027), the `coins_spent`
-spend ledger, and — ADR-0029, the Tamagotchi turn — the needs decay anchors: `needs_baseline_at`
-(born-fed), the per-need `*_tended_at` stamps, and `died_at`. Stage / bond / coins are still
-derived on read (via `dashboard_service.get_wallet_basis`), but ADR-0030 ("rebirth from a spark")
-splits which LEVEL each reads:
+spend ledger, and the gentle needs anchors: `needs_baseline_at` (born-fed) + the per-need
+`*_tended_at` stamps. ADR-0031 ("the companion stops being mortal") REVERSES ADR-0029: the spirit
+can no longer die or be "ailing" — needs are FLOORED at a calm tier (see NEEDS_FLOOR) so they never
+empty or punish, and the `died_at` column / health computation are gone. Stage / bond / coins are
+still derived on read (via `dashboard_service.get_wallet_basis`), but ADR-0030 ("rebirth from a
+spark") splits which LEVEL each reads:
 
 - **Stage / Bond / unlock-level gates** — derived from the SPIRIT-LEVEL: the XP earned SINCE
   `awakened_at` (this spirit's OWN life), via `get_wallet_basis(..., since=awakened_at)`. So a
   freshly awakened spark starts at level 1 → `spark` and must be RE-GROWN, even on a seasoned
-  account; death is a true restart. A pure function of (own-life) level, so it's still monotonic
-  over this spirit's life and can't be lost. For a first/never-died spirit (awakened ≈ account
-  start) the spirit-level ≈ the lifetime level, so its stage/level are unchanged (no migration).
+  account; awakening (a graduation at radiant) is a true restart. A pure function of (own-life)
+  level, so it's still monotonic over this spirit's life and can't be lost. For a first spirit
+  (awakened ≈ account start) the spirit-level ≈ the lifetime level, so its stage/level are
+  unchanged (no migration).
 - **Coins** — `lifetime_level × COINS_PER_LEVEL − coins_spent`, clamped ≥ 0 (see `_coin_balance`).
   ADR-0030 keeps coins on the LIFETIME level (the user's whole journey) — the owner's "keep your
   coin budget" choice — so a young spark holds the full account budget and `coins_spent` resets to
@@ -22,13 +25,14 @@ splits which LEVEL each reads:
   ADR-0024: the balance comes from the STORED, monotonic `coins_spent` ledger (every upgrade
   and paid reset only ADDS to it; clearing an upgrade never refunds), so a committed choice
   can't be undone for free. Self-contained: this module owns its own `COINS_PER_LEVEL`.
-- **Needs** (ADR-0029, supersedes ADR-0023 and the cosmetic modifiers of ADR-0025/0026/0028) —
-  THREE SURVIVAL meters (`nourished` / `rested` / `joyful`), each a tier + 0..1 factor that DECAYS
-  in real time off the born-fed baseline + the most-recent relevant practice (and a lighter,
-  capped manual tend). `nourished` ← the chosen creature's signature practice, `rested` ← any sit,
-  `joyful` ← a gratitude/journal entry. The overall **condition** = the weakest need = HEALTH:
-  when it hits 0 the spirit is ailing, and after DEATH_DAYS it DIES (`died_at` persisted lazily;
-  death is terminal). XP/level/coins stay decoupled from needs, so practice progress is never lost.
+- **Needs** (ADR-0031, supersedes ADR-0029's survival meters; re-adopts the non-punishing needs
+  of ADR-0023 and the cosmetic modifiers of ADR-0025/0026/0028 stay removed) — THREE GENTLE meters
+  (`nourished` / `rested` / `joyful`), each a tier + 0..1 factor that eases down off the born-fed
+  baseline + the most-recent relevant practice (and a lighter, capped manual tend), but is FLOORED
+  at NEEDS_FLOOR so it never drops below a calm "content" tier. `nourished` ← the chosen creature's
+  signature practice, `rested` ← any sit, `joyful` ← a gratitude/journal entry. The overall
+  **condition** = the weakest need — a purely visual care read-out: there is no "ailing", no death.
+  XP/level/coins stay decoupled from needs, so practice progress is never lost.
 
 ADR-0023 also makes the `path` USER-CHOSEN (set once via `choose_path` while pathless)
 instead of auto-detected from the practice mix; the ADR-0022 `path_lean` and commit-on-read
@@ -42,7 +46,7 @@ parallel request — no double-spend, no two active spirits.
 """
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -128,13 +132,8 @@ class PathAlreadyChosen(Exception):
 
 
 class NotRadiant(Exception):
-    """Awaken requires the active spirit to be at the radiant stage → 409. (ADR-0029 also lets a
-    DEAD spirit awaken — that path checks `died_at`, not this error.)"""
-
-
-class SpiritDead(Exception):
-    """A tend (Feed / Rest / Play) targeted a spirit that has already died (ADR-0029). Death is
-    terminal — you must awaken a new spirit. The route maps this to 409."""
+    """Awaken requires the active spirit to be at the radiant stage → 409 (graduation only; ADR-0031
+    removed the death-triggered awaken path)."""
 
 
 class SpiritConflictError(Exception):
@@ -217,11 +216,11 @@ JOYFUL = "joyful"
 # (a display tag under ADR-0029) and the keys the schema/needs read agree on.
 NEED_KEYS: tuple[str, ...] = (NOURISHED, RESTED, JOYFUL)
 
-# ADR-0029 makes the three needs SURVIVAL meters that decay in real time (see the decay block
-# below). Each is still reported as a tier (thriving → content → restless → unwell) + a 0..1
-# factor, but the factor is now the decayed VALUE, not a rolling activity-day count. The tier is
-# banded from that value via NEED_TIERS' factor thresholds (`_tier_for_factor`). What feeds each
-# need (ADR-0029):
+# The three needs are GENTLE meters that ease down in real time (see the decay block below). Each
+# is reported as a tier (thriving → content → restless → unwell) + a 0..1 factor, but the factor is
+# FLOORED at NEEDS_FLOOR so it never drops below the calm "content" tier (ADR-0031 — the spirit is
+# encouraging-only; there is no empty, no "unwell"). The tier is banded from that value via
+# NEED_TIERS' factor thresholds (`_tier_for_factor`). What feeds each need:
 #   nourished — the chosen creature's SIGNATURE practice (the balancing one).
 #   rested    — ANY practice session (a sit of any kind).
 #   joyful    — a gratitude or journal entry.
@@ -241,9 +240,11 @@ _TIER_RANK: dict[str, int] = {
 }
 
 # The factor → tier band thresholds (`_tier_for_factor`): the best tier whose factor ≤ a need's
-# value. ADR-0029 reuses only the factor column (the middle `min_count` is now vestigial — kept so
-# the tuple shape stays stable). A value at/above 1.0 → thriving, ≥0.8 → content, ≥0.6 → restless,
-# anything lower (down to 0) → unwell, the natural floor for a depleted (or dead-bound) need.
+# value. Only the factor column is used (the middle `min_count` is vestigial — kept so the tuple
+# shape stays stable). A value at/above 1.0 → thriving, ≥0.8 → content, ≥0.6 → restless, anything
+# lower → unwell. ADR-0031 FLOORS every need at NEEDS_FLOOR (= the content threshold), so in
+# practice the worst reachable tier is `content` — `restless`/`unwell` are unreachable (the spirit
+# never reads as alarming); the bands below `content` are kept only for completeness.
 NEED_TIERS: tuple[tuple[str, int, float], ...] = (
     (CONDITION_THRIVING, 5, 1.0),
     (CONDITION_CONTENT, 3, 0.8),
@@ -256,24 +257,26 @@ NEED_TIERS: tuple[tuple[str, int, float], ...] = (
 _NEUTRAL_CONDITION_TIER = CONDITION_CONTENT
 _NEUTRAL_CONDITION_FACTOR = 0.8
 
-# --- ADR-0029: real-time decay + sickness/death (the Tamagotchi turn) ---------------------
+# --- ADR-0031: gentle, floored needs (the companion stops being mortal) -------------------
 #
-# Needs no longer read a rolling activity-day count off the log (ADR-0023); each is a 0..1 meter
-# that FALLS ON A CLOCK. Two ways to feed it:
+# Needs ease down on a clock since last fed, but they NEVER empty and NEVER punish — the spirit is
+# encouraging-only (ADR-0031, reversing ADR-0029's survival meters). Two ways to feed a need:
 #   - PRACTICE fills it to 1.0. The "last fed by practice" time is the most recent relevant
 #     activity (nourished ← the dosha's signature practice, rested ← any sit, joyful ←
 #     gratitude/journal), floored at `needs_baseline_at` (the born-fed anchor).
 #   - A TEND (Feed / Rest / Play) tops it up to TEND_CAP. Stored as a per-need `*_tended_at`.
-# A need's value = `max(practice_value, tend_value)`, each = cap − elapsed_days/DECAY_DAYS, clamped.
-# There is NO floor — a need can reach 0 (the old non-punishing floor is intentionally gone).
-#
-# Overall HEALTH = the weakest need. When it hits 0 the spirit is AILING; if it stays ailing for
-# DEATH_DAYS it DIES (~5 days of total neglect). Both onsets are computable from the fed timestamps
-# (so "ailing" needs no stored column); `died_at` is persisted lazily on the first read that detects
-# death, freezing it (death is terminal — practice/tend can't revive a dead spirit).
-DECAY_DAYS = 3.0  # full → empty over this many days since a need was last fed
-TEND_CAP = 0.6  # a manual tend tops a need up only to here (practice fills to 1.0)
-DEATH_DAYS = 2.0  # days a spirit stays ailing (health 0) before it dies
+# A need's value = `max(practice_value, tend_value, NEEDS_FLOOR)`, each computed-from-activity
+# contribution = cap − elapsed_days/DECAY_DAYS, clamped. NEEDS_FLOOR keeps the value from ever
+# dropping below a calm "content" tier, so the worst a need can read is `content` — a gentle resting
+# creature, never "unwell"/empty. There is no health/ailing/death anymore.
+DECAY_DAYS = 3.0  # value eases from full toward the floor over this many days since last fed
+TEND_CAP = 0.9  # a manual tend gives a gentle lift above the content floor (practice fills to 1.0)
+
+# The non-punishing FLOOR (ADR-0031): a need's 0..1 value never drops below this. Set to the
+# `content` tier threshold (NEED_TIERS) so a fully-rested-away need still reads `content` — the
+# mildest, non-alarming, non-nudged tier — never `restless`/`unwell`/empty. This is the whole point
+# of the reversal: the companion only ever roots for you.
+NEEDS_FLOOR = 0.8
 
 # --- Per-item need affinity (ADR-0026 → ADR-0029) -----------------------------------------
 #
@@ -405,41 +408,35 @@ def _clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
-def _need_value_and_zero_time(
+def _need_value(
     now: datetime,
     practice_fed_at: datetime,
     tended_at: datetime | None,
-) -> tuple[float, datetime]:
-    """One need's current 0..1 value AND the instant it reaches 0 (ADR-0029).
+) -> float:
+    """One need's current 0..1 value (ADR-0031), FLOORED so it never punishes.
 
     - `practice_value = clamp(1 − elapsed(now, practice_fed_at) / DECAY_DAYS, 0, 1)` — practice
-      fills to 1.0 and decays over DECAY_DAYS.
+      fills to 1.0 and eases over DECAY_DAYS.
     - `tend_value = clamp(TEND_CAP − elapsed(now, tended_at) / DECAY_DAYS, 0, TEND_CAP)` when the
-      need was tended, else 0.0 — a tend tops up only to TEND_CAP and decays at the same rate.
-    - `value = max(practice_value, tend_value)` — the stronger of the two.
-
-    `zero_time` = the latest instant either source still has value left:
-    `max(practice_fed_at + DECAY_DAYS, (tended_at + TEND_CAP·DECAY_DAYS) if tended)` — the moment
-    this need's `value` hits 0 (used to derive ailing-onset / death). Both are pure functions of
-    the fed timestamps, so health/ailing/death are computable without a stored 'ailing' column."""
-    decay = timedelta(days=DECAY_DAYS)
+      need was tended, else 0.0 — a tend tops up only to TEND_CAP and eases at the same rate.
+    - `value = max(practice_value, tend_value, NEEDS_FLOOR)` — the strongest of the three, so the
+      need never drops below the calm `content` floor (ADR-0031: the companion is never punishing).
+    """
     practice_value = _clamp(1.0 - _elapsed_days(now, practice_fed_at) / DECAY_DAYS, 0.0, 1.0)
-    practice_zero = practice_fed_at + decay
 
     if tended_at is not None:
         tend_value = _clamp(
             TEND_CAP - _elapsed_days(now, tended_at) / DECAY_DAYS, 0.0, TEND_CAP
         )
-        tend_zero = tended_at + timedelta(days=TEND_CAP * DECAY_DAYS)
-        return max(practice_value, tend_value), max(practice_zero, tend_zero)
+        return max(practice_value, tend_value, NEEDS_FLOOR)
 
-    return practice_value, practice_zero
+    return max(practice_value, NEEDS_FLOOR)
 
 
 def _need_from_value(value: float) -> SpiritNeed:
-    """Wrap a 0..1 decayed `value` as a SpiritNeed: `factor = value`, `tier` re-derived from the
-    factor via the existing NEED_TIERS factor→tier mapping (so a value below the unwell threshold
-    reads `unwell`, the natural floor for a depleted-but-not-yet-dead need)."""
+    """Wrap a 0..1 `value` as a SpiritNeed: `factor = value`, `tier` re-derived from the factor via
+    the NEED_TIERS factor→tier mapping. Since `value` is floored at NEEDS_FLOOR (the `content`
+    threshold), the tier is at best `content` and never reads `restless`/`unwell` (ADR-0031)."""
     return SpiritNeed(tier=_tier_for_factor(value), factor=value)
 
 
@@ -454,20 +451,21 @@ def needs(
     rested_tended_at: datetime | None = None,
     joyful_tended_at: datetime | None = None,
 ) -> SpiritNeeds:
-    """The active creature's three SURVIVAL needs, decayed in real time (ADR-0029 — supersedes
-    ADR-0023's rolling-window advisory needs and the cosmetic modifiers of ADR-0025/0026/0028).
+    """The active creature's three GENTLE needs (ADR-0031 — supersedes ADR-0029's survival meters;
+    re-adopts the non-punishing stance of ADR-0023, with the cosmetic modifiers of ADR-0025/0026/0028
+    still removed).
 
     A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
-    content-ish default rather than decaying.
+    content-ish default rather than easing down.
 
-    Otherwise each need's 0..1 value = `max(practice_value, tend_value)` (see
-    `_need_value_and_zero_time`), where the practice "last fed" time is
+    Otherwise each need's 0..1 value = `max(practice_value, tend_value, NEEDS_FLOOR)` (see
+    `_need_value`), where the practice "last fed" time is
     `max(needs_baseline_at, last_relevant_activity)`:
     - nourished ← the dosha's SIGNATURE practice (the balancing one);
     - rested    ← ANY practice session (a sit of any kind);
     - joyful    ← a gratitude or journal entry.
-    Practice fills to 1.0; a tend (`*_tended_at`) tops up to TEND_CAP. There is NO floor — a need
-    can decay to 0 (the non-punishing floor of ADR-0023 is intentionally removed).
+    Practice fills to 1.0; a tend (`*_tended_at`) tops up to TEND_CAP. The NEEDS_FLOOR keeps every
+    need at the calm `content` tier or above — it can never empty or read as alarming.
     """
     if path is None or path not in _CHOOSABLE_PATHS:
         neutral = _neutral_need()
@@ -482,69 +480,15 @@ def needs(
     rested_fed = _latest(baseline, _last_any_session_at(db, user_id))
     joyful_fed = _latest(baseline, _last_reflection_at(db, user_id))
 
-    nourished_value, _ = _need_value_and_zero_time(
-        now, nourished_fed, _as_aware(nourished_tended_at)
-    )
-    rested_value, _ = _need_value_and_zero_time(
-        now, rested_fed, _as_aware(rested_tended_at)
-    )
-    joyful_value, _ = _need_value_and_zero_time(
-        now, joyful_fed, _as_aware(joyful_tended_at)
-    )
+    nourished_value = _need_value(now, nourished_fed, _as_aware(nourished_tended_at))
+    rested_value = _need_value(now, rested_fed, _as_aware(rested_tended_at))
+    joyful_value = _need_value(now, joyful_fed, _as_aware(joyful_tended_at))
 
     return SpiritNeeds(
         nourished=_need_from_value(nourished_value),
         rested=_need_from_value(rested_value),
         joyful=_need_from_value(joyful_value),
     )
-
-
-def _health_state(
-    db: DBSession,
-    path: str | None,
-    user_id: uuid.UUID,
-    *,
-    now: datetime,
-    needs_baseline_at: datetime,
-    nourished_tended_at: datetime | None,
-    rested_tended_at: datetime | None,
-    joyful_tended_at: datetime | None,
-) -> tuple[bool, datetime | None]:
-    """Compute the spirit's sickness/death state from the fed timestamps (ADR-0029), returning
-    `(is_dead, death_time)`:
-
-    - per need, `zero_time` is when its value hits 0;
-    - `ailing_onset = min(zero_time over the 3 needs)` — when the WEAKEST need first empties, i.e.
-      health (the weakest need) hits 0;
-    - `death_time = ailing_onset + DEATH_DAYS`;
-    - `is_dead = now >= death_time`.
-
-    A pathless spark never sickens (no creature → no care requirement) → `(False, None)`. The
-    caller persists `died_at = death_time` lazily and treats the spirit as ailing when health is 0
-    but `now < death_time`."""
-    if path is None or path not in _CHOOSABLE_PATHS:
-        return False, None
-
-    baseline = _as_aware(needs_baseline_at)
-    now = _as_aware(now)
-
-    nourished_fed = _latest(baseline, _last_signature_practice_at(db, path, user_id))
-    rested_fed = _latest(baseline, _last_any_session_at(db, user_id))
-    joyful_fed = _latest(baseline, _last_reflection_at(db, user_id))
-
-    _, nourished_zero = _need_value_and_zero_time(
-        now, nourished_fed, _as_aware(nourished_tended_at)
-    )
-    _, rested_zero = _need_value_and_zero_time(
-        now, rested_fed, _as_aware(rested_tended_at)
-    )
-    _, joyful_zero = _need_value_and_zero_time(
-        now, joyful_fed, _as_aware(joyful_tended_at)
-    )
-
-    ailing_onset = min(nourished_zero, rested_zero, joyful_zero)
-    death_time = ailing_onset + timedelta(days=DEATH_DAYS)
-    return now >= death_time, death_time
 
 
 def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
@@ -1101,9 +1045,9 @@ def get_or_create_active_spirit(db: DBSession, user_id: uuid.UUID) -> Spirit:
 
 def _collection(db: DBSession, user_id: uuid.UUID) -> list[RetiredSpirit]:
     """The user's retired spirits — past companions kept forever (the replay loop): graduates that
-    reached radiant AND, since ADR-0029, ones that DIED of neglect (carrying `died_at` so the
-    gallery can memorialize them with their lifespan). Ordered most recently retired first. Empty
-    for a user who has never awakened a new spark."""
+    grew to radiant and were set free (ADR-0031 removed the death path, so every retired spirit is
+    a radiant graduate). Ordered most recently retired first. Empty for a user who has never
+    awakened a new spark."""
     rows = db.execute(
         select(Spirit)
         .where(Spirit.user_id == user_id, Spirit.retired_at.is_not(None))
@@ -1113,14 +1057,11 @@ def _collection(db: DBSession, user_id: uuid.UUID) -> list[RetiredSpirit]:
     ).scalars().all()
     return [
         RetiredSpirit(
+            # A graduate retired at radiant (the final stage).
             id=str(row.id),
-            # A graduate retired at radiant (the final stage); a DIED spirit (ADR-0029) didn't
-            # necessarily — its exact death stage isn't stored, so the gallery keys off `died_at`
-            # (memorial + lifespan) rather than the stage for those.
             stage=STAGE_BANDS[-1][0],
             path=row.path,
             name=row.name,
-            died_at=_as_aware(row.died_at) if row.died_at is not None else None,
             awakened_at=_as_aware(row.awakened_at),
         )
         for row in rows
@@ -1168,13 +1109,13 @@ def _build_state(
     # coins are an account budget, NOT scoped to the spirit's own life.
     coins = _coin_balance(lifetime_level, spirit.coins_spent)
 
-    # ADR-0028 (status only, ADR-0029): the signature-set bonus is DERIVED from the equipped
-    # cosmetics + path; it's a visual flourish now (no needs lift).
+    # ADR-0028 (status only): the signature-set bonus is DERIVED from the equipped cosmetics + path;
+    # it's a visual flourish (no needs lift).
     set_bonus = _signature_set_bonus(cosmetics, spirit.path)
 
-    # ADR-0029: the three needs are SURVIVAL meters decayed in real time off the born-fed baseline,
-    # the most-recent relevant practice, and the per-need tend stamps. A pathless spark gets neutral
-    # defaults.
+    # ADR-0031: the three needs are GENTLE meters that ease down off the born-fed baseline, the
+    # most-recent relevant practice, and the per-need tend stamps — but are FLOORED so they never
+    # empty or punish (no health/ailing/death). A pathless spark gets neutral defaults.
     baseline = spirit.needs_baseline_at
     spirit_needs = needs(
         db,
@@ -1186,12 +1127,6 @@ def _build_state(
         rested_tended_at=spirit.rested_tended_at,
         joyful_tended_at=spirit.joyful_tended_at,
     )
-
-    # ADR-0029 sickness/death: health = the weakest need. When it has been empty for DEATH_DAYS the
-    # spirit dies; `died_at` is the frozen real moment (may be in the past), persisted LAZILY here
-    # the first time death is detected (the established write-on-read pattern). Death is TERMINAL —
-    # once `died_at` is set we never recompute or clear it.
-    dead, ailing, died_at = _resolve_health(db, user_id, spirit, now=now)
 
     return SpiritState(
         # ADR-0030: `stage` and `bond` key off the SPIRIT-LEVEL (XP earned since `awakened_at`),
@@ -1210,65 +1145,15 @@ def _build_state(
             xp_for_next=spirit_basis.xp_for_next,
         ),
         needs=spirit_needs,
-        # The overall condition is the weakest of the three needs (ADR-0029: = health).
+        # The overall condition is the weakest of the three needs — a calm, visual care read-out.
         condition=overall_condition(spirit_needs),
         coins=coins,
         cosmetics=cosmetics,
         available=_available_slots(cosmetics, owned, coins, level, spirit.path),
         collection=_collection(db, user_id),
         set_bonus=set_bonus,
-        dead=dead,
-        died_at=died_at,
-        ailing=ailing,
         awakened_at=spirit.awakened_at,
     )
-
-
-def _resolve_health(
-    db: DBSession, user_id: uuid.UUID, spirit: Spirit, *, now: datetime
-) -> tuple[bool, bool, datetime | None]:
-    """Resolve `(dead, ailing, died_at)` for the active spirit (ADR-0029), persisting death lazily.
-
-    - If `died_at` is already set, the spirit stays dead (terminal) — return it as-is.
-    - Otherwise compute death from the fed timestamps. If `now` has reached the death time, PERSIST
-      `died_at = death_time` (the real moment, possibly in the past) and commit, then report dead.
-    - `ailing` = health (the weakest need) is at 0 but the spirit is not yet dead. Derived from the
-      same needs read; no stored column.
-    A pathless spark never sickens."""
-    if spirit.died_at is not None:
-        return True, False, _as_aware(spirit.died_at)
-
-    is_dead, death_time = _health_state(
-        db,
-        spirit.path,
-        user_id,
-        now=now,
-        needs_baseline_at=spirit.needs_baseline_at,
-        nourished_tended_at=spirit.nourished_tended_at,
-        rested_tended_at=spirit.rested_tended_at,
-        joyful_tended_at=spirit.joyful_tended_at,
-    )
-    if is_dead and death_time is not None:
-        # First detection — freeze the real death moment and commit (write-on-read).
-        spirit.died_at = death_time
-        db.commit()
-        db.refresh(spirit)
-        return True, False, _as_aware(spirit.died_at)
-
-    # Not dead. Ailing = health (the weakest need) has hit 0 but the death window hasn't elapsed.
-    spirit_needs = needs(
-        db,
-        spirit.path,
-        user_id,
-        now=now,
-        needs_baseline_at=spirit.needs_baseline_at,
-        nourished_tended_at=spirit.nourished_tended_at,
-        rested_tended_at=spirit.rested_tended_at,
-        joyful_tended_at=spirit.joyful_tended_at,
-    )
-    health = overall_condition(spirit_needs).factor
-    ailing = health <= 0.0
-    return False, ailing, None
 
 
 def get_spirit(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str) -> SpiritState:
@@ -1486,9 +1371,9 @@ def reset_name(
 
 
 def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -> SpiritState:
-    """Retire the active spirit and awaken a fresh pathless spark — reachable when the spirit is
-    radiant (the long-horizon goal) OR when it has DIED (ADR-0029: the "set free a new one" path
-    from the memorial). Raises NotRadiant (409) when it is neither.
+    """Retire the active spirit and awaken a fresh pathless spark — reachable ONLY when the spirit
+    is radiant (graduation, its pre-0029 role; ADR-0031 removed the death-triggered awaken path).
+    Raises NotRadiant (409) otherwise.
 
     Done in ONE transaction: the current row's `retired_at` is stamped and a new pathless spark is
     inserted, so the partial unique index (one active spirit per user) is never violated. A
@@ -1506,12 +1391,7 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
         db, user_id, today=today, tz=tz, since=_as_aware(spirit.awakened_at)
     )
     is_radiant = stage_for_level(spirit_basis.level) == STAGE_BANDS[-1][0]
-    # ADR-0029: a dead spirit can also be retired+awakened. Compute death here (lazily persisting
-    # `died_at`) so the gate sees it even on the first read after death.
-    dead, _ailing, _died_at = _resolve_health(
-        db, user_id, spirit, now=datetime.now(UTC)
-    )
-    if not is_radiant and not dead:
+    if not is_radiant:
         raise NotRadiant(str(spirit.id))
 
     # Retire the current spirit and insert the new spark together: stamping retired_at frees
@@ -1533,7 +1413,7 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
     return _build_state(db, user_id, new_spark, today=today, tz=tz, basis=basis)
 
 
-# The tend `kind` → the need (and its stored stamp column) it tops up (ADR-0029).
+# The tend `kind` → the need (and its stored stamp column) it tops up.
 _TEND_KIND_TO_COLUMN: dict[str, str] = {
     "feed": "nourished_tended_at",
     "rest": "rested_tended_at",
@@ -1544,28 +1424,22 @@ _TEND_KIND_TO_COLUMN: dict[str, str] = {
 def tend_spirit(
     db: DBSession, user_id: uuid.UUID, kind: str, *, today: date, tz: str = "UTC"
 ) -> SpiritState:
-    """A manual TEND action (ADR-0029): Feed / Rest / Play. `kind` (`feed` | `rest` | `play`) maps
+    """A gentle, optional TEND action: Feed / Rest / Play. `kind` (`feed` | `rest` | `play`) maps
     to one need — feed → nourished, rest → rested, play → joyful — and stamps that need's
-    `*_tended_at = now()`, lifting it to TEND_CAP via the decay formula (it then decays like
+    `*_tended_at = now()`, lifting it to TEND_CAP via the gentle formula (it then eases like
     practice). Tending an already-full-by-practice need is a harmless near-no-op (the `max` keeps
     the higher value). Returns the freshly built spirit state.
 
-    A DEAD spirit cannot be tended → SpiritDead (the route maps it to a 409): death is terminal,
-    so the user must awaken a new spirit. Serialized under the per-user advisory lock like the
-    other writes. Tending is free (no coins) and works even on a pathless spark (it just feeds the
-    stamp; a pathless spark's needs still read neutral)."""
+    Purely optional care, never a survival action (ADR-0031: the companion can't die or sicken).
+    Serialized under the per-user advisory lock like the other writes. Tending is free (no coins)
+    and works even on a pathless spark (it just feeds the stamp; a pathless spark's needs still
+    read neutral)."""
     column = _TEND_KIND_TO_COLUMN.get(kind)
     if column is None:  # defensive — the schema already constrains `kind` to the three literals.
         raise ValueError(f"unknown tend kind {kind!r}")
 
     _lock_user_spirit(db, user_id)
     spirit = get_or_create_active_spirit(db, user_id)
-
-    # A dead spirit is terminal — reject the tend (the memorial offers awaken instead). Compute
-    # death lazily (persisting `died_at` if newly detected) so even a first read sees it.
-    dead, _ailing, _died_at = _resolve_health(db, user_id, spirit, now=datetime.now(UTC))
-    if dead:
-        raise SpiritDead(str(spirit.id))
 
     setattr(spirit, column, func.now())
     db.commit()

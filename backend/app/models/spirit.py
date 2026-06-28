@@ -84,17 +84,18 @@ class Spirit(Base):
     awakened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    # The "born fed" anchor for the real-time needs decay (ADR-0029, the Tamagotchi turn). Each
-    # need's value falls from full to empty over DECAY_DAYS since it was last fed; the fed time is
+    # The "born fed" anchor for the gentle needs decay (ADR-0031). Each need's value eases down over
+    # DECAY_DAYS since it was last fed (but is FLOORED so it never empties); the fed time is
     # `max(needs_baseline_at, last relevant practice)`, so this baseline guarantees a need starts
-    # full at awaken (and, via the migration's server_default = now(), that EXISTING spirits start
-    # fed on deploy — no mass-death). Set to the awaken/creation time for a new spirit.
+    # full at awaken. Set to the awaken/creation time for a new spirit. (Originally added by
+    # ADR-0029 with a server_default = now() so existing spirits started fed; KEPT under ADR-0031 —
+    # it still anchors the gentle decay.)
     needs_baseline_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    # Last manual TEND per need (ADR-0029): the Feed / Rest / Play actions stamp these. A tend lifts
-    # that need to TEND_CAP and then decays like practice (over DECAY_DAYS), so it keeps the spirit
-    # alive between sessions without making it thrive. NULL = never tended that need.
+    # Last manual TEND per need: the Feed / Rest / Play actions stamp these. A tend lifts that need
+    # to TEND_CAP and then eases like practice (over DECAY_DAYS) — gentle, optional care, no survival
+    # stakes (ADR-0031). NULL = never tended that need.
     nourished_tended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -102,14 +103,6 @@ class Spirit(Base):
         DateTime(timezone=True), nullable=True
     )
     joyful_tended_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    # Death timestamp (ADR-0029): NULL = alive. When the weakest need has been empty for DEATH_DAYS
-    # the spirit dies; the real death moment (which may be in the past) is PERSISTED here lazily on
-    # the first read that detects it, freezing it. Death is TERMINAL — once set, later practice/tend
-    # can't revive it; the user must awaken a new spirit (the retire→awaken flow, now reachable from
-    # death as well as radiant).
-    died_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     # Set when a radiant spirit is retired (user awakens a new one). NULL = the active spirit.

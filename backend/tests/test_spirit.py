@@ -35,10 +35,9 @@ from app.services.spirit_service import (
     COINS_PER_LEVEL,
     CONDITION_CONTENT,
     CONDITION_THRIVING,
-    CONDITION_UNWELL,
-    DEATH_DAYS,
     DECAY_DAYS,
     NEED_KEYS,
+    NEEDS_FLOOR,
     RESET_COST,
     SPIRIT_COSMETICS_CATALOG,
     TEND_CAP,
@@ -351,12 +350,13 @@ def test_choose_rejects_unexpected_fields(client):
     assert res.status_code == 422
 
 
-# --- Real-time decay needs (ADR-0029: the Tamagotchi turn) -------------------------------
+# --- Gentle, floored needs (ADR-0031: the companion stops being mortal) -------------------
 #
-# Needs are now SURVIVAL meters that decay on a clock since last fed. We test the pure decay math
-# by calling the service directly with an explicit `now` + `needs_baseline_at` (and per-need tend
-# stamps), and the end-to-end behaviour by setting the stored row's timestamps in the PAST (we do
-# NOT mock `now` — elapsed time is simulated by backdating the anchors).
+# Needs ease down on a clock since last fed but are FLOORED at NEEDS_FLOOR so they never empty or
+# punish. We test the pure math by calling the service directly with an explicit `now` +
+# `needs_baseline_at` (and per-need tend stamps), and the end-to-end behaviour by setting the stored
+# row's timestamps in the PAST (we do NOT mock `now` — elapsed time is simulated by backdating the
+# anchors).
 
 _AWARE = datetime.now(UTC)  # a stable aware "now" for the direct-call decay tests
 
@@ -419,8 +419,8 @@ def test_pathless_spark_has_neutral_needs(client, db_session):
 
 
 def test_born_fed_baseline_starts_full_and_healthy(client, db_session):
-    """A spirit with `needs_baseline_at` ~now (the migration / fresh-spark semantics) reads with
-    every need at full and is neither ailing nor dead — the no-mass-death guarantee."""
+    """A spirit with `needs_baseline_at` ~now (the fresh-spark semantics) reads with every need at
+    full — and, since ADR-0031, it can never be ailing or dead at all."""
     _auth(client, "needs_bornfed@example.com")
     user_id = _user_id(db_session, "needs_bornfed@example.com")
     now = datetime.now(UTC)
@@ -429,44 +429,45 @@ def test_born_fed_baseline_starts_full_and_healthy(client, db_session):
     for need in (n.nourished, n.rested, n.joyful):
         assert need.factor == 1.0
         assert need.tier == CONDITION_THRIVING
-    # And it isn't sick: the weakest need is full.
+    # The overall condition is full.
     assert spirit_service.overall_condition(n).factor == 1.0
-    is_dead, _ = spirit_service._health_state(
-        db_session,
-        "stillness",
-        user_id,
-        now=now,
-        needs_baseline_at=now,
-        nourished_tended_at=None,
-        rested_tended_at=None,
-        joyful_tended_at=None,
-    )
-    assert is_dead is False
+    # ADR-0031: there is no death/ailing state to compute — the GET shape no longer carries it.
+    body = _spirit(client)
+    assert "dead" not in body
+    assert "ailing" not in body
+    assert "died_at" not in body
 
 
 def test_needs_decay_partway_after_some_days(db_session):
-    """A baseline ~DECAY_DAYS/2 in the past with no activity/tend → needs decay PARTWAY (value
-    ≈ 0.5), strictly between full and empty — the clock is running."""
+    """A baseline ~DECAY_DAYS/2 in the past with no activity/tend → needs ease PARTWAY (value
+    ≈ 0.5)... but the NEEDS_FLOOR clamps that up to the floor, so the reported value never drops
+    below NEEDS_FLOOR (ADR-0031)."""
     user = _make_user(db_session, "needs_decay_partway@example.com")
     now = datetime.now(UTC)
     baseline = now - timedelta(days=DECAY_DAYS / 2)
     n = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=baseline)
     for need in (n.nourished, n.rested, n.joyful):
-        # value = 1 - (DECAY_DAYS/2)/DECAY_DAYS = 0.5.
-        assert abs(need.factor - 0.5) < 1e-9
-        assert 0.0 < need.factor < 1.0
+        # The raw ease would be 0.5, but the floor lifts it to NEEDS_FLOOR.
+        assert abs(need.factor - NEEDS_FLOOR) < 1e-9
 
 
-def test_needs_reach_zero_after_decay_days_without_activity(db_session):
-    """Past DECAY_DAYS with no activity and no tend → a need decays all the way to 0 (NO floor —
-    the ADR-0023 non-punishing floor is gone)."""
-    user = _make_user(db_session, "needs_zero@example.com")
+def test_needs_never_drop_below_the_floor(db_session):
+    """ADR-0031: no matter how long since last fed (or tend), a need never drops below NEEDS_FLOOR,
+    and its tier is therefore never below `content` (never restless/unwell). The spirit is never
+    empty/ailing/dead."""
+    user = _make_user(db_session, "needs_floor@example.com")
     now = datetime.now(UTC)
-    baseline = now - timedelta(days=DECAY_DAYS + 0.5)
+    # Years of total neglect — the raw ease would be 0; the floor holds it up.
+    baseline = now - timedelta(days=DECAY_DAYS + 365)
     n = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=baseline)
     for need in (n.nourished, n.rested, n.joyful):
-        assert need.factor == 0.0
-        assert need.tier == CONDITION_UNWELL
+        assert need.factor == NEEDS_FLOOR
+        # The worst reachable tier is `content` — never restless/unwell.
+        assert need.tier == CONDITION_CONTENT
+    # The overall condition (weakest need) is likewise floored at content.
+    overall = spirit_service.overall_condition(n)
+    assert overall.factor == NEEDS_FLOOR
+    assert overall.tier == CONDITION_CONTENT
 
 
 def test_recent_signature_practice_keeps_nourished_full(client, db_session):
@@ -482,8 +483,8 @@ def test_recent_signature_practice_keeps_nourished_full(client, db_session):
     # The recent breathing session refills nourished (and rested — any sit feeds rested too).
     assert n.nourished.factor > 0.9
     assert n.rested.factor > 0.9
-    # joyful is fed by gratitude/journal, which we didn't do → it stays decayed to the floor.
-    assert n.joyful.factor == 0.0
+    # joyful is fed by gratitude/journal, which we didn't do → it eases down to the FLOOR (ADR-0031).
+    assert n.joyful.factor == NEEDS_FLOOR
 
 
 def test_rested_fed_by_any_session_joyful_by_reflection(client, db_session):
@@ -497,7 +498,7 @@ def test_rested_fed_by_any_session_joyful_by_reflection(client, db_session):
     _practice(client, 10, day=now.date().isoformat())  # a meditation sit → feeds rested
     rested_only = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
     assert rested_only.rested.factor > 0.9  # any sit feeds rested
-    assert rested_only.joyful.factor == 0.0  # no reflection → joyful decayed
+    assert rested_only.joyful.factor == NEEDS_FLOOR  # no reflection → joyful eased to the floor
 
     _gratitude(client)  # a gratitude entry → feeds joyful
     with_joy = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
@@ -518,31 +519,34 @@ def test_signature_practice_is_path_specific(client, db_session):
     assert heart.nourished.factor > 0.9  # meditation IS the Vata creature's food
 
     kapha = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=old)
-    assert kapha.nourished.factor == 0.0  # meditation is NOT the Kapha creature's food
+    # meditation is NOT the Kapha creature's food → nourished eases to the FLOOR, not 0 (ADR-0031).
+    assert kapha.nourished.factor == NEEDS_FLOOR
 
 
-def test_tend_value_caps_at_tend_cap(db_session):
-    """A manual tend lifts a need only to TEND_CAP (not full): a need with an old baseline (decayed
-    to 0) but tended just now reads ≈ TEND_CAP, not 1.0 — practice is required to thrive."""
+def test_tend_lifts_a_need_above_the_floor(db_session):
+    """A manual tend is a real-but-gentle, optional lift (ADR-0031): a fresh tend raises a need
+    above the content floor, up to TEND_CAP, while the un-tended needs sit at the gentle floor.
+    Practice still fills fullest; nothing is ever below the floor."""
     user = _make_user(db_session, "needs_tend_cap@example.com")
     now = datetime.now(UTC)
-    old = now - timedelta(days=DECAY_DAYS + 5)  # practice value would be 0
+    old = now - timedelta(days=DECAY_DAYS + 5)  # practice value would be 0 → floored to NEEDS_FLOOR
     n = _decayed_needs(
         db_session, "stillness", user.id, now=now, baseline=old, nourished_tended_at=now
     )
-    assert abs(n.nourished.factor - TEND_CAP) < 1e-9
-    # The un-tended needs are still at the decayed floor.
-    assert n.rested.factor == 0.0
-    assert n.joyful.factor == 0.0
+    # A fresh tend lifts the need above the floor, up to TEND_CAP.
+    assert NEEDS_FLOOR < n.nourished.factor <= TEND_CAP
+    # The un-tended needs are at the gentle floor (never empty).
+    assert n.rested.factor == NEEDS_FLOOR
+    assert n.joyful.factor == NEEDS_FLOOR
 
 
-def test_tend_value_decays_too(db_session):
-    """A tend decays at the same rate as practice: tended TEND_CAP·DECAY_DAYS days ago → its
-    contribution is back to 0 (so a single tend doesn't keep a need up forever)."""
+def test_an_old_tend_eases_back_to_the_floor(db_session):
+    """A tend's lift eases back to the gentle floor over time — never below it (ADR-0031). A tend
+    long enough ago has fully eased, so the need reads exactly NEEDS_FLOOR again."""
     user = _make_user(db_session, "needs_tend_decay@example.com")
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)
-    tended_long_ago = now - timedelta(days=TEND_CAP * DECAY_DAYS + 0.1)
+    tended_long_ago = now - timedelta(days=TEND_CAP * DECAY_DAYS + 0.5)
     n = _decayed_needs(
         db_session,
         "stillness",
@@ -551,47 +555,42 @@ def test_tend_value_decays_too(db_session):
         baseline=old,
         nourished_tended_at=tended_long_ago,
     )
-    assert n.nourished.factor == 0.0  # the tend has fully decayed
+    assert n.nourished.factor == NEEDS_FLOOR  # the lift has eased; the floor holds it up
 
 
 def test_overall_condition_is_the_weakest_need(db_session):
-    """Health = the WEAKEST need. With nourished fully fed but joyful decayed to 0, the overall
-    condition (health) follows the weakest."""
+    """The overall condition = the WEAKEST need. With nourished fed full by recent practice but the
+    others only at the floor, the overall condition follows the weakest — which is the floor, never
+    below (ADR-0031)."""
     user = _make_user(db_session, "needs_overall@example.com")
     now = datetime.now(UTC)
-    # Tend nourished + rested to TEND_CAP now, but leave joyful decayed via an old baseline.
     old = now - timedelta(days=DECAY_DAYS + 5)
-    n = _decayed_needs(
-        db_session,
-        "stillness",
-        user.id,
-        now=now,
-        baseline=old,
-        nourished_tended_at=now,
-        rested_tended_at=now,
-    )
-    assert n.joyful.factor == 0.0  # the weakest need
+    # nourished fed full by a recent signature practice; rested/joyful only at the floor.
+    _user = user  # readability
+    n = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=old)
+    # Without activity all three are floored, so the weakest = the floor.
+    assert n.rested.factor == NEEDS_FLOOR
     overall = spirit_service.overall_condition(n)
-    assert overall.factor == n.joyful.factor
+    assert overall.factor == NEEDS_FLOOR
 
 
 def test_needs_never_change_coins_or_stage(client, db_session):
-    """Needs are still un-coupled from progress: a fully-decayed creature has the SAME coins and
-    stage as the moment they were earned (ADR-0029 keeps XP/level/coins computed from activity)."""
+    """Needs are still un-coupled from progress: a fully-eased (floored) creature has the SAME coins
+    and stage as the moment they were earned (XP/level/coins stay computed from activity)."""
     _auth(client, "needs_guardrail@example.com")
     user_id = _user_id(db_session, "needs_guardrail@example.com")
     _earn_to_level(client, 3)
     assert _choose(client, "stillness").status_code == 200
 
     before = _spirit(client)
-    # Drive every need to 0 by computing with an old baseline.
+    # Ease every need to the floor by computing with an old baseline.
     now = datetime.now(UTC)
     floored = _decayed_needs(
         db_session, "stillness", user_id, now=now, baseline=now - timedelta(days=DECAY_DAYS + 5)
     )
-    assert floored.nourished.factor == 0.0
-    assert floored.rested.factor == 0.0
-    assert floored.joyful.factor == 0.0
+    assert floored.nourished.factor == NEEDS_FLOOR
+    assert floored.rested.factor == NEEDS_FLOOR
+    assert floored.joyful.factor == NEEDS_FLOOR
 
     after = _spirit(client)
     assert after["coins"] == before["coins"]
@@ -599,156 +598,96 @@ def test_needs_never_change_coins_or_stage(client, db_session):
     assert after["bond"]["level"] == before["bond"]["level"]
 
 
-# --- Sickness + death (ADR-0029) ----------------------------------------------------------
+# --- The companion is never mortal (ADR-0031) ---------------------------------------------
 #
-# Health (the weakest need) hitting 0 makes the spirit AILING; staying ailing for DEATH_DAYS kills
-# it (~DECAY_DAYS + DEATH_DAYS ≈ 5 days of total neglect). `died_at` is persisted lazily on read.
+# There is no health/ailing/death anymore: needs are floored, so even total, indefinite neglect
+# leaves the spirit calm and alive. The GET response no longer carries any survival field.
 
 
-def test_spirit_becomes_ailing_when_a_need_empties(client, db_session):
-    """A baseline just past DECAY_DAYS (so the weakest need has emptied) but within the death
-    window → the spirit is AILING (health 0) but NOT dead, and the GET reports it."""
-    _auth(client, "death_ailing@example.com")
-    user_id = _user_id(db_session, "death_ailing@example.com")
+def test_long_neglected_spirit_is_never_ailing_or_dead(client, db_session):
+    """Even after long, total neglect (a baseline well past any old decay window), the spirit reads
+    calm and alive: its needs are floored at the content tier, and the response carries NO
+    dead/ailing/died_at fields (ADR-0031)."""
+    _auth(client, "never_mortal@example.com")
+    user_id = _user_id(db_session, "never_mortal@example.com")
     assert _choose(client, "stillness").status_code == 200
-    # ~DECAY_DAYS + a touch: every need is at 0 but the death window (DEATH_DAYS) hasn't elapsed.
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.1)
+    # Far past any historical decay/death window — would have been "dead" under ADR-0029.
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 100)
 
     body = _spirit(client)
-    assert body["ailing"] is True
-    assert body["dead"] is False
-    assert body["died_at"] is None
-    assert body["condition"]["factor"] == 0.0
+    # The survival fields are gone from the contract.
+    assert "dead" not in body
+    assert "ailing" not in body
+    assert "died_at" not in body
+    # The condition is floored at the calm content tier — never empty, never alarming.
+    assert body["condition"]["factor"] == NEEDS_FLOOR
+    assert body["condition"]["tier"] == CONDITION_CONTENT
+    for need in NEED_KEYS:
+        assert body["needs"][need]["factor"] >= NEEDS_FLOOR
+        assert body["needs"][need]["tier"] in (CONDITION_CONTENT, CONDITION_THRIVING)
 
 
-def test_spirit_dies_after_the_death_window_and_persists_died_at(client, db_session):
-    """A baseline past DECAY_DAYS + DEATH_DAYS → the spirit is DEAD on the next read, and `died_at`
-    is PERSISTED (frozen) to the real death moment."""
-    _auth(client, "death_dead@example.com")
-    user_id = _user_id(db_session, "death_dead@example.com")
+def test_no_died_at_column_on_the_model():
+    """ADR-0031 dropped the `died_at` column — the model no longer has the attribute."""
+    assert not hasattr(Spirit, "died_at")
+
+
+def test_practice_lifts_a_floored_need_back_up(client, db_session):
+    """A long-neglected (floored) spirit brightens the instant you practise — its nourished rises
+    from the floor toward full after a recent signature sit (ADR-0031: it eases down and brightens
+    back up, never lost)."""
+    _auth(client, "never_mortal_recover@example.com")
+    user_id = _user_id(db_session, "never_mortal_recover@example.com")
     assert _choose(client, "stillness").status_code == 200
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 0.5)
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 100)
+    assert _spirit(client)["needs"]["nourished"]["factor"] == NEEDS_FLOOR
 
-    body = _spirit(client)
-    assert body["dead"] is True
-    assert body["ailing"] is False
-    assert body["died_at"] is not None
-    # Persisted on the row (lazy write-on-read), not just computed.
-    assert _active_spirit(db_session, user_id).died_at is not None
-
-
-def test_death_is_terminal_practice_does_not_revive(client, db_session):
-    """Once dead, `died_at` is frozen and later practice/tend can't revive: a fresh sit after death
-    leaves the spirit dead (death is terminal)."""
-    _auth(client, "death_terminal@example.com")
-    user_id = _user_id(db_session, "death_terminal@example.com")
-    assert _choose(client, "stillness").status_code == 200
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
-
-    first = _spirit(client)
-    assert first["dead"] is True
-    died_at = _active_spirit(db_session, user_id).died_at
-
-    # Practice now (would refill needs on a living spirit) — but death is terminal.
+    # A breathing sit today (the Kapha creature's signature) refills nourished above the floor.
     _breathe(client, 30, day=date.today().isoformat())
-    after = _spirit(client)
-    assert after["dead"] is True
-    # `died_at` is unchanged (frozen at the original death moment).
-    assert _active_spirit(db_session, user_id).died_at == died_at
+    assert _spirit(client)["needs"]["nourished"]["factor"] > NEEDS_FLOOR
 
 
-def test_health_state_pure_function(db_session):
-    """`_health_state` is computable from the fed timestamps: not-dead just past ailing-onset, dead
-    once past ailing-onset + DEATH_DAYS."""
-    user = _make_user(db_session, "death_pure@example.com")
-    now = datetime.now(UTC)
-
-    # Just ailing (past DECAY_DAYS, within DEATH_DAYS) → not dead.
-    dead, death_time = spirit_service._health_state(
-        db_session,
-        "stillness",
-        user.id,
-        now=now,
-        needs_baseline_at=now - timedelta(days=DECAY_DAYS + 0.1),
-        nourished_tended_at=None,
-        rested_tended_at=None,
-        joyful_tended_at=None,
-    )
-    assert dead is False
-    assert death_time is not None
-
-    # Past the death window → dead.
-    dead2, _ = spirit_service._health_state(
-        db_session,
-        "stillness",
-        user.id,
-        now=now,
-        needs_baseline_at=now - timedelta(days=DECAY_DAYS + DEATH_DAYS + 0.1),
-        nourished_tended_at=None,
-        rested_tended_at=None,
-        joyful_tended_at=None,
-    )
-    assert dead2 is True
-
-
-# --- Tend action (ADR-0029: Feed / Rest / Play) -------------------------------------------
+# --- Tend action (ADR-0031: Feed / Rest / Play — gentle, optional care) -------------------
 
 
 def _tend(client, kind):
     return client.post("/api/v1/spirit/tend", json={"kind": kind})
 
 
-def test_tend_feed_lifts_nourished_to_the_cap(client, db_session):
-    """`POST /spirit/tend {feed}` stamps nourished_tended_at and lifts nourished to ≈ TEND_CAP (from
-    a decayed-to-0 baseline)."""
+def test_tend_feed_stamps_nourished_and_holds_the_floor(client, db_session):
+    """`POST /spirit/tend {feed}` stamps nourished_tended_at and the need never reads below the
+    gentle floor (ADR-0031: the floor sits above TEND_CAP, so tending is a purely-positive, optional
+    touch that can't make a need worse)."""
     _auth(client, "tend_feed@example.com")
     user_id = _user_id(db_session, "tend_feed@example.com")
     assert _choose(client, "stillness").status_code == 200
-    # Decay everything to 0 first.
+    # Ease everything to the floor first.
     _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.5)
-    assert _spirit(client)["needs"]["nourished"]["factor"] == 0.0
+    assert _spirit(client)["needs"]["nourished"]["factor"] == NEEDS_FLOOR
 
     res = _tend(client, "feed")
     assert res.status_code == 200
     body = res.json()
-    # nourished is lifted to ≈ TEND_CAP (just tended; the tiny gap is the ms between the stamp's
-    # now() and the read's now()); rested/joyful stay decayed.
-    assert abs(body["needs"]["nourished"]["factor"] - TEND_CAP) < 1e-3
-    assert body["needs"]["nourished"]["factor"] <= TEND_CAP
-    assert body["needs"]["rested"]["factor"] == 0.0
+    # The need stays at (at least) the floor; tending never lowers it.
+    assert body["needs"]["nourished"]["factor"] >= NEEDS_FLOOR
     # The stamp persisted on the row.
     assert _active_spirit(db_session, user_id).nourished_tended_at is not None
 
 
-def test_tend_rest_and_play_target_their_needs(client, db_session):
-    """`rest` lifts rested, `play` lifts joyful (the kind→need mapping)."""
+def test_tend_rest_and_play_stamp_their_columns(client, db_session):
+    """`rest` stamps rested_tended_at, `play` stamps joyful_tended_at (the kind→column mapping), and
+    each leaves the need at or above the floor."""
     _auth(client, "tend_rest_play@example.com")
     user_id = _user_id(db_session, "tend_rest_play@example.com")
     assert _choose(client, "stillness").status_code == 200
     _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.5)
 
     rest = _tend(client, "rest").json()
-    assert abs(rest["needs"]["rested"]["factor"] - TEND_CAP) < 1e-3
+    assert rest["needs"]["rested"]["factor"] >= NEEDS_FLOOR
+    assert _active_spirit(db_session, user_id).rested_tended_at is not None
     play = _tend(client, "play").json()
-    assert abs(play["needs"]["joyful"]["factor"] - TEND_CAP) < 1e-3
-
-
-def test_tend_clears_just_ailing(client, db_session):
-    """Tending a just-ailing spirit (health 0, not yet dead) lifts the weakest need off 0, so the
-    spirit is no longer ailing."""
-    _auth(client, "tend_clears_ailing@example.com")
-    user_id = _user_id(db_session, "tend_clears_ailing@example.com")
-    assert _choose(client, "stillness").status_code == 200
-    # All three needs at 0 (ailing) but not yet dead.
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 0.1)
-    assert _spirit(client)["ailing"] is True
-
-    # Tend each need so the weakest is no longer 0.
-    _tend(client, "feed")
-    _tend(client, "rest")
-    body = _tend(client, "play").json()
-    assert body["ailing"] is False
-    assert body["condition"]["factor"] > 0.0
+    assert play["needs"]["joyful"]["factor"] >= NEEDS_FLOOR
+    assert _active_spirit(db_session, user_id).joyful_tended_at is not None
 
 
 def test_tend_rejects_unknown_kind_422(client):
@@ -762,15 +701,15 @@ def test_tend_rejects_unknown_kind_422(client):
     ).status_code == 422
 
 
-def test_tend_on_a_dead_spirit_is_409(client, db_session):
-    """A dead spirit cannot be tended (death is terminal) → 409."""
-    _auth(client, "tend_dead@example.com")
-    user_id = _user_id(db_session, "tend_dead@example.com")
+def test_tend_always_succeeds_no_dead_state_to_block_it(client, db_session):
+    """ADR-0031: there is no dead state, so a long-neglected spirit can always still be tended (the
+    tend route never 409s on a 'dead' spirit — that path is gone)."""
+    _auth(client, "tend_never_dead@example.com")
+    user_id = _user_id(db_session, "tend_never_dead@example.com")
     assert _choose(client, "stillness").status_code == 200
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
-    assert _spirit(client)["dead"] is True
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 100)
 
-    assert _tend(client, "feed").status_code == 409
+    assert _tend(client, "feed").status_code == 200
 
 
 def test_tend_requires_auth(client):
@@ -803,42 +742,23 @@ def test_tend_pathless_spark_is_fine(client, db_session):
     assert _active_spirit(db_session, user_id).nourished_tended_at is not None
 
 
-# --- Death → awaken (ADR-0029: the memorial's "awaken a new one") --------------------------
+# --- Awaken is graduation-only (ADR-0031 removed the death-triggered awaken path) ----------
 
 
-def test_dead_spirit_can_awaken_a_fresh_spark(client, db_session):
-    """A DEAD spirit can use the awaken/set-free flow (even below radiant) → a fresh pathless,
-    born-fed spark, and the old one is retired into the collection."""
-    _auth(client, "death_awaken@example.com")
-    user_id = _user_id(db_session, "death_awaken@example.com")
+def test_neglected_non_radiant_spirit_cannot_awaken(client, db_session):
+    """ADR-0031: a long-neglected (but never-dead) non-radiant spirit cannot awaken — awaken is now
+    graduation-at-radiant ONLY; the death-triggered path is gone. So even a heavily-neglected spark
+    is rejected with 409 (it must grow to radiant to graduate)."""
+    _auth(client, "neglect_no_awaken@example.com")
+    user_id = _user_id(db_session, "neglect_no_awaken@example.com")
     assert _choose(client, "stillness", name="Mori").status_code == 200
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
-    assert _spirit(client)["dead"] is True
+    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 100)
 
-    res = client.post("/api/v1/spirit/awaken")
-    assert res.status_code == 200
-    fresh = res.json()
-    # The new spark is pathless, alive, and genuinely fresh (coins reset, empty unlocked/equipped).
-    assert fresh["path"] is None
-    assert fresh["dead"] is False
-    assert fresh["died_at"] is None
-    assert fresh["ailing"] is False
-    assert fresh["coins"] == fresh["bond"]["level"] * COINS_PER_LEVEL  # coins_spent 0
-    assert fresh["cosmetics"] == {}  # empty unlocked/equipped
-    # A pathless spark reports neutral (content) needs — no care requirement until a creature is
-    # chosen — and is healthy (not ailing/dead). Choosing a path then starts it BORN FED.
-    for need in ("nourished", "rested", "joyful"):
-        assert fresh["needs"][need]["tier"] == CONDITION_CONTENT
-    chosen = _choose(client, "heart").json()
-    for need in ("nourished", "rested", "joyful"):
-        # Born fed from the new baseline — full (a hair under 1.0 only for the ms since awaken).
-        assert chosen["needs"][need]["factor"] > 0.99
-    # The dead one is now in the collection.
-    assert len(chosen["collection"]) == 1
+    assert client.post("/api/v1/spirit/awaken").status_code == 409
 
 
-def test_living_non_radiant_spirit_still_cannot_awaken(client, db_session):
-    """A LIVING, non-radiant spirit still cannot awaken (the death path is the only new gate)."""
+def test_living_non_radiant_spirit_cannot_awaken(client, db_session):
+    """A non-radiant spirit cannot awaken — radiant is the only gate (graduation)."""
     _auth(client, "awaken_living_early@example.com")
     assert _choose(client, "stillness").status_code == 200
     assert client.post("/api/v1/spirit/awaken").status_code == 409
@@ -993,35 +913,6 @@ def test_long_awakened_spirit_reads_like_lifetime_level(client, db_session):
     body = _spirit(client)
     # Own-life XP ≈ lifetime XP (all activity is after the ancient awaken), so the levels match.
     assert body["bond"]["level"] == lifetime_level
-
-
-def test_death_then_awaken_is_a_fresh_spark_at_high_lifetime_xp(client, db_session):
-    """Death → awaken yields a fresh SPARK (spirit-level 1) even at high lifetime XP (ADR-0030 — a
-    true restart). The new spark's awakened_at = now(), so its own-life XP is 0.
-
-    Pre-death XP is seeded with a BACK-DATED `created_at` (not via the API): in the test fixture
-    Postgres `now()` is frozen per transaction, so the new spark's `awakened_at = now()` would tie
-    with API-seeded activity (created_at = the same frozen now()) and the `created_at >= since`
-    filter would let it through. Back-dating the seed makes it strictly pre-birth — which is also
-    exactly the production timeline (the past activity committed before the later awaken txn)."""
-    _auth(client, "rebirth_death@example.com")
-    user_id = _user_id(db_session, "rebirth_death@example.com")
-    # Seed a big, seasoned, BACK-DATED lifetime XP pile, then choose a path and kill the spirit.
-    now = datetime.now(UTC)
-    _seed_past_breathing(db_session, user_id, minutes_each=200, count=30, created_before=now)
-    assert _choose(client, "stillness", name="Mori").status_code == 200
-    _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + DEATH_DAYS + 1)
-    assert _spirit(client)["dead"] is True
-
-    fresh = client.post("/api/v1/spirit/awaken").json()
-    # The new spark reads as a spark / level 1 by GROWTH despite the high lifetime XP...
-    assert fresh["stage"] == "spark"
-    assert fresh["bond"]["level"] == 1
-    # ...but keeps the full lifetime coin budget (coins_spent reset to 0).
-    lifetime_level = client.get("/api/v1/dashboard/stats").json()["level"]
-    assert lifetime_level >= 24
-    assert fresh["coins"] == lifetime_level * COINS_PER_LEVEL
-    assert fresh["coins"] > 1 * COINS_PER_LEVEL
 
 
 # --- Cosmetics economy (ADR-0024: committed upgrades, stored spend ledger) --------------
@@ -2135,18 +2026,19 @@ def test_complete_set_is_active_with_kind_signature():
 
 
 def test_complete_set_does_not_lift_needs(db_session):
-    """ADR-0029 supersedes ADR-0028's harmony lift: cosmetics are purely cosmetic now, so a spirit
-    wearing the FULL signature set reads the SAME decayed needs as a bare spirit (same activity).
-    The `needs()` signature no longer takes cosmetics or a set-bonus flag at all."""
+    """ADR-0028's harmony lift stays removed (ADR-0029 → ADR-0031): cosmetics are purely cosmetic, so
+    a spirit wearing the FULL signature set reads the SAME needs as a bare spirit (same activity).
+    The `needs()` signature takes no cosmetics or set-bonus flag at all."""
     user = _make_user(db_session, "set_no_lift@example.com")
     now = datetime.now(UTC)
-    # An old baseline so needs have decayed (room for any lift to show, if one existed).
-    old = now - timedelta(days=DECAY_DAYS / 2)
-    # The decay `needs()` takes no cosmetics — the same call regardless of the loadout.
-    decayed = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=old)
+    # A recent baseline so the eased value (~0.9) sits ABOVE the floor — room for any lift to show,
+    # if one existed; the floor isn't masking the value here.
+    eased = now - timedelta(days=DECAY_DAYS * 0.1)
+    # The `needs()` takes no cosmetics — the same call regardless of the loadout.
+    decayed = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=eased)
     for need in ("nourished", "rested", "joyful"):
-        # ~0.5 decayed value, unaffected by any set (there's no set parameter anymore).
-        assert abs(getattr(decayed, need).factor - 0.5) < 1e-9
+        # value = 1 - 0.1 = 0.9, unaffected by any set (there's no set parameter anymore).
+        assert abs(getattr(decayed, need).factor - 0.9) < 1e-9
 
 
 def test_universal_option_in_a_slot_does_not_count_toward_the_set():

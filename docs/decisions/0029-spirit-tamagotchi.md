@@ -1,6 +1,10 @@
 # 29. The spirit becomes a Tamagotchi — real-time decay, and it can die
 
-**Status:** Accepted · 2026-06-27 · Reverses the *non-punishing / never-dies* core of
+> **Superseded by [ADR-0031](0031-companion-stops-being-mortal.md)** (2026-06-28): the mortality
+> introduced here is reversed — the companion can no longer die or be "ailing", and needs are
+> floored so they never punish. Growth / graduation / cosmetics from this ADR stay.
+
+**Status:** Superseded · 2026-06-27 · Reverses the *non-punishing / never-dies* core of
 [ADR-0022](0022-spirit-companion-replaces-sanctuary.md) and
 [ADR-0023](0023-spirit-creatures-and-care.md), the *computed-not-stored* needs of
 [ADR-0009](0009-gamification-computed-from-activity.md) (for needs only — XP/level/coins stay
