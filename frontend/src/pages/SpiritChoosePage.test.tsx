@@ -82,6 +82,7 @@ describe('SpiritChoosePage', () => {
     choose.mockReset()
     preview.mockReset()
     navigate.mockReset()
+    localStorage.clear()
     // Default: the grows-into preview resolves. Tests that don't care still get a clean render.
     preview.mockResolvedValue(PREVIEW)
   })
@@ -161,5 +162,48 @@ describe('SpiritChoosePage', () => {
     await screen.findByRole('button', { name: /Choose Kapha/ })
     fireEvent.click(screen.getByRole('button', { name: /Choose Pitta/ }))
     expect(screen.getByRole('button', { name: /Awaken Pitta/ })).toBeInTheDocument()
+  })
+
+  // ── Onboarding hatch (§5) ────────────────────────────────────────────────────
+  // Arriving straight from the first guided breath (onboarding.intent set) reframes the page as a
+  // celebratory "hatch" and gently SUGGESTS a matching dosha. A normal later visit is unchanged.
+  describe('onboarding hatch', () => {
+    it('shows a celebratory header + suggested dosha when arriving from onboarding', async () => {
+      localStorage.setItem('onboarding.intent', 'calm') // calm → stillness / Kapha
+      get.mockResolvedValue(spiritWith({ path: null }))
+      renderPage()
+      await screen.findByRole('button', { name: /Choose Kapha/ })
+      // Celebratory hatch framing rather than the plain "Choose your creature".
+      expect(screen.getByText(/took your first breath/i)).toBeInTheDocument()
+      // A gentle, named suggestion (never forced — all three stay pickable).
+      expect(screen.getByText(/Kapha might suit you/i)).toBeInTheDocument()
+      expect(screen.getByText(/Suggested for you/i)).toBeInTheDocument()
+      // All three creatures remain choosable.
+      expect(screen.getByRole('button', { name: /Choose Pitta/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Choose Vata/ })).toBeInTheDocument()
+    })
+
+    it('clears the onboarding flags after a successful choose', async () => {
+      localStorage.setItem('onboarding.intent', 'calm')
+      localStorage.setItem('onboarding.pendingHatch', '1')
+      get.mockResolvedValue(spiritWith({ path: null }))
+      choose.mockResolvedValue(spiritWith({ path: 'stillness', name: 'Pebble' }))
+      renderPage()
+      fireEvent.click(await screen.findByRole('button', { name: /Choose Kapha/ }))
+      fireEvent.change(screen.getByPlaceholderText(/Ember/), { target: { value: 'Pebble' } })
+      fireEvent.click(screen.getByRole('button', { name: /Awaken Kapha/ }))
+      await waitFor(() => expect(choose).toHaveBeenCalled())
+      await waitFor(() => expect(localStorage.getItem('onboarding.intent')).toBeNull())
+      expect(localStorage.getItem('onboarding.pendingHatch')).toBeNull()
+    })
+
+    it('shows the normal "Choose your creature" header on a later (non-onboarding) visit', async () => {
+      get.mockResolvedValue(spiritWith({ path: null }))
+      renderPage()
+      await screen.findByRole('button', { name: /Choose Kapha/ })
+      expect(screen.getByText(/Choose your creature/i)).toBeInTheDocument()
+      expect(screen.queryByText(/took your first breath/i)).toBeNull()
+      expect(screen.queryByText(/Suggested for you/i)).toBeNull()
+    })
   })
 })

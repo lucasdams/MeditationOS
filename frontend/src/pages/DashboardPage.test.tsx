@@ -457,3 +457,35 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
     expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
   })
 })
+
+// First-run / hatch de-conflict (onboarding §5): a just-onboarded, still-pathless user (first
+// sit done, no companion chosen) shouldn't see BOTH the first-run card and the companion's warm
+// hatch invite. The first-run card stands down so the hatch leads.
+describe('DashboardPage — first-run vs hatch de-conflict', () => {
+  const pathlessSpirit = { coins: 0, path: null } as unknown as SpiritState
+
+  it('hides the first-run card for a pathless user who has logged their first sit', async () => {
+    getStats.mockResolvedValue({ ...fakeStats, session_count: 1 } as unknown as DashboardStats)
+    getSpirit.mockResolvedValue(pathlessSpirit)
+    renderPage()
+    await findLoaded()
+    // The hatch invite (in the real <Spirit>) leads; the first-run card stands down.
+    expect(screen.queryByRole('region', { name: /getting started/i })).toBeNull()
+  })
+
+  it('still shows the first-run card before the first sit (session_count 0)', async () => {
+    getStats.mockResolvedValue({ ...fakeStats, session_count: 0 } as unknown as DashboardStats)
+    getSpirit.mockResolvedValue(pathlessSpirit)
+    renderPage()
+    await findLoaded()
+    expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
+  })
+
+  it('still shows the first-run card when the user has already chosen a companion', async () => {
+    getStats.mockResolvedValue({ ...fakeStats, session_count: 1 } as unknown as DashboardStats)
+    getSpirit.mockResolvedValue({ coins: 0, path: 'stillness' } as unknown as SpiritState)
+    renderPage()
+    await findLoaded()
+    expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
+  })
+})

@@ -191,6 +191,29 @@ describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
     expect(screen.getByRole('img', { name: /pitta spirit/i })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /choose your companion/i })).toBeNull()
   })
+
+  it('keeps the gentle default prompt for a pathless spark before any sit (sessionCount 0)', () => {
+    renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'spark', path: null })} sessionCount={0} />,
+    )
+    expect(screen.getByRole('link', { name: /choose your companion/i })).toHaveAttribute(
+      'href',
+      '/spirit/choose',
+    )
+    expect(screen.queryByText(/first breath/i)).toBeNull()
+  })
+
+  it('warms into a celebratory hatch invite once the first sit is done (sessionCount ≥ 1)', () => {
+    renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'spark', path: null })} sessionCount={1} />,
+    )
+    // The post-first-sit warm invite still links to the choose page (the "hatch").
+    expect(screen.getByText(/first breath/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /meet your companion/i })).toHaveAttribute(
+      'href',
+      '/spirit/choose',
+    )
+  })
 })
 
 describe('Spirit — care needs read-out (ADR-0023)', () => {

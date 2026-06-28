@@ -2969,6 +2969,18 @@ textarea:focus-visible,
   box-shadow: 0 1px 3px var(--shadow-card);
 }
 
+/* A gentle, never-forced "suggested for you" badge on the dosha that matches the onboarding
+   intent (§5). A soft accent pill — a hint, not a hard recommendation. */
+.spirit-choose-suggested {
+  margin: 0 0 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 /* Each dosha card carries its creature's element accent (Kapha amber, Pitta red, Vata teal),
    tokenized so dark mode adapts the hue. */
 .spirit-picker-card--stillness {
@@ -6294,6 +6306,19 @@ details[open] .meditate-disclosure-summary::before {
   margin-top: 1.25rem;
 }
 
+/* Guided first sit (onboarding §5): a single warm cue under the orb + a prominent Begin. */
+.breathe-guided-cue {
+  text-align: center;
+  font-size: 1.05rem;
+  margin: 0.5rem 0 0.25rem;
+  color: var(--text-secondary, inherit);
+}
+
+.breathe-begin {
+  font-size: 1.1rem;
+  padding-block: 0.9rem;
+}
+
 .breathe-controls button {
   flex: 1;
   margin: 0;
@@ -7001,6 +7026,29 @@ details[open] .meditate-disclosure-summary::before {
 
 .onboarding-emoji {
   font-size: 1.2rem;
+}
+
+/* The single warm question heading + the choice rows' two-line body (label + sub). */
+.onboarding-question {
+  margin: 1.2rem 0 0;
+  font-size: 1.15rem;
+}
+
+.onboarding-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.onboarding-choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.onboarding-choice-sub {
+  font-size: 0.85rem;
+  font-weight: 400;
 }
 
 .onboarding-back {

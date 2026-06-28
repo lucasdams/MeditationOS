@@ -36,9 +36,12 @@ vi.mock('../services/dashboard', () => ({
   dashboardService: { getStats: (...a: unknown[]) => mockGetStats(...a) },
 }))
 vi.mock('../services/biometrics', () => ({ biometricsService: { linkSession: vi.fn() } }))
+// A stable navigate spy so tests can assert where a finished sit routes (e.g. the onboarding
+// hatch → /spirit/choose). Reset per test where it matters.
+const navigate = vi.fn()
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
-  return { ...actual, useNavigate: () => vi.fn() }
+  return { ...actual, useNavigate: () => navigate }
 })
 vi.mock('../components/BiometricCapture', () => ({ default: () => null }))
 vi.mock('../components/RewardOverlay', () => ({
@@ -244,5 +247,77 @@ describe('BreathePage — post-session reflection', () => {
 
     expect(mockUpdate).not.toHaveBeenCalled()
     expect(mockCreate).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── Guided first sit (onboarding §5) ──────────────────────────────────────────
+// `?guided=1` strips the page to a zero-config breath: Resonance, fixed short duration, no
+// pattern/pace/duration/sound config — just the orb, one gentle cue, and a single Begin. On
+// completion, if the onboarding hatch flag is set, the reward overlay's close routes to the
+// companion choose page (the "hatch") instead of the usual reflection / home path.
+describe('BreathePage — guided first sit', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    navigate.mockReset()
+    rewardOverlayState.onClose = null
+    mockCreate.mockReset()
+    mockGetStats.mockReset()
+    mockGetStats.mockResolvedValue(BASE_STATS)
+    mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
+  })
+  afterEach(cleanup)
+
+  it('renders the stripped-down guided sit: a gentle cue + Begin, with config hidden', () => {
+    renderAt('/breathe?guided=1&duration=60')
+    // The warm cue + the prominent Begin control.
+    expect(screen.getByText(/Follow the orb/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^begin$/i })).toBeInTheDocument()
+    // Config is hidden — no pattern picker, pace/duration steppers, or sound/intention controls.
+    expect(screen.queryByRole('group', { name: /breathing pattern/i })).toBeNull()
+    expect(screen.queryByLabelText(/^pace$/i)).toBeNull()
+    expect(screen.queryByLabelText(/^duration$/i)).toBeNull()
+    expect(screen.queryByLabelText(/^sound$/i)).toBeNull()
+    expect(screen.queryByLabelText(/intention/i)).toBeNull()
+  })
+
+  // Drive a guided sit: Begin → advance elapsed a touch → Finish & save, then surface the
+  // RewardOverlay's onClose (mirrors the reflection suite's driveToReflection; the timed
+  // auto-finish leans on performance.now which fake timers don't advance, so we finish manually).
+  async function driveGuidedToReward() {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderAt('/breathe?guided=1&duration=60')
+    fireEvent.click(screen.getByRole('button', { name: /^begin$/i }))
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
+    vi.useRealTimers()
+
+    await vi.waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(rewardOverlayState.onClose).not.toBeNull())
+  }
+
+  it('on completion with the hatch flag set, routes to /spirit/choose instead of the usual close', async () => {
+    localStorage.setItem('onboarding.pendingHatch', '1')
+    localStorage.setItem('onboarding.intent', 'calm')
+
+    await driveGuidedToReward()
+    await act(async () => {
+      rewardOverlayState.onClose!()
+    })
+
+    // The hatch fires once: navigate to the choose page, and the flag is cleared.
+    expect(navigate).toHaveBeenCalledWith('/spirit/choose')
+    expect(localStorage.getItem('onboarding.pendingHatch')).toBeNull()
+  })
+
+  it('without the hatch flag, a guided sit closes the usual way (reflection, not the hatch)', async () => {
+    await driveGuidedToReward()
+    await act(async () => {
+      rewardOverlayState.onClose!()
+    })
+
+    expect(navigate).not.toHaveBeenCalledWith('/spirit/choose')
+    await screen.findByText(/how was that/i) // the usual reflection modal
   })
 })

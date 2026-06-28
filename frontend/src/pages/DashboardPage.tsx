@@ -139,10 +139,15 @@ export default function DashboardPage() {
       {!stats && !error && <p>{loadingLine}</p>}
 
       {/* First-run orientation: leads the dashboard for genuinely new users, above the
-          tabs. Hidden once dismissed or once they've practiced. */}
-      {stats && !firstRunDismissed && shouldShowFirstRun(stats.session_count) && (
-        <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
-      )}
+          tabs. Hidden once dismissed or once they've practiced. Also stood down for a
+          just-onboarded, still-pathless user (first sit done, no companion chosen yet) so the
+          companion's warm "hatch" invite leads instead of two competing get-started prompts. */}
+      {stats &&
+        !firstRunDismissed &&
+        shouldShowFirstRun(stats.session_count) &&
+        !(spirit?.path === null && stats.session_count >= 1) && (
+          <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
+        )}
 
       {/* Two-tab home (mirrors the spirit page's segmented control): "Today" leads with the
           companion + the single primary action + gentle nudges; "Progress" holds the heavier
@@ -203,7 +208,7 @@ export default function DashboardPage() {
               static glowing companion that grows with practice. We fetch it once above (for the
               coin chip) and pass it down, so the companion doesn't fire a second GET /spirit; it
               waits quietly while the prop is still null. */}
-          <Spirit spirit={spirit} />
+          <Spirit spirit={spirit} sessionCount={stats.session_count} />
 
           {/* The quiet rest-day reassurance, when it applies, so the gentle "skipping one is
               fine" message isn't lost now that the streak is a small pill. */}

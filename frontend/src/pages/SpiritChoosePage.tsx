@@ -28,6 +28,39 @@ import type {
 // server trims + rejects blank/over-length regardless.
 const NAME_MAX = 40
 
+// Onboarding hatch (§5): when the user arrives here straight from their first guided breath, the
+// `onboarding.intent` flag holds the warm question's answer. We use it to (a) reframe this page
+// as a celebratory "hatch" and (b) gently SUGGEST a matching companion — never forced; all three
+// stay pickable. Maps each intent to the dosha whose nature best fits it (reusing the DOSHA
+// paths). Calm & sleep want grounding stillness; focus a steady breath; curious an airy heart.
+const INTENT_SUGGESTION: Record<string, SpiritPath> = {
+  calm: 'stillness',
+  focus: 'breath',
+  sleep: 'stillness',
+  curious: 'heart',
+}
+
+// Read the stored onboarding intent (set by Onboarding §5), or null when not arriving from the
+// flow. Storage may be unavailable (private mode) — treat as a normal (non-hatch) visit.
+function readOnboardingIntent(): string | null {
+  try {
+    return localStorage.getItem('onboarding.intent')
+  } catch {
+    return null
+  }
+}
+
+// Clear the onboarding flags once the companion is chosen, so a later visit to this page behaves
+// normally. Best-effort; failures are harmless (the flags only steer copy + a suggestion).
+function clearOnboardingHatch(): void {
+  try {
+    localStorage.removeItem('onboarding.intent')
+    localStorage.removeItem('onboarding.pendingHatch')
+  } catch {
+    /* storage unavailable — nothing to clear */
+  }
+}
+
 // A fixed, developed stage for the choose-page previews so each creature reads as a clear, finished
 // form (the real spirit starts a spark and grows — here we just want a good likeness to choose by).
 const PREVIEW_STAGE = 'fledgling'
@@ -60,6 +93,12 @@ export default function SpiritChoosePage() {
   const [tryOn, setTryOn] = useState<{ path: SpiritPath; slot: string; option: string } | null>(
     null,
   )
+  // The onboarding intent (read once at mount), present only when arriving straight from the
+  // first guided breath. When set, this page reads as a celebratory "hatch" and suggests a
+  // matching companion. null = a normal, later visit (behaves exactly as before).
+  const [onboardingIntent] = useState<string | null>(readOnboardingIntent)
+  const fromOnboarding = onboardingIntent !== null
+  const suggestedPath = onboardingIntent ? INTENT_SUGGESTION[onboardingIntent] ?? null : null
 
   function load() {
     setRetrying(true)
@@ -90,6 +129,8 @@ export default function SpiritChoosePage() {
     setBusy(`choose:${path}`)
     try {
       await spiritService.choose({ path, name: trimmedName })
+      // The hatch is complete — clear the onboarding flags so a later visit behaves normally.
+      clearOnboardingHatch()
       showToast(`Your ${DOSHA[path].name} spirit awakens. ${DOSHA[path].glyph}`)
       navigate('/spirit')
     } catch {
@@ -139,11 +180,24 @@ export default function SpiritChoosePage() {
         ← Spirit
       </Link>
       <header className="page-head">
-        <h1>Choose your creature</h1>
-        <p className="page-subtitle">
-          Each creature thrives on the practice that balances its nature — pick the one whose rhythm
-          fits yours.
-        </p>
+        {fromOnboarding ? (
+          <>
+            <h1>✨ You took your first breath — now meet the companion you’ll grow.</h1>
+            <p className="page-subtitle">
+              {suggestedPath
+                ? `Based on what you told us, ${DOSHA[suggestedPath].name} might suit you — but choose whichever calls to you.`
+                : 'Pick whichever calls to you — there’s no wrong choice.'}
+            </p>
+          </>
+        ) : (
+          <>
+            <h1>Choose your creature</h1>
+            <p className="page-subtitle">
+              Each creature thrives on the practice that balances its nature — pick the one whose
+              rhythm fits yours.
+            </p>
+          </>
+        )}
       </header>
 
       {error && !spirit ? (
@@ -159,6 +213,11 @@ export default function SpiritChoosePage() {
             const looks = preview?.[path] ? signatureLooks(preview[path]) : []
             return (
               <li key={path} className={`spirit-picker-card spirit-picker-card--${path}`}>
+                {/* A gentle, never-forced suggestion when arriving from onboarding — the dosha
+                    that matches the warm question's answer. All three stay equally pickable. */}
+                {suggestedPath === path && (
+                  <p className="spirit-choose-suggested">✨ Suggested for you</p>
+                )}
                 <div className="spirit-choose-art" aria-hidden="true">
                   {creatureArt(path)}
                 </div>

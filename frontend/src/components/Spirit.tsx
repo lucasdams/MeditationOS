@@ -3717,6 +3717,7 @@ export default function Spirit({
   paceScale,
   celebrate = false,
   compact = false,
+  sessionCount = 0,
 }: {
   spirit?: SpiritState | null
   // Live pacer scale for BreathePage sync (the breathe-circle's `scaleAt` value). Omit on home.
@@ -3725,6 +3726,10 @@ export default function Spirit({
   celebrate?: boolean
   // Smaller, chrome-free render for BreathePage (just the art, no stage/bond read-out).
   compact?: boolean
+  // The user's logged-session count (from the dashboard stats). Used only for the pathless-spark
+  // read-out: once they've taken their first breath, the "choose your companion" prompt warms into
+  // a celebratory hatch invite (onboarding §5). Defaults to 0 → the gentle first-time copy.
+  sessionCount?: number
 }) {
   const [fetched, setFetched] = useState<SpiritState | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -3821,16 +3826,30 @@ export default function Spirit({
           no shouted numbers; consistent with the app's low-pressure stance. */}
       {path === null ? (
         // Choose-first (ADR-0023): lead with the CHOICE, not a faint default spark — picking a
-        // companion is the first step. The picker lives on its own focused page.
-        <>
-          <p className="spirit-stage">Choose your companion</p>
-          <p className="spirit-note muted">Pick the one whose nature fits you.</p>
-          <p className="spirit-choose-prompt">
-            <Link to="/spirit/choose" className="spirit-choose-cta">
-              Choose your companion →
-            </Link>
-          </p>
-        </>
+        // companion is the first step. The picker lives on its own focused page. Once the user
+        // has taken their first breath (sessionCount ≥ 1), the prompt warms into a celebratory
+        // "hatch" invite (onboarding §5) — the companion is the reward for that first sit.
+        sessionCount >= 1 ? (
+          <>
+            <p className="spirit-stage">You’ve taken your first breath ✨</p>
+            <p className="spirit-note muted">Now meet the companion you brought to life.</p>
+            <p className="spirit-choose-prompt">
+              <Link to="/spirit/choose" className="spirit-choose-cta">
+                Meet your companion →
+              </Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="spirit-stage">Choose your companion</p>
+            <p className="spirit-note muted">Pick the one whose nature fits you.</p>
+            <p className="spirit-choose-prompt">
+              <Link to="/spirit/choose" className="spirit-choose-cta">
+                Choose your companion →
+              </Link>
+            </p>
+          </>
+        )
       ) : (
         // A chosen creature: its stage, a tidy needs read-out + a single kind, optional care nudge,
         // and the bond level. Always encouraging — never a warning (ADR-0031).

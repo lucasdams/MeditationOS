@@ -3,16 +3,19 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom'
 
 const setQuestFeatures = vi.fn().mockResolvedValue({})
-const setReminders = vi.fn().mockResolvedValue({})
 const refresh = vi.fn().mockResolvedValue(undefined)
+const navigate = vi.fn()
 
 vi.mock('../services/auth', () => ({
   authService: {
     setQuestFeatures: (...a: unknown[]) => setQuestFeatures(...a),
-    setReminders: (...a: unknown[]) => setReminders(...a),
   },
 }))
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ refresh }) }))
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>()
+  return { ...actual, useNavigate: () => navigate }
+})
 
 import Onboarding from './Onboarding'
 
@@ -23,11 +26,14 @@ const renderOnboarding = () =>
     </MemoryRouter>,
   )
 
-describe('Onboarding', () => {
+// Beginner-first onboarding (§5): a single warm question that shapes the daily quests + tone,
+// then drops the user straight into a 1-minute guided breath. The companion's dosha pick is
+// DEFERRED to after the first sit (the "hatch").
+describe('Onboarding — one warm question → guided breath', () => {
   beforeEach(() => {
     setQuestFeatures.mockClear()
-    setReminders.mockClear()
     refresh.mockClear()
+    navigate.mockClear()
     localStorage.clear()
   })
 
@@ -37,53 +43,46 @@ describe('Onboarding', () => {
     cleanup()
   })
 
-  it('walks goal → experience → time → quests and sets up the account', async () => {
+  it('asks one warm question with four calm choices, no wizard steps', () => {
     renderOnboarding()
-    fireEvent.click(screen.getByText(/Let.s begin/))
-    fireEvent.click(screen.getByText(/Focus & clarity/)) // → quests meditate, breathe, journal
-    fireEvent.click(screen.getByText('Some experience')) // → breathe.bpm 4.5
-    fireEvent.click(screen.getByText('Mornings')) // → reminder hour 8
-    fireEvent.click(screen.getByText('Start practicing'))
+    expect(screen.getByText(/What brings you here\?/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Calm/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Focus/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Better sleep/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Just curious/ })).toBeInTheDocument()
+    // The deferred steps are gone — no experience / preferred-time / quest picker.
+    expect(screen.queryByText(/How much have you practiced/i)).toBeNull()
+  })
+
+  it('choosing Calm sets quests, the hatch flags, the first-sit pace, and routes to the guided breath', async () => {
+    renderOnboarding()
+    fireEvent.click(screen.getByRole('button', { name: /Calm/ }))
 
     await waitFor(() => expect(setQuestFeatures).toHaveBeenCalled())
-    expect(setQuestFeatures).toHaveBeenCalledWith(['meditate', 'breathe', 'journal'])
-    expect(setReminders).toHaveBeenCalledWith(true, 8)
+    expect(setQuestFeatures).toHaveBeenCalledWith(['breathe', 'gratitude', 'journal'])
     expect(refresh).toHaveBeenCalled()
-    expect(localStorage.getItem('breathe.bpm')).toBe('4.5')
+    // The hatch flags steer the first sit → companion choose page, and remember the intent.
+    expect(localStorage.getItem('onboarding.pendingHatch')).toBe('1')
+    expect(localStorage.getItem('onboarding.intent')).toBe('calm')
+    // A gentle first-sit pace.
+    expect(localStorage.getItem('breathe.bpm')).toBe('6')
+    // Straight into the zero-config 1-minute guided breath.
+    expect(navigate).toHaveBeenCalledWith('/breathe?guided=1&duration=60')
   })
 
-  it('keeps hand-toggled quests when returning to the goal step and re-picking the same goal', async () => {
+  it('stores the chosen intent so the hatch page can suggest a matching companion', async () => {
     renderOnboarding()
-    fireEvent.click(screen.getByText(/Let.s begin/))
-    fireEvent.click(screen.getByText(/Focus & clarity/)) // seeds meditate, breathe, journal
-    fireEvent.click(screen.getByText('Some experience'))
-    fireEvent.click(screen.getByText('Mornings'))
-
-    // On the quests step, add gratitude (a quest not in the focus preset).
-    fireEvent.click(screen.getByLabelText(/Gratitude/i))
-
-    // Back to goal, re-tap the SAME goal — manual edits must survive.
-    fireEvent.click(screen.getByText('← Back')) // time
-    fireEvent.click(screen.getByText('← Back')) // experience
-    fireEvent.click(screen.getByText('← Back')) // goal
-    fireEvent.click(screen.getByText(/Focus & clarity/))
-    fireEvent.click(screen.getByText('Some experience'))
-    fireEvent.click(screen.getByText('Mornings'))
-    fireEvent.click(screen.getByText('Start practicing'))
-
+    fireEvent.click(screen.getByRole('button', { name: /Focus/ }))
     await waitFor(() => expect(setQuestFeatures).toHaveBeenCalled())
-    expect(setQuestFeatures).toHaveBeenCalledWith(['meditate', 'breathe', 'journal', 'gratitude'])
+    expect(localStorage.getItem('onboarding.intent')).toBe('focus')
+    expect(setQuestFeatures).toHaveBeenCalledWith(['meditate', 'breathe', 'journal'])
   })
 
-  it('does not set a reminder when "No reminder" is chosen', async () => {
+  it('"Just curious" uses a sensible default quest set', async () => {
     renderOnboarding()
-    fireEvent.click(screen.getByText(/Let.s begin/))
-    fireEvent.click(screen.getByText(/Calm & stress relief/))
-    fireEvent.click(screen.getByText('New to meditation'))
-    fireEvent.click(screen.getByText(/No reminder/))
-    fireEvent.click(screen.getByText('Start practicing'))
-
+    fireEvent.click(screen.getByRole('button', { name: /Just curious/ }))
     await waitFor(() => expect(setQuestFeatures).toHaveBeenCalled())
-    expect(setReminders).not.toHaveBeenCalled()
+    expect(setQuestFeatures).toHaveBeenCalledWith(['breathe', 'gratitude', 'journal'])
+    expect(localStorage.getItem('onboarding.intent')).toBe('curious')
   })
 })

@@ -213,6 +213,19 @@ const loadPrefs = (): BreathePrefs => {
 
 const DRAFT_PAGE = 'breathe'
 
+// Onboarding hatch flag (set by Onboarding §5): when '1', the first completed sit should route
+// to the companion choose page (the "hatch") instead of the usual close. Reads-and-clears in one
+// step so it only ever fires once; storage may be unavailable (private mode) — treat as no hatch.
+function consumePendingHatch(): boolean {
+  try {
+    if (localStorage.getItem('onboarding.pendingHatch') !== '1') return false
+    localStorage.removeItem('onboarding.pendingHatch')
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default function BreathePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -220,12 +233,24 @@ export default function BreathePage() {
   // JS rAF scale animation doesn't override what the global CSS reset can't catch.
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const [searchParams] = useSearchParams()
+  // Guided first-sit (onboarding §5): `?guided=1` strips the page to a zero-config breath —
+  // preset to Resonance, a fixed short duration (`?duration=<seconds>`, default 60s), config
+  // hidden, just the orb + one gentle cue + a single Begin. Read once at mount so toggling
+  // patterns later (it's still allowed once running) doesn't re-trigger it.
+  const [guided] = useState<boolean>(() => searchParams.get('guided') === '1')
+  const guidedDurationSec = (() => {
+    const n = Number(searchParams.get('duration'))
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 60
+  })()
   const [bpm, setBpm] = useState<number>(loadBpm)
   const [boxCount, setBoxCount] = useState<number>(loadBox)
   // Deep-link support: `/breathe?pattern=<key>` pre-selects that preset, overriding the
   // localStorage default on this visit. Read once at mount (useState initializer) so a
   // direct visit without the param behaves exactly as before; manual changes still persist.
+  // A guided first sit always opens on Resonance (the calm, paced default) regardless of any
+  // stored preset, so the orb is the gentle resonance breath every beginner expects.
   const [presetKey, setPresetKey] = useState<string>(() => {
+    if (searchParams.get('guided') === '1') return 'resonance'
     const param = searchParams.get('pattern')
     if (param && PRESETS.some((p) => p.key === param)) return param
     return loadPreset()
@@ -267,7 +292,11 @@ export default function BreathePage() {
   const [ambient, setAmbient] = useState<AmbientSound>(() => loadPrefs().ambient)
   const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
   const [volume, setVolume] = useState(() => loadPrefs().volume)
-  const [targetMin, setTargetMin] = useState(() => loadPrefs().targetMin)
+  // A guided first sit auto-finishes at its fixed length (seconds → minutes for the timer).
+  // A normal visit keeps the remembered target.
+  const [targetMin, setTargetMin] = useState(() =>
+    searchParams.get('guided') === '1' ? guidedDurationSec / 60 : loadPrefs().targetMin,
+  )
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(loadSoundscapeVolPref)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
@@ -326,8 +355,10 @@ export default function BreathePage() {
       // ignore — preference just won't persist
     }
   }, [boxCount])
-  // Remember the sound + duration setup so it becomes the default next time.
+  // Remember the sound + duration setup so it becomes the default next time. Skipped during a
+  // guided first sit — its fixed 60s target is an onboarding detail, not a preference to keep.
   useEffect(() => {
+    if (guided) return
     try {
       localStorage.setItem(
         PREFS_KEY,
@@ -336,7 +367,7 @@ export default function BreathePage() {
     } catch {
       // storage unavailable — preferences just won't persist
     }
-  }, [audioOn, ambient, chimeOn, volume, targetMin])
+  }, [guided, audioOn, ambient, chimeOn, volume, targetMin])
 
   // Timing state in refs so the loops read fresh values without re-subscribing.
   // Two clocks: `cycleStartRef` drives the breath position and is reset to "now"
@@ -781,7 +812,7 @@ export default function BreathePage() {
         </div>
       )}
 
-      {(running || elapsed > 0) && (
+      {(running || elapsed > 0 || guided) && (
         <div className="breathe-stage">
           <div
             className={`breathe-circle ${running ? phase : 'idle'}`}
@@ -855,9 +886,17 @@ export default function BreathePage() {
         </p>
       )}
 
+      {/* Guided first sit (onboarding §5): a warm, zero-config invitation. No pattern/pace/
+          duration/sound controls — just the orb, one gentle cue, and the Begin button below.
+          Shown before the breath starts; once it's underway the orb + phase label carry it. */}
+      {guided && !running && elapsed === 0 && (
+        <p className="breathe-guided-cue">Follow the orb — breathe with it.</p>
+      )}
+
       {/* Setup (pattern, pace, duration, sound) shows before/while paused; during a
-          running session the screen stays calm — just the circle, timer, and controls. */}
-      {!running && (
+          running session the screen stays calm — just the circle, timer, and controls.
+          Hidden entirely for a guided first sit (zero configuration). */}
+      {!guided && !running && (
         <>
       <label>Pattern</label>
       <div className="pattern-cards" role="group" aria-label="Breathing pattern">
@@ -978,7 +1017,10 @@ export default function BreathePage() {
         </>
       )}
 
-      {/* Audio stays adjustable during a session — a live comfort knob. */}
+      {/* Audio stays adjustable during a session — a live comfort knob. Hidden for a guided
+          first sit, which keeps its calm defaults (the ambient wash + chime are on already). */}
+      {!guided && (
+        <>
       <label htmlFor="ambient">Sound</label>
       <select
         id="ambient"
@@ -1045,13 +1087,20 @@ export default function BreathePage() {
           />
         </div>
       </details>
+        </>
+      )}
 
       <ErrorBanner message={error} />
 
       <div className="breathe-controls">
         {!running ? (
-          <button type="button" onClick={start} disabled={saving}>
-            {elapsed > 0 ? 'Resume' : 'Start'}
+          <button
+            type="button"
+            className={guided && elapsed === 0 ? 'breathe-begin' : undefined}
+            onClick={start}
+            disabled={saving}
+          >
+            {elapsed > 0 ? 'Resume' : guided ? 'Begin' : 'Start'}
           </button>
         ) : (
           <button type="button" onClick={pause}>
@@ -1065,7 +1114,7 @@ export default function BreathePage() {
         )}
       </div>
 
-      {!running && <BreathingInfo />}
+      {!running && !guided && <BreathingInfo />}
 
       {reward && (
         <RewardOverlay
@@ -1074,6 +1123,13 @@ export default function BreathePage() {
           breakdown={reward.breakdown}
           onClose={() => {
             setReward(null)
+            // Onboarding hatch (§5): the very first sit "hatches" the companion. If a hatch is
+            // pending, clear the flag and send the user to the choose page (the celebratory
+            // reveal) instead of the usual reflection-modal / home path.
+            if (consumePendingHatch()) {
+              navigate('/spirit/choose')
+              return
+            }
             // After XP, offer the optional reflection — never blocks.
             if (savedSessionIdRef.current) setShowReflection(true)
             else navigate('/')
