@@ -60,8 +60,10 @@ export default function DashboardPage() {
   // chip (its derived spendable balance) and the <Spirit/> companion below (passed as a prop,
   // so the companion doesn't fire a second GET /spirit). null until loaded / on a quiet failure.
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
-  // The deeper progress detail (full level detail, weekly review) is shown by default
-  // beneath the primary "start a practice" surface (no Show more drawer).
+  // The home is split into two tabs: "Today" (companion + the single primary action +
+  // gentle nudges — the everyday view) and "Progress" (the heavier level/weekly-review
+  // retrospective). Defaults to Today so the warm, low-pressure surface leads.
+  const [tab, setTab] = useState<'today' | 'progress'>('today')
   // A gentle daily greeting (stable through the day) and a mindful loading line.
   const [greeting] = useState(() => dailyOf(GREETINGS, new Date()))
   const [loadingLine] = useState(() => randomOf(LOADING))
@@ -129,71 +131,6 @@ export default function DashboardPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      {/* Progression HUD pinned to the very top of the home — the first thing the user
-          sees, above the page title and the first-run card. A game-style stat bar: the
-          level badge with an XP progress bar toward the next level (xp detail straight from
-          stats, mirroring LevelCard), plus coin and streak stat pills. Glowing dark panel,
-          compact and legible. Level/XP come from stats; coins from the spirit (its derived
-          spendable balance). Kept as `.level-topline` so it stays the first child of <main>. */}
-      {stats &&
-        (() => {
-          const xpPct =
-            stats.xp_for_next_level > 0
-              ? Math.min(
-                  100,
-                  Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100),
-                )
-              : 100
-          return (
-            <section
-              className="level-topline hud"
-              aria-label={`Level ${stats.level}, ${stats.xp_into_level} of ${stats.xp_for_next_level} XP to the next level`}
-            >
-              <div className="hud-level">
-                <span className="hud-level-badge" aria-hidden="true">
-                  <span className="hud-level-mark">◆</span>
-                  <span className="hud-level-num">{stats.level}</span>
-                </span>
-                <div className="hud-xp">
-                  <div className="hud-xp-head">
-                    <span className="hud-xp-label">Level {stats.level}</span>
-                    <span className="hud-xp-count">
-                      {stats.xp_into_level}
-                      <span className="hud-xp-sep">/</span>
-                      {stats.xp_for_next_level} XP
-                    </span>
-                  </div>
-                  <div
-                    className="hud-xp-bar"
-                    role="progressbar"
-                    aria-label="XP to next level"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={xpPct}
-                  >
-                    <div className="hud-xp-fill" style={{ width: `${xpPct}%` }} />
-                  </div>
-                </div>
-              </div>
-              <div className="hud-pills">
-                {spirit && (
-                  <span className="hud-pill hud-pill-coins">
-                    <CoinIcon /> {spirit.coins}
-                  </span>
-                )}
-                {stats.current_streak_days > 0 && (
-                  <span
-                    className="hud-pill hud-pill-streak"
-                    aria-label={`${stats.current_streak_days} day streak`}
-                  >
-                    <span aria-hidden="true">🔥</span> {stats.current_streak_days}
-                  </span>
-                )}
-              </div>
-            </section>
-          )
-        })()}
-
       <h1>Your practice</h1>
       <p className="zen-greeting muted">{greeting}</p>
 
@@ -202,81 +139,116 @@ export default function DashboardPage() {
       {!stats && !error && <p>{loadingLine}</p>}
 
       {/* First-run orientation: leads the dashboard for genuinely new users, above the
-          denser progress surfaces. Hidden once dismissed or once they've practiced. */}
+          tabs. Hidden once dismissed or once they've practiced. */}
       {stats && !firstRunDismissed && shouldShowFirstRun(stats.session_count) && (
         <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
       )}
 
-      {/* The streak now lives as a stat pill in the HUD above; here we keep only the quiet
-          rest-day reassurance when it applies, so the gentle "skipping one is fine" message
-          isn't lost. */}
-      {stats && stats.current_streak_days > 0 && stats.rest_day_used && (
-        <p className="quest-streak muted">
-          <span aria-hidden="true">🛡️</span> Rest day used — skipping one is fine.
-        </p>
+      {/* Two-tab home (mirrors the spirit page's segmented control): "Today" leads with the
+          companion + the single primary action + gentle nudges; "Progress" holds the heavier
+          level/weekly-review detail. Shown only once stats have loaded. */}
+      {stats && (
+        <nav className="dashboard-tabs" role="tablist" aria-label="Home sections">
+          <button
+            type="button"
+            role="tab"
+            id="dashboard-tab-today"
+            aria-selected={tab === 'today'}
+            aria-controls="dashboard-panel-today"
+            className={`dashboard-tab${tab === 'today' ? ' dashboard-tab--active' : ''}`}
+            onClick={() => setTab('today')}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="dashboard-tab-progress"
+            aria-selected={tab === 'progress'}
+            aria-controls="dashboard-panel-progress"
+            className={`dashboard-tab${tab === 'progress' ? ' dashboard-tab--active' : ''}`}
+            onClick={() => setTab('progress')}
+          >
+            Progress
+          </button>
+        </nav>
       )}
 
-      {/* The spirit — the home-screen centrepiece (docs/design/spirit.md, ADR-0022). A calm,
-          static glowing companion that grows with practice. We fetch it once above (for the coin
-          chip) and pass it down, so the companion doesn't fire a second GET /spirit; it waits
-          quietly while the prop is still null. */}
-      <Spirit spirit={spirit} />
-
-      {/* Quick-access tiles — the primary purpose of the home screen: one tap to start
-          a practice. Kept prominent and always visible. */}
-      <nav className="feature-tiles" aria-label="Quick access">
-        {FEATURE_TILES.map(({ label, emoji, to, tile }) => (
-          <Link
-            key={to}
-            to={to}
-            className="feature-tile"
-            style={{
-              ['--tile-fill' as string]: TILE_COLORS[tile],
-              ['--tile-fill-dark' as string]: TILE_COLORS_DARK[tile],
-            }}
-          >
-            <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
-            <span className="feature-tile-label">{label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      {/* Daily missions — the day's completable tasks as mission rows. Each shows its icon +
-          label, a reward chip (+XP from the quest data), and a clear progress/done state; done
-          rows get a satisfying checked treatment. A "Daily missions — X/Y" header sits over a
-          subtle completion meter. Each row still deep-links to its feature (QUEST_LINKS).
-          Classes `.quest-chip` / `.quest-chip-progress` / `.done` are retained so the existing
-          behaviour assertions keep passing while the look turns game-y. */}
-      {stats && stats.daily_quests.length > 0 && (
-        <section className="quests-compact missions" aria-labelledby="quests-heading">
-          {(() => {
-            const doneCount = stats.daily_quests.filter((q) => q.done).length
-            const total = stats.daily_quests.length
-            const pct = Math.round((doneCount / total) * 100)
-            const allDone = doneCount === total
-            return (
-              <div className="missions-head">
-                <p className="quests-heading" id="quests-heading">
-                  <span className="quests-heading-icon" aria-hidden="true">🎯</span>
-                  <span className="quests-heading-text">Daily missions</span>
-                  <span className="quests-heading-count">
-                    {doneCount}/{total}
-                  </span>
-                </p>
-                <div
-                  className={allDone ? 'missions-meter complete' : 'missions-meter'}
-                  role="progressbar"
-                  aria-label="Daily missions complete"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={pct}
+      {/* TODAY — the everyday, low-pressure home: a slim coins/streak pill row, the companion
+          hero, the single "what do I do now" CTA, then secondary tiles + gentle nudges. */}
+      {stats && tab === 'today' && (
+        <div role="tabpanel" id="dashboard-panel-today" aria-labelledby="dashboard-tab-today">
+          {/* Slim pill row — only coins + streak. The big level badge and XP bar moved off the
+              home (XP now lives quietly under the Progress tab), so the everyday view doesn't
+              read as a scoreboard. Reuses the HUD pill classes for a consistent look. */}
+          {(spirit || stats.current_streak_days > 0) && (
+            <div className="dashboard-pills hud-pills">
+              {spirit && (
+                <span className="hud-pill hud-pill-coins">
+                  <CoinIcon /> {spirit.coins}
+                </span>
+              )}
+              {stats.current_streak_days > 0 && (
+                <span
+                  className="hud-pill hud-pill-streak"
+                  aria-label={`${stats.current_streak_days} day streak`}
                 >
-                  <div className="missions-meter-fill" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            )
-          })()}
-          <ul className="quest-chips">
+                  <span aria-hidden="true">🔥</span> {stats.current_streak_days}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* The spirit — the home-screen centrepiece (docs/design/spirit.md, ADR-0022). A calm,
+              static glowing companion that grows with practice. We fetch it once above (for the
+              coin chip) and pass it down, so the companion doesn't fire a second GET /spirit; it
+              waits quietly while the prop is still null. */}
+          <Spirit spirit={spirit} />
+
+          {/* The quiet rest-day reassurance, when it applies, so the gentle "skipping one is
+              fine" message isn't lost now that the streak is a small pill. */}
+          {stats.current_streak_days > 0 && stats.rest_day_used && (
+            <p className="quest-streak muted">
+              <span aria-hidden="true">🛡️</span> Rest day used — skipping one is fine.
+            </p>
+          )}
+
+          {/* The single primary action — "what do I do now". Breathing is the hero practice,
+              so the one prominent CTA leads there. The four feature tiles below are secondary. */}
+          <Link to="/breathe" className="today-action">
+            Take a slow minute to breathe →
+          </Link>
+
+          {/* Quick-access tiles — secondary now, a quiet row beneath the primary CTA: one tap
+              to start any of the practices. */}
+          <nav className="feature-tiles" aria-label="Quick access">
+            {FEATURE_TILES.map(({ label, emoji, to, tile }) => (
+              <Link
+                key={to}
+                to={to}
+                className="feature-tile"
+                style={{
+                  ['--tile-fill' as string]: TILE_COLORS[tile],
+                  ['--tile-fill-dark' as string]: TILE_COLORS_DARK[tile],
+                }}
+              >
+                <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
+                <span className="feature-tile-label">{label}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Today's nudges — the old daily quests, reframed as a few gentle, optional nudges
+              rather than a "X/Y" grind. The completion count + meter are gone; only a soft lead
+              line remains. Each chip still deep-links to its feature (QUEST_LINKS) and keeps its
+              `.quest-chip` / `.quest-chip-progress` / `.done` classes so existing behaviour holds. */}
+          {stats.daily_quests.length > 0 && (
+            <section className="quests-compact missions" aria-labelledby="quests-heading">
+              <p className="quests-heading" id="quests-heading">
+                <span className="quests-heading-icon" aria-hidden="true">🌱</span>
+                <span className="quests-heading-text">A nudge or two for today</span>
+              </p>
+              <ul className="quest-chips">
             {stats.daily_quests.map((q) => {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
               const meta = ACTIVITY_META[q.key as Activity]
@@ -335,61 +307,68 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Quiet, always-reachable mood line. If the user already logged a mood today we reflect
-          it back calmly — "You felt {mood} {emoji}" with a small colour accent; otherwise we
-          show a quiet, optional "Log today's mood" affordance. Either way it's a plain text
-          link that opens the mood modal to (re-)log — never auto-opened. */}
-      {stats && !moodModalOpen && (
-        <p className="mood-entry">
-          <button
-            type="button"
-            className={todayMood ? 'mood-entry-link mood-entry-reflect' : 'mood-entry-link'}
-            onClick={() => setMoodModalOpen(true)}
-            style={
-              todayMood
-                ? { ['--mood-accent' as string]: MOOD_COLORS[todayMood] }
-                : undefined
-            }
-          >
-            {todayMood ? (
-              <>
-                You felt {MOOD_META[todayMood].label.toLowerCase()}{' '}
-                <span aria-hidden="true">{MOOD_META[todayMood].emoji}</span>
-              </>
-            ) : (
-              "Log today's mood"
+          {/* Quiet, always-reachable mood line. If the user already logged a mood today we
+              reflect it back calmly — "You felt {mood} {emoji}" with a small colour accent;
+              otherwise we show a quiet, optional "Log today's mood" affordance. Either way it's
+              a plain text link that opens the mood modal to (re-)log — never auto-opened. */}
+          {!moodModalOpen && (
+            <p className="mood-entry">
+              <button
+                type="button"
+                className={todayMood ? 'mood-entry-link mood-entry-reflect' : 'mood-entry-link'}
+                onClick={() => setMoodModalOpen(true)}
+                style={
+                  todayMood
+                    ? { ['--mood-accent' as string]: MOOD_COLORS[todayMood] }
+                    : undefined
+                }
+              >
+                {todayMood ? (
+                  <>
+                    You felt {MOOD_META[todayMood].label.toLowerCase()}{' '}
+                    <span aria-hidden="true">{MOOD_META[todayMood].emoji}</span>
+                  </>
+                ) : (
+                  "Log today's mood"
+                )}
+              </button>
+            </p>
+          )}
+
+          {/* Quiet fallback for the no-sessions state — only when the richer first-run card
+              isn't on screen (dismissed), so the user never sees two "get started" prompts.
+              Kept on the Today view so a brand-new user always has a clear "start here". */}
+          {stats.session_count === 0 &&
+            (firstRunDismissed || !shouldShowFirstRun(stats.session_count)) && (
+              <p className="muted">
+                You're just getting started. <Link to="/sessions/new">Log a session</Link> or{' '}
+                <Link to="/breathe">breathe</Link> to earn your first coins.
+              </p>
             )}
-          </button>
-        </p>
+        </div>
       )}
 
-      {/* Quiet fallback for the no-sessions state — only when the richer first-run card
-          isn't on screen (dismissed), so the user never sees two "get started" prompts.
-          Kept on the default view so a brand-new user always has a clear "start here". */}
-      {stats &&
-        stats.session_count === 0 &&
-        (firstRunDismissed || !shouldShowFirstRun(stats.session_count)) && (
-          <p className="muted">
-            You're just getting started. <Link to="/sessions/new">Log a session</Link> or{' '}
-            <Link to="/breathe">breathe</Link> to earn your first coins.
-          </p>
-        )}
+      {/* PROGRESS — the heavier retrospective: the full level detail (XP bar, next unlock) and
+          the weekly review, plus a quiet link out to full analytics. One tap away under the
+          Progress tab so the everyday Today view stays calm. */}
+      {stats && tab === 'progress' && (
+        <div
+          role="tabpanel"
+          id="dashboard-panel-progress"
+          aria-labelledby="dashboard-tab-progress"
+        >
+          <section className="dashboard-more">
+            <div id="dashboard-more-panel">
+              <LevelCard stats={stats} />
 
-      {/* The heavier retrospective/progress detail folds into one calm, default-collapsed
-          drawer: the full level detail (XP bar, next unlock) and the weekly review — both
-          still here, just one tap away. Totals and the activity calendar now live on the
-          Analytics page (alongside the rest of the stats); quests live on the default home
-          above (in compact form). */}
-      {stats && (
-        <section className="dashboard-more">
-          {/* Progress detail — the level card and weekly review, shown by default
-              (no Show more drawer). */}
-          <div id="dashboard-more-panel">
-            <LevelCard stats={stats} />
+              <WeeklyReview />
 
-            <WeeklyReview />
-          </div>
-        </section>
+              <p className="dashboard-more-link">
+                <Link to="/analytics">See full analytics →</Link>
+              </p>
+            </div>
+          </section>
+        </div>
       )}
 
       {/* Manual mood check-in — a calm, skippable modal opened only from the inline mood

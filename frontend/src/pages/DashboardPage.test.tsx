@@ -1,9 +1,9 @@
 /**
  * Light smoke tests for the DashboardPage.
- * Full integration coverage lives in E2E; these guard the quick-action tiles,
- * the level + coins top line, the compact quests that sit on the calm default home, the
- * single-fetch spirit (coins) optimisation, and the default-collapsed "Show more" drawer
- * that holds the heavier progress detail.
+ * Full integration coverage lives in E2E; these guard the quick-action tiles, the slim
+ * coins/streak pills, the companion + single "today's action" CTA + gentle nudges that lead
+ * the Today tab, the single-fetch spirit (coins) optimisation, and the Progress tab that holds
+ * the heavier level/weekly-review detail.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -96,6 +96,15 @@ function renderPage() {
   )
 }
 
+// Stats-loaded anchor: the home tab bar (Today / Progress) renders only once stats resolve.
+// The level/XP no longer live on the Today tab, so we wait on the Today tab instead.
+const findLoaded = () => screen.findByRole('tab', { name: /today/i })
+
+// The level detail + weekly review live on the Progress tab now; switch to it before asserting.
+async function gotoProgress() {
+  fireEvent.click(await screen.findByRole('tab', { name: /progress/i }))
+}
+
 beforeEach(() => {
   localStorage.clear()
   getStats.mockReset()
@@ -108,13 +117,17 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('DashboardPage — quick-action feature tiles', () => {
+  // The tiles now live on the Today tab, which renders once stats load — so resolve stats
+  // and wait for the tab before asserting on them.
   beforeEach(() => {
-    getStats.mockReturnValue(new Promise(() => {})) // loading forever for tile tests
-    getSpirit.mockReturnValue(new Promise(() => {})) // pending forever
+    getStats.mockResolvedValue(fakeStats)
+    getSpirit.mockResolvedValue(fakeSpirit)
+    seenMoodToday()
     renderPage()
   })
 
-  it('renders a nav landmark for quick access', () => {
+  it('renders a nav landmark for quick access', async () => {
+    await findLoaded()
     expect(screen.getByRole('navigation', { name: /quick access/i })).toBeInTheDocument()
   })
 
@@ -126,106 +139,133 @@ describe('DashboardPage — quick-action feature tiles', () => {
   ]
 
   tiles.forEach(({ label, href }) => {
-    it(`renders a "${label}" tile linking to ${href}`, () => {
-      const link = screen.getByRole('link', { name: new RegExp(label, 'i') })
+    it(`renders a "${label}" tile linking to ${href}`, async () => {
+      await findLoaded()
+      const nav = screen.getByRole('navigation', { name: /quick access/i })
+      const link = within(nav).getByRole('link', { name: new RegExp(label, 'i') })
       expect(link).toHaveAttribute('href', href)
     })
   })
 })
 
-describe('DashboardPage — default (collapsed) calm view', () => {
+describe('DashboardPage — Today tab (calm default view)', () => {
   beforeEach(() => {
     getStats.mockResolvedValue(fakeStats)
     getSpirit.mockResolvedValue(fakeSpirit)
   })
 
-  it('shows the level + coins top line once stats and scene load', async () => {
+  it('shows the slim coins + streak pills on the Today tab once stats and spirit load', async () => {
     renderPage()
-    expect(await screen.findByText(/Level 7/)).toBeInTheDocument()
+    await findLoaded()
+    // Coins come from the spirit; the streak reads as a quiet 🔥 pill. No level/XP scoreboard.
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
-  })
-
-  it('renders an XP progress bar in the HUD reflecting xp into the level', async () => {
-    renderPage()
-    await screen.findByText(/Level 7/)
-
-    // xp_into_level 20 / xp_for_next_level 100 → 20% along the bar.
-    const xpBar = screen.getByRole('progressbar', { name: /xp to next level/i })
-    expect(xpBar).toBeInTheDocument()
-    expect(xpBar).toHaveAttribute('aria-valuenow', '20')
-    const fill = xpBar.querySelector('.hud-xp-fill') as HTMLElement | null
-    expect(fill).not.toBeNull()
-    expect(fill!.style.width).toBe('20%')
-
-    // The streak now reads as a HUD stat pill (🔥 3) rather than a separate streak line.
     expect(screen.getByLabelText(/3 day streak/i)).toBeInTheDocument()
   })
 
-  it('pins the level + coins line to the very top of the home, above the page title', async () => {
+  it('quiets the XP: no level badge or XP bar on the Today tab', async () => {
     renderPage()
-    const main = await screen.findByRole('main')
-    await screen.findByText(/Level 7/)
-    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
+    await findLoaded()
 
-    // The level/coins line is the first element in <main> — ahead of the "Your practice"
-    // heading and everything else (including any first-run card).
-    const topline = main.querySelector('.level-topline')
-    expect(topline).not.toBeNull()
-    expect(main.firstElementChild).toBe(topline)
+    // The home no longer carries the big level topline / XP bar — that detail moved to Progress.
+    expect(document.querySelector('.level-topline')).toBeNull()
+    expect(screen.queryByRole('progressbar', { name: /xp to next level/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Level 7/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the page title above the tabs', async () => {
+    renderPage()
+    await findLoaded()
 
     const heading = screen.getByRole('heading', { name: /your practice/i, level: 1 })
-    // The top line precedes the <h1> in document order.
+    const tablist = screen.getByRole('tablist', { name: /home sections/i })
+    // The title precedes the tab bar in document order.
     expect(
-      topline!.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+      heading.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 
   it('shows the feature tiles and a quiet "Log today\'s mood" entry point by default', async () => {
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
     expect(screen.getByRole('navigation', { name: /quick access/i })).toBeInTheDocument()
     // The mood check-in is a quiet, optional entry-point link — never an auto-popped modal.
     expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
   })
 
-  it('shows the day\'s missions under a clear "Daily missions" heading, no "Today you could…" lead', async () => {
+  it('leads with the single "today\'s action" CTA linking to /breathe', async () => {
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
-    // The old imperative lead is gone, replaced by a clear missions heading.
-    expect(screen.queryByText(/Today you could/i)).not.toBeInTheDocument()
-    const questsSection = screen.getByRole('region', { name: /daily missions/i })
+    // One prominent primary action (breathing is the hero practice).
+    const cta = screen.getByRole('link', { name: /take a slow minute to breathe/i })
+    expect(cta).toHaveAttribute('href', '/breathe')
+    expect(cta).toHaveClass('today-action')
+  })
+
+  it('shows the day\'s quests as gentle nudges with no "Daily missions X/Y" count or meter', async () => {
+    renderPage()
+    await findLoaded()
+
+    // The grindy "Daily missions" count + completion meter are gone, replaced by a soft lead.
+    expect(screen.queryByText('0/1')).not.toBeInTheDocument()
+    expect(document.querySelector('.missions-meter')).toBeNull()
+    const questsSection = screen.getByRole('region', { name: /a nudge or two for today/i })
     expect(questsSection).toBeInTheDocument()
-    // A visible "Daily missions" heading + a done/total count make the cards read as missions.
-    expect(within(questsSection).getByText(/daily missions/i)).toBeInTheDocument()
-    expect(within(questsSection).getByText('0/1')).toBeInTheDocument()
+    // The quest chips + their deep links are unchanged.
     expect(
       within(questsSection).getByRole('link', { name: /meditate/i }),
     ).toHaveAttribute('href', '/meditate')
 
-    // The spirit is the new home centrepiece, rendered on the default calm home.
+    // The spirit is the home-screen centrepiece, rendered on the Today tab.
     expect(screen.getByTestId('spirit')).toBeInTheDocument()
   })
 
-  it('shows the full level card and weekly review by default', async () => {
+  it('keeps the level card and weekly review off the Today tab (they live under Progress)', async () => {
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
-    // The progress detail renders directly now — no "Show more" drawer to open.
-    expect(screen.getByTestId('level-card')).toBeInTheDocument()
-    expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
+    // Today stays calm: the heavier progress detail is one tab away, not on the default view.
+    expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument()
   })
+})
 
-  it('does not render the activity calendar or the totals stat cards on the home', async () => {
+describe('DashboardPage — Progress tab', () => {
+  beforeEach(() => {
+    seenMoodToday()
+    getStats.mockResolvedValue(fakeStats)
+    getSpirit.mockResolvedValue(fakeSpirit)
+  })
+
+  it('reveals the level card + weekly review when the Progress tab is clicked', async () => {
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
-    // The progress detail (level card) shows by default; the activity calendar moved to Analytics.
+    // The detail isn't on the default Today view…
+    expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
+
+    await gotoProgress()
+
+    // …but appears once the Progress tab is selected.
+    expect(screen.getByTestId('level-card')).toBeInTheDocument()
+    expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
+    // Plus a quiet link out to the full analytics page.
+    expect(screen.getByRole('link', { name: /see full analytics/i })).toHaveAttribute(
+      'href',
+      '/analytics',
+    )
+  })
+
+  it('does not render the activity calendar or the totals stat cards under Progress', async () => {
+    renderPage()
+    await findLoaded()
+    await gotoProgress()
+
+    // The level card shows; the activity calendar / totals moved to the Analytics page.
     expect(screen.getByTestId('level-card')).toBeInTheDocument()
     expect(document.querySelector('.calendar')).toBeNull()
     expect(document.querySelector('.stat-cards')).toBeNull()
-    // The home no longer shows the "Total practice" / "Gratitude moments" totals.
     expect(screen.queryByText(/total practice/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/gratitude moments/i)).not.toBeInTheDocument()
   })
@@ -247,9 +287,9 @@ describe('DashboardPage — multi-step quest progress counter', () => {
       ],
     } as unknown as DashboardStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
-    const questsSection = screen.getByRole('region', { name: /daily missions/i })
+    const questsSection = screen.getByRole('region', { name: /a nudge or two for today/i })
 
     // The multi-step quest shows its partial progress as "1/2".
     expect(within(questsSection).getByText('1/2')).toBeInTheDocument()
@@ -267,34 +307,13 @@ describe('DashboardPage — multi-step quest progress counter', () => {
       ],
     } as unknown as DashboardStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
-    const questsSection = screen.getByRole('region', { name: /daily missions/i })
+    const questsSection = screen.getByRole('region', { name: /a nudge or two for today/i })
     const chip = within(questsSection).getByRole('link', { name: /write three gratitudes/i })
     // Full progress shows "3/3" and the chip carries the done state (muted + check).
     expect(within(questsSection).getByText('3/3')).toBeInTheDocument()
     expect(chip).toHaveClass('done')
-  })
-})
-
-describe('DashboardPage — progress detail (shown by default)', () => {
-  beforeEach(() => {
-    seenMoodToday()
-    getStats.mockResolvedValue(fakeStats)
-    getSpirit.mockResolvedValue(fakeSpirit)
-  })
-
-  it('renders the level card and weekly review with no Show more toggle', async () => {
-    // A stale `dashboard.showMore` flag from an older build must not matter — the progress
-    // detail is always shown now (the drawer was removed).
-    localStorage.setItem('dashboard.showMore', '1')
-    renderPage()
-    await screen.findByText(/Level 7/)
-
-    expect(screen.getByTestId('level-card')).toBeInTheDocument()
-    expect(screen.getByTestId('weekly-review')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /show less/i })).not.toBeInTheDocument()
   })
 })
 
@@ -311,7 +330,7 @@ describe('DashboardPage — today\'s mood reflection', () => {
       { id: 'm1', mood: 'calm', created_at: new Date().toISOString() },
     ])
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
     // The reflection replaces the prompt; it's still a tappable button (opens the modal).
     const line = await screen.findByRole('button', { name: /you felt calm/i })
@@ -324,7 +343,7 @@ describe('DashboardPage — today\'s mood reflection', () => {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     listMoodLogs.mockResolvedValue([{ id: 'm0', mood: 'low', created_at: yesterday }])
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
     expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /you felt/i })).not.toBeInTheDocument()
@@ -334,7 +353,7 @@ describe('DashboardPage — today\'s mood reflection', () => {
     // No mood today → prompt shows; opening the modal and picking a mood reflects it at once.
     listMoodLogs.mockResolvedValue([])
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
     fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
     // The mock check-in fires onLogged('calm').
@@ -346,21 +365,22 @@ describe('DashboardPage — today\'s mood reflection', () => {
 })
 
 describe('DashboardPage — spirit (coins) single-fetch', () => {
-  it('calls the spirit fetch exactly once and shows its coin balance in the level header', async () => {
+  it('calls the spirit fetch exactly once and shows its coin balance in the pill row', async () => {
     seenMoodToday()
     getSpirit.mockResolvedValue(fakeSpirit)
     getStats.mockResolvedValue(fakeStats)
 
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
-    // The coin chip in the level header reflects the spirit's derived coin balance.
+    // The coin pill on the Today tab reflects the spirit's derived coin balance.
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
 
     // Exactly one fetch — not two.
     expect(getSpirit).toHaveBeenCalledTimes(1)
 
-    // LevelCard renders by default (no longer takes a scene prop).
+    // LevelCard renders under the Progress tab (no longer takes a scene prop).
+    await gotoProgress()
     await waitFor(() => expect(capturedLevelCardProps.length).toBeGreaterThan(0))
     expect(capturedLevelCardProps.at(-1)).not.toHaveProperty('scene')
   })
@@ -375,7 +395,7 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
     // No prior-prompt seeding — the modal must still stay closed; it never auto-pops now.
     getStats.mockResolvedValue(fakeStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
     await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
 
     // The quiet inline mood line is present, but the modal is not auto-opened.
@@ -386,7 +406,7 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
   it('opens the modal when the inline mood line is clicked', async () => {
     getStats.mockResolvedValue(fakeStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
     expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
@@ -400,7 +420,7 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
   it('closes the modal when a mood is picked', async () => {
     getStats.mockResolvedValue(fakeStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
     fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
     await screen.findByRole('dialog', { name: /how are you arriving/i })
@@ -417,7 +437,7 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
   it('closes the modal on Skip without re-opening', async () => {
     getStats.mockResolvedValue(fakeStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
     fireEvent.click(screen.getByRole('button', { name: /log today's mood/i }))
     fireEvent.click(await screen.findByRole('button', { name: /skip for now/i }))
@@ -431,7 +451,7 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
   it('does not auto-open the modal for a brand-new user with the first-run card', async () => {
     getStats.mockResolvedValue({ ...fakeStats, session_count: 0 } as unknown as DashboardStats)
     renderPage()
-    await screen.findByText(/Level 7/)
+    await findLoaded()
 
     expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: /how are you arriving/i })).not.toBeInTheDocument()
