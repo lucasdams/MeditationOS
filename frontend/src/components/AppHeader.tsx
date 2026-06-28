@@ -13,6 +13,7 @@ type MenuLink = { to: string; icon: string; label: string; light: string; dark: 
 // the top — a browsable library of every technique — with the direct links below it.
 const PRACTICE_LINKS: MenuLink[] = [
   { to: '/practices', icon: '✨', label: 'All practices', light: '#7c3aed', dark: '#c4b5fd' },
+  { to: '/paths', icon: '🧭', label: 'Paths', light: '#0d9488', dark: '#2dd4bf' },
   { to: '/meditate', icon: '🧘', label: 'Meditate', light: '#0f766e', dark: '#14b8a6' },
   { to: '/breathe', icon: '🫁', label: 'Breathe', light: '#0369a1', dark: '#0ea5e9' },
   { to: '/trataka', icon: '🕯️', label: 'Candle gazing', light: '#c2410c', dark: '#fb923c' },

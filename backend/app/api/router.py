@@ -14,6 +14,7 @@ from app.api.routes import (
     health,
     journals,
     mood_logs,
+    paths,
     push,
     scheduled_sessions,
     sessions,
@@ -31,6 +32,7 @@ api_router.include_router(breathing_patterns.router)
 api_router.include_router(gratitude.router)
 api_router.include_router(journals.router)
 api_router.include_router(mood_logs.router)
+api_router.include_router(paths.router)
 api_router.include_router(goals.router)
 api_router.include_router(push.router)
 api_router.include_router(scheduled_sessions.router)

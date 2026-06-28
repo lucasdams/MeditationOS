@@ -2186,6 +2186,150 @@ textarea:focus-visible,
   color: #fff;
   box-shadow: 0 3px 14px color-mix(in srgb, var(--accent) 45%, transparent);
 }
+/* The same hero button rendered as a <button> (the path enroll / day "Start"): reset native
+   chrome and match cursor/disabled affordances so it reads identically to the <a> variant. */
+button.today-action {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+button.today-action:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* The gentle secondary invite under the breathe CTA — "Start your first 7 days →". A quiet
+   text link, not a second button, so it never competes with the primary action. */
+.today-action-secondary {
+  margin: 0.6rem 0 0;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+/* ── Paths (beginner-first revision §8) ─────────────────────────────────────────
+   Warm, low-pressure course list. Cards are calm surfaces; the enrolled day list reads quietly,
+   with only the current day highlighted (it carries the cue + the prominent "Start"). */
+.paths-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+.paths-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+.path-card {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius, 1rem);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+}
+.path-card-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.path-card-blurb {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+}
+.path-card-progress {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.88rem;
+}
+.path-start-btn {
+  margin-top: 0.25rem;
+}
+.path-welcome {
+  margin: 0 0 0.85rem;
+  font-size: 0.92rem;
+}
+.path-complete {
+  margin: 0 0 0.85rem;
+  font-weight: 600;
+  color: var(--success-text);
+}
+
+.path-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.path-day {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--border-light);
+}
+.path-day:first-child {
+  border-top: 0;
+}
+.path-day-marker {
+  flex: 0 0 1.2rem;
+  text-align: center;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.path-day-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.path-day-head {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.55rem;
+}
+.path-day-num {
+  font-weight: 700;
+}
+.path-day-title {
+  overflow-wrap: anywhere;
+}
+.path-day-practice {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.path-day-cue {
+  margin: 0.5rem 0 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.path-day-start {
+  /* It's a today-action, but scoped a touch narrower in the list so it doesn't span full width. */
+  display: inline-block;
+  width: auto;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.98rem;
+}
+
+/* Done days: quietly checked, gently muted — a record of progress, not a trophy. */
+.path-day--done {
+  color: var(--text-muted);
+}
+.path-day--done .path-day-marker {
+  color: var(--success-text);
+}
+/* Current day: a soft accent so the eye lands on the one thing to do next. */
+.path-day--current {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.7rem;
+  margin-left: -0.7rem;
+}
+.path-day--current .path-day-marker {
+  color: var(--accent);
+}
+/* Locked days: dimmed and inert — no scolding, no lock icon shaming. */
+.path-day--locked {
+  opacity: 0.5;
+}
 
 /* Quiet "see full analytics" link under the Progress tab's detail. */
 .dashboard-more-link {

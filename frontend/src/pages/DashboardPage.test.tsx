@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom'
 const getStats = vi.fn()
 const getSpirit = vi.fn()
 const listMoodLogs = vi.fn()
+const listPaths = vi.fn()
 
 // Mock heavy dashboard dependencies so the component renders without a backend.
 vi.mock('../services/dashboard', () => ({
@@ -26,6 +27,12 @@ vi.mock('../services/spirit', () => ({
 // whether to reflect "You felt X" or show the "How do you feel?" prompt.
 vi.mock('../services/moodLogs', () => ({
   moodLogService: { list: (...a: unknown[]) => listMoodLogs(...a) },
+}))
+// The Today CTA is path-aware: the dashboard fetches the user's paths to decide whether to show
+// the current-day CTA or the generic breathe CTA. Mock it so non-path tests are unaffected
+// (default: no enrolled path → the breathe CTA leads).
+vi.mock('../services/paths', () => ({
+  pathsService: { list: (...a: unknown[]) => listPaths(...a) },
 }))
 
 // Capture the props LevelCard receives.
@@ -60,7 +67,7 @@ vi.mock('../components/WeeklyReview', () => ({
 
 import DashboardPage from './DashboardPage'
 import { localDateKey } from '../lib/zen'
-import type { DashboardStats, SpiritState } from '../types'
+import type { DashboardStats, PathSummary, SpiritState } from '../types'
 
 // The once-per-day mood prompt is keyed by the local date. Helpers to read/seed that gate.
 const moodPromptKey = () => `mood.prompted.${localDateKey()}`
@@ -110,8 +117,11 @@ beforeEach(() => {
   getStats.mockReset()
   getSpirit.mockReset()
   listMoodLogs.mockReset()
+  listPaths.mockReset()
   // Default: no mood logged today → the home shows the "How do you feel?" prompt.
   listMoodLogs.mockResolvedValue([])
+  // Default: not enrolled in any path → the generic breathe CTA leads.
+  listPaths.mockResolvedValue({ paths: [] })
   capturedLevelCardProps.length = 0
 })
 afterEach(cleanup)
@@ -192,7 +202,7 @@ describe('DashboardPage — Today tab (calm default view)', () => {
     expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
   })
 
-  it('leads with the single "today\'s action" CTA linking to /breathe', async () => {
+  it('leads with the single "today\'s action" CTA linking to /breathe when not enrolled in a path', async () => {
     renderPage()
     await findLoaded()
 
@@ -200,6 +210,12 @@ describe('DashboardPage — Today tab (calm default view)', () => {
     const cta = screen.getByRole('link', { name: /take a slow minute to breathe/i })
     expect(cta).toHaveAttribute('href', '/breathe')
     expect(cta).toHaveClass('today-action')
+
+    // …plus the gentle secondary invite into Paths.
+    expect(screen.getByRole('link', { name: /start your first 7 days/i })).toHaveAttribute(
+      'href',
+      '/paths',
+    )
   })
 
   it('shows the day\'s quests as gentle nudges with no "Daily missions X/Y" count or meter', async () => {
@@ -228,6 +244,85 @@ describe('DashboardPage — Today tab (calm default view)', () => {
     expect(screen.queryByTestId('level-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('weekly-review')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /show more/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('DashboardPage — path-aware Today CTA', () => {
+  beforeEach(() => {
+    seenMoodToday()
+    getStats.mockResolvedValue(fakeStats)
+    getSpirit.mockResolvedValue(fakeSpirit)
+  })
+
+  // An enrolled, unfinished path whose current day (Day 3) is a 3-min breathe → guided 180s.
+  const enrolledPath = {
+    id: 'first-7',
+    title: 'Your First 7 Days',
+    blurb: '',
+    total_days: 7,
+    enrolled: true,
+    started_on: '2026-06-25',
+    current_day: 3,
+    completed: false,
+    completed_days: 2,
+    days: [
+      { index: 1, title: 'a', practice: 'breathe', min_minutes: 1, cue: '', status: 'done' },
+      { index: 2, title: 'b', practice: 'breathe', min_minutes: 2, cue: '', status: 'done' },
+      {
+        index: 3,
+        title: 'Shoulders drop',
+        practice: 'breathe',
+        min_minutes: 3,
+        cue: 'drop your shoulders',
+        status: 'current',
+      },
+      { index: 4, title: 'd', practice: 'meditate', min_minutes: 3, cue: '', status: 'locked' },
+    ],
+  } as unknown as PathSummary
+
+  it('shows the current-day CTA (label + practice href) when enrolled in an unfinished path', async () => {
+    listPaths.mockResolvedValue({ paths: [enrolledPath] })
+    renderPage()
+    await findLoaded()
+
+    // "Day 3 · Shoulders drop →" launching the day's guided breathe (3 min → 180s).
+    const cta = await screen.findByRole('link', { name: /day 3 · shoulders drop/i })
+    expect(cta).toHaveAttribute('href', '/breathe?guided=1&duration=180')
+    expect(cta).toHaveClass('today-action')
+
+    // The generic breathe CTA + the "start your first 7 days" invite are replaced by the path CTA.
+    expect(
+      screen.queryByRole('link', { name: /take a slow minute to breathe/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /start your first 7 days/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the generic breathe CTA + Paths invite when not enrolled in any path', async () => {
+    listPaths.mockResolvedValue({ paths: [{ ...enrolledPath, enrolled: false }] })
+    renderPage()
+    await findLoaded()
+
+    expect(
+      await screen.findByRole('link', { name: /take a slow minute to breathe/i }),
+    ).toHaveAttribute('href', '/breathe')
+    expect(screen.getByRole('link', { name: /start your first 7 days/i })).toHaveAttribute(
+      'href',
+      '/paths',
+    )
+  })
+
+  it('falls back to the breathe CTA when the enrolled path is already completed', async () => {
+    listPaths.mockResolvedValue({ paths: [{ ...enrolledPath, completed: true }] })
+    renderPage()
+    await findLoaded()
+
+    // A finished path no longer drives the CTA — the calm everyday breathe action returns.
+    expect(
+      await screen.findByRole('link', { name: /take a slow minute to breathe/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /day 3 · shoulders drop/i })).not.toBeInTheDocument()
   })
 })
 

@@ -22,6 +22,7 @@ import { Loading } from './components/StateViews'
 
 // --- Lazily-loaded routes (heavy pages unlikely to be the first URL visited) ---
 const PracticesPage   = lazy(() => import('./pages/PracticesPage'))
+const PathsPage       = lazy(() => import('./pages/PathsPage'))
 const TratakaPage     = lazy(() => import('./pages/TratakaPage'))
 const LogSessionPage  = lazy(() => import('./pages/LogSessionPage'))
 const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
@@ -66,6 +67,10 @@ export default function App() {
           <Route
             path="/practices"
             element={<Suspense fallback={<PageFallback />}><PracticesPage /></Suspense>}
+          />
+          <Route
+            path="/paths"
+            element={<Suspense fallback={<PageFallback />}><PathsPage /></Suspense>}
           />
           <Route path="/breathe" element={<BreathePage />} />
           <Route path="/meditate" element={<MeditatePage />} />

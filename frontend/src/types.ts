@@ -665,3 +665,41 @@ export interface AdminMetrics {
     push_users: number
   }
 }
+
+// --- Paths (beginner-first revision §8) ---
+// A Path is a short, multi-day guided course: static content (an ordered list of days, each
+// prescribing one practice + on-screen guidance — no recorded audio). A day's completion is
+// DERIVED server-side from real logged activity (ADR-0009), so the client only renders state.
+
+// The practice a path day asks for; the client maps it to the matching feature route.
+export type PathPractice = 'breathe' | 'meditate' | 'gratitude'
+
+// A day's derived state. `current` is the lowest-index day not yet completed (the one to do
+// next); `done` days are quietly checked; `locked` days are dimmed and not actionable.
+export type PathDayStatus = 'done' | 'current' | 'locked'
+
+export interface PathDay {
+  index: number // 1-based day number ("Day 1")
+  title: string
+  practice: PathPractice
+  min_minutes: number // the bar a logged session must clear to complete the day
+  cue: string // the on-screen guidance line(s) for the day
+  status: PathDayStatus
+}
+
+export interface PathSummary {
+  id: string
+  title: string
+  blurb: string
+  total_days: number
+  enrolled: boolean
+  started_on: string | null // ISO date the user enrolled; null when not enrolled
+  current_day: number | null // 1-based index of the day to do next; null when not enrolled
+  completed: boolean // every day done
+  completed_days: number // how many days are derived done
+  days: PathDay[]
+}
+
+export interface PathList {
+  paths: PathSummary[]
+}

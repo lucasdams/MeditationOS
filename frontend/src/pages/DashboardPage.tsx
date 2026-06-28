@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { dashboardService } from '../services/dashboard'
 import { spiritService } from '../services/spirit'
 import { moodLogService } from '../services/moodLogs'
+import { pathsService } from '../services/paths'
+import { pathDayHref } from '../lib/pathRoutes'
 import LevelCard from '../components/LevelCard'
 import Spirit from '../components/Spirit'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
@@ -14,7 +16,7 @@ import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TI
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
-import type { DashboardStats, Mood, SpiritState } from '../types'
+import type { DashboardStats, Mood, PathSummary, SpiritState } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
 const QUEST_LINKS: Record<string, string> = {
@@ -60,6 +62,11 @@ export default function DashboardPage() {
   // chip (its derived spendable balance) and the <Spirit/> companion below (passed as a prop,
   // so the companion doesn't fire a second GET /spirit). null until loaded / on a quiet failure.
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
+  // The user's enrolled-but-not-yet-finished path, if any — makes the Today CTA path-aware:
+  // when set, the primary action becomes "Day N · {title} →" launching the current day's
+  // practice instead of the generic breathe CTA. null = not enrolled (or already finished, or a
+  // quiet fetch failure) → the existing breathe CTA + "start your first 7 days" link lead.
+  const [activePath, setActivePath] = useState<PathSummary | null>(null)
   // The home is split into two tabs: "Today" (companion + the single primary action +
   // gentle nudges — the everyday view) and "Progress" (the heavier level/weekly-review
   // retrospective). Defaults to Today so the warm, low-pressure surface leads.
@@ -106,6 +113,18 @@ export default function DashboardPage() {
       .get()
       .then((s) => setSpirit(s))
       .catch(() => {}) // non-critical; the coin chip + companion simply stay hidden on failure
+  }, [])
+
+  // Path-aware CTA: pick the user's enrolled, not-yet-completed path (the first if several).
+  // Non-critical — on failure the Today CTA just falls back to the generic breathe action.
+  useEffect(() => {
+    pathsService
+      .list()
+      .then((res) => {
+        const active = res.paths.find((p) => p.enrolled && !p.completed) ?? null
+        setActivePath(active)
+      })
+      .catch(() => {})
   }, [])
 
   // Today's latest mood for the home reflection. Stats/weekly-review expose only aggregate
@@ -218,11 +237,30 @@ export default function DashboardPage() {
             </p>
           )}
 
-          {/* The single primary action — "what do I do now". Breathing is the hero practice,
-              so the one prominent CTA leads there. The four feature tiles below are secondary. */}
-          <Link to="/breathe" className="today-action">
-            Take a slow minute to breathe →
-          </Link>
+          {/* The single primary action — "what do I do now". Path-aware: an enrolled, unfinished
+              path makes the CTA the current day ("Day 3 · {title} →", launching that day's
+              practice). Otherwise breathing — the hero practice — leads, with a gentle secondary
+              invite into Paths. The four feature tiles below are always secondary. */}
+          {(() => {
+            const currentDay = activePath?.days.find((d) => d.status === 'current')
+            if (activePath && currentDay) {
+              return (
+                <Link to={pathDayHref(currentDay)} className="today-action">
+                  Day {currentDay.index} · {currentDay.title} →
+                </Link>
+              )
+            }
+            return (
+              <>
+                <Link to="/breathe" className="today-action">
+                  Take a slow minute to breathe →
+                </Link>
+                <p className="today-action-secondary">
+                  <Link to="/paths">Start your first 7 days →</Link>
+                </p>
+              </>
+            )
+          })()}
 
           {/* Quick-access tiles — secondary now, a quiet row beneath the primary CTA: one tap
               to start any of the practices. */}
