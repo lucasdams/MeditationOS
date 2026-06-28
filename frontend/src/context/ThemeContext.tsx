@@ -51,11 +51,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const season = resolveSeason(pref, now)
   const dayPhase = dayPhaseFor(now)
 
-  // Drive the CSS purely through data attributes on <html>. The app is dark-only,
-  // so keep `data-theme="dark"` pinned here too (React re-asserts it on render).
+  // Drive the CSS purely through data attributes on <html>. The app ships the
+  // Warm Sanctuary LIGHT theme by default (a warm cream canvas); the warm-dark
+  // palette stays in the stylesheet, ready behind a future Settings toggle.
   useEffect(() => {
     const root = document.documentElement
-    root.dataset.theme = 'dark'
+    root.dataset.theme = 'light'
     root.dataset.season = season
     root.dataset.dayphase = dayPhase
   }, [season, dayPhase])

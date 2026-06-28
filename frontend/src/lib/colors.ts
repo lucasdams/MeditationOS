@@ -32,30 +32,28 @@ export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; col
 // mode swaps to the brighter TILE_COLORS_DARK below (with a dark label) so the tiles pop on
 // the slate canvas. These are deliberately heavier than the soft ACTIVITY_COLORS used for
 // borders/quests, so the tiles read as the home screen's primary focal point.
-//   meditate #0f766e → 5.47:1 · breathe #0369a1 → 5.93:1 · gratitude #b45309 → 5.02:1
-//   journal #6d28d9 → 7.10:1  (white text, light mode)
+//   Warm Sanctuary: earthy, harmonious fills, each still ≥4.5:1 vs white text.
 export const TILE_COLORS = {
-  meditate: '#0f766e', // teal-700
-  breathe: '#0369a1', // sky-700
-  gratitude: '#b45309', // amber-700
-  journal: '#6d28d9', // violet-700
+  meditate: '#517042', // deep sage
+  breathe: '#3d7585', // deep dusty teal
+  gratitude: '#b45309', // amber-700 (already warm, on-brand)
+  journal: '#7d5a86', // deep warm mauve
 } as const
 
 // Dark-mode tile fills. The light TILE_COLORS are deep, near-700 shades that go muddy on the
 // dark slate canvas, so dark mode uses brighter, more saturated ~500 shades that pop. At those
 // brightnesses white text would drop below WCAG AA, so the dark tile carries a near-black slate
 // LABEL instead (TILE_TEXT_DARK) — the .feature-tile dark CSS pairs the two via --tile-fill-dark.
-//   meditate #14b8a6 → 7.17:1 · breathe #0ea5e9 → 6.44:1 · gratitude #f59e0b → 8.31:1
-//   journal #a78bfa → 6.56:1  (label #0f172a vs each fill)
+//   Warm Sanctuary dark: lifted, warmer fills that pop on the espresso canvas (dark label).
 export const TILE_COLORS_DARK = {
-  meditate: '#14b8a6', // teal-500
-  breathe: '#0ea5e9', // sky-500
-  gratitude: '#f59e0b', // amber-500
-  journal: '#a78bfa', // violet-400
+  meditate: '#93b27e', // sage
+  breathe: '#82b3c6', // dusty teal
+  gratitude: '#e3a83c', // warm amber
+  journal: '#bd9fc9', // warm mauve
 } as const
 
-// The label/icon colour used on the brighter dark-mode tile fills (slate-900).
-export const TILE_TEXT_DARK = '#0f172a'
+// The label/icon colour used on the brighter dark-mode tile fills (warm espresso).
+export const TILE_TEXT_DARK = '#2a2119'
 
 // Meditation session types — same palette used by the session-log cards.
 export const TYPE_COLORS: Record<MeditationType, string> = {
