@@ -5,146 +5,146 @@
    slate surfaces (not pure black) for a restful, readable dark theme.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Backgrounds */
+  /* Backgrounds — Warm Sanctuary: cream canvas, soft ivory cards. */
   --bg-page: transparent;           /* page canvas is the seasonal gradient */
-  --bg-surface: #ffffff;            /* cards, panels, modals */
-  --bg-surface-raised: #f8f8fb;     /* slightly elevated surface (nav-settings pill) */
-  --bg-input: #ffffff;              /* form inputs */
+  --bg-surface: #fffaf1;            /* cards, panels, modals — warm ivory */
+  --bg-surface-raised: #fdf3e6;     /* slightly elevated surface (nav-settings pill) */
+  --bg-input: #fffaf1;              /* form inputs */
 
-  /* Text */
-  --text-primary: #1c1c1e;
-  --text-secondary: #45454a;
-  --text-muted: #565660;        /* nudged darker for a comfortable AA margin on white */
-  --text-faint: #56565f;        /* still clearly "muted" but a touch safer than #5f5f64 */
-  --text-disabled: #6b6b73;     /* disabled control text — perceptible (~4.5:1) yet clearly inert */
+  /* Text — warm espresso inks (not pure black) */
+  --text-primary: #3a322a;
+  --text-secondary: #6e6353;
+  --text-muted: #857a68;        /* AA on the cream surface */
+  --text-faint: #8a7f6d;        /* clearly "muted", still legible on cream */
+  --text-disabled: #a1957f;     /* disabled control text — perceptible yet clearly inert */
 
-  /* Success text — green that passes AA on both light and dark surfaces */
-  --success-text: #047857;
+  /* Success text — sage green that passes AA on cream + warm-dark surfaces */
+  --success-text: #3f7a4f;
 
-  /* Error text — red that passes AA on the light surface */
-  --error-text: #b00020;
+  /* Error text — warm red that passes AA on the cream surface */
+  --error-text: #b3261e;
 
-  /* Warning text — amber that passes AA on light surfaces */
+  /* Warning text — amber that passes AA on warm surfaces */
   --warning-text: #b45309;
 
-  /* Streak accent — the warm orange used by the HUD streak pill */
-  --streak-accent: #f97316;
+  /* Streak accent — the warm clay-orange used by the HUD streak pill */
+  --streak-accent: #e0762f;
 
-  /* Borders & dividers */
-  --border: #e5e5ea;
-  --border-strong: #94949c;
-  --border-light: #ececf0;
+  /* Borders & dividers — warm sand */
+  --border: #e9dcc6;
+  --border-strong: #c2ad8c;
+  --border-light: #f1e8d8;
 
-  /* Accent — indigo */
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-subtle: #eef2ff;         /* tinted background behind accent elements */
-  --accent-border: #c7d2fe;
+  /* Accent — clay terracotta (the Warm Sanctuary signature) */
+  --accent: #c4744f;
+  --accent-hover: #b0613d;
+  --accent-subtle: #fbeede;         /* tinted background behind accent elements */
+  --accent-border: #e7c9b2;
 
-  /* Meditation orb — teal (the "Meditate" destination hue), tuned to read calmly on
-     the light page. Glow/ring keep it gently lifted, not glaring. */
-  --orb-from: #5eead4;
-  --orb-to: #0d9488;
-  --orb-glow: rgba(13, 148, 136, 0.28);
-  --orb-ring: rgba(255, 255, 255, 0.35);
+  /* Meditation orb — soft sage green (the "Meditate" destination hue), calm on cream.
+     Glow/ring keep it gently lifted, not glaring. */
+  --orb-from: #a8c79a;
+  --orb-to: #6f9460;
+  --orb-glow: rgba(111, 148, 96, 0.26);
+  --orb-ring: rgba(255, 255, 255, 0.4);
 
-  /* Breathing circle — indigo (the "Breathe" identity hue). Token-driven like the orb
-     so it carries a soft ring/glow and reads well on both backdrops. */
-  --breathe-from: #818cf8;
-  --breathe-to: #4f46e5;
-  --breathe-glow: rgba(79, 70, 229, 0.28);
-  --breathe-ring: rgba(255, 255, 255, 0.35);
+  /* Breathing circle — a calm dusty teal (the "Breathe" identity hue), a cool note
+     against the warm canvas so the hero practice reads as water/sky-calm. */
+  --breathe-from: #8fb8c9;
+  --breathe-to: #4f8197;
+  --breathe-glow: rgba(79, 129, 151, 0.26);
+  --breathe-ring: rgba(255, 255, 255, 0.4);
 
   /* Range slider (volume) — track + thumb, theme-aware. */
-  --slider-track: #e2e2ea;
+  --slider-track: #ece0cd;
   --slider-fill: var(--accent);
   --slider-thumb: var(--accent);
-  --slider-thumb-ring: #ffffff;
+  --slider-thumb-ring: #fffaf1;
 
-  /* Nav link tints (background + text per destination) */
-  --nav-home-bg: #eef2ff;
-  --nav-home-text: #4338ca;
-  --nav-meditate-bg: #ccfbf1;
-  --nav-meditate-text: #0f766e;
-  --nav-breathe-bg: #e0f2fe;
-  --nav-breathe-text: #0369a1;
-  --nav-gratitude-bg: #fef3c7;
-  --nav-gratitude-text: #92400e;
-  --nav-journal-bg: #ede9fe;
-  --nav-journal-text: #6d28d9;
-  --nav-spirit-bg: #cffafe;
-  --nav-spirit-text: #0e7490;
+  /* Nav link tints (background + text per destination) — warm, muted, distinguishable */
+  --nav-home-bg: #f7ead9;
+  --nav-home-text: #b0613d;
+  --nav-meditate-bg: #e6eddc;
+  --nav-meditate-text: #5a7a4a;
+  --nav-breathe-bg: #dde9ee;
+  --nav-breathe-text: #41707f;
+  --nav-gratitude-bg: #f6ebcf;
+  --nav-gratitude-text: #936713;
+  --nav-journal-bg: #ece1ee;
+  --nav-journal-text: #7d5a86;
+  --nav-spirit-bg: #dde9e5;
+  --nav-spirit-text: #3a7d6f;
   /* Spirit identity — structural/generic accents (journey stepper, slot accents, applied
-     chips) key off the cyan Spirit nav tile so the page agrees with its nav identity. */
-  --spirit-accent: #0e7490;          /* cyan-700 — AA on white, mirrors --nav-spirit-text */
+     chips) key off a soft teal-green Spirit tile so the page agrees with its nav identity. */
+  --spirit-accent: #3a7d6f;          /* teal-green — AA on cream, mirrors --nav-spirit-text */
   /* Per-creature element hues (kept meaningful per dosha): Kapha=earth/amber,
-     Pitta=fire/red, Vata=air/teal. Tokenized so dark mode can adapt them. */
-  --spirit-kapha: #f59e0b;           /* amber-500 */
-  --spirit-pitta: #ef4444;           /* red-500 */
-  --spirit-vata: #14b8a6;            /* teal-500 */
-  --nav-trataka-bg: #ffedd5;
-  --nav-trataka-text: #9a3412;
-  --nav-more-bg: #f1f5f9;
-  --nav-more-text: #475569;
+     Pitta=fire/clay-red, Vata=air/teal-sage. Tokenized so dark mode can adapt them. */
+  --spirit-kapha: #d9952f;           /* earth amber */
+  --spirit-pitta: #d65a47;           /* fire clay-red */
+  --spirit-vata: #4f9e92;            /* air teal-sage */
+  --nav-trataka-bg: #f6e2d2;
+  --nav-trataka-text: #9a4f2c;
+  --nav-more-bg: #efe7da;
+  --nav-more-text: #6e6353;
 
   /* Stat/analytics surface */
-  --surface-analytics: #ffffff;
+  --surface-analytics: #fffaf1;
 
   /* Bar track (progress bars) */
-  --bar-track: #eef2ff;
+  --bar-track: #efe3d0;
 
-  /* Level card — soft green panel (gamified "level" surface). */
-  --level-card-from: #ecfdf5;
-  --level-card-to: #f0fdf4;
-  --level-card-border: #d1fae5;
+  /* Level card — soft sage panel (gamified "level" surface). */
+  --level-card-from: #eef3e6;
+  --level-card-to: #f2f5ec;
+  --level-card-border: #d7e3c8;
 
-  /* XP bar — green track + gradient fill (semantic "progress"). */
-  --xp-track: #d1fae5;
-  --xp-fill-from: #34d399;
-  --xp-fill-to: #059669;
+  /* XP bar — sage track + gradient fill (semantic "progress"). */
+  --xp-track: #dde7d0;
+  --xp-fill-from: #9cbf86;
+  --xp-fill-to: #6f9460;
 
-  /* Memory card — soft violet panel (resurfaced journal/gratitude memory). */
-  --memory-card-from: #faf5ff;
-  --memory-card-to: #eef2ff;
-  --memory-card-border: #ddd6fe;
+  /* Memory card — soft warm-mauve panel (resurfaced journal/gratitude memory). */
+  --memory-card-from: #f8f1f4;
+  --memory-card-to: #f7efe6;
+  --memory-card-border: #e8dae0;
 
   /* Chips */
-  --chip-bg: #f0f0f3;
-  --chip-hover: #e5e5ea;
-  --chip-soft-bg: #eef2ff;
-  --chip-soft-text: #4338ca;
-  --chip-soft-border: #e0e7ff;
+  --chip-bg: #f1e7d8;
+  --chip-hover: #e9dcc6;
+  --chip-soft-bg: #fbeede;
+  --chip-soft-text: #b0613d;
+  --chip-soft-border: #efd8c4;
 
-  /* Cookie notice (always dark regardless of mode) */
-  --cookie-bg: #1c1c1e;
-  --cookie-text: #ffffff;
+  /* Cookie notice (always dark regardless of mode) — warm espresso */
+  --cookie-bg: #2a2119;
+  --cookie-text: #fdf6ea;
 
   /* Heatmap */
-  --heatmap-cell-empty: #cdd0d6;
-  --heatmap-cell-active: #4f46e5; /* practiced — 4.05:1 vs empty (WCAG 1.4.11) */
-  --heatmap-cell-quests: #047857; /* all daily quests — 3.55:1 vs empty */
-  --heatmap-cell-edge: rgba(27, 27, 30, 0.08);
+  --heatmap-cell-empty: #e6dac6;
+  --heatmap-cell-active: #c4744f; /* practiced — clay vs sand */
+  --heatmap-cell-quests: #6f9460; /* all daily quests — sage */
+  --heatmap-cell-edge: rgba(58, 50, 42, 0.08);
 
-  /* Misc */
-  --shadow-card: rgba(0, 0, 0, 0.05);
-  --shadow-modal: rgba(0, 0, 0, 0.18);
-  --shadow-nav: rgba(0, 0, 0, 0.08);
-  --overlay: rgba(0, 0, 0, 0.4);
+  /* Misc — warm shadows */
+  --shadow-card: rgba(120, 85, 45, 0.08);
+  --shadow-modal: rgba(80, 55, 30, 0.2);
+  --shadow-nav: rgba(120, 85, 45, 0.1);
+  --overlay: rgba(50, 38, 25, 0.42);
 
   /* Shared: card / border / accent aliases used by onboarding + breathe selectors */
-  --card: rgba(255, 255, 255, 0.6);
-  --border-var: rgba(0, 0, 0, 0.28);
-  --accent-var: #4f46e5;
+  --card: rgba(255, 250, 241, 0.65);
+  --border-var: rgba(60, 45, 25, 0.26);
+  --accent-var: #c4744f;
 
   /* ── Game-chrome polish tokens (phase 2) ──────────────────────────────────
      Cohesive panel/glow finish applied through shared classes. On light the
      glow is barely-there; the dark palette below dials it up for depth on the
-     deep-slate canvas. All resolve per theme so nothing hardcodes structure. */
-  --panel-radius: 14px;                                   /* shared card corner */
+     warm-espresso canvas. All resolve per theme so nothing hardcodes structure. */
+  --panel-radius: 16px;                                   /* shared card corner — cozier */
   --panel-shadow: 0 1px 3px var(--shadow-card);          /* resting card lift */
-  --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.5); /* top sheen */
+  --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.6); /* top sheen */
   --glow-accent: 0 0 0 0 transparent;                    /* no idle glow on light */
-  --glow-accent-hover: 0 6px 18px rgba(79, 70, 229, 0.18); /* hover lift glow */
+  --glow-accent-hover: 0 6px 18px rgba(196, 116, 79, 0.18); /* hover lift glow */
   --ring-accent: var(--accent);                          /* focus-visible ring hue */
   --ambient-glow: transparent;                           /* no ambient wash on light */
 }
@@ -155,248 +155,246 @@
    dark and they've left the preference on "system".
    ───────────────────────────────────────────────────────────────────────── */
 :root[data-theme='dark'] {
-  /* Page background: replace the light seasonal gradient with a deep slate gradient.
-     The season hue/sat variables are still set by ThemeContext so we reuse them
-     but dial the lightness way down for dark sky tones. */
-  --sky-top: 16%;
-  --sky-bottom: 12%;
+  /* Page background: a deep warm-espresso gradient. The season hue/sat variables are
+     still set by ThemeContext; the dark pin (below) warms + darkens them. */
+  --sky-top: 10%;
+  --sky-bottom: 7%;
 
-  /* Surfaces */
-  --bg-surface: #1e2130;            /* deep slate card surface */
-  --bg-surface-raised: #252940;     /* slightly lighter — nav pill, hover states */
-  --bg-input: #252940;
+  /* Surfaces — warm espresso (not pure black) */
+  --bg-surface: #241f1a;            /* warm espresso card surface */
+  --bg-surface-raised: #2f2820;     /* slightly lighter — nav pill, hover states */
+  --bg-input: #2f2820;
 
-  /* Text */
-  --text-primary: #e8e8f0;
-  --text-secondary: #b4b4c8;
-  --text-muted: #9494b4;
-  --text-faint: #a0a0c8;
-  --text-disabled: #8a8aa6;     /* disabled control text on dark — perceptible, clearly inert */
+  /* Text — warm creams */
+  --text-primary: #f1e9dc;
+  --text-secondary: #cdbfa9;
+  --text-muted: #a89a84;
+  --text-faint: #b3a48c;
+  --text-disabled: #8f8270;     /* disabled control text on dark — perceptible, clearly inert */
 
-  /* Success text */
-  --success-text: #34d399;
+  /* Success text — sage, bright on warm dark */
+  --success-text: #9cc182;
 
-  /* Error text — red that reads on the dark surface */
-  --error-text: #f87171;
+  /* Error text — warm red that reads on the espresso surface */
+  --error-text: #f0857a;
 
-  /* Warning text — amber that reads on dark surfaces */
-  --warning-text: #fbbf24;
+  /* Warning text — amber that reads on warm-dark surfaces */
+  --warning-text: #efb95e;
 
-  /* Streak accent — warmer/brighter orange so it reads on the slate surface */
-  --streak-accent: #fb923c;
+  /* Streak accent — warm orange so it glows on the espresso surface */
+  --streak-accent: #f0915a;
 
-  /* Borders */
-  --border: #4a5180;
-  --border-strong: #646aa0;
-  --border-light: #252940;
+  /* Borders — warm umber */
+  --border: #4a3f30;
+  --border-strong: #6a5a42;
+  --border-light: #2f2820;
 
-  /* Accent — slightly lighter indigo so it pops against dark surfaces */
-  --accent: #818cf8;
-  --accent-hover: #a5b4fc;
-  --accent-subtle: #1e2242;
-  --accent-border: #3730a3;
+  /* Accent — clay-peach, lifted so it pops against warm-dark surfaces */
+  --accent: #e0a06f;
+  --accent-hover: #ecb487;
+  --accent-subtle: #33271d;
+  --accent-border: #6a4a32;
 
-  /* Meditation orb — deepen the teal on dark so it glows softly instead of glaring
-     against the deep-slate page; keep good contrast for the white time text. */
-  --orb-from: #2dd4bf;
-  --orb-to: #0f766e;
-  --orb-glow: rgba(45, 212, 191, 0.22);
-  --orb-ring: rgba(255, 255, 255, 0.18);
+  /* Meditation orb — sage on dark; glows softly instead of glaring against the
+     espresso page; keeps good contrast for the time text. */
+  --orb-from: #a7c596;
+  --orb-to: #6f9460;
+  --orb-glow: rgba(140, 180, 120, 0.22);
+  --orb-ring: rgba(255, 255, 255, 0.16);
 
-  /* Breathing circle — soften the indigo on dark so it glows rather than glares. */
-  --breathe-from: #a5b4fc;
-  --breathe-to: #4f46e5;
-  --breathe-glow: rgba(129, 140, 248, 0.24);
-  --breathe-ring: rgba(255, 255, 255, 0.18);
+  /* Breathing circle — soft dusty teal on dark so it glows rather than glares. */
+  --breathe-from: #8fc0d2;
+  --breathe-to: #4f8197;
+  --breathe-glow: rgba(120, 180, 200, 0.22);
+  --breathe-ring: rgba(255, 255, 255, 0.16);
 
-  /* Range slider — track reads on dark surfaces; thumb uses the lighter accent. */
-  --slider-track: #353a5c;
+  /* Range slider — track reads on warm-dark surfaces; thumb uses the lighter accent. */
+  --slider-track: #3a3024;
   --slider-fill: var(--accent);
   --slider-thumb: var(--accent);
-  --slider-thumb-ring: #1e2130;
+  --slider-thumb-ring: #241f1a;
 
-  /* Nav link tints — muted to sit quietly on dark */
-  --nav-home-bg: #1e2242;
-  --nav-home-text: #a5b4fc;
-  --nav-meditate-bg: #0d2624;
-  --nav-meditate-text: #5eead4;
-  --nav-breathe-bg: #0c2030;
-  --nav-breathe-text: #7dd3fc;
-  --nav-gratitude-bg: #2a2010;
-  --nav-gratitude-text: #fcd34d;
-  --nav-journal-bg: #1e1640;
-  --nav-journal-text: #c4b5fd;
-  --nav-spirit-bg: #08323d;
-  --nav-spirit-text: #67e8f9;
-  /* Spirit identity — brighter cyan so structural accents pop on the slate surfaces while
-     still reading as the same Spirit hue. */
-  --spirit-accent: #22d3ee;          /* cyan-400 */
-  /* Per-creature element hues, lifted for legibility on dark surfaces. */
-  --spirit-kapha: #fbbf24;           /* amber-400 */
-  --spirit-pitta: #f87171;           /* red-400 */
-  --spirit-vata: #2dd4bf;            /* teal-400 */
-  --nav-trataka-bg: #2a1708;
-  --nav-trataka-text: #fdba74;
-  --nav-more-bg: #1c2030;
-  /* Brightened from slate-400 (#94a3b8) toward slate-200 so the secondary nav
-     buttons (Practice/Progress) read as active items, not disabled, while still
-     sitting visually below the vibrant destination links. */
-  --nav-more-text: #cbd5e1;
+  /* Nav link tints — warm, muted to sit quietly on the espresso canvas */
+  --nav-home-bg: #33271d;
+  --nav-home-text: #ecb487;
+  --nav-meditate-bg: #232b1f;
+  --nav-meditate-text: #a7c596;
+  --nav-breathe-bg: #1e2a30;
+  --nav-breathe-text: #8fc0d2;
+  --nav-gratitude-bg: #2e2510;
+  --nav-gratitude-text: #efc873;
+  --nav-journal-bg: #2a2230;
+  --nav-journal-text: #c6a6cf;
+  --nav-spirit-bg: #1f2c29;
+  --nav-spirit-text: #6fb6a8;
+  /* Spirit identity — soft teal-green, lifted so structural accents pop on the warm
+     surfaces while still reading as the Spirit hue. */
+  --spirit-accent: #6fb6a8;
+  /* Per-creature element hues, lifted for legibility on warm-dark surfaces. */
+  --spirit-kapha: #ecc06a;           /* earth amber */
+  --spirit-pitta: #ee8a6f;           /* fire clay-red */
+  --spirit-vata: #6fc0b0;            /* air teal-sage */
+  --nav-trataka-bg: #301f12;
+  --nav-trataka-text: #f0a070;
+  --nav-more-bg: #2a241c;
+  /* Warm cream so the secondary nav buttons (Practice/Progress) read as active items,
+     not disabled, while sitting visually below the vibrant destination links. */
+  --nav-more-text: #cdbfa9;
 
   /* Analytics */
-  --surface-analytics: #1e2130;
+  --surface-analytics: #241f1a;
 
   /* Bar track */
-  --bar-track: #1e2242;
+  --bar-track: #33271d;
 
-  /* Level card — deep green panel (mirrors the dark .level-card override). */
-  --level-card-from: #0f2a1e;
-  --level-card-to: #132b1a;
-  --level-card-border: #1a3d2a;
+  /* Level card — deep sage panel (mirrors the dark .level-card override). */
+  --level-card-from: #1e2818;
+  --level-card-to: #20291a;
+  --level-card-border: #2e3d24;
 
-  /* XP bar — dark green track; the fill keeps its bright semantic gradient. */
-  --xp-track: #123a2b;
-  --xp-fill-from: #34d399;
-  --xp-fill-to: #059669;
+  /* XP bar — deep sage track; the fill keeps its sage gradient. */
+  --xp-track: #24331c;
+  --xp-fill-from: #9cbf86;
+  --xp-fill-to: #6f9460;
 
-  /* Memory card — deep violet panel (mirrors the dark .memory-card override). */
-  --memory-card-from: #1e1640;
-  --memory-card-to: #1e2242;
-  --memory-card-border: #3730a3;
+  /* Memory card — deep warm-mauve panel (mirrors the dark .memory-card override). */
+  --memory-card-from: #2a2230;
+  --memory-card-to: #2a2420;
+  --memory-card-border: #4a3a48;
 
   /* Chips */
-  --chip-bg: #252940;
-  --chip-hover: #2e3250;
-  --chip-soft-bg: #1e2242;
-  --chip-soft-text: #a5b4fc;
-  --chip-soft-border: #3730a3;
+  --chip-bg: #2f2820;
+  --chip-hover: #3a3026;
+  --chip-soft-bg: #33271d;
+  --chip-soft-text: #ecb487;
+  --chip-soft-border: #6a4a32;
 
   /* Heatmap */
-  --heatmap-cell-empty: #2e3250;
-  --heatmap-cell-active: #818cf8; /* practiced — 4.16:1 vs dark empty (WCAG 1.4.11) */
-  --heatmap-cell-quests: #34d399; /* all daily quests — bright vs dark empty */
-  --heatmap-cell-edge: rgba(255, 255, 255, 0.12);
+  --heatmap-cell-empty: #3a3026;
+  --heatmap-cell-active: #e0a06f; /* practiced — clay-peach vs warm empty */
+  --heatmap-cell-quests: #9cc182; /* all daily quests — sage vs warm empty */
+  --heatmap-cell-edge: rgba(255, 245, 230, 0.1);
 
   /* Shadows — lighter to avoid fully opaque blobs on dark */
   --shadow-card: rgba(0, 0, 0, 0.42);
   --shadow-modal: rgba(0, 0, 0, 0.5);
   --shadow-nav: rgba(0, 0, 0, 0.35);
-  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay: rgba(20, 12, 4, 0.6);
 
   /* Shared aliases */
-  --card: rgba(30, 33, 48, 0.85);
-  --border-var: rgba(255, 255, 255, 0.22);
-  --accent-var: #818cf8;
+  --card: rgba(36, 31, 26, 0.85);
+  --border-var: rgba(255, 245, 230, 0.22);
+  --accent-var: #e0a06f;
 
-  /* Game-chrome polish — depth on the deep-slate canvas. A faint top sheen reads
+  /* Game-chrome polish — depth on the warm-espresso canvas. A faint top sheen reads
      panels as raised glass; the soft accent glow gives a quiet game-UI lift on
      hover/active. Kept low-alpha so contrast and calm survive. */
-  --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --panel-hairline: inset 0 1px 0 rgba(255, 245, 230, 0.06);
   --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
-  --glow-accent-hover: 0 8px 22px rgba(129, 140, 248, 0.28),
+  --glow-accent-hover: 0 8px 22px rgba(224, 160, 111, 0.28),
     0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
   --ambient-glow:
-    radial-gradient(1000px 680px at 50% -10%, rgba(129, 140, 248, 0.18), transparent 66%),
-    radial-gradient(760px 520px at 85% 4%, rgba(167, 139, 250, 0.12), transparent 60%),
-    radial-gradient(900px 700px at 12% 22%, rgba(56, 189, 248, 0.07), transparent 62%);
+    radial-gradient(1000px 680px at 50% -10%, rgba(224, 160, 111, 0.16), transparent 66%),
+    radial-gradient(760px 520px at 85% 4%, rgba(200, 140, 90, 0.1), transparent 60%),
+    radial-gradient(900px 700px at 12% 22%, rgba(160, 150, 90, 0.06), transparent 62%);
 }
 
 /* System dark — applied when user hasn't set an explicit preference */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    /* Cool the canvas to deep slate: the warm seasonal hue (e.g. summer amber) at
-       dark lightness reads as brown, so dark mode pins a neutral slate hue/sat. */
-    --season-hue: 230;
-    --season-sat: 16%;
-    --sky-top: 16%;
-    --sky-bottom: 12%;
-    --bg-surface: #1e2130;
-    --bg-surface-raised: #252940;
-    --bg-input: #252940;
-    --text-primary: #e8e8f0;
-    --text-secondary: #b4b4c8;
-    --text-muted: #9494b4;
-    --text-faint: #a0a0c8;
-    --text-disabled: #8a8aa6;
-    --success-text: #34d399;
-    --error-text: #f87171;
-    --warning-text: #fbbf24;
-    --streak-accent: #fb923c;
-    --border: #4a5180;
-    --border-strong: #646aa0;
-    --border-light: #252940;
-    --accent: #818cf8;
-    --accent-hover: #a5b4fc;
-    --accent-subtle: #1e2242;
-    --accent-border: #3730a3;
+    /* Warm the canvas to deep espresso: pin a warm hue/sat + low lightness so the
+       system-dark canvas matches Warm Sanctuary's warm-dark theme. */
+    --season-hue: 28;
+    --season-sat: 22%;
+    --sky-top: 10%;
+    --sky-bottom: 7%;
+    --bg-surface: #241f1a;
+    --bg-surface-raised: #2f2820;
+    --bg-input: #2f2820;
+    --text-primary: #f1e9dc;
+    --text-secondary: #cdbfa9;
+    --text-muted: #a89a84;
+    --text-faint: #b3a48c;
+    --text-disabled: #8f8270;
+    --success-text: #9cc182;
+    --error-text: #f0857a;
+    --warning-text: #efb95e;
+    --streak-accent: #f0915a;
+    --border: #4a3f30;
+    --border-strong: #6a5a42;
+    --border-light: #2f2820;
+    --accent: #e0a06f;
+    --accent-hover: #ecb487;
+    --accent-subtle: #33271d;
+    --accent-border: #6a4a32;
     /* Orb + breathing circle + slider — match the explicit dark theme above. */
-    --orb-from: #2dd4bf;
-    --orb-to: #0f766e;
-    --orb-glow: rgba(45, 212, 191, 0.22);
-    --orb-ring: rgba(255, 255, 255, 0.18);
-    --breathe-from: #a5b4fc;
-    --breathe-to: #4f46e5;
-    --breathe-glow: rgba(129, 140, 248, 0.24);
-    --breathe-ring: rgba(255, 255, 255, 0.18);
-    --slider-track: #353a5c;
+    --orb-from: #a7c596;
+    --orb-to: #6f9460;
+    --orb-glow: rgba(140, 180, 120, 0.22);
+    --orb-ring: rgba(255, 255, 255, 0.16);
+    --breathe-from: #8fc0d2;
+    --breathe-to: #4f8197;
+    --breathe-glow: rgba(120, 180, 200, 0.22);
+    --breathe-ring: rgba(255, 255, 255, 0.16);
+    --slider-track: #3a3024;
     --slider-fill: var(--accent);
     --slider-thumb: var(--accent);
-    --slider-thumb-ring: #1e2130;
-    --nav-home-bg: #1e2242;
-    --nav-home-text: #a5b4fc;
-    --nav-meditate-bg: #0d2624;
-    --nav-meditate-text: #5eead4;
-    --nav-breathe-bg: #0c2030;
-    --nav-breathe-text: #7dd3fc;
-    --nav-gratitude-bg: #2a2010;
-    --nav-gratitude-text: #fcd34d;
-    --nav-journal-bg: #1e1640;
-    --nav-journal-text: #c4b5fd;
-    --nav-spirit-bg: #08323d;
-    --nav-spirit-text: #67e8f9;
-    --spirit-accent: #22d3ee;
-    --spirit-kapha: #fbbf24;
-    --spirit-pitta: #f87171;
-    --spirit-vata: #2dd4bf;
-    --nav-trataka-bg: #2a1708;
-    --nav-trataka-text: #fdba74;
-    --nav-more-bg: #1c2030;
-    --nav-more-text: #cbd5e1;
-    --surface-analytics: #1e2130;
-    --bar-track: #1e2242;
-    --level-card-from: #0f2a1e;
-    --level-card-to: #132b1a;
-    --level-card-border: #1a3d2a;
-    --xp-track: #123a2b;
-    --xp-fill-from: #34d399;
-    --xp-fill-to: #059669;
-    --memory-card-from: #1e1640;
-    --memory-card-to: #1e2242;
-    --memory-card-border: #3730a3;
-    --chip-bg: #252940;
-    --chip-hover: #2e3250;
-    --chip-soft-bg: #1e2242;
-    --chip-soft-text: #a5b4fc;
-    --chip-soft-border: #3730a3;
-    --heatmap-cell-empty: #2e3250;
-    --heatmap-cell-active: #818cf8;
-    --heatmap-cell-quests: #34d399;
-    --heatmap-cell-edge: rgba(255, 255, 255, 0.12);
+    --slider-thumb-ring: #241f1a;
+    --nav-home-bg: #33271d;
+    --nav-home-text: #ecb487;
+    --nav-meditate-bg: #232b1f;
+    --nav-meditate-text: #a7c596;
+    --nav-breathe-bg: #1e2a30;
+    --nav-breathe-text: #8fc0d2;
+    --nav-gratitude-bg: #2e2510;
+    --nav-gratitude-text: #efc873;
+    --nav-journal-bg: #2a2230;
+    --nav-journal-text: #c6a6cf;
+    --nav-spirit-bg: #1f2c29;
+    --nav-spirit-text: #6fb6a8;
+    --spirit-accent: #6fb6a8;
+    --spirit-kapha: #ecc06a;
+    --spirit-pitta: #ee8a6f;
+    --spirit-vata: #6fc0b0;
+    --nav-trataka-bg: #301f12;
+    --nav-trataka-text: #f0a070;
+    --nav-more-bg: #2a241c;
+    --nav-more-text: #cdbfa9;
+    --surface-analytics: #241f1a;
+    --bar-track: #33271d;
+    --level-card-from: #1e2818;
+    --level-card-to: #20291a;
+    --level-card-border: #2e3d24;
+    --xp-track: #24331c;
+    --xp-fill-from: #9cbf86;
+    --xp-fill-to: #6f9460;
+    --memory-card-from: #2a2230;
+    --memory-card-to: #2a2420;
+    --memory-card-border: #4a3a48;
+    --chip-bg: #2f2820;
+    --chip-hover: #3a3026;
+    --chip-soft-bg: #33271d;
+    --chip-soft-text: #ecb487;
+    --chip-soft-border: #6a4a32;
+    --heatmap-cell-empty: #3a3026;
+    --heatmap-cell-active: #e0a06f;
+    --heatmap-cell-quests: #9cc182;
+    --heatmap-cell-edge: rgba(255, 245, 230, 0.1);
     --shadow-card: rgba(0, 0, 0, 0.42);
     --shadow-modal: rgba(0, 0, 0, 0.5);
     --shadow-nav: rgba(0, 0, 0, 0.35);
-    --overlay: rgba(0, 0, 0, 0.6);
-    --card: rgba(30, 33, 48, 0.85);
-    --border-var: rgba(255, 255, 255, 0.22);
-    --accent-var: #818cf8;
+    --overlay: rgba(20, 12, 4, 0.6);
+    --card: rgba(36, 31, 26, 0.85);
+    --border-var: rgba(255, 245, 230, 0.22);
+    --accent-var: #e0a06f;
     /* Game-chrome polish (mirrors the explicit dark theme above). */
-    --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --panel-hairline: inset 0 1px 0 rgba(255, 245, 230, 0.06);
     --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
-    --glow-accent-hover: 0 8px 22px rgba(129, 140, 248, 0.28),
+    --glow-accent-hover: 0 8px 22px rgba(224, 160, 111, 0.28),
       0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
     --ambient-glow: radial-gradient(
       900px 600px at 50% -8%,
-      rgba(129, 140, 248, 0.07),
+      rgba(224, 160, 111, 0.07),
       transparent 70%
     );
   }
@@ -420,28 +418,28 @@
   /* Seasonal + time-of-day ambient theme. The season sets the hue/saturation,
      the day phase nudges the lightness; both come from data attributes on <html>
      (see context/ThemeContext.tsx). Kept light and gentle so text stays readable. */
-  --season-hue: 210;
-  --season-sat: 28%;
-  --sky-top: 97%;
-  --sky-bottom: 93%;
+  --season-hue: 36;
+  --season-sat: 40%;
+  --sky-top: 96%;
+  --sky-bottom: 92%;
 }
 
 /* Season → hue + saturation */
 :root[data-season='winter'] {
-  --season-hue: 205;
+  --season-hue: 30;
   --season-sat: 26%;
 }
 :root[data-season='spring'] {
-  --season-hue: 135;
-  --season-sat: 32%;
+  --season-hue: 70;
+  --season-sat: 34%;
 }
 :root[data-season='summer'] {
-  --season-hue: 45;
-  --season-sat: 50%;
+  --season-hue: 42;
+  --season-sat: 46%;
 }
 :root[data-season='autumn'] {
-  --season-hue: 26;
-  --season-sat: 42%;
+  --season-hue: 28;
+  --season-sat: 44%;
 }
 
 /* Day phase → overall lightness (a subtle dawn→day→dusk→night shift) */
@@ -467,10 +465,10 @@
    the sky lightness back up — so override both here. The [data-season] compound raises
    specificity to 0,3,0 so this wins over the per-season and per-day-phase rules. */
 :root[data-theme='dark'][data-season] {
-  --season-hue: 230;
-  --season-sat: 16%;
-  --sky-top: 16%;
-  --sky-bottom: 12%;
+  --season-hue: 28;
+  --season-sat: 22%;
+  --sky-top: 10%;
+  --sky-bottom: 7%;
 }
 
 * {
@@ -662,7 +660,7 @@ a:hover { color: var(--accent-hover); }
 .bar-fill {
   display: block;
   height: 100%;
-  background: #6366f1;
+  background: var(--accent);
   border-radius: 999px;
 }
 
@@ -728,7 +726,7 @@ a:hover { color: var(--accent-hover); }
 .week-bar {
   width: 100%;
   min-height: 2px;
-  background: #6366f1;
+  background: var(--accent);
   border-radius: 3px 3px 0 0;
 }
 
@@ -1166,7 +1164,7 @@ a:hover { color: var(--accent-hover); }
   width: auto;
   padding: 0.4rem 0.9rem;
   font-size: 0.85rem;
-  background: #4f46e5;
+  background: var(--accent);
 }
 
 .landing {
@@ -1938,7 +1936,7 @@ button {
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
-  background: #4f46e5;
+  background: var(--accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -5439,7 +5437,7 @@ textarea:focus-visible,
 }
 
 .timeline-item--session {
-  border-left-color: #6366f1;
+  border-left-color: var(--accent);
 }
 
 .timeline-item--gratitude {
@@ -5447,7 +5445,7 @@ textarea:focus-visible,
 }
 
 .timeline-item--journal {
-  border-left-color: #8b5cf6;
+  border-left-color: #9b7fa8;
 }
 
 .timeline-emoji {
@@ -6289,7 +6287,7 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .pace-difficulty.d-moderate {
-  color: #4f46e5;
+  color: var(--accent);
 }
 
 .pace-difficulty.d-advanced {
@@ -6897,13 +6895,13 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* Override the default amber chip-active so duration/rating selections use
-   the app's primary indigo accent, which reads naturally here (not gratitude). */
+   the app's primary clay accent, which reads naturally here (not gratitude). */
 .log-session-duration-chips .chip-active,
 .log-session-rating .chip-active {
-  background: linear-gradient(135deg, #4f46e5, #4338ca);
-  border-color: #3730a3;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  border-color: var(--accent-hover);
   color: #fff;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .log-session-duration-chips .chip-active:hover,
