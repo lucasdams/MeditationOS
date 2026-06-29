@@ -3711,9 +3711,10 @@ function PittaForm({
     lickSpread = 1.7
   }
 
-  // Flame size grows with the stage; the form multipliers shape it.
-  const H = (19 + p * 17) * heightMul
-  const W = (8.5 + p * 3.4) * widthMul
+  // Flame size grows with the stage; the form multipliers shape it. Kept only a touch taller than
+  // wide so it reads as a plump, full fire — never a long stretched candle.
+  const H = (15 + p * 12) * heightMul
+  const W = (9 + p * 4) * widthMul
   const tipCurl = isPuff ? 0 : 1.7 // a slight tip-lean for life (a billowy puff stays upright/round)
 
   // A clean flame silhouette centred on (fx, fbY): a rounded belly narrowing to a curled point.
@@ -3728,10 +3729,10 @@ function PittaForm({
         C ${fx + fw} ${fbY - fh * 0.58} ${fx + fw} ${fbY} ${fx} ${fbY} Z`
     }
     return `M ${fx} ${fbY}
-      C ${fx - fw} ${fbY} ${fx - fw} ${fbY - fh * 0.46} ${fx - fw * 0.42} ${fbY - fh * 0.72}
-      C ${fx - fw * 0.14} ${fbY - fh * 0.92} ${tipX - 1.5} ${tipY + 2.6} ${tipX} ${tipY}
-      C ${tipX + 1.5} ${tipY + 2.6} ${fx + fw * 0.14} ${fbY - fh * 0.92} ${fx + fw * 0.42} ${fbY - fh * 0.72}
-      C ${fx + fw} ${fbY - fh * 0.46} ${fx + fw} ${fbY} ${fx} ${fbY} Z`
+      C ${fx - fw * 1.05} ${fbY} ${fx - fw * 1.05} ${fbY - fh * 0.52} ${fx - fw * 0.5} ${fbY - fh * 0.74}
+      C ${fx - fw * 0.18} ${fbY - fh * 0.94} ${tipX - 2.4} ${tipY + 3.4} ${tipX} ${tipY}
+      C ${tipX + 2.4} ${tipY + 3.4} ${fx + fw * 0.18} ${fbY - fh * 0.94} ${fx + fw * 0.5} ${fbY - fh * 0.74}
+      C ${fx + fw * 1.05} ${fbY - fh * 0.52} ${fx + fw * 1.05} ${fbY} ${fx} ${fbY} Z`
   }
 
   // A stack of three nested flames (outer / mid / white-hot heart) at a given centre + size.
