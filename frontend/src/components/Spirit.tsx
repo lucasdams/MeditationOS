@@ -167,6 +167,9 @@ export const SLOT_LABEL: Record<string, string> = {
   mount: 'Mount',
   weather: 'Weather',
   ground: 'Ground',
+  // BODY cosmetics — the recolour + resize that change the creature itself.
+  palette: 'Colour',
+  size: 'Size',
 }
 
 export const OPTION_LABEL: Record<string, string> = {
@@ -269,6 +272,17 @@ export const OPTION_LABEL: Record<string, string> = {
   open_book: 'Open book',
   game_controller: 'Game controller',
   boombox: 'Boombox',
+  // BODY-recolour palettes (the `palette` slot). `ember` / `frost` / `rose` / `dusk` already have
+  // labels above (shared keys from the aura / habitat slots) that read fine as colours too, so only
+  // the genuinely-new palette keys are added here.
+  sage: 'Sage',
+  gold: 'Gold',
+  aqua: 'Aqua',
+  // BODY-resize sizes (the `size` slot).
+  tiny: 'Tiny',
+  small: 'Small',
+  large: 'Large',
+  giant: 'Giant',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -376,7 +390,12 @@ export function CareNudge({
 // undertone in `deep`; heart (Vata) is an airy sky-and-ether spirit — a pale-white wisp core, a
 // soft sky-blue body, lavender breeze accents, and a deeper periwinkle base. `core` is the bright
 // heart, `glow` the aura, `accent` the path's defining feature (halo / flame / breeze), `deep` base.
-const PATH_PALETTE: Record<SpiritPath, { core: string; glow: string; accent: string; deep: string }> = {
+// The 4-stop body colour ramp every form draws from (`core` bright heart → `glow` aura → `accent`
+// defining feature → `deep` base). The dosha default lives in PATH_PALETTE; the `palette` cosmetic
+// swaps in an alternate ramp (PALETTES) of the same shape.
+type BodyPalette = { core: string; glow: string; accent: string; deep: string }
+
+const PATH_PALETTE: Record<SpiritPath, BodyPalette> = {
   stillness: { core: '#fef3c7', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
   // Pitta — fire + water: a white-hot ember core (`core`), an orange flame body (`glow`), a
   // searing red-orange flame edge (`accent`), and a cool teal water-base (`deep`).
@@ -385,6 +404,30 @@ const PATH_PALETTE: Record<SpiritPath, { core: string; glow: string; accent: str
   // breeze accent (`accent`), and a deeper periwinkle base for wisps/leaves (`deep`).
   heart: { core: '#f5f7ff', glow: '#bae6fd', accent: '#c4b5fd', deep: '#818cf8' },
 }
+
+// COSMETIC RECOLOUR (the `palette` slot) — a body recolour applied IN PLACE of the dosha's default
+// `PATH_PALETTE` (so the creature's own colours change, not a layer drawn around it). Each palette
+// is a full 4-stop ramp (light `core` → bright `glow` → defining `accent` → `deep` base) matching
+// PATH_PALETTE's shape, so any form renders legibly with it; tuned to read on the warm cream theme.
+// Absent (no `palette` cosmetic) → the dosha keeps its default identity (a bare creature is
+// pixel-identical to today). Keys MUST match the backend `palette` catalog options + PALETTE labels.
+const PALETTES: Record<string, { core: string; glow: string; accent: string; deep: string }> = {
+  ember: { core: '#fff1e6', glow: '#fb923c', accent: '#ef4444', deep: '#b91c1c' },
+  rose: { core: '#fff0f4', glow: '#fb7185', accent: '#e11d48', deep: '#9f1239' },
+  frost: { core: '#eef6ff', glow: '#7dd3fc', accent: '#38bdf8', deep: '#0369a1' },
+  sage: { core: '#f0f7ec', glow: '#a3c293', accent: '#6f9460', deep: '#3f6212' },
+  gold: { core: '#fff8e6', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
+  dusk: { core: '#f3eefb', glow: '#c4b5fd', accent: '#8b5cf6', deep: '#6d28d9' },
+  aqua: { core: '#e6fbf6', glow: '#5eead4', accent: '#14b8a6', deep: '#0f766e' },
+}
+
+// COSMETIC RESIZE (the `size` slot) — a uniform scale of the CREATURE BODY (+ its accessory),
+// independent of the growth stage. Applied as an SVG transform on the creature group around the
+// 80×80 viewBox centre, so the body shrinks/grows within its scene while the aura/habitat/etc. stay
+// their normal size. Absent (no `size` cosmetic) → 1.0 (the stage's natural size, unchanged). Keys
+// MUST match the backend `size` catalog options + SIZE labels. `giant` is dialled to 1.28 so the
+// fullest radiant body stays clear of the 80×80 frame and an equipped accessory.
+const SIZES: Record<string, number> = { tiny: 0.78, small: 0.9, large: 1.16, giant: 1.28 }
 
 const STAGE_ORDER: SpiritStage[] = ['spark', 'wisp', 'fledgling', 'ascendant', 'radiant']
 
@@ -3116,8 +3159,9 @@ function Ground({ ground, g }: { ground: string; g: number }) {
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
  * figure haloed in gold. Warm amber/gold palette.
  */
-function StillnessForm({ stage, g }: { stage: SpiritStage; g: number }) {
-  const pal = PATH_PALETTE.stillness
+function StillnessForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; pal?: BodyPalette }) {
+  // The recolour cosmetic (`palette`) replaces the dosha's body colours; absent → the default.
+  const pal = palProp ?? PATH_PALETTE.stillness
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   // Grows up the ladder; everything is centred on x=40.
@@ -3198,8 +3242,8 @@ function StillnessForm({ stage, g }: { stage: SpiritStage; g: number }) {
  * (rounded silhouette, friendly eyes). Warm fire palette (`core` white-hot → `glow` orange →
  * `accent` red) over a teal `deep` water element. Internal `path` value stays `breath`.
  */
-function PittaForm({ stage, g }: { stage: SpiritStage; g: number }) {
-  const pal = PATH_PALETTE.breath
+function PittaForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; pal?: BodyPalette }) {
+  const pal = palProp ?? PATH_PALETTE.breath
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   const cx = 40
@@ -3336,8 +3380,8 @@ function PittaForm({ stage, g }: { stage: SpiritStage; g: number }) {
  * palette (`core` pale luminous → `glow` sky-blue body → `accent` lavender breeze) over a deeper
  * periwinkle `deep` for the trailing currents. Internal `path` value stays `heart`.
  */
-function VataForm({ stage, g }: { stage: SpiritStage; g: number }) {
-  const pal = PATH_PALETTE.heart
+function VataForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; pal?: BodyPalette }) {
+  const pal = palProp ?? PATH_PALETTE.heart
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   const cx = 40
@@ -3476,7 +3520,7 @@ function SparkForm({ g }: { g: number }) {
 // SpiritArt, so the Form draws only the creature body — the part that floats).
 const PATH_FORM: Record<
   SpiritPath,
-  (props: { stage: SpiritStage; g: number }) => JSX.Element
+  (props: { stage: SpiritStage; g: number; pal?: BodyPalette }) => JSX.Element
 > = {
   stillness: StillnessForm,
   breath: PittaForm,
@@ -3583,6 +3627,12 @@ export function SpiritArt({
   const mount = cosmetics?.mount
   const weather = cosmetics?.weather
   const ground = cosmetics?.ground
+  // BODY cosmetics (ADR: the look changes the creature itself, not just the layers around it).
+  // `palette` recolours the body — swap the dosha default for an alternate ramp; absent → default,
+  // so a bare creature keeps its dosha identity. `size` scales the body independent of the stage;
+  // absent → 1.0 (the stage's natural size). Both resolve to the path-default / no-op when unset.
+  const pal = (path && cosmetics?.palette && PALETTES[cosmetics.palette]) || (path ? PATH_PALETTE[path] : undefined)
+  const sizeScale = SIZES[cosmetics?.size ?? ''] ?? 1
   // A pathless spark has no creature label yet — describe it as an awakening spark.
   const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
   const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
@@ -3694,15 +3744,26 @@ export function SpiritArt({
           pacer sync, or the celebration one-shot. The figure is always legible; the accessory
           perches on top. */}
       <g ref={creatureRef} className={creatureClass} style={creatureStyle}>
-        {path ? (
-          (() => {
-            const Form = PATH_FORM[path]
-            return <Form stage={stage} g={g} />
-          })()
-        ) : (
-          <SparkForm g={g} />
-        )}
-        {accessory && <Accessory accessory={accessory} g={g} />}
+        {/* The `size` cosmetic scales the BODY + its accessory together, around the 80×80 viewBox
+            centre (so the figure grows/shrinks in place). It's a static SVG transform on an inner
+            group — kept SEPARATE from the outer group's CSS float / inline pacer transform so it
+            composes with them rather than clobbering either. `scale(1)` (no `size` cosmetic) is a
+            no-op identity, so a bare creature is unchanged. */}
+        <g
+          transform={
+            sizeScale === 1 ? undefined : `translate(40 40) scale(${sizeScale}) translate(-40 -40)`
+          }
+        >
+          {path ? (
+            (() => {
+              const Form = PATH_FORM[path]
+              return <Form stage={stage} g={g} pal={pal} />
+            })()
+          ) : (
+            <SparkForm g={g} />
+          )}
+          {accessory && <Accessory accessory={accessory} g={g} />}
+        </g>
       </g>
       {/* The weather is the FRONT-MOST overlay — drawn after everything (incl. the accessory) so
           its light particles drift OVER the whole scene. Kept subtle so it never obscures the

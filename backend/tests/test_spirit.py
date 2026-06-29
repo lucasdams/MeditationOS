@@ -1064,6 +1064,96 @@ def test_new_slots_flow_through_choose_preview(client):
             assert tiers == sorted(tiers), f"{path}/{slot} options not tier-ordered"
 
 
+# The BODY cosmetics (the recolour + resize that change the creature ITSELF, not a layer drawn
+# around it) are two more universal catalog slots, so they must flow through the SAME generic
+# machinery as every other slot — exposed in the catalog + preview, unlockable + equippable,
+# user-scoped — with the same per-option shape (cost + need + tier), and (being universal) no
+# per_path key.
+_BODY_SLOT_OPTIONS = {
+    "palette": {"ember", "rose", "sage", "gold", "frost", "aqua", "dusk"},
+    "size": {"tiny", "small", "large", "giant"},
+}
+
+
+def test_body_cosmetic_slots_are_in_the_catalog(client):
+    """The two new BODY slots appear in the static catalog with every option, each a well-formed
+    `{cost, unlock_level, tier, need}` with a valid need + tier, costing > 0, and universal (no
+    per_path — any creature can recolour/resize)."""
+    for slot, options in _BODY_SLOT_OPTIONS.items():
+        assert slot in SPIRIT_COSMETICS_CATALOG, f"missing body slot {slot}"
+        assert options == set(SPIRIT_COSMETICS_CATALOG[slot]), f"{slot} options drifted"
+        for option in options:
+            spec = SPIRIT_COSMETICS_CATALOG[slot][option]
+            assert spec["need"] in NEED_KEYS, f"{slot}.{option} has an invalid need"
+            assert spec["tier"] in (1, 2), f"{slot}.{option} should be tier 1 or 2"
+            assert spec["cost"] > 0, f"{slot}.{option} must cost > 0"
+            assert spec["unlock_level"] >= 1
+            assert "per_path" not in spec, f"{slot}.{option} should be universal"
+
+
+def test_body_slots_flow_through_available_and_preview(client):
+    """The body slots surface in BOTH the GET `available` catalog (every option, tier-matching) and
+    the read-only choose-page preview for every path (tier-ordered) — same as any other slot."""
+    _auth(client, "body_slots_catalog@example.com")
+    body = _spirit(client)
+    by_slot = {s["slot"]: s for s in body["available"]}
+    for slot, options in _BODY_SLOT_OPTIONS.items():
+        assert slot in by_slot, f"available is missing the {slot} body slot"
+        opts = {o["option"]: o for o in by_slot[slot]["options"]}
+        assert options == set(opts), f"{slot} catalog options drifted"
+        for option in options:
+            assert opts[option]["tier"] == SPIRIT_COSMETICS_CATALOG[slot][option]["tier"]
+    preview = client.get("/api/v1/spirit/preview").json()
+    for path in _ALL_PATHS:
+        by_slot_p = {s["slot"]: s for s in preview[path]}
+        for slot, options in _BODY_SLOT_OPTIONS.items():
+            assert slot in by_slot_p, f"{path} preview missing the {slot} body slot"
+            opts = {o["option"] for o in by_slot_p[slot]["options"]}
+            assert options <= opts
+            tiers = [o["tier"] for o in by_slot_p[slot]["options"]]
+            assert tiers == sorted(tiers), f"{path}/{slot} options not tier-ordered"
+
+
+def test_unlock_and_equip_a_palette_and_a_size(client):
+    """A user can unlock + equip a body RECOLOUR (palette) and a body RESIZE (size) through the
+    existing unlock/equip machinery — they land in the equipped `cosmetics` loadout like any slot
+    (a tier-1 palette + tier-1 size need no prereq chain)."""
+    _auth(client, "body_unlock@example.com")
+    _earn_to_level(client, 3)  # afford a tier-1 palette + a tier-1 size
+
+    # Unlock (+ auto-equip) a tier-1 recolour and a tier-1 resize.
+    assert _unlock(client, "palette", "ember").status_code == 200
+    assert _unlock(client, "size", "large").status_code == 200
+    body = _spirit(client)
+    assert body["cosmetics"]["palette"] == "ember"
+    assert body["cosmetics"]["size"] == "large"
+    assert _option_state(body, "palette", "ember")["owned"] is True
+    assert _option_state(body, "size", "large")["owned"] is True
+
+    # Equip is free + only on OWNED options: swapping to an unowned palette 409s.
+    assert _equip(client, "palette", "frost").status_code == 409
+    # Clearing the size slot is free and leaves the palette equipped.
+    cleared = _equip(client, "size", None)
+    assert cleared.status_code == 200
+    assert "size" not in cleared.json()["cosmetics"]
+    assert cleared.json()["cosmetics"]["palette"] == "ember"
+
+
+def test_body_cosmetics_are_user_scoped(client):
+    """A palette/size unlocked by one user is NOT owned by another — the loadout is per-user."""
+    _auth(client, "body_owner@example.com")
+    _earn_to_level(client, 2)
+    assert _unlock(client, "palette", "ember").status_code == 200
+    assert _unlock(client, "size", "tiny").status_code == 200
+
+    _auth(client, "body_other@example.com")
+    body = _spirit(client)
+    assert body["cosmetics"].get("palette") is None
+    assert body["cosmetics"].get("size") is None
+    assert _option_state(body, "palette", "ember")["owned"] is False
+    assert _option_state(body, "size", "tiny")["owned"] is False
+
+
 def test_available_options_unlockable_before_locked(client):
     """The Personalize panel orders each slot's options so currently-UNLOCKABLE ones lead and
     level/tier-locked ones trail (ADR-0027; ties broken by tier then cost). For a fresh level-1
@@ -1987,14 +2077,25 @@ def _full_signature_loadout(path):
     }
 
 
+# The DECORATIVE slots carry a per-path signature capstone (ADR-0028); the BODY-cosmetic slots
+# (palette / size) are UNIVERSAL recolour/resize with no path-exclusive option, so they sit outside
+# the signature set (the set-status helper skips signature-less slots, keeping the total at 7).
+_BODY_SLOTS = {"palette", "size"}
+_SIGNATURE_SLOTS = [s for s in SPIRIT_COSMETICS_CATALOG if s not in _BODY_SLOTS]
+
+
 def test_signature_option_is_the_path_exclusive_capstone_per_slot():
     """`_signature_option(slot, path)` returns the slot's path-exclusive option for that path, and
-    None for a pathless spark. Every slot has exactly one signature for a chosen path."""
+    None for a pathless spark. Every DECORATIVE slot has exactly one signature for a chosen path;
+    the universal body slots (palette / size) have none."""
     for path in ("stillness", "breath", "heart"):
-        for slot in SPIRIT_COSMETICS_CATALOG:
+        for slot in _SIGNATURE_SLOTS:
             sig = spirit_service._signature_option(slot, path)
             assert sig is not None
             assert SPIRIT_COSMETICS_CATALOG[slot][sig].get("per_path") == path
+        # The universal body slots have NO signature for any chosen path.
+        for slot in _BODY_SLOTS:
+            assert spirit_service._signature_option(slot, path) is None
         # A pathless spark has no signature in any slot.
         assert spirit_service._signature_option(slot, None) is None
 

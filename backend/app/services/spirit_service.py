@@ -749,6 +749,31 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
     },
+    # BODY cosmetics — these change the CREATURE ITSELF, not a layer drawn around it. Both are
+    # UNIVERSAL (no per_path: any creature can recolour/resize) and so carry NO path-exclusive
+    # signature capstone — they sit outside the ADR-0028 signature set (the set-status helper skips
+    # slots with no signature, keeping its total at 7). The frontend maps each option KEY to a body
+    # palette (PALETTES) / scale (SIZES); keys MUST match those maps.
+    # A full body RECOLOUR — swaps the dosha's default colours for an alternate ramp. Spread across
+    # tiers 1–2 (a tier-2 recolour needs an owned tier-1 recolour, like every slot) with varied
+    # needs and modest costs.
+    "palette": {
+        "ember": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "rose": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "sage": {"cost": 55, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "gold": {"cost": 60, "unlock_level": 2, "need": JOYFUL, "tier": 1},
+        "frost": {"cost": 80, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "aqua": {"cost": 85, "unlock_level": 4, "need": RESTED, "tier": 2},
+        "dusk": {"cost": 90, "unlock_level": 5, "need": RESTED, "tier": 2},
+    },
+    # A body RESIZE — scales the creature independent of its growth stage. All tier 1 (no prereq
+    # chain; pick any size from the start) with modest costs.
+    "size": {
+        "tiny": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "small": {"cost": 40, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "large": {"cost": 55, "unlock_level": 2, "need": NOURISHED, "tier": 1},
+        "giant": {"cost": 70, "unlock_level": 3, "need": JOYFUL, "tier": 1},
+    },
 }
 
 

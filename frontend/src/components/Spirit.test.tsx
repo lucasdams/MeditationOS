@@ -172,6 +172,64 @@ describe('Spirit — path-specific forms', () => {
   })
 })
 
+describe('Spirit — body cosmetics recolour + resize the creature itself', () => {
+  // The bare-creature fill check: the Pitta body uses PATH_PALETTE.breath, whose orange `glow` is
+  // #fb923c. A `palette` cosmetic must SWAP the body colours (its own `glow` present, the dosha
+  // default absent); no `palette` must leave the dosha default in place.
+  // Scope to the floating CREATURE group only — the recolour changes the BODY, not the separate
+  // decorative aura/habitat layers (the aura keeps the dosha's own glow by design).
+  const bodyMarkup = (over: Partial<SpiritState>): string => {
+    const { container } = renderSpirit(<Spirit spirit={spiritState({ stage: 'radiant', ...over })} />)
+    const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
+    cleanup()
+    return html
+  }
+
+  it('recolours the body when a palette cosmetic is set (alternate fill in, dosha default out)', () => {
+    // Bare Pitta: the dosha orange glow (#fb923c) is present.
+    const bare = bodyMarkup({ path: 'breath' })
+    expect(bare).toContain('#fb923c')
+    // With the `frost` palette: its sky-blue glow (#7dd3fc) appears and the dosha orange is gone.
+    const recoloured = bodyMarkup({ path: 'breath', cosmetics: { palette: 'frost' } })
+    expect(recoloured).toContain('#7dd3fc')
+    expect(recoloured).not.toContain('#fb923c')
+  })
+
+  it('keeps each dosha default when no palette cosmetic is set', () => {
+    // Stillness default amber glow (#fcd34d) present; Vata default sky glow (#bae6fd) present.
+    expect(bodyMarkup({ path: 'stillness' })).toContain('#fcd34d')
+    expect(bodyMarkup({ path: 'heart' })).toContain('#bae6fd')
+  })
+
+  it('scales the creature group when a size cosmetic is set, and not when it is absent', () => {
+    const groupTransform = (over: Partial<SpiritState>): string | null => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
+      )
+      // The size scale lives on an inner <g> inside the floating .spirit-creature group.
+      const inner = container.querySelector('.spirit-creature > g') as SVGGElement
+      const t = inner.getAttribute('transform')
+      cleanup()
+      return t
+    }
+    // No size cosmetic → no scale transform on the inner group.
+    expect(groupTransform({})).toBeNull()
+    // `giant` → a scale transform centred on the viewBox (40,40).
+    const giant = groupTransform({ cosmetics: { size: 'giant' } })
+    expect(giant).toContain('scale(1.28)')
+    expect(giant).toContain('translate(40 40)')
+    // `tiny` shrinks below 1.
+    expect(groupTransform({ cosmetics: { size: 'tiny' } })).toContain('scale(0.78)')
+  })
+
+  it('leaves a bare creature (no palette/size) identical to the dosha default look', () => {
+    // A bare radiant Pitta and one with an empty cosmetics map render identical body markup.
+    const bare = bodyMarkup({ path: 'breath' })
+    const emptyCosmetics = bodyMarkup({ path: 'breath', cosmetics: {} })
+    expect(emptyCosmetics).toBe(bare)
+  })
+})
+
 describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
   it('renders a neutral pathless spark (no creature form) when the path is null', () => {
     renderSpirit(<Spirit spirit={spiritState({ stage: 'spark', path: null })} />)
