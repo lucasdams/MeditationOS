@@ -4313,8 +4313,10 @@ button.today-action:disabled {
 
 .spirit-customize {
   display: grid;
-  /* rails flex, the centre column is a fixed, comfortable stage width */
-  grid-template-columns: 1fr minmax(200px, 15rem) 1fr;
+  /* rails flex, the centre column is a generous stage so the companion reads bigger when you're
+     looking at / dressing it — but capped so the cosmetic rails keep usable width at narrower
+     desktop widths (a bigger stage trades directly against rail room in this 3-column layout). */
+  grid-template-columns: 1fr minmax(210px, 16.5rem) 1fr;
   gap: 1rem;
   align-items: start;
 }
@@ -4358,7 +4360,7 @@ button.today-action:disabled {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding: 1.25rem 1.25rem 1rem;
+  padding: 0.85rem 0.85rem 0.7rem;
   border-radius: 1.1rem;
   background:
     radial-gradient(
@@ -4380,7 +4382,7 @@ button.today-action:disabled {
 
 .spirit-stage-art .spirit-svg {
   width: 100%;
-  max-width: 200px;
+  max-width: 280px;
 }
 
 .spirit-stage-caption {
@@ -4425,7 +4427,7 @@ button.today-action:disabled {
     padding: 1rem 0.75rem 0.85rem;
   }
   .spirit-stage-art .spirit-svg {
-    max-width: 160px;
+    max-width: 230px;
   }
 }
 
