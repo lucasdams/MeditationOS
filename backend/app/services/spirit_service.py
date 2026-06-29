@@ -774,7 +774,28 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "large": {"cost": 55, "unlock_level": 2, "need": NOURISHED, "tier": 1},
         "giant": {"cost": 70, "unlock_level": 3, "need": JOYFUL, "tier": 1},
     },
+    # A body SHAPE — varies the creature's SILHOUETTE (its trailing "legs"/wisp count + body
+    # proportions), not just colour/size. Unlike palette/size these are PER-PATH: every option here
+    # is `per_path: HEART`, so only Vata sees + buys them for now (Pitta/Kapha grow their own forms
+    # later). Because they're per-path-but-NOT a signature capstone, `form` is excluded from the
+    # ADR-0028 signature set (see `_NON_SIGNATURE_SLOTS`), keeping the set total at 7. Spread across
+    # tiers 1–2 (a tier-2 form needs an owned tier-1 form, the usual slot prereq) with varied needs
+    # and modest costs. The frontend (VataForm) maps each KEY to a wisp-count + body-width variant.
+    "form": {
+        "tendrils": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": JOYFUL, "tier": 1},
+        "billowy": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "sleek": {"cost": 95, "unlock_level": 3, "per_path": HEART, "need": RESTED, "tier": 2},
+    },
 }
+
+
+# BODY-cosmetic slots that change the CREATURE ITSELF (recolour / resize / reshape) rather than a
+# layer drawn around it. They sit OUTSIDE the ADR-0028 signature set: palette/size are universal so
+# they never have a per-path signature anyway, but `form` IS per-path (Vata-only shapes) yet is a
+# body cosmetic, not a signature capstone — so it must be skipped explicitly to keep the set total
+# at 7 (and to keep every decorative slot's "one signature per path" invariant). Listed here, the
+# signature helpers treat all three the same: no signature in any of them.
+_NON_SIGNATURE_SLOTS: frozenset[str] = frozenset({"palette", "size", "form"})
 
 
 def _option_cost(slot: str, option: str) -> int:
@@ -799,8 +820,12 @@ def _signature_option(slot: str, path: str | None) -> str | None:
     """The SIGNATURE option for `slot` and chosen `path` (ADR-0028) = the slot's option whose
     `per_path == path` — its path-exclusive tier-3 capstone. There is exactly one per slot for a
     chosen path (a catalog invariant; the set-coverage test guards it), so the first match is the
-    signature. None for a pathless spark (no creature → no signature) or an unknown slot."""
+    signature. None for a pathless spark (no creature → no signature) or an unknown slot, and None
+    for the body-cosmetic slots (palette/size/form) — they change the creature itself and stand
+    outside the signature set even when, like `form`, they carry per-path options."""
     if path is None or path not in _CHOOSABLE_PATHS:
+        return None
+    if slot in _NON_SIGNATURE_SLOTS:
         return None
     for option in SPIRIT_COSMETICS_CATALOG.get(slot, {}):
         if _option_per_path(slot, option) == path:

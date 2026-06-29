@@ -167,9 +167,10 @@ export const SLOT_LABEL: Record<string, string> = {
   mount: 'Mount',
   weather: 'Weather',
   ground: 'Ground',
-  // BODY cosmetics — the recolour + resize that change the creature itself.
+  // BODY cosmetics — the recolour + resize + shape that change the creature itself.
   palette: 'Colour',
   size: 'Size',
+  form: 'Shape',
 }
 
 export const OPTION_LABEL: Record<string, string> = {
@@ -283,6 +284,10 @@ export const OPTION_LABEL: Record<string, string> = {
   small: 'Small',
   large: 'Large',
   giant: 'Giant',
+  // BODY-shape forms (the `form` slot) — vary the creature's silhouette. Vata-only for now.
+  tendrils: 'Tendrils',
+  sleek: 'Sleek',
+  billowy: 'Billowy',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -3380,17 +3385,51 @@ function PittaForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; 
  * palette (`core` pale luminous → `glow` sky-blue body → `accent` lavender breeze) over a deeper
  * periwinkle `deep` for the trailing currents. Internal `path` value stays `heart`.
  */
-function VataForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; pal?: BodyPalette }) {
+function VataForm({
+  stage,
+  g,
+  pal: palProp,
+  form,
+}: {
+  stage: SpiritStage
+  g: number
+  pal?: BodyPalette
+  form?: string
+}) {
   const pal = palProp ?? PATH_PALETTE.heart
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   const cx = 40
   const cy = 38
-  // The wisp grows fuller and its trailing currents longer up the ladder.
-  const bodyR = 5 + p * 5
-  // Trailing breeze currents curling off the body — one at spark, up to five at radiant.
-  const wisps = i
-  const wispLen = 10 + p * 14
+  // The `form` (shape) cosmetic varies the SILHOUETTE — how many trailing breeze "legs" (wisps)
+  // the creature has and how broad its body reads — without ever fixing the stage growth: each
+  // variant OFFSETS the stage's wisp count (`i`) so the creature still visibly grows up the ladder.
+  // Absent / unknown → the identity look (wispCount = i, widthMul = 1, no length change), so a bare
+  // Vata is pixel-identical to before. Only `heart` keys matter; the other doshas have no forms yet.
+  let wispCount = i
+  let widthMul = 1
+  let wispLenMul = 1
+  if (form === 'tendrils') {
+    // Many trailing legs — a fuller fan of breeze. Capped so radiant (i + 4 = 9) reads graceful,
+    // not a tangle; the stroke is thinned a touch below (via `widthMul`-independent thinning).
+    wispCount = Math.min(8, i + 4)
+  } else if (form === 'sleek') {
+    // A streamlined, few-legged wisp: fewer but LONGER currents and a slimmer body.
+    wispCount = Math.max(2, i - 1)
+    widthMul = 0.78
+    wispLenMul = 1.25
+  } else if (form === 'billowy') {
+    // A round, full-bodied wisp — same leg count, a broader body + currents.
+    widthMul = 1.3
+  }
+  // The wisp grows fuller and its trailing currents longer up the ladder. `widthMul` scales the
+  // body (and so the wisp start positions, which key off bodyR) for the shape variant.
+  const bodyR = (5 + p * 5) * widthMul
+  // Trailing breeze currents curling off the body — count set by stage + the shape variant above.
+  const wisps = wispCount
+  const wispLen = (10 + p * 14) * wispLenMul
+  // Tendrils crowds the silhouette with extra legs, so thin each stroke a touch to keep it airy.
+  const strokeThin = form === 'tendrils' ? 0.82 : 1
   return (
     <g>
       {/* Trailing air-currents — soft curling ribbons of breeze drifting off the body, the airy
@@ -3412,7 +3451,7 @@ function VataForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; p
                 Q ${midX} ${midY} ${endX} ${endY}`}
             fill="none"
             stroke={k % 2 === 0 ? pal.accent : pal.deep}
-            strokeWidth={(2.4 + p * 1.4) * (1 - Math.abs(t) * 0.3)}
+            strokeWidth={(2.4 + p * 1.4) * (1 - Math.abs(t) * 0.3) * strokeThin}
             strokeLinecap="round"
             opacity={(0.4 + 0.3 * p) * g}
           />
@@ -3520,7 +3559,9 @@ function SparkForm({ g }: { g: number }) {
 // SpiritArt, so the Form draws only the creature body — the part that floats).
 const PATH_FORM: Record<
   SpiritPath,
-  (props: { stage: SpiritStage; g: number; pal?: BodyPalette }) => JSX.Element
+  // `form` (shape) is the silhouette cosmetic — VataForm varies its wisp/leg count + proportions
+  // by it; the other forms accept and ignore it until they grow their own shapes.
+  (props: { stage: SpiritStage; g: number; pal?: BodyPalette; form?: string }) => JSX.Element
 > = {
   stillness: StillnessForm,
   breath: PittaForm,
@@ -3757,7 +3798,7 @@ export function SpiritArt({
           {path ? (
             (() => {
               const Form = PATH_FORM[path]
-              return <Form stage={stage} g={g} pal={pal} />
+              return <Form stage={stage} g={g} pal={pal} form={cosmetics?.form} />
             })()
           ) : (
             <SparkForm g={g} />

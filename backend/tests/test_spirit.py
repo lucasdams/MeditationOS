@@ -1154,6 +1154,126 @@ def test_body_cosmetics_are_user_scoped(client):
     assert _option_state(body, "size", "tiny")["owned"] is False
 
 
+# --- The `form` (shape) body slot — Vata-only silhouette variants -------------------------
+#
+# `form` is a BODY cosmetic that changes the creature's SILHOUETTE (its trailing wisp/leg count +
+# proportions), not just colour/size. Unlike palette/size it is PER-PATH: every option is
+# `per_path: heart`, so only Vata sees + buys them (Pitta/Kapha grow their own forms later). It is
+# still a body cosmetic, NOT a signature capstone, so it stays OUTSIDE the signature set (total 7).
+_FORM_OPTIONS = {"tendrils", "sleek", "billowy"}
+
+
+def test_form_slot_is_in_the_catalog_and_per_path_heart(client):
+    """The `form` slot appears in the static catalog with every option a well-formed
+    `{cost, unlock_level, tier, need, per_path}` — each EXCLUSIVE to `heart` (Vata)."""
+    assert "form" in SPIRIT_COSMETICS_CATALOG, "missing the form slot"
+    assert set(SPIRIT_COSMETICS_CATALOG["form"]) == _FORM_OPTIONS
+    for option in _FORM_OPTIONS:
+        spec = SPIRIT_COSMETICS_CATALOG["form"][option]
+        assert spec["per_path"] == "heart", f"form/{option} must be heart-exclusive"
+        assert spec["need"] in NEED_KEYS, f"form/{option} has an invalid need"
+        assert spec["tier"] in (1, 2), f"form/{option} should be tier 1 or 2"
+        assert spec["cost"] > 0
+        assert spec["unlock_level"] >= 1
+
+
+def test_form_slot_available_only_for_vata(client):
+    """The `form` options are offered (`available: True`) only to Vata (heart); every other path —
+    and a pathless spark — sees them present but unavailable (the per-path machinery, no new code)."""
+    for path in _ALL_PATHS:
+        _auth(client, f"form_avail_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        body = _spirit(client)
+        for option in _FORM_OPTIONS:
+            opt = _option_state(body, "form", option)
+            assert opt is not None, f"{option} missing from the {path} catalog"
+            assert opt["available"] is (path == "heart")
+
+
+def test_form_slot_in_heart_preview_empty_for_others(client):
+    """The choose-page preview lists the `form` slot for every path (catalog-driven), but only
+    Vata's tree fills it: Vata sees all three options flagged EXCLUSIVE; the other paths see the
+    form slot present yet EMPTY (their per-path forms come later) — same as any per-path-only slot."""
+    _auth(client, "form_preview@example.com")
+    preview = client.get("/api/v1/spirit/preview").json()
+    for path in _ALL_PATHS:
+        by_slot = {s["slot"]: s for s in preview[path]}
+        assert "form" in by_slot, f"{path} preview missing the form slot"
+        opts = {o["option"]: o for o in by_slot["form"]["options"]}
+        if path == "heart":
+            # Vata's tree carries all three forms, each its own exclusive capstone.
+            assert _FORM_OPTIONS <= set(opts)
+            for option in _FORM_OPTIONS:
+                assert opts[option]["exclusive"] is True
+        else:
+            # Pitta/Kapha have no forms yet, so their form slot is present but empty.
+            assert set(opts) == set()
+
+
+def test_unlock_and_equip_a_vata_form(client):
+    """A Vata can unlock + equip a body SHAPE through the existing machinery — it lands in the
+    equipped `cosmetics` loadout (a tier-1 form needs no prereq; the tier-2 `sleek` needs an owned
+    tier-1 form first)."""
+    _auth(client, "form_unlock@example.com")
+    assert _choose(client, "heart").status_code == 200
+    _earn_to_level(client, 3)  # afford the tier-1 + tier-2 forms and clear sleek's L3 gate
+
+    # Tier-1 `tendrils` unlocks + auto-equips.
+    res = _unlock(client, "form", "tendrils")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["cosmetics"]["form"] == "tendrils"
+    assert _equipped(body, "form") == "tendrils"
+
+    # Tier-2 `sleek` is now unlockable (its tier-1 prereq is the owned `tendrils`).
+    res2 = _unlock(client, "form", "sleek")
+    assert res2.status_code == 200, res2.text
+    assert res2.json()["cosmetics"]["form"] == "sleek"
+    assert _spirit(client)["cosmetics"]["form"] == "sleek"
+
+
+def test_non_vata_cannot_unlock_a_form_404(client):
+    """A Pitta/Kapha spirit can't buy a Vata-only form — it isn't in its catalog → 404, no charge."""
+    for path in ("breath", "stillness"):
+        _auth(client, f"form_wrongpath_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        _earn_to_level(client, 3)  # afford + level, so neither is the gate
+        coins_before = _spirit(client)["coins"]
+        res = _unlock(client, "form", "tendrils")
+        assert res.status_code == 404, res.text
+        after = _spirit(client)
+        assert "form" not in after["cosmetics"]
+        assert after["coins"] == coins_before  # no charge for the rejected unlock
+
+
+def test_form_is_user_scoped(client):
+    """A form unlocked by one Vata is NOT owned by another — the loadout is per-user."""
+    _auth(client, "form_owner@example.com")
+    assert _choose(client, "heart").status_code == 200
+    _earn_to_level(client, 1)
+    assert _unlock(client, "form", "tendrils").status_code == 200
+
+    _auth(client, "form_other@example.com")
+    assert _choose(client, "heart").status_code == 200
+    body = _spirit(client)
+    assert body["cosmetics"].get("form") is None
+    assert _option_state(body, "form", "tendrils")["owned"] is False
+
+
+def test_form_slot_is_outside_the_signature_set(client):
+    """`form` carries per-path options but is a BODY cosmetic, not a signature capstone: it has NO
+    signature for any path, so the signature-set total stays 7 (not 8) for Vata."""
+    for path in _ALL_PATHS:
+        assert spirit_service._signature_option("form", path) is None
+    # A full Vata signature loadout still totals 7 (form excluded), even though form has per-path opts.
+    full = {
+        slot: spirit_service._signature_option(slot, "heart")
+        for slot in SPIRIT_COSMETICS_CATALOG
+    }
+    status = spirit_service._signature_set_bonus(full, "heart")
+    assert status.total == 7
+
+
 def test_available_options_unlockable_before_locked(client):
     """The Personalize panel orders each slot's options so currently-UNLOCKABLE ones lead and
     level/tier-locked ones trail (ADR-0027; ties broken by tier then cost). For a fresh level-1
@@ -2078,9 +2198,11 @@ def _full_signature_loadout(path):
 
 
 # The DECORATIVE slots carry a per-path signature capstone (ADR-0028); the BODY-cosmetic slots
-# (palette / size) are UNIVERSAL recolour/resize with no path-exclusive option, so they sit outside
-# the signature set (the set-status helper skips signature-less slots, keeping the total at 7).
-_BODY_SLOTS = {"palette", "size"}
+# (palette / size / form) change the CREATURE ITSELF, so they sit outside the signature set (the
+# set-status helper skips them, keeping the total at 7). palette/size are universal recolour/resize;
+# `form` is per-path (Vata-only shapes) but is still a body cosmetic, not a signature capstone, so it
+# is excluded too (the service's `_NON_SIGNATURE_SLOTS`).
+_BODY_SLOTS = {"palette", "size", "form"}
 _SIGNATURE_SLOTS = [s for s in SPIRIT_COSMETICS_CATALOG if s not in _BODY_SLOTS]
 
 

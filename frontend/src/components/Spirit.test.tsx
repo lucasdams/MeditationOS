@@ -230,6 +230,60 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
   })
 })
 
+describe('Spirit — the `form` (shape) cosmetic varies the Vata silhouette', () => {
+  // The trailing breeze "legs" are the stroked (fill:none) wisp paths in the floating creature
+  // group — counting them measures how many legs the silhouette has. The `form` cosmetic offsets
+  // the stage's leg count (and body width), so a Vata can wear a fuller or sleeker silhouette.
+  const wispCount = (over: Partial<SpiritState>): number => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart', ...over })} />,
+    )
+    const n = Array.from(container.querySelectorAll('.spirit-creature path')).filter(
+      (el) => el.getAttribute('fill') === 'none',
+    ).length
+    cleanup()
+    return n
+  }
+
+  it('draws MORE trailing legs with form=tendrils than a bare Vata', () => {
+    const bare = wispCount({})
+    const tendrils = wispCount({ cosmetics: { form: 'tendrils' } })
+    expect(tendrils).toBeGreaterThan(bare)
+  })
+
+  it('draws FEWER trailing legs with form=sleek than a bare Vata', () => {
+    const bare = wispCount({})
+    const sleek = wispCount({ cosmetics: { form: 'sleek' } })
+    expect(sleek).toBeLessThan(bare)
+  })
+
+  it('leaves a bare Vata (no form) pixel-identical to an empty cosmetics map', () => {
+    const markup = (over: Partial<SpiritState>): string => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart', ...over })} />,
+      )
+      const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
+      cleanup()
+      return html
+    }
+    expect(markup({ cosmetics: {} })).toBe(markup({}))
+  })
+
+  it('does not change Pitta/Kapha — they ignore an (unsupported) form key', () => {
+    const markup = (path: SpiritPath, cosmetics: Record<string, string>): string => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path, cosmetics })} />,
+      )
+      const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
+      cleanup()
+      return html
+    }
+    // Pitta/Kapha forms accept-and-ignore `form`, so a stray key leaves their body unchanged.
+    expect(markup('breath', { form: 'tendrils' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'tendrils' })).toBe(markup('stillness', {}))
+  })
+})
+
 describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
   it('renders a neutral pathless spark (no creature form) when the path is null', () => {
     renderSpirit(<Spirit spirit={spiritState({ stage: 'spark', path: null })} />)
