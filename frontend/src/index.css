@@ -3598,6 +3598,30 @@ button.today-action:disabled {
   margin: 0.25rem auto 1rem;
 }
 
+/* The big companion portrait that LEADS the Spirit page (Care / Collection tabs) — a generous,
+   full-width render so you actually see your creature when you come to look at it. */
+.spirit-portrait {
+  display: flex;
+  justify-content: center;
+  margin: 0.25rem auto 0.6rem;
+  width: 100%;
+}
+.spirit-portrait .spirit-svg {
+  width: 100%;
+  max-width: 280px;
+}
+
+/* The home-screen companion — rendered larger than the 140px base so it reads as the centrepiece
+   of the Today tab rather than a small badge. */
+.home-companion {
+  display: flex;
+  justify-content: center;
+}
+.home-companion .spirit-svg {
+  width: 100%;
+  max-width: 210px;
+}
+
 .spirit-hero-art {
   position: relative;
   display: flex;

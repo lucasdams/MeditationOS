@@ -239,7 +239,9 @@ export default function DashboardPage() {
               static glowing companion that grows with practice. We fetch it once above (for the
               coin chip) and pass it down, so the companion doesn't fire a second GET /spirit; it
               waits quietly while the prop is still null. */}
-          <Spirit spirit={spirit} sessionCount={stats.session_count} />
+          <div className="home-companion">
+            <Spirit spirit={spirit} sessionCount={stats.session_count} />
+          </div>
 
           {/* The quiet rest-day reassurance, when it applies, so the gentle "skipping one is
               fine" message isn't lost now that the streak is a small pill. */}

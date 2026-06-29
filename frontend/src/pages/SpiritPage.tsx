@@ -620,6 +620,21 @@ export default function SpiritPage() {
                 coin balance (shown once here — never doubled elsewhere on the page). The big
                 spirit render lives on the centered customization stage below. */}
             <section className="spirit-hero spirit-hero--compact" aria-label="Your spirit">
+              {/* A prominent portrait of the equipped companion, so the page LEADS with your spirit
+                  rather than a text read-out. Hidden on the Customize tab, which has its own live,
+                  editable stage below (no need to show the creature twice there). */}
+              {spirit.path && tab !== 'customize' && (
+                <div className="spirit-portrait" aria-hidden="true">
+                  <SpiritArt
+                    stage={spirit.stage}
+                    path={form}
+                    glow={spirit.condition.factor}
+                    cosmetics={spirit.cosmetics}
+                    reducedMotion={reducedMotion}
+                    setRadiant={spirit.set_bonus.active}
+                  />
+                </div>
+              )}
               {spirit.name && <p className="spirit-hero-name">{spirit.name}</p>}
               <p className="spirit-hero-stage">
                 {stageLabel}
