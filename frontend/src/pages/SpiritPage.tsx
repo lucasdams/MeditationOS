@@ -16,6 +16,7 @@ import {
   prefersReducedMotion,
 } from '../components/Spirit'
 import CoinIcon from '../components/CoinIcon'
+import EncouragementNote from '../components/EncouragementNote'
 import Modal from '../components/Modal'
 import { Loading, RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -648,6 +649,9 @@ export default function SpiritPage() {
               <p className="spirit-hero-coins">
                 <CoinIcon /> {spirit.coins} <span className="muted">coins to spend</span>
               </p>
+              {/* A warm word by the companion (Care / Collection tabs; the Customize tab is the
+                  editing view). */}
+              {spirit.path && tab !== 'customize' && <EncouragementNote />}
             </section>
 
             {/* Tabs — show Care / Customize / Collection one at a time so the page stays calm. */}

@@ -4874,6 +4874,25 @@ button.today-action:disabled {
 }
 
 /* The gained-XP headline — the "score" that counts up. */
+/* A warm word of praise above the XP, and a host for the gentle hearts that drift up as the reward
+   lands (the .floating-heart float keyframe is shared with the home EncouragementNote). */
+.reward-praise {
+  margin: 0.35rem 0 0.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+.reward-hearts {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .reward-headline {
   position: relative;
   display: flex;

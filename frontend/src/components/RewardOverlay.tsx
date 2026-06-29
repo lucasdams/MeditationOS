@@ -12,6 +12,17 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+// A warm word for finishing a sit — the session deserves love, not just XP. Gentle + never about
+// performance: showing up is the whole win.
+const REWARD_PRAISES = [
+  'Beautifully done. 💛',
+  'You showed up — that’s what matters.',
+  'That’s time well spent.',
+  'A quiet gift to yourself. 💛',
+  'Every sit counts.',
+  'Proud of you for this.',
+]
+
 /**
  * Post-session reward — a *quiet, non-blocking* inline card (not a modal). It animates
  * the XP bar from (afterXp − xpGained) up to afterXp, playing a fanfare each time a level
@@ -59,12 +70,33 @@ export default function RewardOverlay({
   const [landed, setLanded] = useState(reduceMotion)
   const lastLevelRef = useRef(levelProgress(startXp).level)
   const leveledUp = levelProgress(afterXp).level > levelProgress(startXp).level
+  // A warm word of praise, picked once on mount, plus a host for a gentle drift of hearts.
+  const [praise] = useState(() => REWARD_PRAISES[Math.floor(Math.random() * REWARD_PRAISES.length)])
+  const heartsHost = useRef<HTMLSpanElement>(null)
 
   // A chime when the reward appears (earned XP / completed a quest). A level
   // crossing gets the bigger fanfare below instead, so we don't stack them.
   useEffect(() => {
     if (xpGained > 0 && !leveledUp) playReward()
   }, [xpGained, leveledUp])
+
+  // A gentle flurry of hearts drifts up as the reward lands — a little love for showing up. Skipped
+  // under reduced motion (the calm static card stands on its own).
+  useEffect(() => {
+    if (reduceMotion) return
+    const host = heartsHost.current
+    if (!host) return
+    const glyphs = ['💛', '💗', '🤍', '💖']
+    for (let k = 0; k < 4; k++) {
+      const heart = document.createElement('span')
+      heart.className = 'floating-heart'
+      heart.textContent = glyphs[k % glyphs.length]
+      heart.style.setProperty('--dx', `${Math.round(Math.random() * 72 - 36)}px`)
+      heart.style.animationDelay = `${180 + k * 130}ms`
+      host.appendChild(heart)
+      window.setTimeout(() => heart.remove(), 2200)
+    }
+  }, [reduceMotion])
 
   useEffect(() => {
     // Reduced motion: numbers are already final, level-up chime still fires once. No rAF.
@@ -139,6 +171,10 @@ export default function RewardOverlay({
           <span className="level-badge-mark">◆</span>
           <span className="level-badge-num">{prog.level}</span>
         </div>
+
+        {/* A warm word of praise + a gentle drift of hearts — love for showing up, above the XP. */}
+        <p className="reward-praise">{praise}</p>
+        <span ref={heartsHost} className="reward-hearts" aria-hidden="true" />
 
         {/* Celebratory flourish: a soft radiating ring + a few sparkles behind the
             gained-XP headline. Decorative only, and skipped under reduced motion. */}
