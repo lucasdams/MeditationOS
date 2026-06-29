@@ -1154,32 +1154,40 @@ def test_body_cosmetics_are_user_scoped(client):
     assert _option_state(body, "size", "tiny")["owned"] is False
 
 
-# --- The `form` (shape) body slot — Vata-only silhouette variants -------------------------
+# --- The `form` (shape) body slot — per-path silhouette variants --------------------------
 #
 # `form` is a BODY cosmetic that changes the creature's SILHOUETTE (its trailing wisp/leg count +
-# proportions), not just colour/size. Unlike palette/size it is PER-PATH: every option is
-# `per_path: heart`, so only Vata sees + buys them (Pitta/Kapha grow their own forms later). It is
-# still a body cosmetic, NOT a signature capstone, so it stays OUTSIDE the signature set (total 7).
-_FORM_OPTIONS = {"tendrils", "sleek", "billowy"}
+# proportions), not just colour/size. Unlike palette/size it is PER-PATH: every option is exclusive
+# to ONE dosha, so each creature sees + buys only ITS OWN shapes — Vata's airy wisps (heart),
+# Pitta's blazes (breath), Kapha's seated figures (stillness). It is still a body cosmetic, NOT a
+# signature capstone, so it stays OUTSIDE the signature set (total 7).
+_FORM_OPTIONS_BY_PATH = {
+    "heart": {"tendrils", "sleek", "billowy"},
+    "breath": {"wildfire", "emberlit", "bonfire"},
+    "stillness": {"grounded", "monolith", "cairn"},
+}
+_FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
 
 
-def test_form_slot_is_in_the_catalog_and_per_path_heart(client):
+def test_form_slot_is_in_the_catalog_per_path(client):
     """The `form` slot appears in the static catalog with every option a well-formed
-    `{cost, unlock_level, tier, need, per_path}` — each EXCLUSIVE to `heart` (Vata)."""
+    `{cost, unlock_level, tier, need, per_path}` — each EXCLUSIVE to exactly one dosha (Vata's
+    wisps, Pitta's blazes, Kapha's seated figures), and the option keys don't overlap across paths."""
     assert "form" in SPIRIT_COSMETICS_CATALOG, "missing the form slot"
     assert set(SPIRIT_COSMETICS_CATALOG["form"]) == _FORM_OPTIONS
-    for option in _FORM_OPTIONS:
-        spec = SPIRIT_COSMETICS_CATALOG["form"][option]
-        assert spec["per_path"] == "heart", f"form/{option} must be heart-exclusive"
-        assert spec["need"] in NEED_KEYS, f"form/{option} has an invalid need"
-        assert spec["tier"] in (1, 2), f"form/{option} should be tier 1 or 2"
-        assert spec["cost"] > 0
-        assert spec["unlock_level"] >= 1
+    for path, options in _FORM_OPTIONS_BY_PATH.items():
+        for option in options:
+            spec = SPIRIT_COSMETICS_CATALOG["form"][option]
+            assert spec["per_path"] == path, f"form/{option} must be {path}-exclusive"
+            assert spec["need"] in NEED_KEYS, f"form/{option} has an invalid need"
+            assert spec["tier"] in (1, 2), f"form/{option} should be tier 1 or 2"
+            assert spec["cost"] > 0
+            assert spec["unlock_level"] >= 1
 
 
-def test_form_slot_available_only_for_vata(client):
-    """The `form` options are offered (`available: True`) only to Vata (heart); every other path —
-    and a pathless spark — sees them present but unavailable (the per-path machinery, no new code)."""
+def test_form_slot_available_only_for_matching_dosha(client):
+    """Each `form` option is offered (`available: True`) ONLY to its own dosha; every other path
+    sees it present but unavailable (the per-path machinery, no new code)."""
     for path in _ALL_PATHS:
         _auth(client, f"form_avail_{path}@example.com")
         assert _choose(client, path).status_code == 200
@@ -1187,59 +1195,63 @@ def test_form_slot_available_only_for_vata(client):
         for option in _FORM_OPTIONS:
             opt = _option_state(body, "form", option)
             assert opt is not None, f"{option} missing from the {path} catalog"
-            assert opt["available"] is (path == "heart")
+            assert opt["available"] is (option in _FORM_OPTIONS_BY_PATH[path])
 
 
-def test_form_slot_in_heart_preview_empty_for_others(client):
-    """The choose-page preview lists the `form` slot for every path (catalog-driven), but only
-    Vata's tree fills it: Vata sees all three options flagged EXCLUSIVE; the other paths see the
-    form slot present yet EMPTY (their per-path forms come later) — same as any per-path-only slot."""
+def test_form_slot_in_preview_fills_per_path(client):
+    """The choose-page preview lists the `form` slot for every path (catalog-driven); each path's
+    tree fills it with ONLY its own three forms, flagged EXCLUSIVE, and none of the other paths'."""
     _auth(client, "form_preview@example.com")
     preview = client.get("/api/v1/spirit/preview").json()
     for path in _ALL_PATHS:
         by_slot = {s["slot"]: s for s in preview[path]}
         assert "form" in by_slot, f"{path} preview missing the form slot"
         opts = {o["option"]: o for o in by_slot["form"]["options"]}
-        if path == "heart":
-            # Vata's tree carries all three forms, each its own exclusive capstone.
-            assert _FORM_OPTIONS <= set(opts)
-            for option in _FORM_OPTIONS:
-                assert opts[option]["exclusive"] is True
-        else:
-            # Pitta/Kapha have no forms yet, so their form slot is present but empty.
-            assert set(opts) == set()
+        # This path's three forms are present and exclusive; no other path's forms appear.
+        assert set(opts) == _FORM_OPTIONS_BY_PATH[path]
+        for option in _FORM_OPTIONS_BY_PATH[path]:
+            assert opts[option]["exclusive"] is True
 
 
-def test_unlock_and_equip_a_vata_form(client):
-    """A Vata can unlock + equip a body SHAPE through the existing machinery — it lands in the
-    equipped `cosmetics` loadout (a tier-1 form needs no prereq; the tier-2 `sleek` needs an owned
-    tier-1 form first)."""
-    _auth(client, "form_unlock@example.com")
-    assert _choose(client, "heart").status_code == 200
-    _earn_to_level(client, 3)  # afford the tier-1 + tier-2 forms and clear sleek's L3 gate
+def test_unlock_and_equip_a_form_per_path(client):
+    """Each dosha can unlock + equip ITS OWN body SHAPE through the existing machinery — it lands in
+    the equipped `cosmetics` loadout (a tier-1 form needs no prereq; the tier-2 form needs an owned
+    tier-1 form of the same path first)."""
+    # (path, tier-1 option, tier-2 option) — the tier-2 form's prereq is any owned tier-1 form.
+    cases = [
+        ("heart", "tendrils", "sleek"),
+        ("breath", "wildfire", "bonfire"),
+        ("stillness", "grounded", "cairn"),
+    ]
+    for path, tier1, tier2 in cases:
+        _auth(client, f"form_unlock_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        _earn_to_level(client, 3)  # afford the tier-1 + tier-2 forms and clear the tier-2 L3 gate
 
-    # Tier-1 `tendrils` unlocks + auto-equips.
-    res = _unlock(client, "form", "tendrils")
-    assert res.status_code == 200, res.text
-    body = res.json()
-    assert body["cosmetics"]["form"] == "tendrils"
-    assert _equipped(body, "form") == "tendrils"
+        # Tier-1 form unlocks + auto-equips.
+        res = _unlock(client, "form", tier1)
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["cosmetics"]["form"] == tier1
+        assert _equipped(body, "form") == tier1
 
-    # Tier-2 `sleek` is now unlockable (its tier-1 prereq is the owned `tendrils`).
-    res2 = _unlock(client, "form", "sleek")
-    assert res2.status_code == 200, res2.text
-    assert res2.json()["cosmetics"]["form"] == "sleek"
-    assert _spirit(client)["cosmetics"]["form"] == "sleek"
+        # Tier-2 form is now unlockable (its tier-1 prereq is the owned tier-1 form).
+        res2 = _unlock(client, "form", tier2)
+        assert res2.status_code == 200, res2.text
+        assert res2.json()["cosmetics"]["form"] == tier2
+        assert _spirit(client)["cosmetics"]["form"] == tier2
 
 
-def test_non_vata_cannot_unlock_a_form_404(client):
-    """A Pitta/Kapha spirit can't buy a Vata-only form — it isn't in its catalog → 404, no charge."""
-    for path in ("breath", "stillness"):
+def test_cannot_unlock_another_paths_form_404(client):
+    """A spirit can't buy another dosha's form — it isn't in its catalog → 404, no charge. (Each
+    path is offered one of the OTHER two paths' tier-1 forms.)"""
+    foreign = {"heart": "wildfire", "breath": "grounded", "stillness": "tendrils"}
+    for path, option in foreign.items():
         _auth(client, f"form_wrongpath_{path}@example.com")
         assert _choose(client, path).status_code == 200
         _earn_to_level(client, 3)  # afford + level, so neither is the gate
         coins_before = _spirit(client)["coins"]
-        res = _unlock(client, "form", "tendrils")
+        res = _unlock(client, "form", option)
         assert res.status_code == 404, res.text
         after = _spirit(client)
         assert "form" not in after["cosmetics"]
@@ -1247,17 +1259,19 @@ def test_non_vata_cannot_unlock_a_form_404(client):
 
 
 def test_form_is_user_scoped(client):
-    """A form unlocked by one Vata is NOT owned by another — the loadout is per-user."""
-    _auth(client, "form_owner@example.com")
-    assert _choose(client, "heart").status_code == 200
-    _earn_to_level(client, 1)
-    assert _unlock(client, "form", "tendrils").status_code == 200
+    """A form unlocked by one spirit is NOT owned by another — the loadout is per-user. Covers a
+    Pitta and a Kapha form (each user-scoped to its owner)."""
+    for path, option in (("breath", "wildfire"), ("stillness", "grounded")):
+        _auth(client, f"form_owner_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        _earn_to_level(client, 1)
+        assert _unlock(client, "form", option).status_code == 200
 
-    _auth(client, "form_other@example.com")
-    assert _choose(client, "heart").status_code == 200
-    body = _spirit(client)
-    assert body["cosmetics"].get("form") is None
-    assert _option_state(body, "form", "tendrils")["owned"] is False
+        _auth(client, f"form_other_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        body = _spirit(client)
+        assert body["cosmetics"].get("form") is None
+        assert _option_state(body, "form", option)["owned"] is False
 
 
 def test_form_slot_is_outside_the_signature_set(client):

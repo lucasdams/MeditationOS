@@ -284,10 +284,18 @@ export const OPTION_LABEL: Record<string, string> = {
   small: 'Small',
   large: 'Large',
   giant: 'Giant',
-  // BODY-shape forms (the `form` slot) — vary the creature's silhouette. Vata-only for now.
+  // BODY-shape forms (the `form` slot) — vary each creature's silhouette. Per-path: Vata wisps,
+  // Pitta blazes, Kapha seated figures. (Kapha's broad form is `grounded`, not `boulder`, so it
+  // doesn't collide with the mossy-boulder MOUNT in this global label map.)
   tendrils: 'Tendrils',
   sleek: 'Sleek',
   billowy: 'Billowy',
+  wildfire: 'Wildfire',
+  emberlit: 'Ember',
+  bonfire: 'Bonfire',
+  grounded: 'Boulder',
+  monolith: 'Monolith',
+  cairn: 'Cairn',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -3164,7 +3172,17 @@ function Ground({ ground, g }: { ground: string; g: number }) {
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
  * figure haloed in gold. Warm amber/gold palette.
  */
-function StillnessForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; pal?: BodyPalette }) {
+function StillnessForm({
+  stage,
+  g,
+  pal: palProp,
+  form,
+}: {
+  stage: SpiritStage
+  g: number
+  pal?: BodyPalette
+  form?: string
+}) {
   // The recolour cosmetic (`palette`) replaces the dosha's body colours; absent → the default.
   const pal = palProp ?? PATH_PALETTE.stillness
   const i = stageIndex(stage)
@@ -3172,8 +3190,27 @@ function StillnessForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: numb
   // Grows up the ladder; everything is centred on x=40.
   const scale = 0.7 + p * 0.55
   const cy = 44
-  const bodyW = 16 * scale
-  const bodyH = 18 * scale
+  // The `form` (shape) cosmetic varies the seated figure's PROPORTIONS (there's no count to vary):
+  // width/height multipliers applied to bodyW/bodyH, which the head circle, folded-legs path, lotus
+  // petals and body ellipse all key off — so the WHOLE figure scales coherently (head stays
+  // attached, lotus stays under it). Absent / unknown → the identity look (both multipliers 1), so a
+  // bare Kapha is pixel-identical to before. Only `stillness` keys matter; other doshas ignore them.
+  let widthMul = 1
+  let heightMul = 1
+  if (form === 'grounded') {
+    // A grounded, broad figure — a wide base, normal height.
+    widthMul = 1.3
+  } else if (form === 'monolith') {
+    // A serene, elongated figure — taller and a touch narrower.
+    heightMul = 1.2
+    widthMul = 0.86
+  } else if (form === 'cairn') {
+    // A compact, solid figure — broad and squat.
+    widthMul = 1.26
+    heightMul = 0.84
+  }
+  const bodyW = 16 * scale * widthMul
+  const bodyH = 18 * scale * heightMul
   return (
     <g>
       {/* Lotus base, from fledgling onward — a few warm petals under the seated figure. */}
@@ -3247,18 +3284,48 @@ function StillnessForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: numb
  * (rounded silhouette, friendly eyes). Warm fire palette (`core` white-hot → `glow` orange →
  * `accent` red) over a teal `deep` water element. Internal `path` value stays `breath`.
  */
-function PittaForm({ stage, g, pal: palProp }: { stage: SpiritStage; g: number; pal?: BodyPalette }) {
+function PittaForm({
+  stage,
+  g,
+  pal: palProp,
+  form,
+}: {
+  stage: SpiritStage
+  g: number
+  pal?: BodyPalette
+  form?: string
+}) {
   const pal = palProp ?? PATH_PALETTE.breath
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   const cx = 40
   // The blaze grows taller and the body fuller up the ladder.
   const baseY = 52
-  const bodyR = 6 + p * 5
+  // The `form` (shape) cosmetic varies the SILHOUETTE — how many flame tongues the blaze throws
+  // and how broad/tall the ember body reads — without ever fixing the stage growth: each variant
+  // OFFSETS the stage's tongue count (`i`) so the creature still visibly grows up the ladder.
+  // Absent / unknown → the identity look (tongues = i, bodyR/flameTop unchanged), so a bare Pitta
+  // is pixel-identical to before. Only `breath` keys matter; the other doshas ignore them.
+  let tongueCount = i
+  let bodyMul = 1
+  let flameLift = 0 // extra height added to the tallest tongue (raised flameTop)
+  if (form === 'wildfire') {
+    // A wild blaze of many flames — capped so radiant (i + 3 = 8) reads fierce, not a hedge.
+    tongueCount = Math.min(8, i + 3)
+  } else if (form === 'emberlit') {
+    // A focused, banked ember: few flames but the tallest licks ~25% higher, slimmer body.
+    tongueCount = Math.max(1, i - 1)
+    flameLift = (16 + p * 18) * 0.25
+    bodyMul = 0.85
+  } else if (form === 'bonfire') {
+    // A stout, wide ember — same flame count, a broad body (kept inside the 80×80 frame).
+    bodyMul = 1.32
+  }
+  const bodyR = (6 + p * 5) * bodyMul
   const bodyCy = baseY - bodyR * 0.6
-  // Flame tongues licking up off the body — one at spark, up to five at radiant.
-  const tongues = i
-  const flameTop = baseY - (16 + p * 18) // how high the tallest tongue reaches
+  // Flame tongues licking up off the body — one at spark, up to five at radiant (shape varies it).
+  const tongues = tongueCount
+  const flameTop = baseY - (16 + p * 18) - flameLift // how high the tallest tongue reaches
   return (
     <g>
       {/* Water element — a cool teal pool the fire rises from, widening from wisp onward. The
@@ -3559,8 +3626,9 @@ function SparkForm({ g }: { g: number }) {
 // SpiritArt, so the Form draws only the creature body — the part that floats).
 const PATH_FORM: Record<
   SpiritPath,
-  // `form` (shape) is the silhouette cosmetic — VataForm varies its wisp/leg count + proportions
-  // by it; the other forms accept and ignore it until they grow their own shapes.
+  // `form` (shape) is the silhouette cosmetic — each Form varies its OWN silhouette by it: VataForm
+  // its wisp count + body width, PittaForm its flame count + ember body, StillnessForm the seated
+  // figure's proportions. Each renderer interprets only its own keys (a foreign/absent key → default).
   (props: { stage: SpiritStage; g: number; pal?: BodyPalette; form?: string }) => JSX.Element
 > = {
   stillness: StillnessForm,

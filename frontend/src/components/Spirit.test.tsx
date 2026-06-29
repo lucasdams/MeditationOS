@@ -230,7 +230,7 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
   })
 })
 
-describe('Spirit — the `form` (shape) cosmetic varies the Vata silhouette', () => {
+describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette', () => {
   // The trailing breeze "legs" are the stroked (fill:none) wisp paths in the floating creature
   // group — counting them measures how many legs the silhouette has. The `form` cosmetic offsets
   // the stage's leg count (and body width), so a Vata can wear a fuller or sleeker silhouette.
@@ -245,6 +245,40 @@ describe('Spirit — the `form` (shape) cosmetic varies the Vata silhouette', ()
     return n
   }
 
+  // Pitta's flame tongues + ember body are the FILLED paths in the creature group (the eyes are
+  // stroked, fill:none) — counting filled paths tracks the flame count (body is a constant +1).
+  const flameCount = (over: Partial<SpiritState>): number => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
+    )
+    const n = Array.from(container.querySelectorAll('.spirit-creature path')).filter(
+      (el) => el.getAttribute('fill') !== 'none',
+    ).length
+    cleanup()
+    return n
+  }
+
+  // Kapha's seated body is the widest/tallest ellipse in the group (lotus petals + body are
+  // ellipses; the body ellipse keys off bodyW/bodyH, so its rx/ry track the proportion variant).
+  const bodyEllipse = (over: Partial<SpiritState>): { rx: number; ry: number } => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'radiant', path: 'stillness', ...over })} />,
+    )
+    const ellipses = Array.from(container.querySelectorAll('.spirit-creature ellipse'))
+    // The body ellipse is the one with the largest rx (bodyW * 0.62 dwarfs the lotus petals).
+    const body = ellipses.reduce((widest, el) => {
+      const rx = parseFloat(el.getAttribute('rx') ?? '0')
+      const wrx = parseFloat(widest?.getAttribute('rx') ?? '0')
+      return rx > wrx ? el : widest
+    }, ellipses[0])
+    const result = {
+      rx: parseFloat(body.getAttribute('rx') ?? '0'),
+      ry: parseFloat(body.getAttribute('ry') ?? '0'),
+    }
+    cleanup()
+    return result
+  }
+
   it('draws MORE trailing legs with form=tendrils than a bare Vata', () => {
     const bare = wispCount({})
     const tendrils = wispCount({ cosmetics: { form: 'tendrils' } })
@@ -257,19 +291,45 @@ describe('Spirit — the `form` (shape) cosmetic varies the Vata silhouette', ()
     expect(sleek).toBeLessThan(bare)
   })
 
-  it('leaves a bare Vata (no form) pixel-identical to an empty cosmetics map', () => {
-    const markup = (over: Partial<SpiritState>): string => {
+  it('draws MORE flames with form=wildfire than a bare Pitta', () => {
+    const bare = flameCount({})
+    const wildfire = flameCount({ cosmetics: { form: 'wildfire' } })
+    expect(wildfire).toBeGreaterThan(bare)
+  })
+
+  it('draws FEWER flames with form=emberlit than a bare Pitta', () => {
+    const bare = flameCount({})
+    const emberlit = flameCount({ cosmetics: { form: 'emberlit' } })
+    expect(emberlit).toBeLessThan(bare)
+  })
+
+  it('widens the Kapha seated body with form=grounded', () => {
+    const bare = bodyEllipse({})
+    const grounded = bodyEllipse({ cosmetics: { form: 'grounded' } })
+    expect(grounded.rx).toBeGreaterThan(bare.rx)
+  })
+
+  it('heightens the Kapha seated body with form=monolith', () => {
+    const bare = bodyEllipse({})
+    const monolith = bodyEllipse({ cosmetics: { form: 'monolith' } })
+    expect(monolith.ry).toBeGreaterThan(bare.ry)
+  })
+
+  it('leaves a bare Vata / Pitta / Kapha (no form) pixel-identical to an empty cosmetics map', () => {
+    const markup = (path: SpiritPath, over: Partial<SpiritState>): string => {
       const { container } = renderSpirit(
-        <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart', ...over })} />,
+        <Spirit spirit={spiritState({ stage: 'radiant', path, ...over })} />,
       )
       const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
       cleanup()
       return html
     }
-    expect(markup({ cosmetics: {} })).toBe(markup({}))
+    expect(markup('heart', { cosmetics: {} })).toBe(markup('heart', {}))
+    expect(markup('breath', { cosmetics: {} })).toBe(markup('breath', {}))
+    expect(markup('stillness', { cosmetics: {} })).toBe(markup('stillness', {}))
   })
 
-  it('does not change Pitta/Kapha — they ignore an (unsupported) form key', () => {
+  it('each creature interprets only ITS own form keys — a foreign key leaves the body unchanged', () => {
     const markup = (path: SpiritPath, cosmetics: Record<string, string>): string => {
       const { container } = renderSpirit(
         <Spirit spirit={spiritState({ stage: 'radiant', path, cosmetics })} />,
@@ -278,9 +338,13 @@ describe('Spirit — the `form` (shape) cosmetic varies the Vata silhouette', ()
       cleanup()
       return html
     }
-    // Pitta/Kapha forms accept-and-ignore `form`, so a stray key leaves their body unchanged.
+    // A Vata key on Pitta/Kapha is ignored; a Pitta key on Vata/Kapha is ignored; etc.
     expect(markup('breath', { form: 'tendrils' })).toBe(markup('breath', {}))
     expect(markup('stillness', { form: 'tendrils' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'wildfire' })).toBe(markup('heart', {}))
+    expect(markup('stillness', { form: 'wildfire' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'grounded' })).toBe(markup('heart', {}))
+    expect(markup('breath', { form: 'grounded' })).toBe(markup('breath', {}))
   })
 })
 
