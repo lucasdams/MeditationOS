@@ -211,6 +211,12 @@ function CapstoneSigil({ kind }: { kind: SigilKind }): ReactNode {
 // preview shows what the spirit would look like with it equipped. `null` = nothing explored.
 type PreviewTarget = { slot: string; option: string } | null
 
+// Beginner-first (Phase 3 — "gentle the game"): the CURATED slots shown by default on the
+// Customize tab. The two most-visible cosmetics — aura + accessory — are an inviting taste; the
+// remaining five (habitat / companion / mount / weather / ground) live behind a calm reveal so a
+// newcomer isn't handed the whole economy at once.
+const CURATED_SLOTS = ['aura', 'accessory'] as const
+
 // The name cap, mirroring the backend SPIRIT_NAME_MAX_LENGTH. The form soft-limits input; the
 // server trims + rejects blank/over-length regardless.
 const NAME_MAX = 40
@@ -254,6 +260,11 @@ export default function SpiritPage() {
   // Which area is showing — Care / Customize / Collection — so the page reads one thing at a time
   // instead of one long scroll (the hero stays on top always).
   const [tab, setTab] = useState<'care' | 'customize' | 'collection'>('care')
+  // Beginner-first (Phase 3): the Customize tab leads with a SMALL curated set (aura + accessory)
+  // and tucks the rest of the slots + the signature set-bonus status behind a calm "Show all
+  // customization" reveal, so a newcomer isn't met with the whole economy at once. Collapsed by
+  // default; the deep tree is one tap back.
+  const [showAllCosmetics, setShowAllCosmetics] = useState(false)
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
   // media query — the single source of truth.
   const reducedMotion = prefersReducedMotion()
@@ -582,17 +593,27 @@ export default function SpiritPage() {
           )
         }
 
-        // Split the slots across the two side rails so the spirit sits centered between them.
-        // This is COUNT-DRIVEN, not name-driven, so the layout stays balanced for ANY catalog: we
-        // only render slots that actually have visible options, then deal the first half to the
-        // left rail and the rest to the right. With an odd total the left rail takes the extra one
-        // (ceil), so e.g. 5 slots → 3 | 2 and 7 slots → 4 | 3 — never a lopsided or dropped slot.
+        // The slots worth showing at all — those with at least one available option.
         const renderableSlots = spirit.available.filter(
           (s) => s.options.some((opt) => opt.available),
         )
-        const splitAt = Math.ceil(renderableSlots.length / 2)
-        const leftRail = renderableSlots.slice(0, splitAt)
-        const rightRail = renderableSlots.slice(splitAt)
+        // Beginner-first (Phase 3): by default the Customize tab shows only the CURATED slots
+        // (aura + accessory); the rest are tucked behind the "Show all customization" reveal. Once
+        // revealed, every renderable slot shows. We split whichever set is active across the two
+        // rails so the spirit stays centered between them.
+        const curatedSlots = renderableSlots.filter((s) =>
+          (CURATED_SLOTS as readonly string[]).includes(s.slot),
+        )
+        const visibleSlots = showAllCosmetics ? renderableSlots : curatedSlots
+        // Are there any non-curated slots to reveal? (Drives whether the toggle is offered at all.)
+        const hasMoreSlots = renderableSlots.length > curatedSlots.length
+        // Split the visible slots across the two side rails so the spirit sits centered between
+        // them. COUNT-DRIVEN, not name-driven, so the layout stays balanced for ANY catalog: deal
+        // the first half to the left rail and the rest to the right. With an odd total the left
+        // rail takes the extra one (ceil) — never a lopsided or dropped slot.
+        const splitAt = Math.ceil(visibleSlots.length / 2)
+        const leftRail = visibleSlots.slice(0, splitAt)
+        const rightRail = visibleSlots.slice(splitAt)
         return (
           <>
             {/* The hero: a COMPACT status read-out (name / stage / path / bond) plus the single
@@ -689,12 +710,11 @@ export default function SpiritPage() {
             >
               <header className="spirit-section-head">
                 <h2 className="spirit-section-title">Customize</h2>
+                {/* Beginner-first (Phase 3): a warm one-line teaser, not the full skill-tree pitch.
+                    The deeper "unlock along each tree" framing lives below the reveal. */}
                 <p className="muted spirit-section-subtitle">
-                  Unlock adornments along each tree, then equip your favourites.
+                  Spend coins you earn through practice to give your companion a look.
                 </p>
-                {/* Signature set status (ADR-0028) — the active "Signature radiance" badge, or a
-                    quiet progress nudge toward equipping all 7 path-exclusive capstones. */}
-                <SetBonusStatus setBonus={spirit.set_bonus} />
               </header>
               {renderableSlots.length === 0 ? (
                 <p className="muted">
@@ -704,6 +724,8 @@ export default function SpiritPage() {
                 // The customization stage: the spirit pinned in the CENTRE (large, sticky, live-
                 // previewing whatever side node is hovered/focused), with the cosmetic trees
                 // arranged on the LEFT and RIGHT rails around it — a calm, game-like dressing room.
+                // Beginner-first (Phase 3): only the CURATED slots (aura + accessory) show by
+                // default; the rest + the set-bonus status sit behind the reveal below.
                 <div className="spirit-customize">
                   <div className="spirit-customize-rail" aria-label="Customization slots">
                     {leftRail.map(renderSlot)}
@@ -735,6 +757,29 @@ export default function SpiritPage() {
                   <div className="spirit-customize-rail" aria-label="More customization slots">
                     {rightRail.map(renderSlot)}
                   </div>
+                </div>
+              )}
+
+              {/* Show all customization — a calm reveal (collapsed by default). Behind it: the
+                  remaining slots (rendered above once `showAllCosmetics` is on) and the signature
+                  set-bonus status. Only offered when there's actually more to show. No required
+                  motion, so it respects prefers-reduced-motion for free. */}
+              {renderableSlots.length > 0 && hasMoreSlots && (
+                <div className="spirit-customize-more">
+                  <button
+                    type="button"
+                    className="spirit-customize-reveal"
+                    aria-expanded={showAllCosmetics}
+                    onClick={() => setShowAllCosmetics((v) => !v)}
+                  >
+                    {showAllCosmetics ? 'Show less' : 'Show all customization →'}
+                  </button>
+                  {showAllCosmetics && (
+                    // Signature set status (ADR-0028) — the active "Signature radiance" badge, or a
+                    // quiet progress nudge toward equipping all 7 path-exclusive capstones. Tucked
+                    // here so a beginner meets it only after opting into the full economy.
+                    <SetBonusStatus setBonus={spirit.set_bonus} />
+                  )}
                 </div>
               )}
             </section>

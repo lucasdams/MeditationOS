@@ -134,6 +134,12 @@ async function showTab(tab: 'Care' | 'Customize' | 'Collection') {
 function revealLocked() {
   fireEvent.click(screen.getByRole('button', { name: /more unlock as you grow/ }))
 }
+// Beginner-first (Phase 3): the Customize tab shows only the curated aura + accessory slots by
+// default; the rest of the slots AND the signature set-bonus status hide behind "Show all
+// customization". Click it to reveal them. (No-op-safe to call only when the toggle is present.)
+function showAllCosmetics() {
+  fireEvent.click(screen.getByRole('button', { name: /Show all customization/ }))
+}
 
 describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
   beforeEach(() => {
@@ -393,6 +399,8 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
 
     renderPage()
     await showTab('Customize')
+    // habitat is a non-curated slot — reveal the full set before its nodes are present.
+    showAllCosmetics()
     const nightBtn = await screen.findByRole('button', { name: /Unlock Night sky/ })
 
     // Nothing owned/previewed yet → no night backdrop, no Preview badge.
@@ -414,6 +422,8 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
 
     renderPage()
     await showTab('Customize')
+    // habitat is a non-curated slot — reveal the full set before its nodes are present.
+    showAllCosmetics()
     const nightBtn = await screen.findByRole('button', { name: /Unlock Night sky/ })
 
     const stage = document.querySelector('.spirit-stage-art .spirit-svg')
@@ -653,9 +663,18 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
     get.mockReset()
   })
 
+  // A non-curated slot so the "Show all customization" reveal is offered (the set-bonus status now
+  // lives behind it). The default `auraTree` alone is fully curated → no reveal would render.
+  const extraHabitat: SpiritAvailableSlot = {
+    slot: 'habitat',
+    equipped: null,
+    options: [opt({ option: 'night', cost: 80, tier: 1, unlockable: true })],
+  }
+
   it('shows a quiet progress line when the signature set is incomplete', async () => {
     get.mockResolvedValue(
       spiritWith({
+        available: [auraTree, extraHabitat],
         set_bonus: {
           active: false,
           kind: null,
@@ -668,6 +687,8 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
 
     renderPage()
     await showTab('Customize')
+    // The set-bonus status is tucked behind "Show all customization" (Phase 3) — reveal it.
+    showAllCosmetics()
 
     // The incomplete-set nudge shows progress (3/7) and the "equip your exclusive capstones" hint,
     // and NO active badge.
@@ -680,6 +701,7 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
   it('shows the active "Signature radiance" badge when the full set is equipped', async () => {
     get.mockResolvedValue(
       spiritWith({
+        available: [auraTree, extraHabitat],
         set_bonus: {
           active: true,
           kind: 'signature',
@@ -692,12 +714,89 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
 
     renderPage()
     await showTab('Customize')
+    // The set-bonus status is tucked behind "Show all customization" (Phase 3) — reveal it.
+    showAllCosmetics()
 
     // The active badge names the bonus and confirms all 7 pieces are equipped.
     expect(screen.getByText('Signature radiance')).toBeInTheDocument()
     expect(screen.getByText(/all 7 signature pieces equipped/)).toBeInTheDocument()
     // No progress nudge while complete.
     expect(screen.queryByText(/signature pieces equipped — equip/)).toBeNull()
+  })
+})
+
+// --- Beginner-first (Phase 3 — "gentle the game"): curated default + "Show all customization" ---
+
+describe('SpiritPage curated cosmetics (Phase 3)', () => {
+  beforeEach(() => {
+    get.mockReset()
+  })
+
+  // A catalog spanning a curated slot (aura) and several non-curated ones (habitat / companion),
+  // so the default shows only aura+accessory-class slots and the rest hide behind the reveal.
+  const accessoryTree: SpiritAvailableSlot = {
+    slot: 'accessory',
+    equipped: null,
+    options: [opt({ option: 'scarf', cost: 40, tier: 1, unlockable: true })],
+  }
+  const habitatTree: SpiritAvailableSlot = {
+    slot: 'habitat',
+    equipped: null,
+    options: [opt({ option: 'night', cost: 80, tier: 1, unlockable: true })],
+  }
+  const companionTree: SpiritAvailableSlot = {
+    slot: 'companion',
+    equipped: null,
+    options: [opt({ option: 'sprite', cost: 90, tier: 1, unlockable: true })],
+  }
+
+  const slotEl = (slot: string) =>
+    document.querySelector(`.spirit-slot[data-slot="${slot}"]`)
+
+  it('shows only the curated aura + accessory slots by default, hiding the rest + the set-bonus', async () => {
+    get.mockResolvedValue(
+      spiritWith({
+        available: [auraTree, accessoryTree, habitatTree, companionTree],
+        set_bonus: { active: false, kind: null, count: 2, total: 7, label: 'Signature radiance' },
+      }),
+    )
+
+    renderPage()
+    await showTab('Customize')
+
+    // Curated slots are visible by default…
+    expect(slotEl('aura')).not.toBeNull()
+    expect(slotEl('accessory')).not.toBeNull()
+    // …the rest are tucked away, as is the signature set-bonus status.
+    expect(slotEl('habitat')).toBeNull()
+    expect(slotEl('companion')).toBeNull()
+    expect(screen.queryByText(/signature pieces equipped/)).toBeNull()
+
+    // Revealing surfaces the remaining slots + the set-bonus status.
+    showAllCosmetics()
+    expect(slotEl('habitat')).not.toBeNull()
+    expect(slotEl('companion')).not.toBeNull()
+    expect(slotEl('aura')).not.toBeNull() // curated stays visible
+    expect(screen.getByText(/2\/7 signature pieces equipped/)).toBeInTheDocument()
+
+    // The toggle flips to "Show less" and can collapse again.
+    fireEvent.click(screen.getByRole('button', { name: /Show less/ }))
+    expect(slotEl('habitat')).toBeNull()
+    expect(screen.queryByText(/signature pieces equipped/)).toBeNull()
+  })
+
+  it('does not offer the reveal when every renderable slot is already curated', async () => {
+    get.mockResolvedValue(
+      spiritWith({ available: [auraTree, accessoryTree] }),
+    )
+
+    renderPage()
+    await showTab('Customize')
+
+    // Both slots show and there's nothing more to reveal → no toggle.
+    expect(slotEl('aura')).not.toBeNull()
+    expect(slotEl('accessory')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: /Show all customization/ })).toBeNull()
   })
 })
 

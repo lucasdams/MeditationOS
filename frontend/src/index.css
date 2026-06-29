@@ -3928,6 +3928,34 @@ button.today-action:disabled {
   text-decoration: underline;
 }
 
+/* Beginner-first (Phase 3): the "Show all customization" reveal. A calm, centred row under the
+   curated set — a quiet outlined pill, never a shouty CTA — that unfolds the rest of the slots and
+   the set-bonus status. No transition is required, so it respects prefers-reduced-motion for free. */
+.spirit-customize-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+.spirit-customize-reveal {
+  padding: 0.45rem 1rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+.spirit-customize-reveal:hover,
+.spirit-customize-reveal:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--text-muted));
+  background: var(--bg-surface);
+}
+
 /* A tree node — one cosmetic option, with its label + need tag and a state-driven control. The
    left edge carries a 3px state stripe (set per-state below) so the five states are legible at a
    glance even before reading the control. */
