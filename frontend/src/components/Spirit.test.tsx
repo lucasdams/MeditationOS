@@ -258,25 +258,15 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     return n
   }
 
-  // Kapha's seated body is the widest/tallest ellipse in the group (lotus petals + body are
-  // ellipses; the body ellipse keys off bodyW/bodyH, so its rx/ry track the proportion variant).
-  const bodyEllipse = (over: Partial<SpiritState>): { rx: number; ry: number } => {
+  // Renders a Kapha creature with the given cosmetics and returns its creature group, so a test can
+  // count the SVG elements that make up the swapped-in body form (orbs, stones, orbit outlines).
+  const kaphaCreature = (over: Partial<SpiritState>): SVGGElement => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ stage: 'radiant', path: 'stillness', ...over })} />,
     )
-    const ellipses = Array.from(container.querySelectorAll('.spirit-creature ellipse'))
-    // The body ellipse is the one with the largest rx (bodyW * 0.62 dwarfs the lotus petals).
-    const body = ellipses.reduce((widest, el) => {
-      const rx = parseFloat(el.getAttribute('rx') ?? '0')
-      const wrx = parseFloat(widest?.getAttribute('rx') ?? '0')
-      return rx > wrx ? el : widest
-    }, ellipses[0])
-    const result = {
-      rx: parseFloat(body.getAttribute('rx') ?? '0'),
-      ry: parseFloat(body.getAttribute('ry') ?? '0'),
-    }
+    const group = container.querySelector('.spirit-creature') as SVGGElement
     cleanup()
-    return result
+    return group
   }
 
   it('draws MORE trailing legs with form=tendrils than a bare Vata', () => {
@@ -303,16 +293,26 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(emberlit).toBeLessThan(bare)
   })
 
-  it('widens the Kapha seated body with form=grounded', () => {
-    const bare = bodyEllipse({})
-    const grounded = bodyEllipse({ cosmetics: { form: 'grounded' } })
-    expect(grounded.rx).toBeGreaterThan(bare.rx)
+  it('swaps the Kapha body for a HUDDLE of multiple orbs with form=cluster', () => {
+    // The default Kapha body is a single seated ellipse + head circle; `cluster` replaces it with a
+    // huddle of several body circles, so the creature gains many more <circle> orbs.
+    const bareCircles = kaphaCreature({}).querySelectorAll('circle').length
+    const clusterCircles = kaphaCreature({ cosmetics: { form: 'cluster' } }).querySelectorAll(
+      'circle',
+    ).length
+    expect(clusterCircles).toBeGreaterThan(bareCircles + 2)
   })
 
-  it('heightens the Kapha seated body with form=monolith', () => {
-    const bare = bodyEllipse({})
-    const monolith = bodyEllipse({ cosmetics: { form: 'monolith' } })
-    expect(monolith.ry).toBeGreaterThan(bare.ry)
+  it('swaps the Kapha body for ellipse OUTLINES (an atom) with form=orbital', () => {
+    // The default Kapha has no fill="none" ellipses in the body; `orbital` draws orbit OUTLINES.
+    const strokedEllipses = (group: SVGGElement) =>
+      Array.from(group.querySelectorAll('ellipse')).filter(
+        (el) => el.getAttribute('fill') === 'none',
+      ).length
+    expect(strokedEllipses(kaphaCreature({}))).toBe(0)
+    expect(strokedEllipses(kaphaCreature({ cosmetics: { form: 'orbital' } }))).toBeGreaterThanOrEqual(
+      3,
+    )
   })
 
   it('leaves a bare Vata / Pitta / Kapha (no form) pixel-identical to an empty cosmetics map', () => {
@@ -343,8 +343,8 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(markup('stillness', { form: 'tendrils' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'wildfire' })).toBe(markup('heart', {}))
     expect(markup('stillness', { form: 'wildfire' })).toBe(markup('stillness', {}))
-    expect(markup('heart', { form: 'grounded' })).toBe(markup('heart', {}))
-    expect(markup('breath', { form: 'grounded' })).toBe(markup('breath', {}))
+    expect(markup('heart', { form: 'cluster' })).toBe(markup('heart', {}))
+    expect(markup('breath', { form: 'cluster' })).toBe(markup('breath', {}))
   })
 })
 

@@ -284,18 +284,19 @@ export const OPTION_LABEL: Record<string, string> = {
   small: 'Small',
   large: 'Large',
   giant: 'Giant',
-  // BODY-shape forms (the `form` slot) — vary each creature's silhouette. Per-path: Vata wisps,
-  // Pitta blazes, Kapha seated figures. (Kapha's broad form is `grounded`, not `boulder`, so it
-  // doesn't collide with the mossy-boulder MOUNT in this global label map.)
+  // BODY-shape forms (the `form` slot) — swap each creature's body for an alternate form. Per-path:
+  // Vata wisps, Pitta blazes, Kapha still-life bodies (a huddle, a stone cairn, an orbiting atom).
+  // (Kapha's `cairn` key labels the stone-stack body here, distinct from the mossy-boulder MOUNT,
+  // whose own `boulder` key lives above in this global label map.)
   tendrils: 'Tendrils',
   sleek: 'Sleek',
   billowy: 'Billowy',
   wildfire: 'Wildfire',
   emberlit: 'Ember',
   bonfire: 'Bonfire',
-  grounded: 'Boulder',
-  monolith: 'Monolith',
+  cluster: 'Cluster',
   cairn: 'Cairn',
+  orbital: 'Orbital',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -3190,27 +3191,15 @@ function StillnessForm({
   // Grows up the ladder; everything is centred on x=40.
   const scale = 0.7 + p * 0.55
   const cy = 44
-  // The `form` (shape) cosmetic varies the seated figure's PROPORTIONS (there's no count to vary):
-  // width/height multipliers applied to bodyW/bodyH, which the head circle, folded-legs path, lotus
-  // petals and body ellipse all key off — so the WHOLE figure scales coherently (head stays
-  // attached, lotus stays under it). Absent / unknown → the identity look (both multipliers 1), so a
-  // bare Kapha is pixel-identical to before. Only `stillness` keys matter; other doshas ignore them.
-  let widthMul = 1
-  let heightMul = 1
-  if (form === 'grounded') {
-    // A grounded, broad figure — a wide base, normal height.
-    widthMul = 1.3
-  } else if (form === 'monolith') {
-    // A serene, elongated figure — taller and a touch narrower.
-    heightMul = 1.2
-    widthMul = 0.86
-  } else if (form === 'cairn') {
-    // A compact, solid figure — broad and squat.
-    widthMul = 1.26
-    heightMul = 0.84
-  }
-  const bodyW = 16 * scale * widthMul
-  const bodyH = 18 * scale * heightMul
+  const bodyW = 16 * scale
+  const bodyH = 18 * scale
+  // The `form` (shape) cosmetic swaps the CENTRAL BODY for a genuinely different still-life form
+  // (the seated figure, a huddle of orbs, a balanced stone cairn, or an orbiting atom). The lotus
+  // base, halo, glow and folded-legs framing stay the same for every form. Absent / unknown →
+  // `seated`, the identity look, so a bare Kapha is pixel-identical to before. Only `stillness`
+  // keys matter; other doshas ignore them and fall through to the seated default.
+  const bodyForm =
+    form === 'cluster' || form === 'cairn' || form === 'orbital' ? form : 'seated'
   return (
     <g>
       {/* Lotus base, from fledgling onward — a few warm petals under the seated figure. */}
@@ -3251,27 +3240,150 @@ function StillnessForm({
         fill={pal.accent}
         opacity={(0.6 + 0.3 * p) * g}
       />
-      {/* The seated body — a calm rounded torso. */}
-      <ellipse
-        cx={40}
-        cy={cy}
-        rx={bodyW * 0.62}
-        ry={bodyH * 0.55}
-        fill={pal.glow}
-        opacity={(0.7 + 0.25 * p) * g}
-      />
-      {/* The head — appears as a distinct, brighter mote from wisp; a lone mote at spark. */}
-      <circle
-        cx={40}
-        cy={cy - bodyH * 0.5}
-        r={i >= 2 ? 5 * scale : 6 * scale}
-        fill={pal.core}
-        opacity={(0.85 + 0.15 * p) * g}
-      />
-      {/* Inner-light highlight for the seated mote. */}
-      <circle cx={38.5} cy={cy - bodyH * 0.5 - 1} r={1.6 * scale} fill="#ffffff" opacity={0.8 * g} />
-      {/* Radiant gains a small ushnisha crown-point — the final flourish. */}
-      {i >= 5 && <circle cx={40} cy={cy - bodyH * 0.5 - 5 * scale} r={1.8} fill={pal.accent} opacity={0.9 * g} />}
+      {/* ── The central body — the seated default, or a `form` variant in its place. ── */}
+      {bodyForm === 'seated' && (
+        <>
+          {/* The seated body — a calm rounded torso. */}
+          <ellipse
+            cx={40}
+            cy={cy}
+            rx={bodyW * 0.62}
+            ry={bodyH * 0.55}
+            fill={pal.glow}
+            opacity={(0.7 + 0.25 * p) * g}
+          />
+          {/* The head — appears as a distinct, brighter mote from wisp; a lone mote at spark. */}
+          <circle
+            cx={40}
+            cy={cy - bodyH * 0.5}
+            r={i >= 2 ? 5 * scale : 6 * scale}
+            fill={pal.core}
+            opacity={(0.85 + 0.15 * p) * g}
+          />
+          {/* Inner-light highlight for the seated mote. */}
+          <circle cx={38.5} cy={cy - bodyH * 0.5 - 1} r={1.6 * scale} fill="#ffffff" opacity={0.8 * g} />
+          {/* Radiant gains a small ushnisha crown-point — the final flourish. */}
+          {i >= 5 && <circle cx={40} cy={cy - bodyH * 0.5 - 5 * scale} r={1.8} fill={pal.accent} opacity={0.9 * g} />}
+        </>
+      )}
+
+      {/* `cluster` — a calm huddle of overlapping orbs/stones, more + larger up the stages. The
+          larger orbs read as `glow`, two highlights as `core`, one or two as `accent`; a white core
+          highlight crowns the brightest. Laid out in a rounded blob over the lotus base. */}
+      {bodyForm === 'cluster' &&
+        (() => {
+          const count = 4 + i // 5 → 9 orbs across spark → radiant
+          // A deterministic rounded-blob scatter around (40, cy): each orb on a jittered ring.
+          const orbs = Array.from({ length: count }, (_, k) => {
+            const a = (k / count) * Math.PI * 2 + 0.6
+            // Alternate inner/outer ring so the blob fills rather than forming a hollow ring.
+            const ring = (k % 3 === 0 ? 0.35 : k % 2 === 0 ? 0.7 : 1) * bodyW * 0.62
+            const r = (3 + ((k * 1.7) % 4)) * scale // radii spread 3–7 * scale
+            return {
+              k,
+              cx: 40 + Math.cos(a) * ring,
+              // Flatten vertically so the huddle sits low and wide on the base.
+              cy: cy + Math.sin(a) * ring * 0.62,
+              r,
+            }
+          })
+          // Brightest orb = the largest; gets the white core highlight.
+          const bright = orbs.reduce((m, o) => (o.r > m.r ? o : m), orbs[0])
+          return (
+            <>
+              {orbs.map((o) => {
+                const fill =
+                  o.k % 4 === 1 ? pal.core : o.k % 4 === 3 ? pal.accent : pal.glow
+                return (
+                  <circle
+                    key={o.k}
+                    cx={o.cx}
+                    cy={o.cy}
+                    r={o.r}
+                    fill={fill}
+                    opacity={(0.72 + 0.2 * p) * g}
+                  />
+                )
+              })}
+              <circle
+                cx={bright.cx - bright.r * 0.3}
+                cy={bright.cy - bright.r * 0.3}
+                r={1.5 * scale}
+                fill="#ffffff"
+                opacity={0.85 * g}
+              />
+            </>
+          )
+        })()}
+
+      {/* `cairn` — a balanced vertical stack of flattened ellipse "stones", largest at the bottom
+          rising smaller, earthy fills bottom→top (deep, accent, glow), capped by a small core stone.
+          More stones up the stages. Stacked from the lotus base upward, centred on x=40. */}
+      {bodyForm === 'cairn' &&
+        (() => {
+          const count = Math.min(5, 3 + Math.floor(i / 2)) // 3 → 5 stones
+          const fills = [pal.deep, pal.accent, pal.glow, pal.core, pal.glow]
+          const baseY = cy + bodyH * 0.5 // bottom of the stack rests on the base
+          let y = baseY
+          const stones = Array.from({ length: count }, (_, k) => {
+            // Largest at the bottom, tapering up.
+            const t = k / (count - 1)
+            const rx = (10 - 5.5 * t) * scale
+            const ry = (3.4 - 1.1 * t) * scale
+            const sy = y - ry
+            y = sy - ry * 0.9 // next stone sits just above, with a slight overlap
+            return { k, rx, ry, cy: sy, fill: fills[Math.min(k, fills.length - 1)] }
+          })
+          return (
+            <>
+              {stones.map((s) => (
+                <ellipse
+                  key={s.k}
+                  cx={40}
+                  cy={s.cy}
+                  rx={s.rx}
+                  ry={s.ry}
+                  fill={s.fill}
+                  opacity={(0.78 + 0.18 * p) * g}
+                />
+              ))}
+            </>
+          )
+        })()}
+
+      {/* `orbital` — an atom / star: a bright core with a white highlight, ringed by ellipse
+          OUTLINES rotated 0/60/120° (and a 4th at the top stages), each carrying a small "electron"
+          dot. Reads as an atom/flower/star; longer orbits up the stages. Centred on (40, cy). */}
+      {bodyForm === 'orbital' &&
+        (() => {
+          const long = i >= 4 // ascendant+ stretches the orbits and adds a 4th
+          const orx = (long ? 15.5 : 14) * scale
+          const ory = 5 * scale
+          const angles = long ? [0, 45, 90, 135] : [0, 60, 120]
+          return (
+            <>
+              {angles.map((deg, k) => (
+                <g key={k} transform={`rotate(${deg} 40 ${cy})`}>
+                  <ellipse
+                    cx={40}
+                    cy={cy}
+                    rx={orx}
+                    ry={ory}
+                    fill="none"
+                    stroke={pal.accent}
+                    strokeWidth={1}
+                    opacity={0.7 * g}
+                  />
+                  {/* An electron dot riding the orbit (on the +x side of the ellipse). */}
+                  <circle cx={40 + orx} cy={cy} r={1} fill={pal.glow} opacity={0.9 * g} />
+                </g>
+              ))}
+              {/* The bright nucleus. */}
+              <circle cx={40} cy={cy} r={4 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
+              <circle cx={38.7} cy={cy - 1.2} r={1.3 * scale} fill="#ffffff" opacity={0.85 * g} />
+            </>
+          )
+        })()}
     </g>
   )
 }

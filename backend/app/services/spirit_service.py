@@ -792,10 +792,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "wildfire": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1},
         "emberlit": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": RESTED, "tier": 1},
         "bonfire": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
-        # Kapha (stillness) — proportion variants of the seated figure (no count to vary).
-        "grounded": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1},
-        "monolith": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
-        "cairn": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2},
+        # Kapha (stillness) — alternate still-life bodies (a huddle of orbs, a stone cairn, an
+        # orbiting atom) that REPLACE the seated figure, not just restretch it.
+        "cluster": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1},
+        "cairn": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
+        "orbital": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2},
     },
 }
 

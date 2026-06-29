@@ -1159,12 +1159,12 @@ def test_body_cosmetics_are_user_scoped(client):
 # `form` is a BODY cosmetic that changes the creature's SILHOUETTE (its trailing wisp/leg count +
 # proportions), not just colour/size. Unlike palette/size it is PER-PATH: every option is exclusive
 # to ONE dosha, so each creature sees + buys only ITS OWN shapes — Vata's airy wisps (heart),
-# Pitta's blazes (breath), Kapha's seated figures (stillness). It is still a body cosmetic, NOT a
+# Pitta's blazes (breath), Kapha's still-life bodies (stillness). It is still a body cosmetic, NOT a
 # signature capstone, so it stays OUTSIDE the signature set (total 7).
 _FORM_OPTIONS_BY_PATH = {
     "heart": {"tendrils", "sleek", "billowy"},
     "breath": {"wildfire", "emberlit", "bonfire"},
-    "stillness": {"grounded", "monolith", "cairn"},
+    "stillness": {"cluster", "cairn", "orbital"},
 }
 _FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
 
@@ -1172,7 +1172,7 @@ _FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
 def test_form_slot_is_in_the_catalog_per_path(client):
     """The `form` slot appears in the static catalog with every option a well-formed
     `{cost, unlock_level, tier, need, per_path}` — each EXCLUSIVE to exactly one dosha (Vata's
-    wisps, Pitta's blazes, Kapha's seated figures), and the option keys don't overlap across paths."""
+    wisps, Pitta's blazes, Kapha's still-life bodies), and option keys don't overlap across paths."""
     assert "form" in SPIRIT_COSMETICS_CATALOG, "missing the form slot"
     assert set(SPIRIT_COSMETICS_CATALOG["form"]) == _FORM_OPTIONS
     for path, options in _FORM_OPTIONS_BY_PATH.items():
@@ -1221,7 +1221,7 @@ def test_unlock_and_equip_a_form_per_path(client):
     cases = [
         ("heart", "tendrils", "sleek"),
         ("breath", "wildfire", "bonfire"),
-        ("stillness", "grounded", "cairn"),
+        ("stillness", "cluster", "orbital"),
     ]
     for path, tier1, tier2 in cases:
         _auth(client, f"form_unlock_{path}@example.com")
@@ -1245,7 +1245,7 @@ def test_unlock_and_equip_a_form_per_path(client):
 def test_cannot_unlock_another_paths_form_404(client):
     """A spirit can't buy another dosha's form — it isn't in its catalog → 404, no charge. (Each
     path is offered one of the OTHER two paths' tier-1 forms.)"""
-    foreign = {"heart": "wildfire", "breath": "grounded", "stillness": "tendrils"}
+    foreign = {"heart": "wildfire", "breath": "cluster", "stillness": "tendrils"}
     for path, option in foreign.items():
         _auth(client, f"form_wrongpath_{path}@example.com")
         assert _choose(client, path).status_code == 200
@@ -1261,7 +1261,7 @@ def test_cannot_unlock_another_paths_form_404(client):
 def test_form_is_user_scoped(client):
     """A form unlocked by one spirit is NOT owned by another — the loadout is per-user. Covers a
     Pitta and a Kapha form (each user-scoped to its owner)."""
-    for path, option in (("breath", "wildfire"), ("stillness", "grounded")):
+    for path, option in (("breath", "wildfire"), ("stillness", "cluster")):
         _auth(client, f"form_owner_{path}@example.com")
         assert _choose(client, path).status_code == 200
         _earn_to_level(client, 1)
