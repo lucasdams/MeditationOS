@@ -458,9 +458,9 @@ const PATH_PALETTE: Record<SpiritPath, BodyPalette> = {
   // parts (campfire logs, torch handle, lantern frame, coals). (Was a teal water-base, retired with
   // the old fire+water pool in the clean-flame redesign.)
   breath: { core: '#fff7ed', glow: '#fb923c', accent: '#ef4444', deep: '#7c2d12' },
-  // Vata — air + ether: a pale luminous core (`core`), a soft sky-blue body (`glow`), a lavender
-  // breeze accent (`accent`), and a deeper periwinkle base for wisps/leaves (`deep`).
-  heart: { core: '#f5f7ff', glow: '#bae6fd', accent: '#c4b5fd', deep: '#818cf8' },
+  // Vata — air + ether: a pale luminous core (`core`), a soft warm-mauve body (`glow`), a dusty
+  // rose-mauve breeze accent (`accent`), and a deeper warm mauve base for wisps/leaves (`deep`).
+  heart: { core: '#fbf6fb', glow: '#e3cbdf', accent: '#c39fcc', deep: '#9a6b9c' },
 }
 
 // COSMETIC RECOLOUR (the `palette` slot) — a body recolour applied IN PLACE of the dosha's default
@@ -472,10 +472,10 @@ const PATH_PALETTE: Record<SpiritPath, BodyPalette> = {
 const PALETTES: Record<string, { core: string; glow: string; accent: string; deep: string }> = {
   ember: { core: '#fff1e6', glow: '#fb923c', accent: '#ef4444', deep: '#b91c1c' },
   rose: { core: '#fff0f4', glow: '#fb7185', accent: '#e11d48', deep: '#9f1239' },
-  frost: { core: '#eef6ff', glow: '#7dd3fc', accent: '#38bdf8', deep: '#0369a1' },
+  frost: { core: '#eef7f5', glow: '#9fded2', accent: '#5bb3a4', deep: '#0f766e' },
   sage: { core: '#f0f7ec', glow: '#a3c293', accent: '#6f9460', deep: '#3f6212' },
   gold: { core: '#fff8e6', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
-  dusk: { core: '#f3eefb', glow: '#c4b5fd', accent: '#8b5cf6', deep: '#6d28d9' },
+  dusk: { core: '#f5eef3', glow: '#d8b9d2', accent: '#a878a8', deep: '#7d5a86' },
   aqua: { core: '#e6fbf6', glow: '#5eead4', accent: '#14b8a6', deep: '#0f766e' },
   coral: { core: '#fff1ea', glow: '#fdba74', accent: '#f97316', deep: '#c2410c' },
   mint: { core: '#eafff5', glow: '#6ee7b7', accent: '#10b981', deep: '#047857' },
@@ -483,7 +483,7 @@ const PALETTES: Record<string, { core: string; glow: string; accent: string; dee
   plum: { core: '#fbeefb', glow: '#e879f9', accent: '#c026d3', deep: '#86198f' },
   blossom: { core: '#fff0f7', glow: '#f9a8d4', accent: '#ec4899', deep: '#9d174d' },
   slate: { core: '#eef2f6', glow: '#94a3b8', accent: '#64748b', deep: '#334155' },
-  midnight: { core: '#ebebff', glow: '#a5b4fc', accent: '#6366f1', deep: '#312e81' },
+  midnight: { core: '#f0ebef', glow: '#b89db0', accent: '#8d6a78', deep: '#4a3340' },
 }
 
 // COSMETIC RESIZE (the `size` slot) — a uniform scale of the CREATURE BODY (+ its accessory),
@@ -581,7 +581,7 @@ export type SpiritCosmetics = Record<string, string>
 const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number }> = {
   soft: { tint: '#bfdbfe', grow: 4, strength: 2.0 },
   warm: { tint: '#fcd34d', grow: 6, strength: 2.6 },
-  starlit: { tint: '#c4b5fd', grow: 8, strength: 3.2 },
+  starlit: { tint: '#c39fcc', grow: 8, strength: 3.2 },
   ember: { tint: '#f97316', grow: 6, strength: 2.6 },
   frost: { tint: '#7dd3fc', grow: 6, strength: 2.4 },
   rose: { tint: '#fda4af', grow: 5, strength: 2.2 },
@@ -679,13 +679,13 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
           })}
         </>
       )}
-      {/* Twilight (tier 2, universal) — a deep-purple dusk glow: a darker indigo wash bleeding out
-          beyond the violet base into a graded inner core, with a scatter of faint first-stars high
-          in the halo where the dusk is deepest. */}
+      {/* Twilight (tier 2, universal) — a warm dusk glow: a deep plum-rose wash bleeding out beyond
+          a warmer inner core, with a scatter of faint golden first-stars high in the halo where the
+          dusk is deepest. */}
       {aura === 'twilight' && (
         <>
-          <circle cx={40} cy={40} r={r + 2} fill="#4c1d95" opacity={Math.min(0.34, 0.09 * g * strength)} />
-          <circle cx={40} cy={41} r={r - 10} fill="#7c3aed" opacity={Math.min(0.5, 0.16 * g * strength)} />
+          <circle cx={40} cy={40} r={r + 2} fill="#3d2433" opacity={Math.min(0.34, 0.09 * g * strength)} />
+          <circle cx={40} cy={41} r={r - 10} fill="#8d6a78" opacity={Math.min(0.5, 0.16 * g * strength)} />
           {Array.from({ length: 5 }, (_, k) => {
             const a = -Math.PI / 2 + (k - 2) * 0.5
             return (
@@ -694,7 +694,7 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
                 cx={40 + Math.cos(a) * (r - 3)}
                 cy={40 + Math.sin(a) * (r - 3)}
                 r={k % 2 ? 0.9 : 0.6}
-                fill={k % 2 ? '#ede9fe' : '#c4b5fd'}
+                fill={k % 2 ? '#fdf3e0' : '#e3a83c'}
                 opacity={0.85 * g}
               />
             )
@@ -748,7 +748,7 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
       {aura === 'prismatic' && (
         <>
           <circle cx={40} cy={40} r={r - 14} fill="#ffffff" opacity={Math.min(0.5, 0.16 * g * strength)} />
-          {['#f87171', '#fb923c', '#fde047', '#4ade80', '#38bdf8', '#818cf8', '#c084fc'].map(
+          {['#f87171', '#fb923c', '#fde047', '#4ade80', '#38bdf8', '#b07ad6', '#c084fc'].map(
             (hue, k) => (
               <circle
                 key={`prism-ring-${k}`}
@@ -764,7 +764,7 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
           )}
           {Array.from({ length: 10 }, (_, k) => {
             const a = (k / 10) * Math.PI * 2 + 0.25
-            const hues = ['#fef08a', '#fca5a5', '#a5b4fc', '#86efac', '#f0abfc']
+            const hues = ['#fef08a', '#fca5a5', '#d8b9d2', '#86efac', '#f0abfc']
             return (
               <circle
                 key={`prism-mote-${k}`}
@@ -929,7 +929,7 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
         {Array.from({ length: 9 }, (_, k) => {
           const a = (k / 9) * Math.PI * 2
           return (
-            <circle key={k} cx={40 + Math.cos(a) * 31} cy={38 + Math.sin(a) * 28} r={0.9} fill="#e0e7ff" opacity={0.9} />
+            <circle key={k} cx={40 + Math.cos(a) * 31} cy={38 + Math.sin(a) * 28} r={0.9} fill="#fdf3e0" opacity={0.9} />
           )
         })}
         {/* A couple of brighter twinkles in the corners for atmosphere. */}
@@ -1064,7 +1064,7 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
           const a = (k / 14) * Math.PI * 2
           const r = k % 2 ? 33 : 29
           return (
-            <circle key={k} cx={40 + Math.cos(a) * r} cy={38 + Math.sin(a) * (r - 3)} r={k % 3 ? 0.8 : 1.3} fill="#e0e7ff" opacity={0.9} />
+            <circle key={k} cx={40 + Math.cos(a) * r} cy={38 + Math.sin(a) * (r - 3)} r={k % 3 ? 0.8 : 1.3} fill="#fdf3e0" opacity={0.9} />
           )
         })}
         {/* Drifting shooting stars raking the corners — a bright head with a fading tail. */}
@@ -1074,7 +1074,7 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
           { x: 20, y: 50, dx: 9, dy: 3 },
         ].map((m, k) => (
           <g key={`meteor-${k}`}>
-            <line x1={m.x} y1={m.y} x2={m.x - m.dx} y2={m.y - m.dy} stroke="#c7d2fe" strokeWidth={0.8} strokeLinecap="round" opacity={0.6} />
+            <line x1={m.x} y1={m.y} x2={m.x - m.dx} y2={m.y - m.dy} stroke="#f3e3c2" strokeWidth={0.8} strokeLinecap="round" opacity={0.6} />
             <circle cx={m.x} cy={m.y} r={1.3} fill="#f8fafc" opacity={0.9} />
           </g>
         ))}
@@ -1153,13 +1153,13 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
     return (
       <g opacity={g} aria-hidden="true">
         {/* The deep cosmic void wash, faint so the figure stays bright in front. */}
-        <rect x={4} y={6} width={72} height={68} rx={10} fill="#1e1b4b" opacity={0.4} />
-        {/* Billowing nebula gas clouds pushed to the corners/edges, clear of the centre. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#2e1f2c" opacity={0.4} />
+        {/* Billowing warm nebula gas clouds pushed to the corners/edges, clear of the centre. */}
         {[
-          { cx: 14, cy: 18, rx: 14, ry: 10, c: '#7c3aed' },
-          { cx: 66, cy: 22, rx: 13, ry: 9, c: '#db2777' },
-          { cx: 18, cy: 58, rx: 12, ry: 8, c: '#2563eb' },
-          { cx: 64, cy: 60, rx: 13, ry: 9, c: '#9333ea' },
+          { cx: 14, cy: 18, rx: 14, ry: 10, c: '#9a6b9c' },
+          { cx: 66, cy: 22, rx: 13, ry: 9, c: '#bd6b6b' },
+          { cx: 18, cy: 58, rx: 12, ry: 8, c: '#c4744f' },
+          { cx: 64, cy: 60, rx: 13, ry: 9, c: '#8d6a78' },
         ].map((c, k) => (
           <ellipse key={`gas-${k}`} cx={c.cx} cy={c.cy} rx={c.rx} ry={c.ry} fill={c.c} opacity={0.26} />
         ))}
@@ -1167,7 +1167,7 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
         <path
           d="M 10 16 Q 30 8 50 14 T 72 24"
           fill="none"
-          stroke="#c4b5fd"
+          stroke="#d8b9d2"
           strokeWidth={1}
           strokeLinecap="round"
           opacity={0.4}
@@ -1184,7 +1184,7 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
               cx={sx}
               cy={sy}
               r={k % 4 === 0 ? 1.2 : 0.7}
-              fill={k % 3 ? '#e0e7ff' : '#fef9c3'}
+              fill={k % 3 ? '#fdf3e0' : '#fef9c3'}
               opacity={0.9}
             />
           )
@@ -1354,20 +1354,20 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
     })
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* A soft violet aura blooming behind the star. */}
-        <circle cx={sx} cy={sy} r={6.5} fill="#7c3aed" opacity={0.22} />
-        {/* The dark star body with a glowing violet edge. */}
+        {/* A soft golden aura blooming behind the star. */}
+        <circle cx={sx} cy={sy} r={6.5} fill="#d9a441" opacity={0.22} />
+        {/* The dark star body with a glowing amber edge. */}
         <polygon
           points={pts.join(' ')}
-          fill="#1e1b2e"
-          stroke="#a855f7"
+          fill="#2e2316"
+          stroke="#e3a83c"
           strokeWidth={0.9}
           strokeLinejoin="round"
         />
-        {/* A faint inner glint + two little violet sparks. */}
-        <circle cx={sx} cy={sy} r={0.7} fill="#c4b5fd" opacity={0.85} />
-        <circle cx={sx + 6} cy={sy - 4.5} r={0.6} fill="#a855f7" opacity={0.85} />
-        <circle cx={sx - 5.5} cy={sy - 1} r={0.5} fill="#c4b5fd" opacity={0.75} />
+        {/* A faint inner glint + two little golden sparks. */}
+        <circle cx={sx} cy={sy} r={0.7} fill="#fcd34d" opacity={0.85} />
+        <circle cx={sx + 6} cy={sy - 4.5} r={0.6} fill="#e3a83c" opacity={0.85} />
+        <circle cx={sx - 5.5} cy={sy - 1} r={0.5} fill="#fcd34d" opacity={0.75} />
       </g>
     )
   }
@@ -2454,8 +2454,8 @@ function Companion({ companion, g }: { companion: string; g: number }) {
           strokeWidth={0.5}
           strokeLinejoin="round"
         />
-        {/* The indigo spine/cover ridge down the middle. */}
-        <path d={`M ${baseX} ${cy - 3} l 0 6`} stroke="#4f46e5" strokeWidth={1.4} strokeLinecap="round" />
+        {/* The clay spine/cover ridge down the middle. */}
+        <path d={`M ${baseX} ${cy - 3} l 0 6`} stroke="#c4744f" strokeWidth={1.4} strokeLinecap="round" />
         {/* A few faint text lines on each page. */}
         {[0, 1.6, 3.2].map((dy, k) => (
           <g key={`line-${k}`}>
@@ -2775,32 +2775,32 @@ function Mount({ mount, g }: { mount: string; g: number }) {
   if (mount === 'crystal') {
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* A floating faceted crystal the spirit perches on — a violet gem with a flat upper
-            facet, bright cut faces, a soft glow halo and a few rising sparkles. */}
-        <ellipse cx={cx} cy={cy + 1} rx={15} ry={7} fill="#c4b5fd" opacity={0.35 * g} />
+        {/* A floating faceted crystal the spirit perches on — a warm rose-amethyst gem with a flat
+            upper facet, bright cut faces, a soft glow halo and a few rising sparkles. */}
+        <ellipse cx={cx} cy={cy + 1} rx={15} ry={7} fill="#d8b9d2" opacity={0.35 * g} />
         <path
           d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy - 6} L ${cx + 13} ${cy - 2}
               L ${cx + 8} ${cy + 5} L ${cx} ${cy + 8} L ${cx - 8} ${cy + 5} z`}
-          fill="#8b5cf6"
-          stroke="#6d28d9"
+          fill="#a878a8"
+          stroke="#7d5a86"
           strokeWidth={1}
         />
         <path
           d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy - 6} L ${cx + 13} ${cy - 2}
               L ${cx} ${cy + 1} z`}
-          fill="#c4b5fd"
+          fill="#d8b9d2"
         />
-        <path d={`M ${cx} ${cy - 6} L ${cx} ${cy + 8}`} stroke="#ddd6fe" strokeWidth={0.7} />
-        <path d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy + 1}`} stroke="#a78bfa" strokeWidth={0.7} />
-        <path d={`M ${cx + 13} ${cy - 2} L ${cx} ${cy + 1}`} stroke="#a78bfa" strokeWidth={0.7} />
-        <path d={`M ${cx - 8} ${cy + 5} L ${cx} ${cy + 1}`} stroke="#7c3aed" strokeWidth={0.6} />
-        <path d={`M ${cx + 8} ${cy + 5} L ${cx} ${cy + 1}`} stroke="#7c3aed" strokeWidth={0.6} />
-        <path d={`M ${cx - 4} ${cy - 4} l 4 -1`} stroke="#f5f3ff" strokeWidth={1} strokeLinecap="round" />
+        <path d={`M ${cx} ${cy - 6} L ${cx} ${cy + 8}`} stroke="#efe0ec" strokeWidth={0.7} />
+        <path d={`M ${cx - 13} ${cy - 2} L ${cx} ${cy + 1}`} stroke="#c39fcc" strokeWidth={0.7} />
+        <path d={`M ${cx + 13} ${cy - 2} L ${cx} ${cy + 1}`} stroke="#c39fcc" strokeWidth={0.7} />
+        <path d={`M ${cx - 8} ${cy + 5} L ${cx} ${cy + 1}`} stroke="#9a6b9c" strokeWidth={0.6} />
+        <path d={`M ${cx + 8} ${cy + 5} L ${cx} ${cy + 1}`} stroke="#9a6b9c" strokeWidth={0.6} />
+        <path d={`M ${cx - 4} ${cy - 4} l 4 -1`} stroke="#fdf6ea" strokeWidth={1} strokeLinecap="round" />
         {[-9, 0, 9].map((dx, k) => (
           <path
             key={`spark-${k}`}
             d={`M ${cx + dx} ${cy - 9 - (k % 2) * 2} l 0 -2 M ${cx + dx - 1} ${cy - 10 - (k % 2) * 2} l 2 0`}
-            stroke="#ddd6fe"
+            stroke="#efe0ec"
             strokeWidth={0.7}
             strokeLinecap="round"
             opacity={0.85 * g}
@@ -3153,7 +3153,7 @@ function Weather({ weather, g }: { weather: string; g: number }) {
             key={`ripple-${k}`}
             d={`M 4 ${y} Q 24 ${y - 5} 44 ${y} T 76 ${y}`}
             fill="none"
-            stroke={k % 2 ? '#ccfbf1' : '#ede9fe'}
+            stroke={k % 2 ? '#ccfbf1' : '#fbe7e3'}
             strokeWidth={0.8}
             strokeLinecap="round"
             opacity={0.5}
@@ -3359,7 +3359,7 @@ function Ground({ ground, g }: { ground: string; g: number }) {
   if (ground === 'cloudfloor') {
     return (
       <g opacity={0.9 * g} aria-hidden="true">
-        <rect x={2} y={top + 2} width={76} height={4} rx={2} fill="#bae6fd" opacity={0.4} />
+        <rect x={2} y={top + 2} width={76} height={4} rx={2} fill="#e3cbdf" opacity={0.4} />
         {[10, 22, 34, 46, 58, 70].map((x, k) => (
           <circle key={k} cx={x} cy={top + 1} r={4 + (k % 2)} fill="#f8fafc" opacity={0.9} />
         ))}

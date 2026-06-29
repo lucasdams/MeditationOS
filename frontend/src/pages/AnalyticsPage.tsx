@@ -19,7 +19,7 @@ import type {
 const TREND_DAYS = 84 // ~12 weeks
 const HR_COLOR = '#ef4444' // warm red for heart rate
 const HRV_COLOR = '#10b981' // green for HRV (higher generally = more recovered)
-const CALM_COLOR = '#6366f1' // indigo for calm (matches the default bar accent)
+const CALM_COLOR = '#3a7d6f' // warm teal-green for calm (matches the default bar accent)
 const FOCUS_COLOR = '#f59e0b' // amber for focus
 
 const TYPE_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ function Bar({
   value,
   max,
   suffix = '',
-  color = '#6366f1',
+  color = '#c4744f',
 }: {
   label: string
   value: number
@@ -671,7 +671,7 @@ export default function AnalyticsPage() {
                                   className="mood-seg"
                                   style={{
                                     height: `${(w.counts[m] / maxTotal) * 100}%`,
-                                    background: moodColors[m] ?? '#9ca3af',
+                                    background: moodColors[m] ?? '#a89a87',
                                   }}
                                 />
                               ) : null,
@@ -689,7 +689,7 @@ export default function AnalyticsPage() {
                         <span key={m} className="mood-legend-item">
                           <span
                             className="mood-legend-dot"
-                            style={{ background: moodColors[m] ?? '#9ca3af' }}
+                            style={{ background: moodColors[m] ?? '#a89a87' }}
                           />
                           {cap(m)}
                         </span>

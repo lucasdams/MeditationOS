@@ -144,13 +144,13 @@ describe('Spirit — path-specific forms', () => {
       expect(strokedPaths.length).toBeGreaterThan(0)
     })
 
-    it('uses the airy sky/lavender palette (not the old pink bloom)', () => {
+    it('uses the airy warm-mauve palette (not the old pink bloom)', () => {
       const { container } = renderSpirit(
         <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart' })} />,
       )
       const svg = container.querySelector('.spirit-svg')!.innerHTML
-      // Airy sky-blue body present; the retired pink bloom colour is gone.
-      expect(svg).toContain('#bae6fd')
+      // Warm-mauve body present; the retired pink bloom colour is gone.
+      expect(svg).toContain('#e3cbdf')
       expect(svg).not.toContain('#f9a8d4')
     })
 
@@ -189,9 +189,9 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
     // Bare Pitta: the dosha orange glow (#fb923c) is present.
     const bare = bodyMarkup({ path: 'breath' })
     expect(bare).toContain('#fb923c')
-    // With the `frost` palette: its sky-blue glow (#7dd3fc) appears and the dosha orange is gone.
+    // With the `frost` palette: its warm-teal glow (#9fded2) appears and the dosha orange is gone.
     const recoloured = bodyMarkup({ path: 'breath', cosmetics: { palette: 'frost' } })
-    expect(recoloured).toContain('#7dd3fc')
+    expect(recoloured).toContain('#9fded2')
     expect(recoloured).not.toContain('#fb923c')
     // A NEWER palette recolours the body the same way: the `ocean` glow (#60a5fa) appears and the
     // dosha orange is gone — every entry in PALETTES feeds the body ramp universally.
@@ -201,9 +201,9 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
   })
 
   it('keeps each dosha default when no palette cosmetic is set', () => {
-    // Stillness default amber glow (#fcd34d) present; Vata default sky glow (#bae6fd) present.
+    // Stillness default amber glow (#fcd34d) present; Vata default warm-mauve glow (#e3cbdf) present.
     expect(bodyMarkup({ path: 'stillness' })).toContain('#fcd34d')
-    expect(bodyMarkup({ path: 'heart' })).toContain('#bae6fd')
+    expect(bodyMarkup({ path: 'heart' })).toContain('#e3cbdf')
   })
 
   it('scales the creature group when a size cosmetic is set, and not when it is absent', () => {
@@ -288,8 +288,8 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
   }
   // The Vata palette colours (PATH_PALETTE.heart) — the object forms draw their structural parts in
   // these, so counting elements filled/stroked with each measures the object's distinctive shape.
-  const VATA_GLOW = '#bae6fd'
-  const VATA_DEEP = '#818cf8'
+  const VATA_GLOW = '#e3cbdf'
+  const VATA_DEEP = '#9a6b9c'
 
   it('draws a puffy CLOUD of several pal.glow bumps + a face with form=cloud', () => {
     const cloud = vataCreature({ cosmetics: { form: 'cloud' } })
@@ -970,17 +970,17 @@ describe('Spirit — new cosmetics render on the art', () => {
     expect(bare.container.querySelector('.spirit-svg path[fill="#f472b6"]')).toBeNull()
   })
 
-  it('draws the dark_star accessory (a near-black star with a violet glow)', () => {
+  it('draws the dark_star accessory (a dark star with a golden glow)', () => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'dark_star' } })} />,
     )
     const bare = renderSpirit(<Spirit spirit={spiritState({ path: 'breath' })} />)
-    // A near-black star polygon (#1e1b2e) edged in glowing violet (#a855f7) — distinct from the
+    // A dark star polygon (#2e2316) edged in glowing amber (#e3a83c) — distinct from the
     // gold pentagon `star`.
-    expect(container.querySelector('.spirit-svg polygon[fill="#1e1b2e"]')).not.toBeNull()
-    expect(container.querySelector('.spirit-svg polygon[stroke="#a855f7"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg polygon[fill="#2e2316"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg polygon[stroke="#e3a83c"]')).not.toBeNull()
     // The dark star differs from wearing nothing.
-    expect(bare.container.querySelector('.spirit-svg polygon[fill="#1e1b2e"]')).toBeNull()
+    expect(bare.container.querySelector('.spirit-svg polygon[fill="#2e2316"]')).toBeNull()
   })
 })
 
@@ -1072,12 +1072,12 @@ describe('Spirit — legendary tier-4 ultimates render on the art', () => {
     expect(container.querySelector('.spirit-svg ellipse[fill="#f472b6"]')).not.toBeNull()
   })
 
-  it('draws the nebula habitat backdrop (pink stellar gas)', () => {
+  it('draws the nebula habitat backdrop (warm stellar gas)', () => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ path: 'breath', cosmetics: { habitat: 'nebula' } })} />,
     )
-    // One billowing nebula gas cloud is a magenta ellipse (#db2777) — unique to the nebula art.
-    expect(container.querySelector('.spirit-svg ellipse[fill="#db2777"]')).not.toBeNull()
+    // One billowing nebula gas cloud is a warm dusty-rose ellipse (#bd6b6b) — unique to the nebula art.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#bd6b6b"]')).not.toBeNull()
   })
 
   it('draws the comet mount (blazing white star-core)', () => {
@@ -1152,8 +1152,8 @@ describe('Spirit — path-exclusive weather + ground capstones render on the art
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ path: 'heart', cosmetics: { ground: 'cloudfloor' } })} />,
     )
-    // The faint blue cloud-floor base shadow (#bae6fd rect).
-    expect(container.querySelector('.spirit-svg rect[fill="#bae6fd"]')).not.toBeNull()
+    // The faint warm-mauve cloud-floor base shadow (#e3cbdf rect).
+    expect(container.querySelector('.spirit-svg rect[fill="#e3cbdf"]')).not.toBeNull()
   })
 })
 

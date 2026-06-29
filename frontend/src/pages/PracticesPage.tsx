@@ -69,26 +69,26 @@ const GROUPS: PracticeGroup[] = [
   {
     title: 'Breathing',
     cards: [
-      { to: '/breathe?pattern=resonance', emoji: '🌊', name: 'Resonance', desc: 'Slow, longer-exhale breathing', kind: 'breathing', light: '#0369a1', dark: '#0ea5e9' },
-      { to: '/breathe?pattern=box', emoji: '🟦', name: 'Box', desc: 'Equal in·hold·out·hold', kind: 'breathing', light: '#4338ca', dark: '#818cf8' },
-      { to: '/breathe?pattern=energizing', emoji: '☀️', name: 'Energizing', desc: 'Brisk, active inhale', kind: 'breathing', light: '#b45309', dark: '#fbbf24' },
-      { to: '/breathe?pattern=alternate', emoji: '🌬️', name: 'Alternate nostril', desc: 'Nadi Shodhana — balance left & right', kind: 'breathing', light: '#6d28d9', dark: '#a78bfa' },
+      { to: '/breathe?pattern=resonance', emoji: '🌊', name: 'Resonance', desc: 'Slow, longer-exhale breathing', kind: 'breathing', light: '#3d8597', dark: '#7fc0d2' },
+      { to: '/breathe?pattern=box', emoji: '🟦', name: 'Box', desc: 'Equal in·hold·out·hold', kind: 'breathing', light: '#3a7d6f', dark: '#6fb6a8' },
+      { to: '/breathe?pattern=energizing', emoji: '☀️', name: 'Energizing', desc: 'Brisk, active inhale', kind: 'breathing', light: '#b45309', dark: '#e3a83c' },
+      { to: '/breathe?pattern=alternate', emoji: '🌬️', name: 'Alternate nostril', desc: 'Nadi Shodhana — balance left & right', kind: 'breathing', light: '#7d5a86', dark: '#c39fcc' },
     ],
   },
   {
     title: 'Meditation',
     cards: [
-      { to: '/meditate', emoji: '🧘', name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#0f766e', dark: '#14b8a6' },
-      { to: '/meditate?guided=body-scan', emoji: '🌙', name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#0369a1', dark: '#60a5fa' },
-      { to: '/meditate?guided=loving-kindness', emoji: '💗', name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#be185d', dark: '#f472b6' },
+      { to: '/meditate', emoji: '🧘', name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#0f766e', dark: '#5ec0b1' },
+      { to: '/meditate?guided=body-scan', emoji: '🌙', name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#3d8597', dark: '#7fc0d2' },
+      { to: '/meditate?guided=loving-kindness', emoji: '💗', name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#b25563', dark: '#dd9aa4' },
     ],
   },
   {
     title: 'Reflection',
     cards: [
-      { to: '/gratitude', emoji: '🙏', name: 'Gratitude', desc: "Note what you're grateful for", kind: 'gratitude', light: '#b45309', dark: '#fbbf24' },
-      { to: '/journal', emoji: '📓', name: 'Journal', desc: 'Reflect in writing', kind: 'journal', light: '#6d28d9', dark: '#a78bfa' },
-      { to: '/trataka', emoji: '🕯️', name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#c2410c', dark: '#fb923c' },
+      { to: '/gratitude', emoji: '🙏', name: 'Gratitude', desc: "Note what you're grateful for", kind: 'gratitude', light: '#b45309', dark: '#e3a83c' },
+      { to: '/journal', emoji: '📓', name: 'Journal', desc: 'Reflect in writing', kind: 'journal', light: '#7d5a86', dark: '#c39fcc' },
+      { to: '/trataka', emoji: '🕯️', name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#c2410c', dark: '#f59e5a' },
     ],
   },
 ]
