@@ -2753,9 +2753,13 @@ button.today-action:disabled {
   max-width: 100%;
   /* A faint bright backing "stage" + a soft warm LIFT so the creature pops off the cream page —
      the translucent body reads bolder over the brighter disc, and the shadow separates it from the
-     page. The calm, non-sticker way to add "pop". Both neutralised on the compact breathe pacer. */
+     page. The calm, non-sticker way to add "pop". Both neutralised on the compact breathe pacer.
+     The two TIGHT zero-offset shadows are a soft warm-dark SILHOUETTE outline that hugs the
+     creature's edge so a pale creature (or a light palette) never vanishes into the cream — a
+     contour, not a hard sticker border. Then the offset shadow lifts it. */
   background: radial-gradient(circle at 50% 46%, #ffffff 0%, rgba(255, 255, 255, 0.5) 30%, transparent 58%);
-  filter: drop-shadow(0 5px 9px rgba(74, 50, 22, 0.26));
+  filter: drop-shadow(0 0 0.9px rgba(58, 38, 20, 0.6)) drop-shadow(0 0 1.8px rgba(58, 38, 20, 0.42))
+    drop-shadow(0 5px 9px rgba(74, 50, 22, 0.26));
 }
 
 .spirit-stage {
