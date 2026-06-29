@@ -594,6 +594,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "gaming_headset": {"cost": 95, "unlock_level": 3, "need": JOYFUL, "tier": 2},
         # A cosy knit beanie with a little pom on top — comfy and warm (tier 2).
         "beanie": {"cost": 80, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # COOL/EDGY worn accessories (universal) — sharper personality items, leaning rested/joyful.
+        # Sleek dark sunglasses on the eye line — cool and unbothered (tier 1).
+        "shades": {"cost": 45, "unlock_level": 2, "need": RESTED, "tier": 1},
+        # A punk studded collar around the neck — a little edge (tier 2).
+        "spiked_collar": {"cost": 75, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        # A snapback baseball cap worn backwards — casual and cool (tier 2).
+        "backwards_cap": {"cost": 85, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # CUTESY/GIRLY worn accessories (universal) — sweet, playful items, joyful.
+        # A big ribbon bow centred on the head — sweet and cheerful (tier 1).
+        "bow": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        # A princess tiara on the brow with little gems — pretty and proud (tier 2).
+        "tiara": {"cost": 90, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        # A little heart hair-clip off to one side — a cute touch (tier 1).
+        "heart_clip": {"cost": 40, "unlock_level": 2, "need": JOYFUL, "tier": 1},
         # A striped cone party hat topped with a pompom — pure celebration (tier 3).
         "party_hat": {"cost": 175, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         # LEGENDARY (tier 4) — a crown of stars circling the brow, joyful. Universal; the

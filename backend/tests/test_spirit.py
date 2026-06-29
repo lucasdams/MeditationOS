@@ -1555,6 +1555,46 @@ def test_owned_options_all_price_above_zero(client):
             assert spec["cost"] > 0, f"{slot}.{option} must cost > 0 to stay in the ledger"
 
 
+# Six worn-accessory cosmetics with attitude — three cool/edgy, three cutesy/girly. All universal
+# (no per_path), tiers 1-2, varied needs. Each must be a well-formed catalog entry, and one is
+# unlocked + equipped end to end to prove the slot accepts it.
+_ATTITUDE_ACCESSORIES = {
+    "shades": "rested",
+    "spiked_collar": "joyful",
+    "backwards_cap": "rested",
+    "bow": "joyful",
+    "tiara": "joyful",
+    "heart_clip": "joyful",
+}
+
+
+def test_attitude_accessories_are_in_the_catalog(client):
+    """The six worn-accessory cosmetics appear in the accessory slot, each a well-formed
+    `{cost, unlock_level, tier, need}` — universal (no per_path), tier 1-2, with the expected
+    need and a positive cost."""
+    options = SPIRIT_COSMETICS_CATALOG["accessory"]
+    for option, need_key in _ATTITUDE_ACCESSORIES.items():
+        assert option in options, f"accessory missing {option}"
+        spec = options[option]
+        assert "per_path" not in spec, f"{option} should be universal"
+        assert spec["tier"] in (1, 2), f"{option} should be tier 1-2"
+        assert spec["need"] == need_key, f"{option} should need {need_key}"
+        assert spec["cost"] > 0, f"{option} must cost > 0"
+
+
+def test_attitude_accessory_unlocks_and_equips(client):
+    """An end-to-end flow: a leveled-up spirit unlocks a tier-1 new accessory (auto-equipped), then
+    the tier-2 `tiara` (its tier prereq satisfied), which reads back as the equipped accessory."""
+    _auth(client, "attitude_accessory@example.com")
+    _earn_to_level(client, 4)  # enough level + coins for the tier-2 options
+    # A tier-1 new accessory unlocks freely and auto-equips.
+    assert _unlock(client, "accessory", "bow").status_code == 200
+    assert _equipped(_spirit(client), "accessory") == "bow"
+    # Owning a tier-1 satisfies the tier-2 prereq, so the tiara now unlocks + equips.
+    assert _unlock(client, "accessory", "tiara").status_code == 200
+    assert _equipped(_spirit(client), "accessory") == "tiara"
+
+
 def test_buy_cosmetic_rejects_unexpected_fields(client):
     _auth(client, "cosmetics_extra@example.com")
     res = client.post(

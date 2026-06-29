@@ -901,6 +901,74 @@ describe('Spirit — new cosmetics render on the art', () => {
     // The cone body is a magenta path (#ec4899) — unique to the party hat.
     expect(container.querySelector('.spirit-svg path[fill="#ec4899"]')).not.toBeNull()
   })
+
+  // Six worn-accessory cosmetics with attitude — three cool/edgy, three cutesy/girly. Each draws
+  // its distinctive shapes and differs from a spirit wearing no accessory.
+  it('draws the shades accessory (two dark angular lenses with a glint)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { accessory: 'shades' } })} />,
+    )
+    const bare = renderSpirit(<Spirit spirit={spiritState({ path: 'heart' })} />)
+    // Two dark lens bodies (#111827) — the cool sunglasses' signature.
+    expect(container.querySelectorAll('.spirit-svg path[fill="#111827"]').length).toBeGreaterThanOrEqual(2)
+    // Wearing the shades differs from wearing nothing.
+    expect(bare.container.querySelector('.spirit-svg path[fill="#111827"]')).toBeNull()
+  })
+
+  it('draws the spiked_collar accessory (several silver spikes on a dark band)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'spiked_collar' } })} />,
+    )
+    // Several triangular spikes — silver fills (#e5e7eb / #cbd5e1) alternate across the band.
+    const spikes = container.querySelectorAll(
+      '.spirit-svg path[fill="#e5e7eb"], .spirit-svg path[fill="#cbd5e1"]',
+    )
+    expect(spikes.length).toBeGreaterThanOrEqual(4)
+    // The dark collar band (#1f2937 stroke) is the collar's signature.
+    expect(container.querySelector('.spirit-svg path[stroke="#1f2937"]')).not.toBeNull()
+  })
+
+  it('draws the backwards_cap accessory (red crown dome + brim)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'backwards_cap' } })} />,
+    )
+    // The crown dome is a deep-red path (#dc2626); the brim a darker red (#b91c1c).
+    expect(container.querySelector('.spirit-svg path[fill="#dc2626"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg path[fill="#b91c1c"]')).not.toBeNull()
+  })
+
+  it('draws the bow accessory (pink ribbon loops on top of the head)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { accessory: 'bow' } })} />,
+    )
+    // Two pink loops (#f9a8d4) plus the deep-pink knot (#be185d) — the bow's signature.
+    const loops = container.querySelectorAll('.spirit-svg path[fill="#f9a8d4"]')
+    expect(loops.length).toBeGreaterThanOrEqual(2)
+    expect(container.querySelector('.spirit-svg rect[fill="#be185d"]')).not.toBeNull()
+  })
+
+  it('draws the tiara accessory (gold band + gem dots)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'tiara' } })} />,
+    )
+    // The gold band is a stroked path (#fcd34d); the center gem a pink circle (#f472b6).
+    expect(container.querySelector('.spirit-svg path[stroke="#fcd34d"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg circle[fill="#f472b6"]')).not.toBeNull()
+    // Two blue side gems (#93c5fd) flank the peak.
+    expect(container.querySelectorAll('.spirit-svg circle[fill="#93c5fd"]').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('draws the heart_clip accessory (a pink heart on a clip bar)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'heart_clip' } })} />,
+    )
+    const bare = renderSpirit(<Spirit spirit={spiritState({ path: 'stillness' })} />)
+    // The heart is a pink path (#f472b6) edged in deeper pink (#ec4899) on a grey clip bar.
+    expect(container.querySelector('.spirit-svg path[fill="#f472b6"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg rect[fill="#9ca3af"]')).not.toBeNull()
+    // The heart-clip differs from wearing nothing.
+    expect(bare.container.querySelector('.spirit-svg path[fill="#f472b6"]')).toBeNull()
+  })
 })
 
 describe('Spirit — weather + ground slots render on the art', () => {

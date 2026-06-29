@@ -273,6 +273,13 @@ export const OPTION_LABEL: Record<string, string> = {
   open_book: 'Open book',
   game_controller: 'Game controller',
   boombox: 'Boombox',
+  // Worn accessories with attitude — three cool/edgy, three cutesy/girly.
+  shades: 'Shades',
+  spiked_collar: 'Spiked collar',
+  backwards_cap: 'Backwards cap',
+  bow: 'Bow',
+  tiara: 'Tiara',
+  heart_clip: 'Heart clip',
   // BODY-recolour palettes (the `palette` slot). `ember` / `frost` / `rose` / `dusk` already have
   // labels above (shared keys from the aura / habitat slots) that read fine as colours too, so only
   // the genuinely-new palette keys are added here.
@@ -1792,6 +1799,190 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
           const size = 1.6 + Math.sin(t * Math.PI) * 1.4
           return star(sx, sy, size, k)
         })}
+      </g>
+    )
+  }
+  // --- COOL / EDGY universal accessories -------------------------------------------------
+  if (accessory === 'shades') {
+    // Sleek sunglasses on the eye line: two angular dark lenses joined by a bridge, slim temple
+    // arms swept to the sides, and a bright diagonal glint streaking across each lens. Sharper
+    // and cooler than the round nerd_glasses.
+    const lensY = topY + 8
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The two angular lenses — dark, with a slightly lighter inner facet. */}
+        {[33.6, 41.2].map((lx, k) => (
+          <g key={k}>
+            <path
+              d={`M ${lx} ${lensY - 2.2} L ${lx + 5.2} ${lensY - 1.6} L ${lx + 4.4} ${lensY + 2.4}
+                  L ${lx + 0.4} ${lensY + 2.8} Z`}
+              fill="#111827"
+            />
+            <path
+              d={`M ${lx + 0.8} ${lensY - 1.2} L ${lx + 4.2} ${lensY - 0.8} L ${lx + 3.6}
+                  ${lensY + 1.4} L ${lx + 1.2} ${lensY + 1.6} Z`}
+              fill="#1f2937"
+            />
+            {/* A bright diagonal glint streaking across the lens. */}
+            <line
+              x1={lx + 1}
+              y1={lensY + 1.6}
+              x2={lx + 4.2}
+              y2={lensY - 1.4}
+              stroke="#f8fafc"
+              strokeWidth={0.7}
+              strokeLinecap="round"
+              opacity={0.9}
+            />
+          </g>
+        ))}
+        {/* The bridge joining the two lenses across the nose. */}
+        <line x1={38.8} y1={lensY - 1.6} x2={41.2} y2={lensY - 1.6} stroke="#111827" strokeWidth={1.1} />
+        {/* Slim temple arms sweeping out to the sides. */}
+        <line x1={33.6} y1={lensY - 2} x2={30.4} y2={lensY - 2.8} stroke="#111827" strokeWidth={1} strokeLinecap="round" />
+        <line x1={46.4} y1={lensY - 1.6} x2={49.6} y2={lensY - 2.6} stroke="#111827" strokeWidth={1} strokeLinecap="round" />
+      </g>
+    )
+  }
+  if (accessory === 'spiked_collar') {
+    // A punk studded collar low at the neck: a dark band curving across the lower body, lined with
+    // silver triangular spikes pointing outward, and a small buckle off-centre. Edgy.
+    const bandY = 45
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The silver spikes, fanned out below the band so the band overlaps their base. */}
+        {Array.from({ length: 7 }, (_, k) => {
+          const t = k / 6 // 0..1 across the band
+          const sx = 32 + t * 16
+          const dip = Math.sin(t * Math.PI) * 1.6 // follows the band's downward curve
+          const sy = bandY + 1 + dip
+          return (
+            <path
+              key={k}
+              d={`M ${sx - 1.4} ${sy} L ${sx + 1.4} ${sy} L ${sx} ${sy + 3} Z`}
+              fill={k % 2 === 0 ? '#e5e7eb' : '#cbd5e1'}
+            />
+          )
+        })}
+        {/* The dark collar band curving across the lower body. */}
+        <path
+          d={`M 31.5 ${bandY - 1} Q 40 ${bandY + 3} 48.5 ${bandY - 1}`}
+          fill="none"
+          stroke="#1f2937"
+          strokeWidth={3}
+          strokeLinecap="round"
+        />
+        {/* A small buckle set on the band. */}
+        <rect x={42.2} y={bandY + 0.4} width={2.6} height={2.2} rx={0.5} fill="#9ca3af" />
+        <rect x={42.9} y={bandY + 1} width={1.2} height={1} fill="#475569" />
+      </g>
+    )
+  }
+  if (accessory === 'backwards_cap') {
+    // A snapback baseball cap worn backwards: a rounded crown dome in deep red, the snapback strap
+    // and a little adjuster button showing at the FRONT (the back of the cap faces us), and the
+    // curved brim poking out behind to one side. Cool/casual.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The curved brim poking out behind, off to one side. */}
+        <path
+          d={`M 47 ${topY + 1} Q 53 ${topY - 1} 53.5 ${topY + 2.6} Q 51 ${topY + 3.4} 47 ${topY + 2.6} Z`}
+          fill="#b91c1c"
+        />
+        {/* The rounded crown dome over the head. */}
+        <path
+          d={`M 31 ${topY + 3} Q 31 ${topY - 9} 40 ${topY - 9} Q 49 ${topY - 9} 49 ${topY + 3} Z`}
+          fill="#dc2626"
+        />
+        {/* A panel seam up the crown for a stitched feel. */}
+        <path d={`M 40 ${topY + 2} Q 39.4 ${topY - 6} 40 ${topY - 9}`} fill="none" stroke="#b91c1c" strokeWidth={0.6} opacity={0.85} />
+        {/* The snapback strap band across the front (the cap's back, facing us). */}
+        <rect x={33} y={topY + 0.6} width={14} height={3} rx={1} fill="#991b1b" />
+        {/* The snapback holes + the little adjuster button at the centre. */}
+        <circle cx={36} cy={topY + 2.1} r={0.5} fill="#450a0a" />
+        <circle cx={44} cy={topY + 2.1} r={0.5} fill="#450a0a" />
+        <circle cx={40} cy={topY - 9} r={1.1} fill="#b91c1c" />
+        <circle cx={39.6} cy={topY - 9.4} r={0.4} fill="#fca5a5" opacity={0.9} />
+      </g>
+    )
+  }
+  // --- CUTESY / GIRLY universal accessories ----------------------------------------------
+  if (accessory === 'bow') {
+    // A big cute ribbon bow centred on top of the head: two loops (left + right) in pink with a
+    // deeper inner shade, a center knot, and two short ribbon tails hanging down. Bigger and
+    // centred than the small side ribbon.
+    const by = topY - 1
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The two short ribbon tails hanging down behind the knot. */}
+        <path d={`M 39 ${by + 0.5} L 37 ${by + 6} L 39.4 ${by + 5} Z`} fill="#ec4899" />
+        <path d={`M 41 ${by + 0.5} L 43 ${by + 6} L 40.6 ${by + 5} Z`} fill="#ec4899" />
+        {/* The left loop — outer pink with a deeper inner shade. */}
+        <path d={`M 40 ${by} Q 31 ${by - 4.5} 31.5 ${by + 0.5} Q 31 ${by + 5} 40 ${by + 1.5} Z`} fill="#f9a8d4" />
+        <path d={`M 40 ${by} Q 34 ${by - 2.4} 34 ${by + 0.5} Q 34 ${by + 3} 40 ${by + 1.2} Z`} fill="#ec4899" opacity={0.55} />
+        {/* The right loop — mirror of the left. */}
+        <path d={`M 40 ${by} Q 49 ${by - 4.5} 48.5 ${by + 0.5} Q 49 ${by + 5} 40 ${by + 1.5} Z`} fill="#f9a8d4" />
+        <path d={`M 40 ${by} Q 46 ${by - 2.4} 46 ${by + 0.5} Q 46 ${by + 3} 40 ${by + 1.2} Z`} fill="#ec4899" opacity={0.55} />
+        {/* The center knot cinching the loops. */}
+        <rect x={38} y={by - 1.6} width={4} height={4.6} rx={1.4} fill="#be185d" />
+        <circle cx={39.2} cy={by - 0.4} r={0.5} fill="#fbcfe8" opacity={0.9} />
+      </g>
+    )
+  }
+  if (accessory === 'tiara') {
+    // A princess tiara on the brow: a gold band rising to a central peak plus two side points,
+    // each tipped with a gem (a bigger center gem, smaller blue side gems), with sparkle
+    // highlights. Girly.
+    const ty = topY + 2
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The gold band, dipping low at the sides and rising to a central peak. */}
+        <path
+          d={`M 32 ${ty + 1.5} Q 36 ${ty - 1} 40 ${ty - 4} Q 44 ${ty - 1} 48 ${ty + 1.5}`}
+          fill="none"
+          stroke="#fcd34d"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+        />
+        {/* A lighter inner gleam along the band. */}
+        <path
+          d={`M 33 ${ty + 1.2} Q 36.5 ${ty - 0.8} 40 ${ty - 3.4} Q 43.5 ${ty - 0.8} 47 ${ty + 1.2}`}
+          fill="none"
+          stroke="#fde68a"
+          strokeWidth={0.7}
+          strokeLinecap="round"
+          opacity={0.9}
+        />
+        {/* The side gems (blue), then the bigger center gem (pink) at the peak. */}
+        <circle cx={34} cy={ty + 0.4} r={1.2} fill="#93c5fd" />
+        <circle cx={46} cy={ty + 0.4} r={1.2} fill="#93c5fd" />
+        <circle cx={40} cy={ty - 4.4} r={1.8} fill="#f472b6" />
+        <circle cx={39.4} cy={ty - 5} r={0.5} fill="#fce7f3" opacity={0.95} />
+        {/* A couple of sparkle dots for shine. */}
+        <circle cx={37} cy={ty - 2.2} r={0.4} fill="#fffbeb" opacity={0.9} />
+        <circle cx={43} cy={ty - 2.2} r={0.4} fill="#fffbeb" opacity={0.9} />
+      </g>
+    )
+  }
+  if (accessory === 'heart_clip') {
+    // A heart hair-clip to one side: a small pink heart on a little metal clip bar, with a tiny
+    // white highlight. Cutesy.
+    const hx = 46
+    const hy = topY - 1
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The little clip bar the heart is pinned to. */}
+        <rect x={hx - 2.6} y={hy + 1.6} width={5.6} height={1.6} rx={0.8} fill="#9ca3af" />
+        <circle cx={hx - 2.4} cy={hy + 2.4} r={0.5} fill="#6b7280" />
+        {/* The heart — pink fill with a deeper edge and a tiny highlight. */}
+        <path
+          d={`M ${hx} ${hy + 2} C ${hx - 2.4} ${hy - 1} ${hx - 3} ${hy - 3.4} ${hx} ${hy - 1.6}
+              C ${hx + 3} ${hy - 3.4} ${hx + 2.4} ${hy - 1} ${hx} ${hy + 2} Z`}
+          fill="#f472b6"
+          stroke="#ec4899"
+          strokeWidth={0.6}
+        />
+        <circle cx={hx - 1} cy={hy - 1.4} r={0.6} fill="#fce7f3" opacity={0.95} />
       </g>
     )
   }
