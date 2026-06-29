@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { goalService } from '../services/goals'
-import { ACTIVITY_COLORS, ACTIVITY_META } from '../lib/colors'
+import { ACTIVITY_COLORS, ACTIVITY_META, type ActivityIcon } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
@@ -9,7 +9,7 @@ import { messageForError } from '../lib/errors'
 import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
 // Goal-form labels differ from the shared canonical ones where the goals context
-// reads better ("Write gratitude", "Custom habit…"); the emoji/colour come from
+// reads better ("Write gratitude", "Custom habit…"); the icon/colour come from
 // the shared ACTIVITY_META so they never drift.
 const GOAL_LABELS: Record<GoalActivity, string> = {
   meditate: 'Meditate',
@@ -18,18 +18,21 @@ const GOAL_LABELS: Record<GoalActivity, string> = {
   journal: 'Journal',
   custom: 'Custom habit…',
 }
-// Single source for a goal's display emoji+label so the form dropdown and the
+// Single source for a goal's display icon+label so the form dropdown and the
 // cards cannot drift. Custom goals show the user's own label when one is given.
-function goalDisplay(activity: GoalActivity, label?: string | null): { emoji: string; label: string } {
+// `icon` is the shared lucide line-icon component (no system emoji).
+function goalDisplay(activity: GoalActivity, label?: string | null): { icon: ActivityIcon; label: string } {
   return {
-    emoji: ACTIVITY_META[activity].emoji,
+    icon: ACTIVITY_META[activity].icon,
     label: activity === 'custom' && label ? label : GOAL_LABELS[activity],
   }
 }
 
-const ACTIVITIES: { key: GoalActivity; label: string; emoji: string }[] = (
+// A <select> <option> can only hold text, so the dropdown carries the label only;
+// the icon shows on the goal cards (where a component can render).
+const ACTIVITIES: { key: GoalActivity; label: string }[] = (
   ['meditate', 'breathe', 'gratitude', 'journal', 'custom'] as const
-).map((key) => ({ key, ...goalDisplay(key) }))
+).map((key) => ({ key, label: goalDisplay(key).label }))
 
 // Cadence presets — the only "target" is how often, not a number to type.
 const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
@@ -175,7 +178,7 @@ export default function GoalsPage() {
             >
               {ACTIVITIES.map((a) => (
                 <option key={a.key} value={a.key}>
-                  {a.emoji} {a.label}
+                  {a.label}
                 </option>
               ))}
             </select>
@@ -245,6 +248,7 @@ export default function GoalsPage() {
         )}
         {goals?.map((g) => {
           const display = goalDisplay(g.activity, g.label)
+          const GoalIcon = display.icon
           const when = g.period === 'day' ? 'today' : g.period === 'week' ? 'this week' : 'all-time'
           const isCustomGoal = g.activity === 'custom'
           return (
@@ -255,7 +259,7 @@ export default function GoalsPage() {
             >
               <div className="goal-card-head">
                 <strong>
-                  {display.emoji} {display.label}
+                  <GoalIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {display.label}
                 </strong>
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
                 {g.achieved && <span className="goal-achieved">✓ Done</span>}

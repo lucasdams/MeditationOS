@@ -18,44 +18,48 @@ const ZERO_STATS: DashboardStats = {
   gratitude_count: 0, this_week: [], daily_quests: [],
 }
 
-const CATEGORIES: { key: GratitudeCategory; label: string; emoji: string }[] = [
-  { key: 'custom', label: 'Custom', emoji: '✏️' },
-  { key: 'people', label: 'People', emoji: '🧡' },
-  { key: 'health', label: 'Health', emoji: '🌿' },
-  { key: 'nature', label: 'Nature', emoji: '🌅' },
-  { key: 'experiences', label: 'Experiences', emoji: '✨' },
-  { key: 'growth', label: 'Growth', emoji: '🌱' },
-  { key: 'home', label: 'Home', emoji: '🏡' },
-  { key: 'self', label: 'Yourself', emoji: '💪' },
-  { key: 'simple_pleasures', label: 'Simple pleasures', emoji: '☕' },
-  { key: 'small_moments', label: 'Small moments', emoji: '🍃' },
-  { key: 'big_moments', label: 'Big moments', emoji: '🎉' },
-  { key: 'spiritual', label: 'Spiritual', emoji: '🕊️' },
-  { key: 'material', label: 'Things I have', emoji: '🎁' },
-  { key: 'work', label: 'Work', emoji: '💼' },
-  { key: 'food', label: 'Food', emoji: '🍽️' },
-  { key: 'learning', label: 'Learning', emoji: '📚' },
-  { key: 'creativity', label: 'Creativity', emoji: '🎨' },
-  { key: 'kindness', label: 'Kindness', emoji: '🤝' },
-  { key: 'music', label: 'Music', emoji: '🎵' },
-  { key: 'animals', label: 'Animals', emoji: '🐾' },
-  { key: 'travel', label: 'Travel', emoji: '✈️' },
-  { key: 'friendship', label: 'Friendship', emoji: '👯' },
-  { key: 'family', label: 'Family', emoji: '👨‍👩‍👧' },
-  { key: 'love', label: 'Love', emoji: '❤️' },
-  { key: 'play', label: 'Play & fun', emoji: '🎲' },
-  { key: 'memories', label: 'Memories', emoji: '📷' },
-  { key: 'hope', label: 'Hope', emoji: '🌈' },
-  { key: 'body', label: 'The body', emoji: '🧘' },
-  { key: 'mind', label: 'The mind', emoji: '🧠' },
-  { key: 'mornings', label: 'Mornings', emoji: '🌄' },
-  { key: 'evenings', label: 'Evenings', emoji: '🌙' },
-  { key: 'weather', label: 'Weather', emoji: '☀️' },
-  { key: 'comfort', label: 'Comfort', emoji: '🛋️' },
-  { key: 'freedom', label: 'Freedom', emoji: '🗽' },
-  { key: 'abundance', label: 'Abundance', emoji: '🌾' },
-  { key: 'community', label: 'Community', emoji: '🏘️' },
-  { key: 'beauty', label: 'Beauty', emoji: '🌸' },
+// Category themes are TEXT-FIRST (no system emoji): each chip shows its label with a small
+// colour dot accent (derived from gratitudeColor, so a theme's dot matches its log colour).
+// Too many themes (~37) to hand-pick a distinct line icon each, and a calmer text-led grid
+// reads better than a wall of icons.
+const CATEGORIES: { key: GratitudeCategory; label: string }[] = [
+  { key: 'custom', label: 'Custom' },
+  { key: 'people', label: 'People' },
+  { key: 'health', label: 'Health' },
+  { key: 'nature', label: 'Nature' },
+  { key: 'experiences', label: 'Experiences' },
+  { key: 'growth', label: 'Growth' },
+  { key: 'home', label: 'Home' },
+  { key: 'self', label: 'Yourself' },
+  { key: 'simple_pleasures', label: 'Simple pleasures' },
+  { key: 'small_moments', label: 'Small moments' },
+  { key: 'big_moments', label: 'Big moments' },
+  { key: 'spiritual', label: 'Spiritual' },
+  { key: 'material', label: 'Things I have' },
+  { key: 'work', label: 'Work' },
+  { key: 'food', label: 'Food' },
+  { key: 'learning', label: 'Learning' },
+  { key: 'creativity', label: 'Creativity' },
+  { key: 'kindness', label: 'Kindness' },
+  { key: 'music', label: 'Music' },
+  { key: 'animals', label: 'Animals' },
+  { key: 'travel', label: 'Travel' },
+  { key: 'friendship', label: 'Friendship' },
+  { key: 'family', label: 'Family' },
+  { key: 'love', label: 'Love' },
+  { key: 'play', label: 'Play & fun' },
+  { key: 'memories', label: 'Memories' },
+  { key: 'hope', label: 'Hope' },
+  { key: 'body', label: 'The body' },
+  { key: 'mind', label: 'The mind' },
+  { key: 'mornings', label: 'Mornings' },
+  { key: 'evenings', label: 'Evenings' },
+  { key: 'weather', label: 'Weather' },
+  { key: 'comfort', label: 'Comfort' },
+  { key: 'freedom', label: 'Freedom' },
+  { key: 'abundance', label: 'Abundance' },
+  { key: 'community', label: 'Community' },
+  { key: 'beauty', label: 'Beauty' },
 ]
 const LABELS: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
@@ -243,7 +247,12 @@ export default function GratitudePage() {
             className={`chip${category === c.key ? ' chip-active' : ''}`}
             onClick={() => pickCategory(c.key)}
           >
-            <span aria-hidden="true">{c.emoji}</span> {c.label}
+            <span
+              className="grat-chip-dot"
+              aria-hidden="true"
+              style={{ backgroundColor: gratitudeColor(c.key) }}
+            />{' '}
+            {c.label}
           </button>
         ))}
         {/* Keep a chosen theme on screen even when its from the collapsed set. */}
@@ -255,7 +264,12 @@ export default function GratitudePage() {
               className={`chip${category === c.key ? ' chip-active' : ''}`}
               onClick={() => pickCategory(c.key)}
             >
-              <span aria-hidden="true">{c.emoji}</span> {c.label}
+              <span
+                className="grat-chip-dot"
+                aria-hidden="true"
+                style={{ backgroundColor: gratitudeColor(c.key) }}
+              />{' '}
+              {c.label}
             </button>
           ) : null,
         )}

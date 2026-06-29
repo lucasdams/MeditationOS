@@ -3782,7 +3782,10 @@ button.today-action:disabled {
   position: absolute;
   left: 0;
   bottom: 0;
-  font-size: var(--text-sm);
+  /* Holds a lucide Heart SVG (not emoji text); inline-flex + line-height:0 keeps the
+     box tight to the glyph so the float keyframe's translate(-50%) stays centred. */
+  display: inline-flex;
+  line-height: 0;
   animation: float-heart 1.6s ease-out forwards;
   will-change: transform, opacity;
 }
@@ -6030,6 +6033,22 @@ button.today-action:disabled {
   border-color: var(--chip-soft-border);
   color: var(--chip-soft-text);
   font-weight: 400;
+}
+
+/* A small colour dot that leads each text-first gratitude theme chip — the theme's
+   own accent (from gratitudeColor), so a chip's dot matches its log colour. Replaces
+   the per-category emoji with a calmer text-led grid. */
+.grat-chip-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  vertical-align: baseline;
+}
+
+/* On the selected (amber-fill, white-text) chip, ring the dot so it stays visible. */
+.chip-active .grat-chip-dot {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.7);
 }
 
 /* Shared selected-state for the pickable chips/cards (mood, pattern, soundscape,

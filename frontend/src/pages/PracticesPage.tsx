@@ -1,5 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  Waves,
+  Square,
+  Sun,
+  Wind,
+  Brain,
+  ScanLine,
+  Heart,
+  HandHeart,
+  NotebookPen,
+  Flame,
+  type LucideProps,
+} from 'lucide-react'
 import { spiritService } from '../services/spirit'
 import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
 import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
@@ -51,7 +64,8 @@ function weakestNeed(s: SpiritState): SpiritNeedKey {
 
 interface PracticeCard {
   to: string
-  emoji: string
+  // A lucide line-icon component (consistent line icons, no system emoji).
+  icon: ComponentType<LucideProps>
   name: string
   desc: string
   kind: PracticeKind
@@ -69,26 +83,26 @@ const GROUPS: PracticeGroup[] = [
   {
     title: 'Breathing',
     cards: [
-      { to: '/breathe?pattern=resonance', emoji: '🌊', name: 'Resonance', desc: 'Slow, longer-exhale breathing', kind: 'breathing', light: '#3d8597', dark: '#7fc0d2' },
-      { to: '/breathe?pattern=box', emoji: '🟦', name: 'Box', desc: 'Equal in·hold·out·hold', kind: 'breathing', light: '#3a7d6f', dark: '#6fb6a8' },
-      { to: '/breathe?pattern=energizing', emoji: '☀️', name: 'Energizing', desc: 'Brisk, active inhale', kind: 'breathing', light: '#b45309', dark: '#e3a83c' },
-      { to: '/breathe?pattern=alternate', emoji: '🌬️', name: 'Alternate nostril', desc: 'Nadi Shodhana — balance left & right', kind: 'breathing', light: '#7d5a86', dark: '#c39fcc' },
+      { to: '/breathe?pattern=resonance', icon: Waves, name: 'Resonance', desc: 'Slow, longer-exhale breathing', kind: 'breathing', light: '#3d8597', dark: '#7fc0d2' },
+      { to: '/breathe?pattern=box', icon: Square, name: 'Box', desc: 'Equal in·hold·out·hold', kind: 'breathing', light: '#3a7d6f', dark: '#6fb6a8' },
+      { to: '/breathe?pattern=energizing', icon: Sun, name: 'Energizing', desc: 'Brisk, active inhale', kind: 'breathing', light: '#b45309', dark: '#e3a83c' },
+      { to: '/breathe?pattern=alternate', icon: Wind, name: 'Alternate nostril', desc: 'Nadi Shodhana — balance left & right', kind: 'breathing', light: '#7d5a86', dark: '#c39fcc' },
     ],
   },
   {
     title: 'Meditation',
     cards: [
-      { to: '/meditate', emoji: '🧘', name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#0f766e', dark: '#5ec0b1' },
-      { to: '/meditate?guided=body-scan', emoji: '🌙', name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#3d8597', dark: '#7fc0d2' },
-      { to: '/meditate?guided=loving-kindness', emoji: '💗', name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#b25563', dark: '#dd9aa4' },
+      { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#0f766e', dark: '#5ec0b1' },
+      { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#3d8597', dark: '#7fc0d2' },
+      { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#b25563', dark: '#dd9aa4' },
     ],
   },
   {
     title: 'Reflection',
     cards: [
-      { to: '/gratitude', emoji: '🙏', name: 'Gratitude', desc: "Note what you're grateful for", kind: 'gratitude', light: '#b45309', dark: '#e3a83c' },
-      { to: '/journal', emoji: '📓', name: 'Journal', desc: 'Reflect in writing', kind: 'journal', light: '#7d5a86', dark: '#c39fcc' },
-      { to: '/trataka', emoji: '🕯️', name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#c2410c', dark: '#f59e5a' },
+      { to: '/gratitude', icon: HandHeart, name: 'Gratitude', desc: "Note what you're grateful for", kind: 'gratitude', light: '#b45309', dark: '#e3a83c' },
+      { to: '/journal', icon: NotebookPen, name: 'Journal', desc: 'Reflect in writing', kind: 'journal', light: '#7d5a86', dark: '#c39fcc' },
+      { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#c2410c', dark: '#f59e5a' },
     ],
   },
 ]
@@ -96,9 +110,10 @@ const GROUPS: PracticeGroup[] = [
 // A small need badge (icon + label) reusing NEED_COPY — `current` marks the spirit's weakest need.
 function FeedBadge({ need, current }: { need: SpiritNeedKey; current: boolean }) {
   const copy = NEED_COPY[need]
+  const NeedIcon = copy.icon
   return (
     <span className={`practice-feed-badge${current ? ' practice-feed-badge--current' : ''}`}>
-      <span aria-hidden="true">{copy.icon}</span> {copy.label}
+      <NeedIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {copy.label}
     </span>
   )
 }
@@ -144,7 +159,11 @@ export default function PracticesPage() {
           <p className="practices-spirit-nudge-text">
             <strong>{spirit.name ?? 'Your spirit'}</strong> needs more{' '}
             <strong className="practices-need-name">
-              <span aria-hidden="true">{NEED_COPY[need].icon}</span> {NEED_COPY[need].label}
+              {(() => {
+                const NeedIcon = NEED_COPY[need].icon
+                return <NeedIcon size={16} strokeWidth={1.75} aria-hidden="true" />
+              })()}{' '}
+              {NEED_COPY[need].label}
             </strong>{' '}
             right now — the highlighted practices below will help.
           </p>
@@ -158,6 +177,7 @@ export default function PracticesPage() {
             {group.cards.map((card) => {
               const feeds = feedsFor(card.kind, spirit?.path ?? null)
               const needed = need != null && feeds.includes(need)
+              const CardIcon = card.icon
               return (
                 <Link
                   key={card.to}
@@ -172,7 +192,7 @@ export default function PracticesPage() {
                     <span className="practice-card-needed">Your spirit needs this</span>
                   )}
                   <span className="practice-card-emoji" aria-hidden="true">
-                    {card.emoji}
+                    <CardIcon size={22} strokeWidth={1.75} />
                   </span>
                   <span className="practice-card-body">
                     <span className="practice-card-name">{card.name}</span>

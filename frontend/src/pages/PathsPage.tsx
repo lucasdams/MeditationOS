@@ -31,6 +31,7 @@ function progressLine(path: PathSummary): string {
 // locked days are dimmed and inert (no scolding, no lock-shaming copy).
 function PathDayRow({ day }: { day: PathDay }) {
   const meta = ACTIVITY_META[day.practice as Activity]
+  const PracticeIcon = meta.icon
   const minutes = `${day.min_minutes} min`
 
   return (
@@ -43,7 +44,7 @@ function PathDayRow({ day }: { day: PathDay }) {
           <span className="path-day-num">{dayLabel(day)}</span>
           <span className="path-day-title">{day.title}</span>
           <span className="path-day-practice">
-            <span aria-hidden="true">{meta.emoji}</span> {meta.label} · {minutes}
+            <PracticeIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {meta.label} · {minutes}
           </span>
         </p>
 

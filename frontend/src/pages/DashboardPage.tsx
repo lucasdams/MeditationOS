@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Flame, Moon, Sprout, Star, Check } from 'lucide-react'
 import { dashboardService } from '../services/dashboard'
 import { spiritService } from '../services/spirit'
 import { moodLogService } from '../services/moodLogs'
@@ -51,7 +52,7 @@ const QUEST_DETAIL: Record<string, string> = {
 // Quick-action tiles — one tap to the five main features from the dashboard. These are the
 // home screen's primary focal point: each is a bold, full-colour box (saturated fill from
 // TILE_COLORS, white icon + label) so the actions clearly pop. The four activity tiles read
-// their emoji/label from the shared ACTIVITY_META. `tile` keys into TILE_COLORS for the box fill.
+// their icon/label from the shared ACTIVITY_META. `tile` keys into TILE_COLORS for the box fill.
 const FEATURE_TILES = [
   { ...ACTIVITY_META.meditate, to: '/meditate', tile: 'meditate' as const },
   { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                   className="hud-pill hud-pill-streak"
                   aria-label={`${stats.current_streak_days} day streak`}
                 >
-                  <span aria-hidden="true">🔥</span> {stats.current_streak_days}
+                  <Flame size={16} strokeWidth={1.75} aria-hidden="true" /> {stats.current_streak_days}
                 </span>
               )}
             </div>
@@ -251,7 +252,7 @@ export default function DashboardPage() {
               fine" message isn't lost now that the streak is a small pill. */}
           {stats.current_streak_days > 0 && stats.rest_day_used && (
             <p className="quest-streak muted">
-              <span aria-hidden="true">🛡️</span> Rest day used — skipping one is fine.
+              <Moon size={16} strokeWidth={1.75} aria-hidden="true" /> Rest day used — skipping one is fine.
             </p>
           )}
 
@@ -283,7 +284,7 @@ export default function DashboardPage() {
           {/* Quick-access tiles — secondary now, a quiet row beneath the primary CTA: one tap
               to start any of the practices. */}
           <nav className="feature-tiles" aria-label="Quick access">
-            {FEATURE_TILES.map(({ label, emoji, to, tile }) => (
+            {FEATURE_TILES.map(({ label, icon: TileIcon, to, tile }) => (
               <Link
                 key={to}
                 to={to}
@@ -293,7 +294,9 @@ export default function DashboardPage() {
                   ['--tile-fill-dark' as string]: TILE_COLORS_DARK[tile],
                 }}
               >
-                <span className="feature-tile-emoji" aria-hidden="true">{emoji}</span>
+                <span className="feature-tile-emoji" aria-hidden="true">
+                  <TileIcon size={22} strokeWidth={1.75} />
+                </span>
                 <span className="feature-tile-label">{label}</span>
               </Link>
             ))}
@@ -306,13 +309,16 @@ export default function DashboardPage() {
           {stats.daily_quests.length > 0 && (
             <section className="quests-compact missions" aria-labelledby="quests-heading">
               <p className="quests-heading" id="quests-heading">
-                <span className="quests-heading-icon" aria-hidden="true">🌱</span>
+                <span className="quests-heading-icon" aria-hidden="true">
+                  <Sprout size={16} strokeWidth={1.75} />
+                </span>
                 <span className="quests-heading-text">A nudge or two for today</span>
               </p>
               <ul className="quest-chips">
             {stats.daily_quests.map((q) => {
               const to = QUEST_LINKS[q.key] ?? '/sessions/new'
               const meta = ACTIVITY_META[q.key as Activity]
+              const QuestIcon = meta?.icon ?? Star
               const accent = ACTIVITY_COLORS[q.key as Activity]
               const detail = QUEST_DETAIL[q.variant]
               return (
@@ -328,7 +334,7 @@ export default function DashboardPage() {
                     }${q.xp > 0 ? ` — reward ${q.xp} XP` : ''}${q.done ? ' — done' : ''}`}
                   >
                     <span className="quest-chip-emoji" aria-hidden="true">
-                      {meta?.emoji ?? '⭐'}
+                      <QuestIcon size={18} strokeWidth={1.75} />
                     </span>
                     <span className="quest-chip-body">
                       <span className="quest-chip-label">{q.label}</span>
@@ -356,7 +362,7 @@ export default function DashboardPage() {
                       )}
                       {q.done && (
                         <span className="quest-chip-check" aria-hidden="true">
-                          ✓
+                          <Check size={16} strokeWidth={2} />
                         </span>
                       )}
                     </span>

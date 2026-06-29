@@ -1,6 +1,8 @@
 // Shared colour coding, so the same concept reads the same colour everywhere
 // (nav, quests, goals, session logs, analytics, journal moods).
 
+import type { ComponentType } from 'react'
+import { Brain, Wind, HandHeart, NotebookPen, Star, type LucideProps } from 'lucide-react'
 import type { MeditationType, Mood } from '../types'
 
 // The four core activities — all drawn from the Warm Sanctuary family so they
@@ -16,16 +18,19 @@ export const ACTIVITY_COLORS: Record<Activity, string> = {
   custom: '#c4744f', // clay — user-defined habits
 }
 
-// The single source of truth for how an activity reads: emoji + label + colour.
+// The single source of truth for how an activity reads: icon + label + colour.
 // (Colour mirrors ACTIVITY_COLORS so the two never drift.) Pages that need a
 // context-specific label — e.g. "Write gratitude" on the goals form — override
-// the label locally; the emoji/colour stay shared.
-export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; color: string }> = {
-  meditate: { emoji: '🧘', label: 'Meditate', color: ACTIVITY_COLORS.meditate },
-  breathe: { emoji: '🫁', label: 'Breathe', color: ACTIVITY_COLORS.breathe },
-  gratitude: { emoji: '🙏', label: 'Gratitude', color: ACTIVITY_COLORS.gratitude },
-  journal: { emoji: '📓', label: 'Journal', color: ACTIVITY_COLORS.journal },
-  custom: { emoji: '⭐', label: 'Custom', color: ACTIVITY_COLORS.custom },
+// the label locally; the icon/colour stay shared. `icon` is a lucide line-icon
+// component (consistent line icons app-wide, no system emoji) — render it sized
+// to context with strokeWidth={1.75}; it inherits `color` as its stroke.
+export type ActivityIcon = ComponentType<LucideProps>
+export const ACTIVITY_META: Record<Activity, { icon: ActivityIcon; label: string; color: string }> = {
+  meditate: { icon: Brain, label: 'Meditate', color: ACTIVITY_COLORS.meditate },
+  breathe: { icon: Wind, label: 'Breathe', color: ACTIVITY_COLORS.breathe },
+  gratitude: { icon: HandHeart, label: 'Gratitude', color: ACTIVITY_COLORS.gratitude },
+  journal: { icon: NotebookPen, label: 'Journal', color: ACTIVITY_COLORS.journal },
+  custom: { icon: Star, label: 'Custom', color: ACTIVITY_COLORS.custom },
 }
 
 // Bold, saturated fills for the dashboard quick-action tiles — distinct per destination

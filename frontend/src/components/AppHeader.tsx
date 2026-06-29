@@ -1,13 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import {
+  Compass,
+  Wind,
+  Brain,
+  HandHeart,
+  NotebookPen,
+  LayoutGrid,
+  Plus,
+  ChartLine,
+  History,
+  Settings,
+  Flame,
+  Target,
+  CalendarDays,
+  Wrench,
+  Flower2,
+  Menu,
+  X,
+  type LucideProps,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
 
 // A menu destination. Each carries a per-destination accent (light + dark shades, mirroring
 // the home tiles' TILE_COLORS pairs) so the menu items read as the app's soft colour-tinted
-// pills, not plain text. icon + label are separate so the emoji can sit in a fixed-width
-// gutter (labels line up cleanly).
-type MenuLink = { to: string; icon: string; label: string; light: string; dark: string }
+// pills, not plain text. icon + label are separate so the icon can sit in a fixed-width
+// gutter (labels line up cleanly). `icon` is a lucide line-icon component (no system emoji).
+type MenuLink = { to: string; icon: ComponentType<LucideProps>; label: string; light: string; dark: string }
 
 // Practice — the activities a beginner reaches for: things you *do* in a session. The most
 // approachable practices lead; the hub ("All practices") + "Log a session" sit lower for when
@@ -17,28 +37,28 @@ type MenuLink = { to: string; icon: string; label: string; light: string; dark: 
 // deep light-mode shade + a lifted dark-mode shade so the nav pills stay legible
 // in both themes — no cool indigo/sky/violet/hot-pink under the cream header.
 const PRACTICE_LINKS: MenuLink[] = [
-  { to: '/paths', icon: '🧭', label: 'Paths', light: '#0f766e', dark: '#5ec0b1' },
-  { to: '/breathe', icon: '🫁', label: 'Breathe', light: '#3d8597', dark: '#7fc0d2' },
-  { to: '/meditate', icon: '🧘', label: 'Meditate', light: '#3a7d6f', dark: '#6fb6a8' },
-  { to: '/gratitude', icon: '🙏', label: 'Gratitude', light: '#b45309', dark: '#e3a83c' },
-  { to: '/journal', icon: '📓', label: 'Journal', light: '#7d5a86', dark: '#c39fcc' },
-  { to: '/practices', icon: '✨', label: 'All practices', light: '#9a4f6f', dark: '#cf9bb4' },
-  { to: '/sessions/new', icon: '➕', label: 'Log a session', light: '#3a7d6f', dark: '#6fb6a8' },
+  { to: '/paths', icon: Compass, label: 'Paths', light: '#0f766e', dark: '#5ec0b1' },
+  { to: '/breathe', icon: Wind, label: 'Breathe', light: '#3d8597', dark: '#7fc0d2' },
+  { to: '/meditate', icon: Brain, label: 'Meditate', light: '#3a7d6f', dark: '#6fb6a8' },
+  { to: '/gratitude', icon: HandHeart, label: 'Gratitude', light: '#b45309', dark: '#e3a83c' },
+  { to: '/journal', icon: NotebookPen, label: 'Journal', light: '#7d5a86', dark: '#c39fcc' },
+  { to: '/practices', icon: LayoutGrid, label: 'All practices', light: '#9a4f6f', dark: '#cf9bb4' },
+  { to: '/sessions/new', icon: Plus, label: 'Log a session', light: '#3a7d6f', dark: '#6fb6a8' },
 ]
 
 // Progress — stats + account: things you *review* or configure.
 const PROGRESS_LINKS: MenuLink[] = [
-  { to: '/analytics', icon: '📈', label: 'Analytics', light: '#b25563', dark: '#dd9aa4' },
-  { to: '/timeline', icon: '🕒', label: 'Timeline', light: '#3d8597', dark: '#7fc0d2' },
-  { to: '/settings', icon: '⚙️', label: 'Settings', light: '#6b5a48', dark: '#b3a08b' },
+  { to: '/analytics', icon: ChartLine, label: 'Analytics', light: '#b25563', dark: '#dd9aa4' },
+  { to: '/timeline', icon: History, label: 'Timeline', light: '#3d8597', dark: '#7fc0d2' },
+  { to: '/settings', icon: Settings, label: 'Settings', light: '#6b5a48', dark: '#b3a08b' },
 ]
 
 // More — advanced / depth features grouped out of the primary menus so beginners see a leaner
 // nav. Pure grouping: every route here is unchanged, just relocated from Practice / Progress.
 const MORE_LINKS: MenuLink[] = [
-  { to: '/trataka', icon: '🕯️', label: 'Candle gazing', light: '#c2410c', dark: '#f59e5a' },
-  { to: '/goals', icon: '🎯', label: 'Goals', light: '#c4744f', dark: '#e0a06f' },
-  { to: '/schedule', icon: '🗓️', label: 'Schedule', light: '#a86b3d', dark: '#d9a441' },
+  { to: '/trataka', icon: Flame, label: 'Candle gazing', light: '#c2410c', dark: '#f59e5a' },
+  { to: '/goals', icon: Target, label: 'Goals', light: '#c4744f', dark: '#e0a06f' },
+  { to: '/schedule', icon: CalendarDays, label: 'Schedule', light: '#a86b3d', dark: '#d9a441' },
 ]
 
 // Each menu's links render in two sibling containers (desktop dropdown + mobile inline list),
@@ -46,6 +66,7 @@ const MORE_LINKS: MenuLink[] = [
 // `active` class on the current route so the user can see where they are. The per-destination
 // accent is passed as CSS vars; the CSS resolves light/dark per theme.
 function renderMenuLink(l: MenuLink) {
+  const Icon = l.icon
   return (
     <NavLink
       key={l.to}
@@ -53,7 +74,9 @@ function renderMenuLink(l: MenuLink) {
       className="nav-menu-link"
       style={{ ['--menu-fill' as string]: l.light, ['--menu-fill-dark' as string]: l.dark }}
     >
-      <span className="nav-menu-icon" aria-hidden="true">{l.icon}</span>
+      <span className="nav-menu-icon" aria-hidden="true">
+        <Icon size={17} strokeWidth={1.75} />
+      </span>
       <span className="nav-menu-label">{l.label}</span>
     </NavLink>
   )
@@ -74,7 +97,7 @@ export default function AppHeader() {
   // see it; the backend also 403s every /admin/* call regardless of the UI. It joins the
   // Progress menu (stats + account).
   const progressLinks = user?.is_admin
-    ? [...PROGRESS_LINKS, { to: '/admin', icon: '🛠️', label: 'Admin', light: '#6b5a48', dark: '#b3a08b' }]
+    ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, label: 'Admin', light: '#6b5a48', dark: '#b3a08b' }]
     : PROGRESS_LINKS
 
   // Refetch on every navigation so the level stays live after earning XP.
@@ -155,7 +178,11 @@ export default function AppHeader() {
         aria-expanded={navOpen}
         onClick={() => setNavOpen((o) => !o)}
       >
-        {navOpen ? '✕' : '☰'}
+        {navOpen ? (
+          <X size={20} strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <Menu size={20} strokeWidth={1.75} aria-hidden="true" />
+        )}
       </button>
       <nav className={`app-nav${navOpen ? ' open' : ''}`} ref={navRef}>
         <Link to="/" className="nav-home">
@@ -171,7 +198,7 @@ export default function AppHeader() {
 
         {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
         <Link to="/spirit" className="nav-spirit nav-spirit-feature">
-          🪷 Spirit
+          <Flower2 size={17} strokeWidth={1.75} aria-hidden="true" /> Spirit
         </Link>
 
         {/* On mobile the dropdowns are hidden; their links show inline as labelled sections. */}

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { Soup, Moon, Sparkles, type LucideProps } from 'lucide-react'
 import { spiritService } from '../services/spirit'
 import { Loading, RetryableError } from './StateViews'
 import { messageForError } from '../lib/errors'
@@ -9,6 +10,9 @@ import type {
   SpiritStage,
   SpiritState,
 } from '../types'
+
+// A lucide line-icon component (consistent line icons app-wide, no system emoji).
+export type NeedIcon = ComponentType<LucideProps>
 
 /**
  * Spirit — the home-screen companion (docs/design/spirit.md, ADR-0022, ADR-0023).
@@ -146,13 +150,14 @@ export function isLowTier(tier: SpiritNeedTier): boolean {
 // are path-agnostic. Used for the needs read-out and the per-need care nudges.
 export const NEED_COPY: Record<
   keyof SpiritState['needs'],
-  { label: string; icon: string }
+  { label: string; icon: NeedIcon }
 > = {
   // Labels name the DIMENSION (a noun), not a positive state — so "Nourishment · Needs care"
   // reads honestly, rather than "Nourished" claiming the opposite of the tier beside it.
-  nourished: { label: 'Nourishment', icon: '🍲' },
-  rested: { label: 'Rest', icon: '🌙' },
-  joyful: { label: 'Joy', icon: '✨' },
+  // `icon` is a lucide line-icon component, rendered sized to context at each call site.
+  nourished: { label: 'Nourishment', icon: Soup },
+  rested: { label: 'Rest', icon: Moon },
+  joyful: { label: 'Joy', icon: Sparkles },
 }
 
 // Calm display names for the cosmetic slots and their options (matching the backend catalog
@@ -378,13 +383,14 @@ export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
       {NEED_ORDER.map((key) => {
         const need = needs[key]
         const copy = NEED_COPY[key]
+        const NeedIconCmp = copy.icon
         const tier = TIER_COPY[need.tier]
         const pct = Math.round(need.factor * 100)
         return (
           <li key={key} className={`spirit-need spirit-need--${tier.tone}`}>
             <div className="spirit-need-head">
               <span className="spirit-need-icon" aria-hidden="true">
-                {copy.icon}
+                <NeedIconCmp size={16} strokeWidth={1.75} />
               </span>
               <span className="spirit-need-label">{copy.label}</span>
               <span className="spirit-need-tier">{tier.label}</span>
