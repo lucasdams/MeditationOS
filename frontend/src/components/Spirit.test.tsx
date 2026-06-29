@@ -969,6 +969,19 @@ describe('Spirit — new cosmetics render on the art', () => {
     // The heart-clip differs from wearing nothing.
     expect(bare.container.querySelector('.spirit-svg path[fill="#f472b6"]')).toBeNull()
   })
+
+  it('draws the dark_star accessory (a near-black star with a violet glow)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'dark_star' } })} />,
+    )
+    const bare = renderSpirit(<Spirit spirit={spiritState({ path: 'breath' })} />)
+    // A near-black star polygon (#1e1b2e) edged in glowing violet (#a855f7) — distinct from the
+    // gold pentagon `star`.
+    expect(container.querySelector('.spirit-svg polygon[fill="#1e1b2e"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg polygon[stroke="#a855f7"]')).not.toBeNull()
+    // The dark star differs from wearing nothing.
+    expect(bare.container.querySelector('.spirit-svg polygon[fill="#1e1b2e"]')).toBeNull()
+  })
 })
 
 describe('Spirit — weather + ground slots render on the art', () => {
