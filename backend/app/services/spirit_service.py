@@ -452,8 +452,8 @@ def needs(
     joyful_tended_at: datetime | None = None,
 ) -> SpiritNeeds:
     """The active creature's three GENTLE needs (ADR-0031 — supersedes ADR-0029's survival meters;
-    re-adopts the non-punishing stance of ADR-0023, with the cosmetic modifiers of ADR-0025/0026/0028
-    still removed).
+    re-adopts the non-punishing stance of ADR-0023, with the cosmetic modifiers of
+    ADR-0025/0026/0028 still removed).
 
     A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
     content-ish default rather than easing down.
@@ -801,8 +801,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         # `comet`, since `comet` already names the tier-4 "Radiant comet" mount).
         "cloud": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
         "plume": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": JOYFUL, "tier": 1},
-        "constellation": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1},
-        "dandelion": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "constellation": {
+            "cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1
+        },
+        "dandelion": {
+            "cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1
+        },
         "leaflet": {"cost": 95, "unlock_level": 3, "per_path": HEART, "need": RESTED, "tier": 2},
         "whirlwind": {"cost": 100, "unlock_level": 3, "per_path": HEART, "need": JOYFUL, "tier": 2},
         "meteor": {"cost": 70, "unlock_level": 2, "per_path": HEART, "need": JOYFUL, "tier": 1},
@@ -810,7 +814,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         # silhouette (not just a recoloured/resized flame): a logs-and-flame campfire, a flame on a
         # handle (torch), a comet-like fireball head + tail, a rayed sun disc, a low bed of coals,
         # and a flame cradled in a lantern. `twin` (a forked two-flame blaze) is kept.
-        "campfire": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1},
+        "campfire": {
+            "cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1
+        },
         "torch": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": RESTED, "tier": 1},
         "coals": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": RESTED, "tier": 1},
         "fireball": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
@@ -820,20 +826,28 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "twin": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": JOYFUL, "tier": 1},
         # Kapha (stillness) — alternate still-life bodies (a huddle of orbs, a stone cairn, an
         # orbiting atom) that REPLACE the seated figure, not just restretch it.
-        "cluster": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1},
+        "cluster": {
+            "cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1
+        },
         "cairn": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
-        "orbital": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2},
+        "orbital": {
+            "cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2
+        },
         # `lotus` is a radiating flower, `enso` concentric zen rings, `crystal` a faceted gem — more
         # alternate still-life bodies that REPLACE the seated figure.
         "lotus": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
-        "enso": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": NOURISHED, "tier": 1},
+        "enso": {
+            "cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": NOURISHED, "tier": 1
+        },
         "prism": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": RESTED, "tier": 2},
         # `sprout` is the one ORGANIC Kapha body — an earthy seedling (stem + leaves + bud). `wheel`
         # is a radial dharma wheel / mandala — concentric rings + radial spokes (keyed `wheel`, not
         # `mandala`, since `mandala` already names the tier-4 "Sacred mandala" ground). `wheel` is a
         # tier-2 form, so its prereq is any owned tier-1 stillness form (the usual slot chain).
         "sprout": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
-        "wheel": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2},
+        "wheel": {
+            "cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2
+        },
     },
 }
 
@@ -841,9 +855,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
 # BODY-cosmetic slots that change the CREATURE ITSELF (recolour / resize / reshape) rather than a
 # layer drawn around it. They sit OUTSIDE the ADR-0028 signature set: palette/size are universal so
 # they never have a per-path signature anyway, but `form` IS per-path (each dosha's own shapes) yet
-# is a body cosmetic, not a signature capstone — so it must be skipped explicitly to keep the set total
-# at 7 (and to keep every decorative slot's "one signature per path" invariant). Listed here, the
-# signature helpers treat all three the same: no signature in any of them.
+# is a body cosmetic, not a signature capstone — so it must be skipped explicitly to keep the set
+# total at 7 (and to keep every decorative slot's "one signature per path" invariant). Listed here,
+# the signature helpers treat all three the same: no signature in any of them.
 _NON_SIGNATURE_SLOTS: frozenset[str] = frozenset({"palette", "size", "form"})
 
 

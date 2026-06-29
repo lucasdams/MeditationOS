@@ -94,8 +94,8 @@ class Spirit(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     # Last manual TEND per need: the Feed / Rest / Play actions stamp these. A tend lifts that need
-    # to TEND_CAP and then eases like practice (over DECAY_DAYS) — gentle, optional care, no survival
-    # stakes (ADR-0031). NULL = never tended that need.
+    # to TEND_CAP and then eases like practice (over DECAY_DAYS) — gentle, optional care, no
+    # survival stakes (ADR-0031). NULL = never tended that need.
     nourished_tended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

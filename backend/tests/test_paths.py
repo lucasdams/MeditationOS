@@ -15,7 +15,7 @@ Derivation contract under test (see app/services/path_service.py):
   - at most one path-day completes per calendar day; a missing day just waits at `current`.
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 
 from app.models.gratitude import GratitudeEntry
 from app.models.path_enrollment import PathEnrollment
@@ -23,7 +23,6 @@ from app.models.session import Session as PracticeSession
 from app.models.user import User
 from app.services import path_service
 from app.services.paths_catalog import get_path
-
 
 # ----------------------------------------------------------------------------------------
 # HTTP helpers
@@ -274,7 +273,9 @@ def test_service_one_completion_per_calendar_day(db_session):
     enrollment = (
         db_session.query(PathEnrollment).filter_by(user_id=user.id).one()
     )
-    summary = path_service._summarize(db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC")
+    summary = path_service._summarize(
+        db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC"
+    )
     assert summary.completed_days == 1
     assert summary.current_day == 2
     assert summary.days[0].status == "done"
@@ -288,15 +289,25 @@ def test_service_gratitude_completes_the_gratitude_day(db_session):
     start = date(2026, 6, 1)
     _enroll_on(db_session, user.id, "first-7-days", start)
     # last_done_date = May 31 → day 1 needs a date ≥ June 1.
-    _seed_session(db_session, user.id, day=date(2026, 6, 1), seconds=120, type_="resonance_breathing")
-    _seed_session(db_session, user.id, day=date(2026, 6, 2), seconds=180, type_="resonance_breathing")
-    _seed_session(db_session, user.id, day=date(2026, 6, 3), seconds=240, type_="resonance_breathing")
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 1), seconds=120, type_="resonance_breathing"
+    )
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 2), seconds=180, type_="resonance_breathing"
+    )
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 3), seconds=240, type_="resonance_breathing"
+    )
     _seed_session(db_session, user.id, day=date(2026, 6, 4), seconds=300, type_="mindfulness")
-    _seed_session(db_session, user.id, day=date(2026, 6, 5), seconds=360, type_="resonance_breathing")
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 5), seconds=360, type_="resonance_breathing"
+    )
     _seed_gratitude(db_session, user.id, day=date(2026, 6, 6))
 
     enrollment = db_session.query(PathEnrollment).filter_by(user_id=user.id).one()
-    summary = path_service._summarize(db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC")
+    summary = path_service._summarize(
+        db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC"
+    )
 
     assert summary.completed_days == 6
     assert summary.days[5].practice == "gratitude"
@@ -311,12 +322,20 @@ def test_service_full_completion_clears_current_day(db_session):
     user = _user(db_session, "svc_complete@example.com")
     start = date(2026, 6, 1)
     _enroll_on(db_session, user.id, "three-calm-breaths", start)
-    _seed_session(db_session, user.id, day=date(2026, 6, 1), seconds=120, type_="resonance_breathing")
-    _seed_session(db_session, user.id, day=date(2026, 6, 2), seconds=180, type_="resonance_breathing")
-    _seed_session(db_session, user.id, day=date(2026, 6, 3), seconds=240, type_="resonance_breathing")
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 1), seconds=120, type_="resonance_breathing"
+    )
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 2), seconds=180, type_="resonance_breathing"
+    )
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 3), seconds=240, type_="resonance_breathing"
+    )
 
     enrollment = db_session.query(PathEnrollment).filter_by(user_id=user.id).one()
-    summary = path_service._summarize(db_session, user.id, get_path("three-calm-breaths"), enrollment, tz="UTC")
+    summary = path_service._summarize(
+        db_session, user.id, get_path("three-calm-breaths"), enrollment, tz="UTC"
+    )
 
     assert summary.completed is True
     assert summary.completed_days == 3
@@ -330,10 +349,14 @@ def test_service_session_before_start_does_not_count(db_session):
     user = _user(db_session, "svc_before@example.com")
     start = date(2026, 6, 1)
     _enroll_on(db_session, user.id, "first-7-days", start)
-    _seed_session(db_session, user.id, day=date(2026, 5, 31), seconds=600, type_="resonance_breathing")
+    _seed_session(
+        db_session, user.id, day=date(2026, 5, 31), seconds=600, type_="resonance_breathing"
+    )
 
     enrollment = db_session.query(PathEnrollment).filter_by(user_id=user.id).one()
-    summary = path_service._summarize(db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC")
+    summary = path_service._summarize(
+        db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC"
+    )
     assert summary.completed_days == 0
     assert summary.current_day == 1
     assert summary.days[0].status == "current"
@@ -346,12 +369,20 @@ def test_service_earliest_qualifying_date_used(db_session):
     user = _user(db_session, "svc_earliest@example.com")
     start = date(2026, 6, 1)
     _enroll_on(db_session, user.id, "first-7-days", start)
-    _seed_session(db_session, user.id, day=date(2026, 6, 1), seconds=30, type_="resonance_breathing")
-    _seed_session(db_session, user.id, day=date(2026, 6, 2), seconds=120, type_="resonance_breathing")
-    _seed_session(db_session, user.id, day=date(2026, 6, 3), seconds=180, type_="resonance_breathing")
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 1), seconds=30, type_="resonance_breathing"
+    )
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 2), seconds=120, type_="resonance_breathing"
+    )
+    _seed_session(
+        db_session, user.id, day=date(2026, 6, 3), seconds=180, type_="resonance_breathing"
+    )
 
     enrollment = db_session.query(PathEnrollment).filter_by(user_id=user.id).one()
-    summary = path_service._summarize(db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC")
+    summary = path_service._summarize(
+        db_session, user.id, get_path("first-7-days"), enrollment, tz="UTC"
+    )
     assert summary.days[0].status == "done"
     assert summary.days[1].status == "done"
     assert summary.days[2].status == "current"  # day 3 (breathe ≥3m) waits

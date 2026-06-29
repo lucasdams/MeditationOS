@@ -483,7 +483,8 @@ def test_recent_signature_practice_keeps_nourished_full(client, db_session):
     # The recent breathing session refills nourished (and rested — any sit feeds rested too).
     assert n.nourished.factor > 0.9
     assert n.rested.factor > 0.9
-    # joyful is fed by gratitude/journal, which we didn't do → it eases down to the FLOOR (ADR-0031).
+    # joyful is fed by gratitude/journal, which we didn't do → it eases down to the FLOOR
+    # (ADR-0031).
     assert n.joyful.factor == NEEDS_FLOOR
 
 
@@ -1192,7 +1193,8 @@ _FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
 def test_form_slot_is_in_the_catalog_per_path(client):
     """The `form` slot appears in the static catalog with every option a well-formed
     `{cost, unlock_level, tier, need, per_path}` — each EXCLUSIVE to exactly one dosha (Vata's
-    wisps, Pitta's blazes, Kapha's still-life bodies), and option keys don't overlap across paths."""
+    wisps, Pitta's blazes, Kapha's still-life bodies), and option keys don't overlap across
+    paths."""
     assert "form" in SPIRIT_COSMETICS_CATALOG, "missing the form slot"
     assert set(SPIRIT_COSMETICS_CATALOG["form"]) == _FORM_OPTIONS
     for path, options in _FORM_OPTIONS_BY_PATH.items():
@@ -1263,10 +1265,12 @@ def test_unlock_and_equip_a_form_per_path(client):
 
 
 def test_unlock_and_equip_each_new_form_per_path(client):
-    """A spread of Vata + Kapha shapes (plume/constellation/whirlwind and lotus/enso/prism) unlocks +
-    equips through the existing machinery for its own dosha. The tier-1 forms are unlocked first, so
-    by the time the tier-2 form (whirlwind / prism) is reached its same-path tier-1 prereq is owned."""
-    # Ordered tier-1 → tier-1 → tier-2 so the tier-2 form's prereq is owned by the time it's reached.
+    """A spread of Vata + Kapha shapes (plume/constellation/whirlwind and lotus/enso/prism) unlocks
+    + equips through the existing machinery for its own dosha. The tier-1 forms are unlocked first,
+    so by the time the tier-2 form (whirlwind / prism) is reached its same-path tier-1 prereq is
+    owned."""
+    # Ordered tier-1 → tier-1 → tier-2 so the tier-2 form's prereq is owned by the time it's
+    # reached.
     cases = [
         ("heart", ["plume", "constellation", "whirlwind"]),
         ("stillness", ["lotus", "enso", "prism"]),
@@ -1341,7 +1345,8 @@ def test_form_slot_is_outside_the_signature_set(client):
     signature for any path, so the signature-set total stays 7 (not 8) for Vata."""
     for path in _ALL_PATHS:
         assert spirit_service._signature_option("form", path) is None
-    # A full Vata signature loadout still totals 7 (form excluded), even though form has per-path opts.
+    # A full Vata signature loadout still totals 7 (form excluded), even though form has per-path
+    # opts.
     full = {
         slot: spirit_service._signature_option(slot, "heart")
         for slot in SPIRIT_COSMETICS_CATALOG
@@ -2276,8 +2281,8 @@ def _full_signature_loadout(path):
 # The DECORATIVE slots carry a per-path signature capstone (ADR-0028); the BODY-cosmetic slots
 # (palette / size / form) change the CREATURE ITSELF, so they sit outside the signature set (the
 # set-status helper skips them, keeping the total at 7). palette/size are universal recolour/resize;
-# `form` is per-path (Vata-only shapes) but is still a body cosmetic, not a signature capstone, so it
-# is excluded too (the service's `_NON_SIGNATURE_SLOTS`).
+# `form` is per-path (Vata-only shapes) but is still a body cosmetic, not a signature capstone, so
+# it is excluded too (the service's `_NON_SIGNATURE_SLOTS`).
 _BODY_SLOTS = {"palette", "size", "form"}
 _SIGNATURE_SLOTS = [s for s in SPIRIT_COSMETICS_CATALOG if s not in _BODY_SLOTS]
 
@@ -2325,8 +2330,9 @@ def test_complete_set_is_active_with_kind_signature():
 
 
 def test_complete_set_does_not_lift_needs(db_session):
-    """ADR-0028's harmony lift stays removed (ADR-0029 → ADR-0031): cosmetics are purely cosmetic, so
-    a spirit wearing the FULL signature set reads the SAME needs as a bare spirit (same activity).
+    """ADR-0028's harmony lift stays removed (ADR-0029 → ADR-0031): cosmetics are purely cosmetic,
+    so a spirit wearing the FULL signature set reads the SAME needs as a bare spirit (same
+    activity).
     The `needs()` signature takes no cosmetics or set-bonus flag at all."""
     user = _make_user(db_session, "set_no_lift@example.com")
     now = datetime.now(UTC)

@@ -48,4 +48,4 @@ def enroll(
     try:
         return path_service.enroll(db, current_user.id, path_id, today=today, tz=tz)
     except KeyError:
-        raise not_found("Unknown path")
+        raise not_found("Unknown path") from None
