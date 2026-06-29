@@ -3389,8 +3389,8 @@ button.today-action:disabled {
 .spirit-aura--alive {
   transform-origin: center;
   transform-box: fill-box;
-  animation: spirit-aura-glow 4.6s ease-in-out infinite;
-  will-change: opacity, filter;
+  animation: spirit-aura-glow 5s ease-in-out infinite;
+  will-change: opacity, filter, transform;
 }
 
 /* The float is a gentle wandering drift — a bob with a little side-to-side sway and a slight tilt,
@@ -3413,17 +3413,20 @@ button.today-action:disabled {
   }
 }
 
-/* The aura's own up/down glow — a brightness/opacity swell whose depth scales with
-   `--spirit-glow`. Runs on the aura layer only, independent of the creature's float. */
+/* The aura's own up/down glow — it BREATHES: swelling bigger + brighter and then settling smaller +
+   softer on a slow ~5s breath cycle (a calm inhale/exhale), depth scaled by `--spirit-glow` (the
+   condition factor). Runs on the aura layer only, independent of the creature's float. */
 @keyframes spirit-aura-glow {
   0%,
   100% {
     opacity: calc(0.85 + 0.05 * var(--spirit-glow));
     filter: brightness(1);
+    transform: scale(calc(1 - 0.04 * var(--spirit-glow)));
   }
   50% {
     opacity: 1;
     filter: brightness(calc(1 + 0.22 * var(--spirit-glow)));
+    transform: scale(calc(1 + 0.08 * var(--spirit-glow)));
   }
 }
 
@@ -3620,6 +3623,94 @@ button.today-action:disabled {
 .home-companion .spirit-svg {
   width: 100%;
   max-width: 210px;
+}
+
+/* A pocket of warmth on the home — a gentle rotating affirmation + a heart to tap for a little
+   flourish of floating hearts. Low-stakes delight, on-brand with the never-punishing companion. */
+.encouragement-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  max-width: 30rem;
+  margin: 0.5rem auto 0.25rem;
+  padding: 0.3rem 0.6rem;
+  text-align: center;
+}
+.encouragement-message {
+  margin: 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--text-muted, #9a8a78);
+}
+.encouragement-heart {
+  position: relative;
+  flex: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0.15rem;
+  line-height: 1;
+  border-radius: 999px;
+}
+.encouragement-heart-glyph {
+  display: inline-block;
+  font-size: 1.2rem;
+  transition: transform 0.18s ease;
+}
+.encouragement-heart:hover .encouragement-heart-glyph,
+.encouragement-heart:focus-visible .encouragement-heart-glyph {
+  transform: scale(1.2) rotate(-6deg);
+}
+.encouragement-heart:active .encouragement-heart-glyph {
+  transform: scale(0.9);
+}
+.encouragement-hearts {
+  position: absolute;
+  left: 50%;
+  bottom: 55%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.floating-heart {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-size: 0.95rem;
+  animation: float-heart 1.6s ease-out forwards;
+  will-change: transform, opacity;
+}
+@keyframes float-heart {
+  0% {
+    transform: translate(-50%, 0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), -66px) scale(1.25);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-heart {
+    animation: float-heart-calm 0.9s ease-out forwards;
+  }
+  @keyframes float-heart-calm {
+    0% {
+      transform: translate(-50%, 0);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -16px);
+      opacity: 0;
+    }
+  }
 }
 
 .spirit-hero-art {

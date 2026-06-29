@@ -7,6 +7,7 @@ import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import LevelCard from '../components/LevelCard'
 import Spirit from '../components/Spirit'
+import EncouragementNote from '../components/EncouragementNote'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import GraduationCard, {
   shouldShowGraduation,
@@ -242,6 +243,9 @@ export default function DashboardPage() {
           <div className="home-companion">
             <Spirit spirit={spirit} sessionCount={stats.session_count} />
           </div>
+
+          {/* A pocket of warmth under the companion — a gentle affirmation + a heart to tap for love. */}
+          <EncouragementNote />
 
           {/* The quiet rest-day reassurance, when it applies, so the gentle "skipping one is
               fine" message isn't lost now that the streak is a small pill. */}
