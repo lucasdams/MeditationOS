@@ -250,8 +250,8 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     return n
   }
 
-  // Pitta's flame tongues + ember body are the FILLED paths in the creature group (the eyes are
-  // stroked, fill:none) — counting filled paths tracks the flame count (body is a constant +1).
+  // Pitta's layered flame (+ any accent licks) are the FILLED paths in the creature group (the eyes
+  // are stroked fill:none; coals are ellipses) — counting filled paths tracks the flame body + licks.
   const flameCount = (over: Partial<SpiritState>): number => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
@@ -311,39 +311,30 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(wildfire).toBeGreaterThan(bare)
   })
 
-  it('draws FEWER flames with form=emberlit than a bare Pitta', () => {
-    const bare = flameCount({})
-    const emberlit = flameCount({ cosmetics: { form: 'emberlit' } })
-    expect(emberlit).toBeLessThan(bare)
+  it('renders a DIFFERENT silhouette with form=emberlit than a bare Pitta (taller, slimmer)', () => {
+    // emberlit is a focused, banked ember — the same clean layered flame, but taller + slimmer, so
+    // its markup differs from the bare blaze.
+    expect(creatureMarkup('breath', { form: 'emberlit' })).not.toBe(creatureMarkup('breath', {}))
   })
 
   it('draws MORE flames with form=inferno than a bare Pitta', () => {
-    // The towering blaze throws the most tongues (i + 5, capped) — strictly more than the default.
+    // The towering blaze is the tallest + fullest and throws accent licks — strictly more filled
+    // flame paths than the default single flame.
     const bare = flameCount({})
     const inferno = flameCount({ cosmetics: { form: 'inferno' } })
     expect(inferno).toBeGreaterThan(bare)
   })
 
-  it('draws FEWER flames with form=flicker than a bare Pitta', () => {
-    // The gentle low flame banks to a couple of tongues — fewer than the default.
-    const bare = flameCount({})
-    const flicker = flameCount({ cosmetics: { form: 'flicker' } })
-    expect(flicker).toBeLessThan(bare)
+  it('renders a DIFFERENT silhouette with form=flicker than a bare Pitta (a small low flame)', () => {
+    // The gentle low flame banks to a small, slim blaze — markedly smaller than the default, so its
+    // markup differs from the bare flame.
+    expect(creatureMarkup('breath', { form: 'flicker' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('renders ROUNDED puff flames (circles) with form=puff, absent from a sharp-tongue Pitta', () => {
-    // Each `puff` flame is drawn as a soft billow of <circle>s grouped under `.pitta-puff`. The
-    // default sharp-tongue Pitta has no such group, so the rounded silhouette is genuinely new.
-    const puffCircles = (over: Partial<SpiritState>): number => {
-      const { container } = renderSpirit(
-        <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
-      )
-      const n = container.querySelectorAll('.pitta-puff circle').length
-      cleanup()
-      return n
-    }
-    expect(puffCircles({})).toBe(0)
-    expect(puffCircles({ cosmetics: { form: 'puff' } })).toBeGreaterThanOrEqual(2)
+  it('renders a ROUNDED puff flame with form=puff, a different silhouette from the pointed default', () => {
+    // `puff` swaps the pointed flame tip for a soft rounded billow (same layered structure) — a
+    // clearly different silhouette, so its markup differs from the sharp default flame.
+    expect(creatureMarkup('breath', { form: 'puff' })).not.toBe(creatureMarkup('breath', {}))
   })
 
   it('swaps the Kapha body for a HUDDLE of multiple orbs with form=cluster', () => {
@@ -427,17 +418,17 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
   })
 
   it('forks the Pitta blaze into TWO flame groups with form=twin (more filled paths than bare)', () => {
-    // `twin` renders two side-by-side ember cores each topped with a small flame cluster — strictly
-    // more filled flame/body paths than the single-body bare Pitta, and a different silhouette.
+    // `twin` renders two side-by-side layered flames instead of one — strictly more filled flame
+    // paths than the single bare flame, and a different silhouette.
     const bare = flameCount({})
     const twin = flameCount({ cosmetics: { form: 'twin' } })
     expect(twin).toBeGreaterThan(bare)
     expect(creatureMarkup('breath', { form: 'twin' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('fans the Pitta flames WIDER with form=crown (outer tips lean far out, beyond a bare blaze)', () => {
-    // `crown` spreads the flames across a ±70° fan radiating from the body top. Its flame tips reach
-    // farther horizontally than the bare upright blaze, so the silhouette is wider and clearly new.
+  it('fans the Pitta flames WIDER with form=crown (outer licks lean far out, beyond a bare blaze)', () => {
+    // `crown` fans accent licks out WIDE around the main flame. Its outer licks reach farther
+    // horizontally than the bare single flame, so the silhouette is wider and clearly new.
     const widestTipX = (cosmetics: Record<string, string>): number => {
       const { container } = renderSpirit(
         <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', cosmetics })} />,

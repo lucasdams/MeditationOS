@@ -3668,287 +3668,167 @@ function PittaForm({
   const i = stageIndex(stage)
   const p = stageProgress(stage)
   const cx = 40
-  // The blaze grows taller and the body fuller up the ladder.
-  const baseY = 52
-  // The `form` (shape) cosmetic varies the SILHOUETTE — how many flame tongues the blaze throws
-  // and how broad/tall the ember body reads — without ever fixing the stage growth: each variant
-  // OFFSETS the stage's tongue count (`i`) so the creature still visibly grows up the ladder.
-  // Absent / unknown → the identity look (tongues = i, bodyR/flameTop unchanged), so a bare Pitta
-  // is pixel-identical to before. Only `breath` keys matter; the other doshas ignore them.
-  let tongueCount = i
-  let bodyMul = 1
-  let flameLift = 0 // extra height added to the tallest tongue (raised flameTop)
-  // The blaze's reach: the base flame height (16 + p*18). Some forms scale it taller/shorter.
-  let flameSpan = 16 + p * 18
-  // `puff` swaps the SHARP teardrop tongues for soft ROUNDED billows (drawn below), a clearly
-  // different silhouette while keeping the same count + positions.
-  const isPuff = form === 'puff'
-  // `twin` renders TWO smaller ember cores side by side, each with its own small flame cluster — a
-  // forked/twin blaze. `crown` keeps one body but fans its flames out WIDE (a regal crown of fire).
-  // Both are drawn in dedicated blocks below; the default tongue logic is skipped for them.
+  const baseY = 56
+
+  // A clean, layered FLAME — three nested flame silhouettes (a searing `accent` outer, a warm `glow`
+  // mid, a white-hot `core` heart) narrowing to a gently curled tip, grounded on a few warm embers
+  // with a calm face. (Redesign: the old spread "tongues + teal pool" read sloppy; this is one
+  // cohesive, all-warm fire.) The `form` (shape) cosmetic only modulates the flame's CHARACTER — its
+  // height, width, and small accent "licks" — plus a few special silhouettes (twin / rounded puff).
+  // It never fixes the stage growth, so the blaze still visibly grows up the ladder. Only `breath`
+  // keys matter; the other doshas ignore them.
+  let heightMul = 1
+  let widthMul = 1
+  let licks = 0 // small accent flames flanking the base (0 = the clean default)
+  let lickSpread = 1.15 // how far the licks sit from centre (crown fans them wider)
   const isTwin = form === 'twin'
+  const isPuff = form === 'puff'
   const isCrown = form === 'crown'
   if (form === 'wildfire') {
-    // A wild blaze of many flames — capped so radiant (i + 3 = 8) reads fierce, not a hedge.
-    tongueCount = Math.min(8, i + 3)
+    // a wilder blaze — a few accent licks leap up around the main flame
+    licks = Math.min(6, i + 1)
+    widthMul = 1.06
   } else if (form === 'emberlit') {
-    // A focused, banked ember: few flames but the tallest licks ~25% higher, slimmer body.
-    tongueCount = Math.max(1, i - 1)
-    flameLift = (16 + p * 18) * 0.25
-    bodyMul = 0.85
+    // a focused, banked ember — taller + slimmer, no stray licks
+    heightMul = 1.24
+    widthMul = 0.82
   } else if (form === 'bonfire') {
-    // A stout, wide ember — same flame count, a broad body (kept inside the 80×80 frame).
-    bodyMul = 1.32
+    // a stout, broad blaze
+    widthMul = 1.36
+    heightMul = 0.94
   } else if (form === 'inferno') {
-    // A towering roaring blaze: the MOST flames (i + 5, capped at 9), licking ~30% higher off a
-    // slightly fuller body. Reads taller + bigger than wildfire, never just "more".
-    tongueCount = Math.min(9, i + 5)
-    flameSpan = (16 + p * 18) * 1.3
-    bodyMul = 1.08
+    // a towering roaring blaze — the tallest + fullest, ringed with licks
+    heightMul = 1.34
+    widthMul = 1.12
+    licks = Math.min(6, i + 1)
   } else if (form === 'flicker') {
-    // A small, gentle low flame: a couple of tongues, ~40% SHORTER, a slim ember — a calm,
-    // banked coal that barely licks up.
-    tongueCount = Math.max(2, i - 1)
-    flameSpan = (16 + p * 18) * 0.6
-    bodyMul = 0.8
+    // a small, gentle low flame
+    heightMul = 0.6
+    widthMul = 0.84
   } else if (isCrown) {
-    // A fanned crown of fire — flames spread WIDE across a regal arc (the count grows to 7); they're
-    // re-laid as a ±70° fan in the dedicated crown block below, so the default upright layout is skipped.
-    tongueCount = Math.min(7, i + 2)
+    // a regal crown — small flames fan out WIDE around the main blaze
+    licks = Math.min(7, i + 2)
+    lickSpread = 1.7
   }
-  const bodyR = (6 + p * 5) * bodyMul
-  const bodyCy = baseY - bodyR * 0.6
-  // Flame tongues licking up off the body — one at spark, up to five at radiant (shape varies it).
-  const tongues = tongueCount
-  const flameTop = baseY - flameSpan - flameLift // how high the tallest tongue reaches
+
+  // Flame size grows with the stage; the form multipliers shape it.
+  const H = (19 + p * 17) * heightMul
+  const W = (8.5 + p * 3.4) * widthMul
+  const tipCurl = isPuff ? 0 : 1.7 // a slight tip-lean for life (a billowy puff stays upright/round)
+
+  // A clean flame silhouette centred on (fx, fbY): a rounded belly narrowing to a curled point.
+  // `round` swaps the point for a soft billow (the `puff` look).
+  const flame = (fx: number, fbY: number, fh: number, fw: number, curl: number, round: boolean) => {
+    const tipX = fx + curl
+    const tipY = fbY - fh
+    if (round) {
+      return `M ${fx} ${fbY}
+        C ${fx - fw} ${fbY} ${fx - fw} ${fbY - fh * 0.58} ${fx - fw * 0.62} ${fbY - fh * 0.82}
+        C ${fx - fw * 0.32} ${fbY - fh * 1.02} ${fx + fw * 0.32} ${fbY - fh * 1.02} ${fx + fw * 0.62} ${fbY - fh * 0.82}
+        C ${fx + fw} ${fbY - fh * 0.58} ${fx + fw} ${fbY} ${fx} ${fbY} Z`
+    }
+    return `M ${fx} ${fbY}
+      C ${fx - fw} ${fbY} ${fx - fw} ${fbY - fh * 0.46} ${fx - fw * 0.42} ${fbY - fh * 0.72}
+      C ${fx - fw * 0.14} ${fbY - fh * 0.92} ${tipX - 1.5} ${tipY + 2.6} ${tipX} ${tipY}
+      C ${tipX + 1.5} ${tipY + 2.6} ${fx + fw * 0.14} ${fbY - fh * 0.92} ${fx + fw * 0.42} ${fbY - fh * 0.72}
+      C ${fx + fw} ${fbY - fh * 0.46} ${fx + fw} ${fbY} ${fx} ${fbY} Z`
+  }
+
+  // A stack of three nested flames (outer / mid / white-hot heart) at a given centre + size.
+  const layeredFlame = (fx: number, fbY: number, fh: number, fw: number, curl: number, key?: string) => (
+    <g key={key} className="pitta-flame">
+      <path d={flame(fx, fbY, fh, fw, curl, isPuff)} fill={pal.accent} opacity={(0.82 + 0.16 * p) * g} />
+      <path
+        d={flame(fx, fbY - 1, fh * 0.7, fw * 0.62, curl * 0.6, isPuff)}
+        fill={pal.glow}
+        opacity={(0.9 + 0.1 * p) * g}
+      />
+      <path
+        d={flame(fx, fbY - 1.5, fh * 0.4, fw * 0.36, 0, isPuff)}
+        fill={pal.core}
+        opacity={(0.92 + 0.08 * p) * g}
+      />
+    </g>
+  )
+
+  // gentle, friendly eyes on the warm mid-flame from wisp onward
+  const eyeY = baseY - H * 0.4
   return (
     <g>
-      {/* Water element — a cool teal pool the fire rises from, widening from wisp onward. The
-          fire-and-water duality of Pitta (ADR-0023). A single ripple at spark, a pool later. */}
-      <ellipse
-        cx={cx}
-        cy={baseY + 6}
-        rx={bodyR + 4 + p * 4}
-        ry={2.6 + p * 1.6}
-        fill={pal.deep}
-        opacity={(0.45 + 0.2 * p) * g}
-      />
-      {i >= 3 && (
-        <ellipse
-          cx={cx}
-          cy={baseY + 6}
-          rx={bodyR + 9 + p * 4}
-          ry={1.4 + p}
-          fill="none"
-          stroke={pal.deep}
-          strokeWidth={1.1}
-          opacity={0.4 * g}
-        />
-      )}
-      {/* Flame shapes licking up off the ember body. By default SHARP, pointed teardrop tongues;
-          with `form === 'puff'` they become soft ROUNDED billows (overlapping rounded blobs) — a
-          clearly different, billowy silhouette. Outer flames are searing red (`accent`), the
-          central one the hot orange body colour. More + taller each stage. The `twin` + `crown`
-          forms re-lay the flames in their own blocks below, so skip the default upright layout. */}
-      {!isTwin && !isCrown && Array.from({ length: tongues }, (_, k) => {
-        // Spread flames across the top of the body; the centre one rises highest.
-        const t = tongues === 1 ? 0 : (k / (tongues - 1)) * 2 - 1 // -1..1
-        const tx = cx + t * (bodyR * 0.8)
-        const sway = t * 3 // outer flames lean outward
-        const tipY = flameTop + Math.abs(t) * (6 + p * 3) // centre tallest
-        const w = (2.6 + p * 1.6) * (1 - Math.abs(t) * 0.25)
-        const baseTy = bodyCy - bodyR * 0.2
-        const fill = k === Math.floor(tongues / 2) ? pal.glow : pal.accent
-        const opacity = (0.7 + 0.25 * p) * g
-        if (isPuff) {
-          // A soft billow: a rounded blob rising from the body, made of stacked circles — a
-          // lower wide base puff and a smaller cap nearer the tip. Rounded, never pointed.
-          const puffX = tx + sway * 0.5
-          const baseR = w * 1.5 // a broad, soft base
-          const capR = w * 1.05 // a smaller cap riding higher (toward the tip)
-          const baseCy = baseTy - (baseTy - tipY) * 0.32
-          const capCy = baseTy - (baseTy - tipY) * 0.72
+      {/* Warm ember coals the flame stands on — replaces the old cool teal pool so Pitta reads as
+          one unified fire. A single coal at wisp, a small bed by radiant. */}
+      {i >= 2 &&
+        Array.from({ length: Math.min(3, i - 1) }, (_, k) => {
+          const n = Math.min(3, i - 1)
+          const t = n === 1 ? 0 : (k / (n - 1)) * 2 - 1
           return (
-            <g key={k} className="pitta-puff">
-              <circle cx={puffX} cy={baseCy} r={baseR} fill={fill} opacity={opacity} />
-              <circle cx={puffX} cy={capCy} r={capR} fill={fill} opacity={opacity} />
-            </g>
-          )
-        }
-        return (
-          <path
-            key={k}
-            d={`M ${tx - w} ${baseTy}
-                Q ${tx - w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + sway} ${tipY}
-                Q ${tx + w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + w} ${baseTy} Z`}
-            fill={fill}
-            opacity={opacity}
-          />
-        )
-      })}
-      {/* `crown` — a fanned crown of fire: the SAME single body below, but its flames are re-laid
-          here in a WIDE fan radiating from the body top, tips leaning outward (~±70° from vertical),
-          so the blaze reads as a regal crown / peacock of flame rather than upright tongues. */}
-      {isCrown &&
-        Array.from({ length: tongues }, (_, k) => {
-          // Fan each flame out from the body top across ±maxAng, the centre upright, the edges leaning
-          // far outward. Angle measured from straight-up (negative = lean left, positive = lean right).
-          const t = tongues === 1 ? 0 : (k / (tongues - 1)) * 2 - 1 // -1..1
-          const maxAng = (70 * Math.PI) / 180
-          const ang = t * maxAng
-          // Each flame's root sits near the body top, spread a little so they radiate from a crown line.
-          const rootX = cx + t * (bodyR * 0.55)
-          const rootY = bodyCy - bodyR * 0.7
-          const len = flameSpan * (0.72 - Math.abs(t) * 0.12) // outer flames a touch shorter
-          // The tip leans outward along the fan angle (sin = horizontal lean, cos = upward rise).
-          const tipX = rootX + Math.sin(ang) * len
-          const tipY = rootY - Math.cos(ang) * len
-          const w = (2.4 + p * 1.4) * (1 - Math.abs(t) * 0.2)
-          // A teardrop flame swept toward the tip; perpendicular offsets give it width at the root.
-          const nx = Math.cos(ang) // perpendicular to the flame direction
-          const ny = Math.sin(ang)
-          const fill = k === Math.floor(tongues / 2) ? pal.glow : pal.accent
-          return (
-            <path
-              key={`crown-${k}`}
-              d={`M ${rootX - nx * w} ${rootY - ny * w}
-                  Q ${(rootX + tipX) / 2 - nx * w * 0.3} ${(rootY + tipY) / 2 - ny * w * 0.3} ${tipX} ${tipY}
-                  Q ${(rootX + tipX) / 2 + nx * w * 0.3} ${(rootY + tipY) / 2 + ny * w * 0.3} ${rootX + nx * w} ${rootY + ny * w} Z`}
-              fill={fill}
-              opacity={(0.7 + 0.25 * p) * g}
+            <ellipse
+              key={`coal-${k}`}
+              cx={cx + t * (W * 0.85)}
+              cy={baseY + 2.6}
+              rx={2.5 - Math.abs(t) * 0.7}
+              ry={1.5}
+              fill={pal.accent}
+              opacity={(0.5 + 0.2 * p) * g}
             />
           )
         })}
-      {/* `twin` — two flames in one: TWO smaller ember cores side by side, each crowned with a small
-          cluster of flames, so the silhouette reads as a forked / twin blaze. Reuses the same sharp
-          teardrop flame path, just placed as two scaled-down groups. Drawn in place of the single body. */}
-      {isTwin &&
-        (() => {
-          const twinScale = 0.62 // each half is a scaled-down ember
-          const tR = bodyR * twinScale
-          const offset = 6 * (0.7 + p * 0.55) // centres at x ≈ 40 ± 6*scale, widening with the stage
-          const perCluster = Math.max(2, i - 1) // a small flame cluster per core
-          return [-1, 1].map((side) => {
-            const bx = cx + side * offset
-            const bCy = baseY - tR * 0.6
-            return (
-              <g key={`twin-${side}`}>
-                {/* This half's flame cluster, sharp teardrops fanned gently over its own core. */}
-                {Array.from({ length: perCluster }, (_, k) => {
-                  const t = perCluster === 1 ? 0 : (k / (perCluster - 1)) * 2 - 1 // -1..1
-                  const tx = bx + t * (tR * 0.8)
-                  const sway = t * 2.4
-                  const tipY = baseY - flameSpan * 0.7 + Math.abs(t) * (5 + p * 2)
-                  const w = (2.1 + p * 1.2) * (1 - Math.abs(t) * 0.25)
-                  const baseTy = bCy - tR * 0.2
-                  const fill = k === Math.floor(perCluster / 2) ? pal.glow : pal.accent
-                  return (
-                    <path
-                      key={`twin-flame-${side}-${k}`}
-                      d={`M ${tx - w} ${baseTy}
-                          Q ${tx - w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + sway} ${tipY}
-                          Q ${tx + w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + w} ${baseTy} Z`}
-                      fill={fill}
-                      opacity={(0.7 + 0.25 * p) * g}
-                    />
-                  )
-                })}
-                {/* This half's ember body + white-hot core. */}
-                <path
-                  d={`M ${bx} ${bCy - tR * 1.3}
-                      Q ${bx + tR} ${bCy - tR * 0.4} ${bx + tR} ${bCy + tR * 0.5}
-                      Q ${bx + tR} ${baseY} ${bx} ${baseY}
-                      Q ${bx - tR} ${baseY} ${bx - tR} ${bCy + tR * 0.5}
-                      Q ${bx - tR} ${bCy - tR * 0.4} ${bx} ${bCy - tR * 1.3} Z`}
-                  fill={pal.glow}
-                  opacity={(0.8 + 0.2 * p) * g}
-                />
-                <ellipse cx={bx} cy={bCy + 1} rx={tR * 0.5} ry={tR * 0.6} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
-                {/* A single kind eye per head from wisp onward — the forked blaze still reads friendly. */}
-                {i >= 2 && (
-                  <path
-                    d={`M ${bx - 1.2} ${bCy + 0.4} q 1.2 -1.2 2.4 0`}
-                    fill="none"
-                    stroke="#7c2d12"
-                    strokeWidth={0.9}
-                    strokeLinecap="round"
-                    opacity={0.9 * g}
-                  />
-                )}
-              </g>
-            )
+      {/* Small accent licks flanking the base, BEHIND the main flame — only the wild / inferno /
+          crown forms throw them; the default + the others stay a clean single flame. */}
+      {!isTwin &&
+        licks > 0 &&
+        Array.from({ length: licks }, (_, k) => {
+          const t = licks === 1 ? 0 : (k / (licks - 1)) * 2 - 1
+          const lx = cx + t * (W * lickSpread)
+          const lh = H * (isCrown ? 0.52 : 0.42) * (1 - Math.abs(t) * 0.22)
+          const lw = W * 0.34
+          const curl = t * (isCrown ? 6 : 3)
+          return (
+            <path
+              key={`lick-${k}`}
+              d={flame(lx, baseY - 1, lh, lw, curl, false)}
+              fill={pal.accent}
+              opacity={(0.55 + 0.2 * p) * g}
+            />
+          )
+        })}
+      {/* The flame itself. `twin` splits it into two smaller layered flames side by side (a forked
+          blaze); everything else is one clean layered flame. */}
+      {isTwin
+        ? [-1, 1].map((side) => {
+            const off = 5 * (0.8 + p * 0.5)
+            return layeredFlame(cx + side * off, baseY, H * 0.74, W * 0.66, side * 1.4, `twin-${side}`)
           })
-        })()}
-      {/* The ember body — a hot rounded blaze with a white-hot heart. The fierce-but-friendly
-          silhouette: a rounded teardrop, not a jagged shape. (Skipped for `twin`, which draws its
-          own two ember halves above.) */}
-      {!isTwin && (
-        <path
-          d={`M ${cx} ${bodyCy - bodyR * 1.3}
-              Q ${cx + bodyR} ${bodyCy - bodyR * 0.4} ${cx + bodyR} ${bodyCy + bodyR * 0.5}
-              Q ${cx + bodyR} ${baseY} ${cx} ${baseY}
-              Q ${cx - bodyR} ${baseY} ${cx - bodyR} ${bodyCy + bodyR * 0.5}
-              Q ${cx - bodyR} ${bodyCy - bodyR * 0.4} ${cx} ${bodyCy - bodyR * 1.3} Z`}
-          fill={pal.glow}
-          opacity={(0.8 + 0.2 * p) * g}
-        />
-      )}
-      {/* White-hot inner core. (Skipped for `twin`, which gives each half its own core.) */}
-      {!isTwin && (
-        <ellipse
-          cx={cx}
-          cy={bodyCy + 1}
-          rx={bodyR * 0.5}
-          ry={bodyR * 0.6}
-          fill={pal.core}
-          opacity={(0.85 + 0.15 * p) * g}
-        />
-      )}
-      {/* Fierce-but-kind eyes — appear from wisp onward, two sharp upward-tilted slivers. (Skipped
-          for `twin`, whose two heads carry one eye each.) */}
+        : layeredFlame(cx, baseY, H, W, tipCurl)}
+      {/* Calm, friendly eyes — two soft upward arcs on the warm mid-flame, from wisp onward. (Twin's
+          two heads stay eyeless; the forked blaze reads clearly on its own.) */}
       {i >= 2 && !isTwin && (
         <>
           {[-1, 1].map((dir) => (
             <path
-              key={dir}
-              d={`M ${cx + dir * (bodyR * 0.4) - 1.4} ${bodyCy + 0.6}
-                  q 1.4 -1.4 2.8 0`}
+              key={`eye-${dir}`}
+              d={`M ${cx + dir * (W * 0.3) - 1.3} ${eyeY} q 1.3 -1.5 2.6 0`}
               fill="none"
               stroke="#7c2d12"
               strokeWidth={1}
               strokeLinecap="round"
-              opacity={0.9 * g}
+              opacity={0.85 * g}
             />
           ))}
         </>
       )}
-      {/* Rising sparks / embers — from fledgling onward, a few flecks lifting off the blaze. */}
+      {/* A few sparks drifting off the tip from fledgling onward. */}
       {i >= 3 &&
         Array.from({ length: i - 1 }, (_, k) => {
           const a = (k / Math.max(1, i - 1)) * Math.PI - Math.PI / 2
           return (
             <circle
               key={`spark-${k}`}
-              cx={cx + Math.cos(a) * (bodyR + 4)}
-              cy={flameTop + 2 + Math.sin(a) * 3}
+              cx={cx + Math.cos(a) * (W + 2)}
+              cy={baseY - H + 2 + Math.sin(a) * 3}
               r={0.9 + p * 0.5}
-              fill={pal.accent}
-              opacity={0.75 * g}
-            />
-          )
-        })}
-      {/* Radiant: a fierce ring of embers crowning the full blaze — the fullest form. */}
-      {i >= 5 &&
-        Array.from({ length: 8 }, (_, k) => {
-          const a = (k / 8) * Math.PI * 2
-          return (
-            <circle
-              key={`ember-${k}`}
-              cx={cx + Math.cos(a) * (bodyR + 10)}
-              cy={bodyCy + Math.sin(a) * (bodyR + 10)}
-              r={1.3}
-              fill={k % 2 === 0 ? pal.glow : pal.core}
-              opacity={0.8 * g}
+              fill={pal.glow}
+              opacity={0.7 * g}
             />
           )
         })}
