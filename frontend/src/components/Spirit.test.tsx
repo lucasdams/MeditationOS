@@ -193,6 +193,11 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
     const recoloured = bodyMarkup({ path: 'breath', cosmetics: { palette: 'frost' } })
     expect(recoloured).toContain('#7dd3fc')
     expect(recoloured).not.toContain('#fb923c')
+    // A NEWER palette recolours the body the same way: the `ocean` glow (#60a5fa) appears and the
+    // dosha orange is gone — every entry in PALETTES feeds the body ramp universally.
+    const ocean = bodyMarkup({ path: 'breath', cosmetics: { palette: 'ocean' } })
+    expect(ocean).toContain('#60a5fa')
+    expect(ocean).not.toContain('#fb923c')
   })
 
   it('keeps each dosha default when no palette cosmetic is set', () => {

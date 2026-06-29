@@ -1070,7 +1070,22 @@ def test_new_slots_flow_through_choose_preview(client):
 # user-scoped — with the same per-option shape (cost + need + tier), and (being universal) no
 # per_path key.
 _BODY_SLOT_OPTIONS = {
-    "palette": {"ember", "rose", "sage", "gold", "frost", "aqua", "dusk"},
+    "palette": {
+        "ember",
+        "rose",
+        "sage",
+        "gold",
+        "coral",
+        "mint",
+        "ocean",
+        "blossom",
+        "frost",
+        "aqua",
+        "dusk",
+        "plum",
+        "slate",
+        "midnight",
+    },
     "size": {"tiny", "small", "large", "giant"},
 }
 
@@ -1132,11 +1147,16 @@ def test_unlock_and_equip_a_palette_and_a_size(client):
 
     # Equip is free + only on OWNED options: swapping to an unowned palette 409s.
     assert _equip(client, "palette", "frost").status_code == 409
+    # Unlock (+ auto-equip) one of the NEW tier-1 recolours, then it owns + equips like any other.
+    assert _unlock(client, "palette", "ocean").status_code == 200
+    owned = _spirit(client)
+    assert owned["cosmetics"]["palette"] == "ocean"
+    assert _option_state(owned, "palette", "ocean")["owned"] is True
     # Clearing the size slot is free and leaves the palette equipped.
     cleared = _equip(client, "size", None)
     assert cleared.status_code == 200
     assert "size" not in cleared.json()["cosmetics"]
-    assert cleared.json()["cosmetics"]["palette"] == "ember"
+    assert cleared.json()["cosmetics"]["palette"] == "ocean"
 
 
 def test_body_cosmetics_are_user_scoped(client):

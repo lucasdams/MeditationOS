@@ -279,6 +279,13 @@ export const OPTION_LABEL: Record<string, string> = {
   sage: 'Sage',
   gold: 'Gold',
   aqua: 'Aqua',
+  coral: 'Coral',
+  mint: 'Mint',
+  ocean: 'Ocean',
+  plum: 'Plum',
+  blossom: 'Blossom',
+  slate: 'Slate',
+  midnight: 'Midnight',
   // BODY-resize sizes (the `size` slot).
   tiny: 'Tiny',
   small: 'Small',
@@ -444,6 +451,13 @@ const PALETTES: Record<string, { core: string; glow: string; accent: string; dee
   gold: { core: '#fff8e6', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
   dusk: { core: '#f3eefb', glow: '#c4b5fd', accent: '#8b5cf6', deep: '#6d28d9' },
   aqua: { core: '#e6fbf6', glow: '#5eead4', accent: '#14b8a6', deep: '#0f766e' },
+  coral: { core: '#fff1ea', glow: '#fdba74', accent: '#f97316', deep: '#c2410c' },
+  mint: { core: '#eafff5', glow: '#6ee7b7', accent: '#10b981', deep: '#047857' },
+  ocean: { core: '#e8f1ff', glow: '#60a5fa', accent: '#3b82f6', deep: '#1e3a8a' },
+  plum: { core: '#fbeefb', glow: '#e879f9', accent: '#c026d3', deep: '#86198f' },
+  blossom: { core: '#fff0f7', glow: '#f9a8d4', accent: '#ec4899', deep: '#9d174d' },
+  slate: { core: '#eef2f6', glow: '#94a3b8', accent: '#64748b', deep: '#334155' },
+  midnight: { core: '#ebebff', glow: '#a5b4fc', accent: '#6366f1', deep: '#312e81' },
 }
 
 // COSMETIC RESIZE (the `size` slot) — a uniform scale of the CREATURE BODY (+ its accessory),

@@ -762,9 +762,16 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "rose": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
         "sage": {"cost": 55, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "gold": {"cost": 60, "unlock_level": 2, "need": JOYFUL, "tier": 1},
+        "coral": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "mint": {"cost": 55, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "ocean": {"cost": 60, "unlock_level": 2, "need": NOURISHED, "tier": 1},
+        "blossom": {"cost": 60, "unlock_level": 2, "need": JOYFUL, "tier": 1},
         "frost": {"cost": 80, "unlock_level": 3, "need": RESTED, "tier": 2},
         "aqua": {"cost": 85, "unlock_level": 4, "need": RESTED, "tier": 2},
         "dusk": {"cost": 90, "unlock_level": 5, "need": RESTED, "tier": 2},
+        "plum": {"cost": 80, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        "slate": {"cost": 85, "unlock_level": 4, "need": NOURISHED, "tier": 2},
+        "midnight": {"cost": 90, "unlock_level": 5, "need": NOURISHED, "tier": 2},
     },
     # A body RESIZE — scales the creature independent of its growth stage. All tier 1 (no prereq
     # chain; pick any size from the start) with modest costs.
