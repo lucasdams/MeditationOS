@@ -398,6 +398,97 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(gem.querySelectorAll('line').length).toBeGreaterThanOrEqual(3)
   })
 
+  // Returns the full markup of a creature group for a path + cosmetics, so a test can assert a
+  // form genuinely changes the silhouette (markup differs from the bare creature).
+  const creatureMarkup = (path: SpiritPath, cosmetics: Record<string, string>): string => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'radiant', path, cosmetics })} />,
+    )
+    const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
+    cleanup()
+    return html
+  }
+
+  it('draws a visibly DIFFERENT swirl with form=vortex than a bare Vata, still stroked currents', () => {
+    // `vortex` spirals the currents (increasing radius + angle per arm). It stays stroked (fill:none)
+    // curls — so it still draws several — but its markup differs from the bare trailing-leg Vata.
+    expect(creatureMarkup('heart', { form: 'vortex' })).not.toBe(creatureMarkup('heart', {}))
+    expect(wispCount({ cosmetics: { form: 'vortex' } })).toBeGreaterThanOrEqual(4)
+  })
+
+  it('streams ONE long swept tail (two at radiant) with form=meteor, differing from a bare Vata', () => {
+    // `meteor` is a head + a long swept tail — fewer, far-longer stroked currents than the bare
+    // trailing-leg fan, so its silhouette differs and it draws ≥1 stroked tail (2 at ascendant+).
+    expect(creatureMarkup('heart', { form: 'meteor' })).not.toBe(creatureMarkup('heart', {}))
+    const tails = wispCount({ cosmetics: { form: 'meteor' } })
+    expect(tails).toBeGreaterThanOrEqual(1)
+    // At radiant the shooting star grows a second tail, fewer than a bare radiant Vata's many legs.
+    expect(tails).toBeLessThan(wispCount({}))
+  })
+
+  it('forks the Pitta blaze into TWO flame groups with form=twin (more filled paths than bare)', () => {
+    // `twin` renders two side-by-side ember cores each topped with a small flame cluster — strictly
+    // more filled flame/body paths than the single-body bare Pitta, and a different silhouette.
+    const bare = flameCount({})
+    const twin = flameCount({ cosmetics: { form: 'twin' } })
+    expect(twin).toBeGreaterThan(bare)
+    expect(creatureMarkup('breath', { form: 'twin' })).not.toBe(creatureMarkup('breath', {}))
+  })
+
+  it('fans the Pitta flames WIDER with form=crown (outer tips lean far out, beyond a bare blaze)', () => {
+    // `crown` spreads the flames across a ±70° fan radiating from the body top. Its flame tips reach
+    // farther horizontally than the bare upright blaze, so the silhouette is wider and clearly new.
+    const widestTipX = (cosmetics: Record<string, string>): number => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', cosmetics })} />,
+      )
+      // Pull the largest x-coordinate that appears in any filled flame/body path's `d` attribute.
+      const paths = Array.from(container.querySelectorAll('.spirit-creature path')).filter(
+        (el) => el.getAttribute('fill') !== 'none',
+      )
+      let maxX = 0
+      for (const el of paths) {
+        const d = el.getAttribute('d') ?? ''
+        for (const m of d.matchAll(/[\d.]+/g)) maxX = Math.max(maxX, Number(m[0]))
+      }
+      cleanup()
+      return maxX
+    }
+    expect(widestTipX({ form: 'crown' })).toBeGreaterThan(widestTipX({}))
+    expect(creatureMarkup('breath', { form: 'crown' })).not.toBe(creatureMarkup('breath', {}))
+  })
+
+  it('swaps the Kapha body for an organic seedling (a stem path + leaf ellipses) with form=sprout', () => {
+    // `sprout` draws a slim stroked (fill:none) stem path plus several filled leaf ellipses + a bud —
+    // the only organic Kapha body. The default seated Kapha has no such stroked stem in its body.
+    const strokedPaths = (group: SVGGElement) =>
+      Array.from(group.querySelectorAll('path')).filter(
+        (el) => el.getAttribute('fill') === 'none',
+      ).length
+    const bareEllipses = kaphaCreature({}).querySelectorAll('ellipse').length
+    const sprout = kaphaCreature({ cosmetics: { form: 'sprout' } })
+    // The seedling adds at least two leaf ellipses over the bare body...
+    expect(sprout.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(bareEllipses + 2)
+    // ...and a stroked stem path the bare seated form never draws.
+    expect(strokedPaths(sprout)).toBeGreaterThan(strokedPaths(kaphaCreature({})))
+  })
+
+  it('swaps the Kapha body for a dharma wheel (concentric ring OUTLINES + radial spoke lines) with form=wheel', () => {
+    // `wheel` draws ≥2 fill="none" concentric ring outlines (like enso) PLUS several radial spoke
+    // <line>s from the hub — more stroked rings AND more lines than the bare seated Kapha.
+    const strokedCircles = (group: SVGGElement) =>
+      Array.from(group.querySelectorAll('circle')).filter(
+        (el) => el.getAttribute('fill') === 'none',
+      ).length
+    const bareRings = strokedCircles(kaphaCreature({}))
+    const bareLines = kaphaCreature({}).querySelectorAll('line').length
+    const wheel = kaphaCreature({ cosmetics: { form: 'wheel' } })
+    // At least two concentric ring outlines beyond the bare body's framing halo...
+    expect(strokedCircles(wheel) - bareRings).toBeGreaterThanOrEqual(2)
+    // ...and several radial spoke lines (6 + i ≥ 7 at radiant) the bare seated form never draws.
+    expect(wheel.querySelectorAll('line').length).toBeGreaterThan(bareLines + 4)
+  })
+
   it('leaves a bare Vata / Pitta / Kapha (no form) pixel-identical to an empty cosmetics map', () => {
     const markup = (path: SpiritPath, over: Partial<SpiritState>): string => {
       const { container } = renderSpirit(
@@ -434,6 +525,21 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(markup('stillness', { form: 'halo' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'prism' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'prism' })).toBe(markup('breath', {}))
+    // The NEWEST additions are path-scoped too: Vata `vortex`, Pitta `twin`/`crown`, Kapha `sprout`
+    // each only reshape their own dosha — inert on the other two.
+    expect(markup('breath', { form: 'vortex' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'vortex' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'twin' })).toBe(markup('heart', {}))
+    expect(markup('stillness', { form: 'twin' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'crown' })).toBe(markup('heart', {}))
+    expect(markup('stillness', { form: 'crown' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'sprout' })).toBe(markup('heart', {}))
+    expect(markup('breath', { form: 'sprout' })).toBe(markup('breath', {}))
+    // The final pair completing each dosha to eight: Vata `meteor`, Kapha `wheel` — inert elsewhere.
+    expect(markup('breath', { form: 'meteor' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'meteor' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'wheel' })).toBe(markup('heart', {}))
+    expect(markup('breath', { form: 'wheel' })).toBe(markup('breath', {}))
   })
 })
 

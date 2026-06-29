@@ -800,6 +800,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "flurry": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
         "streamer": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1},
         "halo": {"cost": 100, "unlock_level": 3, "per_path": HEART, "need": JOYFUL, "tier": 2},
+        # `vortex` swirls the currents into a whirlpool; `meteor` is a head + one long swept tail (the
+        # shooting-star form — keyed `meteor`, not `comet`, since `comet` already names the tier-4
+        # "Radiant comet" mount).
+        "vortex": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "meteor": {"cost": 70, "unlock_level": 2, "per_path": HEART, "need": JOYFUL, "tier": 1},
         # Pitta (breath) — flame-count + ember-body variants of the blaze creature. `puff` swaps the
         # sharp tongues for soft rounded billows (a different silhouette, not just a recount).
         "wildfire": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1},
@@ -808,6 +813,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "inferno": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": NOURISHED, "tier": 2},
         "flicker": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": RESTED, "tier": 1},
         "puff": {"cost": 95, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
+        # `twin` forks the blaze into two ember cores; `crown` fans the flames into a wide regal crown.
+        "twin": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": JOYFUL, "tier": 1},
+        "crown": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": RESTED, "tier": 2},
         # Kapha (stillness) — alternate still-life bodies (a huddle of orbs, a stone cairn, an
         # orbiting atom) that REPLACE the seated figure, not just restretch it.
         "cluster": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1},
@@ -818,6 +826,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "lotus": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
         "enso": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": NOURISHED, "tier": 1},
         "prism": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": RESTED, "tier": 2},
+        # `sprout` is the one ORGANIC Kapha body — an earthy seedling (stem + leaves + bud). `wheel`
+        # is a radial dharma wheel / mandala — concentric rings + radial spokes (keyed `wheel`, not
+        # `mandala`, since `mandala` already names the tier-4 "Sacred mandala" ground). `wheel` is a
+        # tier-2 form, so its prereq is any owned tier-1 stillness form (the usual slot chain).
+        "sprout": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
+        "wheel": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2},
     },
 }
 

@@ -303,18 +303,30 @@ export const OPTION_LABEL: Record<string, string> = {
   // need no re-entry here. Only the genuinely-new keys are added.
   flurry: 'Flurry',
   streamer: 'Streamer',
+  // Newer Vata forms. `vortex` swirls the currents; `meteor` is a head + one long swept tail (the
+  // shooting-star form — keyed `meteor`, not `comet`, since `comet` already labels the tier-4
+  // "Radiant comet" MOUNT above).
+  vortex: 'Vortex',
+  meteor: 'Meteor',
   wildfire: 'Wildfire',
   emberlit: 'Ember',
   bonfire: 'Bonfire',
   inferno: 'Inferno',
   flicker: 'Flicker',
   puff: 'Puff',
+  // Newer Pitta forms — a forked twin blaze and a fanned crown of fire.
+  twin: 'Twin flame',
+  crown: 'Crown',
   cluster: 'Cluster',
   cairn: 'Cairn',
   orbital: 'Orbital',
   // Kapha form variants. `enso` + `prism` are new; `lotus` is shared (its existing "Lotus" fits).
   enso: 'Ensō',
   prism: 'Prism',
+  // Newer Kapha forms — an organic seedling and a radial dharma wheel (the mandala-style form, keyed
+  // `wheel` rather than `mandala` since `mandala` already labels the tier-4 "Sacred mandala" GROUND).
+  sprout: 'Sprout',
+  wheel: 'Dharma wheel',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -3229,7 +3241,9 @@ function StillnessForm({
     form === 'orbital' ||
     form === 'lotus' ||
     form === 'enso' ||
-    form === 'prism'
+    form === 'prism' ||
+    form === 'sprout' ||
+    form === 'wheel'
       ? form
       : 'seated'
   return (
@@ -3520,6 +3534,113 @@ function StillnessForm({
             </>
           )
         })()}
+
+      {/* `sprout` — the one ORGANIC Kapha body: an earthy seedling. A slim vertical `deep` stem
+          rising from the lotus base, with `2 + floor(i/2)` leaf ellipses angled ALTERNATELY off the
+          stem (glow / accent), crowned by a small `core` bud. A growing sprout, distinct from every
+          stone/gem form. Centred on x=40, rising from the base toward the head height. */}
+      {bodyForm === 'sprout' &&
+        (() => {
+          const baseY = cy + bodyH * 0.5 // the stem foots on the lotus base
+          const topY = cy - bodyH * 0.85 // the bud crowns near the head height
+          const leaves = 2 + Math.floor(i / 2) // 2 → 4 leaves up the ladder
+          const leafLen = 5.5 * scale
+          const leafW = 2.2 * scale
+          return (
+            <>
+              {/* The slim stem — a gently tapering vertical line from the base to the bud. */}
+              <path
+                d={`M 40 ${baseY} Q ${40 + 1.5} ${(baseY + topY) / 2} 40 ${topY}`}
+                fill="none"
+                stroke={pal.deep}
+                strokeWidth={1.6 * scale}
+                strokeLinecap="round"
+                opacity={(0.75 + 0.18 * p) * g}
+              />
+              {/* Leaves stepping up the stem, alternating sides, each angled outward + upward. */}
+              {Array.from({ length: leaves }, (_, k) => {
+                const side = k % 2 === 0 ? -1 : 1 // alternate left / right
+                // Step each leaf up the stem (lower leaves first), leaving the very top for the bud.
+                const t = (k + 1) / (leaves + 1)
+                const ly = baseY + (topY - baseY) * t
+                // The leaf's centre sits a little off the stem on its side.
+                const lcx = 40 + side * leafW * 1.4
+                // A tall ellipse points straight up at 0°; rotate it ±50° so it leans outward+upward
+                // off the stem (right leaf tilts +, left leaf tilts −).
+                const deg = side * 50
+                return (
+                  <ellipse
+                    key={`sprout-leaf-${k}`}
+                    cx={lcx}
+                    cy={ly}
+                    rx={leafW}
+                    ry={leafLen}
+                    fill={k % 2 === 0 ? pal.glow : pal.accent}
+                    opacity={(0.7 + 0.2 * p) * g}
+                    transform={`rotate(${deg} ${lcx} ${ly})`}
+                  />
+                )
+              })}
+              {/* A small bright bud at the very top of the stem. */}
+              <circle cx={40} cy={topY} r={2.4 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
+              <circle cx={39.2} cy={topY - 0.6} r={0.9 * scale} fill="#ffffff" opacity={0.8 * g} />
+            </>
+          )
+        })()}
+
+      {/* `wheel` — a dharma wheel / meditative mandala: concentric ring OUTLINES like `enso`
+          (2 → 3 by stage) PLUS `6 + i` thin radial `accent` spokes from the centre outward, each
+          tipped with a small `glow` dot, around a bright `core` hub. Fuller + more RADIAL than
+          `enso`. Centred on (40, cy). */}
+      {bodyForm === 'wheel' &&
+        (() => {
+          const rings =
+            i >= 4
+              ? [6 * scale, 11 * scale, 15 * scale] // ascendant+ gains the outer ring (matches enso)
+              : [6 * scale, 11 * scale]
+          const outer = rings[rings.length - 1]
+          const spokes = 6 + i // 7 → 11 spokes up the ladder
+          return (
+            <>
+              {/* The concentric ring outlines. */}
+              {rings.map((r, k) => (
+                <circle
+                  key={`wheel-ring-${k}`}
+                  cx={40}
+                  cy={cy}
+                  r={r}
+                  fill="none"
+                  stroke={k % 2 === 0 ? pal.accent : pal.glow}
+                  strokeWidth={1.3}
+                  opacity={(0.55 + 0.25 * p) * g}
+                />
+              ))}
+              {/* Radial spokes from the hub out to the outer ring, each tipped with a glow dot. */}
+              {Array.from({ length: spokes }, (_, k) => {
+                const a = (k / spokes) * Math.PI * 2 - Math.PI / 2 // start at the top
+                const ex = 40 + Math.cos(a) * outer
+                const ey = cy + Math.sin(a) * outer
+                return (
+                  <g key={`wheel-spoke-${k}`}>
+                    <line
+                      x1={40}
+                      y1={cy}
+                      x2={ex}
+                      y2={ey}
+                      stroke={pal.accent}
+                      strokeWidth={0.7}
+                      opacity={(0.45 + 0.2 * p) * g}
+                    />
+                    <circle cx={ex} cy={ey} r={1 * scale} fill={pal.glow} opacity={(0.7 + 0.15 * p) * g} />
+                  </g>
+                )
+              })}
+              {/* The bright hub at the still centre + a tiny highlight. */}
+              <circle cx={40} cy={cy} r={2.6 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
+              <circle cx={38.9} cy={cy - 0.9} r={1 * scale} fill="#ffffff" opacity={0.8 * g} />
+            </>
+          )
+        })()}
     </g>
   )
 }
@@ -3562,6 +3683,11 @@ function PittaForm({
   // `puff` swaps the SHARP teardrop tongues for soft ROUNDED billows (drawn below), a clearly
   // different silhouette while keeping the same count + positions.
   const isPuff = form === 'puff'
+  // `twin` renders TWO smaller ember cores side by side, each with its own small flame cluster — a
+  // forked/twin blaze. `crown` keeps one body but fans its flames out WIDE (a regal crown of fire).
+  // Both are drawn in dedicated blocks below; the default tongue logic is skipped for them.
+  const isTwin = form === 'twin'
+  const isCrown = form === 'crown'
   if (form === 'wildfire') {
     // A wild blaze of many flames — capped so radiant (i + 3 = 8) reads fierce, not a hedge.
     tongueCount = Math.min(8, i + 3)
@@ -3585,6 +3711,10 @@ function PittaForm({
     tongueCount = Math.max(2, i - 1)
     flameSpan = (16 + p * 18) * 0.6
     bodyMul = 0.8
+  } else if (isCrown) {
+    // A fanned crown of fire — flames spread WIDE across a regal arc (the count grows to 7); they're
+    // re-laid as a ±70° fan in the dedicated crown block below, so the default upright layout is skipped.
+    tongueCount = Math.min(7, i + 2)
   }
   const bodyR = (6 + p * 5) * bodyMul
   const bodyCy = baseY - bodyR * 0.6
@@ -3618,8 +3748,9 @@ function PittaForm({
       {/* Flame shapes licking up off the ember body. By default SHARP, pointed teardrop tongues;
           with `form === 'puff'` they become soft ROUNDED billows (overlapping rounded blobs) — a
           clearly different, billowy silhouette. Outer flames are searing red (`accent`), the
-          central one the hot orange body colour. More + taller each stage. */}
-      {Array.from({ length: tongues }, (_, k) => {
+          central one the hot orange body colour. More + taller each stage. The `twin` + `crown`
+          forms re-lay the flames in their own blocks below, so skip the default upright layout. */}
+      {!isTwin && !isCrown && Array.from({ length: tongues }, (_, k) => {
         // Spread flames across the top of the body; the centre one rises highest.
         const t = tongues === 1 ? 0 : (k / (tongues - 1)) * 2 - 1 // -1..1
         const tx = cx + t * (bodyR * 0.8)
@@ -3655,28 +3786,127 @@ function PittaForm({
           />
         )
       })}
+      {/* `crown` — a fanned crown of fire: the SAME single body below, but its flames are re-laid
+          here in a WIDE fan radiating from the body top, tips leaning outward (~±70° from vertical),
+          so the blaze reads as a regal crown / peacock of flame rather than upright tongues. */}
+      {isCrown &&
+        Array.from({ length: tongues }, (_, k) => {
+          // Fan each flame out from the body top across ±maxAng, the centre upright, the edges leaning
+          // far outward. Angle measured from straight-up (negative = lean left, positive = lean right).
+          const t = tongues === 1 ? 0 : (k / (tongues - 1)) * 2 - 1 // -1..1
+          const maxAng = (70 * Math.PI) / 180
+          const ang = t * maxAng
+          // Each flame's root sits near the body top, spread a little so they radiate from a crown line.
+          const rootX = cx + t * (bodyR * 0.55)
+          const rootY = bodyCy - bodyR * 0.7
+          const len = flameSpan * (0.72 - Math.abs(t) * 0.12) // outer flames a touch shorter
+          // The tip leans outward along the fan angle (sin = horizontal lean, cos = upward rise).
+          const tipX = rootX + Math.sin(ang) * len
+          const tipY = rootY - Math.cos(ang) * len
+          const w = (2.4 + p * 1.4) * (1 - Math.abs(t) * 0.2)
+          // A teardrop flame swept toward the tip; perpendicular offsets give it width at the root.
+          const nx = Math.cos(ang) // perpendicular to the flame direction
+          const ny = Math.sin(ang)
+          const fill = k === Math.floor(tongues / 2) ? pal.glow : pal.accent
+          return (
+            <path
+              key={`crown-${k}`}
+              d={`M ${rootX - nx * w} ${rootY - ny * w}
+                  Q ${(rootX + tipX) / 2 - nx * w * 0.3} ${(rootY + tipY) / 2 - ny * w * 0.3} ${tipX} ${tipY}
+                  Q ${(rootX + tipX) / 2 + nx * w * 0.3} ${(rootY + tipY) / 2 + ny * w * 0.3} ${rootX + nx * w} ${rootY + ny * w} Z`}
+              fill={fill}
+              opacity={(0.7 + 0.25 * p) * g}
+            />
+          )
+        })}
+      {/* `twin` — two flames in one: TWO smaller ember cores side by side, each crowned with a small
+          cluster of flames, so the silhouette reads as a forked / twin blaze. Reuses the same sharp
+          teardrop flame path, just placed as two scaled-down groups. Drawn in place of the single body. */}
+      {isTwin &&
+        (() => {
+          const twinScale = 0.62 // each half is a scaled-down ember
+          const tR = bodyR * twinScale
+          const offset = 6 * (0.7 + p * 0.55) // centres at x ≈ 40 ± 6*scale, widening with the stage
+          const perCluster = Math.max(2, i - 1) // a small flame cluster per core
+          return [-1, 1].map((side) => {
+            const bx = cx + side * offset
+            const bCy = baseY - tR * 0.6
+            return (
+              <g key={`twin-${side}`}>
+                {/* This half's flame cluster, sharp teardrops fanned gently over its own core. */}
+                {Array.from({ length: perCluster }, (_, k) => {
+                  const t = perCluster === 1 ? 0 : (k / (perCluster - 1)) * 2 - 1 // -1..1
+                  const tx = bx + t * (tR * 0.8)
+                  const sway = t * 2.4
+                  const tipY = baseY - flameSpan * 0.7 + Math.abs(t) * (5 + p * 2)
+                  const w = (2.1 + p * 1.2) * (1 - Math.abs(t) * 0.25)
+                  const baseTy = bCy - tR * 0.2
+                  const fill = k === Math.floor(perCluster / 2) ? pal.glow : pal.accent
+                  return (
+                    <path
+                      key={`twin-flame-${side}-${k}`}
+                      d={`M ${tx - w} ${baseTy}
+                          Q ${tx - w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + sway} ${tipY}
+                          Q ${tx + w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + w} ${baseTy} Z`}
+                      fill={fill}
+                      opacity={(0.7 + 0.25 * p) * g}
+                    />
+                  )
+                })}
+                {/* This half's ember body + white-hot core. */}
+                <path
+                  d={`M ${bx} ${bCy - tR * 1.3}
+                      Q ${bx + tR} ${bCy - tR * 0.4} ${bx + tR} ${bCy + tR * 0.5}
+                      Q ${bx + tR} ${baseY} ${bx} ${baseY}
+                      Q ${bx - tR} ${baseY} ${bx - tR} ${bCy + tR * 0.5}
+                      Q ${bx - tR} ${bCy - tR * 0.4} ${bx} ${bCy - tR * 1.3} Z`}
+                  fill={pal.glow}
+                  opacity={(0.8 + 0.2 * p) * g}
+                />
+                <ellipse cx={bx} cy={bCy + 1} rx={tR * 0.5} ry={tR * 0.6} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
+                {/* A single kind eye per head from wisp onward — the forked blaze still reads friendly. */}
+                {i >= 2 && (
+                  <path
+                    d={`M ${bx - 1.2} ${bCy + 0.4} q 1.2 -1.2 2.4 0`}
+                    fill="none"
+                    stroke="#7c2d12"
+                    strokeWidth={0.9}
+                    strokeLinecap="round"
+                    opacity={0.9 * g}
+                  />
+                )}
+              </g>
+            )
+          })
+        })()}
       {/* The ember body — a hot rounded blaze with a white-hot heart. The fierce-but-friendly
-          silhouette: a rounded teardrop, not a jagged shape. */}
-      <path
-        d={`M ${cx} ${bodyCy - bodyR * 1.3}
-            Q ${cx + bodyR} ${bodyCy - bodyR * 0.4} ${cx + bodyR} ${bodyCy + bodyR * 0.5}
-            Q ${cx + bodyR} ${baseY} ${cx} ${baseY}
-            Q ${cx - bodyR} ${baseY} ${cx - bodyR} ${bodyCy + bodyR * 0.5}
-            Q ${cx - bodyR} ${bodyCy - bodyR * 0.4} ${cx} ${bodyCy - bodyR * 1.3} Z`}
-        fill={pal.glow}
-        opacity={(0.8 + 0.2 * p) * g}
-      />
-      {/* White-hot inner core. */}
-      <ellipse
-        cx={cx}
-        cy={bodyCy + 1}
-        rx={bodyR * 0.5}
-        ry={bodyR * 0.6}
-        fill={pal.core}
-        opacity={(0.85 + 0.15 * p) * g}
-      />
-      {/* Fierce-but-kind eyes — appear from wisp onward, two sharp upward-tilted slivers. */}
-      {i >= 2 && (
+          silhouette: a rounded teardrop, not a jagged shape. (Skipped for `twin`, which draws its
+          own two ember halves above.) */}
+      {!isTwin && (
+        <path
+          d={`M ${cx} ${bodyCy - bodyR * 1.3}
+              Q ${cx + bodyR} ${bodyCy - bodyR * 0.4} ${cx + bodyR} ${bodyCy + bodyR * 0.5}
+              Q ${cx + bodyR} ${baseY} ${cx} ${baseY}
+              Q ${cx - bodyR} ${baseY} ${cx - bodyR} ${bodyCy + bodyR * 0.5}
+              Q ${cx - bodyR} ${bodyCy - bodyR * 0.4} ${cx} ${bodyCy - bodyR * 1.3} Z`}
+          fill={pal.glow}
+          opacity={(0.8 + 0.2 * p) * g}
+        />
+      )}
+      {/* White-hot inner core. (Skipped for `twin`, which gives each half its own core.) */}
+      {!isTwin && (
+        <ellipse
+          cx={cx}
+          cy={bodyCy + 1}
+          rx={bodyR * 0.5}
+          ry={bodyR * 0.6}
+          fill={pal.core}
+          opacity={(0.85 + 0.15 * p) * g}
+        />
+      )}
+      {/* Fierce-but-kind eyes — appear from wisp onward, two sharp upward-tilted slivers. (Skipped
+          for `twin`, whose two heads carry one eye each.) */}
+      {i >= 2 && !isTwin && (
         <>
           {[-1, 1].map((dir) => (
             <path
@@ -3762,6 +3992,14 @@ function VataForm({
   // `halo` arranges the currents in a RING radiating out from the body centre instead of trailing
   // down — a spun halo of short currents. Set below; default false keeps every other form trailing.
   const isHalo = form === 'halo'
+  // `vortex` reuses the radial-ring machinery (like `halo`) but lays each current at a STEADILY
+  // increasing radius + angle as the index climbs, all curling the same way — so the ring reads as a
+  // whirlpool/swirl rather than an even halo. Set below; default false leaves every other form alone.
+  const isVortex = form === 'vortex'
+  // `meteor` is a shooting star — the body leads, with ONE very-long tail swept strongly to one side
+  // (two from ascendant+) trailing off behind it. Drawn in its own block below; default false leaves
+  // every other form's trailing legs untouched.
+  const isMeteor = form === 'meteor'
   if (form === 'tendrils') {
     // Many trailing legs — a fuller fan of breeze. Capped so radiant (i + 4 = 9) reads graceful,
     // not a tangle; the stroke is thinned a touch below (via `widthMul`-independent thinning).
@@ -3786,6 +4024,16 @@ function VataForm({
     // A spun ring of short currents radiating outward from the body centre (positions set below).
     wispCount = Math.max(4, i + 1)
     wispLenMul = 0.7
+  } else if (isVortex) {
+    // A whirlpool of swirling currents — at least 4, growing with the stage; medium-length curls
+    // laid at a steadily increasing radius + angle below so they read as a spiral, not an even ring.
+    wispCount = Math.max(4, i + 2)
+    wispLenMul = 0.85
+  } else if (isMeteor) {
+    // A shooting star: ONE very-long swept tail at low stages, TWO from ascendant+. The tails are
+    // drawn in their own swept block below (this just sets the count); the body leads.
+    wispCount = i >= 4 ? 2 : 1
+    wispLenMul = 2.2
   }
   // The wisp grows fuller and its trailing currents longer up the ladder. `widthMul` scales the
   // body (and so the wisp start positions, which key off bodyR) for the shape variant.
@@ -3828,6 +4076,65 @@ function VataForm({
               strokeWidth={(2.4 + p * 1.4) * 0.7 * strokeThin}
               strokeLinecap="round"
               opacity={(0.4 + 0.3 * p) * g}
+            />
+          )
+        }
+        if (isVortex) {
+          // A whirlpool: like `halo`, each current radiates from the body centre — but the angle
+          // ADVANCES more than one even step and the radius GROWS as the index climbs, so the curls
+          // spiral outward (a swirl). All bow the SAME rotational way (a consistent positive `tang`),
+          // reading as a vortex rather than an even ring. Radii stay inside the 80-tall frame.
+          const a = (k / wisps) * Math.PI * 2 * 1.5 // >1 full turn so the arms overlap into a spiral
+          const r0 = bodyR * 0.5 + (k / wisps) * (7 + p * 4) // start radius grows with the index
+          // Shorten the trailing curl as the arm starts further out, so the OUTER tip stays well
+          // inside the 80-tall frame (the longest arm reaches ~r0 + 0.7*wispLen, not the full cap).
+          const armLen = wispLen * (1 - (k / wisps) * 0.35)
+          const startX = cx + Math.cos(a) * r0
+          const startY = cy + Math.sin(a) * r0
+          const endX = cx + Math.cos(a) * (r0 + armLen)
+          const endY = cy + Math.sin(a) * (r0 + armLen)
+          // Bow every curl the SAME tangential direction (never negated) so they all curl one way.
+          const tang = 6 + p * 4
+          const midX = (startX + endX) / 2 - Math.sin(a) * tang
+          const midY = (startY + endY) / 2 + Math.cos(a) * tang
+          return (
+            <path
+              key={k}
+              d={`M ${startX} ${startY}
+                  Q ${midX} ${midY} ${endX} ${endY}`}
+              fill="none"
+              stroke={k % 2 === 0 ? pal.accent : pal.deep}
+              strokeWidth={(2.4 + p * 1.4) * 0.66 * strokeThin}
+              strokeLinecap="round"
+              opacity={(0.4 + 0.3 * p) * g}
+            />
+          )
+        }
+        if (isMeteor) {
+          // A shooting-star tail: one very-long current swept strongly to one side, streaming behind
+          // the leading body. The tail starts just behind the body and leans hard left + down, so the
+          // body reads as the head racing ahead. A second tail (ascendant+) rides just beside the first.
+          const lane = wisps === 1 ? 0 : (k / (wisps - 1)) * 2 - 1 // -1..1 across the two tails
+          // Start just below-left of the body (behind the direction of travel).
+          const startX = cx - bodyR * 0.4 + lane * 1.5
+          const startY = cy + bodyR * 0.5 + lane * 1.5
+          // The tail streams hard to the lower-LEFT: a large horizontal lean over the full length.
+          const sweep = 0.9 // strongly horizontal (most of the length goes sideways)
+          const endX = startX - wispLen * sweep
+          const endY = startY + wispLen * (1 - sweep) + Math.abs(lane) * 3
+          // Bow the tail so it curves like a comet streak rather than a straight spoke.
+          const midX = startX - wispLen * sweep * 0.45
+          const midY = startY + wispLen * (1 - sweep) * 0.3 - 3 - lane * 2
+          return (
+            <path
+              key={`meteor-${k}`}
+              d={`M ${startX} ${startY}
+                  Q ${midX} ${midY} ${endX} ${endY}`}
+              fill="none"
+              stroke={k % 2 === 0 ? pal.accent : pal.deep}
+              strokeWidth={(2.6 + p * 1.6) * (1 - (k > 0 ? 0.3 : 0)) * strokeThin}
+              strokeLinecap="round"
+              opacity={(0.45 + 0.3 * p) * g}
             />
           )
         }
