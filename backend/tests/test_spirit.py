@@ -1182,7 +1182,7 @@ def test_body_cosmetics_are_user_scoped(client):
 # Pitta's blazes (breath), Kapha's still-life bodies (stillness). It is still a body cosmetic, NOT a
 # signature capstone, so it stays OUTSIDE the signature set (total 7).
 _FORM_OPTIONS_BY_PATH = {
-    "heart": {"tendrils", "sleek", "billowy", "flurry", "streamer", "halo", "vortex", "meteor"},
+    "heart": {"cloud", "plume", "constellation", "dandelion", "leaflet", "whirlwind", "meteor"},
     "breath": {"campfire", "torch", "fireball", "sun", "coals", "lantern", "twin"},
     "stillness": {"cluster", "cairn", "orbital", "lotus", "enso", "prism", "sprout", "wheel"},
 }
@@ -1239,7 +1239,7 @@ def test_unlock_and_equip_a_form_per_path(client):
     tier-1 form of the same path first)."""
     # (path, tier-1 option, tier-2 option) — the tier-2 form's prereq is any owned tier-1 form.
     cases = [
-        ("heart", "tendrils", "sleek"),
+        ("heart", "cloud", "leaflet"),
         ("breath", "campfire", "fireball"),
         ("stillness", "cluster", "orbital"),
     ]
@@ -1263,12 +1263,12 @@ def test_unlock_and_equip_a_form_per_path(client):
 
 
 def test_unlock_and_equip_each_new_form_per_path(client):
-    """Every NEW Vata + Kapha shape (flurry/streamer/halo and lotus/enso/prism) unlocks + equips
-    through the existing machinery for its own dosha. The tier-1 forms are unlocked first, so by the
-    time the tier-2 form (halo / prism) is reached its same-path tier-1 prereq is already owned."""
+    """A spread of Vata + Kapha shapes (plume/constellation/whirlwind and lotus/enso/prism) unlocks +
+    equips through the existing machinery for its own dosha. The tier-1 forms are unlocked first, so
+    by the time the tier-2 form (whirlwind / prism) is reached its same-path tier-1 prereq is owned."""
     # Ordered tier-1 → tier-1 → tier-2 so the tier-2 form's prereq is owned by the time it's reached.
     cases = [
-        ("heart", ["flurry", "streamer", "halo"]),
+        ("heart", ["plume", "constellation", "whirlwind"]),
         ("stillness", ["lotus", "enso", "prism"]),
     ]
     for path, options in cases:
@@ -1283,12 +1283,13 @@ def test_unlock_and_equip_each_new_form_per_path(client):
 
 
 def test_unlock_and_equip_the_newest_forms_per_path(client):
-    """The two-per-dosha additions (Vata `vortex`/`meteor`, Pitta `twin`/`lantern`, Kapha
+    """A further spread of per-dosha forms (Vata `dandelion`/`meteor`, Pitta `twin`/`lantern`, Kapha
     `sprout`/`wheel`) each unlock + equip through the existing machinery for their own dosha. Each
-    list is ordered tier-1 → tier-2, so the tier-2 form's same-path tier-1 prereq is already owned by
-    the time it runs (`lantern` after `twin`, `wheel` after `sprout`)."""
+    list is ordered tier-1 → tier-2 (or tier-1 → tier-1 for Vata), so the tier-2 form's same-path
+    tier-1 prereq is already owned by the time it runs (`lantern` after `twin`, `wheel` after
+    `sprout`)."""
     cases = [
-        ("heart", ["vortex", "meteor"]),
+        ("heart", ["dandelion", "meteor"]),
         ("breath", ["twin", "lantern"]),
         ("stillness", ["sprout", "wheel"]),
     ]
@@ -1306,7 +1307,7 @@ def test_unlock_and_equip_the_newest_forms_per_path(client):
 def test_cannot_unlock_another_paths_form_404(client):
     """A spirit can't buy another dosha's form — it isn't in its catalog → 404, no charge. (Each
     path is offered one of the OTHER two paths' tier-1 forms.)"""
-    foreign = {"heart": "campfire", "breath": "cluster", "stillness": "tendrils"}
+    foreign = {"heart": "campfire", "breath": "cluster", "stillness": "cloud"}
     for path, option in foreign.items():
         _auth(client, f"form_wrongpath_{path}@example.com")
         assert _choose(client, path).status_code == 200

@@ -274,35 +274,105 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     return group
   }
 
-  it('draws MORE trailing legs with form=tendrils than a bare Vata', () => {
-    const bare = wispCount({})
-    const tendrils = wispCount({ cosmetics: { form: 'tendrils' } })
-    expect(tendrils).toBeGreaterThan(bare)
+  // The Vata `form` cosmetic now swaps the WHOLE silhouette for a DISTINCT air/ether OBJECT (like
+  // Kapha's swapped bodies), not a wisp-count/width tweak. Each test below renders a Vata with the
+  // form and asserts the object's defining elements, plus that it differs from the bare wisp.
+  // Helper: the creature group for a Vata wearing the given form, for element-level assertions.
+  const vataCreature = (over: Partial<SpiritState>): SVGGElement => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart', ...over })} />,
+    )
+    const group = container.querySelector('.spirit-creature') as SVGGElement
+    cleanup()
+    return group
+  }
+  // The Vata palette colours (PATH_PALETTE.heart) — the object forms draw their structural parts in
+  // these, so counting elements filled/stroked with each measures the object's distinctive shape.
+  const VATA_GLOW = '#bae6fd'
+  const VATA_DEEP = '#818cf8'
+
+  it('draws a puffy CLOUD of several pal.glow bumps + a face with form=cloud', () => {
+    const cloud = vataCreature({ cosmetics: { form: 'cloud' } })
+    // The cloud lump is several overlapping pal.glow body <circle> bumps (≥3 at radiant).
+    const bumps = Array.from(cloud.querySelectorAll('circle')).filter(
+      (el) => el.getAttribute('fill') === VATA_GLOW,
+    )
+    expect(bumps.length).toBeGreaterThanOrEqual(3)
+    expect(creatureMarkup('heart', { form: 'cloud' })).not.toBe(creatureMarkup('heart', {}))
   })
 
-  it('draws FEWER trailing legs with form=sleek than a bare Vata', () => {
-    const bare = wispCount({})
-    const sleek = wispCount({ cosmetics: { form: 'sleek' } })
-    expect(sleek).toBeLessThan(bare)
+  it('draws a feather PLUME — a pal.deep quill + barb strokes — with form=plume', () => {
+    const plume = vataCreature({ cosmetics: { form: 'plume' } })
+    // The central quill is a stroked (fill:none) pal.deep path.
+    const quill = Array.from(plume.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') === 'none' && el.getAttribute('stroke') === VATA_DEEP,
+    )
+    expect(quill.length).toBeGreaterThanOrEqual(1)
+    // Plus several barb strokes (stroked fill:none paths) feathering off the spine.
+    const barbs = Array.from(plume.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') === 'none',
+    )
+    expect(barbs.length).toBeGreaterThanOrEqual(6)
+    expect(creatureMarkup('heart', { form: 'plume' })).not.toBe(creatureMarkup('heart', {}))
   })
 
-  it('draws MORE trailing legs with form=flurry than a bare Vata', () => {
-    const bare = wispCount({})
-    const flurry = wispCount({ cosmetics: { form: 'flurry' } })
-    expect(flurry).toBeGreaterThan(bare)
+  it('draws a LEAF blade — a filled pal.glow almond + a pal.deep vein — with form=leaflet', () => {
+    const leaf = vataCreature({ cosmetics: { form: 'leaflet' } })
+    // The blade is a filled pal.glow <path> (the almond).
+    const blade = Array.from(leaf.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') === VATA_GLOW,
+    )
+    expect(blade.length).toBeGreaterThanOrEqual(1)
+    // The central vein is a stroked pal.deep path down the midrib.
+    const veins = Array.from(leaf.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') === 'none' && el.getAttribute('stroke') === VATA_DEEP,
+    )
+    expect(veins.length).toBeGreaterThanOrEqual(1)
+    expect(creatureMarkup('heart', { form: 'leaflet' })).not.toBe(creatureMarkup('heart', {}))
   })
 
-  it('draws FEWER trailing legs with form=streamer than a bare Vata', () => {
-    const bare = wispCount({})
-    const streamer = wispCount({ cosmetics: { form: 'streamer' } })
-    expect(streamer).toBeLessThan(bare)
+  it('draws a CONSTELLATION — several star dots + connector lines — with form=constellation', () => {
+    const con = vataCreature({ cosmetics: { form: 'constellation' } })
+    // Several small star-point <circle>s (≥5 at radiant: 4 + i).
+    const stars = con.querySelectorAll('circle')
+    expect(stars.length).toBeGreaterThanOrEqual(5)
+    // Joined by faint connector <line>s into a loose constellation.
+    expect(con.querySelectorAll('line').length).toBeGreaterThanOrEqual(3)
+    expect(creatureMarkup('heart', { form: 'constellation' })).not.toBe(creatureMarkup('heart', {}))
   })
 
-  it('still draws stroked currents (a ring of them) with form=halo', () => {
-    // `halo` rearranges the currents into a radial RING rather than trailing legs, but they stay
-    // stroked (fill:none) curves — so a haloed Vata still draws several of them.
-    const halo = wispCount({ cosmetics: { form: 'halo' } })
-    expect(halo).toBeGreaterThanOrEqual(4)
+  it('draws a DANDELION — many radiating stalks + tuft circles — with form=dandelion', () => {
+    const dand = vataCreature({ cosmetics: { form: 'dandelion' } })
+    // Many thin radiating stalk <line>s (≥9) forming the puff.
+    expect(dand.querySelectorAll('line').length).toBeGreaterThanOrEqual(9)
+    // Each tipped with a fuzzy seed-tuft <circle> — many tuft circles + the core + drifting seeds.
+    expect(dand.querySelectorAll('circle').length).toBeGreaterThanOrEqual(9)
+    expect(creatureMarkup('heart', { form: 'dandelion' })).not.toBe(creatureMarkup('heart', {}))
+  })
+
+  it('draws a WHIRLWIND — stacked swirl bands narrowing down — with form=whirlwind', () => {
+    const whirl = vataCreature({ cosmetics: { form: 'whirlwind' } })
+    // Several stacked stroked (fill:none) swirl-band <path>s (≥5 at radiant).
+    const bands = Array.from(whirl.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') === 'none',
+    )
+    expect(bands.length).toBeGreaterThanOrEqual(5)
+    expect(creatureMarkup('heart', { form: 'whirlwind' })).not.toBe(creatureMarkup('heart', {}))
+  })
+
+  it('grows each Vata air/ether object across the 5 stages (markup differs spark → radiant)', () => {
+    // Render a form at spark and at radiant; the silhouette must visibly change (it scales with i/p).
+    const at = (stage: SpiritStage, form: string): string => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage, path: 'heart', cosmetics: { form } })} />,
+      )
+      const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
+      cleanup()
+      return html
+    }
+    for (const form of ['cloud', 'plume', 'leaflet', 'constellation', 'dandelion', 'whirlwind']) {
+      expect(at('spark', form)).not.toBe(at('radiant', form))
+    }
   })
 
   // The Pitta `form` cosmetic now swaps the WHOLE silhouette for a DISTINCT fire OBJECT (like
@@ -476,13 +546,6 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     return html
   }
 
-  it('draws a visibly DIFFERENT swirl with form=vortex than a bare Vata, still stroked currents', () => {
-    // `vortex` spirals the currents (increasing radius + angle per arm). It stays stroked (fill:none)
-    // curls — so it still draws several — but its markup differs from the bare trailing-leg Vata.
-    expect(creatureMarkup('heart', { form: 'vortex' })).not.toBe(creatureMarkup('heart', {}))
-    expect(wispCount({ cosmetics: { form: 'vortex' } })).toBeGreaterThanOrEqual(4)
-  })
-
   it('streams ONE long swept tail (two at radiant) with form=meteor, differing from a bare Vata', () => {
     // `meteor` is a head + a long swept tail — fewer, far-longer stroked currents than the bare
     // trailing-leg fan, so its silhouette differs and it draws ≥1 stroked tail (2 at ascendant+).
@@ -558,32 +621,37 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
       return html
     }
     // A Vata key on Pitta/Kapha is ignored; a Pitta key on Vata/Kapha is ignored; etc.
-    expect(markup('breath', { form: 'tendrils' })).toBe(markup('breath', {}))
-    expect(markup('stillness', { form: 'tendrils' })).toBe(markup('stillness', {}))
+    expect(markup('breath', { form: 'cloud' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'cloud' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'campfire' })).toBe(markup('heart', {}))
     expect(markup('stillness', { form: 'campfire' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'cluster' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'cluster' })).toBe(markup('breath', {}))
-    // The NEW forms are likewise path-scoped: a Vata `halo` is inert on Pitta/Kapha; a Kapha
-    // `prism` is inert on Vata/Pitta.
-    expect(markup('breath', { form: 'halo' })).toBe(markup('breath', {}))
-    expect(markup('stillness', { form: 'halo' })).toBe(markup('stillness', {}))
+    // The new Vata air/ether objects are likewise path-scoped: a Vata `whirlwind` is inert on
+    // Pitta/Kapha; a Kapha `prism` is inert on Vata/Pitta.
+    expect(markup('breath', { form: 'whirlwind' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'whirlwind' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'prism' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'prism' })).toBe(markup('breath', {}))
-    // The NEWEST additions are path-scoped too: Vata `vortex`, Pitta `twin`, Kapha `sprout`
-    // each only reshape their own dosha — inert on the other two.
-    expect(markup('breath', { form: 'vortex' })).toBe(markup('breath', {}))
-    expect(markup('stillness', { form: 'vortex' })).toBe(markup('stillness', {}))
+    // More path-scoped checks: Vata `dandelion`, Pitta `twin`, Kapha `sprout` each only reshape
+    // their own dosha — inert on the other two.
+    expect(markup('breath', { form: 'dandelion' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'dandelion' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'twin' })).toBe(markup('heart', {}))
     expect(markup('stillness', { form: 'twin' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'sprout' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'sprout' })).toBe(markup('breath', {}))
-    // The final pair completing each dosha to eight: Vata `meteor`, Kapha `wheel` — inert elsewhere.
+    // Vata `meteor` (the kept shooting-star) + Kapha `wheel` are inert elsewhere too.
     expect(markup('breath', { form: 'meteor' })).toBe(markup('breath', {}))
     expect(markup('stillness', { form: 'meteor' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'wheel' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'wheel' })).toBe(markup('breath', {}))
-    // Every NEW Pitta fire OBJECT is likewise inert on Vata + Kapha (it only reshapes Pitta).
+    // Every Vata air/ether OBJECT is likewise inert on Pitta + Kapha (it only reshapes Vata).
+    for (const form of ['cloud', 'plume', 'leaflet', 'constellation', 'dandelion', 'whirlwind']) {
+      expect(markup('breath', { form })).toBe(markup('breath', {}))
+      expect(markup('stillness', { form })).toBe(markup('stillness', {}))
+    }
+    // Every Pitta fire OBJECT is likewise inert on Vata + Kapha (it only reshapes Pitta).
     for (const form of ['campfire', 'torch', 'fireball', 'sun', 'coals', 'lantern']) {
       expect(markup('heart', { form })).toBe(markup('heart', {}))
       expect(markup('stillness', { form })).toBe(markup('stillness', {}))

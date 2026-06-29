@@ -791,19 +791,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # modest costs. The frontend Form for each dosha maps its own KEYs to a silhouette variant;
     # every renderer interprets only its own keys (an absent/foreign key → the default look).
     "form": {
-        # Vata (heart) — wisp-count + body-width variants of the airy breeze creature.
-        "tendrils": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": JOYFUL, "tier": 1},
-        "billowy": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
-        "sleek": {"cost": 95, "unlock_level": 3, "per_path": HEART, "need": RESTED, "tier": 2},
-        # `flurry` whirls many short currents, `streamer` streams a few long ribbons, `halo` rings
-        # the currents around the body — wisp-arrangement variants of the same breeze creature.
-        "flurry": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
-        "streamer": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1},
-        "halo": {"cost": 100, "unlock_level": 3, "per_path": HEART, "need": JOYFUL, "tier": 2},
-        # `vortex` swirls the currents into a whirlpool; `meteor` is a head + one long swept tail (the
-        # shooting-star form — keyed `meteor`, not `comet`, since `comet` already names the tier-4
-        # "Radiant comet" mount).
-        "vortex": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        # Vata (heart) — DISTINCT air/ether OBJECTS that REPLACE the bare wisp with a different
+        # silhouette (not a wisp-count/width tweak): a drifting cloud, a floating feather plume, a
+        # leaf on the breeze, a cluster of ether-stars, a seed-puff dandelion, a little funnel
+        # whirlwind, plus the kept shooting-star meteor. The feather form is keyed `plume` and the
+        # leaf form `leaflet` to avoid clobbering the existing `feather`/`leaf` MOUNT keys' labels;
+        # `cloud` reuses the existing key (a separate `form`-slot entry from the `cloud` MOUNT, its
+        # shared "Cloud" label fits). `meteor` is a head + one long swept tail (keyed `meteor`, not
+        # `comet`, since `comet` already names the tier-4 "Radiant comet" mount).
+        "cloud": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "plume": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": JOYFUL, "tier": 1},
+        "constellation": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1},
+        "dandelion": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "leaflet": {"cost": 95, "unlock_level": 3, "per_path": HEART, "need": RESTED, "tier": 2},
+        "whirlwind": {"cost": 100, "unlock_level": 3, "per_path": HEART, "need": JOYFUL, "tier": 2},
         "meteor": {"cost": 70, "unlock_level": 2, "per_path": HEART, "need": JOYFUL, "tier": 1},
         # Pitta (breath) — DISTINCT fire OBJECTS that REPLACE the bare blaze with a different
         # silhouette (not just a recoloured/resized flame): a logs-and-flame campfire, a flame on a

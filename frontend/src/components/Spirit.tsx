@@ -291,23 +291,24 @@ export const OPTION_LABEL: Record<string, string> = {
   small: 'Small',
   large: 'Large',
   giant: 'Giant',
-  // BODY-shape forms (the `form` slot) — swap each creature's body for an alternate form. Per-path:
-  // Vata wisps, Pitta fire OBJECTS (campfire / torch / comet / sun / coals / lantern), Kapha
-  // still-life bodies (a huddle, a stone cairn, an orbiting atom).
+  // BODY-shape forms (the `form` slot) — swap each creature's body for a DISTINCT alternate object.
+  // Per-path: Vata air/ether OBJECTS (cloud / feather / leaf / constellation / dandelion /
+  // whirlwind + the kept shooting-star meteor), Pitta fire OBJECTS (campfire / torch / comet / sun /
+  // coals / lantern), Kapha still-life bodies (a huddle, a stone cairn, an orbiting atom).
   // (Kapha's `cairn` key labels the stone-stack body here, distinct from the mossy-boulder MOUNT,
   // whose own `boulder` key lives above in this global label map.)
-  tendrils: 'Tendrils',
-  sleek: 'Sleek',
-  billowy: 'Billowy',
-  // Vata form variants. `halo` + `lotus` reuse keys already labelled above (aura `halo` → "Halo",
-  // mount `lotus` → "Lotus") — the flat map is keyed by option name, so those labels are shared and
-  // need no re-entry here. Only the genuinely-new keys are added.
-  flurry: 'Flurry',
-  streamer: 'Streamer',
-  // Newer Vata forms. `vortex` swirls the currents; `meteor` is a head + one long swept tail (the
-  // shooting-star form — keyed `meteor`, not `comet`, since `comet` already labels the tier-4
-  // "Radiant comet" MOUNT above).
-  vortex: 'Vortex',
+  // Vata air/ether forms. `cloud` reuses the key already labelled above ("Cloud" — the cloud MOUNT);
+  // the flat map is keyed by option name, so that label is shared and reads fine for the cloud form
+  // too, needing no re-entry. The feather form is keyed `plume` (not `feather`/`feather_plume`, both
+  // already labelled above as the drifting-feather MOUNT / feather-plume ACCESSORY) and the leaf form
+  // `leaflet` (not `leaf`, already the "Leaf boat" MOUNT) — fresh keys so no existing label is
+  // clobbered. `meteor` stays the kept shooting-star (keyed `meteor`, not `comet`, since `comet`
+  // already labels the tier-4 "Radiant comet" MOUNT above).
+  plume: 'Feather',
+  leaflet: 'Leaf',
+  constellation: 'Constellation',
+  dandelion: 'Dandelion',
+  whirlwind: 'Whirlwind',
   meteor: 'Meteor',
   // Pitta forms — each a DISTINCT fire OBJECT. `fireball` is labelled "Comet" (the comet concept),
   // keyed `fireball` to avoid the tier-4 "Radiant comet" MOUNT (`comet`). `sun` / `coals` reuse
@@ -4138,135 +4139,405 @@ function VataForm({
   const p = stageProgress(stage)
   const cx = 40
   const cy = 38
-  // The `form` (shape) cosmetic varies the SILHOUETTE — how many trailing breeze "legs" (wisps)
-  // the creature has and how broad its body reads — without ever fixing the stage growth: each
-  // variant OFFSETS the stage's wisp count (`i`) so the creature still visibly grows up the ladder.
-  // Absent / unknown → the identity look (wispCount = i, widthMul = 1, no length change), so a bare
-  // Vata is pixel-identical to before. Only `heart` keys matter; the other doshas have no forms yet.
-  let wispCount = i
-  let widthMul = 1
-  let wispLenMul = 1
-  // `halo` arranges the currents in a RING radiating out from the body centre instead of trailing
-  // down — a spun halo of short currents. Set below; default false keeps every other form trailing.
-  const isHalo = form === 'halo'
-  // `vortex` reuses the radial-ring machinery (like `halo`) but lays each current at a STEADILY
-  // increasing radius + angle as the index climbs, all curling the same way — so the ring reads as a
-  // whirlpool/swirl rather than an even halo. Set below; default false leaves every other form alone.
-  const isVortex = form === 'vortex'
+  // The `form` (shape) cosmetic now swaps the WHOLE silhouette for a DISTINCT air/ether OBJECT
+  // (cloud / feather / leaf / constellation / dandelion / whirlwind) — like Kapha's swapped bodies,
+  // not a parametric tweak of the bare wisp. Each object REPLACES the wisp, still GROWS up the stage
+  // ladder (i / p), stays in the 80×80 frame, and recolours via pal.*. The bare default + `meteor`
+  // keep the trailing-current wisp. Only `heart` keys matter; the other doshas ignore them.
   // `meteor` is a shooting star — the body leads, with ONE very-long tail swept strongly to one side
   // (two from ascendant+) trailing off behind it. Drawn in its own block below; default false leaves
-  // every other form's trailing legs untouched.
+  // the bare trailing legs untouched.
   const isMeteor = form === 'meteor'
-  if (form === 'tendrils') {
-    // Many trailing legs — a fuller fan of breeze. Capped so radiant (i + 4 = 9) reads graceful,
-    // not a tangle; the stroke is thinned a touch below (via `widthMul`-independent thinning).
-    wispCount = Math.min(8, i + 4)
-  } else if (form === 'sleek') {
-    // A streamlined, few-legged wisp: fewer but LONGER currents and a slimmer body.
-    wispCount = Math.max(2, i - 1)
-    widthMul = 0.78
-    wispLenMul = 1.25
-  } else if (form === 'billowy') {
-    // A round, full-bodied wisp — same leg count, a broader body + currents.
-    widthMul = 1.3
-  } else if (form === 'flurry') {
-    // A busy whirl of MANY short currents — capped at 9 so radiant reads lively, not a tangle.
-    wispCount = Math.min(9, i + 4)
-    wispLenMul = 0.55
-  } else if (form === 'streamer') {
-    // A few VERY long flowing ribbons — fewer currents, each streaming almost twice as far.
-    wispCount = Math.max(2, i - 2)
-    wispLenMul = 1.8
-  } else if (isHalo) {
-    // A spun ring of short currents radiating outward from the body centre (positions set below).
-    wispCount = Math.max(4, i + 1)
-    wispLenMul = 0.7
-  } else if (isVortex) {
-    // A whirlpool of swirling currents — at least 4, growing with the stage; medium-length curls
-    // laid at a steadily increasing radius + angle below so they read as a spiral, not an even ring.
-    wispCount = Math.max(4, i + 2)
-    wispLenMul = 0.85
-  } else if (isMeteor) {
+  // The DISTINCT air/ether-object forms render their own silhouettes below (each early-returns);
+  // everything else (default + meteor) is the bare trailing-current wisp.
+  const isObjectForm =
+    form === 'cloud' ||
+    form === 'plume' ||
+    form === 'leaflet' ||
+    form === 'constellation' ||
+    form === 'dandelion' ||
+    form === 'whirlwind'
+
+  // Gentle, expressive eyes — two soft rounded dots in pal.deep, from wisp (i>=2) onward. `ex`/`ey`
+  // is the centre, `spread` how far apart, `r` the dot radius. Shared by the object forms that read
+  // best with a face on their main body (cloud lump, leaf blade, dandelion core).
+  const eyes = (ex: number, ey: number, spread: number, r = 0.9 + p * 0.4, key = 'eyes') =>
+    i >= 2 ? (
+      <g key={key}>
+        {[-1, 1].map((dir) => (
+          <circle
+            key={`eye-${dir}`}
+            cx={ex + dir * spread}
+            cy={ey}
+            r={r}
+            fill={pal.deep}
+            opacity={0.9 * g}
+          />
+        ))}
+      </g>
+    ) : null
+
+  // ── DISTINCT air/ether OBJECTS (the `form` cosmetic) ─────────────────────────────────────────
+  // Each REPLACES the bare wisp with its own silhouette, grows with the stage, stays in frame, and
+  // recolours via pal.* (deep periwinkle base / glow sky body / accent lavender breeze / core light).
+  if (isObjectForm) {
+    // CLOUD — a puffy drifting cloud: a row of overlapping rounded pal.glow bumps forming a lump,
+    // a pal.core highlight along the top, a gentle face, and a couple of soft trailing wisps below.
+    // More bumps up the stages (3 → 5).
+    if (form === 'cloud') {
+      const bumps = 3 + Math.min(2, i - 1) // 3..5 across the ladder
+      const baseY = cy + 2
+      const spanW = 14 + p * 9 // half-width of the cloud lump
+      const bumpR = 6 + p * 2.5
+      // Bump centres spread across the span, the middle ones riding a touch higher (a cloud crown).
+      const bumpAt = (k: number) => {
+        const t = bumps === 1 ? 0 : (k / (bumps - 1)) * 2 - 1 // -1..1
+        const bx = cx + t * spanW
+        const lift = (1 - Math.abs(t)) * (4 + p * 2) // middle bumps sit higher
+        return { bx, by: baseY - lift, r: bumpR * (1 - Math.abs(t) * 0.25) }
+      }
+      return (
+        <g>
+          {/* Soft trailing wisps/drips below the lump — a couple of stroked curls of falling breeze. */}
+          {Array.from({ length: 2 + Math.min(2, i - 2) }, (_, k) => {
+            const t = (k / 2) * 2 - 1
+            const sx = cx + t * spanW * 0.55
+            const sy = baseY + bumpR * 0.6
+            const len = 7 + p * 6
+            return (
+              <path
+                key={`drip-${k}`}
+                d={`M ${sx} ${sy} q ${-3 - t} ${len * 0.55} ${t * 2} ${len}`}
+                fill="none"
+                stroke={pal.accent}
+                strokeWidth={1.6 + p * 0.7}
+                strokeLinecap="round"
+                opacity={(0.4 + 0.25 * p) * g}
+              />
+            )
+          })}
+          {/* The cloud lump — overlapping rounded pal.glow bumps reading as one puffy silhouette. */}
+          {Array.from({ length: bumps }, (_, k) => {
+            const { bx, by, r } = bumpAt(k)
+            return (
+              <circle
+                key={`bump-${k}`}
+                cx={bx}
+                cy={by}
+                r={r}
+                fill={pal.glow}
+                opacity={(0.7 + 0.2 * p) * g}
+              />
+            )
+          })}
+          {/* A flat-ish soft underside so the lump reads as a cloud, not a mound of orbs. */}
+          <ellipse cx={cx} cy={baseY + bumpR * 0.45} rx={spanW + bumpR * 0.4} ry={bumpR * 0.7} fill={pal.glow} opacity={(0.6 + 0.2 * p) * g} />
+          {/* pal.core highlight crowning the top of the lump. */}
+          {Array.from({ length: bumps }, (_, k) => {
+            const { bx, by, r } = bumpAt(k)
+            return (
+              <circle
+                key={`crown-${k}`}
+                cx={bx}
+                cy={by - r * 0.45}
+                r={r * 0.5}
+                fill={pal.core}
+                opacity={0.6 * g}
+              />
+            )
+          })}
+          {eyes(cx, baseY - 1, 4 + p * 1.5)}
+          <circle cx={cx - 4} cy={baseY - 4} r={1 + p * 0.4} fill="#ffffff" opacity={0.7 * g} />
+        </g>
+      )
+    }
+
+    // FEATHER (key `plume`) — a floating plume: a central curved quill/spine (pal.deep stroke) with
+    // pal.glow / pal.accent barb strokes angled off both sides along its length, tilted ~20° as if
+    // drifting. Longer / fuller up the stages.
+    if (form === 'plume') {
+      const len = 24 + p * 12 // quill length
+      const tilt = -20 // drifting lean (degrees)
+      // The quill runs bottom (tip) → top (base of the plume), centred on the body.
+      const baseX = cx
+      const baseY = cy - len * 0.5
+      const tipX = cx
+      const tipY = cy + len * 0.5
+      // A gently bowed quill (a quadratic curve, bowed to one side for life).
+      const ctrlX = cx + 4 + p * 2
+      const ctrlY = cy
+      const barbs = 5 + Math.min(3, i) // barb PAIRS grow up the ladder
+      return (
+        <g transform={`rotate(${tilt} ${cx} ${cy})`}>
+          {/* Barbs feathering off both sides of the quill, longer near the base, short near the tip. */}
+          {Array.from({ length: barbs }, (_, k) => {
+            const t = (k + 0.5) / barbs // 0 (base) .. 1 (tip)
+            // Point along the bowed quill at parameter t.
+            const qx = (1 - t) * (1 - t) * baseX + 2 * (1 - t) * t * ctrlX + t * t * tipX
+            const qy = (1 - t) * (1 - t) * baseY + 2 * (1 - t) * t * ctrlY + t * t * tipY
+            const barbLen = (8 + p * 4) * (1 - t * 0.7) // fuller at the base
+            return (
+              <g key={`barb-${k}`}>
+                {[-1, 1].map((side) => (
+                  <path
+                    key={`barb-${k}-${side}`}
+                    d={`M ${qx} ${qy} q ${side * barbLen * 0.55} ${barbLen * 0.2} ${side * barbLen} ${barbLen * 0.7}`}
+                    fill="none"
+                    stroke={k % 2 === 0 ? pal.glow : pal.accent}
+                    strokeWidth={1.4 + p * 0.5}
+                    strokeLinecap="round"
+                    opacity={(0.55 + 0.25 * p) * g}
+                  />
+                ))}
+              </g>
+            )
+          })}
+          {/* The central quill/spine — a bowed pal.deep stroke. */}
+          <path
+            d={`M ${baseX} ${baseY} Q ${ctrlX} ${ctrlY} ${tipX} ${tipY}`}
+            fill="none"
+            stroke={pal.deep}
+            strokeWidth={1.8 + p * 0.8}
+            strokeLinecap="round"
+            opacity={(0.75 + 0.2 * p) * g}
+          />
+          <circle cx={baseX} cy={baseY} r={1.6 + p * 0.6} fill={pal.core} opacity={0.85 * g} />
+        </g>
+      )
+    }
+
+    // LEAF (key `leaflet`) — a leaf on the breeze: a pointed almond blade (two arcs meeting at a top
+    // and bottom point, pal.glow fill), a pal.deep central vein + a few side veins, a small stem,
+    // tilted on the breeze. Bigger / more veins up the stages.
+    if (form === 'leaflet') {
+      const half = 8 + p * 4 // blade half-width
+      const len = 22 + p * 11 // blade length (tip-to-tip)
+      const topY = cy - len * 0.5
+      const botY = cy + len * 0.5
+      const tilt = -18
+      const sideVeins = 2 + Math.min(2, i - 1) // pairs of side veins grow up the ladder
+      return (
+        <g transform={`rotate(${tilt} ${cx} ${cy})`}>
+          {/* The blade — an almond: two arcs from the bottom point up to the top point. A pal.deep
+              edge stroke keeps the leaf silhouette crisp even when the pale glow fill would otherwise
+              blend into the page (and tells it apart from the feather's airy barbs). */}
+          <path
+            d={`M ${cx} ${botY}
+                Q ${cx - half} ${cy} ${cx} ${topY}
+                Q ${cx + half} ${cy} ${cx} ${botY} Z`}
+            fill={pal.glow}
+            stroke={pal.deep}
+            strokeWidth={1.1 + p * 0.4}
+            strokeLinejoin="round"
+            opacity={(0.8 + 0.18 * p) * g}
+          />
+          {/* A core highlight down the upper half of the blade. */}
+          <ellipse cx={cx - half * 0.25} cy={cy - len * 0.12} rx={half * 0.4} ry={len * 0.22} fill={pal.core} opacity={0.45 * g} />
+          {/* The central vein — a pal.deep stroke down the midrib. */}
+          <path d={`M ${cx} ${topY} L ${cx} ${botY}`} fill="none" stroke={pal.deep} strokeWidth={1.4 + p * 0.5} strokeLinecap="round" opacity={(0.75 + 0.2 * p) * g} />
+          {/* Side veins angling off the midrib on both sides. */}
+          {Array.from({ length: sideVeins }, (_, k) => {
+            const t = (k + 1) / (sideVeins + 1) // down the blade
+            const vy = topY + (botY - topY) * t
+            const reach = half * (0.7 - t * 0.3)
+            return (
+              <g key={`vein-${k}`}>
+                {[-1, 1].map((side) => (
+                  <path
+                    key={`vein-${k}-${side}`}
+                    d={`M ${cx} ${vy} q ${side * reach * 0.6} ${reach * 0.4} ${side * reach} ${reach * 0.7}`}
+                    fill="none"
+                    stroke={pal.deep}
+                    strokeWidth={0.9 + p * 0.3}
+                    strokeLinecap="round"
+                    opacity={(0.5 + 0.2 * p) * g}
+                  />
+                ))}
+              </g>
+            )
+          })}
+          {/* A small stem off the bottom point. */}
+          <path d={`M ${cx} ${botY} q ${2} ${4 + p * 2} ${4} ${6 + p * 3}`} fill="none" stroke={pal.deep} strokeWidth={1.4 + p * 0.5} strokeLinecap="round" opacity={(0.7 + 0.2 * p) * g} />
+          {eyes(cx, cy + len * 0.08, 2.6 + p * 1.2, 0.8 + p * 0.3)}
+        </g>
+      )
+    }
+
+    // CONSTELLATION — a cluster of ether-stars: 4+i small star points (pal.core / pal.glow dots +
+    // a few 4-point sparkles) joined by faint pal.accent connector lines into a loose constellation.
+    // More stars up the stages. Faceless (eyes would read oddly on scattered points).
+    if (form === 'constellation') {
+      const count = 4 + i // 5..9 stars
+      const spread = 13 + p * 8
+      // Deterministic pseudo-scatter so the constellation is stable per render (no Math.random).
+      const star = (k: number) => {
+        const a = k * 2.39996 // golden angle, a pleasing scatter
+        const r = spread * Math.sqrt((k + 0.5) / count)
+        return { sx: cx + Math.cos(a) * r, sy: cy + Math.sin(a) * r }
+      }
+      const pts = Array.from({ length: count }, (_, k) => star(k))
+      return (
+        <g>
+          {/* Faint connector lines linking each star to the next — the constellation's threads. */}
+          {pts.map((pt, k) => {
+            if (k === 0) return null
+            const prev = pts[k - 1]
+            return (
+              <line
+                key={`link-${k}`}
+                x1={prev.sx}
+                y1={prev.sy}
+                x2={pt.sx}
+                y2={pt.sy}
+                stroke={pal.accent}
+                strokeWidth={0.8}
+                opacity={0.4 * g}
+              />
+            )
+          })}
+          {/* The star points — dots, with a few drawn as 4-point sparkles for sparkle. */}
+          {pts.map((pt, k) => {
+            const r = 1.3 + p * 0.7 + (k % 3 === 0 ? 0.8 : 0)
+            const sparkle = k % 3 === 0
+            return (
+              <g key={`star-${k}`}>
+                {sparkle && (
+                  <path
+                    d={`M ${pt.sx} ${pt.sy - r * 2.4} L ${pt.sx + r * 0.5} ${pt.sy - r * 0.5}
+                        L ${pt.sx + r * 2.4} ${pt.sy} L ${pt.sx + r * 0.5} ${pt.sy + r * 0.5}
+                        L ${pt.sx} ${pt.sy + r * 2.4} L ${pt.sx - r * 0.5} ${pt.sy + r * 0.5}
+                        L ${pt.sx - r * 2.4} ${pt.sy} L ${pt.sx - r * 0.5} ${pt.sy - r * 0.5} Z`}
+                    fill={pal.glow}
+                    opacity={(0.6 + 0.25 * p) * g}
+                  />
+                )}
+                <circle cx={pt.sx} cy={pt.sy} r={r} fill={k % 2 === 0 ? pal.core : pal.glow} opacity={(0.85 + 0.1 * p) * g} />
+              </g>
+            )
+          })}
+        </g>
+      )
+    }
+
+    // DANDELION — a seed-puff: a small pal.deep core with many thin pal.accent radiating stalks each
+    // tipped with a fuzzy pal.glow / pal.core seed-tuft (a soft small circle), forming a round puff,
+    // with 2–3 seeds detaching and floating off to one side. Fuller up the stages.
+    if (form === 'dandelion') {
+      const stalks = 9 + i * 2 // 11..19 stalks
+      const radius = 11 + p * 5 // puff radius (≤16 at radiant) — leaves room for the drifting seeds
+      const detached = 2 + Math.min(1, i - 3 > 0 ? 1 : 0) // 2..3 seeds drift off
+      return (
+        <g>
+          {/* Radiating stalks, each tipped with a fuzzy seed-tuft, forming a round puff. */}
+          {Array.from({ length: stalks }, (_, k) => {
+            const a = (k / stalks) * Math.PI * 2
+            const ex = cx + Math.cos(a) * radius
+            const ey = cy + Math.sin(a) * radius
+            return (
+              <g key={`stalk-${k}`}>
+                <line x1={cx} y1={cy} x2={ex} y2={ey} stroke={pal.accent} strokeWidth={0.7} opacity={0.45 * g} />
+                <circle cx={ex} cy={ey} r={1.6 + p * 0.7} fill={k % 2 === 0 ? pal.glow : pal.core} opacity={(0.55 + 0.2 * p) * g} />
+              </g>
+            )
+          })}
+          {/* The seed-head core. */}
+          <circle cx={cx} cy={cy} r={2.4 + p} fill={pal.deep} opacity={(0.8 + 0.15 * p) * g} />
+          {eyes(cx, cy + 0.4, 1.4 + p * 0.6, 0.7 + p * 0.25)}
+          {/* A few seeds detaching and floating off to one side (down-right, on the breeze). The
+              furthest tip stays inside the 80 frame: cx(40) + radius(≤16) + 4 + 2×5 + r(2) ≈ 72. */}
+          {Array.from({ length: detached }, (_, k) => {
+            const dx = cx + radius + 4 + k * 5
+            const dy = cy + 3 + k * (5 + p * 2)
+            return (
+              <g key={`seed-${k}`}>
+                <line x1={dx - 3} y1={dy - 3} x2={dx} y2={dy} stroke={pal.accent} strokeWidth={0.7} opacity={0.4 * g} />
+                <circle cx={dx} cy={dy} r={1.4 + p * 0.6} fill={pal.glow} opacity={(0.5 + 0.2 * p) * g} />
+              </g>
+            )
+          })}
+        </g>
+      )
+    }
+
+    // WHIRLWIND — a little funnel: a vertical whirlwind, WIDER at the top narrowing toward the
+    // bottom, drawn as stacked curved pal.glow / pal.accent swirl bands, with a few debris motes
+    // spinning around it. Taller / fuller up the stages. Faceless (a funnel reads odd with a face).
+    if (form === 'whirlwind') {
+      const bands = 4 + Math.min(3, i) // 5..7 stacked bands
+      const topY = cy - 16 - p * 6
+      const botY = cy + 16 + p * 6
+      const topW = 13 + p * 6 // half-width at the wide top
+      return (
+        <g>
+          {/* Stacked swirl bands — each a curved stroke, narrowing from the wide top to the point. */}
+          {Array.from({ length: bands }, (_, k) => {
+            const t = k / (bands - 1) // 0 (top) .. 1 (bottom)
+            const by = topY + (botY - topY) * t
+            const w = topW * (1 - t * 0.82) // narrows toward the bottom
+            // A flattened curved band sweeping the same rotational way (a swirl).
+            return (
+              <path
+                key={`band-${k}`}
+                d={`M ${cx - w} ${by} Q ${cx} ${by + 3 + p} ${cx + w} ${by} Q ${cx} ${by - 3 - p} ${cx - w} ${by}`}
+                fill="none"
+                stroke={k % 2 === 0 ? pal.glow : pal.accent}
+                strokeWidth={1.6 + p * 0.7}
+                strokeLinecap="round"
+                opacity={(0.5 + 0.25 * p) * g}
+              />
+            )
+          })}
+          {/* A faint core seam down the funnel. */}
+          <path d={`M ${cx} ${topY} Q ${cx + 3} ${cy} ${cx} ${botY}`} fill="none" stroke={pal.deep} strokeWidth={1 + p * 0.4} strokeLinecap="round" opacity={0.4 * g} />
+          {/* Debris motes spinning around the funnel. */}
+          {Array.from({ length: 3 + i }, (_, k) => {
+            const t = k / (3 + i)
+            const a = t * Math.PI * 4
+            const by = topY + (botY - topY) * t
+            const w = topW * (1 - t * 0.82) + 3
+            return (
+              <circle
+                key={`debris-${k}`}
+                cx={cx + Math.cos(a) * w}
+                cy={by}
+                r={1 + p * 0.5}
+                fill={k % 2 === 0 ? pal.core : pal.accent}
+                opacity={(0.55 + 0.2 * p) * g}
+              />
+            )
+          })}
+        </g>
+      )
+    }
+  }
+
+  // ── The bare wisp + `meteor` (trailing-current silhouette) ───────────────────────────────────
+  // Absent / unknown / meteor → the identity wisp. `meteor` swaps the trailing fan for one/two long
+  // swept tails; everything else trails the bare currents. Pixel-identical to before for a bare Vata.
+  let wispCount = i
+  let wispLenMul = 1
+  if (isMeteor) {
     // A shooting star: ONE very-long swept tail at low stages, TWO from ascendant+. The tails are
     // drawn in their own swept block below (this just sets the count); the body leads.
     wispCount = i >= 4 ? 2 : 1
     wispLenMul = 2.2
   }
-  // The wisp grows fuller and its trailing currents longer up the ladder. `widthMul` scales the
-  // body (and so the wisp start positions, which key off bodyR) for the shape variant.
-  const bodyR = (5 + p * 5) * widthMul
-  // Trailing breeze currents curling off the body — count set by stage + the shape variant above.
+  // The wisp grows fuller and its trailing currents longer up the ladder.
+  const bodyR = 5 + p * 5
+  // Trailing breeze currents curling off the body — count set by stage (or the meteor's tails).
   const wisps = wispCount
-  // The trailing currents fall from ~y=44 (body bottom); cap the length so even `streamer`'s long
-  // (×1.8) radiant ribbon keeps its tip inside the 80-tall frame. `halo`'s currents radiate from the
-  // centre (not straight down) so they never reach the cap, leaving its short ring untouched.
+  // The trailing currents fall from ~y=44 (body bottom); cap the length so even meteor's long
+  // (×2.2) radiant tail keeps its tip inside the 80-tall frame.
   const wispLen = Math.min(34, (10 + p * 14) * wispLenMul)
-  // Tendrils crowds the silhouette with extra legs, so thin each stroke a touch to keep it airy.
-  const strokeThin = form === 'tendrils' ? 0.82 : 1
+  const strokeThin = 1
   return (
     <g>
       {/* Trailing air-currents — soft curling ribbons of breeze drifting off the body, the airy
           defining feature. Outer currents curl wider; more + longer each stage gives the
           "more developed" read. They flow down-and-out, so the creature reads as gliding. With
-          `form === 'halo'` the same currents instead radiate outward in an evenly-spaced RING
-          around the body centre — a spun halo of short curls rather than trailing legs. */}
+          `form === 'meteor'` the body leads and these become one/two long swept tails (a shooting
+          star) instead of the trailing fan. */}
       {Array.from({ length: wisps }, (_, k) => {
-        if (isHalo) {
-          // A ring of short currents radiating out from the body centre, each a stroked curl.
-          const a = (k / wisps) * Math.PI * 2
-          const r0 = bodyR * 0.9 // start just outside the body
-          const startX = cx + Math.cos(a) * r0
-          const startY = cy + Math.sin(a) * r0
-          const endX = cx + Math.cos(a) * (r0 + wispLen)
-          const endY = cy + Math.sin(a) * (r0 + wispLen)
-          // Bow the curl tangentially so it reads as spun, not a plain spoke.
-          const tang = 5 + p * 3
-          const midX = (startX + endX) / 2 - Math.sin(a) * tang
-          const midY = (startY + endY) / 2 + Math.cos(a) * tang
-          return (
-            <path
-              key={k}
-              d={`M ${startX} ${startY}
-                  Q ${midX} ${midY} ${endX} ${endY}`}
-              fill="none"
-              stroke={k % 2 === 0 ? pal.accent : pal.deep}
-              strokeWidth={(2.4 + p * 1.4) * 0.7 * strokeThin}
-              strokeLinecap="round"
-              opacity={(0.4 + 0.3 * p) * g}
-            />
-          )
-        }
-        if (isVortex) {
-          // A whirlpool: like `halo`, each current radiates from the body centre — but the angle
-          // ADVANCES more than one even step and the radius GROWS as the index climbs, so the curls
-          // spiral outward (a swirl). All bow the SAME rotational way (a consistent positive `tang`),
-          // reading as a vortex rather than an even ring. Radii stay inside the 80-tall frame.
-          const a = (k / wisps) * Math.PI * 2 * 1.5 // >1 full turn so the arms overlap into a spiral
-          const r0 = bodyR * 0.5 + (k / wisps) * (7 + p * 4) // start radius grows with the index
-          // Shorten the trailing curl as the arm starts further out, so the OUTER tip stays well
-          // inside the 80-tall frame (the longest arm reaches ~r0 + 0.7*wispLen, not the full cap).
-          const armLen = wispLen * (1 - (k / wisps) * 0.35)
-          const startX = cx + Math.cos(a) * r0
-          const startY = cy + Math.sin(a) * r0
-          const endX = cx + Math.cos(a) * (r0 + armLen)
-          const endY = cy + Math.sin(a) * (r0 + armLen)
-          // Bow every curl the SAME tangential direction (never negated) so they all curl one way.
-          const tang = 6 + p * 4
-          const midX = (startX + endX) / 2 - Math.sin(a) * tang
-          const midY = (startY + endY) / 2 + Math.cos(a) * tang
-          return (
-            <path
-              key={k}
-              d={`M ${startX} ${startY}
-                  Q ${midX} ${midY} ${endX} ${endY}`}
-              fill="none"
-              stroke={k % 2 === 0 ? pal.accent : pal.deep}
-              strokeWidth={(2.4 + p * 1.4) * 0.66 * strokeThin}
-              strokeLinecap="round"
-              opacity={(0.4 + 0.3 * p) * g}
-            />
-          )
-        }
         if (isMeteor) {
           // A shooting-star tail: one very-long current swept strongly to one side, streaming behind
           // the leading body. The tail starts just behind the body and leans hard left + down, so the
