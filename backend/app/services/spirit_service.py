@@ -788,6 +788,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "tendrils": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": JOYFUL, "tier": 1},
         "billowy": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
         "sleek": {"cost": 95, "unlock_level": 3, "per_path": HEART, "need": RESTED, "tier": 2},
+        # `flurry` whirls many short currents, `streamer` streams a few long ribbons, `halo` rings
+        # the currents around the body — wisp-arrangement variants of the same breeze creature.
+        "flurry": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "streamer": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1},
+        "halo": {"cost": 100, "unlock_level": 3, "per_path": HEART, "need": JOYFUL, "tier": 2},
         # Pitta (breath) — flame-count + ember-body variants of the blaze creature. `puff` swaps the
         # sharp tongues for soft rounded billows (a different silhouette, not just a recount).
         "wildfire": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1},
@@ -801,6 +806,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "cluster": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1},
         "cairn": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
         "orbital": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2},
+        # `lotus` is a radiating flower, `enso` concentric zen rings, `crystal` a faceted gem — more
+        # alternate still-life bodies that REPLACE the seated figure.
+        "lotus": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
+        "enso": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": NOURISHED, "tier": 1},
+        "prism": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": RESTED, "tier": 2},
     },
 }
 

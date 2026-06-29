@@ -291,6 +291,11 @@ export const OPTION_LABEL: Record<string, string> = {
   tendrils: 'Tendrils',
   sleek: 'Sleek',
   billowy: 'Billowy',
+  // Vata form variants. `halo` + `lotus` reuse keys already labelled above (aura `halo` → "Halo",
+  // mount `lotus` → "Lotus") — the flat map is keyed by option name, so those labels are shared and
+  // need no re-entry here. Only the genuinely-new keys are added.
+  flurry: 'Flurry',
+  streamer: 'Streamer',
   wildfire: 'Wildfire',
   emberlit: 'Ember',
   bonfire: 'Bonfire',
@@ -300,6 +305,9 @@ export const OPTION_LABEL: Record<string, string> = {
   cluster: 'Cluster',
   cairn: 'Cairn',
   orbital: 'Orbital',
+  // Kapha form variants. `enso` + `prism` are new; `lotus` is shared (its existing "Lotus" fits).
+  enso: 'Ensō',
+  prism: 'Prism',
 }
 
 // Tidy an unknown key into a label (e.g. "leaf_crown" → "Leaf crown") as a safe fallback.
@@ -3202,7 +3210,14 @@ function StillnessForm({
   // `seated`, the identity look, so a bare Kapha is pixel-identical to before. Only `stillness`
   // keys matter; other doshas ignore them and fall through to the seated default.
   const bodyForm =
-    form === 'cluster' || form === 'cairn' || form === 'orbital' ? form : 'seated'
+    form === 'cluster' ||
+    form === 'cairn' ||
+    form === 'orbital' ||
+    form === 'lotus' ||
+    form === 'enso' ||
+    form === 'prism'
+      ? form
+      : 'seated'
   return (
     <g>
       {/* Lotus base, from fledgling onward — a few warm petals under the seated figure. */}
@@ -3384,6 +3399,110 @@ function StillnessForm({
               {/* The bright nucleus. */}
               <circle cx={40} cy={cy} r={4 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
               <circle cx={38.7} cy={cy - 1.2} r={1.3 * scale} fill="#ffffff" opacity={0.85 * g} />
+            </>
+          )
+        })()}
+
+      {/* `lotus` — a flower: `5 + i` petals (filled ellipses) radiating from the centre at evenly-
+          spaced angles, each pointing OUTWARD, fills alternating glow/accent, crowned by a bright
+          core centre with a tiny white highlight. More petals up the stages. Centred on (40, cy). */}
+      {bodyForm === 'lotus' &&
+        (() => {
+          const petals = 5 + i // 6 → 10 petals across spark → radiant
+          const reach = 6 * scale // how far each petal's centre sits from the flower centre
+          return (
+            <>
+              {Array.from({ length: petals }, (_, k) => {
+                const a = (k / petals) * Math.PI * 2 - Math.PI / 2 // start at the top
+                const px = 40 + Math.cos(a) * reach
+                const py = cy + Math.sin(a) * reach
+                return (
+                  <ellipse
+                    key={k}
+                    cx={px}
+                    cy={py}
+                    rx={3 * scale}
+                    ry={6 * scale}
+                    fill={k % 2 === 0 ? pal.glow : pal.accent}
+                    opacity={(0.7 + 0.22 * p) * g}
+                    // Point the long axis OUTWARD (ellipse is tall by default → +90° to aim radially).
+                    transform={`rotate(${(a * 180) / Math.PI + 90} ${px} ${py})`}
+                  />
+                )
+              })}
+              {/* The bright flower centre + a tiny highlight. */}
+              <circle cx={40} cy={cy} r={3.2 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
+              <circle cx={38.8} cy={cy - 1} r={1.2 * scale} fill="#ffffff" opacity={0.85 * g} />
+            </>
+          )
+        })()}
+
+      {/* `enso` — a zen ensō / ripples: concentric ring OUTLINES (2 at low stages, 3 from ascendant)
+          around a soft core dot. Calm, meditative, never busy. Centred on (40, cy). */}
+      {bodyForm === 'enso' &&
+        (() => {
+          const rings =
+            i >= 4
+              ? [6 * scale, 11 * scale, 15 * scale] // ascendant+ gains the outer ripple
+              : [6 * scale, 11 * scale]
+          return (
+            <>
+              {rings.map((r, k) => (
+                <circle
+                  key={k}
+                  cx={40}
+                  cy={cy}
+                  r={r}
+                  fill="none"
+                  stroke={k % 2 === 0 ? pal.accent : pal.glow}
+                  strokeWidth={1.4}
+                  opacity={(0.55 + 0.25 * p) * g}
+                />
+              ))}
+              {/* A soft centre dot at the still point. */}
+              <circle cx={40} cy={cy} r={2.4 * scale} fill={pal.core} opacity={(0.8 + 0.15 * p) * g} />
+            </>
+          )
+        })()}
+
+      {/* `prism` — a faceted gem: a hexagon OUTLINE polygon with internal facet lines from each
+          vertex to the centre. An earthy mineral; slightly larger at higher stages. Centred on
+          (40, cy). */}
+      {bodyForm === 'prism' &&
+        (() => {
+          const r = (10 + p * 2) * scale // ~11*scale mid-ladder, a touch larger up the stages
+          const verts = Array.from({ length: 6 }, (_, k) => {
+            const a = (k / 6) * Math.PI * 2 - Math.PI / 2 // flat-top-ish hexagon
+            return { x: 40 + Math.cos(a) * r, y: cy + Math.sin(a) * r }
+          })
+          const points = verts.map((v) => `${v.x},${v.y}`).join(' ')
+          return (
+            <>
+              {/* The translucent gem body. */}
+              <polygon
+                points={points}
+                fill={pal.glow}
+                fillOpacity={0.5 * g}
+                stroke={pal.deep}
+                strokeWidth={1.4}
+                strokeLinejoin="round"
+                opacity={(0.8 + 0.15 * p) * g}
+              />
+              {/* Internal facets — a line from each vertex to the centre. */}
+              {verts.map((v, k) => (
+                <line
+                  key={k}
+                  x1={v.x}
+                  y1={v.y}
+                  x2={40}
+                  y2={cy}
+                  stroke={pal.accent}
+                  strokeWidth={0.8}
+                  opacity={0.35 * g}
+                />
+              ))}
+              {/* A bright glint at the gem's heart. */}
+              <circle cx={40} cy={cy} r={1.6 * scale} fill={pal.core} opacity={0.9 * g} />
             </>
           )
         })()}
@@ -3626,6 +3745,9 @@ function VataForm({
   let wispCount = i
   let widthMul = 1
   let wispLenMul = 1
+  // `halo` arranges the currents in a RING radiating out from the body centre instead of trailing
+  // down — a spun halo of short currents. Set below; default false keeps every other form trailing.
+  const isHalo = form === 'halo'
   if (form === 'tendrils') {
     // Many trailing legs — a fuller fan of breeze. Capped so radiant (i + 4 = 9) reads graceful,
     // not a tangle; the stroke is thinned a touch below (via `widthMul`-independent thinning).
@@ -3638,21 +3760,63 @@ function VataForm({
   } else if (form === 'billowy') {
     // A round, full-bodied wisp — same leg count, a broader body + currents.
     widthMul = 1.3
+  } else if (form === 'flurry') {
+    // A busy whirl of MANY short currents — capped at 9 so radiant reads lively, not a tangle.
+    wispCount = Math.min(9, i + 4)
+    wispLenMul = 0.55
+  } else if (form === 'streamer') {
+    // A few VERY long flowing ribbons — fewer currents, each streaming almost twice as far.
+    wispCount = Math.max(2, i - 2)
+    wispLenMul = 1.8
+  } else if (isHalo) {
+    // A spun ring of short currents radiating outward from the body centre (positions set below).
+    wispCount = Math.max(4, i + 1)
+    wispLenMul = 0.7
   }
   // The wisp grows fuller and its trailing currents longer up the ladder. `widthMul` scales the
   // body (and so the wisp start positions, which key off bodyR) for the shape variant.
   const bodyR = (5 + p * 5) * widthMul
   // Trailing breeze currents curling off the body — count set by stage + the shape variant above.
   const wisps = wispCount
-  const wispLen = (10 + p * 14) * wispLenMul
+  // The trailing currents fall from ~y=44 (body bottom); cap the length so even `streamer`'s long
+  // (×1.8) radiant ribbon keeps its tip inside the 80-tall frame. `halo`'s currents radiate from the
+  // centre (not straight down) so they never reach the cap, leaving its short ring untouched.
+  const wispLen = Math.min(34, (10 + p * 14) * wispLenMul)
   // Tendrils crowds the silhouette with extra legs, so thin each stroke a touch to keep it airy.
   const strokeThin = form === 'tendrils' ? 0.82 : 1
   return (
     <g>
       {/* Trailing air-currents — soft curling ribbons of breeze drifting off the body, the airy
           defining feature. Outer currents curl wider; more + longer each stage gives the
-          "more developed" read. They flow down-and-out, so the creature reads as gliding. */}
+          "more developed" read. They flow down-and-out, so the creature reads as gliding. With
+          `form === 'halo'` the same currents instead radiate outward in an evenly-spaced RING
+          around the body centre — a spun halo of short curls rather than trailing legs. */}
       {Array.from({ length: wisps }, (_, k) => {
+        if (isHalo) {
+          // A ring of short currents radiating out from the body centre, each a stroked curl.
+          const a = (k / wisps) * Math.PI * 2
+          const r0 = bodyR * 0.9 // start just outside the body
+          const startX = cx + Math.cos(a) * r0
+          const startY = cy + Math.sin(a) * r0
+          const endX = cx + Math.cos(a) * (r0 + wispLen)
+          const endY = cy + Math.sin(a) * (r0 + wispLen)
+          // Bow the curl tangentially so it reads as spun, not a plain spoke.
+          const tang = 5 + p * 3
+          const midX = (startX + endX) / 2 - Math.sin(a) * tang
+          const midY = (startY + endY) / 2 + Math.cos(a) * tang
+          return (
+            <path
+              key={k}
+              d={`M ${startX} ${startY}
+                  Q ${midX} ${midY} ${endX} ${endY}`}
+              fill="none"
+              stroke={k % 2 === 0 ? pal.accent : pal.deep}
+              strokeWidth={(2.4 + p * 1.4) * 0.7 * strokeThin}
+              strokeLinecap="round"
+              opacity={(0.4 + 0.3 * p) * g}
+            />
+          )
+        }
         const t = wisps === 1 ? 0 : (k / (wisps - 1)) * 2 - 1 // -1..1
         const startX = cx + t * (bodyR * 0.7)
         const startY = cy + bodyR * 0.6

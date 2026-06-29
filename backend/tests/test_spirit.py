@@ -1162,9 +1162,9 @@ def test_body_cosmetics_are_user_scoped(client):
 # Pitta's blazes (breath), Kapha's still-life bodies (stillness). It is still a body cosmetic, NOT a
 # signature capstone, so it stays OUTSIDE the signature set (total 7).
 _FORM_OPTIONS_BY_PATH = {
-    "heart": {"tendrils", "sleek", "billowy"},
+    "heart": {"tendrils", "sleek", "billowy", "flurry", "streamer", "halo"},
     "breath": {"wildfire", "emberlit", "bonfire", "inferno", "flicker", "puff"},
-    "stillness": {"cluster", "cairn", "orbital"},
+    "stillness": {"cluster", "cairn", "orbital", "lotus", "enso", "prism"},
 }
 _FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
 
@@ -1240,6 +1240,26 @@ def test_unlock_and_equip_a_form_per_path(client):
         assert res2.status_code == 200, res2.text
         assert res2.json()["cosmetics"]["form"] == tier2
         assert _spirit(client)["cosmetics"]["form"] == tier2
+
+
+def test_unlock_and_equip_each_new_form_per_path(client):
+    """Every NEW Vata + Kapha shape (flurry/streamer/halo and lotus/enso/prism) unlocks + equips
+    through the existing machinery for its own dosha. The tier-1 forms are unlocked first, so by the
+    time the tier-2 form (halo / prism) is reached its same-path tier-1 prereq is already owned."""
+    # Ordered tier-1 → tier-1 → tier-2 so the tier-2 form's prereq is owned by the time it's reached.
+    cases = [
+        ("heart", ["flurry", "streamer", "halo"]),
+        ("stillness", ["lotus", "enso", "prism"]),
+    ]
+    for path, options in cases:
+        _auth(client, f"new_form_{path}@example.com")
+        assert _choose(client, path).status_code == 200
+        _earn_to_level(client, 3)  # afford every form + clear the tier-2 L3 gate
+        for option in options:
+            res = _unlock(client, "form", option)
+            assert res.status_code == 200, res.text
+            assert res.json()["cosmetics"]["form"] == option
+            assert _spirit(client)["cosmetics"]["form"] == option
 
 
 def test_cannot_unlock_another_paths_form_404(client):

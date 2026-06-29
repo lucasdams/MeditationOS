@@ -281,6 +281,25 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(sleek).toBeLessThan(bare)
   })
 
+  it('draws MORE trailing legs with form=flurry than a bare Vata', () => {
+    const bare = wispCount({})
+    const flurry = wispCount({ cosmetics: { form: 'flurry' } })
+    expect(flurry).toBeGreaterThan(bare)
+  })
+
+  it('draws FEWER trailing legs with form=streamer than a bare Vata', () => {
+    const bare = wispCount({})
+    const streamer = wispCount({ cosmetics: { form: 'streamer' } })
+    expect(streamer).toBeLessThan(bare)
+  })
+
+  it('still draws stroked currents (a ring of them) with form=halo', () => {
+    // `halo` rearranges the currents into a radial RING rather than trailing legs, but they stay
+    // stroked (fill:none) curves — so a haloed Vata still draws several of them.
+    const halo = wispCount({ cosmetics: { form: 'halo' } })
+    expect(halo).toBeGreaterThanOrEqual(4)
+  })
+
   it('draws MORE flames with form=wildfire than a bare Pitta', () => {
     const bare = flameCount({})
     const wildfire = flameCount({ cosmetics: { form: 'wildfire' } })
@@ -344,6 +363,36 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     )
   })
 
+  it('swaps the Kapha body for a FLOWER of multiple petal ellipses with form=lotus', () => {
+    // The default Kapha body has no radiating petal ellipses; `lotus` draws several (5 + i) filled
+    // petal ellipses around a bright centre, so the creature gains many more <ellipse> petals.
+    const bareEllipses = kaphaCreature({}).querySelectorAll('ellipse').length
+    const lotusEllipses = kaphaCreature({ cosmetics: { form: 'lotus' } }).querySelectorAll(
+      'ellipse',
+    ).length
+    expect(lotusEllipses).toBeGreaterThan(bareEllipses + 3)
+  })
+
+  it('swaps the Kapha body for concentric ring OUTLINES (≥2) with form=enso', () => {
+    // `enso` draws ≥2 fill="none" ring outlines in the body — strictly more stroked circles than a
+    // bare Kapha (whose only fill="none" circle is the framing halo, shared by every form).
+    const strokedCircles = (group: SVGGElement) =>
+      Array.from(group.querySelectorAll('circle')).filter(
+        (el) => el.getAttribute('fill') === 'none',
+      ).length
+    const bare = strokedCircles(kaphaCreature({}))
+    const enso = strokedCircles(kaphaCreature({ cosmetics: { form: 'enso' } }))
+    expect(enso - bare).toBeGreaterThanOrEqual(2)
+  })
+
+  it('swaps the Kapha body for a faceted GEM (a polygon + facet lines) with form=prism', () => {
+    // The default Kapha has no polygon; `prism` draws a hexagon polygon with internal facet lines.
+    expect(kaphaCreature({}).querySelectorAll('polygon').length).toBe(0)
+    const gem = kaphaCreature({ cosmetics: { form: 'prism' } })
+    expect(gem.querySelectorAll('polygon').length).toBeGreaterThanOrEqual(1)
+    expect(gem.querySelectorAll('line').length).toBeGreaterThanOrEqual(3)
+  })
+
   it('leaves a bare Vata / Pitta / Kapha (no form) pixel-identical to an empty cosmetics map', () => {
     const markup = (path: SpiritPath, over: Partial<SpiritState>): string => {
       const { container } = renderSpirit(
@@ -374,6 +423,12 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(markup('stillness', { form: 'wildfire' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'cluster' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'cluster' })).toBe(markup('breath', {}))
+    // The NEW forms are likewise path-scoped: a Vata `halo` is inert on Pitta/Kapha; a Kapha
+    // `prism` is inert on Vata/Pitta.
+    expect(markup('breath', { form: 'halo' })).toBe(markup('breath', {}))
+    expect(markup('stillness', { form: 'halo' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'prism' })).toBe(markup('heart', {}))
+    expect(markup('breath', { form: 'prism' })).toBe(markup('breath', {}))
   })
 })
 
