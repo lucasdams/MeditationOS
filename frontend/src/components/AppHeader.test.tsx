@@ -1,7 +1,8 @@
 /**
- * Smoke tests for the grouped header navigation: Home + Practice / Progress dropdown menus
- * + a standalone Spirit link. Verifies that opening a menu reveals its destinations, that
- * the Progress menu carries stats + Settings, that Admin is admin-only, and basic a11y
+ * Smoke tests for the grouped header navigation: Home + Practice / Progress / More dropdown
+ * menus + a standalone Spirit link. Verifies that opening a menu reveals its destinations,
+ * that the Progress menu carries stats + Settings, that the More menu carries the advanced /
+ * depth features (Candle gazing, Goals, Schedule), that Admin is admin-only, and basic a11y
  * (aria-expanded toggling on the menu buttons).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -41,11 +42,12 @@ describe('AppHeader — grouped navigation', () => {
     vi.clearAllMocks()
   })
 
-  it('shows Home, the Practice/Progress menu buttons, and a standalone Spirit link', () => {
+  it('shows Home, the Practice/Progress/More menu buttons, and a standalone Spirit link', () => {
     renderHeader()
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Practice/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Progress/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /More/ })).toBeInTheDocument()
     // Spirit stands alone as a direct link (there are mobile duplicates of menu links, so
     // assert at least one Spirit link with the right href exists at top level).
     const spirit = screen.getAllByRole('link', { name: /Spirit/ })
@@ -66,6 +68,23 @@ describe('AppHeader — grouped navigation', () => {
     expect(within(dropdown).getByRole('link', { name: /Meditate/ })).toHaveAttribute('href', '/meditate')
     expect(within(dropdown).getByRole('link', { name: /Breathe/ })).toBeInTheDocument()
     expect(within(dropdown).getByRole('link', { name: /Log a session/ })).toBeInTheDocument()
+    // Candle gazing moved to the More menu — no longer a beginner Practice item.
+    expect(within(dropdown).queryByRole('link', { name: /Candle gazing/ })).toBeNull()
+  })
+
+  it('opening More reveals the advanced/depth destinations (Candle gazing, Goals, Schedule)', () => {
+    renderHeader()
+    const moreBtn = screen.getByRole('button', { name: /More/ })
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(moreBtn)
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'true')
+
+    const dropdown = document.getElementById('nav-more-dropdown')!
+    expect(dropdown).toBeInTheDocument()
+    expect(within(dropdown).getByRole('link', { name: /Candle gazing/ })).toHaveAttribute('href', '/trataka')
+    expect(within(dropdown).getByRole('link', { name: /Goals/ })).toHaveAttribute('href', '/goals')
+    expect(within(dropdown).getByRole('link', { name: /Schedule/ })).toHaveAttribute('href', '/schedule')
   })
 
   it('opening Progress reveals Analytics + Settings together', () => {
@@ -76,6 +95,9 @@ describe('AppHeader — grouped navigation', () => {
     const dropdown = document.getElementById('nav-progress-dropdown')!
     expect(within(dropdown).getByRole('link', { name: /Analytics/ })).toHaveAttribute('href', '/analytics')
     expect(within(dropdown).getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/settings')
+    // Goals + Schedule moved to the More menu — Progress is review/config only now.
+    expect(within(dropdown).queryByRole('link', { name: /Goals/ })).toBeNull()
+    expect(within(dropdown).queryByRole('link', { name: /Schedule/ })).toBeNull()
   })
 
   it('opening one menu closes the other (single open menu at a time)', () => {

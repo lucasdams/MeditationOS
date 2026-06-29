@@ -9,16 +9,16 @@ import { dashboardService } from '../services/dashboard'
 // gutter (labels line up cleanly).
 type MenuLink = { to: string; icon: string; label: string; light: string; dark: string }
 
-// Practice — the activities: things you *do* in a session. The hub ("All practices") sits at
-// the top — a browsable library of every technique — with the direct links below it.
+// Practice — the activities a beginner reaches for: things you *do* in a session. The most
+// approachable practices lead; the hub ("All practices") + "Log a session" sit lower for when
+// you want the full library or to record an offline sit. Depth practices live under "More".
 const PRACTICE_LINKS: MenuLink[] = [
-  { to: '/practices', icon: '✨', label: 'All practices', light: '#7c3aed', dark: '#c4b5fd' },
   { to: '/paths', icon: '🧭', label: 'Paths', light: '#0d9488', dark: '#2dd4bf' },
-  { to: '/meditate', icon: '🧘', label: 'Meditate', light: '#0f766e', dark: '#14b8a6' },
   { to: '/breathe', icon: '🫁', label: 'Breathe', light: '#0369a1', dark: '#0ea5e9' },
-  { to: '/trataka', icon: '🕯️', label: 'Candle gazing', light: '#c2410c', dark: '#fb923c' },
+  { to: '/meditate', icon: '🧘', label: 'Meditate', light: '#0f766e', dark: '#14b8a6' },
   { to: '/gratitude', icon: '🙏', label: 'Gratitude', light: '#b45309', dark: '#fbbf24' },
   { to: '/journal', icon: '📓', label: 'Journal', light: '#6d28d9', dark: '#a78bfa' },
+  { to: '/practices', icon: '✨', label: 'All practices', light: '#7c3aed', dark: '#c4b5fd' },
   { to: '/sessions/new', icon: '➕', label: 'Log a session', light: '#0f766e', dark: '#14b8a6' },
 ]
 
@@ -26,9 +26,15 @@ const PRACTICE_LINKS: MenuLink[] = [
 const PROGRESS_LINKS: MenuLink[] = [
   { to: '/analytics', icon: '📈', label: 'Analytics', light: '#be185d', dark: '#f472b6' },
   { to: '/timeline', icon: '🕒', label: 'Timeline', light: '#0369a1', dark: '#0ea5e9' },
+  { to: '/settings', icon: '⚙️', label: 'Settings', light: '#475569', dark: '#94a3b8' },
+]
+
+// More — advanced / depth features grouped out of the primary menus so beginners see a leaner
+// nav. Pure grouping: every route here is unchanged, just relocated from Practice / Progress.
+const MORE_LINKS: MenuLink[] = [
+  { to: '/trataka', icon: '🕯️', label: 'Candle gazing', light: '#c2410c', dark: '#fb923c' },
   { to: '/goals', icon: '🎯', label: 'Goals', light: '#6d28d9', dark: '#a78bfa' },
   { to: '/schedule', icon: '🗓️', label: 'Schedule', light: '#1d4ed8', dark: '#60a5fa' },
-  { to: '/settings', icon: '⚙️', label: 'Settings', light: '#475569', dark: '#94a3b8' },
 ]
 
 // Each menu's links render in two sibling containers (desktop dropdown + mobile inline list),
@@ -56,7 +62,7 @@ export default function AppHeader() {
   const [level, setLevel] = useState<number | null>(null)
   // A single source of truth for which dropdown is open: a menu id or null. Opening one
   // menu closes the other; outside-click / Escape close whichever is open.
-  const [openMenu, setOpenMenu] = useState<'practice' | 'progress' | null>(null)
+  const [openMenu, setOpenMenu] = useState<'practice' | 'progress' | 'more' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const navRef = useRef<HTMLElement>(null)
 
@@ -109,7 +115,7 @@ export default function AppHeader() {
   // A grouped dropdown menu (Practice / Progress). The button toggles its own open state;
   // opening it closes the other (single openMenu source of truth). aria-controls ties the
   // button to the dropdown region it expands.
-  function renderMenu(id: 'practice' | 'progress', label: string, links: MenuLink[]) {
+  function renderMenu(id: 'practice' | 'progress' | 'more', label: string, links: MenuLink[]) {
     const open = openMenu === id
     const dropdownId = `nav-${id}-dropdown`
     return (
@@ -156,6 +162,8 @@ export default function AppHeader() {
             aren't a widget menu and arrow-key navigation isn't implemented. */}
         {renderMenu('practice', 'Practice', PRACTICE_LINKS)}
         {renderMenu('progress', 'Progress', progressLinks)}
+        {/* More — advanced / depth features, kept out of the lean primary menus. */}
+        {renderMenu('more', 'More', MORE_LINKS)}
 
         {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
         <Link to="/spirit" className="nav-spirit nav-spirit-feature">
@@ -168,6 +176,8 @@ export default function AppHeader() {
           {PRACTICE_LINKS.map(renderMenuLink)}
           <p className="nav-mobile-heading">Progress</p>
           {progressLinks.map(renderMenuLink)}
+          <p className="nav-mobile-heading">More</p>
+          {MORE_LINKS.map(renderMenuLink)}
         </div>
       </nav>
       <div className="app-user">
