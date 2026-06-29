@@ -1135,6 +1135,13 @@ a:hover { color: var(--accent-hover); }
   box-shadow: var(--shadow-card);
 }
 
+/* Standalone buttons placed directly in an auth card (e.g. Verify-email's "Send a new
+   link") relied on the old global `button { margin-top: 1rem }` for spacing from the
+   text above. `.guest-btn` keeps its own smaller margin; `.btn` owns its spacing. */
+.auth-card > button:not(.guest-btn):not(.btn) {
+  margin-top: var(--space-4);
+}
+
 /* Public legal pages (Privacy, Terms) */
 .legal {
   max-width: 44rem;
@@ -1561,16 +1568,13 @@ a:hover { color: var(--accent-hover); }
   color: var(--text-primary);
 }
 
-.guest-btn {
+/* Layout-only delta on top of `.btn .btn--secondary`: full-width under the auth form
+   and a small top margin. Keeps the accent-tinted border the auth card used so the
+   migration is a visual no-op (`.btn--secondary`'s neutral border is overridden here). */
+.btn.guest-btn {
   width: 100%;
-  background: var(--bg-surface);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
+  border-color: var(--accent-border);
   margin-top: 0.75rem;
-}
-
-.guest-btn:hover:not(:disabled) {
-  background: var(--accent-subtle);
 }
 
 .journal-compose {
@@ -2021,7 +2025,13 @@ small {
 }
 
 button {
-  margin-top: 1rem;
+  /* Non-positioning defaults only — no `margin-top`. The old global `margin-top: 1rem`
+     leaked onto every button and forced dozens of `margin: 0` resets; spacing is now
+     owned by each button's layout (form-submit spacing is restored explicitly below).
+     The visual fill (accent, padding, weight) stays so bare `<button>`s render as the
+     app's default primary action; `.btn`/`.btn--primary` mirror these tokens. */
+  font: inherit;
+  font-family: var(--font-body);
   padding: 0.65rem;
   font-size: var(--text-base);
   font-weight: 600;
@@ -2031,15 +2041,23 @@ button {
   border-radius: var(--radius-control);
   cursor: pointer;
   /* Chrome phase 2: a gentle accent lift on hover/focus so primary actions feel
-     like game-UI buttons. Subtle — a couple px and a soft glow, not neon. Ghost /
-     text-style buttons opt out below so they keep their flat, quiet look. */
+     responsive. Subtle — a couple px and a soft lift, not neon. Ghost / text-style
+     buttons opt out below so they keep their flat, quiet look. */
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 
-/* Solid (default-fill) buttons get the lift + accent glow. The :not() guards exclude
-   the app's ghost / link / chip buttons, which set their own transparent background
-   and shouldn't grow an indigo glow. */
-button:hover:not(:disabled):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link) {
+/* Form-submit spacing: the old global `margin-top: 1rem` used to sit these off the
+   field above them. Restored explicitly (only for in-form submits) so removing the
+   leak doesn't tighten every auth/settings/journal form. Page-specific rules with
+   higher specificity (e.g. `.log-session form button[type='submit']`) still win. */
+form > button[type='submit'] {
+  margin-top: var(--space-4);
+}
+
+/* Solid (default-fill) buttons get the lift on hover. The :not() guards exclude the
+   app's ghost / link / chip buttons, which set their own transparent background and
+   shouldn't grow an accent lift. `.btn` opts out too — it owns its own neutral hover. */
+button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link) {
   transform: translateY(-1px);
   box-shadow: var(--glow-accent-hover);
   filter: brightness(1.04);
@@ -2088,6 +2106,104 @@ textarea::placeholder {
   }
 }
 
+/* ── Shared button system (.btn) ─────────────────────────────────────────────
+   One token-driven base + variant/size modifiers, so buttons stop restyling from
+   scratch. Opt in by adding `.btn` (+ a variant) in the JSX; works on <button> and
+   <a>. The base resets the global accent fill so variants own their colours, and
+   sets its own margin so it's free of the form-submit spacing rule above. Hover is a
+   neutral lift (no coloured glow): a 1px raise + the card shadow at most. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0;
+  width: auto;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease,
+    border-color 0.12s ease, filter 0.12s ease;
+}
+
+.btn--sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* Solid accent — the primary action. */
+.btn--primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* Surface + border — a quieter alternative action. */
+.btn--secondary {
+  color: var(--accent);
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+.btn--secondary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+
+/* Transparent — text-style, gains only a faint hover wash. */
+.btn--ghost {
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+.btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  color: var(--text-primary);
+  background: var(--accent-subtle);
+}
+
+/* Warm error tone for destructive actions. */
+.btn--danger {
+  color: var(--error-text);
+  background: var(--bg-surface);
+  border-color: color-mix(in srgb, var(--error-text) 35%, transparent);
+}
+.btn--danger:hover:not(:disabled):not([aria-disabled='true']) {
+  background: color-mix(in srgb, var(--error-text) 10%, transparent);
+}
+
+/* Shared hover/active feel — a neutral lift, then a press squish. The press is also
+   handled by the global `button:active` rule; this covers `.btn` on <a>. */
+.btn:hover:not(:disabled):not([aria-disabled='true']) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+.btn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+  filter: brightness(0.97);
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 /* ── Accessibility utilities ────────────────────────────────────────────────
    .sr-only  — visually hidden but available to screen readers.
    .skip-link — skip-to-main, visible on focus so keyboard users see it first. */
@@ -2128,8 +2244,8 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  /* Token-driven so the ring tracks the per-theme accent (indigo on light, the
-     lighter indigo on dark) for a clearly visible keyboard-focus indicator. */
+  /* Token-driven so the ring tracks the per-theme accent (clay on light, the
+     lighter clay on dark) for a clearly visible keyboard-focus indicator. */
   outline: 2px solid var(--ring-accent);
   outline-offset: 2px;
   border-radius: 6px;
@@ -5308,7 +5424,10 @@ button.today-action:disabled {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 0.5rem;
+  /* Bumped from 0.5rem: the submit inside used to add the global `button` 1rem top
+     margin on top of this. With that leak gone, the container owns the full gap so the
+     actions row keeps its spacing below the disclaimer. */
+  margin-top: var(--space-6);
 }
 
 /* ── Biometric trend (Analytics) ── */
@@ -6073,6 +6192,9 @@ button.today-action:disabled {
 .grat-compose button {
   width: auto;
   padding: 0.6rem 1.25rem;
+  /* Restores the spacing the old global `button { margin-top: 1rem }` gave this
+     standalone Save (the compose block is a <section>, not a gap'd form). */
+  margin-top: var(--space-4);
 }
 
 .grat-journal {
