@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import { ACTIVITY_META, type Activity } from '../lib/colors'
@@ -57,7 +58,8 @@ function PathDayRow({ day }: { day: PathDay }) {
               className="path-day-start today-action"
               aria-label={`Start ${dayLabel(day)}: ${day.title}`}
             >
-              Start →
+              Start
+              <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
             </Link>
           </>
         )}
@@ -101,7 +103,7 @@ function PathCard({
           )}
           {path.completed && (
             <p className="path-complete">
-              <span aria-hidden="true">🌟</span> You've finished this path. Beautifully done.
+              You've finished this path. Beautifully done.
             </p>
           )}
           <ol className="path-days">

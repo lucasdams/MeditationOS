@@ -7,7 +7,7 @@ export const GREETINGS = [
   'Namaste 🙏',
   'Welcome back — breathe easy 🧘',
   'Your cushion missed you 🪷',
-  'One breath at a time ✨',
+  'One breath at a time',
   'The present moment says hi 😌',
   'Be here now 🍃',
   'Inhale calm, exhale hustle 🌬️',

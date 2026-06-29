@@ -60,13 +60,6 @@ describe('FirstRunCard — dismiss interaction', () => {
     )
   })
 
-  it('persists dismissal and calls onDismiss when "Got it" is clicked', () => {
-    const onDismiss = renderCard()
-    fireEvent.click(screen.getByRole('button', { name: /got it/i }))
-    expect(onDismiss).toHaveBeenCalledTimes(1)
-    expect(isFirstRunDismissed()).toBe(true)
-  })
-
   it('persists dismissal and calls onDismiss when the ✕ is clicked', () => {
     const onDismiss = renderCard()
     fireEvent.click(screen.getByRole('button', { name: /dismiss getting started/i }))

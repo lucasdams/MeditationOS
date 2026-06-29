@@ -15,10 +15,10 @@ const prefersReducedMotion = () =>
 // A warm word for finishing a sit — the session deserves love, not just XP. Gentle + never about
 // performance: showing up is the whole win.
 const REWARD_PRAISES = [
-  'Beautifully done. 💛',
+  'Beautifully done.',
   'You showed up — that’s what matters.',
   'That’s time well spent.',
-  'A quiet gift to yourself. 💛',
+  'A quiet gift to yourself.',
   'Every sit counts.',
   'Proud of you for this.',
 ]
@@ -199,7 +199,7 @@ export default function RewardOverlay({
 
         <div className="reward-level">
           Level {prog.level}
-          {leveledUp && <span className="reward-up"> · Level up! 🎉</span>}
+          {leveledUp && <span className="reward-up"> · Level up!</span>}
         </div>
         {leveledUp && (
           <div className={`reward-coins${reduceMotion ? '' : ' reward-coins--pop'}`}>

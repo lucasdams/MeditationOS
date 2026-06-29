@@ -101,13 +101,10 @@ function SetBonusStatus({
   if (setBonus.active) {
     return (
       <div className="spirit-setbonus spirit-setbonus--active" role="status">
-        <span className="spirit-setbonus-badge">
-          <span aria-hidden="true">✦ </span>
-          {setBonus.label}
-        </span>
+        <span className="spirit-setbonus-badge">{setBonus.label}</span>
         <span className="spirit-setbonus-note">
           Your companion shimmers with a special glow for wearing all {setBonus.total} of its
-          signature pieces. ✨
+          signature pieces.
         </span>
       </div>
     )
@@ -131,7 +128,7 @@ function SetBonusStatus({
         onBlur={() => onPreview(false)}
         onClick={() => onPreview(!previewOn)}
       >
-        ✨ {previewOn ? 'Previewing the radiance…' : 'See the radiance'}
+        {previewOn ? 'Previewing the radiance…' : 'See the radiance'}
       </button>
     </div>
   )
@@ -319,7 +316,7 @@ export default function SpiritPage() {
       const next = await spiritService.unlock({ slot, option })
       setSpirit(next)
       setConfirmUnlock(null)
-      showToast(`${optionLabel(option)} unlocked — your spirit is delighted ✨`)
+      showToast(`${optionLabel(option)} unlocked — your spirit is delighted`)
     } catch {
       showToast('Not unlocked yet — practice earns the coins for it.', 'error')
     } finally {
@@ -371,7 +368,7 @@ export default function SpiritPage() {
       const next = await spiritService.awaken()
       setSpirit(next)
       setConfirmAwaken(false)
-      showToast('A new spark awakens. Your radiant spirit joins your collection. 🌟')
+      showToast('A new spark awakens. Your radiant spirit joins your collection.')
     } catch {
       showToast('Your spirit is not radiant yet — keep practicing.', 'error')
     } finally {

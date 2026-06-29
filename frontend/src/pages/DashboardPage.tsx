@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Flame, Moon, Sprout, Star, Check } from 'lucide-react'
+import { Flame, Moon, Sprout, Star, Check, ArrowRight } from 'lucide-react'
 import { dashboardService } from '../services/dashboard'
 import { spiritService } from '../services/spirit'
 import { moodLogService } from '../services/moodLogs'
@@ -18,7 +18,7 @@ import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import CoinIcon from '../components/CoinIcon'
-import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, TILE_COLORS, TILE_COLORS_DARK, type Activity } from '../lib/colors'
+import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
@@ -49,15 +49,15 @@ const QUEST_DETAIL: Record<string, string> = {
   mood_journal: 'A journal entry with a mood set',
 }
 
-// Quick-action tiles — one tap to the five main features from the dashboard. These are the
-// home screen's primary focal point: each is a bold, full-colour box (saturated fill from
-// TILE_COLORS, white icon + label) so the actions clearly pop. The four activity tiles read
-// their icon/label from the shared ACTIVITY_META. `tile` keys into TILE_COLORS for the box fill.
+// Quick-action tiles — one tap to the four main practices from the dashboard. A quiet,
+// secondary row beneath the primary CTA: all four share ONE neutral surface, and identity
+// reads through a small tinted icon (the soft ACTIVITY_COLORS), not a saturated fill. The
+// activity icon/label come from the shared ACTIVITY_META.
 const FEATURE_TILES = [
-  { ...ACTIVITY_META.meditate, to: '/meditate', tile: 'meditate' as const },
-  { ...ACTIVITY_META.breathe, to: '/breathe', tile: 'breathe' as const },
-  { ...ACTIVITY_META.gratitude, to: '/gratitude', tile: 'gratitude' as const },
-  { ...ACTIVITY_META.journal, to: '/journal', tile: 'journal' as const },
+  { ...ACTIVITY_META.meditate, to: '/meditate', activity: 'meditate' as const },
+  { ...ACTIVITY_META.breathe, to: '/breathe', activity: 'breathe' as const },
+  { ...ACTIVITY_META.gratitude, to: '/gratitude', activity: 'gratitude' as const },
+  { ...ACTIVITY_META.journal, to: '/journal', activity: 'journal' as const },
 ] as const
 
 export default function DashboardPage() {
@@ -69,7 +69,7 @@ export default function DashboardPage() {
   // so the companion doesn't fire a second GET /spirit). null until loaded / on a quiet failure.
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
   // The user's enrolled-but-not-yet-finished path, if any — makes the Today CTA path-aware:
-  // when set, the primary action becomes "Day N · {title} →" launching the current day's
+  // when set, the primary action becomes "Day N · {title}" launching the current day's
   // practice instead of the generic breathe CTA. null = not enrolled (or already finished, or a
   // quiet fetch failure) → the existing breathe CTA + "start your first 7 days" link lead.
   const [activePath, setActivePath] = useState<PathSummary | null>(null)
@@ -257,7 +257,7 @@ export default function DashboardPage() {
           )}
 
           {/* The single primary action — "what do I do now". Path-aware: an enrolled, unfinished
-              path makes the CTA the current day ("Day 3 · {title} →", launching that day's
+              path makes the CTA the current day ("Day 3 · {title}", launching that day's
               practice). Otherwise breathing — the hero practice — leads, with a gentle secondary
               invite into Paths. The four feature tiles below are always secondary. */}
           {(() => {
@@ -265,17 +265,19 @@ export default function DashboardPage() {
             if (activePath && currentDay) {
               return (
                 <Link to={pathDayHref(currentDay)} className="today-action">
-                  Day {currentDay.index} · {currentDay.title} →
+                  Day {currentDay.index} · {currentDay.title}
+                  <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
               )
             }
             return (
               <>
                 <Link to="/breathe" className="today-action">
-                  Take a slow minute to breathe →
+                  Take a slow minute to breathe
+                  <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
                 <p className="today-action-secondary">
-                  <Link to="/paths">Start your first 7 days →</Link>
+                  <Link to="/paths">Start your first 7 days</Link>
                 </p>
               </>
             )
@@ -284,15 +286,12 @@ export default function DashboardPage() {
           {/* Quick-access tiles — secondary now, a quiet row beneath the primary CTA: one tap
               to start any of the practices. */}
           <nav className="feature-tiles" aria-label="Quick access">
-            {FEATURE_TILES.map(({ label, icon: TileIcon, to, tile }) => (
+            {FEATURE_TILES.map(({ label, icon: TileIcon, to, activity }) => (
               <Link
                 key={to}
                 to={to}
                 className="feature-tile"
-                style={{
-                  ['--tile-fill' as string]: TILE_COLORS[tile],
-                  ['--tile-fill-dark' as string]: TILE_COLORS_DARK[tile],
-                }}
+                style={{ ['--tile-accent' as string]: ACTIVITY_COLORS[activity] }}
               >
                 <span className="feature-tile-emoji" aria-hidden="true">
                   <TileIcon size={22} strokeWidth={1.75} />
@@ -431,7 +430,7 @@ export default function DashboardPage() {
               <WeeklyReview />
 
               <p className="dashboard-more-link">
-                <Link to="/analytics">See full analytics →</Link>
+                <Link to="/analytics">See full analytics</Link>
               </p>
             </div>
           </section>

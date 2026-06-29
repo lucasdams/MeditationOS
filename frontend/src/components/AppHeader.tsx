@@ -23,10 +23,10 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
 
-// A menu destination. Each carries a per-destination accent (light + dark shades, mirroring
-// the home tiles' TILE_COLORS pairs) so the menu items read as the app's soft colour-tinted
-// pills, not plain text. icon + label are separate so the icon can sit in a fixed-width
-// gutter (labels line up cleanly). `icon` is a lucide line-icon component (no system emoji).
+// A menu destination. Each carries a per-destination accent (light + dark shades) so the menu
+// items read as the app's soft colour-tinted pills, not plain text. icon + label are separate
+// so the icon can sit in a fixed-width gutter (labels line up cleanly). `icon` is a lucide
+// line-icon component (no system emoji).
 type MenuLink = { to: string; icon: ComponentType<LucideProps>; label: string; light: string; dark: string }
 
 // Practice — the activities a beginner reaches for: things you *do* in a session. The most

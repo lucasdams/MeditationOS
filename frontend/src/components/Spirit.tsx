@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { Soup, Moon, Sparkles, type LucideProps } from 'lucide-react'
+import { Soup, Moon, Sparkles, ArrowRight, type LucideProps } from 'lucide-react'
 import { spiritService } from '../services/spirit'
 import { Loading, RetryableError } from './StateViews'
 import { messageForError } from '../lib/errors'
@@ -441,7 +441,6 @@ export function CareNudge({
   const creature = path ? `Your ${DOSHA[path].name}` : 'Your spark'
   return (
     <p className="spirit-care-nudge" role="status">
-      <span aria-hidden="true">🌿 </span>
       {creature} is {tierLabel} — {reviveHint(key, path)}.
     </p>
   )
@@ -5292,11 +5291,12 @@ export default function Spirit({
         // "hatch" invite (onboarding §5) — the companion is the reward for that first sit.
         sessionCount >= 1 ? (
           <>
-            <p className="spirit-stage">You’ve taken your first breath ✨</p>
+            <p className="spirit-stage">You’ve taken your first breath</p>
             <p className="spirit-note muted">Now meet the companion you brought to life.</p>
             <p className="spirit-choose-prompt">
               <Link to="/spirit/choose" className="spirit-choose-cta">
-                Meet your companion →
+                Meet your companion
+                <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
               </Link>
             </p>
           </>
@@ -5306,7 +5306,8 @@ export default function Spirit({
             <p className="spirit-note muted">Pick the one whose nature fits you.</p>
             <p className="spirit-choose-prompt">
               <Link to="/spirit/choose" className="spirit-choose-cta">
-                Choose your companion →
+                Choose your companion
+                <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
               </Link>
             </p>
           </>

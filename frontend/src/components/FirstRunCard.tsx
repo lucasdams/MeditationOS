@@ -69,9 +69,6 @@ export default function FirstRunCard({ onDismiss }: Props) {
         <Link to="/sessions/new" className="first-run-action first-run-action-secondary">
           Log a session
         </Link>
-        <button type="button" className="first-run-gotit" onClick={dismiss}>
-          Got it
-        </button>
       </div>
     </section>
   )
