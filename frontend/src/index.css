@@ -2751,6 +2751,11 @@ button.today-action:disabled {
   width: 140px;
   height: auto;
   max-width: 100%;
+  /* A faint bright backing "stage" + a soft warm LIFT so the creature pops off the cream page —
+     the translucent body reads bolder over the brighter disc, and the shadow separates it from the
+     page. The calm, non-sticker way to add "pop". Both neutralised on the compact breathe pacer. */
+  background: radial-gradient(circle at 50% 46%, #ffffff 0%, rgba(255, 255, 255, 0.5) 30%, transparent 58%);
+  filter: drop-shadow(0 5px 9px rgba(74, 50, 22, 0.26));
 }
 
 .spirit-stage {
@@ -3533,6 +3538,8 @@ button.today-action:disabled {
 
 .spirit-art--compact .spirit-svg {
   width: 72px;
+  filter: none;
+  background: none;
 }
 
 /* Reduced motion: hold EVERY layer static — no float, no aura glow, no pacer transition. The JS
