@@ -6,7 +6,6 @@ import {
   DOSHA,
   PATH_ORDER,
   SpiritArt,
-  optionLabel,
   prefersReducedMotion,
 } from '../components/Spirit'
 import { Loading, RetryableError } from '../components/StateViews'
@@ -65,13 +64,17 @@ function clearOnboardingHatch(): void {
 // form (the real spirit starts a spark and grows — here we just want a good likeness to choose by).
 const PREVIEW_STAGE = 'fledgling'
 
-// A creature's distinctive "looks" — its path-exclusive capstones (one per slot), flattened from
-// the per-path preview to {slot, option}. These drive the hover-to-try-on chips. (We surface the
-// signature pieces rather than the whole catalog so the chips stay scannable.)
-function signatureLooks(slots: SpiritSlotPreview[]): { slot: string; option: string }[] {
-  return slots.flatMap((s) =>
-    s.options.filter((o) => o.exclusive).map((o) => ({ slot: s.slot, option: o.option })),
-  )
+// Roll a RANDOM full look for a creature: one random option per slot that has any (aura, accessory,
+// habitat, companion, …), flattened to a {slot: option} cosmetics map. Each roll is a fresh, varied
+// decorated look — the choose-page preview shows the whole combination at once.
+function randomLook(slots: SpiritSlotPreview[]): Record<string, string> {
+  const look: Record<string, string> = {}
+  for (const s of slots) {
+    if (s.options.length === 0) continue
+    const opt = s.options[Math.floor(Math.random() * s.options.length)]
+    look[s.slot] = opt.option
+  }
+  return look
 }
 
 export default function SpiritChoosePage() {
@@ -88,11 +91,24 @@ export default function SpiritChoosePage() {
   // Two-step flow — pick a creature FIRST, then name it. `selected` holds the picked creature.
   const [selected, setSelected] = useState<SpiritPath | null>(null)
   const [name, setName] = useState('')
-  // The look being tried on a specific creature (hover/focus a chip). Per-card: only the matching
-  // card's art reflects it. null = every creature shows its bare base look.
-  const [tryOn, setTryOn] = useState<{ path: SpiritPath; slot: string; option: string } | null>(
-    null,
-  )
+  // A randomly-rolled look per creature (keyed by path) — the "Try a random look" button rolls a
+  // full combination of cosmetics onto that card's art. Absent for a path = its bare base look.
+  const [randomLooks, setRandomLooks] = useState<
+    Partial<Record<SpiritPath, Record<string, string>>>
+  >({})
+
+  function rollLook(path: SpiritPath) {
+    const slots = preview?.[path]
+    if (!slots) return
+    setRandomLooks((prev) => ({ ...prev, [path]: randomLook(slots) }))
+  }
+  function clearLook(path: SpiritPath) {
+    setRandomLooks((prev) => {
+      const next = { ...prev }
+      delete next[path]
+      return next
+    })
+  }
   // The onboarding intent (read once at mount), present only when arriving straight from the
   // first guided breath. When set, this page reads as a celebratory "hatch" and suggests a
   // matching companion. null = a normal, later visit (behaves exactly as before).
@@ -141,17 +157,17 @@ export default function SpiritChoosePage() {
     }
   }
 
-  // The live art for a creature — its bare base look, or whatever look is being tried on (only when
-  // the hovered chip belongs to THIS creature). Bright + a fixed developed stage.
+  // The live art for a creature — its bare base look, or a randomly-rolled look when one's active
+  // for THIS creature. Bright + a fixed developed stage.
   function creatureArt(path: SpiritPath) {
-    const looking = tryOn?.path === path
+    const look = randomLooks[path]
     return (
       <SpiritArt
         stage={PREVIEW_STAGE}
         path={path}
         glow={1}
-        cosmetics={looking && tryOn ? { [tryOn.slot]: tryOn.option } : {}}
-        previewing={looking}
+        cosmetics={look ?? {}}
+        previewing={!!look}
         reducedMotion={reducedMotion}
       />
     )
@@ -210,7 +226,7 @@ export default function SpiritChoosePage() {
         <ul className="spirit-picker-grid spirit-choose-grid">
           {PATH_ORDER.map((path) => {
             const d = DOSHA[path]
-            const looks = preview?.[path] ? signatureLooks(preview[path]) : []
+            const canRoll = (preview?.[path] ?? []).some((s) => s.options.length > 0)
             return (
               <li key={path} className={`spirit-picker-card spirit-picker-card--${path}`}>
                 {/* A gentle, never-forced suggestion when arriving from onboarding — the dosha
@@ -226,24 +242,24 @@ export default function SpiritChoosePage() {
                   {d.element} · {d.vibe.replace(/\.$/, '')}
                 </p>
                 {favoursCopy(path)}
-                {looks.length > 0 && (
-                  <div className="spirit-choose-tryons" aria-label={`Preview ${d.name}'s looks`}>
-                    <span className="spirit-choose-tryons-head muted">Hover to try a look</span>
-                    <div className="spirit-choose-tryons-chips">
-                      {looks.map((l) => (
-                        <button
-                          key={l.option}
-                          type="button"
-                          className="spirit-choose-tryon"
-                          onMouseEnter={() => setTryOn({ path, ...l })}
-                          onMouseLeave={() => setTryOn(null)}
-                          onFocus={() => setTryOn({ path, ...l })}
-                          onBlur={() => setTryOn(null)}
-                        >
-                          {optionLabel(l.option)}
-                        </button>
-                      ))}
-                    </div>
+                {canRoll && (
+                  <div className="spirit-choose-tryons" aria-label={`Try a random look for ${d.name}`}>
+                    <button
+                      type="button"
+                      className="spirit-choose-roll"
+                      onClick={() => rollLook(path)}
+                    >
+                      🎲 {randomLooks[path] ? 'Roll a new look' : 'Try a random look'}
+                    </button>
+                    {randomLooks[path] && (
+                      <button
+                        type="button"
+                        className="spirit-choose-roll-clear"
+                        onClick={() => clearLook(path)}
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
                 )}
                 <button
@@ -267,7 +283,6 @@ export default function SpiritChoosePage() {
             onClick={() => {
               setSelected(null)
               setName('')
-              setTryOn(null)
             }}
           >
             ← Choose a different creature

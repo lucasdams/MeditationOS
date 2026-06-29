@@ -3268,38 +3268,48 @@ button.today-action:disabled {
 .spirit-choose-tryons {
   width: 100%;
   margin: 0.1rem 0 0.5rem;
-}
-.spirit-choose-tryons-head {
-  display: block;
-  margin: 0 0 0.3rem;
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.spirit-choose-tryons-chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 0.3rem;
+  gap: 0.5rem;
 }
-.spirit-choose-tryon {
-  padding: 0.22rem 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--card-accent) 35%, var(--border));
+/* "Try a random look" — a calm, inviting pill in the creature's accent. Each click rolls a full
+   random combination of cosmetics onto the card's art (replaces the old one-at-a-time chips). */
+.spirit-choose-roll {
+  padding: 0.32rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 45%, var(--border));
   border-radius: 999px;
-  background: var(--bg-surface);
-  font-size: 0.74rem;
+  background: color-mix(in srgb, var(--card-accent) 10%, var(--bg-surface));
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.spirit-choose-tryon:hover,
-.spirit-choose-tryon:focus-visible {
-  background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-surface));
+.spirit-choose-roll:hover,
+.spirit-choose-roll:focus-visible {
+  background: color-mix(in srgb, var(--card-accent) 18%, var(--bg-surface));
   border-color: var(--card-accent);
   outline: none;
 }
+/* A quiet "Clear" back to the bare creature. */
+.spirit-choose-roll-clear {
+  padding: 0.2rem 0.4rem;
+  border: none;
+  background: none;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.spirit-choose-roll-clear:hover,
+.spirit-choose-roll-clear:focus-visible {
+  color: var(--text-secondary);
+  outline: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  .spirit-choose-tryon {
+  .spirit-choose-roll {
     transition: none;
   }
 }

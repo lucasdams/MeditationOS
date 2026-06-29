@@ -129,18 +129,20 @@ describe('SpiritChoosePage', () => {
     expect(screen.queryByRole('button', { name: /Choose Kapha/ })).toBeNull()
   })
 
-  it('shows each creature its favoured practice + hoverable look chips', async () => {
+  it('shows each creature its favoured practice + a "try a random look" button', async () => {
     get.mockResolvedValue(spiritWith({ path: null }))
     renderPage()
     await screen.findByRole('button', { name: /Choose Kapha/ })
-    // The real basis for the choice: each creature shows its favoured practice + a "try a look" row.
+    // The real basis for the choice: each creature shows its favoured practice.
     expect(screen.getAllByText(/Favours/)).toHaveLength(3)
-    expect(screen.getAllByText(/Hover to try a look/)).toHaveLength(3)
     await waitFor(() => expect(preview).toHaveBeenCalled())
-    // The try-a-look chips are each creature's signature pieces (hovering morphs that card's art).
-    await screen.findByText('Jade tortoise') // stillness / Kapha
-    expect(screen.getByText('Nine-tail fox')).toBeInTheDocument() // breath / Pitta
-    expect(screen.getByText('Paper crane')).toBeInTheDocument() // heart / Vata
+    // Each creature offers a "Try a random look" button (replaces the old one-at-a-time chips).
+    const rolls = await screen.findAllByRole('button', { name: /Try a random look/ })
+    expect(rolls).toHaveLength(3)
+    // Rolling one swaps it to a re-roll + a Clear (and applies a full random look to that card).
+    fireEvent.click(rolls[0])
+    expect(screen.getByRole('button', { name: /Roll a new look/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Clear$/ })).toBeInTheDocument()
   })
 
   it('shows the chosen creature and its favoured-practice reason on the name step', async () => {
