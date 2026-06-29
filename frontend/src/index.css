@@ -1392,6 +1392,13 @@ a:hover { color: var(--accent-hover); }
   margin: 0 0 1.5rem;
 }
 
+/* Graduation depth (Phase 4): a soft sage "growth" tint so the "you've grown" reward reads
+   distinctly from the clay first-run orientation card. */
+.graduation-card {
+  background: var(--level-card-from);
+  border-color: var(--level-card-border);
+}
+
 .first-run-dismiss {
   position: absolute;
   top: 0.5rem;

@@ -8,6 +8,10 @@ import { pathDayHref } from '../lib/pathRoutes'
 import LevelCard from '../components/LevelCard'
 import Spirit from '../components/Spirit'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
+import GraduationCard, {
+  shouldShowGraduation,
+  isGraduationDismissed,
+} from '../components/GraduationCard'
 import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
@@ -78,6 +82,7 @@ export default function DashboardPage() {
   // from localStorage) so dismissing hides it immediately, and it stays hidden across
   // visits. It also auto-retires once the user has logged a few sessions.
   const [firstRunDismissed, setFirstRunDismissed] = useState(() => isFirstRunDismissed())
+  const [graduationDismissed, setGraduationDismissed] = useState(() => isGraduationDismissed())
 
   // Manual mood check-in: a calm, skippable modal the user opens themselves from the quiet
   // inline mood line. It never auto-opens — logging a mood is always an opt-in action.
@@ -167,6 +172,13 @@ export default function DashboardPage() {
         !(spirit?.path === null && stats.session_count >= 1) && (
           <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
         )}
+
+      {/* Graduation depth (Phase 4): once a user has genuinely stuck around, a warm card
+          resurfaces the advanced surfaces (HRV measurement, full analytics, full customization)
+          that the beginner front door deliberately tucked away. Never shown to a newcomer. */}
+      {stats && !graduationDismissed && shouldShowGraduation(stats.session_count) && (
+        <GraduationCard onDismiss={() => setGraduationDismissed(true)} />
+      )}
 
       {/* Two-tab home (mirrors the spirit page's segmented control): "Today" leads with the
           companion + the single primary action + gentle nudges; "Progress" holds the heavier
