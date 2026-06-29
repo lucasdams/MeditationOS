@@ -305,36 +305,112 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(halo).toBeGreaterThanOrEqual(4)
   })
 
-  it('draws MORE flames with form=wildfire than a bare Pitta', () => {
-    const bare = flameCount({})
-    const wildfire = flameCount({ cosmetics: { form: 'wildfire' } })
-    expect(wildfire).toBeGreaterThan(bare)
+  // The Pitta `form` cosmetic now swaps the WHOLE silhouette for a DISTINCT fire OBJECT (like
+  // Kapha's swapped bodies), not a recoloured/resized flame. Each test below renders a Pitta with
+  // the form and asserts the object's defining elements, plus that it differs from a bare blaze.
+  // Helper: the creature group for a Pitta wearing the given form, for element-level assertions.
+  const pittaCreature = (over: Partial<SpiritState>): SVGGElement => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
+    )
+    const group = container.querySelector('.spirit-creature') as SVGGElement
+    cleanup()
+    return group
+  }
+  // The Pitta deep base colour (pal.deep) — campfire logs, the torch handle, the lantern frame are
+  // all drawn in it; counting elements filled/stroked with it measures the object's structure.
+  const PITTA_DEEP = '#7c2d12'
+
+  it('draws crossed pal.deep LOG bars + a flame with form=campfire (a campfire silhouette)', () => {
+    const camp = pittaCreature({ cosmetics: { form: 'campfire' } })
+    // Two or three rotated <rect> logs in the deep base colour cross at the base.
+    const logs = Array.from(camp.querySelectorAll('rect')).filter(
+      (el) => el.getAttribute('fill') === PITTA_DEEP && (el.getAttribute('transform') ?? '').includes('rotate'),
+    )
+    expect(logs.length).toBeGreaterThanOrEqual(2)
+    // It still carries a layered flame above the logs (filled flame paths).
+    expect(camp.querySelectorAll('.pitta-flame path').length).toBeGreaterThanOrEqual(3)
+    expect(creatureMarkup('breath', { form: 'campfire' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('renders a DIFFERENT silhouette with form=emberlit than a bare Pitta (taller, slimmer)', () => {
-    // emberlit is a focused, banked ember — the same clean layered flame, but taller + slimmer, so
-    // its markup differs from the bare blaze.
-    expect(creatureMarkup('breath', { form: 'emberlit' })).not.toBe(creatureMarkup('breath', {}))
+  it('draws a vertical pal.deep HANDLE + a flame with form=torch (a held torch)', () => {
+    const torch = pittaCreature({ cosmetics: { form: 'torch' } })
+    // The handle is a tall, narrow upright <rect> in the deep base colour (height ≫ width).
+    const handle = Array.from(torch.querySelectorAll('rect')).find((el) => {
+      const w = Number(el.getAttribute('width'))
+      const h = Number(el.getAttribute('height'))
+      return el.getAttribute('fill') === PITTA_DEEP && h > w * 3
+    })
+    expect(handle).toBeTruthy()
+    expect(torch.querySelectorAll('.pitta-flame path').length).toBeGreaterThanOrEqual(3)
+    expect(creatureMarkup('breath', { form: 'torch' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('draws MORE flames with form=inferno than a bare Pitta', () => {
-    // The towering blaze is the tallest + fullest and throws accent licks — strictly more filled
-    // flame paths than the default single flame.
-    const bare = flameCount({})
-    const inferno = flameCount({ cosmetics: { form: 'inferno' } })
-    expect(inferno).toBeGreaterThan(bare)
+  it('draws a round head CIRCLE + a swept TAIL path with form=fireball (a fire comet)', () => {
+    const fb = pittaCreature({ cosmetics: { form: 'fireball' } })
+    // The fireball head is a filled <circle> (glow body + core highlight).
+    const heads = Array.from(fb.querySelectorAll('circle')).filter(
+      (el) => el.getAttribute('fill') !== 'none' && Number(el.getAttribute('r')) > 3,
+    )
+    expect(heads.length).toBeGreaterThanOrEqual(2)
+    // It trails at least one swept filled tail <path> behind the head.
+    const tails = Array.from(fb.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') !== 'none',
+    )
+    expect(tails.length).toBeGreaterThanOrEqual(2)
+    expect(creatureMarkup('breath', { form: 'fireball' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('renders a DIFFERENT silhouette with form=flicker than a bare Pitta (a small low flame)', () => {
-    // The gentle low flame banks to a small, slim blaze — markedly smaller than the default, so its
-    // markup differs from the bare flame.
-    expect(creatureMarkup('breath', { form: 'flicker' })).not.toBe(creatureMarkup('breath', {}))
+  it('draws a glowing DISC + several flame RAY triangles with form=sun (a rayed sun)', () => {
+    const sun = pittaCreature({ cosmetics: { form: 'sun' } })
+    // 6 + i rays at radiant ⇒ ≥ 11 triangular flame <path>s radiate around the disc.
+    const rays = Array.from(sun.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') !== 'none',
+    )
+    expect(rays.length).toBeGreaterThanOrEqual(6)
+    // The central disc is a filled <circle>.
+    expect(
+      Array.from(sun.querySelectorAll('circle')).filter(
+        (el) => el.getAttribute('fill') !== 'none' && Number(el.getAttribute('r')) > 3,
+      ).length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(creatureMarkup('breath', { form: 'sun' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('renders a ROUNDED puff flame with form=puff, a different silhouette from the pointed default', () => {
-    // `puff` swaps the pointed flame tip for a soft rounded billow (same layered structure) — a
-    // clearly different silhouette, so its markup differs from the sharp default flame.
-    expect(creatureMarkup('breath', { form: 'puff' })).not.toBe(creatureMarkup('breath', {}))
+  it('draws several coal ELLIPSES and NO tall layered flame with form=coals (a low ember bed)', () => {
+    const coals = pittaCreature({ cosmetics: { form: 'coals' } })
+    // A heap of rounded coal stones — several <ellipse>s (3 + i ⇒ many at radiant).
+    expect(coals.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(6)
+    // The "resting" form has NO tall layered blaze (no .pitta-flame group).
+    expect(coals.querySelectorAll('.pitta-flame').length).toBe(0)
+    expect(creatureMarkup('breath', { form: 'coals' })).not.toBe(creatureMarkup('breath', {}))
+  })
+
+  it('draws a pal.deep lantern FRAME (posts + cap + base) cradling a flame with form=lantern', () => {
+    const lantern = pittaCreature({ cosmetics: { form: 'lantern' } })
+    // The cage is several <rect>s in the deep base colour (cap bar, two posts, base plate).
+    const frame = Array.from(lantern.querySelectorAll('rect')).filter(
+      (el) => el.getAttribute('fill') === PITTA_DEEP,
+    )
+    expect(frame.length).toBeGreaterThanOrEqual(3)
+    // A small layered flame is cradled inside the frame.
+    expect(lantern.querySelectorAll('.pitta-flame path').length).toBeGreaterThanOrEqual(3)
+    expect(creatureMarkup('breath', { form: 'lantern' })).not.toBe(creatureMarkup('breath', {}))
+  })
+
+  it('grows each Pitta fire object across the 5 stages (markup differs spark → radiant)', () => {
+    // Render a form at spark and at radiant; the silhouette must visibly change (it scales with i/p).
+    const at = (stage: SpiritStage, form: string): string => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage, path: 'breath', cosmetics: { form } })} />,
+      )
+      const html = (container.querySelector('.spirit-creature') as SVGGElement).innerHTML
+      cleanup()
+      return html
+    }
+    for (const form of ['campfire', 'torch', 'fireball', 'sun', 'coals', 'lantern']) {
+      expect(at('spark', form)).not.toBe(at('radiant', form))
+    }
   })
 
   it('swaps the Kapha body for a HUDDLE of multiple orbs with form=cluster', () => {
@@ -426,28 +502,6 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(creatureMarkup('breath', { form: 'twin' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('fans the Pitta flames WIDER with form=crown (outer licks lean far out, beyond a bare blaze)', () => {
-    // `crown` fans accent licks out WIDE around the main flame. Its outer licks reach farther
-    // horizontally than the bare single flame, so the silhouette is wider and clearly new.
-    const widestTipX = (cosmetics: Record<string, string>): number => {
-      const { container } = renderSpirit(
-        <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', cosmetics })} />,
-      )
-      // Pull the largest x-coordinate that appears in any filled flame/body path's `d` attribute.
-      const paths = Array.from(container.querySelectorAll('.spirit-creature path')).filter(
-        (el) => el.getAttribute('fill') !== 'none',
-      )
-      let maxX = 0
-      for (const el of paths) {
-        const d = el.getAttribute('d') ?? ''
-        for (const m of d.matchAll(/[\d.]+/g)) maxX = Math.max(maxX, Number(m[0]))
-      }
-      cleanup()
-      return maxX
-    }
-    expect(widestTipX({ form: 'crown' })).toBeGreaterThan(widestTipX({}))
-    expect(creatureMarkup('breath', { form: 'crown' })).not.toBe(creatureMarkup('breath', {}))
-  })
 
   it('swaps the Kapha body for an organic seedling (a stem path + leaf ellipses) with form=sprout', () => {
     // `sprout` draws a slim stroked (fill:none) stem path plus several filled leaf ellipses + a bud —
@@ -506,8 +560,8 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     // A Vata key on Pitta/Kapha is ignored; a Pitta key on Vata/Kapha is ignored; etc.
     expect(markup('breath', { form: 'tendrils' })).toBe(markup('breath', {}))
     expect(markup('stillness', { form: 'tendrils' })).toBe(markup('stillness', {}))
-    expect(markup('heart', { form: 'wildfire' })).toBe(markup('heart', {}))
-    expect(markup('stillness', { form: 'wildfire' })).toBe(markup('stillness', {}))
+    expect(markup('heart', { form: 'campfire' })).toBe(markup('heart', {}))
+    expect(markup('stillness', { form: 'campfire' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'cluster' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'cluster' })).toBe(markup('breath', {}))
     // The NEW forms are likewise path-scoped: a Vata `halo` is inert on Pitta/Kapha; a Kapha
@@ -516,14 +570,12 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(markup('stillness', { form: 'halo' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'prism' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'prism' })).toBe(markup('breath', {}))
-    // The NEWEST additions are path-scoped too: Vata `vortex`, Pitta `twin`/`crown`, Kapha `sprout`
+    // The NEWEST additions are path-scoped too: Vata `vortex`, Pitta `twin`, Kapha `sprout`
     // each only reshape their own dosha — inert on the other two.
     expect(markup('breath', { form: 'vortex' })).toBe(markup('breath', {}))
     expect(markup('stillness', { form: 'vortex' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'twin' })).toBe(markup('heart', {}))
     expect(markup('stillness', { form: 'twin' })).toBe(markup('stillness', {}))
-    expect(markup('heart', { form: 'crown' })).toBe(markup('heart', {}))
-    expect(markup('stillness', { form: 'crown' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'sprout' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'sprout' })).toBe(markup('breath', {}))
     // The final pair completing each dosha to eight: Vata `meteor`, Kapha `wheel` — inert elsewhere.
@@ -531,6 +583,11 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(markup('stillness', { form: 'meteor' })).toBe(markup('stillness', {}))
     expect(markup('heart', { form: 'wheel' })).toBe(markup('heart', {}))
     expect(markup('breath', { form: 'wheel' })).toBe(markup('breath', {}))
+    // Every NEW Pitta fire OBJECT is likewise inert on Vata + Kapha (it only reshapes Pitta).
+    for (const form of ['campfire', 'torch', 'fireball', 'sun', 'coals', 'lantern']) {
+      expect(markup('heart', { form })).toBe(markup('heart', {}))
+      expect(markup('stillness', { form })).toBe(markup('stillness', {}))
+    }
   })
 })
 

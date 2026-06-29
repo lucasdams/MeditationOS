@@ -805,17 +805,18 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         # "Radiant comet" mount).
         "vortex": {"cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1},
         "meteor": {"cost": 70, "unlock_level": 2, "per_path": HEART, "need": JOYFUL, "tier": 1},
-        # Pitta (breath) — flame-count + ember-body variants of the blaze creature. `puff` swaps the
-        # sharp tongues for soft rounded billows (a different silhouette, not just a recount).
-        "wildfire": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1},
-        "emberlit": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": RESTED, "tier": 1},
-        "bonfire": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
-        "inferno": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": NOURISHED, "tier": 2},
-        "flicker": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": RESTED, "tier": 1},
-        "puff": {"cost": 95, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
-        # `twin` forks the blaze into two ember cores; `crown` fans the flames into a wide regal crown.
+        # Pitta (breath) — DISTINCT fire OBJECTS that REPLACE the bare blaze with a different
+        # silhouette (not just a recoloured/resized flame): a logs-and-flame campfire, a flame on a
+        # handle (torch), a comet-like fireball head + tail, a rayed sun disc, a low bed of coals,
+        # and a flame cradled in a lantern. `twin` (a forked two-flame blaze) is kept.
+        "campfire": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1},
+        "torch": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": RESTED, "tier": 1},
+        "coals": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": RESTED, "tier": 1},
+        "fireball": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
+        "sun": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": NOURISHED, "tier": 2},
+        "lantern": {"cost": 95, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
+        # `twin` forks the blaze into two ember cores.
         "twin": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": JOYFUL, "tier": 1},
-        "crown": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": RESTED, "tier": 2},
         # Kapha (stillness) — alternate still-life bodies (a huddle of orbs, a stone cairn, an
         # orbiting atom) that REPLACE the seated figure, not just restretch it.
         "cluster": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1},

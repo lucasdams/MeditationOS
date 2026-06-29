@@ -1183,7 +1183,7 @@ def test_body_cosmetics_are_user_scoped(client):
 # signature capstone, so it stays OUTSIDE the signature set (total 7).
 _FORM_OPTIONS_BY_PATH = {
     "heart": {"tendrils", "sleek", "billowy", "flurry", "streamer", "halo", "vortex", "meteor"},
-    "breath": {"wildfire", "emberlit", "bonfire", "inferno", "flicker", "puff", "twin", "crown"},
+    "breath": {"campfire", "torch", "fireball", "sun", "coals", "lantern", "twin"},
     "stillness": {"cluster", "cairn", "orbital", "lotus", "enso", "prism", "sprout", "wheel"},
 }
 _FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
@@ -1240,7 +1240,7 @@ def test_unlock_and_equip_a_form_per_path(client):
     # (path, tier-1 option, tier-2 option) — the tier-2 form's prereq is any owned tier-1 form.
     cases = [
         ("heart", "tendrils", "sleek"),
-        ("breath", "wildfire", "bonfire"),
+        ("breath", "campfire", "fireball"),
         ("stillness", "cluster", "orbital"),
     ]
     for path, tier1, tier2 in cases:
@@ -1283,13 +1283,13 @@ def test_unlock_and_equip_each_new_form_per_path(client):
 
 
 def test_unlock_and_equip_the_newest_forms_per_path(client):
-    """The two-per-dosha additions (Vata `vortex`/`meteor`, Pitta `twin`/`crown`, Kapha
+    """The two-per-dosha additions (Vata `vortex`/`meteor`, Pitta `twin`/`lantern`, Kapha
     `sprout`/`wheel`) each unlock + equip through the existing machinery for their own dosha. Each
     list is ordered tier-1 → tier-2, so the tier-2 form's same-path tier-1 prereq is already owned by
-    the time it runs (`crown` after `twin`, `wheel` after `sprout`)."""
+    the time it runs (`lantern` after `twin`, `wheel` after `sprout`)."""
     cases = [
         ("heart", ["vortex", "meteor"]),
-        ("breath", ["twin", "crown"]),
+        ("breath", ["twin", "lantern"]),
         ("stillness", ["sprout", "wheel"]),
     ]
     for path, options in cases:
@@ -1306,7 +1306,7 @@ def test_unlock_and_equip_the_newest_forms_per_path(client):
 def test_cannot_unlock_another_paths_form_404(client):
     """A spirit can't buy another dosha's form — it isn't in its catalog → 404, no charge. (Each
     path is offered one of the OTHER two paths' tier-1 forms.)"""
-    foreign = {"heart": "wildfire", "breath": "cluster", "stillness": "tendrils"}
+    foreign = {"heart": "campfire", "breath": "cluster", "stillness": "tendrils"}
     for path, option in foreign.items():
         _auth(client, f"form_wrongpath_{path}@example.com")
         assert _choose(client, path).status_code == 200
@@ -1322,7 +1322,7 @@ def test_cannot_unlock_another_paths_form_404(client):
 def test_form_is_user_scoped(client):
     """A form unlocked by one spirit is NOT owned by another — the loadout is per-user. Covers a
     Pitta and a Kapha form (each user-scoped to its owner)."""
-    for path, option in (("breath", "wildfire"), ("stillness", "cluster")):
+    for path, option in (("breath", "campfire"), ("stillness", "cluster")):
         _auth(client, f"form_owner_{path}@example.com")
         assert _choose(client, path).status_code == 200
         _earn_to_level(client, 1)

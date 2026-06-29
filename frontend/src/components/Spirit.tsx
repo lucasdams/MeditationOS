@@ -292,7 +292,8 @@ export const OPTION_LABEL: Record<string, string> = {
   large: 'Large',
   giant: 'Giant',
   // BODY-shape forms (the `form` slot) — swap each creature's body for an alternate form. Per-path:
-  // Vata wisps, Pitta blazes, Kapha still-life bodies (a huddle, a stone cairn, an orbiting atom).
+  // Vata wisps, Pitta fire OBJECTS (campfire / torch / comet / sun / coals / lantern), Kapha
+  // still-life bodies (a huddle, a stone cairn, an orbiting atom).
   // (Kapha's `cairn` key labels the stone-stack body here, distinct from the mossy-boulder MOUNT,
   // whose own `boulder` key lives above in this global label map.)
   tendrils: 'Tendrils',
@@ -308,15 +309,17 @@ export const OPTION_LABEL: Record<string, string> = {
   // "Radiant comet" MOUNT above).
   vortex: 'Vortex',
   meteor: 'Meteor',
-  wildfire: 'Wildfire',
-  emberlit: 'Ember',
-  bonfire: 'Bonfire',
-  inferno: 'Inferno',
-  flicker: 'Flicker',
-  puff: 'Puff',
-  // Newer Pitta forms — a forked twin blaze and a fanned crown of fire.
+  // Pitta forms — each a DISTINCT fire OBJECT. `fireball` is labelled "Comet" (the comet concept),
+  // keyed `fireball` to avoid the tier-4 "Radiant comet" MOUNT (`comet`). `sun` / `coals` reuse
+  // those plain words as form keys (free in every other slot's option set).
+  campfire: 'Campfire',
+  torch: 'Torch',
+  fireball: 'Comet',
+  sun: 'Sun',
+  coals: 'Coals',
+  lantern: 'Lantern',
+  // A forked twin blaze.
   twin: 'Twin flame',
-  crown: 'Crown',
   cluster: 'Cluster',
   cairn: 'Cairn',
   orbital: 'Orbital',
@@ -441,9 +444,11 @@ type BodyPalette = { core: string; glow: string; accent: string; deep: string }
 
 const PATH_PALETTE: Record<SpiritPath, BodyPalette> = {
   stillness: { core: '#fef3c7', glow: '#fcd34d', accent: '#f59e0b', deep: '#b45309' },
-  // Pitta — fire + water: a white-hot ember core (`core`), an orange flame body (`glow`), a
-  // searing red-orange flame edge (`accent`), and a cool teal water-base (`deep`).
-  breath: { core: '#fff7ed', glow: '#fb923c', accent: '#ef4444', deep: '#0d9488' },
+  // Pitta — fire: a white-hot ember core (`core`), an orange flame body (`glow`), a searing
+  // red-orange flame edge (`accent`), and a charred warm-dark base (`deep`) for its structural
+  // parts (campfire logs, torch handle, lantern frame, coals). (Was a teal water-base, retired with
+  // the old fire+water pool in the clean-flame redesign.)
+  breath: { core: '#fff7ed', glow: '#fb923c', accent: '#ef4444', deep: '#7c2d12' },
   // Vata — air + ether: a pale luminous core (`core`), a soft sky-blue body (`glow`), a lavender
   // breeze accent (`accent`), and a deeper periwinkle base for wisps/leaves (`deep`).
   heart: { core: '#f5f7ff', glow: '#bae6fd', accent: '#c4b5fd', deep: '#818cf8' },
@@ -3673,52 +3678,30 @@ function PittaForm({
   // A clean, layered FLAME — three nested flame silhouettes (a searing `accent` outer, a warm `glow`
   // mid, a white-hot `core` heart) narrowing to a gently curled tip, grounded on a few warm embers
   // with a calm face. (Redesign: the old spread "tongues + teal pool" read sloppy; this is one
-  // cohesive, all-warm fire.) The `form` (shape) cosmetic only modulates the flame's CHARACTER — its
-  // height, width, and small accent "licks" — plus a few special silhouettes (twin / rounded puff).
-  // It never fixes the stage growth, so the blaze still visibly grows up the ladder. Only `breath`
-  // keys matter; the other doshas ignore them.
-  let heightMul = 1
-  let widthMul = 1
-  let licks = 0 // small accent flames flanking the base (0 = the clean default)
-  let lickSpread = 1.15 // how far the licks sit from centre (crown fans them wider)
+  // cohesive, all-warm fire.) The `form` (shape) cosmetic now swaps the WHOLE silhouette for a
+  // DISTINCT fire OBJECT (campfire / torch / fireball / sun / coals / lantern) — like Kapha's swapped
+  // bodies, not a recoloured flame. The bare default + `twin` keep the layered blaze. Each object
+  // still GROWS up the stage ladder (i / p), stays in the 80×80 frame, and recolours via pal.*.
+  // Only `breath` keys matter; the other doshas ignore them.
   const isTwin = form === 'twin'
-  const isPuff = form === 'puff'
-  const isCrown = form === 'crown'
-  if (form === 'wildfire') {
-    // a wilder blaze — a few accent licks leap up around the main flame
-    licks = Math.min(6, i + 1)
-    widthMul = 1.06
-  } else if (form === 'emberlit') {
-    // a focused, banked ember — taller + slimmer, no stray licks
-    heightMul = 1.24
-    widthMul = 0.82
-  } else if (form === 'bonfire') {
-    // a stout, broad blaze
-    widthMul = 1.36
-    heightMul = 0.94
-  } else if (form === 'inferno') {
-    // a towering roaring blaze — the tallest + fullest, ringed with licks
-    heightMul = 1.34
-    widthMul = 1.12
-    licks = Math.min(6, i + 1)
-  } else if (form === 'flicker') {
-    // a small, gentle low flame
-    heightMul = 0.6
-    widthMul = 0.84
-  } else if (isCrown) {
-    // a regal crown — small flames fan out WIDE around the main blaze
-    licks = Math.min(7, i + 2)
-    lickSpread = 1.7
-  }
+  // The DISTINCT fire-object forms render their own silhouettes below; everything else (default +
+  // twin) is the plain layered blaze.
+  const isObjectForm =
+    form === 'campfire' ||
+    form === 'torch' ||
+    form === 'fireball' ||
+    form === 'sun' ||
+    form === 'coals' ||
+    form === 'lantern'
 
-  // Flame size grows with the stage; the form multipliers shape it. Kept only a touch taller than
-  // wide so it reads as a plump, full fire — never a long stretched candle.
-  const H = (15 + p * 12) * heightMul
-  const W = (9 + p * 4) * widthMul
-  const tipCurl = isPuff ? 0 : 1.7 // a slight tip-lean for life (a billowy puff stays upright/round)
+  // Flame size grows with the stage. Kept only a touch taller than wide so it reads as a plump,
+  // full fire — never a long stretched candle.
+  const H = 15 + p * 12
+  const W = 9 + p * 4
+  const tipCurl = 1.7 // a slight tip-lean for life
 
   // A clean flame silhouette centred on (fx, fbY): a rounded belly narrowing to a curled point.
-  // `round` swaps the point for a soft billow (the `puff` look).
+  // `round` swaps the point for a soft billow.
   const flame = (fx: number, fbY: number, fh: number, fw: number, curl: number, round: boolean) => {
     const tipX = fx + curl
     const tipY = fbY - fh
@@ -3738,20 +3721,332 @@ function PittaForm({
   // A stack of three nested flames (outer / mid / white-hot heart) at a given centre + size.
   const layeredFlame = (fx: number, fbY: number, fh: number, fw: number, curl: number, key?: string) => (
     <g key={key} className="pitta-flame">
-      <path d={flame(fx, fbY, fh, fw, curl, isPuff)} fill={pal.accent} opacity={(0.82 + 0.16 * p) * g} />
+      <path d={flame(fx, fbY, fh, fw, curl, false)} fill={pal.accent} opacity={(0.82 + 0.16 * p) * g} />
       <path
-        d={flame(fx, fbY - 1, fh * 0.7, fw * 0.62, curl * 0.6, isPuff)}
+        d={flame(fx, fbY - 1, fh * 0.7, fw * 0.62, curl * 0.6, false)}
         fill={pal.glow}
         opacity={(0.9 + 0.1 * p) * g}
       />
       <path
-        d={flame(fx, fbY - 1.5, fh * 0.4, fw * 0.36, 0, isPuff)}
+        d={flame(fx, fbY - 1.5, fh * 0.4, fw * 0.36, 0, false)}
         fill={pal.core}
         opacity={(0.92 + 0.08 * p) * g}
       />
     </g>
   )
 
+  // Friendly closed-arc eyes (two soft upward arcs) on the main glowing element, from wisp onward —
+  // matching the default flame's eyes. `ex`/`ey` is the element centre; `spread` how far apart, `sc`
+  // an optional size scale. Shared by every object form so the faces read consistently.
+  const eyes = (ex: number, ey: number, spread: number, sc = 1, key = 'eyes') =>
+    i >= 2 ? (
+      <g key={key}>
+        {[-1, 1].map((dir) => (
+          <path
+            key={`eye-${dir}`}
+            d={`M ${ex + dir * spread - 1.3 * sc} ${ey} q ${1.3 * sc} ${-1.5 * sc} ${2.6 * sc} 0`}
+            fill="none"
+            stroke="#7c2d12"
+            strokeWidth={1}
+            strokeLinecap="round"
+            opacity={0.85 * g}
+          />
+        ))}
+      </g>
+    ) : null
+
+  // A few sparks drifting up off a point — shared by the flame-bearing object forms (and the
+  // default blaze) from fledgling onward. `sx`/`topY` is the spark fountain's origin + reach.
+  const sparks = (sx: number, topY: number, reach: number, key = 'sparks') =>
+    i >= 3 ? (
+      <g key={key}>
+        {Array.from({ length: i - 1 }, (_, k) => {
+          const a = (k / Math.max(1, i - 1)) * Math.PI - Math.PI / 2
+          return (
+            <circle
+              key={`spark-${k}`}
+              cx={sx + Math.cos(a) * reach}
+              cy={topY + Math.sin(a) * 3}
+              r={0.9 + p * 0.5}
+              fill={pal.glow}
+              opacity={0.7 * g}
+            />
+          )
+        })}
+      </g>
+    ) : null
+
+  // ── DISTINCT fire OBJECTS (the `form` cosmetic) ──────────────────────────────────────────────
+  // Each REPLACES the bare blaze with its own silhouette, grows with the stage, stays in frame, and
+  // wears the default flame's friendly eyes on its main glowing element (coals may stay sleepy).
+
+  if (isObjectForm) {
+    // CAMPFIRE — crossed logs with a small layered flame rising from their centre. Logs thicken/add
+    // up the stages; the flame is the smaller blaze atop them, with 0–2 side licks for life.
+    if (form === 'campfire') {
+      const fh = (12 + p * 9) * 0.92 // a touch shorter than the bare blaze — it sits on the logs
+      const fw = 7 + p * 3
+      const logY = baseY + 1
+      const logLen = 13 + p * 4
+      const logCount = i >= 4 ? 3 : 2 // two crossed logs early, a third by ascendant
+      const sideLicks = Math.min(2, i - 2) // a lick each side from fledgling
+      return (
+        <g>
+          {/* Crossed LOGS (an X of long pal.deep bars) low at the base. */}
+          {Array.from({ length: logCount }, (_, k) => {
+            const angles = [26, -26, 4] // two crossed, plus a near-flat third log when present
+            const deg = angles[k]
+            return (
+              <rect
+                key={`log-${k}`}
+                x={cx - logLen / 2}
+                y={logY - 1.6 + k * 0.6}
+                width={logLen}
+                height={3.2}
+                rx={1.6}
+                fill={pal.deep}
+                opacity={(0.78 + 0.12 * p) * g}
+                transform={`rotate(${deg} ${cx} ${logY})`}
+              />
+            )
+          })}
+          {/* A couple of glowing embers tucked between the logs. */}
+          {[-1, 1].map((s) => (
+            <ellipse
+              key={`cf-ember-${s}`}
+              cx={cx + s * 3}
+              cy={logY - 1}
+              rx={1.6}
+              ry={1}
+              fill={pal.accent}
+              opacity={(0.6 + 0.2 * p) * g}
+            />
+          ))}
+          {/* Side licks flanking the main flame, behind it. */}
+          {Array.from({ length: sideLicks }, (_, k) => {
+            const s = k === 0 ? -1 : 1
+            return (
+              <path
+                key={`cf-lick-${k}`}
+                d={flame(cx + s * (fw * 0.9), baseY - 3, fh * 0.5, fw * 0.4, s * 3, false)}
+                fill={pal.accent}
+                opacity={(0.55 + 0.2 * p) * g}
+              />
+            )
+          })}
+          {/* The campfire FLAME rising from the logs' centre. */}
+          {layeredFlame(cx, baseY - 3, fh, fw, tipCurl, 'campfire-flame')}
+          {eyes(cx, baseY - 3 - fh * 0.4, fw * 0.3)}
+          {sparks(cx, baseY - 3 - fh + 2, fw + 2, 'campfire-sparks')}
+        </g>
+      )
+    }
+
+    // TORCH — a flame on a HANDLE. A vertical pal.deep rod from the base to mid-height with a grip
+    // band + a little bowl/cup at the top, and a layered flame above the cup.
+    if (form === 'torch') {
+      const handleTop = baseY - (14 + p * 6) // the rod rises higher up the stages
+      const handleH = baseY - handleTop
+      const fh = 11 + p * 9
+      const fw = 6.5 + p * 3
+      const flameBaseY = handleTop - 1
+      return (
+        <g>
+          {/* The vertical HANDLE / rod. */}
+          <rect
+            x={cx - 1.6}
+            y={handleTop}
+            width={3.2}
+            height={handleH}
+            rx={1.6}
+            fill={pal.deep}
+            opacity={(0.82 + 0.1 * p) * g}
+          />
+          {/* A small grip band a third of the way up. */}
+          <rect
+            x={cx - 2.4}
+            y={handleTop + handleH * 0.55}
+            width={4.8}
+            height={2.4}
+            rx={1.2}
+            fill={pal.accent}
+            opacity={(0.6 + 0.2 * p) * g}
+          />
+          {/* A little bowl / cup the flame sits in, at the top of the handle. */}
+          <path
+            d={`M ${cx - 4} ${handleTop} Q ${cx} ${handleTop + 3.4} ${cx + 4} ${handleTop} Z`}
+            fill={pal.deep}
+            opacity={(0.85 + 0.1 * p) * g}
+          />
+          {/* The torch FLAME above the cup. */}
+          {layeredFlame(cx, flameBaseY, fh, fw, tipCurl, 'torch-flame')}
+          {eyes(cx, flameBaseY - fh * 0.4, fw * 0.3)}
+          {sparks(cx, flameBaseY - fh + 2, fw + 2, 'torch-sparks')}
+        </g>
+      )
+    }
+
+    // FIREBALL ("Comet") — a round blazing head with a swept tail trailing behind it (leaning to one
+    // side), a fire shooting-star. The tail lengthens up the stages.
+    if (form === 'fireball') {
+      const headR = 5.5 + p * 4
+      const hx = cx + 4 // the head leans forward (right), the tail sweeps back-left
+      const hy = baseY - 12 - p * 6
+      const tailLen = 16 + p * 16
+      const tailW = headR * 0.9
+      // The tail tapers from the head back toward the lower-left.
+      const tx = hx - tailLen
+      const ty = hy + tailLen * 0.5
+      return (
+        <g>
+          {/* The blazing TAIL — a long accent→glow taper sweeping back from the head. */}
+          <path
+            d={`M ${hx} ${hy - tailW}
+                Q ${hx - tailLen * 0.5} ${hy - tailW * 0.3} ${tx} ${ty}
+                Q ${hx - tailLen * 0.5} ${hy + tailW * 0.9} ${hx} ${hy + tailW}
+                Q ${hx + headR * 0.4} ${hy} ${hx} ${hy - tailW} Z`}
+            fill={pal.accent}
+            opacity={(0.62 + 0.18 * p) * g}
+          />
+          <path
+            d={`M ${hx} ${hy - tailW * 0.6}
+                Q ${hx - tailLen * 0.45} ${hy} ${tx + tailLen * 0.32} ${ty - tailLen * 0.12}
+                Q ${hx - tailLen * 0.4} ${hy + tailW * 0.5} ${hx} ${hy + tailW * 0.6}
+                Q ${hx + headR * 0.3} ${hy} ${hx} ${hy - tailW * 0.6} Z`}
+            fill={pal.glow}
+            opacity={(0.7 + 0.16 * p) * g}
+          />
+          {/* The round FIREBALL HEAD — glow body, core highlight, eyes. */}
+          <circle cx={hx} cy={hy} r={headR} fill={pal.glow} opacity={(0.92 + 0.06 * p) * g} />
+          <circle cx={hx - headR * 0.28} cy={hy - headR * 0.28} r={headR * 0.5} fill={pal.core} opacity={(0.9 + 0.08 * p) * g} />
+          {eyes(hx, hy - headR * 0.05, headR * 0.34)}
+          {sparks(hx, hy - headR - 1, headR + 1, 'fireball-sparks')}
+        </g>
+      )
+    }
+
+    // SUN — a glowing DISC ringed with flame RAYS. A central glow disc (core highlight + eyes), with
+    // 6+i triangular flame rays radiating all around, alternating longer/shorter.
+    if (form === 'sun') {
+      const discR = 6 + p * 4.5
+      const cyD = baseY - 14 - p * 4 // lift the disc so the rays clear the frame floor
+      const rayCount = 6 + i
+      const longRay = 5 + p * 4
+      const shortRay = longRay * 0.6
+      return (
+        <g>
+          {/* Triangular flame RAYS all around the disc, alternating long/short. */}
+          {Array.from({ length: rayCount }, (_, k) => {
+            const a = (k / rayCount) * Math.PI * 2 - Math.PI / 2
+            const len = k % 2 ? shortRay : longRay
+            const baseHalf = discR * 0.32
+            const bx = cx + Math.cos(a) * discR
+            const by = cyD + Math.sin(a) * discR
+            const tipX = cx + Math.cos(a) * (discR + len)
+            const tipY = cyD + Math.sin(a) * (discR + len)
+            // Two base points perpendicular to the ray.
+            const px = Math.cos(a + Math.PI / 2) * baseHalf
+            const py = Math.sin(a + Math.PI / 2) * baseHalf
+            return (
+              <path
+                key={`ray-${k}`}
+                d={`M ${bx + px} ${by + py} L ${tipX} ${tipY} L ${bx - px} ${by - py} Z`}
+                fill={pal.accent}
+                opacity={(0.7 + 0.16 * p) * g}
+              />
+            )
+          })}
+          {/* The central glowing DISC, a core highlight, and a friendly face. */}
+          <circle cx={cx} cy={cyD} r={discR} fill={pal.glow} opacity={(0.92 + 0.06 * p) * g} />
+          <circle cx={cx} cy={cyD - discR * 0.2} r={discR * 0.55} fill={pal.core} opacity={(0.88 + 0.08 * p) * g} />
+          {eyes(cx, cyD, discR * 0.34)}
+        </g>
+      )
+    }
+
+    // COALS — a low BED of glowing embers, NO tall flame: a heap of rounded coal stones (deep /
+    // accent) low at the base with hot glow / core tops, plus a few tiny flame flickers. The
+    // "resting" form. Wears a sleepy pair of eyes on the brightest central coal from wisp onward.
+    if (form === 'coals') {
+      const coalCount = 3 + i // a fuller heap up the stages
+      const spread = 11 + p * 6
+      const bedY = baseY + 1
+      return (
+        <g>
+          {/* The heap of coal STONES, lowest/widest first so brighter tops sit in front. */}
+          {Array.from({ length: coalCount }, (_, k) => {
+            const t = coalCount === 1 ? 0 : (k / (coalCount - 1)) * 2 - 1
+            const ccx = cx + t * spread
+            const ccy = bedY - Math.abs(t) * 1.4 // a gentle mound
+            const rx = 3.4 - Math.abs(t) * 1
+            return (
+              <g key={`coal-${k}`}>
+                <ellipse cx={ccx} cy={ccy} rx={rx} ry={rx * 0.62} fill={pal.deep} opacity={(0.7 + 0.14 * p) * g} />
+                <ellipse cx={ccx} cy={ccy - 0.4} rx={rx * 0.7} ry={rx * 0.4} fill={pal.accent} opacity={(0.68 + 0.16 * p) * g} />
+                <ellipse cx={ccx} cy={ccy - 0.7} rx={rx * 0.4} ry={rx * 0.22} fill={k % 2 ? pal.glow : pal.core} opacity={(0.8 + 0.12 * p) * g} />
+              </g>
+            )
+          })}
+          {/* A few tiny flame flickers licking up off the hottest coals. */}
+          {i >= 3 &&
+            Array.from({ length: i - 1 }, (_, k) => {
+              const t = (k / Math.max(1, i - 2)) * 2 - 1
+              const fx = cx + t * spread * 0.6
+              return (
+                <path
+                  key={`flicker-${k}`}
+                  d={flame(fx, bedY - 1.5, 4 + p * 2, 2 + p, t * 1.5, false)}
+                  fill={pal.glow}
+                  opacity={(0.6 + 0.2 * p) * g}
+                />
+              )
+            })}
+          {/* A sleepy pair of eyes on the central coal (the resting form's calm face). */}
+          {eyes(cx, bedY - 1.2, 2.4, 0.85)}
+          {/* A couple of rising sparks for a little life. */}
+          {sparks(cx, bedY - 5, spread * 0.5, 'coals-sparks')}
+        </g>
+      )
+    }
+
+    // LANTERN — a flame cradled in a LANTERN frame: a pal.deep rounded cage (top loop/handle, two
+    // side posts, a base plate) enclosing a small layered flame.
+    if (form === 'lantern') {
+      const frameW = 11 + p * 4 // the cage widens a touch up the stages
+      const frameTop = baseY - (18 + p * 6)
+      const frameBot = baseY + 1
+      const lx = cx - frameW / 2
+      const rx = cx + frameW / 2
+      const fh = (frameBot - frameTop) * 0.62
+      const fw = frameW * 0.34
+      const flameBaseY = frameBot - 3
+      return (
+        <g>
+          {/* The top LOOP / handle. */}
+          <path
+            d={`M ${cx - 3} ${frameTop} Q ${cx} ${frameTop - 5} ${cx + 3} ${frameTop}`}
+            fill="none"
+            stroke={pal.deep}
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            opacity={(0.85 + 0.1 * p) * g}
+          />
+          {/* The top cap bar. */}
+          <rect x={lx - 0.5} y={frameTop} width={frameW + 1} height={2.4} rx={1.2} fill={pal.deep} opacity={(0.85 + 0.1 * p) * g} />
+          {/* Two side POSTS. */}
+          <rect x={lx} y={frameTop + 1.5} width={2} height={frameBot - frameTop - 2} rx={1} fill={pal.deep} opacity={(0.8 + 0.12 * p) * g} />
+          <rect x={rx - 2} y={frameTop + 1.5} width={2} height={frameBot - frameTop - 2} rx={1} fill={pal.deep} opacity={(0.8 + 0.12 * p) * g} />
+          {/* The BASE plate. */}
+          <rect x={lx - 1} y={frameBot - 1.5} width={frameW + 2} height={2.8} rx={1.4} fill={pal.deep} opacity={(0.85 + 0.1 * p) * g} />
+          {/* The cradled FLAME inside the cage. */}
+          {layeredFlame(cx, flameBaseY, fh, fw, tipCurl * 0.6, 'lantern-flame')}
+          {eyes(cx, flameBaseY - fh * 0.4, fw * 0.34)}
+        </g>
+      )
+    }
+  }
+
+  // ── DEFAULT (no form) + `twin` — the clean layered blaze ─────────────────────────────────────
   // gentle, friendly eyes on the warm mid-flame from wisp onward
   const eyeY = baseY - H * 0.4
   return (
@@ -3774,27 +4069,8 @@ function PittaForm({
             />
           )
         })}
-      {/* Small accent licks flanking the base, BEHIND the main flame — only the wild / inferno /
-          crown forms throw them; the default + the others stay a clean single flame. */}
-      {!isTwin &&
-        licks > 0 &&
-        Array.from({ length: licks }, (_, k) => {
-          const t = licks === 1 ? 0 : (k / (licks - 1)) * 2 - 1
-          const lx = cx + t * (W * lickSpread)
-          const lh = H * (isCrown ? 0.52 : 0.42) * (1 - Math.abs(t) * 0.22)
-          const lw = W * 0.34
-          const curl = t * (isCrown ? 6 : 3)
-          return (
-            <path
-              key={`lick-${k}`}
-              d={flame(lx, baseY - 1, lh, lw, curl, false)}
-              fill={pal.accent}
-              opacity={(0.55 + 0.2 * p) * g}
-            />
-          )
-        })}
       {/* The flame itself. `twin` splits it into two smaller layered flames side by side (a forked
-          blaze); everything else is one clean layered flame. */}
+          blaze); the default is one clean layered flame. */}
       {isTwin
         ? [-1, 1].map((side) => {
             const off = 5 * (0.8 + p * 0.5)
