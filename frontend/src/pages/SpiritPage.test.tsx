@@ -134,12 +134,10 @@ async function showTab(tab: 'Care' | 'Customize' | 'Collection') {
 function revealLocked() {
   fireEvent.click(screen.getByRole('button', { name: /more unlock as you grow/ }))
 }
-// Beginner-first (Phase 3): the Customize tab shows only the curated aura + accessory slots by
-// default; the rest of the slots AND the signature set-bonus status hide behind "Show all
-// customization". Click it to reveal them. (No-op-safe to call only when the toggle is present.)
-function showAllCosmetics() {
-  fireEvent.click(screen.getByRole('button', { name: /Show all customization/ }))
-}
+// Redesign: the Customize tab now shows EVERY cosmetic slot (a grid of collapsed cards) and the
+// signature set-bonus status by default — there's no "Show all customization" gate. Kept as a no-op
+// so existing call sites still read fine.
+function showAllCosmetics() {}
 
 describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
   beforeEach(() => {
@@ -727,13 +725,13 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
 
 // --- Beginner-first (Phase 3 — "gentle the game"): curated default + "Show all customization" ---
 
-describe('SpiritPage curated cosmetics (Phase 3)', () => {
+describe('SpiritPage customization slots (redesign)', () => {
   beforeEach(() => {
     get.mockReset()
   })
 
-  // A catalog spanning a curated slot (aura) and several non-curated ones (habitat / companion),
-  // so the default shows only aura+accessory-class slots and the rest hide behind the reveal.
+  // A catalog spanning several slots — the redesigned Customize tab shows EVERY one at once (a grid
+  // of collapsed cards), plus the set-bonus status, with no "show all" gate.
   const accessoryTree: SpiritAvailableSlot = {
     slot: 'accessory',
     equipped: null,
@@ -753,7 +751,7 @@ describe('SpiritPage curated cosmetics (Phase 3)', () => {
   const slotEl = (slot: string) =>
     document.querySelector(`.spirit-slot[data-slot="${slot}"]`)
 
-  it('shows only the curated aura + accessory slots by default, hiding the rest + the set-bonus', async () => {
+  it('shows EVERY cosmetic slot + the set-bonus status by default (no "show all" gate)', async () => {
     get.mockResolvedValue(
       spiritWith({
         available: [auraTree, accessoryTree, habitatTree, companionTree],
@@ -764,25 +762,15 @@ describe('SpiritPage curated cosmetics (Phase 3)', () => {
     renderPage()
     await showTab('Customize')
 
-    // Curated slots are visible by default…
+    // All slots are visible at once — aura, accessory, AND the previously-hidden habitat / companion.
     expect(slotEl('aura')).not.toBeNull()
     expect(slotEl('accessory')).not.toBeNull()
-    // …the rest are tucked away, as is the signature set-bonus status.
-    expect(slotEl('habitat')).toBeNull()
-    expect(slotEl('companion')).toBeNull()
-    expect(screen.queryByText(/You have \d of 7 so far/)).toBeNull()
-
-    // Revealing surfaces the remaining slots + the set-bonus status.
-    showAllCosmetics()
     expect(slotEl('habitat')).not.toBeNull()
     expect(slotEl('companion')).not.toBeNull()
-    expect(slotEl('aura')).not.toBeNull() // curated stays visible
+    // The signature set-bonus status shows straight away too — no reveal needed.
     expect(screen.getByText(/You have 2 of 7 so far/)).toBeInTheDocument()
-
-    // The toggle flips to "Show less" and can collapse again.
-    fireEvent.click(screen.getByRole('button', { name: /Show less/ }))
-    expect(slotEl('habitat')).toBeNull()
-    expect(screen.queryByText(/You have \d of 7 so far/)).toBeNull()
+    // …and there is no "Show all customization" gate any more.
+    expect(screen.queryByRole('button', { name: /Show all customization/ })).toBeNull()
   })
 
   it('does not offer the reveal when every renderable slot is already curated', async () => {

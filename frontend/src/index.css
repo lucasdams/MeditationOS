@@ -4456,6 +4456,28 @@ button.today-action:disabled {
   max-width: 54rem;
 }
 
+/* Redesigned Customize tab (creature on top, slots in a grid below — replaces the old 3-column
+   "dressing room" where the creature sat between cramped rails and covered them). */
+.spirit-customize-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto 1.1rem;
+}
+.spirit-customize-preview .spirit-stage-frame {
+  max-width: 22rem;
+}
+/* Every cosmetic slot is a card; auto-fit gives one column on narrow screens and 2–3 on wide,
+   so nothing is cramped and an opened slot just grows its own cell. */
+.spirit-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.55rem;
+  align-items: start;
+  margin-top: 0.4rem;
+}
+
+/* (legacy dressing-room layout — no longer rendered, kept harmless) */
 .spirit-customize {
   display: grid;
   /* rails flex, the centre column is a generous stage so the companion reads bigger when you're
