@@ -3101,6 +3101,36 @@ button.today-action:disabled {
   color: var(--text-secondary);
 }
 
+/* The plain-language explanation of what "Signature radiance" is, plus a small affordance to PREVIEW
+   the shimmer on the stage creature (hover/focus to hold, tap to toggle). */
+.spirit-setbonus-explain {
+  margin: 0 0 0.45rem;
+  max-width: 32rem;
+  line-height: 1.5;
+}
+.spirit-setbonus-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.spirit-setbonus-preview:hover,
+.spirit-setbonus-preview:focus-visible,
+.spirit-setbonus-preview.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
 /* The "3 starter choices" — three calm cards, each with its own dosha accent hue. An invitation,
    not a sale: soft surfaces, one clear choose button each. */

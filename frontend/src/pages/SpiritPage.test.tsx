@@ -690,12 +690,12 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
     // The set-bonus status is tucked behind "Show all customization" (Phase 3) — reveal it.
     showAllCosmetics()
 
-    // The incomplete-set nudge shows progress (3/7) and the "equip your exclusive capstones" hint,
-    // and NO active badge.
-    expect(
-      screen.getByText(/3\/7 signature pieces equipped — equip your creature's exclusive capstones/),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('Signature radiance')).toBeNull()
+    // The incomplete-set status explains what radiance IS, shows progress (3 of 7), offers a live
+    // "See the radiance" preview, and shows NO active badge.
+    expect(screen.getByText(/You have 3 of 7 so far/)).toBeInTheDocument()
+    expect(screen.getByText(/glowing shimmer your companion earns/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /See the radiance/i })).toBeInTheDocument()
+    expect(document.querySelector('.spirit-setbonus--active')).toBeNull()
   })
 
   it('shows the active "Signature radiance" badge when the full set is equipped', async () => {
@@ -717,11 +717,11 @@ describe('SpiritPage signature set bonus (ADR-0028)', () => {
     // The set-bonus status is tucked behind "Show all customization" (Phase 3) — reveal it.
     showAllCosmetics()
 
-    // The active badge names the bonus and confirms all 7 pieces are equipped.
+    // The active badge names the bonus and confirms all 7 pieces, describing the shimmer it adds.
     expect(screen.getByText('Signature radiance')).toBeInTheDocument()
-    expect(screen.getByText(/all 7 signature pieces equipped/)).toBeInTheDocument()
-    // No progress nudge while complete.
-    expect(screen.queryByText(/signature pieces equipped — equip/)).toBeNull()
+    expect(screen.getByText(/all 7 of its\s+signature pieces/)).toBeInTheDocument()
+    // No "see the radiance" preview while complete — it's already on.
+    expect(screen.queryByRole('button', { name: /See the radiance/i })).toBeNull()
   })
 })
 
@@ -770,19 +770,19 @@ describe('SpiritPage curated cosmetics (Phase 3)', () => {
     // …the rest are tucked away, as is the signature set-bonus status.
     expect(slotEl('habitat')).toBeNull()
     expect(slotEl('companion')).toBeNull()
-    expect(screen.queryByText(/signature pieces equipped/)).toBeNull()
+    expect(screen.queryByText(/You have \d of 7 so far/)).toBeNull()
 
     // Revealing surfaces the remaining slots + the set-bonus status.
     showAllCosmetics()
     expect(slotEl('habitat')).not.toBeNull()
     expect(slotEl('companion')).not.toBeNull()
     expect(slotEl('aura')).not.toBeNull() // curated stays visible
-    expect(screen.getByText(/2\/7 signature pieces equipped/)).toBeInTheDocument()
+    expect(screen.getByText(/You have 2 of 7 so far/)).toBeInTheDocument()
 
     // The toggle flips to "Show less" and can collapse again.
     fireEvent.click(screen.getByRole('button', { name: /Show less/ }))
     expect(slotEl('habitat')).toBeNull()
-    expect(screen.queryByText(/signature pieces equipped/)).toBeNull()
+    expect(screen.queryByText(/You have \d of 7 so far/)).toBeNull()
   })
 
   it('does not offer the reveal when every renderable slot is already curated', async () => {

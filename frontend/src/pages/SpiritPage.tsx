@@ -86,7 +86,15 @@ function NeedTag({ need }: { need: SpiritNeedKey }) {
 // announcing "Signature radiance" (all 7 path-exclusive capstones equipped); when not, a quiet
 // progress line nudging the climb to the full set. Pathless sparks (total 0) show nothing — they
 // have no signature set yet. Calm + on-token; no shouting. Reads straight from `set_bonus`.
-function SetBonusStatus({ setBonus }: { setBonus: SpiritState['set_bonus'] }) {
+function SetBonusStatus({
+  setBonus,
+  previewOn,
+  onPreview,
+}: {
+  setBonus: SpiritState['set_bonus']
+  previewOn: boolean
+  onPreview: (on: boolean) => void
+}) {
   // A pathless spark has no signatures (total 0) → nothing to show; the picker leads instead.
   if (setBonus.total === 0) return null
   if (setBonus.active) {
@@ -96,15 +104,35 @@ function SetBonusStatus({ setBonus }: { setBonus: SpiritState['set_bonus'] }) {
           <span aria-hidden="true">✦ </span>
           {setBonus.label}
         </span>
-        <span className="spirit-setbonus-note">all {setBonus.total} signature pieces equipped</span>
+        <span className="spirit-setbonus-note">
+          Your companion shimmers with a special glow for wearing all {setBonus.total} of its
+          signature pieces. ✨
+        </span>
       </div>
     )
   }
+  // Not earned yet: explain plainly what radiance IS, and offer a live preview of the shimmer on the
+  // stage creature — hover/focus to hold it, or tap to toggle (keyboard + touch friendly).
   return (
-    <p className="spirit-setbonus spirit-setbonus--progress muted">
-      {setBonus.count}/{setBonus.total} signature pieces equipped — equip your creature's exclusive
-      capstones
-    </p>
+    <div className="spirit-setbonus spirit-setbonus--progress">
+      <p className="muted spirit-setbonus-explain">
+        <strong>Signature radiance</strong> is a gentle glowing shimmer your companion earns once you
+        equip all {setBonus.total} of its <em>signature pieces</em> — its own path-exclusive capstone
+        cosmetics. You have {setBonus.count} of {setBonus.total} so far.
+      </p>
+      <button
+        type="button"
+        className={`spirit-setbonus-preview${previewOn ? ' is-on' : ''}`}
+        aria-pressed={previewOn}
+        onMouseEnter={() => onPreview(true)}
+        onMouseLeave={() => onPreview(false)}
+        onFocus={() => onPreview(true)}
+        onBlur={() => onPreview(false)}
+        onClick={() => onPreview(!previewOn)}
+      >
+        ✨ {previewOn ? 'Previewing the radiance…' : 'See the radiance'}
+      </button>
+    </div>
   )
 }
 
@@ -266,6 +294,9 @@ export default function SpiritPage() {
   // customization" reveal, so a newcomer isn't met with the whole economy at once. Collapsed by
   // default; the deep tree is one tap back.
   const [showAllCosmetics, setShowAllCosmetics] = useState(false)
+  // Hover / tap "See the radiance" to PREVIEW the Signature-radiance shimmer on the stage creature
+  // before you've earned the full set — so it's clear what the reward actually looks like.
+  const [previewRadiance, setPreviewRadiance] = useState(false)
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
   // media query — the single source of truth.
   const reducedMotion = prefersReducedMotion()
@@ -763,9 +794,10 @@ export default function SpiritPage() {
                           cosmetics={previewCosmetics}
                           reducedMotion={reducedMotion}
                           previewing={preview !== null}
-                          // ADR-0028: the "Signature radiance" flourish, driven by the committed
-                          // set status (an achievement read-out), not the transient hover preview.
-                          setRadiant={spirit.set_bonus.active}
+                          // ADR-0028: the "Signature radiance" flourish — on when the set is earned,
+                          // OR while previewing it from the set-bonus status below (so you can see
+                          // what the reward looks like before earning it).
+                          setRadiant={spirit.set_bonus.active || previewRadiance}
                         />
                       </div>
                       {preview && <span className="spirit-preview-badge">Preview</span>}
@@ -797,7 +829,11 @@ export default function SpiritPage() {
                     // Signature set status (ADR-0028) — the active "Signature radiance" badge, or a
                     // quiet progress nudge toward equipping all 7 path-exclusive capstones. Tucked
                     // here so a beginner meets it only after opting into the full economy.
-                    <SetBonusStatus setBonus={spirit.set_bonus} />
+                    <SetBonusStatus
+                      setBonus={spirit.set_bonus}
+                      previewOn={previewRadiance}
+                      onPreview={setPreviewRadiance}
+                    />
                   )}
                 </div>
               )}
