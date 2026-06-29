@@ -294,6 +294,9 @@ export const OPTION_LABEL: Record<string, string> = {
   wildfire: 'Wildfire',
   emberlit: 'Ember',
   bonfire: 'Bonfire',
+  inferno: 'Inferno',
+  flicker: 'Flicker',
+  puff: 'Puff',
   cluster: 'Cluster',
   cairn: 'Cairn',
   orbital: 'Orbital',
@@ -3421,6 +3424,11 @@ function PittaForm({
   let tongueCount = i
   let bodyMul = 1
   let flameLift = 0 // extra height added to the tallest tongue (raised flameTop)
+  // The blaze's reach: the base flame height (16 + p*18). Some forms scale it taller/shorter.
+  let flameSpan = 16 + p * 18
+  // `puff` swaps the SHARP teardrop tongues for soft ROUNDED billows (drawn below), a clearly
+  // different silhouette while keeping the same count + positions.
+  const isPuff = form === 'puff'
   if (form === 'wildfire') {
     // A wild blaze of many flames — capped so radiant (i + 3 = 8) reads fierce, not a hedge.
     tongueCount = Math.min(8, i + 3)
@@ -3432,12 +3440,24 @@ function PittaForm({
   } else if (form === 'bonfire') {
     // A stout, wide ember — same flame count, a broad body (kept inside the 80×80 frame).
     bodyMul = 1.32
+  } else if (form === 'inferno') {
+    // A towering roaring blaze: the MOST flames (i + 5, capped at 9), licking ~30% higher off a
+    // slightly fuller body. Reads taller + bigger than wildfire, never just "more".
+    tongueCount = Math.min(9, i + 5)
+    flameSpan = (16 + p * 18) * 1.3
+    bodyMul = 1.08
+  } else if (form === 'flicker') {
+    // A small, gentle low flame: a couple of tongues, ~40% SHORTER, a slim ember — a calm,
+    // banked coal that barely licks up.
+    tongueCount = Math.max(2, i - 1)
+    flameSpan = (16 + p * 18) * 0.6
+    bodyMul = 0.8
   }
   const bodyR = (6 + p * 5) * bodyMul
   const bodyCy = baseY - bodyR * 0.6
   // Flame tongues licking up off the body — one at spark, up to five at radiant (shape varies it).
   const tongues = tongueCount
-  const flameTop = baseY - (16 + p * 18) - flameLift // how high the tallest tongue reaches
+  const flameTop = baseY - flameSpan - flameLift // how high the tallest tongue reaches
   return (
     <g>
       {/* Water element — a cool teal pool the fire rises from, widening from wisp onward. The
@@ -3462,25 +3482,43 @@ function PittaForm({
           opacity={0.4 * g}
         />
       )}
-      {/* Flame tongues — sharp, pointed teardrops curling up off the ember body. Outer tongues
-          are searing red (`accent`), the central one the hot orange body colour. More + taller
-          each stage, giving the "more developed" read. */}
+      {/* Flame shapes licking up off the ember body. By default SHARP, pointed teardrop tongues;
+          with `form === 'puff'` they become soft ROUNDED billows (overlapping rounded blobs) — a
+          clearly different, billowy silhouette. Outer flames are searing red (`accent`), the
+          central one the hot orange body colour. More + taller each stage. */}
       {Array.from({ length: tongues }, (_, k) => {
-        // Spread tongues across the top of the body; the centre one rises highest.
+        // Spread flames across the top of the body; the centre one rises highest.
         const t = tongues === 1 ? 0 : (k / (tongues - 1)) * 2 - 1 // -1..1
         const tx = cx + t * (bodyR * 0.8)
-        const sway = t * 3 // outer tongues lean outward
+        const sway = t * 3 // outer flames lean outward
         const tipY = flameTop + Math.abs(t) * (6 + p * 3) // centre tallest
         const w = (2.6 + p * 1.6) * (1 - Math.abs(t) * 0.25)
         const baseTy = bodyCy - bodyR * 0.2
+        const fill = k === Math.floor(tongues / 2) ? pal.glow : pal.accent
+        const opacity = (0.7 + 0.25 * p) * g
+        if (isPuff) {
+          // A soft billow: a rounded blob rising from the body, made of stacked circles — a
+          // lower wide base puff and a smaller cap nearer the tip. Rounded, never pointed.
+          const puffX = tx + sway * 0.5
+          const baseR = w * 1.5 // a broad, soft base
+          const capR = w * 1.05 // a smaller cap riding higher (toward the tip)
+          const baseCy = baseTy - (baseTy - tipY) * 0.32
+          const capCy = baseTy - (baseTy - tipY) * 0.72
+          return (
+            <g key={k} className="pitta-puff">
+              <circle cx={puffX} cy={baseCy} r={baseR} fill={fill} opacity={opacity} />
+              <circle cx={puffX} cy={capCy} r={capR} fill={fill} opacity={opacity} />
+            </g>
+          )
+        }
         return (
           <path
             key={k}
             d={`M ${tx - w} ${baseTy}
                 Q ${tx - w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + sway} ${tipY}
                 Q ${tx + w * 0.4 + sway} ${(baseTy + tipY) / 2} ${tx + w} ${baseTy} Z`}
-            fill={k === Math.floor(tongues / 2) ? pal.glow : pal.accent}
-            opacity={(0.7 + 0.25 * p) * g}
+            fill={fill}
+            opacity={opacity}
           />
         )
       })}

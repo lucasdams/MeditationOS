@@ -293,6 +293,35 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(emberlit).toBeLessThan(bare)
   })
 
+  it('draws MORE flames with form=inferno than a bare Pitta', () => {
+    // The towering blaze throws the most tongues (i + 5, capped) — strictly more than the default.
+    const bare = flameCount({})
+    const inferno = flameCount({ cosmetics: { form: 'inferno' } })
+    expect(inferno).toBeGreaterThan(bare)
+  })
+
+  it('draws FEWER flames with form=flicker than a bare Pitta', () => {
+    // The gentle low flame banks to a couple of tongues — fewer than the default.
+    const bare = flameCount({})
+    const flicker = flameCount({ cosmetics: { form: 'flicker' } })
+    expect(flicker).toBeLessThan(bare)
+  })
+
+  it('renders ROUNDED puff flames (circles) with form=puff, absent from a sharp-tongue Pitta', () => {
+    // Each `puff` flame is drawn as a soft billow of <circle>s grouped under `.pitta-puff`. The
+    // default sharp-tongue Pitta has no such group, so the rounded silhouette is genuinely new.
+    const puffCircles = (over: Partial<SpiritState>): number => {
+      const { container } = renderSpirit(
+        <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
+      )
+      const n = container.querySelectorAll('.pitta-puff circle').length
+      cleanup()
+      return n
+    }
+    expect(puffCircles({})).toBe(0)
+    expect(puffCircles({ cosmetics: { form: 'puff' } })).toBeGreaterThanOrEqual(2)
+  })
+
   it('swaps the Kapha body for a HUDDLE of multiple orbs with form=cluster', () => {
     // The default Kapha body is a single seated ellipse + head circle; `cluster` replaces it with a
     // huddle of several body circles, so the creature gains many more <circle> orbs.

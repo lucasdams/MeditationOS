@@ -1163,7 +1163,7 @@ def test_body_cosmetics_are_user_scoped(client):
 # signature capstone, so it stays OUTSIDE the signature set (total 7).
 _FORM_OPTIONS_BY_PATH = {
     "heart": {"tendrils", "sleek", "billowy"},
-    "breath": {"wildfire", "emberlit", "bonfire"},
+    "breath": {"wildfire", "emberlit", "bonfire", "inferno", "flicker", "puff"},
     "stillness": {"cluster", "cairn", "orbital"},
 }
 _FORM_OPTIONS = set().union(*_FORM_OPTIONS_BY_PATH.values())
@@ -1200,14 +1200,14 @@ def test_form_slot_available_only_for_matching_dosha(client):
 
 def test_form_slot_in_preview_fills_per_path(client):
     """The choose-page preview lists the `form` slot for every path (catalog-driven); each path's
-    tree fills it with ONLY its own three forms, flagged EXCLUSIVE, and none of the other paths'."""
+    tree fills it with ONLY its own forms, flagged EXCLUSIVE, and none of the other paths'."""
     _auth(client, "form_preview@example.com")
     preview = client.get("/api/v1/spirit/preview").json()
     for path in _ALL_PATHS:
         by_slot = {s["slot"]: s for s in preview[path]}
         assert "form" in by_slot, f"{path} preview missing the form slot"
         opts = {o["option"]: o for o in by_slot["form"]["options"]}
-        # This path's three forms are present and exclusive; no other path's forms appear.
+        # This path's own forms are present and exclusive; no other path's forms appear.
         assert set(opts) == _FORM_OPTIONS_BY_PATH[path]
         for option in _FORM_OPTIONS_BY_PATH[path]:
             assert opts[option]["exclusive"] is True
