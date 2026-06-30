@@ -181,9 +181,21 @@ describe('guidedChoiceFromParams', () => {
     )
   })
 
+  it('maps the new guided ids (name-feelings, chakra-om, stretching)', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=name-feelings'))).toBe(
+      'name-feelings',
+    )
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=chakra-om'))).toBe('chakra-om')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=stretching'))).toBe('stretching')
+  })
+
   it('maps guided=none and style=mindfulness to unguided', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=none'))).toBe('none')
     expect(guidedChoiceFromParams(new URLSearchParams('style=mindfulness'))).toBe('none')
+  })
+
+  it('no longer maps the old "acceptance" id (renamed → falls back to stored pref)', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=acceptance'))).toBeNull()
   })
 
   it('returns null for no / unknown params (falls back to stored pref)', () => {
@@ -193,13 +205,30 @@ describe('guidedChoiceFromParams', () => {
 })
 
 describe('MeditatePage — guided deep-link', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    mockGetStats.mockReset()
+    // Default: a high enough level that all gated structures are unlocked.
+    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 10 })
+  })
   afterEach(cleanup)
 
   it('pre-selects the Body scan structure from ?guided=body-scan', () => {
     renderPageAt('/meditate?guided=body-scan')
     const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
     expect(select.value).toBe('body-scan')
+  })
+
+  it('pre-selects Name what you feel from ?guided=name-feelings', () => {
+    renderPageAt('/meditate?guided=name-feelings')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    expect(select.value).toBe('name-feelings')
+  })
+
+  it('pre-selects Mindful stretching from ?guided=stretching', () => {
+    renderPageAt('/meditate?guided=stretching')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    expect(select.value).toBe('stretching')
   })
 
   it('defaults to unguided (None) with no param', () => {
@@ -209,7 +238,52 @@ describe('MeditatePage — guided deep-link', () => {
   })
 })
 
+// ── Level gate (Chakra Om) ───────────────────────────────────────────────────
+// Chakra Om unlocks at level 5. A `?guided=chakra-om` deep-link selects it only
+// when the fetched level meets the gate; below it (or while the level is still
+// unknown) the page falls back to plain unguided sitting.
+
+describe('MeditatePage — Chakra Om level gate', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    mockGetStats.mockReset()
+  })
+  afterEach(cleanup)
+
+  it('falls back to None when ?guided=chakra-om is deep-linked below level 5', async () => {
+    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 3 })
+    renderPageAt('/meditate?guided=chakra-om')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    // Once the level resolves (3 < 5), the gate effect resets the choice to none.
+    await waitFor(() => expect(select.value).toBe('none'))
+  })
+
+  it('selects Chakra Om when ?guided=chakra-om is deep-linked at level 5+', async () => {
+    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 5 })
+    renderPageAt('/meditate?guided=chakra-om')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    // Initial render selects it from the param; the gate effect leaves it (5 >= 5).
+    await waitFor(() => expect(mockGetStats).toHaveBeenCalled())
+    expect(select.value).toBe('chakra-om')
+  })
+
+  it('renders the Chakra Om option disabled with a "Reach level 5" hint below level 5', async () => {
+    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 2 })
+    renderPageAt('/meditate')
+    await waitFor(() => expect(mockGetStats).toHaveBeenCalled())
+    const option = Array.from(
+      (screen.getByLabelText(/guided structure/i) as HTMLSelectElement).options,
+    ).find((o) => o.textContent?.includes('Chakra Om'))!
+    expect(option.disabled).toBe(true)
+    expect(option.textContent).toMatch(/Reach level 5 to unlock/)
+  })
+})
+
 describe('MeditatePage — intention prompts', () => {
+  beforeEach(() => {
+    mockGetStats.mockReset()
+    mockGetStats.mockResolvedValue(BASE_STATS)
+  })
   afterEach(cleanup)
 
   it('shows a placeholder suggestion in the intention textarea', () => {
@@ -220,6 +294,10 @@ describe('MeditatePage — intention prompts', () => {
 })
 
 describe('MeditatePage — Sound & bells disclosure', () => {
+  beforeEach(() => {
+    mockGetStats.mockReset()
+    mockGetStats.mockResolvedValue(BASE_STATS)
+  })
   afterEach(cleanup)
 
   // The disclosure is collapsed by default; bells controls live inside it.
@@ -352,13 +430,18 @@ describe('MeditatePage — best-effort post-save stats', () => {
   afterEach(cleanup)
 
   it('still saves and goes to reflection (no fake-XP reward) when the after-getStats call throws', async () => {
-    // First getStats (before save) succeeds; second (after save) throws. With stats
-    // unavailable, the XP breakdown would be a meaningless "0 XP / level 1", so the
-    // reward overlay is suppressed and we go straight to the reflection step instead
-    // of celebrating fake numbers — the session itself is still saved with no error.
-    mockGetStats
-      .mockResolvedValueOnce(BASE_STATS)
-      .mockRejectedValueOnce(new Error('network error'))
+    // getStats resolves for the on-mount level fetch + the before-save call, but the
+    // AFTER-save call throws. With stats unavailable, the XP breakdown would be a
+    // meaningless "0 XP / level 1", so the reward overlay is suppressed and we go
+    // straight to the reflection step instead of celebrating fake numbers — the
+    // session itself is still saved with no error. Keyed off whether the session has
+    // been created yet (mockCreate) so the throw lands on the post-save fetch
+    // regardless of how many pre-save fetches (mount + before-save) ran.
+    mockGetStats.mockImplementation(() =>
+      mockCreate.mock.calls.length > 0
+        ? Promise.reject(new Error('network error'))
+        : Promise.resolve(BASE_STATS),
+    )
 
     vi.useFakeTimers({ shouldAdvanceTime: true })
     renderPage()
@@ -388,6 +471,8 @@ describe('MeditatePage — spoken guidance toggle', () => {
   beforeEach(() => {
     speechState.available = true
     localStorage.clear()
+    mockGetStats.mockReset()
+    mockGetStats.mockResolvedValue(BASE_STATS)
   })
   afterEach(cleanup)
 

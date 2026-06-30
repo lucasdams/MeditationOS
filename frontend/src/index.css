@@ -6875,6 +6875,36 @@ details[open] .meditate-disclosure-summary::before {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Chakra Om — a small vertical column of the seven chakra dots, rendered crown→root.
+   The active chakra (per the current cue) is enlarged + glowing; the rest sit quiet. */
+.guided-chakras {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 auto 0.85rem;
+  width: fit-content;
+}
+.guided-chakra-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--chakra-colour);
+  opacity: 0.35;
+  transform: scale(0.85);
+  transition: opacity 0.4s ease, transform 0.4s ease, box-shadow 0.4s ease;
+}
+.guided-chakra-dot--active {
+  opacity: 1;
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chakra-colour) 28%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-chakra-dot {
+    transition: none;
+  }
+}
+
 .guided-cues-text {
   margin: 0 0 0.75rem;
   font-size: var(--text-base);
@@ -7954,6 +7984,32 @@ details[open] .meditate-disclosure-summary::before {
   opacity: 1;
   transform: translateX(0);
   color: var(--card-accent);
+}
+
+/* A level-locked practice card — non-interactive (rendered as a <div>, not a <Link>):
+   greyed, no hover lift, a muted Lock-icon chip, and a "Reach level N to unlock" hint. */
+.practice-card--locked {
+  cursor: default;
+  background: color-mix(in srgb, var(--bg-surface) 92%, var(--border));
+  box-shadow: none;
+}
+.practice-card--locked:hover,
+.practice-card--locked:focus-visible {
+  transform: none;
+  border-color: var(--border);
+  box-shadow: none;
+}
+.practice-card--locked .practice-card-icon {
+  background: color-mix(in srgb, var(--text-faint) 12%, var(--bg-surface));
+  border-color: var(--border);
+  color: var(--text-faint);
+}
+.practice-card--locked .practice-card-name {
+  color: var(--text-secondary);
+}
+.practice-card-locked-hint {
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 /* --- Spirit-aware practices (ADR-0029) ------------------------------------------------------

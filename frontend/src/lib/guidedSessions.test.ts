@@ -3,17 +3,26 @@ import {
   buildSchedule,
   currentPhaseIndex,
   getStructure,
+  isGuidedUnlocked,
+  GUIDED_MIN_LEVEL,
   GUIDED_STRUCTURES,
 } from './guidedSessions'
 
 // ── Structural integrity ─────────────────────────────────────────────────────
 
 describe('GUIDED_STRUCTURES', () => {
-  it('exports body-scan, loving-kindness, and acceptance', () => {
+  it('exports body-scan, loving-kindness, name-feelings, chakra-om, and stretching', () => {
     const ids = GUIDED_STRUCTURES.map((s) => s.id)
     expect(ids).toContain('body-scan')
     expect(ids).toContain('loving-kindness')
-    expect(ids).toContain('acceptance')
+    expect(ids).toContain('name-feelings')
+    expect(ids).toContain('chakra-om')
+    expect(ids).toContain('stretching')
+  })
+
+  it('no longer exports the old "acceptance" id (renamed to name-feelings)', () => {
+    const ids = GUIDED_STRUCTURES.map((s) => s.id)
+    expect(ids).not.toContain('acceptance')
   })
 
   it('each structure has at least 2 phases with positive weights', () => {
@@ -32,12 +41,42 @@ describe('getStructure', () => {
   it('returns the correct structure by id', () => {
     expect(getStructure('body-scan').id).toBe('body-scan')
     expect(getStructure('loving-kindness').id).toBe('loving-kindness')
-    expect(getStructure('acceptance').id).toBe('acceptance')
+    expect(getStructure('name-feelings').id).toBe('name-feelings')
+    expect(getStructure('chakra-om').id).toBe('chakra-om')
+    expect(getStructure('stretching').id).toBe('stretching')
   })
 
   it('throws for an unknown id', () => {
     // @ts-expect-error intentional invalid id
     expect(() => getStructure('unknown')).toThrow()
+  })
+})
+
+// ── Level gates ──────────────────────────────────────────────────────────────
+
+describe('GUIDED_MIN_LEVEL + isGuidedUnlocked', () => {
+  it('gates chakra-om behind level 5', () => {
+    expect(GUIDED_MIN_LEVEL['chakra-om']).toBe(5)
+  })
+
+  it('ungated structures are always unlocked, even with a null level', () => {
+    expect(isGuidedUnlocked('body-scan', null)).toBe(true)
+    expect(isGuidedUnlocked('name-feelings', 1)).toBe(true)
+    expect(isGuidedUnlocked('stretching', null)).toBe(true)
+  })
+
+  it('a gated structure is locked below its minimum level', () => {
+    expect(isGuidedUnlocked('chakra-om', 1)).toBe(false)
+    expect(isGuidedUnlocked('chakra-om', 4)).toBe(false)
+  })
+
+  it('a gated structure unlocks at or above its minimum level', () => {
+    expect(isGuidedUnlocked('chakra-om', 5)).toBe(true)
+    expect(isGuidedUnlocked('chakra-om', 10)).toBe(true)
+  })
+
+  it('a null/unknown level keeps a gated structure locked (fail safe)', () => {
+    expect(isGuidedUnlocked('chakra-om', null)).toBe(false)
   })
 })
 

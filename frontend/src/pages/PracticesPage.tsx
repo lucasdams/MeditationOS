@@ -11,10 +11,16 @@ import {
   HandHeart,
   NotebookPen,
   Flame,
+  SmilePlus,
+  AudioLines,
+  Accessibility,
+  Lock,
   ChevronRight,
   type LucideProps,
 } from 'lucide-react'
 import { spiritService } from '../services/spirit'
+import { dashboardService } from '../services/dashboard'
+import { GUIDED_MIN_LEVEL, isGuidedUnlocked } from '../lib/guidedSessions'
 import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
 import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
 
@@ -73,6 +79,10 @@ interface PracticeCard {
   // Per-card accent (light + dark), mirroring the home tiles / nav pills.
   light: string
   dark: string
+  // A level-gated card carries its guided-structure id so the page can resolve the
+  // lock state + required level from GUIDED_MIN_LEVEL (single source of truth). Absent
+  // → always unlocked.
+  gate?: import('../lib/guidedSessions').GuidedStructureId
 }
 
 interface PracticeGroup {
@@ -96,6 +106,9 @@ const GROUPS: PracticeGroup[] = [
       { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
       { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
       { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#d6396f', dark: '#f06a98' },
+      { to: '/meditate?guided=name-feelings', icon: SmilePlus, name: 'Name what you feel', desc: 'Notice a feeling, name it precisely, let it be', kind: 'meditation', light: '#2f6fe0', dark: '#82b4ff' },
+      { to: '/meditate?guided=chakra-om', icon: AudioLines, name: 'Chakra Om', desc: 'Chant Om up through the seven chakras', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd', gate: 'chakra-om' },
+      { to: '/meditate?guided=stretching', icon: Accessibility, name: 'Mindful stretching', desc: 'Gentle guided stretches — move with the breath', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
       { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
     ],
   },
@@ -121,6 +134,10 @@ function FeedBadge({ need, current }: { need: SpiritNeedKey; current: boolean })
 
 export default function PracticesPage() {
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
+  // The user's level — drives the guided-practice level gates (e.g. Chakra Om at
+  // level 5). Fetched non-blocking like the header; null until known, which keeps
+  // gated cards locked (fail safe) rather than flashing them open then closing.
+  const [level, setLevel] = useState<number | null>(null)
   const reducedMotion = prefersReducedMotion()
 
   useEffect(() => {
@@ -129,6 +146,14 @@ export default function PracticesPage() {
       .get()
       .then(setSpirit)
       .catch(() => setSpirit(null))
+  }, [])
+
+  useEffect(() => {
+    // Non-blocking — a failure leaves level null so gated cards stay locked.
+    dashboardService
+      .getStats()
+      .then((s) => setLevel(s.level))
+      .catch(() => {})
   }, [])
 
   // Only guide by needs for a creature that has chosen a path. A pathless spark shows the practices
@@ -182,6 +207,32 @@ export default function PracticesPage() {
               const feeds = feedsFor(card.kind, spirit?.path ?? null)
               const needed = need != null && feeds.includes(need)
               const CardIcon = card.icon
+              const locked = card.gate != null && !isGuidedUnlocked(card.gate, level)
+
+              // A level-locked card is non-interactive (a <div>, not a <Link>): a Lock
+              // badge over the icon, muted text, and a "Reach level N to unlock" line in
+              // place of the description. No feed badges — it can't be practiced yet.
+              if (locked) {
+                const minLevel = GUIDED_MIN_LEVEL[card.gate!]
+                return (
+                  <div
+                    key={card.to}
+                    className="practice-card practice-card--locked"
+                    aria-disabled="true"
+                  >
+                    <span className="practice-card-icon" aria-hidden="true">
+                      <Lock size={20} strokeWidth={1.9} />
+                    </span>
+                    <span className="practice-card-body">
+                      <span className="practice-card-name">{card.name}</span>
+                      <span className="practice-card-desc practice-card-locked-hint">
+                        Reach level {minLevel} to unlock
+                      </span>
+                    </span>
+                  </div>
+                )
+              }
+
               return (
                 <Link
                   key={card.to}

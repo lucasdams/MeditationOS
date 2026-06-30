@@ -27,7 +27,12 @@ import {
   type SessionDraft,
 } from '../lib/sessionDraft'
 import { dailySuggestion } from '../lib/intentionPrompts'
-import { GUIDED_STRUCTURES, type GuidedStructureId } from '../lib/guidedSessions'
+import {
+  GUIDED_STRUCTURES,
+  GUIDED_MIN_LEVEL,
+  isGuidedUnlocked,
+  type GuidedStructureId,
+} from '../lib/guidedSessions'
 import { speechAvailable, onVoicesReady, cancelSpeech } from '../lib/speech'
 import {
   SoundscapeEngine,
@@ -82,10 +87,14 @@ const BELL_MODES = [
 const GUIDED_STRUCTURE_KEY = 'meditate:guided-structure'
 type GuidedChoice = GuidedStructureId | 'none'
 
+// Recognised stored guided ids. A legacy 'acceptance' value (the old id) simply
+// isn't matched, so it falls back to 'none' — fine.
+const GUIDED_IDS: GuidedStructureId[] = GUIDED_STRUCTURES.map((s) => s.id)
+
 function readGuidedChoice(): GuidedChoice {
   try {
     const v = localStorage.getItem(GUIDED_STRUCTURE_KEY)
-    if (v === 'body-scan' || v === 'loving-kindness' || v === 'acceptance') return v
+    if (v != null && (GUIDED_IDS as string[]).includes(v)) return v as GuidedStructureId
     return 'none'
   } catch {
     return 'none'
@@ -102,11 +111,18 @@ function writeGuidedChoice(choice: GuidedChoice) {
 
 // Deep-link support: map a `?guided=` / `?style=` query param to a guided choice, or
 // null when there's no (recognised) param so the caller falls back to the stored
-// preference. `guided=body-scan|loving-kindness` pre-selects that structure;
+// preference. `guided=<any structure id>` pre-selects that structure;
 // `guided=none` or `style=mindfulness` pre-selects plain unguided sitting.
+//
+// NOTE: this does NOT enforce level gates — a deep-link to a locked structure (e.g.
+// chakra-om below level 5) still resolves to that id here. The page applies the gate
+// after fetching the user's level (see the gate effect) and falls back to 'none' if
+// the structure is locked, so the gate can't be bypassed via the URL.
 export function guidedChoiceFromParams(params: URLSearchParams): GuidedChoice | null {
   const guided = params.get('guided')
-  if (guided === 'body-scan' || guided === 'loving-kindness') return guided
+  if (guided != null && (GUIDED_IDS as string[]).includes(guided)) {
+    return guided as GuidedStructureId
+  }
   if (guided === 'none') return 'none'
   if (params.get('style') === 'mindfulness') return 'none'
   return null
@@ -147,6 +163,10 @@ export default function MeditatePage() {
   const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(
     () => guidedChoiceFromParams(searchParams) ?? readGuidedChoice(),
   )
+  // The user's level — drives the guided-structure gate (e.g. Chakra Om unlocks at
+  // level 5). Fetched non-blocking like the header does; null until known, which the
+  // gate treats as locked for gated structures (fail safe).
+  const [level, setLevel] = useState<number | null>(null)
   // Spoken guidance toggle (user preference) + whether this device actually has a
   // usable TTS voice. Both must be true for the voice to replace the bell; if the
   // device has no voice we fall back to text + bell even with the toggle on.
@@ -250,6 +270,29 @@ export default function MeditatePage() {
     const off = onVoicesReady(() => setSpeechSupported(speechAvailable()))
     return off
   }, [])
+
+  // Fetch the user's level once, non-blocking (like the header). A failure leaves
+  // level null — gated structures stay locked rather than erroneously unlocking.
+  useEffect(() => {
+    let ignore = false
+    dashboardService
+      .getStats()
+      .then((s) => { if (!ignore) setLevel(s.level) })
+      .catch(() => {})
+    return () => { ignore = true }
+  }, [])
+
+  // Enforce the guided-structure level gate ONCE the level is known: if the current
+  // choice is a locked structure (e.g. a `?guided=chakra-om` deep-link below level 5),
+  // fall back to plain unguided sitting rather than offering a locked practice. We
+  // wait for a non-null level so a deep-link to a gated structure isn't wrongly reset
+  // to 'none' during the brief window before the level fetch resolves.
+  useEffect(() => {
+    if (level == null) return
+    if (guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level)) {
+      setGuidedChoiceState('none')
+    }
+  }, [guidedChoice, level])
 
   function bell() {
     if (bellsOnRef.current) {
@@ -663,11 +706,16 @@ export default function MeditatePage() {
           onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
         >
           <option value="none">None — plain timer</option>
-          {GUIDED_STRUCTURES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label} — {s.description}
-            </option>
-          ))}
+          {GUIDED_STRUCTURES.map((s) => {
+            const locked = !isGuidedUnlocked(s.id, level)
+            return (
+              <option key={s.id} value={s.id} disabled={locked}>
+                {locked
+                  ? `${s.label} — Reach level ${GUIDED_MIN_LEVEL[s.id]} to unlock`
+                  : `${s.label} — ${s.description}`}
+              </option>
+            )
+          })}
         </select>
 
         {/* Spoken guidance — only meaningful for a guided sit. The voice reads each

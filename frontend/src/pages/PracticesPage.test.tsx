@@ -12,6 +12,11 @@ import type { SpiritNeed, SpiritState } from '../types'
 const get = vi.fn()
 vi.mock('../services/spirit', () => ({ spiritService: { get: (...a: unknown[]) => get(...a) } }))
 
+const getStats = vi.fn()
+vi.mock('../services/dashboard', () => ({
+  dashboardService: { getStats: (...a: unknown[]) => getStats(...a) },
+}))
+
 import PracticesPage from './PracticesPage'
 
 const need = (factor: number): SpiritNeed => ({
@@ -52,6 +57,9 @@ describe('PracticesPage', () => {
     get.mockReset()
     // Default: no creature reachable → the list renders without the spirit overlay.
     get.mockRejectedValue(new Error('no spirit'))
+    getStats.mockReset()
+    // Default: a high level so gated cards (Chakra Om) render as normal links.
+    getStats.mockResolvedValue({ level: 10 })
   })
 
   it('renders the page heading and a back link to Home', () => {
@@ -80,7 +88,7 @@ describe('PracticesPage', () => {
     )
   })
 
-  it('deep-links guided meditation cards with the right ?guided= param', () => {
+  it('deep-links guided meditation cards with the right ?guided= param', async () => {
     renderPage()
     expect(screen.getByRole('link', { name: /body scan/i })).toHaveAttribute(
       'href',
@@ -91,6 +99,21 @@ describe('PracticesPage', () => {
       '/meditate?guided=loving-kindness',
     )
     expect(screen.getByRole('link', { name: /mindfulness/i })).toHaveAttribute('href', '/meditate')
+    expect(screen.getByRole('link', { name: /name what you feel/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=name-feelings',
+    )
+    expect(screen.getByRole('link', { name: /mindful stretching/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=stretching',
+    )
+    // Chakra Om is gated but level 10 (default) unlocks it → a real link.
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /chakra om/i })).toHaveAttribute(
+        'href',
+        '/meditate?guided=chakra-om',
+      ),
+    )
   })
 
   it('links the reflection cards to their own pages', () => {
@@ -132,5 +155,53 @@ describe('PracticesPage', () => {
     // No "needed" highlight for a pathless spark.
     expect(screen.getByRole('link', { name: /resonance/i }).className).not.toMatch(/practice-card--needed/)
     expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
+  })
+})
+
+// ── Chakra Om level gate ─────────────────────────────────────────────────────
+// Chakra Om unlocks at level 5. Below it the card is a non-interactive, locked
+// <div> (not a <Link>) showing "Reach level 5 to unlock"; at/above level 5 it's a
+// normal deep-link card.
+
+describe('PracticesPage — Chakra Om level gate', () => {
+  afterEach(cleanup)
+  beforeEach(() => {
+    get.mockReset()
+    get.mockRejectedValue(new Error('no spirit'))
+    getStats.mockReset()
+  })
+
+  it('renders Chakra Om locked (non-link, "Reach level 5") below level 5', async () => {
+    getStats.mockResolvedValue({ level: 3 })
+    renderPage()
+    await waitFor(() => expect(getStats).toHaveBeenCalled())
+    // Not a link while locked.
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull(),
+    )
+    // The card text is present with the unlock hint.
+    expect(screen.getByText(/chakra om/i)).toBeInTheDocument()
+    expect(screen.getByText(/reach level 5 to unlock/i)).toBeInTheDocument()
+  })
+
+  it('renders Chakra Om as a real deep-link at level 5+', async () => {
+    getStats.mockResolvedValue({ level: 5 })
+    renderPage()
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /chakra om/i })).toHaveAttribute(
+        'href',
+        '/meditate?guided=chakra-om',
+      ),
+    )
+    expect(screen.queryByText(/reach level 5 to unlock/i)).toBeNull()
+  })
+
+  it('keeps Chakra Om locked when the level fetch fails (fail safe)', async () => {
+    getStats.mockRejectedValue(new Error('network'))
+    renderPage()
+    await waitFor(() => expect(getStats).toHaveBeenCalled())
+    // level stays null → gated card stays locked.
+    expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull()
+    expect(screen.getByText(/reach level 5 to unlock/i)).toBeInTheDocument()
   })
 })
