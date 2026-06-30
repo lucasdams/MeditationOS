@@ -29,35 +29,32 @@ import { dashboardService } from '../services/dashboard'
 // line-icon component (no system emoji).
 type MenuLink = { to: string; icon: ComponentType<LucideProps>; label: string; light: string; dark: string }
 
-// Practice — the activities a beginner reaches for: things you *do* in a session. The most
-// approachable practices lead; the hub ("All practices") + "Log a session" sit lower for when
-// you want the full library or to record an offline sit. Depth practices live under "More".
-// Per-destination accents are all drawn from the Cool Electric family: indigo /
-// cyan / blue / violet / amber-pop / pink. Each pair is a deep light-mode shade +
-// a lifted dark-mode shade so the nav pills stay legible in both themes.
+// Practice — everything you DO in a session. The direct activities lead (breathe / meditate /
+// candle gazing / gratitude / journal), then Paths (guided programs), then the hub ("All
+// practices") + "Log a session" for the full library or recording an offline sit. Candle gazing
+// (Trataka) lives HERE — it's a focal meditation, not a "more" extra.
+// Per-destination accents are drawn from the Cool Electric family (indigo / cyan / blue / violet /
+// amber-pop / pink): a deep light-mode shade + a lifted dark-mode shade, legible in both themes.
 const PRACTICE_LINKS: MenuLink[] = [
-  { to: '/paths', icon: Compass, label: 'Paths', light: '#0e8aa6', dark: '#5fd2e8' },
   { to: '/breathe', icon: Wind, label: 'Breathe', light: '#0e8aa6', dark: '#5fd2e8' },
   { to: '/meditate', icon: Brain, label: 'Meditate', light: '#5847f0', dark: '#a8a2ff' },
+  { to: '/trataka', icon: Flame, label: 'Candle gazing', light: '#d97706', dark: '#f5a742' },
   { to: '/gratitude', icon: HandHeart, label: 'Gratitude', light: '#b9760a', dark: '#f5c151' },
   { to: '/journal', icon: NotebookPen, label: 'Journal', light: '#2f6fe0', dark: '#82b4ff' },
+  { to: '/paths', icon: Compass, label: 'Paths', light: '#0e8aa6', dark: '#5fd2e8' },
   { to: '/practices', icon: LayoutGrid, label: 'All practices', light: '#7c3aed', dark: '#c4b5fd' },
   { to: '/sessions/new', icon: Plus, label: 'Log a session', light: '#5847f0', dark: '#a8a2ff' },
 ]
 
-// Progress — stats + account: things you *review* or configure.
+// Progress — everything you REVIEW or PLAN around your practice, plus account. Merges the old
+// "Progress" + "More" menus into one (candle gazing moved to Practice): stats (Analytics,
+// Timeline), planning (Goals, Schedule), then account (Settings, + Admin for admins below).
 const PROGRESS_LINKS: MenuLink[] = [
   { to: '/analytics', icon: ChartLine, label: 'Analytics', light: '#d6396f', dark: '#f06a98' },
   { to: '/timeline', icon: History, label: 'Timeline', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/settings', icon: Settings, label: 'Settings', light: '#545a73', dark: '#a6acc4' },
-]
-
-// More — advanced / depth features grouped out of the primary menus so beginners see a leaner
-// nav. Pure grouping: every route here is unchanged, just relocated from Practice / Progress.
-const MORE_LINKS: MenuLink[] = [
-  { to: '/trataka', icon: Flame, label: 'Candle gazing', light: '#d97706', dark: '#f5a742' },
   { to: '/goals', icon: Target, label: 'Goals', light: '#6a5cff', dark: '#a8a2ff' },
   { to: '/schedule', icon: CalendarDays, label: 'Schedule', light: '#2f6fe0', dark: '#82b4ff' },
+  { to: '/settings', icon: Settings, label: 'Settings', light: '#545a73', dark: '#a6acc4' },
 ]
 
 // Each menu's links render in two sibling containers (desktop dropdown + mobile inline list),
@@ -88,7 +85,7 @@ export default function AppHeader() {
   const [level, setLevel] = useState<number | null>(null)
   // A single source of truth for which dropdown is open: a menu id or null. Opening one
   // menu closes the other; outside-click / Escape close whichever is open.
-  const [openMenu, setOpenMenu] = useState<'practice' | 'progress' | 'more' | null>(null)
+  const [openMenu, setOpenMenu] = useState<'practice' | 'progress' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const navRef = useRef<HTMLElement>(null)
 
@@ -141,7 +138,7 @@ export default function AppHeader() {
   // A grouped dropdown menu (Practice / Progress). The button toggles its own open state;
   // opening it closes the other (single openMenu source of truth). aria-controls ties the
   // button to the dropdown region it expands.
-  function renderMenu(id: 'practice' | 'progress' | 'more', label: string, links: MenuLink[]) {
+  function renderMenu(id: 'practice' | 'progress', label: string, links: MenuLink[]) {
     const open = openMenu === id
     const dropdownId = `nav-${id}-dropdown`
     return (
@@ -192,8 +189,6 @@ export default function AppHeader() {
             aren't a widget menu and arrow-key navigation isn't implemented. */}
         {renderMenu('practice', 'Practice', PRACTICE_LINKS)}
         {renderMenu('progress', 'Progress', progressLinks)}
-        {/* More — advanced / depth features, kept out of the lean primary menus. */}
-        {renderMenu('more', 'More', MORE_LINKS)}
 
         {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
         <Link to="/spirit" className="nav-spirit nav-spirit-feature">
@@ -206,8 +201,6 @@ export default function AppHeader() {
           {PRACTICE_LINKS.map(renderMenuLink)}
           <p className="nav-mobile-heading">Progress</p>
           {progressLinks.map(renderMenuLink)}
-          <p className="nav-mobile-heading">More</p>
-          {MORE_LINKS.map(renderMenuLink)}
         </div>
       </nav>
       <div className="app-user">
