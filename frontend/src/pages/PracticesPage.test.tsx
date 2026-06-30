@@ -107,10 +107,8 @@ describe('PracticesPage', () => {
     const nudge = await screen.findByText(/needs more/i)
     expect(within(nudge).getByText(/Rest/)).toBeInTheDocument()
     expect(nudge.textContent).toMatch(/Sage/)
-    // Every sit (breathing + meditation) feeds rested → each is tagged "needs this"; reflection
-    // (joyful) is not. So there are highlights, but not on every card.
-    const tags = screen.getAllByText(/needs this/i)
-    expect(tags.length).toBeGreaterThan(0)
+    // Every sit (breathing + meditation) feeds rested → each gets the quiet "needed" highlight
+    // (the .practice-card--needed class); reflection (joyful) does not.
     expect(screen.getByRole('link', { name: /resonance/i }).className).toMatch(/practice-card--needed/)
     expect(screen.getByRole('link', { name: /journal/i }).className).not.toMatch(/practice-card--needed/)
   })
@@ -131,7 +129,8 @@ describe('PracticesPage', () => {
     renderPage()
     await waitFor(() => expect(get).toHaveBeenCalled())
     expect(screen.queryByText(/needs more/i)).toBeNull()
-    expect(screen.queryByText(/needs this/i)).toBeNull()
+    // No "needed" highlight for a pathless spark.
+    expect(screen.getByRole('link', { name: /resonance/i }).className).not.toMatch(/practice-card--needed/)
     expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
   })
 })

@@ -192,7 +192,6 @@ export default function PracticesPage() {
                     ['--card-fill-dark' as string]: card.dark,
                   }}
                 >
-                  {needed && <span className="practice-card-needed">Needs this</span>}
                   <span className="practice-card-icon" aria-hidden="true">
                     <CardIcon size={20} strokeWidth={1.9} />
                   </span>

@@ -8022,24 +8022,13 @@ details[open] .meditate-disclosure-summary::before {
   font-weight: 600;
 }
 
-/* A practice the spirit needs MOST right now — a subtle amber ring + a small floating tag. */
-.practice-card--needed {
+/* A practice the spirit needs MOST right now — dialed down to just a quiet rose BORDER (no loud
+   tag or ring); the rose "current need" feed label below carries the rest of the signal, and the
+   header chip + nudge banner say what's needed. Border kept rose on hover too. */
+.practice-card--needed,
+.practice-card--needed:hover,
+.practice-card--needed:focus-visible {
   border-color: var(--needed-accent);
-  box-shadow: 0 0 0 1px var(--needed-accent), var(--shadow-card);
-}
-.practice-card-needed {
-  position: absolute;
-  top: -0.55rem;
-  right: 0.75rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: var(--needed-accent);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  z-index: 1;
 }
 
 /* Dark mode: the deep light fills go muddy on the slate canvas, so swap each card's accent to
