@@ -16,6 +16,9 @@ import {
   CalendarDays,
   Wrench,
   Flower2,
+  Sparkles,
+  TrendingUp,
+  ChevronDown,
   Menu,
   X,
   type LucideProps,
@@ -138,20 +141,27 @@ export default function AppHeader() {
   // A grouped dropdown menu (Practice / Progress). The button toggles its own open state;
   // opening it closes the other (single openMenu source of truth). aria-controls ties the
   // button to the dropdown region it expands.
-  function renderMenu(id: 'practice' | 'progress', label: string, links: MenuLink[]) {
+  function renderMenu(
+    id: 'practice' | 'progress',
+    label: string,
+    Icon: ComponentType<LucideProps>,
+    links: MenuLink[],
+  ) {
     const open = openMenu === id
     const dropdownId = `nav-${id}-dropdown`
     return (
       <div className="nav-menu">
         <button
           type="button"
-          className="nav-menu-btn"
+          className={`nav-menu-btn nav-menu-btn--${id}`}
           aria-haspopup="true"
           aria-expanded={open}
           aria-controls={dropdownId}
           onClick={() => setOpenMenu((cur) => (cur === id ? null : id))}
         >
-          {label} ▾
+          <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
+          <span className="nav-menu-btn-label">{label}</span>
+          <ChevronDown size={15} strokeWidth={2} className="nav-menu-caret" aria-hidden="true" />
         </button>
         {open && (
           <div id={dropdownId} className="nav-menu-dropdown">
@@ -187,8 +197,8 @@ export default function AppHeader() {
 
         {/* Desktop: grouped dropdown menus. Drop role="menu"/role="menuitem" — these links
             aren't a widget menu and arrow-key navigation isn't implemented. */}
-        {renderMenu('practice', 'Practice', PRACTICE_LINKS)}
-        {renderMenu('progress', 'Progress', progressLinks)}
+        {renderMenu('practice', 'Practice', Sparkles, PRACTICE_LINKS)}
+        {renderMenu('progress', 'Progress', TrendingUp, progressLinks)}
 
         {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
         <Link to="/spirit" className="nav-spirit nav-spirit-feature">
