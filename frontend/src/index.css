@@ -1108,18 +1108,18 @@ a:hover { color: var(--accent-hover); }
   font-size: var(--text-sm);
   font-weight: 500;
   text-decoration: none;
-  color: #b9760a;
-  background: #fef0d9;
-  border: 1px solid #f3d49a;
+  color: #c01f5b;
+  background: #fdeaf1;
+  border: 1px solid #f3c2d6;
   white-space: nowrap;
 }
 .spirit-need-chip:hover {
-  border-color: #e6b774;
+  border-color: #ec9bbb;
 }
 :root[data-theme='dark'] .spirit-need-chip {
-  color: #f5c151;
-  background: #382e12;
-  border-color: #574613;
+  color: #f49bc0;
+  background: #3a1626;
+  border-color: #5a2038;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-chip {
@@ -7958,17 +7958,17 @@ details[open] .meditate-disclosure-summary::before {
 
 /* --- Spirit-aware practices (ADR-0029) ------------------------------------------------------
    Each card shows which of the spirit's needs it feeds; the practices that fill its WEAKEST need
-   right now are highlighted. The "needed" accent is a warm amber (distinct from each card's own
-   hue), set on the page so the nudge banner + cards share it. */
+   right now are highlighted. The "needed" accent is a ROSE pop — cool-palette friendly (the amber
+   read like a warning against the cool UI), distinct from each card's hue + the violet primary. */
 .practices-page {
-  --needed-accent: #d97706;
+  --needed-accent: #d6396f;
 }
 :root[data-theme='dark'] .practices-page {
-  --needed-accent: #fbbf24;
+  --needed-accent: #f06a98;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) .practices-page {
-    --needed-accent: #fbbf24;
+    --needed-accent: #f06a98;
   }
 }
 
@@ -8034,7 +8034,7 @@ details[open] .meditate-disclosure-summary::before {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   background: var(--needed-accent);
-  color: #1a1205;
+  color: #fff;
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
