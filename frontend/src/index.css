@@ -1021,16 +1021,118 @@ a:hover { color: var(--accent-hover); }
   color: var(--accent-hover);
 }
 
-.app-user button {
+.app-user-menu-wrap {
+  position: relative;
+}
+
+/* The name · level chip is now the account-menu trigger (Settings + Log out live inside) — same
+   pill look as the old chip, plus a caret that flips when the menu opens. */
+.app-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0;
   width: auto;
-  padding: 0.4rem 0.8rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
   font-size: var(--text-sm);
-  background: var(--text-primary);
-  /* Invert against the high-contrast fill: the background is --text-primary (dark in
-     light mode, light in dark mode), so the label must be --bg-surface to stay readable
-     in both — the base button's white text was illegible on the light dark-mode fill. */
-  color: var(--bg-surface);
+  font-weight: 500;
+  cursor: pointer;
+}
+.app-user-trigger:hover {
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+.app-user-caret {
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+.app-user-trigger[aria-expanded='true'] .app-user-caret {
+  transform: rotate(180deg);
+}
+
+/* The account dropdown — Settings + Log out, right-aligned under the name chip. */
+.app-user-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 11rem;
+  padding: 0.4rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+}
+.app-user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.app-user-menu-item:hover {
+  background: var(--bg-surface-raised);
+}
+.app-user-menu-item--danger {
+  color: var(--error-text);
+}
+.app-user-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--error-text) 10%, var(--bg-surface));
+}
+
+/* Spirit-need reminder chip — a small amber pill showing what the companion wants most right now,
+   kept persistent in the header so you're reminded while browsing practices. */
+.spirit-need-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  color: #b9760a;
+  background: #fef0d9;
+  border: 1px solid #f3d49a;
+  white-space: nowrap;
+}
+.spirit-need-chip:hover {
+  border-color: #e6b774;
+}
+:root[data-theme='dark'] .spirit-need-chip {
+  color: #f5c151;
+  background: #382e12;
+  border-color: #574613;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-chip {
+    color: #f5c151;
+    background: #382e12;
+    border-color: #574613;
+  }
+}
+@media (max-width: 640px) {
+  /* On phones keep the chip compact — just the need icon. */
+  .spirit-need-chip-label {
+    display: none;
+  }
 }
 
 .settings {
@@ -2105,7 +2207,7 @@ form > button[type='submit'] {
 /* Solid (default-fill) buttons get the lift on hover. The :not() guards exclude the
    app's ghost / link / chip buttons, which set their own transparent background and
    shouldn't grow an accent lift. `.btn` opts out too — it owns its own neutral hover. */
-button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link) {
+button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link):not(.app-user-trigger):not(.app-user-menu-item) {
   transform: translateY(-1px);
   box-shadow: var(--glow-accent-hover);
   filter: brightness(1.04);

@@ -14,9 +14,13 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }))
 
-// The header self-fetches the level on mount; keep it pending so it never resolves in tests.
+// The header self-fetches the level + the spirit on mount; keep both pending so they never
+// resolve in tests (the spirit-need chip + level chip simply stay absent).
 vi.mock('../services/dashboard', () => ({
   dashboardService: { getStats: () => new Promise(() => {}) },
+}))
+vi.mock('../services/spirit', () => ({
+  spiritService: { get: () => new Promise(() => {}) },
 }))
 
 import AppHeader from './AppHeader'

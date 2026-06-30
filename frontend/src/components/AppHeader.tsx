@@ -19,12 +19,16 @@ import {
   Sparkles,
   TrendingUp,
   ChevronDown,
+  LogOut,
   Menu,
   X,
   type LucideProps,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
+import { spiritService } from '../services/spirit'
+import { NEED_COPY } from './Spirit'
+import type { SpiritNeedKey, SpiritState } from '../types'
 
 // A menu destination. Each carries a per-destination accent (light + dark shades) so the menu
 // items read as the app's soft colour-tinted pills, not plain text. icon + label are separate
@@ -91,6 +95,12 @@ export default function AppHeader() {
   const [openMenu, setOpenMenu] = useState<'practice' | 'progress' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const navRef = useRef<HTMLElement>(null)
+  // The companion's needs — drives the small header reminder chip ("what it prefers right now").
+  // Non-blocking + absent for a pathless spark / on failure.
+  const [spirit, setSpirit] = useState<SpiritState | null>(null)
+  // The account dropdown (Settings + Log out) that opens from the name chip.
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userRef = useRef<HTMLDivElement>(null)
 
   // The admin entry renders only for admins (is_admin from /auth/me). Non-admins never
   // see it; the backend also 403s every /admin/* call regardless of the UI. It joins the
@@ -109,10 +119,22 @@ export default function AppHeader() {
     return () => { ignore = true }
   }, [location.pathname])
 
-  // Close any open menu and the mobile nav on navigation.
+  // The spirit's needs for the header reminder chip — refetched on navigation so it stays current
+  // after tending / practicing. Non-blocking: a failure (or a pathless spark) just hides the chip.
+  useEffect(() => {
+    let ignore = false
+    spiritService
+      .get()
+      .then((s) => { if (!ignore) setSpirit(s) })
+      .catch(() => {})
+    return () => { ignore = true }
+  }, [location.pathname])
+
+  // Close any open menu, the mobile nav, and the account dropdown on navigation.
   useEffect(() => {
     setOpenMenu(null)
     setNavOpen(false)
+    setUserMenuOpen(false)
   }, [location.pathname])
 
   // Close the open menu on an outside click or Escape. One handler covers both dropdowns
@@ -132,6 +154,35 @@ export default function AppHeader() {
       document.removeEventListener('keydown', onKey)
     }
   }, [openMenu])
+
+  // The account dropdown lives outside the nav element, so it gets its own outside-click / Escape
+  // close handler keyed off the user wrapper.
+  useEffect(() => {
+    if (!userMenuOpen) return
+    function onDown(e: MouseEvent) {
+      if (userRef.current && !userRef.current.contains(e.target as Node)) setUserMenuOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setUserMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [userMenuOpen])
+
+  // The companion's most-depleted need = what it prefers right now (lowest factor). Only when it has
+  // a chosen path — a pathless spark has no preference yet, so the chip stays hidden.
+  const need: SpiritNeedKey | null =
+    spirit && spirit.path != null
+      ? (['nourished', 'rested', 'joyful'] as SpiritNeedKey[]).reduce((a, b) =>
+          spirit.needs[b].factor < spirit.needs[a].factor ? b : a,
+        )
+      : null
+  const NeedIcon = need ? NEED_COPY[need].icon : null
+  const spiritName = spirit?.name ?? 'Your spirit'
 
   async function handleLogout() {
     await logout()
@@ -213,16 +264,49 @@ export default function AppHeader() {
           {progressLinks.map(renderMenuLink)}
         </div>
       </nav>
-      <div className="app-user">
-        <Link to="/settings" className="nav-settings" title="Account settings">
-          <span>
-            {user?.username}
-            {level !== null && ` · Lv ${level}`}
-          </span>
-        </Link>
-        <button type="button" onClick={handleLogout}>
-          Log out
-        </button>
+      <div className="app-user" ref={userRef}>
+        {/* A persistent reminder of what the companion prefers right now — visible while you browse
+            practices. Links to the practices that help fill it. Hidden for a pathless spark. */}
+        {need && NeedIcon && (
+          <Link
+            to="/practices"
+            className="spirit-need-chip"
+            title={`${spiritName} wants more ${NEED_COPY[need].label.toLowerCase()} right now — these practices help`}
+          >
+            <NeedIcon size={15} strokeWidth={1.9} aria-hidden="true" />
+            <span className="spirit-need-chip-label">Wants {NEED_COPY[need].label}</span>
+          </Link>
+        )}
+        <div className="app-user-menu-wrap">
+          <button
+            type="button"
+            className="app-user-trigger"
+            aria-haspopup="true"
+            aria-expanded={userMenuOpen}
+            aria-controls="app-user-menu"
+            onClick={() => setUserMenuOpen((o) => !o)}
+          >
+            <span>
+              {user?.username}
+              {level !== null && ` · Lv ${level}`}
+            </span>
+            <ChevronDown size={14} strokeWidth={2} className="app-user-caret" aria-hidden="true" />
+          </button>
+          {userMenuOpen && (
+            <div id="app-user-menu" className="app-user-menu">
+              <Link to="/settings" className="app-user-menu-item">
+                <Settings size={16} strokeWidth={1.75} aria-hidden="true" /> Settings
+              </Link>
+              <button
+                type="button"
+                className="app-user-menu-item app-user-menu-item--danger"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} strokeWidth={1.75} aria-hidden="true" /> Log out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )
