@@ -12,9 +12,9 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-// Filled lucide Hearts (a few warm tints) for the gentle drift of hearts that lands with the reward —
-// SVG, not emoji, so the flourish matches the app's craft (mirrors EncouragementNote's heart).
-const HEART_TINTS = ['#e0729a', '#d9a441', '#c4744f', '#bd6b6b']
+// Filled lucide Hearts (a few cool-leaning tints) for the gentle drift of hearts that lands with the
+// reward — SVG, not emoji, so the flourish matches the app's craft (mirrors EncouragementNote's heart).
+const HEART_TINTS = ['#ec4899', '#6a5cff', '#06b6d4', '#f59e0b']
 const heartSvg = (fill: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" ` +
   `fill="${fill}" stroke="${fill}" stroke-width="1.75" stroke-linecap="round" ` +

@@ -5,17 +5,17 @@ import type { ComponentType } from 'react'
 import { Brain, Wind, HandHeart, NotebookPen, Star, type LucideProps } from 'lucide-react'
 import type { MeditationType, Mood } from '../types'
 
-// The four core activities — all drawn from the Warm Sanctuary family so they
-// read as one earthy set (no cool teal/sky/violet/indigo). Mirrors the soft nav
-// tints in index.css and extends them to gratitude/journal.
+// The four core activities — each its own cool-leaning bright colour so they read
+// as one modern Cool Electric set. Mirrors the soft nav tints in index.css and
+// extends them to gratitude/journal.
 export type Activity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
 
 export const ACTIVITY_COLORS: Record<Activity, string> = {
-  meditate: '#3a7d6f', // warm teal-green
-  breathe: '#3d8597', // dusty warm teal
-  gratitude: '#d9a441', // amber-gold
-  journal: '#9a6b9c', // warm mauve
-  custom: '#c4744f', // clay — user-defined habits
+  meditate: '#6a5cff', // electric indigo (the hero accent)
+  breathe: '#06b6d4', // cyan
+  gratitude: '#f59e0b', // amber — the warm pop in a cool set
+  journal: '#3b82f6', // blue
+  custom: '#ec4899', // pink — user-defined habits
 }
 
 // The single source of truth for how an activity reads: icon + label + colour.
@@ -33,15 +33,15 @@ export const ACTIVITY_META: Record<Activity, { icon: ActivityIcon; label: string
   custom: { icon: Star, label: 'Custom', color: ACTIVITY_COLORS.custom },
 }
 
-// Meditation session types — same warm palette used by the session-log cards.
+// Meditation session types — same cool-leaning palette used by the session-log cards.
 export const TYPE_COLORS: Record<MeditationType, string> = {
-  mindfulness: '#3a7d6f', // warm teal-green
-  body_scan: '#9a6b9c', // warm mauve
-  walking: '#d9a441', // amber-gold
-  loving_kindness: '#bd6b6b', // dusty rose
-  resonance_breathing: '#3d8597', // dusty warm teal
-  energizing_breathing: '#c2410c', // terracotta
-  other: '#a89a87', // warm taupe-grey
+  mindfulness: '#6a5cff', // electric indigo
+  body_scan: '#8b5cf6', // violet
+  walking: '#10b981', // emerald
+  loving_kindness: '#ec4899', // pink
+  resonance_breathing: '#06b6d4', // cyan
+  energizing_breathing: '#f59e0b', // amber
+  other: '#94a3b8', // cool slate-grey
 }
 
 // Display labels for each meditation type — the single source of truth so the
@@ -58,25 +58,25 @@ export const TYPE_LABELS: Record<MeditationType, string> = {
   other: 'Other',
 }
 
-// Journal moods, grouped loosely by sentiment — all within the warm Sanctuary
-// family. Pleasant moods stay bright/warm, neutral is a warm taupe, and harder
-// moods take muted earthy tones (never alarm-red, never cool indigo).
+// Journal moods, grouped loosely by sentiment — a cool-leaning, vivid Cool Electric
+// set. Pleasant moods read bright; neutral is a cool slate; harder moods take cooler,
+// quieter tones. Tuned so no two are confusable.
 export const MOOD_COLORS: Record<Mood, string> = {
-  calm: '#3a7d6f',     // warm teal-green
-  content: '#6f9460',  // sage
-  focused: '#3d8597',  // dusty warm teal
-  energized: '#d9a441', // amber-gold
-  grateful: '#bd6b6b',  // dusty rose
-  hopeful: '#8aab6a',   // light moss — forward-looking warmth
-  excited: '#e0a83c',   // warm gold — bright, upbeat
-  peaceful: '#7fb3a8',  // soft warm teal — soft and still
-  neutral: '#a89a87',   // warm taupe
-  restless: '#d97746',  // warm terracotta-orange
-  anxious: '#9a6b9c',   // warm mauve — heavy but not alarming
-  frustrated: '#a3866a', // muted walnut — earthy, not alarm-red
-  overwhelmed: '#8d6a78', // dusty plum-mauve — heavy but warm
-  tired: '#9b8c7a',     // dusty taupe
-  low: '#7a6b5e',       // muted brown — quiet, grounded
+  calm: '#06b6d4',     // cyan — still water
+  content: '#10b981',  // emerald
+  focused: '#6a5cff',  // electric indigo
+  energized: '#f59e0b', // amber — the warm pop
+  grateful: '#ec4899',  // pink
+  hopeful: '#22c55e',   // green — forward-looking
+  excited: '#f97316',   // orange — bright, upbeat
+  peaceful: '#2dd4bf',  // teal — soft and still
+  neutral: '#94a3b8',   // cool slate-grey
+  restless: '#fb7185',  // coral-rose — restive warmth
+  anxious: '#a855f7',   // purple — heavy but not alarming
+  frustrated: '#f43f5e', // rose-red — hot but cool-toned
+  overwhelmed: '#8b5cf6', // violet — heavy
+  tired: '#64748b',     // muted slate — quiet
+  low: '#475569',       // deep slate — grounded
 }
 
 // Mood emoji + label — the single source of truth for how a mood reads, shared by the
@@ -99,26 +99,26 @@ export const MOOD_META: Record<Mood, { emoji: string; label: string }> = {
   low: { emoji: '😔', label: 'Low' },
 }
 
-// A rotating palette for charts not keyed to a known concept — all warm/earthy,
-// led by clay so charts never open on a cool indigo.
-export const PALETTE = ['#c4744f', '#3a7d6f', '#d9a441', '#bd6b6b', '#3d8597', '#9a6b9c', '#6f9460']
+// A rotating palette for charts not keyed to a known concept — Cool Electric,
+// led by the electric indigo so charts open on the hero accent.
+export const PALETTE = ['#6a5cff', '#06b6d4', '#f59e0b', '#3b82f6', '#ec4899', '#10b981', '#8b5cf6']
 
 // Gratitude has ~37 categories — too many to hand-map. Derive a stable colour for each
 // from a curated palette by hashing the category key, so a given category is always the
-// same colour and the log reads as a spread of colours rather than all-amber.
+// same colour and the log reads as a spread of colours rather than all one hue.
 const GRATITUDE_PALETTE = [
-  '#d9a441', // amber-gold
-  '#3a7d6f', // warm teal-green
-  '#bd6b6b', // dusty rose
-  '#9a6b9c', // warm mauve
-  '#3d8597', // dusty warm teal
-  '#6f9460', // sage
-  '#d97746', // terracotta-orange
-  '#c4744f', // clay
-  '#8d6a78', // dusty plum
-  '#b45309', // terracotta-brown
-  '#7fb3a8', // soft warm teal
-  '#8aab6a', // moss
+  '#6a5cff', // electric indigo
+  '#06b6d4', // cyan
+  '#f59e0b', // amber
+  '#3b82f6', // blue
+  '#ec4899', // pink
+  '#10b981', // emerald
+  '#8b5cf6', // violet
+  '#0ea5e9', // sky
+  '#14b8a6', // teal
+  '#f97316', // orange
+  '#a855f7', // purple
+  '#22c55e', // green
 ]
 
 export const gratitudeColor = (category: string): string => {

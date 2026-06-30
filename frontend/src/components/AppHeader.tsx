@@ -32,33 +32,32 @@ type MenuLink = { to: string; icon: ComponentType<LucideProps>; label: string; l
 // Practice — the activities a beginner reaches for: things you *do* in a session. The most
 // approachable practices lead; the hub ("All practices") + "Log a session" sit lower for when
 // you want the full library or to record an offline sit. Depth practices live under "More".
-// Per-destination accents are all drawn from the Warm Sanctuary family: warm
-// teal-green / dusty teal / amber / clay / mauve / terracotta. Each pair is a
-// deep light-mode shade + a lifted dark-mode shade so the nav pills stay legible
-// in both themes — no cool indigo/sky/violet/hot-pink under the cream header.
+// Per-destination accents are all drawn from the Cool Electric family: indigo /
+// cyan / blue / violet / amber-pop / pink. Each pair is a deep light-mode shade +
+// a lifted dark-mode shade so the nav pills stay legible in both themes.
 const PRACTICE_LINKS: MenuLink[] = [
-  { to: '/paths', icon: Compass, label: 'Paths', light: '#0f766e', dark: '#5ec0b1' },
-  { to: '/breathe', icon: Wind, label: 'Breathe', light: '#3d8597', dark: '#7fc0d2' },
-  { to: '/meditate', icon: Brain, label: 'Meditate', light: '#3a7d6f', dark: '#6fb6a8' },
-  { to: '/gratitude', icon: HandHeart, label: 'Gratitude', light: '#b45309', dark: '#e3a83c' },
-  { to: '/journal', icon: NotebookPen, label: 'Journal', light: '#7d5a86', dark: '#c39fcc' },
-  { to: '/practices', icon: LayoutGrid, label: 'All practices', light: '#9a4f6f', dark: '#cf9bb4' },
-  { to: '/sessions/new', icon: Plus, label: 'Log a session', light: '#3a7d6f', dark: '#6fb6a8' },
+  { to: '/paths', icon: Compass, label: 'Paths', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/breathe', icon: Wind, label: 'Breathe', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/meditate', icon: Brain, label: 'Meditate', light: '#5847f0', dark: '#a8a2ff' },
+  { to: '/gratitude', icon: HandHeart, label: 'Gratitude', light: '#b9760a', dark: '#f5c151' },
+  { to: '/journal', icon: NotebookPen, label: 'Journal', light: '#2f6fe0', dark: '#82b4ff' },
+  { to: '/practices', icon: LayoutGrid, label: 'All practices', light: '#7c3aed', dark: '#c4b5fd' },
+  { to: '/sessions/new', icon: Plus, label: 'Log a session', light: '#5847f0', dark: '#a8a2ff' },
 ]
 
 // Progress — stats + account: things you *review* or configure.
 const PROGRESS_LINKS: MenuLink[] = [
-  { to: '/analytics', icon: ChartLine, label: 'Analytics', light: '#b25563', dark: '#dd9aa4' },
-  { to: '/timeline', icon: History, label: 'Timeline', light: '#3d8597', dark: '#7fc0d2' },
-  { to: '/settings', icon: Settings, label: 'Settings', light: '#6b5a48', dark: '#b3a08b' },
+  { to: '/analytics', icon: ChartLine, label: 'Analytics', light: '#d6396f', dark: '#f06a98' },
+  { to: '/timeline', icon: History, label: 'Timeline', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/settings', icon: Settings, label: 'Settings', light: '#545a73', dark: '#a6acc4' },
 ]
 
 // More — advanced / depth features grouped out of the primary menus so beginners see a leaner
 // nav. Pure grouping: every route here is unchanged, just relocated from Practice / Progress.
 const MORE_LINKS: MenuLink[] = [
-  { to: '/trataka', icon: Flame, label: 'Candle gazing', light: '#c2410c', dark: '#f59e5a' },
-  { to: '/goals', icon: Target, label: 'Goals', light: '#c4744f', dark: '#e0a06f' },
-  { to: '/schedule', icon: CalendarDays, label: 'Schedule', light: '#a86b3d', dark: '#d9a441' },
+  { to: '/trataka', icon: Flame, label: 'Candle gazing', light: '#d97706', dark: '#f5a742' },
+  { to: '/goals', icon: Target, label: 'Goals', light: '#6a5cff', dark: '#a8a2ff' },
+  { to: '/schedule', icon: CalendarDays, label: 'Schedule', light: '#2f6fe0', dark: '#82b4ff' },
 ]
 
 // Each menu's links render in two sibling containers (desktop dropdown + mobile inline list),
@@ -97,7 +96,7 @@ export default function AppHeader() {
   // see it; the backend also 403s every /admin/* call regardless of the UI. It joins the
   // Progress menu (stats + account).
   const progressLinks = user?.is_admin
-    ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, label: 'Admin', light: '#6b5a48', dark: '#b3a08b' }]
+    ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, label: 'Admin', light: '#545a73', dark: '#a6acc4' }]
     : PROGRESS_LINKS
 
   // Refetch on every navigation so the level stays live after earning XP.

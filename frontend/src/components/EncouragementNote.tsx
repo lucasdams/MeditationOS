@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
 import { Heart } from 'lucide-react'
 
-// A warm heart colour for the tap-heart button + the floating hearts — a soft rose-gold that
-// reads as affection (not the app's amber action accent). Used by the lucide Heart fill below.
-const HEART_COLOR = '#e0729a'
+// A pink heart colour for the tap-heart button + the floating hearts — reads as affection
+// (and as the Cool Electric pink pop, not the indigo action accent). Used by the Heart fill below.
+const HEART_COLOR = '#ec4899'
 
 // The lucide Heart, as a static SVG string for the imperatively-spawned floating hearts (created
-// outside React's tree). Filled + stroked in the warm heart colour so the flourish matches the
+// outside React's tree). Filled + stroked in the heart colour so the flourish matches the
 // SVG craft of the rest of the app — no system emoji. Mirrors lucide's 24×24 heart geometry.
 const FLOATING_HEART_SVG =
   `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" ` +
