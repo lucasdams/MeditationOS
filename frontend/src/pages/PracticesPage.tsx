@@ -96,6 +96,7 @@ const GROUPS: PracticeGroup[] = [
       { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
       { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
       { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#d6396f', dark: '#f06a98' },
+      { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
     ],
   },
   {
@@ -103,7 +104,6 @@ const GROUPS: PracticeGroup[] = [
     cards: [
       { to: '/gratitude', icon: HandHeart, name: 'Gratitude', desc: "Note what you're grateful for", kind: 'gratitude', light: '#b9760a', dark: '#f5c151' },
       { to: '/journal', icon: NotebookPen, name: 'Journal', desc: 'Reflect in writing', kind: 'journal', light: '#2f6fe0', dark: '#82b4ff' },
-      { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
     ],
   },
 ]
