@@ -30,6 +30,10 @@ const MESSAGES = [
   'Whatever today holds, you’ve got this.',
   'Progress isn’t always loud.',
   'Showing up is the hard part — and you did.',
+  'Every session quietly rewires your brain.',
+  'You’re building a habit, one breath at a time.',
+  'Show up enough and the habit carries you.',
+  'Each sit wires in a little more calm.',
 ]
 
 /**

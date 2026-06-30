@@ -14,6 +14,8 @@ export const GREETINGS = [
   'Soft mind, steady heart 🧘',
   'A little stillness goes a long way 🪷',
   'Wherever you go, there you are 😉',
+  'Showing up today rewires you a little',
+  'Build the habit, one breath at a time',
 ]
 
 // Mindful stand-ins for a bare "Loading…".

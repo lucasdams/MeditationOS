@@ -24,8 +24,9 @@ export default function LandingPage() {
         <h1>MeditationOS</h1>
         <p className="landing-tagline">
           A meditation app built around <strong>your practice data</strong> — not another
-          audio library. Track sessions, build streaks, breathe with intention, and watch
-          your progress grow.
+          audio library. Track sessions, build streaks, and breathe with intention. A few
+          minutes a day is how the practice <strong>rewires your brain</strong> and the
+          habit takes hold.
         </p>
         <div className="landing-cta">
           <Link to="/register" className="landing-primary">

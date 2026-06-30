@@ -31,6 +31,9 @@ const REWARD_PRAISES = [
   'A quiet gift to yourself.',
   'Every sit counts.',
   'Proud of you for this.',
+  'That’s another rep for your brain.',
+  'One more sit — the habit’s taking root.',
+  'You just strengthened the pathway.',
 ]
 
 /**
