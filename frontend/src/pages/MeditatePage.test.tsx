@@ -189,6 +189,17 @@ describe('guidedChoiceFromParams', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=stretching'))).toBe('stretching')
   })
 
+  it('maps the joy/heart guided ids (recall-good, self-compassion, savoring, celebrate-win)', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=recall-good'))).toBe('recall-good')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=self-compassion'))).toBe(
+      'self-compassion',
+    )
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=savoring'))).toBe('savoring')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=celebrate-win'))).toBe(
+      'celebrate-win',
+    )
+  })
+
   it('maps guided=none and style=mindfulness to unguided', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=none'))).toBe('none')
     expect(guidedChoiceFromParams(new URLSearchParams('style=mindfulness'))).toBe('none')
@@ -229,6 +240,15 @@ describe('MeditatePage — guided deep-link', () => {
     renderPageAt('/meditate?guided=stretching')
     const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
     expect(select.value).toBe('stretching')
+  })
+
+  it('pre-selects the joy/heart structures from their ?guided= params', () => {
+    for (const id of ['recall-good', 'self-compassion', 'savoring', 'celebrate-win'] as const) {
+      renderPageAt(`/meditate?guided=${id}`)
+      const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+      expect(select.value).toBe(id)
+      cleanup()
+    }
   })
 
   it('defaults to unguided (None) with no param', () => {

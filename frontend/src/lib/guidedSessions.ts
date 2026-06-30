@@ -15,6 +15,10 @@ export type GuidedStructureId =
   | 'name-feelings'
   | 'chakra-om'
   | 'stretching'
+  | 'recall-good'
+  | 'self-compassion'
+  | 'savoring'
+  | 'celebrate-win'
 
 export interface GuidedPhase {
   /** Short, calm cue text shown on screen. Keep to one or two lines. */
@@ -161,12 +165,94 @@ const STRETCHING: GuidedStructure = {
   ],
 }
 
+// ── Recount a good memory ─────────────────────────────────────────────────────
+// Relive a happy memory in vivid sensory detail and let its warmth return — a
+// joy-feeding savouring practice. The recall + sensory-detail phases carry the
+// most weight; settle and close phases are shorter.
+
+const RECALL_GOOD: GuidedStructure = {
+  id: 'recall-good',
+  label: 'Recount a good memory',
+  description: 'Relive a happy memory in vivid detail.',
+  phases: [
+    { cue: 'Settle in. Let your eyes close and your breath slow.', bell: false, weight: 1 },
+    { cue: 'Bring to mind a good memory — a time you felt happy, proud, loved, or at peace.', bell: true, weight: 2 },
+    { cue: 'Picture it clearly. Where were you? Who was there? What did you see and hear?', bell: true, weight: 3 },
+    { cue: 'Let the feeling of it return — notice it warming your chest, your face, your body.', bell: true, weight: 3 },
+    { cue: 'Stay with the best moment a little longer. Let yourself enjoy it fully.', bell: true, weight: 3 },
+    { cue: 'Know that this is yours. You carry it with you, always available.', bell: false, weight: 2 },
+    { cue: 'Gently return to the breath, keeping a little of that warmth.', bell: false, weight: 1 },
+  ],
+}
+
+// ── Self-compassion ───────────────────────────────────────────────────────────
+// Turn kindness inward (the self-compassion break): acknowledge a struggle,
+// recognise common humanity, and offer yourself the warmth you'd give a friend.
+// The acknowledgement + kindness phases carry the most weight.
+
+const SELF_COMPASSION: GuidedStructure = {
+  id: 'self-compassion',
+  label: 'Self-compassion',
+  description: 'Turn kindness inward — meet yourself like a good friend.',
+  phases: [
+    { cue: 'Settle in. Rest a hand on your heart if you like.', bell: false, weight: 1 },
+    { cue: "Bring to mind something you've been hard on yourself about.", bell: true, weight: 2 },
+    { cue: 'Acknowledge it gently: "This is hard. This is a moment of struggle."', bell: true, weight: 3 },
+    { cue: "Remember you're not alone — everyone struggles. This is part of being human.", bell: true, weight: 3 },
+    { cue: 'Offer yourself the kindness you\'d give a good friend: "May I be kind to myself."', bell: true, weight: 3 },
+    { cue: '"May I give myself what I need. May I be at ease."', bell: false, weight: 3 },
+    { cue: "Rest in that warmth. Return to the breath when you're ready.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Savor something good ──────────────────────────────────────────────────────
+// Slow down and soak in a simple good thing, letting the good feeling grow rather
+// than rushing past it (positive savouring). The holding + soaking phases carry the
+// most weight, with the central "let it grow" phase heaviest.
+
+const SAVORING: GuidedStructure = {
+  id: 'savoring',
+  label: 'Savor something good',
+  description: 'Slow down and soak in a simple good thing.',
+  phases: [
+    { cue: 'Settle in. Take a slow, easy breath.', bell: false, weight: 1 },
+    { cue: 'Bring to mind something good in your life right now — small is fine. A person, a comfort, a simple pleasure.', bell: true, weight: 3 },
+    { cue: 'Hold it in attention. Really let yourself appreciate it.', bell: true, weight: 3 },
+    { cue: "Notice what it gives you. Let the good feeling grow — don't rush past it.", bell: true, weight: 4 },
+    { cue: 'Soak it in. Let it land fully, the way you\'d savour a good meal.', bell: true, weight: 3 },
+    { cue: 'Carry this noticing with you. The good is always worth slowing down for.', bell: false, weight: 1 },
+  ],
+}
+
+// ── Celebrate a win ───────────────────────────────────────────────────────────
+// Acknowledge something you did — big or small — and let yourself feel the pride
+// without brushing past it. The acknowledgement + savour-the-pride phases carry the
+// most weight.
+
+const CELEBRATE_WIN: GuidedStructure = {
+  id: 'celebrate-win',
+  label: 'Celebrate a win',
+  description: 'Acknowledge something you did — big or small.',
+  phases: [
+    { cue: 'Settle in. Sit a little taller.', bell: false, weight: 1 },
+    { cue: 'Bring to mind something you did recently — finished, showed up for, or handled. Big or small, it counts.', bell: true, weight: 3 },
+    { cue: 'Don\'t brush past it. Let yourself fully acknowledge: "I did that."', bell: true, weight: 3 },
+    { cue: 'Notice any pride or satisfaction. Let it be okay to feel good about this.', bell: true, weight: 3 },
+    { cue: "Offer yourself a quiet word of credit — the way you'd cheer on a friend.", bell: true, weight: 2 },
+    { cue: 'Carry that sense of "I can" with you. Return to the breath.', bell: false, weight: 1 },
+  ],
+}
+
 export const GUIDED_STRUCTURES: GuidedStructure[] = [
   BODY_SCAN,
   LOVING_KINDNESS,
   NAME_FEELINGS,
   CHAKRA_OM,
   STRETCHING,
+  RECALL_GOOD,
+  SELF_COMPASSION,
+  SAVORING,
+  CELEBRATE_WIN,
 ]
 
 // ── Level gates ───────────────────────────────────────────────────────────────

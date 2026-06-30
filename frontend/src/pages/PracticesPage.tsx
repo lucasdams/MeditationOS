@@ -8,6 +8,10 @@ import {
   Brain,
   ScanLine,
   Heart,
+  HeartHandshake,
+  Album,
+  Coffee,
+  Trophy,
   HandHeart,
   NotebookPen,
   Flame,
@@ -56,9 +60,14 @@ const SIGNATURE_KINDS: Record<SpiritPath, PracticeKind[]> = {
 
 // The needs a practice fills for THIS spirit: its base need, plus `nourished` when it's the chosen
 // creature's signature practice. Pathless spark → no signature, so just the base need.
-function feedsFor(kind: PracticeKind, path: SpiritPath | null): SpiritNeedKey[] {
-  const base = BASE_NEED[kind]
-  if (path && SIGNATURE_KINDS[path].includes(kind)) return ['nourished', base]
+//
+// The base need is the card's explicit `feeds` override when set, else `BASE_NEED[kind]` — so a
+// `kind:'meditation'` heart practice (e.g. Loving-kindness) can feed `joyful` while STILL counting
+// as the heart path's signature (signature is `kind`-based, unchanged) → `['nourished','joyful']`
+// for a Vata spirit.
+function feedsFor(card: PracticeCard, path: SpiritPath | null): SpiritNeedKey[] {
+  const base = card.feeds ?? BASE_NEED[card.kind]
+  if (path && SIGNATURE_KINDS[path].includes(card.kind)) return ['nourished', base]
   return [base]
 }
 
@@ -76,6 +85,10 @@ interface PracticeCard {
   name: string
   desc: string
   kind: PracticeKind
+  // Optional per-card BASE-need override. When set it replaces `BASE_NEED[kind]` as the need this
+  // practice feeds (e.g. a heart/joy meditation feeds `joyful`, not `rested`). The signature logic
+  // is unaffected — it's still `kind`-based — so a `kind:'meditation'` override still nourishes Vata.
+  feeds?: SpiritNeedKey
   // Per-card accent (light + dark), mirroring the home tiles / nav pills.
   light: string
   dark: string
@@ -105,11 +118,23 @@ const GROUPS: PracticeGroup[] = [
     cards: [
       { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
       { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
-      { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', light: '#d6396f', dark: '#f06a98' },
       { to: '/meditate?guided=name-feelings', icon: SmilePlus, name: 'Name what you feel', desc: 'Notice a feeling, name it precisely, let it be', kind: 'meditation', light: '#2f6fe0', dark: '#82b4ff' },
       { to: '/meditate?guided=chakra-om', icon: AudioLines, name: 'Chakra Om', desc: 'Chant Om up through the seven chakras', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd', gate: 'chakra-om' },
       { to: '/meditate?guided=stretching', icon: Accessibility, name: 'Mindful stretching', desc: 'Gentle guided stretches — move with the breath', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
       { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
+    ],
+  },
+  {
+    // Heart practices — guided meditations (kind:'meditation', so they still nourish a Vata/heart
+    // spirit via the signature) that FEED JOY rather than rest. The per-card `feeds: 'joyful'`
+    // override reclassifies them away from the default rested base need.
+    title: 'Heart',
+    cards: [
+      { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
+      { to: '/meditate?guided=self-compassion', icon: HeartHandshake, name: 'Self-compassion', desc: 'Turn kindness inward — meet yourself like a good friend', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
+      { to: '/meditate?guided=recall-good', icon: Album, name: 'Recount a good memory', desc: 'Relive a happy memory in vivid detail', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
+      { to: '/meditate?guided=savoring', icon: Coffee, name: 'Savor something good', desc: 'Slow down and soak in a simple good thing', kind: 'meditation', feeds: 'joyful', light: '#16a34a', dark: '#4ade80' },
+      { to: '/meditate?guided=celebrate-win', icon: Trophy, name: 'Celebrate a win', desc: 'Acknowledge something you did — big or small', kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
     ],
   },
   {
@@ -204,7 +229,7 @@ export default function PracticesPage() {
           </h2>
           <div className="practices-grid">
             {group.cards.map((card) => {
-              const feeds = feedsFor(card.kind, spirit?.path ?? null)
+              const feeds = feedsFor(card, spirit?.path ?? null)
               const needed = need != null && feeds.includes(need)
               const CardIcon = card.icon
               const locked = card.gate != null && !isGuidedUnlocked(card.gate, level)

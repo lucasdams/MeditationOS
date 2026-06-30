@@ -20,6 +20,14 @@ describe('GUIDED_STRUCTURES', () => {
     expect(ids).toContain('stretching')
   })
 
+  it('exports the joy/heart structures (recall-good, self-compassion, savoring, celebrate-win)', () => {
+    const ids = GUIDED_STRUCTURES.map((s) => s.id)
+    expect(ids).toContain('recall-good')
+    expect(ids).toContain('self-compassion')
+    expect(ids).toContain('savoring')
+    expect(ids).toContain('celebrate-win')
+  })
+
   it('no longer exports the old "acceptance" id (renamed to name-feelings)', () => {
     const ids = GUIDED_STRUCTURES.map((s) => s.id)
     expect(ids).not.toContain('acceptance')
@@ -44,6 +52,10 @@ describe('getStructure', () => {
     expect(getStructure('name-feelings').id).toBe('name-feelings')
     expect(getStructure('chakra-om').id).toBe('chakra-om')
     expect(getStructure('stretching').id).toBe('stretching')
+    expect(getStructure('recall-good').id).toBe('recall-good')
+    expect(getStructure('self-compassion').id).toBe('self-compassion')
+    expect(getStructure('savoring').id).toBe('savoring')
+    expect(getStructure('celebrate-win').id).toBe('celebrate-win')
   })
 
   it('throws for an unknown id', () => {
@@ -63,6 +75,11 @@ describe('GUIDED_MIN_LEVEL + isGuidedUnlocked', () => {
     expect(isGuidedUnlocked('body-scan', null)).toBe(true)
     expect(isGuidedUnlocked('name-feelings', 1)).toBe(true)
     expect(isGuidedUnlocked('stretching', null)).toBe(true)
+    // The joy/heart structures carry no level gate.
+    expect(isGuidedUnlocked('recall-good', null)).toBe(true)
+    expect(isGuidedUnlocked('self-compassion', null)).toBe(true)
+    expect(isGuidedUnlocked('savoring', null)).toBe(true)
+    expect(isGuidedUnlocked('celebrate-win', null)).toBe(true)
   })
 
   it('a gated structure is locked below its minimum level', () => {
