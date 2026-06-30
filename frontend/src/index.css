@@ -38,6 +38,9 @@
   /* Accent — electric indigo/violet (the Cool Electric signature) */
   --accent: #6a5cff;
   --on-accent: #ffffff;             /* text/icon on an --accent fill (AA: white on #6a5cff = 4.58) */
+  /* A subtle always-visible halo behind the spirit figure: a tight dark rim + a soft drop so the
+     creature reads against a same-colour background and thin forms (the Kapha orbiting-atom) stay legible. */
+  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(20, 24, 43, 0.42)) drop-shadow(0 2px 3px rgba(20, 24, 43, 0.18));
   --accent-hover: #5847f0;
   --accent-subtle: #ecebff;         /* tinted background behind accent elements */
   --accent-border: #d2cdff;
@@ -238,6 +241,8 @@
   /* Accent — lifted electric violet so it pops against cool-dark surfaces */
   --accent: #8b87ff;
   --on-accent: #14182b;             /* dark ink on the light-violet fill (white would be 3.0 — fail) */
+  /* Dark theme: a LIGHT rim halo so the figure separates from cool-dark / same-colour backgrounds. */
+  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.4)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
   --accent-hover: #a09cff;
   --accent-subtle: #262a44;
   --accent-border: #3a3d66;
@@ -381,6 +386,7 @@
     --border-light: #232838;
     --accent: #8b87ff;
     --on-accent: #14182b;
+    --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.4)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
     --accent-hover: #a09cff;
     --accent-subtle: #262a44;
     --accent-border: #3a3d66;
@@ -3356,12 +3362,18 @@ button.today-action:disabled {
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
 /* The "3 starter choices" — three calm cards, each with its own dosha accent hue. An invitation,
    not a sale: soft surfaces, one clear choose button each. */
+/* The choose page compares the three doshas side by side, so it earns a wider container than the
+   standard 40rem dashboard — enough for all three creature cards to sit big AND in one row. */
+.dashboard.spirit-choose-page {
+  max-width: 48rem;
+}
+
 .spirit-picker-grid {
   list-style: none;
   margin: 0.5rem 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.75rem;
 }
 
@@ -3511,7 +3523,7 @@ button.today-action:disabled {
 /* The rendered creature on each pick card — its art, sized to sit calmly above the copy. */
 .spirit-choose-art {
   width: 100%;
-  max-width: 9rem;
+  max-width: 13rem;
   margin: 0 auto 0.2rem;
 }
 .spirit-choose-art .spirit-svg {
@@ -3603,7 +3615,7 @@ button.today-action:disabled {
    clobbering them. Calm and kind: even at the floor (0.4) the creature stays clearly visible and
    coloured, just muted — never grey-dead or alarming. A gentle transition smooths tier changes. */
 .spirit-creature {
-  filter: saturate(var(--spirit-vitality))
+  filter: var(--spirit-figure-pop) saturate(var(--spirit-vitality))
     brightness(calc(0.92 + 0.08 * var(--spirit-vitality)));
   transition: filter 0.6s ease;
 }

@@ -3649,9 +3649,9 @@ function StillnessForm({
                     rx={orx}
                     ry={ory}
                     fill="none"
-                    stroke={pal.accent}
-                    strokeWidth={1}
-                    opacity={0.7 * g}
+                    stroke={pal.deep}
+                    strokeWidth={1.2}
+                    opacity={0.85 * g}
                   />
                   {/* An electron dot riding the orbit (on the +x side of the ellipse). */}
                   <circle cx={40 + orx} cy={cy} r={1} fill={pal.glow} opacity={0.9 * g} />
