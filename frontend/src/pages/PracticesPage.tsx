@@ -11,6 +11,7 @@ import {
   HandHeart,
   NotebookPen,
   Flame,
+  ChevronRight,
   type LucideProps,
 } from 'lucide-react'
 import { spiritService } from '../services/spirit'
@@ -172,7 +173,10 @@ export default function PracticesPage() {
 
       {GROUPS.map((group) => (
         <section key={group.title} className="practices-group">
-          <h2 className="practices-group-title">{group.title}</h2>
+          <h2 className="practices-group-title">
+            {group.title}
+            <span className="practices-group-count">{group.cards.length}</span>
+          </h2>
           <div className="practices-grid">
             {group.cards.map((card) => {
               const feeds = feedsFor(card.kind, spirit?.path ?? null)
@@ -188,11 +192,9 @@ export default function PracticesPage() {
                     ['--card-fill-dark' as string]: card.dark,
                   }}
                 >
-                  {needed && (
-                    <span className="practice-card-needed">Your spirit needs this</span>
-                  )}
-                  <span className="practice-card-emoji" aria-hidden="true">
-                    <CardIcon size={22} strokeWidth={1.75} />
+                  {needed && <span className="practice-card-needed">Needs this</span>}
+                  <span className="practice-card-icon" aria-hidden="true">
+                    <CardIcon size={20} strokeWidth={1.9} />
                   </span>
                   <span className="practice-card-body">
                     <span className="practice-card-name">{card.name}</span>
@@ -203,6 +205,12 @@ export default function PracticesPage() {
                       ))}
                     </span>
                   </span>
+                  <ChevronRight
+                    className="practice-card-go"
+                    size={18}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
                 </Link>
               )
             })}
