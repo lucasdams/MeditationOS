@@ -207,8 +207,8 @@ function BiometricTrend() {
       <section className="analytics-section">
         <h2>Heart rate &amp; HRV</h2>
         <p className="muted">
-          No readings yet. Log a quick one after a sit, or{' '}
-          <Link to="/biometrics/new">add a resting reading</Link>, to start a trend.
+          No readings yet — whenever you’re ready. Log a quick one after a sit, or{' '}
+          <Link to="/biometrics/new">add a resting reading</Link>, to start a gentle trend. 💛
         </p>
       </section>
     )
@@ -487,7 +487,8 @@ export default function AnalyticsPage() {
       {data && data.total_sessions === 0 && data.moods.length === 0 && (
         <>
           <EmptyState>
-            Nothing to chart yet. Practice a few times and your patterns surface here.
+            Nothing to chart yet — and that’s perfectly okay. Practice a few times and your patterns
+            will gently surface here. No rush. 🌱
           </EmptyState>
           {/* Readings can exist independently of sessions, so still offer the trend. */}
           <BiometricTrend />

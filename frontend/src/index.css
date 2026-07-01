@@ -3101,6 +3101,36 @@ button.today-action:disabled {
   color: var(--text-secondary);
 }
 
+/* The plain-language explanation of what "Signature radiance" is, plus a small affordance to PREVIEW
+   the shimmer on the stage creature (hover/focus to hold, tap to toggle). */
+.spirit-setbonus-explain {
+  margin: 0 0 0.45rem;
+  max-width: 32rem;
+  line-height: 1.5;
+}
+.spirit-setbonus-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.spirit-setbonus-preview:hover,
+.spirit-setbonus-preview:focus-visible,
+.spirit-setbonus-preview.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
 /* The "3 starter choices" — three calm cards, each with its own dosha accent hue. An invitation,
    not a sale: soft surfaces, one clear choose button each. */
@@ -3389,8 +3419,8 @@ button.today-action:disabled {
 .spirit-aura--alive {
   transform-origin: center;
   transform-box: fill-box;
-  animation: spirit-aura-glow 4.6s ease-in-out infinite;
-  will-change: opacity, filter;
+  animation: spirit-aura-glow 5s ease-in-out infinite;
+  will-change: opacity, filter, transform;
 }
 
 /* The float is a gentle wandering drift — a bob with a little side-to-side sway and a slight tilt,
@@ -3413,17 +3443,20 @@ button.today-action:disabled {
   }
 }
 
-/* The aura's own up/down glow — a brightness/opacity swell whose depth scales with
-   `--spirit-glow`. Runs on the aura layer only, independent of the creature's float. */
+/* The aura's own up/down glow — it BREATHES: swelling bigger + brighter and then settling smaller +
+   softer on a slow ~5s breath cycle (a calm inhale/exhale), depth scaled by `--spirit-glow` (the
+   condition factor). Runs on the aura layer only, independent of the creature's float. */
 @keyframes spirit-aura-glow {
   0%,
   100% {
     opacity: calc(0.85 + 0.05 * var(--spirit-glow));
     filter: brightness(1);
+    transform: scale(calc(1 - 0.04 * var(--spirit-glow)));
   }
   50% {
     opacity: 1;
     filter: brightness(calc(1 + 0.22 * var(--spirit-glow)));
+    transform: scale(calc(1 + 0.08 * var(--spirit-glow)));
   }
 }
 
@@ -3596,6 +3629,118 @@ button.today-action:disabled {
 .spirit-hero--compact {
   gap: 0.1rem;
   margin: 0.25rem auto 1rem;
+}
+
+/* The big companion portrait that LEADS the Spirit page (Care / Collection tabs) — a generous,
+   full-width render so you actually see your creature when you come to look at it. */
+.spirit-portrait {
+  display: flex;
+  justify-content: center;
+  margin: 0.25rem auto 0.6rem;
+  width: 100%;
+}
+.spirit-portrait .spirit-svg {
+  width: 100%;
+  max-width: 280px;
+}
+
+/* The home-screen companion — rendered larger than the 140px base so it reads as the centrepiece
+   of the Today tab rather than a small badge. */
+.home-companion {
+  display: flex;
+  justify-content: center;
+}
+.home-companion .spirit-svg {
+  width: 100%;
+  max-width: 210px;
+}
+
+/* A pocket of warmth on the home — a gentle rotating affirmation + a heart to tap for a little
+   flourish of floating hearts. Low-stakes delight, on-brand with the never-punishing companion. */
+.encouragement-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  max-width: 30rem;
+  margin: 0.5rem auto 0.25rem;
+  padding: 0.3rem 0.6rem;
+  text-align: center;
+}
+.encouragement-message {
+  margin: 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--text-muted, #9a8a78);
+}
+.encouragement-heart {
+  position: relative;
+  flex: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0.15rem;
+  line-height: 1;
+  border-radius: 999px;
+}
+.encouragement-heart-glyph {
+  display: inline-block;
+  font-size: 1.2rem;
+  transition: transform 0.18s ease;
+}
+.encouragement-heart:hover .encouragement-heart-glyph,
+.encouragement-heart:focus-visible .encouragement-heart-glyph {
+  transform: scale(1.2) rotate(-6deg);
+}
+.encouragement-heart:active .encouragement-heart-glyph {
+  transform: scale(0.9);
+}
+.encouragement-hearts {
+  position: absolute;
+  left: 50%;
+  bottom: 55%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.floating-heart {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-size: 0.95rem;
+  animation: float-heart 1.6s ease-out forwards;
+  will-change: transform, opacity;
+}
+@keyframes float-heart {
+  0% {
+    transform: translate(-50%, 0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), -66px) scale(1.25);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-heart {
+    animation: float-heart-calm 0.9s ease-out forwards;
+  }
+  @keyframes float-heart-calm {
+    0% {
+      transform: translate(-50%, 0);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -16px);
+      opacity: 0;
+    }
+  }
 }
 
 .spirit-hero-art {
@@ -4311,10 +4456,34 @@ button.today-action:disabled {
   max-width: 54rem;
 }
 
+/* Redesigned Customize tab (creature on top, slots in a grid below — replaces the old 3-column
+   "dressing room" where the creature sat between cramped rails and covered them). */
+.spirit-customize-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto 1.1rem;
+}
+.spirit-customize-preview .spirit-stage-frame {
+  max-width: 22rem;
+}
+/* Every cosmetic slot is a card; auto-fit gives one column on narrow screens and 2–3 on wide,
+   so nothing is cramped and an opened slot just grows its own cell. */
+.spirit-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.55rem;
+  align-items: start;
+  margin-top: 0.4rem;
+}
+
+/* (legacy dressing-room layout — no longer rendered, kept harmless) */
 .spirit-customize {
   display: grid;
-  /* rails flex, the centre column is a fixed, comfortable stage width */
-  grid-template-columns: 1fr minmax(200px, 15rem) 1fr;
+  /* rails flex, the centre column is a generous stage so the companion reads bigger when you're
+     looking at / dressing it — but capped so the cosmetic rails keep usable width at narrower
+     desktop widths (a bigger stage trades directly against rail room in this 3-column layout). */
+  grid-template-columns: 1fr minmax(210px, 16.5rem) 1fr;
   gap: 1rem;
   align-items: start;
 }
@@ -4358,7 +4527,7 @@ button.today-action:disabled {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding: 1.25rem 1.25rem 1rem;
+  padding: 0.85rem 0.85rem 0.7rem;
   border-radius: 1.1rem;
   background:
     radial-gradient(
@@ -4380,7 +4549,7 @@ button.today-action:disabled {
 
 .spirit-stage-art .spirit-svg {
   width: 100%;
-  max-width: 200px;
+  max-width: 280px;
 }
 
 .spirit-stage-caption {
@@ -4425,7 +4594,7 @@ button.today-action:disabled {
     padding: 1rem 0.75rem 0.85rem;
   }
   .spirit-stage-art .spirit-svg {
-    max-width: 160px;
+    max-width: 230px;
   }
 }
 
@@ -4757,6 +4926,25 @@ button.today-action:disabled {
 }
 
 /* The gained-XP headline — the "score" that counts up. */
+/* A warm word of praise above the XP, and a host for the gentle hearts that drift up as the reward
+   lands (the .floating-heart float keyframe is shared with the home EncouragementNote). */
+.reward-praise {
+  margin: 0.35rem 0 0.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+.reward-hearts {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .reward-headline {
   position: relative;
   display: flex;

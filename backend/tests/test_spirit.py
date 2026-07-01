@@ -1555,9 +1555,9 @@ def test_owned_options_all_price_above_zero(client):
             assert spec["cost"] > 0, f"{slot}.{option} must cost > 0 to stay in the ledger"
 
 
-# Six worn-accessory cosmetics with attitude — three cool/edgy, three cutesy/girly. All universal
-# (no per_path), tiers 1-2, varied needs. Each must be a well-formed catalog entry, and one is
-# unlocked + equipped end to end to prove the slot accepts it.
+# Worn-accessory cosmetics with attitude — cool/edgy (shades, spiked collar, backwards cap, dark
+# star) + cutesy/girly (bow, tiara, heart clip). All universal (no per_path), tiers 1-2, varied
+# needs. Each must be a well-formed catalog entry, and one is unlocked + equipped end to end.
 _ATTITUDE_ACCESSORIES = {
     "shades": "rested",
     "spiked_collar": "joyful",
@@ -1565,11 +1565,12 @@ _ATTITUDE_ACCESSORIES = {
     "bow": "joyful",
     "tiara": "joyful",
     "heart_clip": "joyful",
+    "dark_star": "joyful",
 }
 
 
 def test_attitude_accessories_are_in_the_catalog(client):
-    """The six worn-accessory cosmetics appear in the accessory slot, each a well-formed
+    """The attitude worn-accessory cosmetics appear in the accessory slot, each a well-formed
     `{cost, unlock_level, tier, need}` — universal (no per_path), tier 1-2, with the expected
     need and a positive cost."""
     options = SPIRIT_COSMETICS_CATALOG["accessory"]

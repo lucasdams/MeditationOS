@@ -186,6 +186,7 @@ export const OPTION_LABEL: Record<string, string> = {
   flower: 'Flower',
   scarf: 'Scarf',
   star: 'Star',
+  dark_star: 'Dark star',
   meadow: 'Meadow',
   dusk: 'Dusk',
   night: 'Night sky',
@@ -1338,6 +1339,36 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
         opacity={0.95 * g}
         aria-hidden="true"
       />
+    )
+  }
+  if (accessory === 'dark_star') {
+    // A brooding five-point DARK star above the head — near-black fill with a glowing violet edge,
+    // a soft violet aura, and a couple of little sparks. The edgy counterpart to the gold `star`
+    // (and a proper 10-point star shape, not the pentagon the gold one draws).
+    const sx = 40
+    const sy = topY - 5
+    const pts = Array.from({ length: 10 }, (_, k) => {
+      const a = -Math.PI / 2 + (k / 10) * Math.PI * 2
+      const rr = k % 2 === 0 ? 3.9 : 1.6
+      return `${(sx + Math.cos(a) * rr).toFixed(2)},${(sy + Math.sin(a) * rr).toFixed(2)}`
+    })
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A soft violet aura blooming behind the star. */}
+        <circle cx={sx} cy={sy} r={6.5} fill="#7c3aed" opacity={0.22} />
+        {/* The dark star body with a glowing violet edge. */}
+        <polygon
+          points={pts.join(' ')}
+          fill="#1e1b2e"
+          stroke="#a855f7"
+          strokeWidth={0.9}
+          strokeLinejoin="round"
+        />
+        {/* A faint inner glint + two little violet sparks. */}
+        <circle cx={sx} cy={sy} r={0.7} fill="#c4b5fd" opacity={0.85} />
+        <circle cx={sx + 6} cy={sy - 4.5} r={0.6} fill="#a855f7" opacity={0.85} />
+        <circle cx={sx - 5.5} cy={sy - 1} r={0.5} fill="#c4b5fd" opacity={0.75} />
+      </g>
     )
   }
   if (accessory === 'berry_sprig') {

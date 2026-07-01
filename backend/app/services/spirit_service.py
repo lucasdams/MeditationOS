@@ -580,6 +580,9 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "berry_sprig": {"cost": 45, "unlock_level": 2, "need": NOURISHED, "tier": 1},
         "scarf": {"cost": 45, "unlock_level": 2, "need": RESTED, "tier": 2},
         "star": {"cost": 60, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        # A brooding dark five-point star with a violet glow — the edgy counterpart to the gold
+        # `star` (tier 2).
+        "dark_star": {"cost": 70, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         # A small jingle bell on a cord — a cheerful little chime (tier 2).
         "tiny_bell": {"cost": 85, "unlock_level": 4, "need": JOYFUL, "tier": 2},
         # Small branching antlers — a calm, woodland crown of rest (tier 3).
