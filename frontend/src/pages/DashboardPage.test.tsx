@@ -120,11 +120,18 @@ beforeEach(() => {
   listPaths.mockReset()
   // Default: no mood logged today → the home shows the "How do you feel?" prompt.
   listMoodLogs.mockResolvedValue([])
-  // Default: not enrolled in any path → the generic breathe CTA leads.
+  // Default: not enrolled in any path → the recommended-practice CTA leads.
   listPaths.mockResolvedValue({ paths: [] })
+  // Pin the clock to the afternoon so the time-of-day recommendation is deterministic — the
+  // afternoon default is the app's long-standing "take a slow minute to breathe" invite, which
+  // the non-path CTA tests assert. (Only getHours is stubbed, so timers/waitFor stay real.)
+  vi.spyOn(Date.prototype, 'getHours').mockReturnValue(14)
   capturedLevelCardProps.length = 0
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe('DashboardPage — quick-action feature tiles', () => {
   // The tiles now live on the Today tab, which renders once stats load — so resolve stats
