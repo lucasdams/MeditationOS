@@ -101,10 +101,13 @@ describe('PathsPage — data-view states', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't load the paths/i)
 
-    // Retrying re-runs the fetch; this time it resolves with one path.
+    // Retrying re-runs the fetch; this time it resolves with one path (a not-enrolled card,
+    // whose whole surface is the "Start <title>" enroll button).
     listPaths.mockResolvedValueOnce({ paths: [notEnrolled] })
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
-    expect(await screen.findByRole('heading', { name: /your first 7 days/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /start your first 7 days/i }),
+    ).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no paths', async () => {
@@ -115,12 +118,23 @@ describe('PathsPage — data-view states', () => {
 })
 
 describe('PathsPage — not enrolled', () => {
-  it('offers a "Start this path" button that calls enroll and re-renders the enrolled path', async () => {
+  it('renders the not-enrolled path as a card (icon chip + blurb + progress line)', async () => {
+    listPaths.mockResolvedValue({ paths: [notEnrolled] })
+    renderPage()
+
+    // The card head: title, blurb, and the calm not-enrolled progress line.
+    expect(await screen.findByText(/your first 7 days/i)).toBeInTheDocument()
+    expect(screen.getByText(/a gentle week to build the habit/i)).toBeInTheDocument()
+    expect(screen.getByText(/7 days · a gentle place to begin/i)).toBeInTheDocument()
+  })
+
+  it('the whole card is an enroll button that calls enroll and re-renders the enrolled path', async () => {
     listPaths.mockResolvedValue({ paths: [notEnrolled] })
     enrollPath.mockResolvedValue(enrolled)
     renderPage()
 
-    const startBtn = await screen.findByRole('button', { name: /start this path/i })
+    // The not-enrolled card is itself the enroll affordance (aria-label "Start <title>").
+    const startBtn = await screen.findByRole('button', { name: /start your first 7 days/i })
     fireEvent.click(startBtn)
 
     // The service was called with the path id…
@@ -129,7 +143,7 @@ describe('PathsPage — not enrolled', () => {
     // …and once it resolves the enrolled day list renders (the current day's "Start" appears).
     expect(await screen.findByRole('link', { name: /start day 2/i })).toBeInTheDocument()
     // The enroll button is gone now that we're enrolled.
-    expect(screen.queryByRole('button', { name: /start this path/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /start your first 7 days/i })).not.toBeInTheDocument()
   })
 })
 

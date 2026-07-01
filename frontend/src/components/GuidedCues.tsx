@@ -24,7 +24,7 @@ import { useEffect, useRef } from 'react'
 import {
   buildSchedule,
   currentPhaseIndex,
-  getStructure,
+  tryGetStructure,
   type GuidedStructureId,
   type PhaseWindow,
 } from '../lib/guidedSessions'
@@ -78,14 +78,17 @@ export default function GuidedCues({
   bellsOn,
   speechOn,
 }: GuidedCuesProps) {
-  const structure = getStructure(structureId)
+  // Resolve the structure WITHOUT throwing: an unknown id (shouldn't happen — the
+  // caller validates upstream) renders nothing rather than crashing the whole tree
+  // mid-render. All hooks below run unconditionally (see the early return after them).
+  const structure = tryGetStructure(structureId)
 
   // Build the schedule once per (structureId, durationSec) pair. durationSec
   // is locked at start time and won't change mid-sit, so this is stable.
   const scheduleRef = useRef<PhaseWindow[]>([])
   const scheduleKeyRef = useRef('')
   const scheduleKey = `${structureId}:${durationSec}`
-  if (scheduleKeyRef.current !== scheduleKey) {
+  if (structure && scheduleKeyRef.current !== scheduleKey) {
     scheduleKeyRef.current = scheduleKey
     scheduleRef.current = buildSchedule(structure, durationSec)
   }
@@ -95,7 +98,7 @@ export default function GuidedCues({
   // the closing phase once they pass the 20-minute reference window.
   const loop = durationSec === 0
   const phaseIdx = currentPhaseIndex(schedule, elapsed, loop)
-  const phase = structure.phases[phaseIdx]
+  const phase = structure?.phases[phaseIdx]
 
   // Latest speechOn in a ref so the per-phase effect reads the current value
   // without re-firing on toggle changes (it only acts on phase transitions).
@@ -109,12 +112,22 @@ export default function GuidedCues({
   // - Spoken guidance off → ring the bell if the phase asks for one.
   // The very first phase (lastPhaseIdxRef === -1) is spoken but not belled — the
   // page already rings an opening bell on Start, matching the prior behaviour.
+  //
+  // Open-ended (looping) sits wrap the schedule back to phase 0 every ~20 min. That
+  // wrap is a phase DECREASE (last → 0), not a genuine forward advance, so we do NOT
+  // re-speak/re-bell it — otherwise the settle/"eyes close" opening cue would fire
+  // again mid-sit. We only act on a FORWARD advance (phaseIdx > last); the visual
+  // progress still cycles independently. Single-fire per genuine transition.
   const lastPhaseIdxRef = useRef(-1)
   useEffect(() => {
-    if (phaseIdx === lastPhaseIdxRef.current) return
-    const isFirst = lastPhaseIdxRef.current === -1
+    const prev = lastPhaseIdxRef.current
+    if (phaseIdx === prev) return
+    const isFirst = prev === -1
+    // A backwards move (only the loop wrap, last → 0) is not a real transition:
+    // update the tracker but stay silent so the opening phase isn't re-announced.
+    const isForward = isFirst || phaseIdx > prev
     lastPhaseIdxRef.current = phaseIdx
-    if (!phase) return
+    if (!phase || !isForward) return
 
     if (speechOnRef.current) {
       speak(phase.cue)
@@ -148,7 +161,10 @@ export default function GuidedCues({
     return () => cancelSpeech()
   }, [])
 
-  if (!phase) return null
+  // Unknown structure (structure == null) or no active phase → render nothing (the
+  // page falls back to the plain timer). Guarding both narrows `structure` to
+  // non-null for the JSX below.
+  if (!structure || !phase) return null
 
   // Progress within the current phase (0..1) for the subtle progress indicator.
   // Wrap elapsed over the reference span for open-ended sits so the bar tracks the

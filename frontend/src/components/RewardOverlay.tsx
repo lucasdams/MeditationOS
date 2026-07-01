@@ -228,7 +228,17 @@ export default function RewardOverlay({
           <ul className={`reward-breakdown${reduceMotion ? '' : ' reward-breakdown--stagger'}`}>
             {breakdown.map((line, i) => (
               <li key={line.label} style={reduceMotion ? undefined : { '--reward-stagger-i': i } as React.CSSProperties}>
-                <span>{line.label}</span>
+                <span className="reward-breakdown-label">
+                  {line.icon && (
+                    <line.icon
+                      className="reward-breakdown-icon"
+                      size={15}
+                      strokeWidth={1.75}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {line.label}
+                </span>
                 <span className="reward-breakdown-xp">+{line.xp}</span>
               </li>
             ))}

@@ -18,13 +18,24 @@ import {
   SmilePlus,
   AudioLines,
   Accessibility,
+  Crosshair,
+  BedDouble,
+  Unplug,
+  Repeat,
+  Footprints,
+  Dumbbell,
   Lock,
   ChevronRight,
+  Search,
+  X,
+  Compass,
+  Plus,
   type LucideProps,
 } from 'lucide-react'
 import { spiritService } from '../services/spirit'
 import { dashboardService } from '../services/dashboard'
 import { GUIDED_MIN_LEVEL, isGuidedUnlocked } from '../lib/guidedSessions'
+import { weakestNeed } from '../lib/spiritNeeds'
 import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
 import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
 
@@ -71,13 +82,6 @@ function feedsFor(card: PracticeCard, path: SpiritPath | null): SpiritNeedKey[] 
   return [base]
 }
 
-// The spirit's weakest need (what it needs most) — the lowest 0..1 factor wins, matching the
-// backend's "overall condition = weakest need".
-function weakestNeed(s: SpiritState): SpiritNeedKey {
-  const keys: SpiritNeedKey[] = ['nourished', 'rested', 'joyful']
-  return keys.reduce((a, b) => (s.needs[b].factor < s.needs[a].factor ? b : a))
-}
-
 interface PracticeCard {
   to: string
   // A lucide line-icon component (consistent line icons, no system emoji).
@@ -114,14 +118,27 @@ const GROUPS: PracticeGroup[] = [
     ],
   },
   {
+    // Meditation — attention / mind practices (kind:'meditation', feed Rest).
     title: 'Meditation',
     cards: [
       { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/meditate?guided=focus', icon: Crosshair, name: 'Focused attention', desc: 'Single-pointed concentration — steady a scattered mind', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
       { to: '/meditate?guided=name-feelings', icon: SmilePlus, name: 'Name what you feel', desc: 'Notice a feeling, name it precisely, let it be', kind: 'meditation', light: '#2f6fe0', dark: '#82b4ff' },
       { to: '/meditate?guided=chakra-om', icon: AudioLines, name: 'Chakra Om', desc: 'Chant Om up through the seven chakras', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd', gate: 'chakra-om' },
-      { to: '/meditate?guided=stretching', icon: Accessibility, name: 'Mindful stretching', desc: 'Gentle guided stretches — move with the breath', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
+      { to: '/meditate?guided=mantra', icon: Repeat, name: 'Mantra', desc: 'A word to rest the mind on — an anchor for a busy head', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
+      { to: '/meditate?guided=just-sit', icon: Unplug, name: 'Dopamine reset', desc: 'Sit with nothing — rebuild your tolerance for stillness', kind: 'meditation', light: '#0d9488', dark: '#5eead4' },
       { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
+    ],
+  },
+  {
+    // Body — somatic practices (kind:'meditation', feed Rest): scanning, moving, releasing.
+    title: 'Body',
+    cards: [
+      { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, name: 'Yoga Nidra', desc: 'Non-sleep deep rest — lie back and let the body unwind', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
+      { to: '/meditate?guided=pmr', icon: Dumbbell, name: 'Muscle release', desc: 'Tense and release, part by part, to melt tension out', kind: 'meditation', light: '#2563eb', dark: '#93c5fd' },
+      { to: '/meditate?guided=stretching', icon: Accessibility, name: 'Mindful stretching', desc: 'Gentle guided stretches — move with the breath', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
+      { to: '/meditate?guided=walking', icon: Footprints, name: 'Mindful walking', desc: 'Attention in motion — for when sitting is too much', kind: 'meditation', light: '#0284c7', dark: '#7dd3fc' },
     ],
   },
   {
@@ -163,6 +180,8 @@ export default function PracticesPage() {
   // level 5). Fetched non-blocking like the header; null until known, which keeps
   // gated cards locked (fail safe) rather than flashing them open then closing.
   const [level, setLevel] = useState<number | null>(null)
+  // The live filter query — matched case-insensitively against each card's name + description.
+  const [query, setQuery] = useState('')
   const reducedMotion = prefersReducedMotion()
 
   useEffect(() => {
@@ -184,7 +203,23 @@ export default function PracticesPage() {
   // Only guide by needs for a creature that has chosen a path. A pathless spark shows the practices
   // + their generic feeds, but no "needs now" highlight (ADR-0031: the spirit is always alive).
   const guiding = spirit != null && spirit.path != null
-  const need = guiding ? weakestNeed(spirit) : null
+  const need = guiding ? weakestNeed(spirit.needs) : null
+
+  // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc).
+  // With no query every group renders in full; with one, empty groups drop out and a gentle empty
+  // state shows if nothing at all matches. Filtering is presentational — it never touches the
+  // spirit-need highlight, which still keys off the (unfiltered) weakest need.
+  const q = query.trim().toLowerCase()
+  const filteredGroups = q
+    ? GROUPS.map((group) => ({
+        ...group,
+        cards: group.cards.filter(
+          (card) =>
+            card.name.toLowerCase().includes(q) || card.desc.toLowerCase().includes(q),
+        ),
+      })).filter((group) => group.cards.length > 0)
+    : GROUPS
+  const noMatches = q !== '' && filteredGroups.length === 0
 
   return (
     <main id="main-content" className="dashboard practices-page">
@@ -195,6 +230,73 @@ export default function PracticesPage() {
         <h1>Practices</h1>
         <p className="page-subtitle">Every way to practice — and what it gives your spirit.</p>
       </header>
+
+      {/* Programs — the two non-technique destinations reachable from here (the old nav dropdown is
+          gone): a multi-day guided path, and logging a past session. Navigation, not techniques, so
+          they sit in their own quiet row above the practice groups. */}
+      <nav className="practices-programs" aria-label="Programs">
+        <Link to="/paths" className="practices-program-link">
+          <span className="practices-program-icon" aria-hidden="true">
+            <Compass size={18} strokeWidth={1.9} />
+          </span>
+          <span className="practices-program-body">
+            <span className="practices-program-name">Guided paths</span>
+            <span className="practices-program-desc">A day-by-day course to settle in</span>
+          </span>
+          <ChevronRight
+            className="practices-program-go"
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </Link>
+        <Link to="/sessions/new" className="practices-program-link">
+          <span className="practices-program-icon" aria-hidden="true">
+            <Plus size={18} strokeWidth={1.9} />
+          </span>
+          <span className="practices-program-body">
+            <span className="practices-program-name">Log a past session</span>
+            <span className="practices-program-desc">Record a practice you did offline</span>
+          </span>
+          <ChevronRight
+            className="practices-program-go"
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </Link>
+      </nav>
+
+      {/* Calm live search — filters the cards below as you type. Escape or the × clears it. */}
+      <div className="practices-search">
+        <Search
+          className="practices-search-icon"
+          size={18}
+          strokeWidth={1.9}
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          className="practices-search-input"
+          value={query}
+          placeholder="Search practices…"
+          aria-label="Search practices"
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setQuery('')
+          }}
+        />
+        {query !== '' && (
+          <button
+            type="button"
+            className="practices-search-clear"
+            aria-label="Clear search"
+            onClick={() => setQuery('')}
+          >
+            <X size={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+        )}
+      </div>
 
       {guiding && need && (
         <section className="practices-spirit-nudge" aria-live="polite">
@@ -221,7 +323,13 @@ export default function PracticesPage() {
         </section>
       )}
 
-      {GROUPS.map((group) => (
+      {noMatches && (
+        <p className="practices-empty" role="status">
+          No practices match “{query.trim()}”.
+        </p>
+      )}
+
+      {filteredGroups.map((group) => (
         <section key={group.title} className="practices-group">
           <h2 className="practices-group-title">
             {group.title}

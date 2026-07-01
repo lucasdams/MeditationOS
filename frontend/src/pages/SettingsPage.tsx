@@ -665,8 +665,7 @@ export default function SettingsPage() {
           ))}
         </select>
         <p className="muted settings-theme-now">
-          Now showing: {SEASONS.find((s) => s.value === season)?.emoji}{' '}
-          {SEASONS.find((s) => s.value === season)?.label}
+          Now showing: {SEASONS.find((s) => s.value === season)?.label}
           {seasonPref === 'auto' && ' (auto)'} · {dayPhase}
         </p>
         <label className="settings-check">

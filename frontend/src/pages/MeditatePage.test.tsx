@@ -38,7 +38,8 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 vi.mock('../components/BiometricCapture', () => ({ default: () => null }))
-vi.mock('../lib/sfx', () => ({ playBell: vi.fn() }))
+const mockPlayBell = vi.fn()
+vi.mock('../lib/sfx', () => ({ playBell: (...a: unknown[]) => mockPlayBell(...a) }))
 // Speech is mocked so the toggle renders as "supported" by default (jsdom has no
 // speechSynthesis). `speechAvailableValue` lets a test flip the supported branch.
 const speechState = { available: true }
@@ -200,6 +201,15 @@ describe('guidedChoiceFromParams', () => {
     )
   })
 
+  it('maps the new mind/body guided ids (focus, yoga-nidra, just-sit, mantra, walking, pmr)', () => {
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=focus'))).toBe('focus')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=yoga-nidra'))).toBe('yoga-nidra')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=just-sit'))).toBe('just-sit')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=mantra'))).toBe('mantra')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=walking'))).toBe('walking')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=pmr'))).toBe('pmr')
+  })
+
   it('maps guided=none and style=mindfulness to unguided', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=none'))).toBe('none')
     expect(guidedChoiceFromParams(new URLSearchParams('style=mindfulness'))).toBe('none')
@@ -244,6 +254,15 @@ describe('MeditatePage — guided deep-link', () => {
 
   it('pre-selects the joy/heart structures from their ?guided= params', () => {
     for (const id of ['recall-good', 'self-compassion', 'savoring', 'celebrate-win'] as const) {
+      renderPageAt(`/meditate?guided=${id}`)
+      const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+      expect(select.value).toBe(id)
+      cleanup()
+    }
+  })
+
+  it('pre-selects the new mind/body structures from their ?guided= params', () => {
+    for (const id of ['focus', 'yoga-nidra', 'just-sit', 'mantra', 'walking', 'pmr'] as const) {
       renderPageAt(`/meditate?guided=${id}`)
       const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
       expect(select.value).toBe(id)
@@ -297,6 +316,21 @@ describe('MeditatePage — Chakra Om level gate', () => {
     expect(option.disabled).toBe(true)
     expect(option.textContent).toMatch(/Reach level 5 to unlock/)
   })
+
+  it('never binds the select to the disabled option while the level is still loading', async () => {
+    // getStats stays pending → level is null the whole time. A ?guided=chakra-om
+    // deep-link sets guidedChoice to the (locked-while-null) structure. The select's
+    // EFFECTIVE value must resolve to 'none' immediately — it must NOT point at the
+    // disabled chakra-om <option>, even before the async gate effect could run.
+    mockGetStats.mockReturnValue(new Promise(() => {})) // never resolves
+    renderPageAt('/meditate?guided=chakra-om')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    // Bound to 'none' (the effective value), not the disabled locked option.
+    expect(select.value).toBe('none')
+    // Sanity: the chakra-om option is present but disabled.
+    const chakra = Array.from(select.options).find((o) => o.value === 'chakra-om')!
+    expect(chakra.disabled).toBe(true)
+  })
 })
 
 describe('MeditatePage — intention prompts', () => {
@@ -310,6 +344,73 @@ describe('MeditatePage — intention prompts', () => {
     renderPage()
     const textarea = screen.getByLabelText(/intention/i) as HTMLTextAreaElement
     expect(textarea.placeholder.length).toBeGreaterThan(0)
+  })
+})
+
+// ── Interval bells across a reset (regression) ───────────────────────────────
+// The interval-bell loop rings when `mark > lastBellMarkRef.current`. If a long
+// first sit left a high mark, a fresh sit after Reset must NOT be silenced until
+// `mark` re-exceeds the stale value — reset() (and the fresh-sit branch of start())
+// zero the mark so a new sit rings from its first interval again.
+describe('MeditatePage — interval bells reset with a fresh sit', () => {
+  // The bell scheduler reads elapsed from performance.now() (not the setInterval
+  // fake clock), so we drive a controllable now() alongside fake timers.
+  let now = 0
+  const realNow = performance.now.bind(performance)
+
+  beforeEach(() => {
+    mockGetStats.mockReset()
+    mockGetStats.mockResolvedValue(BASE_STATS)
+    mockCreate.mockReset()
+    mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
+    mockPlayBell.mockReset()
+    now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+  })
+  afterEach(() => {
+    vi.mocked(performance.now).mockRestore?.()
+    performance.now = realNow
+    cleanup()
+  })
+
+  // Advance both the wall clock (performance.now) and the fake interval timer so the
+  // 250ms bell loop fires with the new elapsed reading.
+  async function tick(ms: number) {
+    now += ms
+    await act(async () => {
+      vi.advanceTimersByTime(ms)
+    })
+  }
+
+  it('rings the interval bell again on a fresh sit after a long sit + reset', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false })
+    renderPage()
+
+    // Turn on 5-min interval bells (open the Sound & bells disclosure first).
+    fireEvent.click(screen.getByText(/sound & bells/i))
+    fireEvent.change(screen.getByLabelText(/bells/i), { target: { value: 'every5' } })
+
+    // First sit — run past the 5-min mark so interval bell "mark 1" fires.
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    mockPlayBell.mockClear() // drop the opening bell + the bell-mode preview
+    await tick(5 * 60 * 1000 + 1000) // 5m01s
+    const bellsInFirstSit = mockPlayBell.mock.calls.length
+    expect(bellsInFirstSit).toBeGreaterThan(0) // the 5-min interval bell rang
+
+    // Pause, then Reset back to a clean slate.
+    fireEvent.click(screen.getByRole('button', { name: /pause/i }))
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('button', { name: /^reset$/i }))
+    mockPlayBell.mockClear()
+
+    // Fresh sit — advance only ~5m10s. Without clearing lastBellMarkRef the stale
+    // mark (1) would swallow this sit's first interval bell; with the fix it rings.
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    mockPlayBell.mockClear() // drop the fresh-sit opening bell
+    await tick(5 * 60 * 1000 + 10 * 1000) // 5m10s into the new sit
+    expect(mockPlayBell).toHaveBeenCalled() // interval bell rings again — not silenced
+
+    vi.useRealTimers()
   })
 })
 

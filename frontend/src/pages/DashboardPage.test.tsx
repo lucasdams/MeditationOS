@@ -212,7 +212,7 @@ describe('DashboardPage — Today tab (calm default view)', () => {
     expect(cta).toHaveClass('today-action')
 
     // …plus the gentle secondary invite into Paths.
-    expect(screen.getByRole('link', { name: /start your first 7 days/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /ease in with a guided path/i })).toHaveAttribute(
       'href',
       '/paths',
     )
@@ -290,12 +290,12 @@ describe('DashboardPage — path-aware Today CTA', () => {
     expect(cta).toHaveAttribute('href', '/breathe?guided=1&duration=180')
     expect(cta).toHaveClass('today-action')
 
-    // The generic breathe CTA + the "start your first 7 days" invite are replaced by the path CTA.
+    // The generic breathe CTA + the "ease in with a guided path" invite are replaced by the path CTA.
     expect(
       screen.queryByRole('link', { name: /take a slow minute to breathe/i }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: /start your first 7 days/i }),
+      screen.queryByRole('link', { name: /ease in with a guided path/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -307,7 +307,7 @@ describe('DashboardPage — path-aware Today CTA', () => {
     expect(
       await screen.findByRole('link', { name: /take a slow minute to breathe/i }),
     ).toHaveAttribute('href', '/breathe')
-    expect(screen.getByRole('link', { name: /start your first 7 days/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /ease in with a guided path/i })).toHaveAttribute(
       'href',
       '/paths',
     )

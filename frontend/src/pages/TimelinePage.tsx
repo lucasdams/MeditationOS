@@ -6,7 +6,7 @@ import { sessionService } from '../services/sessions'
 import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { MOOD_COLORS, MOOD_META, TYPE_LABELS, gratitudeColor } from '../lib/colors'
+import { ACTIVITY_META, MOOD_COLORS, MOOD_META, TYPE_LABELS, gratitudeColor } from '../lib/colors'
 import { csvEscape } from '../lib/csvEscape'
 import { toDatetimeLocal } from '../lib/format'
 import RatingChips from '../components/RatingChips'
@@ -298,16 +298,18 @@ export default function TimelinePage() {
                   : item.kind === 'journal' && item.mood
                     ? MOOD_COLORS[item.mood]
                     : undefined
-            const emoji =
+            // The row glyph: a lucide activity icon for session/journal/gratitude (shared
+            // ACTIVITY_META, tinted to the activity colour), and the mood face for a mood row.
+            const activityIcon =
               item.kind === 'session'
                 ? ['resonance_breathing', 'energizing_breathing'].includes(item.session.type)
-                  ? '🫁'
-                  : '🧘'
+                  ? ACTIVITY_META.breathe
+                  : ACTIVITY_META.meditate
                 : item.kind === 'journal'
-                  ? '📓'
-                  : item.kind === 'mood'
-                    ? MOOD_META[item.mood].emoji
-                    : '🙏'
+                  ? ACTIVITY_META.journal
+                  : item.kind === 'gratitude'
+                    ? ACTIVITY_META.gratitude
+                    : null
 
             // Sessions: editable inline (the folded-in History). Edit form replaces the row.
             if (item.kind === 'session' && editingId === item.id) {
@@ -379,7 +381,15 @@ export default function TimelinePage() {
                 style={accent ? { borderLeftColor: accent } : undefined}
               >
                 <span className="timeline-emoji" aria-hidden="true">
-                  {emoji}
+                  {activityIcon ? (
+                    <activityIcon.icon
+                      size={18}
+                      strokeWidth={1.75}
+                      style={{ color: activityIcon.color }}
+                    />
+                  ) : item.kind === 'mood' ? (
+                    MOOD_META[item.mood].emoji
+                  ) : null}
                 </span>
                 <div className="timeline-body">
                   <div className="timeline-line">

@@ -83,13 +83,15 @@ def test_rest_day_bridges_a_single_skip(client):
     assert _rest_used(client) is True
 
 
-def test_rest_day_protects_a_lapsing_streak(client):
-    # Practiced 2 days ago, nothing since: the rest day covers yesterday and today is
-    # grace, so the streak survives at 1 rather than resetting to 0.
+def test_two_missed_days_end_the_streak_even_at_the_leading_edge(client):
+    # Practiced ONLY 2 days ago, nothing since: today AND yesterday are both missed — two
+    # in a row. The today-grace and the single rest day do NOT stack (the absent today
+    # consumes the rest-day allowance), so the streak has lapsed rather than surviving at 1.
+    # This matches the module rule "two missed days in a row still ends it".
     _auth(client, "s8@example.com")
     _log(client, 2)
-    assert _streaks(client) == (1, 1)
-    assert _rest_used(client) is True
+    assert _streaks(client) == (0, 1)
+    assert _rest_used(client) is False
 
 
 def test_two_consecutive_misses_end_the_streak(client):
@@ -147,6 +149,61 @@ def test_longest_at_least_current_invariant():
     assert current == 2
     assert rest_used is True
     assert longest >= current  # invariant holds; longest is bumped to 2
+
+
+# --- compute_streaks: the today-grace / rest-day no-stacking rule ---------------------
+# The "missing today is free" grace and the single rest-day allowance must NOT both apply
+# to the leading gap, or a streak would survive two consecutive missed days (today AND
+# yesterday) — contradicting the module docstring ("Two missed days in a row still ends it").
+
+
+def test_leading_double_miss_ends_streak_unit():
+    # The ticket repro: practiced only the day-before-yesterday, nothing since. Today and
+    # yesterday are both absent — two in a row. The absent today consumes the rest day, so
+    # there is no bridge left for yesterday's gap: the current streak is 0 (not a live 1).
+    today = date(2025, 6, 15)
+    dates = {today - timedelta(days=2)}
+    current, longest, rest_used = compute_streaks(dates, today)
+    assert current == 0
+    assert longest == 1  # the single isolated practice day
+    assert rest_used is False
+
+
+def test_missing_only_today_keeps_streak_and_stays_at_risk_unit():
+    # Practiced yesterday and the day before, missed only today: the today-grace keeps the
+    # streak alive (survives through end of today). It does NOT flip `rest_used` — a streak
+    # that has merely missed today is still at risk of breaking at midnight, so the reminder
+    # logic must remain free to nudge it (it keys off `rest_used`).
+    today = date(2025, 6, 15)
+    dates = {today - timedelta(days=1), today - timedelta(days=2)}
+    current, longest, rest_used = compute_streaks(dates, today)
+    assert current == 2
+    assert longest == 2
+    assert rest_used is False
+
+
+def test_missing_today_forgoes_the_interior_bridge_unit():
+    # Missed today AND has an interior single-day gap: the one rest day is already spent on
+    # the today-grace, so the interior gap can no longer be bridged. The current streak is
+    # just the run up to that gap (1), not a bridged 2 — the two allowances don't stack.
+    today = date(2025, 6, 15)
+    dates = {today - timedelta(days=1), today - timedelta(days=3)}
+    current, _longest, rest_used = compute_streaks(dates, today)
+    assert current == 1
+    assert rest_used is False
+
+
+def test_interior_bridge_still_works_when_practiced_today_unit():
+    # Practiced today, with a single interior skipped day: the rest day is untouched by any
+    # today-grace, so it still bridges the interior gap once (the run counts across it).
+    today = date(2025, 6, 15)
+    dates = {today, today - timedelta(days=2), today - timedelta(days=3)}
+    current, longest, rest_used = compute_streaks(dates, today)
+    assert current == 3  # today + the two-day block, bridged across the day-1 gap
+    # The strictly-consecutive run is only 2 (day-2, day-3); `longest` is raised to `current`
+    # by the invariant guard (current ≤ longest), so it reads 3 here.
+    assert longest == 3
+    assert rest_used is True
 
 
 # --- DST + break transitions (lock in the audited time logic) ------------------------

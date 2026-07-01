@@ -1,5 +1,6 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type ComponentType, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Brain, Wind, Sun, type LucideProps } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
@@ -26,10 +27,15 @@ const ZERO_STATS: DashboardStats = {
 
 // The meditation style picker was dropped; only the structural meditation-vs-breathing
 // distinction remains, so a past breathing session can still be logged here.
-const TYPES: { value: MeditationType; label: string; emoji: string; tint: string }[] = [
-  { value: 'mindfulness', label: 'Meditation', emoji: '🧘', tint: '#ccfbf1' },
-  { value: 'resonance_breathing', label: 'Breathing', emoji: '🫁', tint: '#e0f2fe' },
-  { value: 'energizing_breathing', label: 'Energizing breath', emoji: '☀️', tint: '#fef3c7' },
+const TYPES: {
+  value: MeditationType
+  label: string
+  Icon: ComponentType<LucideProps>
+  tint: string
+}[] = [
+  { value: 'mindfulness', label: 'Meditation', Icon: Brain, tint: '#ccfbf1' },
+  { value: 'resonance_breathing', label: 'Breathing', Icon: Wind, tint: '#e0f2fe' },
+  { value: 'energizing_breathing', label: 'Energizing breath', Icon: Sun, tint: '#fef3c7' },
 ]
 
 // Quick-pick durations (minutes). A "Custom" option appears after these chips.
@@ -127,10 +133,13 @@ export default function LogSessionPage() {
     // failure must not report a save error or skip the reward overlay.
     const after = await dashboardService.getStats().catch(() => before)
     // True gain from the server, itemized (the session + any quest/streak bonus).
-    const label = ['resonance_breathing', 'energizing_breathing'].includes(type)
-      ? '🫁 Breathing'
-      : '🧘 Meditation'
-    const bd = buildXpBreakdown(before, after, label)
+    const isBreath = ['resonance_breathing', 'energizing_breathing'].includes(type)
+    const bd = buildXpBreakdown(
+      before,
+      after,
+      isBreath ? 'Breathing' : 'Meditation',
+      isBreath ? Wind : Brain,
+    )
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     setSubmitting(false)
   }
@@ -162,7 +171,7 @@ export default function LogSessionPage() {
                 style={{ background: t.tint }}
                 aria-hidden="true"
               >
-                {t.emoji}
+                <t.Icon size={20} strokeWidth={1.75} />
               </span>
               <span className="pattern-card-body">
                 <span className="pattern-card-name">{t.label}</span>

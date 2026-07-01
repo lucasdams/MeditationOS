@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { Brain } from 'lucide-react'
 import RewardOverlay from './RewardOverlay'
 
 // The reward plays a soft chime on mount; stub the audio so jsdom doesn't choke and the
@@ -64,13 +65,14 @@ describe('RewardOverlay (quiet, non-blocking presentation)', () => {
         afterXp={140}
         xpGained={40}
         breakdown={[
-          { label: '🧘 Meditation', xp: 30 },
+          { label: 'Meditation', xp: 30, icon: Brain },
           { label: 'Daily quest', xp: 10 },
         ]}
         onClose={() => {}}
       />,
     )
-    expect(screen.getByText('🧘 Meditation')).toBeInTheDocument()
+    // Text-only labels (lucide icon renders beside them, not as emoji-in-text).
+    expect(screen.getByText('Meditation')).toBeInTheDocument()
     expect(screen.getByText('Daily quest')).toBeInTheDocument()
     expect(screen.getByText('+30')).toBeInTheDocument()
     expect(screen.getByText('+10')).toBeInTheDocument()

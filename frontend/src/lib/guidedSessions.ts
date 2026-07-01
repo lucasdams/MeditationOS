@@ -19,6 +19,12 @@ export type GuidedStructureId =
   | 'self-compassion'
   | 'savoring'
   | 'celebrate-win'
+  | 'focus'
+  | 'yoga-nidra'
+  | 'just-sit'
+  | 'mantra'
+  | 'walking'
+  | 'pmr'
 
 export interface GuidedPhase {
   /** Short, calm cue text shown on screen. Keep to one or two lines. */
@@ -243,6 +249,136 @@ const CELEBRATE_WIN: GuidedStructure = {
   ],
 }
 
+// ── Focused attention ─────────────────────────────────────────────────────────
+// Single-pointed concentration: rest all attention on one anchor and return to it
+// each time the mind wanders. The anchoring + return phases carry the most weight;
+// settle and close phases are shorter.
+
+const FOCUS: GuidedStructure = {
+  id: 'focus',
+  label: 'Focused attention',
+  description: 'Single-pointed concentration — steady a scattered mind.',
+  phases: [
+    { cue: 'Settle in. Sit tall, eyes closed or softly lowered.', bell: false, weight: 1 },
+    { cue: "Choose one anchor — the breath at the nostrils, or the belly's rise and fall.", bell: true, weight: 2 },
+    { cue: 'Rest your full attention there. Just this one point.', bell: true, weight: 3 },
+    { cue: 'When the mind wanders — and it will — notice, and gently return. No frustration.', bell: true, weight: 4 },
+    { cue: "Each return is the rep. That's how concentration grows.", bell: false, weight: 3 },
+    { cue: 'Narrow in. Let everything else fade to the background.', bell: true, weight: 3 },
+    { cue: 'Stay with the anchor, breath after breath.', bell: false, weight: 3 },
+    { cue: "When you're ready, widen your attention and open your eyes.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Yoga Nidra ────────────────────────────────────────────────────────────────
+// Non-sleep deep rest: lie back and rotate awareness through the body, then rest in
+// whole-body stillness. Each body-region phase gets equal weight; the whole-body
+// rest gets a touch more, and settle + close phases are shorter.
+
+const YOGA_NIDRA: GuidedStructure = {
+  id: 'yoga-nidra',
+  label: 'Yoga Nidra',
+  description: 'Non-sleep deep rest — lie back and let the body unwind.',
+  phases: [
+    { cue: 'Lie on your back, arms at your sides, palms up. Let the floor hold you.', bell: true, weight: 1 },
+    { cue: 'Take a few slow breaths. Nothing to do now but rest.', bell: false, weight: 1 },
+    { cue: 'Bring awareness to your right hand — thumb, fingers, palm, wrist.', bell: true, weight: 2 },
+    { cue: 'Up the right arm — forearm, elbow, shoulder. Then the same on the left.', bell: true, weight: 2 },
+    { cue: 'Your face — forehead, eyes, jaw. Your throat and chest.', bell: true, weight: 2 },
+    { cue: 'Your belly, your back, your hips. Sinking, softening.', bell: true, weight: 2 },
+    { cue: 'Both legs — thighs, knees, calves, feet. Completely at rest.', bell: true, weight: 2 },
+    { cue: 'Feel the whole body at once, heavy and still. Awake, but deeply at ease.', bell: true, weight: 3 },
+    { cue: 'Rest here. Nothing to reach for.', bell: false, weight: 3 },
+    { cue: "When you're ready, wiggle your fingers and toes, and slowly return.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Dopamine reset ────────────────────────────────────────────────────────────
+// Sit with nothing — no input, no stimulation — and watch the pull to be entertained
+// without acting on it, rebuilding tolerance for stillness. The watching-the-urge and
+// sinking-toward-quiet phases carry the most weight.
+
+const JUST_SIT: GuidedStructure = {
+  id: 'just-sit',
+  label: 'Dopamine reset',
+  description: 'Sit with nothing — rebuild your tolerance for stillness.',
+  phases: [
+    { cue: 'Sit down. No music, no phone, nothing to reach for. Just you.', bell: true, weight: 1 },
+    { cue: 'Let your eyes close. Notice the pull to check something, to be entertained.', bell: true, weight: 2 },
+    { cue: "You don't have to act on it. Just watch the urge rise.", bell: true, weight: 3 },
+    { cue: "Boredom isn't a problem to solve. Let it be here.", bell: true, weight: 3 },
+    { cue: "Under the restlessness, there's a quiet. Sink toward it.", bell: true, weight: 3 },
+    { cue: 'Nothing needs to happen. This IS the practice.', bell: false, weight: 3 },
+    { cue: 'Stay a little longer than is comfortable.', bell: false, weight: 2 },
+    { cue: "When you're ready, open your eyes — carry a little of this calm with you.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Mantra ────────────────────────────────────────────────────────────────────
+// Rest the mind on a simple repeated word or sound, returning to it whenever thoughts
+// drift. The repetition + return phases carry the most weight; settle and close phases
+// are shorter.
+
+const MANTRA: GuidedStructure = {
+  id: 'mantra',
+  label: 'Mantra',
+  description: 'A word to rest the mind on — an anchor for a busy head.',
+  phases: [
+    { cue: 'Settle in. Let the body be still.', bell: false, weight: 1 },
+    { cue: 'Choose a simple word or sound — "peace", "so-ham", or just "one".', bell: true, weight: 2 },
+    { cue: 'Silently repeat it, in your own rhythm. No need to force it to the breath.', bell: true, weight: 3 },
+    { cue: 'When the mind drifts, come back to the word. Softly, again and again.', bell: true, weight: 4 },
+    { cue: 'Let the mantra fill the space thoughts used to.', bell: false, weight: 3 },
+    { cue: 'If it fades, rest in the quiet, then pick it up again.', bell: true, weight: 3 },
+    { cue: 'Stay with the repetition, easy and steady.', bell: false, weight: 3 },
+    { cue: "When you're ready, let the word dissolve and open your eyes.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Mindful walking ───────────────────────────────────────────────────────────
+// Attention in motion: walk slowly and feel each step, returning to the soles of the
+// feet when the mind wanders. The feeling-each-step + returning phases carry the most
+// weight; settle and close phases are shorter.
+
+const WALKING: GuidedStructure = {
+  id: 'walking',
+  label: 'Mindful walking',
+  description: 'Attention in motion — for when sitting is too much.',
+  phases: [
+    { cue: 'Stand tall. Feel your feet on the ground, your weight settling.', bell: true, weight: 1 },
+    { cue: 'Begin to walk slowly. There\'s nowhere to be.', bell: true, weight: 2 },
+    { cue: 'Feel each step — the heel, the roll, the toes, the lift.', bell: true, weight: 3 },
+    { cue: 'Match a slow breath to your steps if it helps.', bell: false, weight: 2 },
+    { cue: 'When the mind wanders, bring it back to the soles of your feet.', bell: true, weight: 3 },
+    { cue: 'Notice the air, the sounds, the movement — without chasing them.', bell: true, weight: 3 },
+    { cue: 'Slow, deliberate, present. Step after step.', bell: false, weight: 3 },
+    { cue: "When you're ready, pause, and stand still for a breath.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Muscle release ────────────────────────────────────────────────────────────
+// Progressive muscle relaxation: tense and release each region in turn, then the whole
+// body at once, to melt tension out. Each region gets equal weight; the whole-body
+// release gets a touch more, and settle + close phases are shorter.
+
+const PMR: GuidedStructure = {
+  id: 'pmr',
+  label: 'Muscle release',
+  description: 'Tense and release, part by part, to melt tension out.',
+  phases: [
+    { cue: 'Sit or lie comfortably. Take a slow breath in and out.', bell: false, weight: 1 },
+    { cue: 'Curl your feet and tense your calves. Hold… and release. Feel them soften.', bell: true, weight: 2 },
+    { cue: 'Tense your thighs and hips. Hold… and let go.', bell: true, weight: 2 },
+    { cue: 'Tighten your belly and lower back. Hold… and release.', bell: true, weight: 2 },
+    { cue: 'Make fists and tense your arms. Hold… and drop them, heavy.', bell: true, weight: 2 },
+    { cue: 'Lift your shoulders to your ears. Hold… and let them fall.', bell: true, weight: 2 },
+    { cue: 'Scrunch your face tight. Hold… and smooth it all out.', bell: true, weight: 2 },
+    { cue: 'Now the whole body at once — tense everything. Hold… and completely release.', bell: true, weight: 3 },
+    { cue: 'Rest in the looseness left behind.', bell: false, weight: 2 },
+    { cue: 'Breathe, and gently return.', bell: false, weight: 1 },
+  ],
+}
+
 export const GUIDED_STRUCTURES: GuidedStructure[] = [
   BODY_SCAN,
   LOVING_KINDNESS,
@@ -253,6 +389,12 @@ export const GUIDED_STRUCTURES: GuidedStructure[] = [
   SELF_COMPASSION,
   SAVORING,
   CELEBRATE_WIN,
+  FOCUS,
+  YOGA_NIDRA,
+  JUST_SIT,
+  MANTRA,
+  WALKING,
+  PMR,
 ]
 
 // ── Level gates ───────────────────────────────────────────────────────────────
@@ -279,9 +421,18 @@ export function isGuidedUnlocked(
 }
 
 export function getStructure(id: GuidedStructureId): GuidedStructure {
-  const s = GUIDED_STRUCTURES.find((g) => g.id === id)
+  const s = tryGetStructure(id)
   if (!s) throw new Error(`Unknown guided structure: ${id}`)
   return s
+}
+
+/**
+ * Like getStructure but returns null for an unknown id instead of throwing. For
+ * callers that render during React's render phase (e.g. GuidedCues), where an
+ * exception would blow up the tree — they can fall back to a plain timer instead.
+ */
+export function tryGetStructure(id: GuidedStructureId): GuidedStructure | null {
+  return GUIDED_STRUCTURES.find((g) => g.id === id) ?? null
 }
 
 // ── Scheduler ────────────────────────────────────────────────────────────────

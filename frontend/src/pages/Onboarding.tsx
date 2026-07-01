@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Waves, Target, Moon, Compass, type LucideProps } from 'lucide-react'
 import { authService } from '../services/auth'
 import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
@@ -21,31 +22,37 @@ const INTENTS = [
     key: 'calm',
     label: 'Calm',
     sub: 'Stress relief',
-    emoji: '🌊',
+    Icon: Waves,
     quests: ['breathe', 'gratitude', 'journal'],
   },
   {
     key: 'focus',
     label: 'Focus',
     sub: 'Clarity & attention',
-    emoji: '🎯',
+    Icon: Target,
     quests: ['meditate', 'breathe', 'journal'],
   },
   {
     key: 'sleep',
     label: 'Better sleep',
     sub: 'Wind down & rest',
-    emoji: '🌙',
+    Icon: Moon,
     quests: ['breathe', 'gratitude', 'meditate'],
   },
   {
     key: 'curious',
     label: 'Just curious',
     sub: 'Exploring',
-    emoji: '🧭',
+    Icon: Compass,
     quests: ['breathe', 'gratitude', 'journal'],
   },
-] as const
+] as const satisfies readonly {
+  key: string
+  label: string
+  sub: string
+  Icon: ComponentType<LucideProps>
+  quests: string[]
+}[]
 
 type IntentKey = (typeof INTENTS)[number]['key']
 
@@ -106,7 +113,7 @@ export default function Onboarding() {
             onClick={() => choose(i)}
           >
             <span className="onboarding-emoji" aria-hidden="true">
-              {i.emoji}
+              <i.Icon size={22} strokeWidth={1.75} />
             </span>{' '}
             <span className="onboarding-choice-body">
               <span className="onboarding-choice-label">{i.label}</span>

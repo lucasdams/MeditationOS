@@ -162,3 +162,111 @@ describe('GuidedCues — speech lifecycle', () => {
     expect(cancelSpeech).toHaveBeenCalled()
   })
 })
+
+// ── Open-ended loop wrap (regression) ────────────────────────────────────────
+// For an open-ended sit (durationSec === 0) the schedule cycles back to phase 0
+// every ~20 min. The wrap must NOT re-speak/re-bell the settle/opening cue — only a
+// genuine FORWARD advance triggers audio. The visual progress still cycles.
+describe('GuidedCues — open-ended loop wrap', () => {
+  const openSchedule = buildSchedule(structure, 0) // 20-min reference
+  const span = openSchedule[openSchedule.length - 1].endSec // 1200s
+
+  // The elapsed midpoint of a phase window WITHIN a given cycle (offset by span * n).
+  function midOfOpenPhase(i: number, cycle = 0): number {
+    const w = openSchedule[i]
+    return (w.startSec + w.endSec) / 2 + span * cycle
+  }
+
+  function renderOpenAt(elapsed: number, speechOn: boolean) {
+    return render(
+      <GuidedCues
+        structureId="body-scan"
+        elapsed={elapsed}
+        durationSec={0}
+        volume={0.6}
+        bellsOn
+        speechOn={speechOn}
+      />,
+    )
+  }
+
+  it('does not re-speak the settle cue when the loop wraps back to phase 0 (speech on)', () => {
+    // Start deep in the first cycle's LAST phase, then advance into phase 0 of the
+    // next cycle (the wrap). The wrap is a backwards phase move, so no speech fires.
+    const lastIdx = structure.phases.length - 1
+    const { rerender } = renderOpenAt(midOfOpenPhase(lastIdx, 0), true)
+    speak.mockClear()
+
+    // Wrap: elapsed rolls past the 20-min span into phase 0 of cycle 1.
+    rerender(
+      <GuidedCues
+        structureId="body-scan"
+        elapsed={midOfOpenPhase(0, 1)}
+        durationSec={0}
+        volume={0.6}
+        bellsOn
+        speechOn
+      />,
+    )
+    // The settle/opening cue must NOT be re-spoken on the wrap.
+    expect(speak).not.toHaveBeenCalled()
+  })
+
+  it('does not re-bell the opening phase on the wrap (speech off)', () => {
+    const lastIdx = structure.phases.length - 1
+    const { rerender } = renderOpenAt(midOfOpenPhase(lastIdx, 0), false)
+    playBell.mockClear()
+
+    rerender(
+      <GuidedCues
+        structureId="body-scan"
+        elapsed={midOfOpenPhase(0, 1)}
+        durationSec={0}
+        volume={0.6}
+        bellsOn
+        speechOn={false}
+      />,
+    )
+    expect(playBell).not.toHaveBeenCalled()
+  })
+
+  it('still speaks a genuine forward advance within a cycle (sanity)', () => {
+    const { rerender } = renderOpenAt(midOfOpenPhase(0, 0), true)
+    speak.mockClear()
+    // Move forward one phase (0 → 1) within the same cycle: this DOES speak.
+    rerender(
+      <GuidedCues
+        structureId="body-scan"
+        elapsed={midOfOpenPhase(1, 0)}
+        durationSec={0}
+        volume={0.6}
+        bellsOn
+        speechOn
+      />,
+    )
+    expect(speak).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── Unknown structure (defensive) ────────────────────────────────────────────
+// getStructure throws on an unknown id; GuidedCues uses tryGetStructure and renders
+// null (the plain timer) instead of crashing the render tree.
+describe('GuidedCues — unknown structure', () => {
+  it('renders null (does not throw) for an unknown structure id', () => {
+    // @ts-expect-error intentionally invalid id to exercise the defensive guard
+    const { container } = render(
+      <GuidedCues
+        structureId="does-not-exist"
+        elapsed={0}
+        durationSec={600}
+        volume={0.6}
+        bellsOn
+        speechOn={false}
+      />,
+    )
+    // Nothing rendered, and no speech/bell side effects.
+    expect(container.querySelector('.guided-cues')).toBeNull()
+    expect(speak).not.toHaveBeenCalled()
+    expect(playBell).not.toHaveBeenCalled()
+  })
+})

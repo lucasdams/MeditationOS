@@ -28,6 +28,16 @@ describe('GUIDED_STRUCTURES', () => {
     expect(ids).toContain('celebrate-win')
   })
 
+  it('exports the new mind/body structures (focus, yoga-nidra, just-sit, mantra, walking, pmr)', () => {
+    const ids = GUIDED_STRUCTURES.map((s) => s.id)
+    expect(ids).toContain('focus')
+    expect(ids).toContain('yoga-nidra')
+    expect(ids).toContain('just-sit')
+    expect(ids).toContain('mantra')
+    expect(ids).toContain('walking')
+    expect(ids).toContain('pmr')
+  })
+
   it('no longer exports the old "acceptance" id (renamed to name-feelings)', () => {
     const ids = GUIDED_STRUCTURES.map((s) => s.id)
     expect(ids).not.toContain('acceptance')
@@ -56,6 +66,12 @@ describe('getStructure', () => {
     expect(getStructure('self-compassion').id).toBe('self-compassion')
     expect(getStructure('savoring').id).toBe('savoring')
     expect(getStructure('celebrate-win').id).toBe('celebrate-win')
+    expect(getStructure('focus').id).toBe('focus')
+    expect(getStructure('yoga-nidra').id).toBe('yoga-nidra')
+    expect(getStructure('just-sit').id).toBe('just-sit')
+    expect(getStructure('mantra').id).toBe('mantra')
+    expect(getStructure('walking').id).toBe('walking')
+    expect(getStructure('pmr').id).toBe('pmr')
   })
 
   it('throws for an unknown id', () => {
@@ -80,6 +96,13 @@ describe('GUIDED_MIN_LEVEL + isGuidedUnlocked', () => {
     expect(isGuidedUnlocked('self-compassion', null)).toBe(true)
     expect(isGuidedUnlocked('savoring', null)).toBe(true)
     expect(isGuidedUnlocked('celebrate-win', null)).toBe(true)
+    // The new mind/body structures carry no level gate either.
+    expect(isGuidedUnlocked('focus', null)).toBe(true)
+    expect(isGuidedUnlocked('yoga-nidra', null)).toBe(true)
+    expect(isGuidedUnlocked('just-sit', null)).toBe(true)
+    expect(isGuidedUnlocked('mantra', null)).toBe(true)
+    expect(isGuidedUnlocked('walking', null)).toBe(true)
+    expect(isGuidedUnlocked('pmr', null)).toBe(true)
   })
 
   it('a gated structure is locked below its minimum level', () => {

@@ -250,6 +250,76 @@ describe('BreathePage — post-session reflection', () => {
   })
 })
 
+// ── Best-effort post-save stats (regression) ─────────────────────────────────
+// If getStats throws AFTER the session is saved, the reward step must proceed (the
+// session is not lost) and the UI must NOT show "Couldn't save the session." — the
+// post-save stats fetch is best-effort and must not mask the successful save.
+describe('BreathePage — best-effort post-save stats', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    rewardOverlayState.onClose = null
+    mockCreate.mockReset()
+    mockUpdate.mockReset()
+    mockGetStats.mockReset()
+    navigate.mockReset()
+    mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
+  })
+  afterEach(cleanup)
+
+  it('still saves and proceeds (no save-error banner) when the after-getStats call throws', async () => {
+    // getStats resolves for the before-save call but rejects on the AFTER-save call.
+    // Keyed off whether create has run so the throw always lands post-save regardless
+    // of how many pre-save fetches happened.
+    mockGetStats.mockImplementation(() =>
+      mockCreate.mock.calls.length > 0
+        ? Promise.reject(new Error('network error'))
+        : Promise.resolve(BASE_STATS),
+    )
+
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderAt('/breathe')
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
+    vi.useRealTimers()
+
+    // Session must be created exactly once.
+    await vi.waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1))
+
+    // Reflection step appears directly (no reward overlay first, since stats are unusable).
+    await screen.findByRole('heading', { name: /how was that\?/i })
+
+    // No fake-XP reward overlay, and — the bug — NO save-error banner.
+    expect(rewardOverlayState.onClose).toBeNull()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText(/couldn't save the session/i)).toBeNull()
+  })
+
+  it('shows the save-error banner when the create itself fails', async () => {
+    // The create rejecting IS a real save failure — the error banner must show.
+    mockGetStats.mockResolvedValue(BASE_STATS)
+    mockCreate.mockRejectedValue(new Error('boom'))
+
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderAt('/breathe')
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
+    vi.useRealTimers()
+
+    await vi.waitFor(() => expect(mockCreate).toHaveBeenCalled())
+    // A real save failure surfaces an error (non-ApiError → messageForError copy).
+    await screen.findByRole('alert')
+    // And no reflection step / reward overlay on a failed save.
+    expect(screen.queryByRole('heading', { name: /how was that\?/i })).toBeNull()
+    expect(rewardOverlayState.onClose).toBeNull()
+  })
+})
+
 // ── Guided first sit (onboarding §5) ──────────────────────────────────────────
 // `?guided=1` strips the page to a zero-config breath: Resonance, fixed short duration, no
 // pattern/pace/duration/sound config — just the orb, one gentle cue, and a single Begin. On
