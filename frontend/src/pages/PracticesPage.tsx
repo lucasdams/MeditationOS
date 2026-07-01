@@ -24,6 +24,22 @@ import {
   Repeat,
   Footprints,
   Dumbbell,
+  ListOrdered,
+  Tags,
+  Ear,
+  Feather,
+  Sunrise,
+  PartyPopper,
+  Telescope,
+  Sunset,
+  CloudMoon,
+  CloudOff,
+  Eye,
+  Hand,
+  OctagonPause,
+  Activity,
+  Leaf,
+  DoorOpen,
   Lock,
   ChevronRight,
   Search,
@@ -121,12 +137,15 @@ const GROUPS: PracticeGroup[] = [
     // Meditation — attention / mind practices (kind:'meditation', feed Rest).
     title: 'Meditation',
     cards: [
-      { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=focus', icon: Crosshair, name: 'Focused attention', desc: 'Single-pointed concentration — steady a scattered mind', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
+      { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting — just be with the breath', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
+      { to: '/meditate?guided=focus', icon: Crosshair, name: 'Focused attention', desc: 'Steady a scattered mind on one anchor', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
+      { to: '/meditate?guided=count-breath', icon: ListOrdered, name: 'Count the breath', desc: 'Count each breath one to ten, restart when you drift', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
+      { to: '/meditate?guided=noting', icon: Tags, name: 'Noting', desc: 'Softly label what arises — thinking, hearing, feeling', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
+      { to: '/meditate?guided=sound-bath', icon: Ear, name: 'Sound meditation', desc: 'Rest attention on the sounds around you, near and far', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
       { to: '/meditate?guided=name-feelings', icon: SmilePlus, name: 'Name what you feel', desc: 'Notice a feeling, name it precisely, let it be', kind: 'meditation', light: '#2f6fe0', dark: '#82b4ff' },
       { to: '/meditate?guided=chakra-om', icon: AudioLines, name: 'Chakra Om', desc: 'Chant Om up through the seven chakras', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd', gate: 'chakra-om' },
       { to: '/meditate?guided=mantra', icon: Repeat, name: 'Mantra', desc: 'A word to rest the mind on — an anchor for a busy head', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=just-sit', icon: Unplug, name: 'Dopamine reset', desc: 'Sit with nothing — rebuild your tolerance for stillness', kind: 'meditation', light: '#0d9488', dark: '#5eead4' },
+      { to: '/meditate?guided=just-sit', icon: Unplug, name: 'Dopamine reset', desc: 'Sit with nothing — relearn stillness', kind: 'meditation', light: '#0d9488', dark: '#5eead4' },
       { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
     ],
   },
@@ -134,8 +153,8 @@ const GROUPS: PracticeGroup[] = [
     // Body — somatic practices (kind:'meditation', feed Rest): scanning, moving, releasing.
     title: 'Body',
     cards: [
-      { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Guided head-to-toe relaxation', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
-      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, name: 'Yoga Nidra', desc: 'Non-sleep deep rest — lie back and let the body unwind', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
+      { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Move awareness through the body, head to toe', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, name: 'Yoga Nidra', desc: 'Non-sleep deep rest — lie back and unwind', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
       { to: '/meditate?guided=pmr', icon: Dumbbell, name: 'Muscle release', desc: 'Tense and release, part by part, to melt tension out', kind: 'meditation', light: '#2563eb', dark: '#93c5fd' },
       { to: '/meditate?guided=stretching', icon: Accessibility, name: 'Mindful stretching', desc: 'Gentle guided stretches — move with the breath', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
       { to: '/meditate?guided=walking', icon: Footprints, name: 'Mindful walking', desc: 'Attention in motion — for when sitting is too much', kind: 'meditation', light: '#0284c7', dark: '#7dd3fc' },
@@ -147,11 +166,46 @@ const GROUPS: PracticeGroup[] = [
     // override reclassifies them away from the default rested base need.
     title: 'Heart',
     cards: [
-      { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Guided metta — warmth & goodwill', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
-      { to: '/meditate?guided=self-compassion', icon: HeartHandshake, name: 'Self-compassion', desc: 'Turn kindness inward — meet yourself like a good friend', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
+      { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Send warm wishes to yourself and outward', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
+      { to: '/meditate?guided=self-compassion', icon: HeartHandshake, name: 'Self-compassion', desc: 'Turn kindness inward, like a good friend', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
       { to: '/meditate?guided=recall-good', icon: Album, name: 'Recount a good memory', desc: 'Relive a happy memory in vivid detail', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
       { to: '/meditate?guided=savoring', icon: Coffee, name: 'Savor something good', desc: 'Slow down and soak in a simple good thing', kind: 'meditation', feeds: 'joyful', light: '#16a34a', dark: '#4ade80' },
       { to: '/meditate?guided=celebrate-win', icon: Trophy, name: 'Celebrate a win', desc: 'Acknowledge something you did — big or small', kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
+      { to: '/meditate?guided=forgiveness', icon: Feather, name: 'Forgiveness', desc: 'Set down an old hurt, gently — toward yourself or another', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
+      { to: '/meditate?guided=gratitude-sit', icon: Sunrise, name: 'Gratitude meditation', desc: 'A guided gratitude sit — bring to mind what holds you up', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
+      { to: '/meditate?guided=sympathetic-joy', icon: PartyPopper, name: 'Sympathetic joy', desc: "Delight in others' good fortune — joy that costs nothing", kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
+      { to: '/meditate?guided=awe', icon: Telescope, name: 'Awe & wonder', desc: 'Evoke a sense of vastness — and feel yourself part of it', kind: 'meditation', feeds: 'joyful', light: '#7c3aed', dark: '#c4b5fd' },
+    ],
+  },
+  {
+    // Sleep — wind-down practices (kind:'meditation', feed Rest). Softer voice, bells taper off,
+    // no bright end; several scripts intentionally underuse bells.
+    title: 'Sleep',
+    cards: [
+      { to: '/meditate?guided=wind-down', icon: Sunset, name: 'Wind down', desc: 'Let the body grow heavy and give yourself permission to drift', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
+      { to: '/meditate?guided=four-seven-eight', icon: CloudMoon, name: '4-7-8 breath', desc: 'In for four, hold for seven, out for eight — a settling rhythm', kind: 'meditation', feeds: 'rested', light: '#4338ca', dark: '#a5b4fc' },
+      { to: '/meditate?guided=set-down-day', icon: CloudOff, name: 'Set down the day', desc: "Put the day's loose ends somewhere safe till morning", kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
+    ],
+  },
+  {
+    // Steady — self-regulation practices for harder moments (kind:'meditation', feed Rest, except
+    // Soften/soothe/allow which feeds Joy as kindness toward self). Non-clinical: NOT treatment.
+    title: 'Steady',
+    cards: [
+      { to: '/meditate?guided=physiological-sigh', icon: Wind, name: 'Physiological sigh', desc: 'Two breaths in, one long breath out — the fastest reset', kind: 'meditation', feeds: 'rested', light: '#0e8aa6', dark: '#5fd2e8' },
+      { to: '/meditate?guided=steady-senses', icon: Eye, name: 'Ground in your senses', desc: 'Come back to now through your five senses (5-4-3-2-1)', kind: 'meditation', feeds: 'rested', light: '#0284c7', dark: '#7dd3fc' },
+      { to: '/meditate?guided=steady-feet', icon: Footprints, name: 'Feet on the ground', desc: 'Drop your weight down and feel held', kind: 'meditation', feeds: 'rested', light: '#0d9488', dark: '#5eead4' },
+      { to: '/meditate?guided=steady-soothe', icon: Hand, name: 'Soften, soothe, allow', desc: 'Meet a hard feeling with a kind touch', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
+    ],
+  },
+  {
+    // Everyday — short, anywhere, no-setup on-ramps (kind:'meditation', feed Rest).
+    title: 'Everyday',
+    cards: [
+      { to: '/meditate?guided=three-breaths', icon: Leaf, name: 'Three mindful breaths', desc: 'A one-minute reset — just three breaths', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
+      { to: '/meditate?guided=stop-pause', icon: OctagonPause, name: 'Pause & STOP', desc: 'Stop, Take a breath, Observe, Proceed', kind: 'meditation', feeds: 'rested', light: '#2563eb', dark: '#93c5fd' },
+      { to: '/meditate?guided=body-checkin', icon: Activity, name: 'Body check-in', desc: 'A quick weather-report on your body', kind: 'meditation', feeds: 'rested', light: '#0891b2', dark: '#67d6e8' },
+      { to: '/meditate?guided=arriving', icon: DoorOpen, name: 'Arriving', desc: 'A clean pause between tasks or places', kind: 'meditation', feeds: 'rested', light: '#5847f0', dark: '#a8a2ff' },
     ],
   },
   {
