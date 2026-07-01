@@ -277,7 +277,7 @@ export default function DashboardPage() {
                   <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
                 <p className="today-action-secondary">
-                  <Link to="/paths">Start your first 7 days</Link>
+                  <Link to="/paths">Ease in with a guided path</Link>
                 </p>
               </>
             )

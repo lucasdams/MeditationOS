@@ -45,10 +45,12 @@ describe('AppHeader — grouped navigation', () => {
     vi.clearAllMocks()
   })
 
-  it('shows Home, the Practice/Progress menu buttons (no More), and a standalone Spirit link', () => {
+  it('shows Home, a Practice LINK, a Progress menu (no More), and a standalone Spirit link', () => {
     renderHeader()
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Practice/ })).toBeInTheDocument()
+    // Practice is now a direct link to the all-practices hub, not a dropdown button.
+    expect(screen.getByRole('link', { name: 'Practice' })).toHaveAttribute('href', '/practices')
+    expect(screen.queryByRole('button', { name: /Practice/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Progress/ })).toBeInTheDocument()
     // The old "More" junk-drawer menu is gone — its items merged into Practice / Progress.
     expect(screen.queryByRole('button', { name: /More/ })).toBeNull()
@@ -59,21 +61,12 @@ describe('AppHeader — grouped navigation', () => {
     expect(spirit.some((a) => a.getAttribute('href') === '/spirit')).toBe(true)
   })
 
-  it('opening Practice reveals the activity destinations (e.g. Meditate)', () => {
+  it('Practice links straight to the all-practices hub (no dropdown)', () => {
     renderHeader()
-    const practiceBtn = screen.getByRole('button', { name: /Practice/ })
-    expect(practiceBtn).toHaveAttribute('aria-expanded', 'false')
-
-    fireEvent.click(practiceBtn)
-    expect(practiceBtn).toHaveAttribute('aria-expanded', 'true')
-
-    const dropdown = document.getElementById('nav-practice-dropdown')!
-    expect(dropdown).toBeInTheDocument()
-    expect(within(dropdown).getByRole('link', { name: /Meditate/ })).toHaveAttribute('href', '/meditate')
-    expect(within(dropdown).getByRole('link', { name: /Breathe/ })).toBeInTheDocument()
-    expect(within(dropdown).getByRole('link', { name: /Log a session/ })).toBeInTheDocument()
-    // Candle gazing now lives in Practice (a focal meditation, not a "more" extra).
-    expect(within(dropdown).getByRole('link', { name: /Candle gazing/ })).toHaveAttribute('href', '/trataka')
+    expect(screen.getByRole('link', { name: 'Practice' })).toHaveAttribute('href', '/practices')
+    expect(document.getElementById('nav-practice-dropdown')).toBeNull()
+    // The individual practices are still reachable on the mobile inline list.
+    expect(screen.getAllByRole('link', { name: /Meditate/ }).length).toBeGreaterThan(0)
   })
 
   it('no longer has a separate More menu (merged into Progress)', () => {
@@ -96,27 +89,14 @@ describe('AppHeader — grouped navigation', () => {
     expect(within(dropdown).getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/settings')
   })
 
-  it('opening one menu closes the other (single open menu at a time)', () => {
+  it('Escape closes the open Progress menu', () => {
     renderHeader()
-    const practiceBtn = screen.getByRole('button', { name: /Practice/ })
     const progressBtn = screen.getByRole('button', { name: /Progress/ })
-
-    fireEvent.click(practiceBtn)
-    expect(practiceBtn).toHaveAttribute('aria-expanded', 'true')
-
     fireEvent.click(progressBtn)
     expect(progressBtn).toHaveAttribute('aria-expanded', 'true')
-    expect(practiceBtn).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('Escape closes an open menu', () => {
-    renderHeader()
-    const practiceBtn = screen.getByRole('button', { name: /Practice/ })
-    fireEvent.click(practiceBtn)
-    expect(practiceBtn).toHaveAttribute('aria-expanded', 'true')
 
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(practiceBtn).toHaveAttribute('aria-expanded', 'false')
+    expect(progressBtn).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('hides Admin from non-admins and shows it to admins in Progress', () => {

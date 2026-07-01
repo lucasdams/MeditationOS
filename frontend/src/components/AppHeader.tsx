@@ -93,7 +93,7 @@ export default function AppHeader() {
   const [level, setLevel] = useState<number | null>(null)
   // A single source of truth for which dropdown is open: a menu id or null. Opening one
   // menu closes the other; outside-click / Escape close whichever is open.
-  const [openMenu, setOpenMenu] = useState<'practice' | 'progress' | null>(null)
+  const [openMenu, setOpenMenu] = useState<'progress' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const navRef = useRef<HTMLElement>(null)
   // The companion's needs — drives the small header reminder chip ("what it prefers right now").
@@ -191,7 +191,7 @@ export default function AppHeader() {
   // opening it closes the other (single openMenu source of truth). aria-controls ties the
   // button to the dropdown region it expands.
   function renderMenu(
-    id: 'practice' | 'progress',
+    id: 'progress',
     label: string,
     Icon: ComponentType<LucideProps>,
     links: MenuLink[],
@@ -244,9 +244,16 @@ export default function AppHeader() {
           Home
         </Link>
 
-        {/* Desktop: grouped dropdown menus. Drop role="menu"/role="menuitem" — these links
-            aren't a widget menu and arrow-key navigation isn't implemented. */}
-        {renderMenu('practice', 'Practice', Sparkles, PRACTICE_LINKS)}
+        {/* Practice links straight to the all-practices hub (it lists every practice as cards) —
+            clicking it navigates rather than opening a menu. Wrapped in .nav-menu so it hides on
+            mobile like the dropdowns (mobile shows the inline sublinks below). Progress stays a
+            dropdown of stats/planning destinations (it has no single overview page). */}
+        <div className="nav-menu">
+          <NavLink to="/practices" className="nav-menu-btn nav-menu-btn--practice">
+            <Sparkles size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className="nav-menu-btn-label">Practice</span>
+          </NavLink>
+        </div>
         {renderMenu('progress', 'Progress', TrendingUp, progressLinks)}
 
         {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
