@@ -9,7 +9,16 @@
 // IMPORTANT: no audio is produced here — the caller (GuidedCues) is responsible
 // for ringing the bell when `bell: true` on a phase transition.
 
-export type GuidedStructureId = 'body-scan' | 'loving-kindness' | 'acceptance'
+export type GuidedStructureId =
+  | 'body-scan'
+  | 'loving-kindness'
+  | 'name-feelings'
+  | 'chakra-om'
+  | 'stretching'
+  | 'recall-good'
+  | 'self-compassion'
+  | 'savoring'
+  | 'celebrate-win'
 
 export interface GuidedPhase {
   /** Short, calm cue text shown on screen. Keep to one or two lines. */
@@ -86,39 +95,188 @@ const LOVING_KINDNESS: GuidedStructure = {
   ],
 }
 
-// ── Acceptance / RAIN ─────────────────────────────────────────────────────────
-// A gentle progression through meeting present experience as it is: recognise
-// what's here, allow it to be, investigate with kindness, then rest in open
-// awareness. The settle and close phases are shorter; the middle "allow" and
-// "investigate" phases carry the most weight, where the work of the practice
-// happens.
+// ── Name what you feel ────────────────────────────────────────────────────────
+// An emotional-naming practice (the alexithymia angle): notice a feeling, name it
+// as precisely as you can — not just "good" or "bad" — locate it in the body, and
+// let it be there without being taken over by it. The settle and close phases are
+// shorter; the naming + locating phases carry the most weight.
 
-const ACCEPTANCE: GuidedStructure = {
-  id: 'acceptance',
-  label: 'Acceptance',
-  description: 'Meet whatever is present with openness, rather than pushing it away.',
+const NAME_FEELINGS: GuidedStructure = {
+  id: 'name-feelings',
+  label: 'Name what you feel',
+  description: 'Notice a feeling, name it as precisely as you can, and let it be.',
   phases: [
     { cue: 'Settle in. Let your eyes close and your body arrive.', bell: false, weight: 1 },
     { cue: 'Breathe naturally. Feel the ground holding you.', bell: false, weight: 1 },
-    // Recognise
-    { cue: 'Notice what is here right now — a feeling, a mood, a sensation. Just name it gently.', bell: true, weight: 3 },
-    // Allow
-    { cue: 'Let it be here. Nothing to fix or change. Allow this moment to be exactly as it is.', bell: true, weight: 4 },
-    { cue: 'Soften around any urge to push it away. Make a little room for whatever you feel.', bell: false, weight: 3 },
-    // Investigate
-    { cue: 'With kindness, turn toward it. Where do you feel it in the body? What does it need?', bell: true, weight: 4 },
-    { cue: 'Offer it a kind, quiet acknowledgement: “This belongs. I can be with this.”', bell: false, weight: 3 },
-    // Rest in open awareness
-    { cue: 'Let it all rest in open awareness. You are the space that holds the experience.', bell: true, weight: 3 },
-    { cue: 'When you\'re ready, gently return to the breath. Carry this openness with you.', bell: false, weight: 2 },
+    { cue: "Turn inward. What's here right now — a mood, a charge, a texture of feeling?", bell: true, weight: 3 },
+    { cue: 'Name it as precisely as you can. Not just "bad" or "fine" — is it tense? restless? heavy? tender?', bell: true, weight: 4 },
+    { cue: 'If a clearer word arrives, use it. Anxious. Lonely. Frustrated. Calm. Let the name fit.', bell: false, weight: 3 },
+    { cue: 'Now find it in the body. Where does this feeling live — chest, throat, gut, jaw?', bell: true, weight: 3 },
+    { cue: "Let it be there, exactly as it is. You don't have to fix it — just keep it company.", bell: true, weight: 3 },
+    { cue: "Notice: it can be named and felt without taking you over. You're the one who's aware of it.", bell: false, weight: 2 },
+    { cue: "When you're ready, return to the breath. You can always come back and name what's here.", bell: false, weight: 2 },
+  ],
+}
+
+// ── Chakra Om ─────────────────────────────────────────────────────────────────
+// Chant "Om" up through the seven chakras, base to crown, then rest in the whole
+// channel humming. Each chakra gets equal weight; settle and close phases are
+// shorter, the final rest gets a touch more. LEVEL-GATED (see GUIDED_MIN_LEVEL).
+
+const CHAKRA_OM: GuidedStructure = {
+  id: 'chakra-om',
+  label: 'Chakra Om',
+  description: 'Chant Om up through the seven chakras, from base to crown.',
+  phases: [
+    { cue: 'Sit tall, spine long. Let your breath settle.', bell: false, weight: 1 },
+    { cue: 'Breathe in, and on the out-breath, a soft "Ommm." Feel it hum in your chest.', bell: true, weight: 1 },
+    { cue: 'Root — base of the spine. "Om." Feel it ground you.', bell: true, weight: 2 },
+    { cue: 'Sacral — just below the navel. "Om." Let it loosen and warm.', bell: true, weight: 2 },
+    { cue: 'Solar plexus — above the navel. "Om." A steady, settled strength.', bell: true, weight: 2 },
+    { cue: 'Heart — center of the chest. "Om." Let it open and soften.', bell: true, weight: 2 },
+    { cue: 'Throat — base of the throat. "Om." Let breath and voice flow freely.', bell: true, weight: 2 },
+    { cue: 'Third eye — between the brows. "Om." Quiet and clear.', bell: true, weight: 2 },
+    { cue: 'Crown — top of the head. "Om." Let the sound dissolve into stillness.', bell: true, weight: 2 },
+    { cue: 'Rest. Feel the whole channel humming, base to crown. Nothing to do.', bell: true, weight: 3 },
+    { cue: 'Let the breath return to normal. Carry the stillness with you.', bell: false, weight: 1 },
+  ],
+}
+
+// ── Mindful stretching ────────────────────────────────────────────────────────
+// Gentle guided stretches moving with the breath — neck, side body, twists, a
+// forward fold and roll-up. Each stretch gets a couple of beats; the forward fold
+// gets a touch more. Opening + closing phases are shorter.
+
+const STRETCHING: GuidedStructure = {
+  id: 'stretching',
+  label: 'Mindful stretching',
+  description: 'Gentle guided stretches — move with the breath.',
+  phases: [
+    { cue: 'Sit or stand tall. Roll your shoulders back and take a slow breath.', bell: false, weight: 1 },
+    { cue: 'Gently drop your right ear toward your right shoulder. Breathe into your neck.', bell: true, weight: 2 },
+    { cue: 'Slowly lift, and tilt to the left. Let the breath lengthen the other side.', bell: true, weight: 2 },
+    { cue: 'Reach both arms up overhead. Lengthen your spine, fingertips to the ceiling.', bell: true, weight: 2 },
+    { cue: 'Lower your arms and gently twist to the right. Breathe.', bell: true, weight: 2 },
+    { cue: 'Return to center, and twist to the left. Soft — no forcing.', bell: true, weight: 2 },
+    { cue: 'Fold forward from the hips. Let your head and arms hang heavy.', bell: true, weight: 3 },
+    { cue: 'Slowly roll up, one vertebra at a time, head last.', bell: true, weight: 2 },
+    { cue: 'Sit tall again. Notice how your body feels now — looser, more here.', bell: true, weight: 2 },
+    { cue: "One more easy breath. You're ready.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Recount a good memory ─────────────────────────────────────────────────────
+// Relive a happy memory in vivid sensory detail and let its warmth return — a
+// joy-feeding savouring practice. The recall + sensory-detail phases carry the
+// most weight; settle and close phases are shorter.
+
+const RECALL_GOOD: GuidedStructure = {
+  id: 'recall-good',
+  label: 'Recount a good memory',
+  description: 'Relive a happy memory in vivid detail.',
+  phases: [
+    { cue: 'Settle in. Let your eyes close and your breath slow.', bell: false, weight: 1 },
+    { cue: 'Bring to mind a good memory — a time you felt happy, proud, loved, or at peace.', bell: true, weight: 2 },
+    { cue: 'Picture it clearly. Where were you? Who was there? What did you see and hear?', bell: true, weight: 3 },
+    { cue: 'Let the feeling of it return — notice it warming your chest, your face, your body.', bell: true, weight: 3 },
+    { cue: 'Stay with the best moment a little longer. Let yourself enjoy it fully.', bell: true, weight: 3 },
+    { cue: 'Know that this is yours. You carry it with you, always available.', bell: false, weight: 2 },
+    { cue: 'Gently return to the breath, keeping a little of that warmth.', bell: false, weight: 1 },
+  ],
+}
+
+// ── Self-compassion ───────────────────────────────────────────────────────────
+// Turn kindness inward (the self-compassion break): acknowledge a struggle,
+// recognise common humanity, and offer yourself the warmth you'd give a friend.
+// The acknowledgement + kindness phases carry the most weight.
+
+const SELF_COMPASSION: GuidedStructure = {
+  id: 'self-compassion',
+  label: 'Self-compassion',
+  description: 'Turn kindness inward — meet yourself like a good friend.',
+  phases: [
+    { cue: 'Settle in. Rest a hand on your heart if you like.', bell: false, weight: 1 },
+    { cue: "Bring to mind something you've been hard on yourself about.", bell: true, weight: 2 },
+    { cue: 'Acknowledge it gently: "This is hard. This is a moment of struggle."', bell: true, weight: 3 },
+    { cue: "Remember you're not alone — everyone struggles. This is part of being human.", bell: true, weight: 3 },
+    { cue: 'Offer yourself the kindness you\'d give a good friend: "May I be kind to myself."', bell: true, weight: 3 },
+    { cue: '"May I give myself what I need. May I be at ease."', bell: false, weight: 3 },
+    { cue: "Rest in that warmth. Return to the breath when you're ready.", bell: false, weight: 1 },
+  ],
+}
+
+// ── Savor something good ──────────────────────────────────────────────────────
+// Slow down and soak in a simple good thing, letting the good feeling grow rather
+// than rushing past it (positive savouring). The holding + soaking phases carry the
+// most weight, with the central "let it grow" phase heaviest.
+
+const SAVORING: GuidedStructure = {
+  id: 'savoring',
+  label: 'Savor something good',
+  description: 'Slow down and soak in a simple good thing.',
+  phases: [
+    { cue: 'Settle in. Take a slow, easy breath.', bell: false, weight: 1 },
+    { cue: 'Bring to mind something good in your life right now — small is fine. A person, a comfort, a simple pleasure.', bell: true, weight: 3 },
+    { cue: 'Hold it in attention. Really let yourself appreciate it.', bell: true, weight: 3 },
+    { cue: "Notice what it gives you. Let the good feeling grow — don't rush past it.", bell: true, weight: 4 },
+    { cue: 'Soak it in. Let it land fully, the way you\'d savour a good meal.', bell: true, weight: 3 },
+    { cue: 'Carry this noticing with you. The good is always worth slowing down for.', bell: false, weight: 1 },
+  ],
+}
+
+// ── Celebrate a win ───────────────────────────────────────────────────────────
+// Acknowledge something you did — big or small — and let yourself feel the pride
+// without brushing past it. The acknowledgement + savour-the-pride phases carry the
+// most weight.
+
+const CELEBRATE_WIN: GuidedStructure = {
+  id: 'celebrate-win',
+  label: 'Celebrate a win',
+  description: 'Acknowledge something you did — big or small.',
+  phases: [
+    { cue: 'Settle in. Sit a little taller.', bell: false, weight: 1 },
+    { cue: 'Bring to mind something you did recently — finished, showed up for, or handled. Big or small, it counts.', bell: true, weight: 3 },
+    { cue: 'Don\'t brush past it. Let yourself fully acknowledge: "I did that."', bell: true, weight: 3 },
+    { cue: 'Notice any pride or satisfaction. Let it be okay to feel good about this.', bell: true, weight: 3 },
+    { cue: "Offer yourself a quiet word of credit — the way you'd cheer on a friend.", bell: true, weight: 2 },
+    { cue: 'Carry that sense of "I can" with you. Return to the breath.', bell: false, weight: 1 },
   ],
 }
 
 export const GUIDED_STRUCTURES: GuidedStructure[] = [
   BODY_SCAN,
   LOVING_KINDNESS,
-  ACCEPTANCE,
+  NAME_FEELINGS,
+  CHAKRA_OM,
+  STRETCHING,
+  RECALL_GOOD,
+  SELF_COMPASSION,
+  SAVORING,
+  CELEBRATE_WIN,
 ]
+
+// ── Level gates ───────────────────────────────────────────────────────────────
+// Some guided structures unlock at a level, mirroring the spirit cosmetic unlocks
+// ("Reach level N"). A single source of truth so MeditatePage and PracticesPage
+// agree on what's locked. Structures absent from this map are always available.
+
+export const GUIDED_MIN_LEVEL: Partial<Record<GuidedStructureId, number>> = {
+  'chakra-om': 5,
+}
+
+/**
+ * Whether a guided structure is unlocked for the given user level. Unlocked when
+ * the structure has no minimum level, or the level is known and meets the minimum.
+ * A null/unknown level treats a gated structure as locked (fail safe).
+ */
+export function isGuidedUnlocked(
+  id: GuidedStructureId,
+  level: number | null,
+): boolean {
+  const min = GUIDED_MIN_LEVEL[id]
+  if (min == null) return true
+  return level != null && level >= min
+}
 
 export function getStructure(id: GuidedStructureId): GuidedStructure {
   const s = GUIDED_STRUCTURES.find((g) => g.id === id)

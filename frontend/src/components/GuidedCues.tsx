@@ -31,6 +31,27 @@ import {
 import { playBell } from '../lib/sfx'
 import { speak, cancelSpeech } from '../lib/speech'
 
+// The seven chakras, base → crown, in their conventional colours. Used only by the
+// Chakra Om practice to draw a small ascending column beside the cues.
+const CHAKRA_COLOURS = [
+  '#e0383a', // root — red
+  '#e8742a', // sacral — orange
+  '#e8c14a', // solar plexus — yellow
+  '#3fae62', // heart — green
+  '#2f7fe0', // throat — blue
+  '#3f4fb0', // third eye — indigo
+  '#8a4fd0', // crown — violet
+] as const
+
+// In the chakra-om structure the seven chakra phases are indices 2..8 (after the
+// settle + intro-Om phases). Map the active phase to a chakra index, or null when
+// the current phase isn't a chakra one (settle / intro / rest / close).
+const CHAKRA_FIRST_PHASE = 2
+function activeChakraIndex(phaseIdx: number): number | null {
+  const i = phaseIdx - CHAKRA_FIRST_PHASE
+  return i >= 0 && i < CHAKRA_COLOURS.length ? i : null
+}
+
 interface GuidedCuesProps {
   structureId: GuidedStructureId
   /** Current elapsed seconds, updated frequently (every ~250 ms from the timer). */
@@ -144,8 +165,29 @@ export default function GuidedCues({
   const phaseNum = phaseIdx + 1
   const totalPhases = structure.phases.length
 
+  // Chakra Om only: a small ascending column of 7 dots in the chakra colours, the
+  // active one (per the current phase) highlighted. Purely visual + derived — no
+  // extra clock or audio plumbing. null when the phase isn't a chakra phase.
+  const chakraActive =
+    structureId === 'chakra-om' ? activeChakraIndex(phaseIdx) : null
+
   return (
     <div className="guided-cues">
+      {structureId === 'chakra-om' && (
+        <div className="guided-chakras" aria-hidden="true">
+          {/* Rendered top (crown) → bottom (root) so the column reads base-up visually. */}
+          {[...CHAKRA_COLOURS]
+            .map((colour, i) => ({ colour, i }))
+            .reverse()
+            .map(({ colour, i }) => (
+              <span
+                key={i}
+                className={`guided-chakra-dot${chakraActive === i ? ' guided-chakra-dot--active' : ''}`}
+                style={{ ['--chakra-colour' as string]: colour }}
+              />
+            ))}
+        </div>
+      )}
       <div aria-live="polite" aria-atomic="true">
         <p className="guided-cues-text">{phase.cue}</p>
       </div>
