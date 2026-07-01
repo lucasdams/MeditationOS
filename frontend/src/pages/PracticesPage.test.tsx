@@ -1,8 +1,9 @@
 /**
  * PracticesPage — the practices hub. Verifies the grouped sections render and deep-link correctly,
- * AND the spirit-aware overlay (ADR-0029): each card shows what need it feeds, and the practices
- * that fill the spirit's weakest need are highlighted. The spirit fetch is mocked; by default it
- * rejects (no creature) so the list-only assertions match the non-spirit render.
+ * AND the spirit-aware overlay (ADR-0032): each card shows what facet it feeds, and — when the
+ * recent-practice balance is uneven — the practices that round out the least-represented facet get
+ * a gentle highlight + suggestion. The spirit fetch is mocked; by default it rejects (no creature)
+ * so the list-only assertions match the non-spirit render.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -218,14 +219,17 @@ describe('PracticesPage', () => {
     expect(screen.getByRole('link', { name: /candle gazing/i })).toHaveAttribute('href', '/trataka')
   })
 
-  it('nudges toward the spirit’s weakest need and highlights the practices that feed it', async () => {
-    get.mockResolvedValue(spiritWith()) // rested is weakest
+  it('gently suggests rounding out the least-represented facet and highlights its practices', async () => {
+    get.mockResolvedValue(spiritWith()) // rested is the least-represented facet (uneven balance)
     renderPage()
-    // The banner names the weakest need (Rest) and the creature.
-    const nudge = await screen.findByText(/needs more/i)
+    // The banner names the lagging facet (Rest) and the creature, framed as a round-out suggestion.
+    const nudge = await screen.findByText(/a little less/i)
     expect(within(nudge).getByText(/Rest/)).toBeInTheDocument()
     expect(nudge.textContent).toMatch(/Sage/)
-    // Every sit (breathing + meditation) feeds rested → each gets the quiet "needed" highlight
+    // It is a suggestion, not a demand — no "needs" / "wants" pressure copy.
+    expect(nudge.textContent).not.toMatch(/needs more|wants/i)
+    expect(nudge.textContent).toMatch(/round things out/i)
+    // Every sit (breathing + meditation) feeds rested → each gets the quiet "round-out" highlight
     // (the .practice-card--needed class); reflection (joyful) does not.
     expect(screen.getByRole('link', { name: /resonance/i }).className).toMatch(/practice-card--needed/)
     expect(screen.getByRole('link', { name: /journal/i }).className).not.toMatch(/practice-card--needed/)
@@ -234,7 +238,7 @@ describe('PracticesPage', () => {
   it('shows what each practice gives the spirit (feed badges)', async () => {
     get.mockResolvedValue(spiritWith())
     renderPage()
-    await screen.findByText(/needs more/i)
+    await screen.findByText(/a little less/i)
     // Kapha (stillness): breathwork is the signature → feeds Nourishment; sits feed Rest; reflection
     // feeds Joy. All three need labels appear as badges across the cards.
     expect(screen.getAllByText('Rest').length).toBeGreaterThan(0)
@@ -247,7 +251,7 @@ describe('PracticesPage', () => {
     // override stands alone → it shows only a Joy badge, never Rest.
     get.mockResolvedValue(spiritWith()) // stillness, rested weakest
     renderPage()
-    await screen.findByText(/needs more/i)
+    await screen.findByText(/a little less/i)
     const lk = screen.getByRole('link', { name: /loving-kindness/i })
     expect(within(lk).getByText('Joy')).toBeInTheDocument()
     expect(within(lk).queryByText('Rest')).toBeNull()
@@ -266,7 +270,7 @@ describe('PracticesPage', () => {
       }),
     )
     renderPage()
-    await screen.findByText(/needs more/i)
+    await screen.findByText(/a little less/i)
     const lk = screen.getByRole('link', { name: /loving-kindness/i })
     expect(within(lk).getByText('Joy')).toBeInTheDocument()
     expect(within(lk).getByText('Nourishment')).toBeInTheDocument()
@@ -279,7 +283,7 @@ describe('PracticesPage', () => {
     // Sanity: only the Heart cards carry the override. Plain meditations still feed Rest.
     get.mockResolvedValue(spiritWith()) // stillness, rested weakest
     renderPage()
-    await screen.findByText(/needs more/i)
+    await screen.findByText(/a little less/i)
     const bodyScan = screen.getByRole('link', { name: /body scan/i })
     expect(within(bodyScan).getByText('Rest')).toBeInTheDocument()
     expect(within(bodyScan).queryByText('Joy')).toBeNull()
@@ -292,7 +296,7 @@ describe('PracticesPage', () => {
     get.mockResolvedValue(spiritWith({ path: null }))
     renderPage()
     await waitFor(() => expect(get).toHaveBeenCalled())
-    expect(screen.queryByText(/needs more/i)).toBeNull()
+    expect(screen.queryByText(/a little less/i)).toBeNull()
     // No "needed" highlight for a pathless spark.
     expect(screen.getByRole('link', { name: /resonance/i }).className).not.toMatch(/practice-card--needed/)
     expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
@@ -451,10 +455,11 @@ describe('PracticesPage — search filter', () => {
   })
 
   it('keeps the spirit-need highlight working on the filtered results', async () => {
-    // A living Kapha spirit whose weakest need is Rest → sit practices get the "needed" class.
+    // A living Kapha spirit whose least-represented facet is Rest → sit practices get the "needed"
+    // class and the gentle round-out nudge appears (ADR-0032).
     get.mockResolvedValue(spiritWith())
     renderPage()
-    await screen.findByText(/needs more/i)
+    await screen.findByText(/round things out/i)
 
     typeSearch('resonance')
     const resonance = screen.getByRole('link', { name: /resonance/i })

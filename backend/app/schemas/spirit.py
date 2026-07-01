@@ -6,8 +6,9 @@ computed* on read (ADR-0009/0011): only the chosen `path`, the `name`, the appli
 coins are all derived. ADR-0023 makes the `path` USER-CHOSEN (set once via
 `POST /spirit/choose`, NULL until then) instead of auto-detected from the practice mix, and
 replaces the single `daily_glow` with THREE named `needs` (`nourished` / `rested` /
-`joyful`), each a tier + factor over a rolling window, plus an overall `condition` derived
-from the weakest need (so the UI can render one summary look).
+`joyful`), each a tier + factor over a rolling window, plus an overall `condition`. ADR-0032
+redefines `condition` as VITALITY — a single headline signal fed by ANY practice — and demotes
+the three needs to an informational balance (recent practice mix); see those schemas below.
 
 ADR-0024 makes the name a COMMITTED choice: it is REQUIRED at creation
 (`POST /spirit/choose` carries it) and immutable thereafter, changeable only by a paid reset
@@ -45,32 +46,37 @@ SpiritRequiredName = Annotated[
 
 
 class SpiritNeed(BaseModel):
-    """One gentle care need (ADR-0031 — the companion stops being mortal; re-adopts the
-    non-punishing stance of ADR-0023, reversing ADR-0029's survival meters).
+    """One facet of the companion's recent-practice BALANCE (ADR-0032 — an informational read-out,
+    NOT a depleting debt; refines ADR-0031's non-punishing needs, which reversed ADR-0029's survival
+    meters).
 
-    Each need is a 0..1 meter that eases down over `DECAY_DAYS` since it was last fed by the
+    Each facet is a 0..1 meter that eases down over `DECAY_DAYS` since it was last fed by the
     relevant practice (or, lighter, a manual tend capped at `TEND_CAP`), but is FLOORED so it never
     drops below a calm tier. `factor` is that 0..1 value; `tier` is its band
     (`thriving | content | restless | unwell`, best → worst) — in practice the worst it ever reads
-    is `content`. The three needs are `nourished` (the chosen creature's signature practice),
-    `rested` (any sit), and `joyful` (gratitude/journal). There is no "ailing", no death — the
-    companion only ever roots for you. A pathless spark reports neutral, content-ish needs."""
+    is `content`. The three facets are `nourished` (the chosen creature's signature practice),
+    `rested` (any sit), and `joyful` (gratitude/journal). They no longer drive the overall look
+    (that's now `condition`/Vitality) — a low facet is a gentle "round this out" hint, never a
+    warning. A pathless spark reports neutral, content-ish facets."""
 
     tier: str  # thriving | content | restless | unwell (floored: worst reachable is content)
-    factor: float  # 0..1 care value (eases down over time, floored; never empties)
+    factor: float  # 0..1 balance value (eases down over time, floored; never empties)
 
 
 class SpiritNeeds(BaseModel):
-    """The active creature's three gentle care needs (ADR-0031, floored — never punishing).
+    """The active creature's three-facet recent-practice BALANCE (ADR-0032 — informational, not
+    punishing; floored per ADR-0031). A read-out of your recent practice MIX, advisory only: it
+    does NOT set the overall look (`condition`/Vitality does) and a low facet is only a gentle
+    round-out invitation.
 
-    Each eases down over DECAY_DAYS since last fed; the fed time is the most recent of:
+    Each facet eases down over DECAY_DAYS since last fed; the fed time is the most recent of:
     - `nourished` — the chosen path's SIGNATURE practice (the one that BALANCES that dosha):
       stillness (Kapha) ← resonance breathing, breath (Pitta) ← gratitude/journal, heart (Vata)
       ← non-breathing meditation.
     - `rested` — ANY practice session (a sit of any kind).
     - `joyful` — a gratitude or journal entry.
 
-    Practice fills a need to 1.0; a manual tend tops it up to TEND_CAP. A pathless spark reports
+    Practice fills a facet to 1.0; a manual tend tops it up to TEND_CAP. A pathless spark reports
     neutral defaults."""
 
     nourished: SpiritNeed
@@ -79,15 +85,19 @@ class SpiritNeeds(BaseModel):
 
 
 class SpiritCondition(BaseModel):
-    """The active creature's OVERALL care state (ADR-0023) — derived from the weakest of the
-    three `needs`, so the frontend can render one summary look without inspecting each need.
+    """The active creature's OVERALL care state — VITALITY, a.k.a. "cared-for" (ADR-0032, refining
+    ADR-0023/0031). Any practice keeps them content: it is fed by ANY practice of ANY kind (any
+    sit, a gratitude entry, or a journal entry), decaying off the most-recent such practice and
+    FLOORED so the worst it ever reads is `content`. This is NOT the weakest of the three `needs`
+    anymore — those are a separate informational balance — so no single facet can drag the overall
+    look down.
 
-    `tier` is one of `thriving | content | restless | unwell` (best → worst, = the worst need's
-    tier); `factor` is the corresponding 0..1 vibrancy multiplier. GUARDRAIL: advisory/visual
-    only — it never affects stage, level, coins, cosmetics, or the collection (those stay
-    derived from earned XP and remain monotonic). A pathless spark reports a neutral default."""
+    `tier` is one of `thriving | content | restless | unwell` (best → worst; floored at `content`);
+    `factor` is the corresponding 0..1 vibrancy multiplier. GUARDRAIL: advisory/visual only — it
+    never affects stage, level, coins, cosmetics, or the collection (those stay derived from earned
+    XP and remain monotonic). A pathless spark reports a neutral default."""
 
-    tier: str  # thriving | content | restless | unwell (the weakest need's tier)
+    tier: str  # thriving | content | restless | unwell (Vitality; floored at content)
     factor: float  # 0..1 vibrancy multiplier (concave); never reduces progress
 
 
@@ -179,8 +189,8 @@ class SpiritState(BaseModel):
     path: str | None  # the CHOSEN creature (stillness | breath | heart); NULL until chosen
     name: str | None  # the active spirit's nickname, if set (so the UI can pre-fill / display)
     bond: SpiritBond  # SPIRIT-LEVEL (XP since awakened_at) + XP-into-level + XP-for-next
-    needs: SpiritNeeds  # the three gentle needs (nourished / rested / joyful); floored, never empty
-    condition: SpiritCondition  # overall care state = the weakest need (a calm visual read-out)
+    needs: SpiritNeeds  # the three-facet recent-practice balance (nourished/rested/joyful); floored
+    condition: SpiritCondition  # overall care state = VITALITY, fed by any practice (ADR-0032)
     coins: int  # lifetime_level × COINS_PER_LEVEL − coins_spent, clamped ≥ 0 (ADR-0030: lifetime)
     cosmetics: dict[str, str]  # the EQUIPPED loadout {slot: option} (ADR-0027; empty = none)
     available: list[SpiritAvailableSlot]  # the cosmetics skill tree with per-option state

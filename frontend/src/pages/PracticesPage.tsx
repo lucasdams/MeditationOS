@@ -35,7 +35,7 @@ import {
 import { spiritService } from '../services/spirit'
 import { dashboardService } from '../services/dashboard'
 import { GUIDED_MIN_LEVEL, isGuidedUnlocked } from '../lib/guidedSessions'
-import { weakestNeed } from '../lib/spiritNeeds'
+import { roundOutFacet } from '../lib/spiritNeeds'
 import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
 import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
 
@@ -43,10 +43,10 @@ import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
 // by category. Each card deep-links into its practice with the variant pre-selected (Breathe reads
 // `?pattern=`, Meditate reads `?guided=`; the reflection pages have their own routes).
 //
-// It's also SPIRIT-AWARE (ADR-0029): each card shows which of the spirit's three needs it feeds,
-// and when you have a living creature the page highlights the practices that fill whatever it needs
-// MOST right now (its weakest need) — turning "what should I practice?" into "what does my spirit
-// need?". The spirit fetch is non-blocking: the practice list always renders even if it fails.
+// It's also SPIRIT-AWARE: each card shows which of the spirit's three facets it feeds, and when you
+// have a living creature the page gently highlights the practices that round out whatever facet has
+// had a little less lately (ADR-0032 — an optional balance suggestion, not a "what it needs" demand;
+// shown only when the balance is uneven). The spirit fetch is non-blocking: the list always renders.
 
 // How a practice feeds the spirit (ADR-0029): every SIT feeds `rested`, reflection feeds `joyful`,
 // and a creature's SIGNATURE practice additionally feeds `nourished` (the path-specific identity
@@ -163,7 +163,8 @@ const GROUPS: PracticeGroup[] = [
   },
 ]
 
-// A small need badge (icon + label) reusing NEED_COPY — `current` marks the spirit's weakest need.
+// A small facet badge (icon + label) reusing NEED_COPY — `current` marks the facet the page is
+// gently suggesting you round out (ADR-0032), so the matching cards read as "a little more of this".
 function FeedBadge({ need, current }: { need: SpiritNeedKey; current: boolean }) {
   const copy = NEED_COPY[need]
   const NeedIcon = copy.icon
@@ -200,15 +201,16 @@ export default function PracticesPage() {
       .catch(() => {})
   }, [])
 
-  // Only guide by needs for a creature that has chosen a path. A pathless spark shows the practices
-  // + their generic feeds, but no "needs now" highlight (ADR-0031: the spirit is always alive).
+  // Only suggest a round-out for a creature that has chosen a path. A pathless spark shows the
+  // practices + their generic feeds, but no highlight. ADR-0032: `need` is the least-represented
+  // facet worth gently rounding out, or null when the balance is even (then no highlight/nudge).
   const guiding = spirit != null && spirit.path != null
-  const need = guiding ? weakestNeed(spirit.needs) : null
+  const need = guiding ? roundOutFacet(spirit.needs) : null
 
   // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc).
   // With no query every group renders in full; with one, empty groups drop out and a gentle empty
   // state shows if nothing at all matches. Filtering is presentational — it never touches the
-  // spirit-need highlight, which still keys off the (unfiltered) weakest need.
+  // round-out highlight, which still keys off the (unfiltered) least-represented facet.
   const q = query.trim().toLowerCase()
   const filteredGroups = q
     ? GROUPS.map((group) => ({
@@ -310,7 +312,7 @@ export default function PracticesPage() {
             />
           </div>
           <p className="practices-spirit-nudge-text">
-            <strong>{spirit.name ?? 'Your spirit'}</strong> needs more{' '}
+            <strong>{spirit.name ?? 'Your spirit'}</strong> has had a little less{' '}
             <strong className="practices-need-name">
               {(() => {
                 const NeedIcon = NEED_COPY[need].icon
@@ -318,7 +320,7 @@ export default function PracticesPage() {
               })()}{' '}
               {NEED_COPY[need].label}
             </strong>{' '}
-            right now — the highlighted practices below will help.
+            lately — the highlighted practices would round things out, if you feel like it.
           </p>
         </section>
       )}

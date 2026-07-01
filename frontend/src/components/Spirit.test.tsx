@@ -719,32 +719,36 @@ describe('Spirit — care needs read-out (ADR-0023)', () => {
     expect(screen.getByText('Joy')).toBeInTheDocument()
   })
 
-  it('shows a kind, never-shaming care nudge naming the reviving practice when a need is low', () => {
+  it('gently suggests rounding out the least-represented facet when the balance is uneven', () => {
     renderSpirit(
       <Spirit
         spirit={spiritState({
           stage: 'wisp',
           path: 'breath', // Pitta → balanced by gratitude & journaling (cooling)
+          // nourished (0.5) lags rested/joyful (0.85) by well over the even-balance delta.
           needs: { nourished: need('restless', 0.5), rested: need('content'), joyful: need('content') },
         })}
       />,
     )
-    // Names the creature (Pitta) and the reviving practice (gratitude & journaling); calm, no alarm.
-    expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
-    expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
+    // An optional round-out invitation (ADR-0032): names the creature + the balancing practice; no
+    // "is restless" alarm, no "needs / wants" demand.
+    expect(screen.getByText(/Pitta has had a little less nourishment lately/i)).toBeInTheDocument()
+    expect(screen.getByText(/gratitude & journaling would round things out/i)).toBeInTheDocument()
+    expect(screen.queryByText(/is restless|needs more|wants/i)).toBeNull()
   })
 
-  it('shows no care nudge when every need is content-or-better', () => {
+  it('shows no round-out suggestion when the balance is even', () => {
     renderSpirit(
       <Spirit
         spirit={spiritState({
           stage: 'wisp',
           path: 'breath',
-          needs: { nourished: need('thriving'), rested: need('content'), joyful: need('content') },
+          // All within the even-balance delta → no suggestion at all.
+          needs: { nourished: need('content'), rested: need('content'), joyful: need('content') },
         })}
       />,
     )
-    expect(screen.queryByText(/would revive it|would settle it|would lift it/i)).toBeNull()
+    expect(screen.queryByText(/would round things out/i)).toBeNull()
   })
 })
 

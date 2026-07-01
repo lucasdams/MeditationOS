@@ -13,8 +13,10 @@ state is the active spirit row (chosen path, name, the `unlocked` collection + e
 - the three tended needs (ADR-0023) — neutral defaults while pathless; `nourished` RISES with
   the chosen creature's SIGNATURE practice and DECLINES without it (other practices do NOT
   nourish it); `rested` reflects rhythm/consistency; `joyful` reflects variety; a depleted need
-  doesn't jump to thriving from one session; the overall condition is the WEAKEST need; and the
-  GUARDRAIL — needs never change coins/stage;
+  doesn't jump to thriving from one session; and the GUARDRAIL — needs never change coins/stage;
+- VITALITY (ADR-0032) — the overall `condition` is now fed by ANY practice of any kind (a sit, a
+  gratitude entry, or a journal entry), NOT the weakest of the three needs, and is floored at
+  content;
 - the cosmetics skill tree (ADR-0027) — UNLOCK at FULL cost adds to the owned collection +
   auto-equips + charges the monotonic `coins_spent` ledger + pampers; tier prerequisites gate
   unlocking (tier2 needs an owned tier1, tier3 an owned tier2); EQUIP is free, only works on
@@ -387,6 +389,15 @@ def _decayed_needs(
     )
 
 
+def _vitality(db_session, path, user_id, *, now=None, baseline=None):
+    """Call the ADR-0032 `vitality(...)` with an explicit `now` + born-fed `baseline` (defaulting to
+    now), so the decay is deterministic. Vitality is the overall condition: fed by ANY practice."""
+    now = now or datetime.now(UTC)
+    return spirit_service.vitality(
+        db_session, path, user_id, now=now, needs_baseline_at=baseline or now
+    )
+
+
 def _active_spirit(db_session, user_id):
     return db_session.execute(
         select(Spirit).where(Spirit.user_id == user_id, Spirit.retired_at.is_(None))
@@ -410,12 +421,14 @@ def test_pathless_spark_has_neutral_needs(client, db_session):
     user_id = _user_id(db_session, "needs_pathless@example.com")
     client.get("/api/v1/spirit")  # create the spark
     n = _decayed_needs(db_session, None, user_id)
-    # No creature chosen → no care requirement → every need is the neutral content-ish default.
+    # No creature chosen → no care requirement → every facet is the neutral content-ish default.
     assert n.nourished.tier == CONDITION_CONTENT
     assert n.rested.tier == CONDITION_CONTENT
     assert n.joyful.tier == CONDITION_CONTENT
-    # And the overall condition (the weakest need) is the same neutral default.
-    assert spirit_service.overall_condition(n).tier == CONDITION_CONTENT
+    # And the overall condition (Vitality, ADR-0032) is the same neutral default while pathless.
+    now = datetime.now(UTC)
+    v = spirit_service.vitality(db_session, None, user_id, now=now, needs_baseline_at=now)
+    assert v.tier == CONDITION_CONTENT
 
 
 def test_born_fed_baseline_starts_full_and_healthy(client, db_session):
@@ -429,8 +442,9 @@ def test_born_fed_baseline_starts_full_and_healthy(client, db_session):
     for need in (n.nourished, n.rested, n.joyful):
         assert need.factor == 1.0
         assert need.tier == CONDITION_THRIVING
-    # The overall condition is full.
-    assert spirit_service.overall_condition(n).factor == 1.0
+    # The overall condition (Vitality, ADR-0032) is full for a just-fed, no-activity spark.
+    v = spirit_service.vitality(db_session, "stillness", user_id, now=now, needs_baseline_at=now)
+    assert v.factor == 1.0
     # ADR-0031: there is no death/ailing state to compute — the GET shape no longer carries it.
     body = _spirit(client)
     assert "dead" not in body
@@ -464,8 +478,10 @@ def test_needs_never_drop_below_the_floor(db_session):
         assert need.factor == NEEDS_FLOOR
         # The worst reachable tier is `content` — never restless/unwell.
         assert need.tier == CONDITION_CONTENT
-    # The overall condition (weakest need) is likewise floored at content.
-    overall = spirit_service.overall_condition(n)
+    # The overall condition (Vitality, ADR-0032) is likewise floored at content under total neglect.
+    overall = spirit_service.vitality(
+        db_session, "stillness", user.id, now=now, needs_baseline_at=baseline
+    )
     assert overall.factor == NEEDS_FLOOR
     assert overall.tier == CONDITION_CONTENT
 
@@ -559,20 +575,69 @@ def test_an_old_tend_eases_back_to_the_floor(db_session):
     assert n.nourished.factor == NEEDS_FLOOR  # the lift has eased; the floor holds it up
 
 
-def test_overall_condition_is_the_weakest_need(db_session):
-    """The overall condition = the WEAKEST need. With nourished fed full by recent practice but the
-    others only at the floor, the overall condition follows the weakest — which is the floor, never
-    below (ADR-0031)."""
-    user = _make_user(db_session, "needs_overall@example.com")
+def test_vitality_is_fed_by_any_practice_not_the_weakest_need(client, db_session):
+    """ADR-0032: the overall condition is VITALITY, fed by ANY practice of ANY kind — NOT the
+    weakest of the three needs. A `stillness` (Kapha) creature whose ONLY recent activity is a
+    meditation sit (which does NOT feed its nourished facet) still reads full vitality, even though
+    two of its three facets have eased to the floor."""
+    _auth(client, "vitality_any@example.com")
+    user_id = _user_id(db_session, "vitality_any@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)  # old baseline; facets would floor without activity
+    _practice(client, 10, day=now.date().isoformat())  # a meditation sit — NOT Kapha's food
+
+    # Two of the three facets have eased to the floor (nourished wants breathing; joyful wants
+    # reflection) — under the OLD "weakest need" rule the condition would sit at the floor.
+    n = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=old)
+    assert n.nourished.factor == NEEDS_FLOOR
+    assert n.joyful.factor == NEEDS_FLOOR
+    # But vitality is fed by ANY practice, so the recent sit keeps the overall condition full —
+    # far above the floor the "weakest need" rule would have produced.
+    v = _vitality(db_session, "stillness", user_id, now=now, baseline=old)
+    assert v.factor > 0.9
+    assert v.tier in (CONDITION_CONTENT, CONDITION_THRIVING)
+
+
+def test_vitality_content_on_a_journal_only_day(client, db_session):
+    """ADR-0032: a JOURNAL-only day (no sit, no gratitude) still keeps vitality content/thriving —
+    a journal entry is a practice of a kind, so it feeds the single headline signal."""
+    _auth(client, "vitality_journal@example.com")
+    user_id = _user_id(db_session, "vitality_journal@example.com")
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)
-    # nourished fed full by a recent signature practice; rested/joyful only at the floor.
-    _user = user  # readability
-    n = _decayed_needs(db_session, "stillness", user.id, now=now, baseline=old)
-    # Without activity all three are floored, so the weakest = the floor.
-    assert n.rested.factor == NEEDS_FLOOR
-    overall = spirit_service.overall_condition(n)
-    assert overall.factor == NEEDS_FLOOR
+    _journal(client)  # a journal entry only — no sit, no gratitude
+
+    v = _vitality(db_session, "stillness", user_id, now=now, baseline=old)
+    assert v.factor > 0.9  # the journal keeps the headline signal near-full
+    # content-or-better (the just-written entry keeps vitality up; exact `thriving` needs factor
+    # 1.0, which a hair of elapsed time since the write can just miss).
+    assert v.tier in (CONDITION_CONTENT, CONDITION_THRIVING)
+
+
+def test_vitality_content_on_a_gratitude_only_day(client, db_session):
+    """ADR-0032: a GRATITUDE-only day (no sit, no journal) likewise keeps vitality content/thriving
+    — any practice feeds it."""
+    _auth(client, "vitality_gratitude@example.com")
+    user_id = _user_id(db_session, "vitality_gratitude@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)
+    _gratitude(client)  # a gratitude entry only — no sit, no journal
+
+    v = _vitality(db_session, "stillness", user_id, now=now, baseline=old)
+    assert v.factor > 0.9
+    # content-or-better (see the journal-only test — exact `thriving` needs factor 1.0).
+    assert v.tier in (CONDITION_CONTENT, CONDITION_THRIVING)
+
+
+def test_vitality_eases_to_the_floor_under_total_neglect(db_session):
+    """ADR-0032: with NO practice of any kind and an old baseline, vitality eases toward the floor —
+    but is FLOORED at NEEDS_FLOOR (content), never below. The companion is never alarming."""
+    user = _make_user(db_session, "vitality_neglect@example.com")
+    now = datetime.now(UTC)
+    old = now - timedelta(days=DECAY_DAYS + 5)
+    v = _vitality(db_session, "stillness", user.id, now=now, baseline=old)
+    assert v.factor == NEEDS_FLOOR
+    assert v.tier == CONDITION_CONTENT
 
 
 def test_needs_never_change_coins_or_stage(client, db_session):
