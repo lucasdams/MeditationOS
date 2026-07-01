@@ -3,10 +3,35 @@ import {
   buildSchedule,
   currentPhaseIndex,
   getStructure,
+  tryGetStructure,
   isGuidedUnlocked,
   GUIDED_MIN_LEVEL,
   GUIDED_STRUCTURES,
+  type GuidedStructureId,
 } from './guidedSessions'
+
+// The 18 structures added in the practice-library expansion. Every one must be
+// reachable (via getStructure / tryGetStructure) and be a real, runnable script.
+const NEW_STRUCTURE_IDS: GuidedStructureId[] = [
+  'count-breath',
+  'noting',
+  'sound-bath',
+  'forgiveness',
+  'gratitude-sit',
+  'sympathetic-joy',
+  'awe',
+  'wind-down',
+  'four-seven-eight',
+  'set-down-day',
+  'physiological-sigh',
+  'steady-senses',
+  'steady-feet',
+  'steady-soothe',
+  'three-breaths',
+  'stop-pause',
+  'body-checkin',
+  'arriving',
+]
 
 // ── Structural integrity ─────────────────────────────────────────────────────
 
@@ -52,6 +77,47 @@ describe('GUIDED_STRUCTURES', () => {
         expect(p.cue.length).toBeGreaterThan(0)
       }
     }
+  })
+
+  it('never ships an empty cue string in any structure', () => {
+    for (const s of GUIDED_STRUCTURES) {
+      for (const p of s.phases) {
+        expect(p.cue.trim().length).toBeGreaterThan(0)
+      }
+    }
+  })
+})
+
+// ── Practice-library expansion — new structures ──────────────────────────────
+// Every new guided id must resolve from the array via getStructure and
+// tryGetStructure, and be a real script: at least 3 phases, each with a
+// non-empty cue. This is what makes a `?guided=<id>` deep-link "just work".
+
+describe('practice-library expansion structures', () => {
+  it('adds all 18 new ids to GUIDED_STRUCTURES', () => {
+    const ids = GUIDED_STRUCTURES.map((s) => s.id)
+    for (const id of NEW_STRUCTURE_IDS) {
+      expect(ids).toContain(id)
+    }
+  })
+
+  it.each(NEW_STRUCTURE_IDS)('resolves %s via getStructure + tryGetStructure', (id) => {
+    expect(getStructure(id).id).toBe(id)
+    expect(tryGetStructure(id)?.id).toBe(id)
+  })
+
+  it.each(NEW_STRUCTURE_IDS)('%s has ≥3 phases, each with a non-empty cue', (id) => {
+    const s = getStructure(id)
+    expect(s.phases.length).toBeGreaterThanOrEqual(3)
+    for (const p of s.phases) {
+      expect(p.cue.trim().length).toBeGreaterThan(0)
+      expect(p.weight).toBeGreaterThan(0)
+    }
+  })
+
+  it.each(NEW_STRUCTURE_IDS)('%s carries no level gate (always unlocked)', (id) => {
+    expect(GUIDED_MIN_LEVEL[id]).toBeUndefined()
+    expect(isGuidedUnlocked(id, null)).toBe(true)
   })
 })
 

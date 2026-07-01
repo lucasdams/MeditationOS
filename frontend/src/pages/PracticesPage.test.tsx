@@ -69,12 +69,15 @@ describe('PracticesPage', () => {
     expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '/')
   })
 
-  it('renders all category groups (Breathing, Meditation, Body, Heart, Reflection)', () => {
+  it('renders all category groups (Breathing, Meditation, Body, Heart, Sleep, Steady, Everyday, Reflection)', () => {
     renderPage()
     expect(screen.getByRole('heading', { name: /breathing/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /meditation/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^body/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^heart/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^sleep/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^steady/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^everyday/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /reflection/i })).toBeInTheDocument()
   })
 
@@ -177,6 +180,22 @@ describe('PracticesPage', () => {
     )
   })
 
+  it('deep-links the added Meditation cards (Count the breath, Noting, Sound meditation)', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: /count the breath/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=count-breath',
+    )
+    expect(screen.getByRole('link', { name: /^noting/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=noting',
+    )
+    expect(screen.getByRole('link', { name: /sound meditation/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=sound-bath',
+    )
+  })
+
   it('renders the Heart section with Loving-kindness moved into it', () => {
     renderPage()
     const heartHeading = screen.getByRole('heading', { name: /^heart/i })
@@ -212,9 +231,89 @@ describe('PracticesPage', () => {
     )
   })
 
+  it('deep-links the added Heart cards (Forgiveness, Gratitude meditation, Sympathetic joy, Awe)', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: /forgiveness/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=forgiveness',
+    )
+    expect(screen.getByRole('link', { name: /gratitude meditation/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=gratitude-sit',
+    )
+    expect(screen.getByRole('link', { name: /sympathetic joy/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=sympathetic-joy',
+    )
+    expect(screen.getByRole('link', { name: /awe & wonder/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=awe',
+    )
+  })
+
+  it('deep-links the new Sleep section cards', () => {
+    renderPage()
+    const sleepHeading = screen.getByRole('heading', { name: /^sleep/i })
+    const sleepSection = sleepHeading.closest('section') as HTMLElement
+    expect(within(sleepSection).getByRole('link', { name: /wind down/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=wind-down',
+    )
+    expect(within(sleepSection).getByRole('link', { name: /4-7-8 breath/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=four-seven-eight',
+    )
+    expect(within(sleepSection).getByRole('link', { name: /set down the day/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=set-down-day',
+    )
+  })
+
+  it('deep-links the new Steady section cards', () => {
+    renderPage()
+    const steadyHeading = screen.getByRole('heading', { name: /^steady/i })
+    const steadySection = steadyHeading.closest('section') as HTMLElement
+    expect(
+      within(steadySection).getByRole('link', { name: /physiological sigh/i }),
+    ).toHaveAttribute('href', '/meditate?guided=physiological-sigh')
+    expect(
+      within(steadySection).getByRole('link', { name: /ground in your senses/i }),
+    ).toHaveAttribute('href', '/meditate?guided=steady-senses')
+    expect(
+      within(steadySection).getByRole('link', { name: /feet on the ground/i }),
+    ).toHaveAttribute('href', '/meditate?guided=steady-feet')
+    expect(
+      within(steadySection).getByRole('link', { name: /soften, soothe, allow/i }),
+    ).toHaveAttribute('href', '/meditate?guided=steady-soothe')
+  })
+
+  it('deep-links the new Everyday section cards', () => {
+    renderPage()
+    const everydayHeading = screen.getByRole('heading', { name: /^everyday/i })
+    const everydaySection = everydayHeading.closest('section') as HTMLElement
+    expect(
+      within(everydaySection).getByRole('link', { name: /three mindful breaths/i }),
+    ).toHaveAttribute('href', '/meditate?guided=three-breaths')
+    expect(
+      within(everydaySection).getByRole('link', { name: /pause & stop/i }),
+    ).toHaveAttribute('href', '/meditate?guided=stop-pause')
+    expect(
+      within(everydaySection).getByRole('link', { name: /body check-in/i }),
+    ).toHaveAttribute('href', '/meditate?guided=body-checkin')
+    expect(
+      within(everydaySection).getByRole('link', { name: /arriving/i }),
+    ).toHaveAttribute('href', '/meditate?guided=arriving')
+  })
+
   it('links the reflection cards to their own pages', () => {
     renderPage()
-    expect(screen.getByRole('link', { name: /gratitude/i })).toHaveAttribute('href', '/gratitude')
+    // Scope to the Reflection section: "Gratitude" (reflection) and "Gratitude meditation" (Heart)
+    // both match /gratitude/i, so target the Reflection card explicitly.
+    const reflectionHeading = screen.getByRole('heading', { name: /reflection/i })
+    const reflectionSection = reflectionHeading.closest('section') as HTMLElement
+    expect(
+      within(reflectionSection).getByRole('link', { name: /gratitude/i }),
+    ).toHaveAttribute('href', '/gratitude')
     expect(screen.getByRole('link', { name: /journal/i })).toHaveAttribute('href', '/journal')
     expect(screen.getByRole('link', { name: /candle gazing/i })).toHaveAttribute('href', '/trataka')
   })
