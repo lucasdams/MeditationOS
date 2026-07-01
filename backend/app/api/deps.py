@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token_payload, password_fingerprint
 from app.models.user import User
 from app.services import user_service
 
@@ -37,12 +37,23 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not token:
         raise _UNAUTHORIZED
 
-    user_id = decode_access_token(token)
+    payload = decode_access_token_payload(token)
+    if payload is None:
+        raise _UNAUTHORIZED
+    user_id = payload.get("sub")
     if user_id is None:
         raise _UNAUTHORIZED
 
     user = user_service.get_user_by_id(db, user_id)
     if user is None:
+        raise _UNAUTHORIZED
+    # Session revocation via the password-version (`pwv`) claim: a token is bound to the
+    # password it was minted under, so changing the password (settings change-password or
+    # the reset-password flow — both rewrite `password_hash`) invalidates every existing
+    # access-token cookie for that user. Legacy tokens minted before this change carry no
+    # `pwv` and are grandfathered (they expire naturally) so a deploy doesn't mass-logout.
+    token_pwv = payload.get("pwv")
+    if token_pwv is not None and token_pwv != password_fingerprint(user.password_hash):
         raise _UNAUTHORIZED
     # An admin-disabled account is blocked here, so a still-valid token can't be used to
     # reach any authenticated route (including /auth/me). Enforced at the single choke
