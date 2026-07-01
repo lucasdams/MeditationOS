@@ -68,10 +68,11 @@ describe('PracticesPage', () => {
     expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '/')
   })
 
-  it('renders all category groups (Breathing, Meditation, Heart, Reflection)', () => {
+  it('renders all category groups (Breathing, Meditation, Body, Heart, Reflection)', () => {
     renderPage()
     expect(screen.getByRole('heading', { name: /breathing/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /meditation/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^body/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^heart/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /reflection/i })).toBeInTheDocument()
   })
@@ -114,6 +115,64 @@ describe('PracticesPage', () => {
         'href',
         '/meditate?guided=chakra-om',
       ),
+    )
+  })
+
+  it('renders the Body group with Body scan + Mindful stretching moved out of Meditation', () => {
+    renderPage()
+    const bodyHeading = screen.getByRole('heading', { name: /^body/i })
+    const bodySection = bodyHeading.closest('section') as HTMLElement
+    // Body scan and Mindful stretching now live in Body, not Meditation.
+    expect(within(bodySection).getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+    expect(within(bodySection).getByRole('link', { name: /mindful stretching/i })).toBeInTheDocument()
+    // The new Body-only practices are here too.
+    expect(within(bodySection).getByRole('link', { name: /yoga nidra/i })).toBeInTheDocument()
+    expect(within(bodySection).getByRole('link', { name: /muscle release/i })).toBeInTheDocument()
+    expect(within(bodySection).getByRole('link', { name: /mindful walking/i })).toBeInTheDocument()
+
+    const medHeading = screen.getByRole('heading', { name: /meditation/i })
+    const medSection = medHeading.closest('section') as HTMLElement
+    expect(within(medSection).queryByRole('link', { name: /body scan/i })).toBeNull()
+    expect(within(medSection).queryByRole('link', { name: /mindful stretching/i })).toBeNull()
+  })
+
+  it('deep-links the Body cards with the right ?guided= param', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: /body scan/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=body-scan',
+    )
+    expect(screen.getByRole('link', { name: /yoga nidra/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=yoga-nidra',
+    )
+    expect(screen.getByRole('link', { name: /muscle release/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=pmr',
+    )
+    expect(screen.getByRole('link', { name: /mindful stretching/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=stretching',
+    )
+    expect(screen.getByRole('link', { name: /mindful walking/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=walking',
+    )
+  })
+
+  it('deep-links the new Meditation cards (Focused attention, Mantra, Dopamine reset)', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: /focused attention/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=focus',
+    )
+    expect(screen.getByRole('link', { name: /^mantra/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=mantra',
+    )
+    expect(screen.getByRole('link', { name: /dopamine reset/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=just-sit',
     )
   })
 
