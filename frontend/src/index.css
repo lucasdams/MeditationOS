@@ -4284,6 +4284,21 @@ button.today-action:disabled {
   margin-bottom: 0.5rem;
 }
 
+/* The Care header stacks three lines — title, the Vitality lead read, then the balance
+   subtitle — so it must opt OUT of the `.dashboard header` flex row (which is meant for a
+   two-item title/subtitle split and otherwise floats the short "Care" title beside the middle
+   of the wrapped Vitality line). Specificity (0,2,0) beats `.dashboard header` (0,1,1). */
+.spirit-care .spirit-section-head {
+  display: block;
+}
+
+/* The Vitality lead line ("… is content — any practice keeps them so"): the overall read,
+   sitting just under the title and above the muted balance subtitle. */
+.spirit-vitality {
+  margin: 0.35rem 0 0;
+  font-size: var(--text-sm);
+}
+
 /* Accent tick in the Spirit hue so the title reads as a panel header (chrome phase 2). */
 .spirit-section-title {
   margin: 0;
