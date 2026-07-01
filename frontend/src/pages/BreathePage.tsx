@@ -35,7 +35,7 @@ import {
   writeDraft,
   type SessionDraft,
 } from '../lib/sessionDraft'
-import type { MeditationType, SessionCreate } from '../types'
+import type { DashboardStats, MeditationType, SessionCreate } from '../types'
 import {
   MAX_SCALE,
   MIN_SCALE,
@@ -52,6 +52,15 @@ import {
   scaleAt,
   segmentAt,
 } from '../lib/breathPattern'
+
+// Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
+// Passing it to buildXpBreakdown yields an all-zero breakdown rather than a crash.
+const ZERO_STATS: DashboardStats = {
+  xp: 0, level: 1, xp_into_level: 0, xp_for_next_level: 100,
+  current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
+  streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
+  gratitude_count: 0, this_week: [], daily_quests: [],
+}
 
 // How far ahead (seconds) the scheduler queues audio on the audio clock. Comfortably
 // larger than a throttled background timer tick (~1s), so cues are always queued in time.
@@ -658,9 +667,20 @@ export default function BreathePage() {
   async function saveSession(durationSec: number) {
     setError(null)
     setSaving(true)
+
+    // Fetch pre-save stats OUTSIDE the save try/catch so a getStats failure before the
+    // create can't be mistaken for a save error. If the pre-fetch fails we still save,
+    // but the XP reward is suppressed (a confident "0 XP" after a real sit would be a lie).
+    let statsFailed = false
+    const before = await dashboardService.getStats().catch(() => {
+      statsFailed = true
+      return ZERO_STATS
+    })
+
+    // The save itself — the one step that must succeed for this flow to continue.
+    let saved: { id: string }
     try {
-      const before = await dashboardService.getStats()
-      const saved = await sessionService.create({
+      saved = await sessionService.create({
         type: breathType,
         // Floor, never round up — a sub-minute breath must not count as the
         // "breathe a minute" quest (which needs a true ≥60s).
@@ -675,28 +695,46 @@ export default function BreathePage() {
         // Carry the optional pre-session intention onto the saved sit.
         intention: intention.trim() || null,
       })
-      savedSessionIdRef.current = saved.id
-      // Saved — drop the recovery draft and stop the tab-close beacon from re-firing.
-      savedRef.current = true
-      clearDraft(DRAFT_PAGE)
-      // If a pre-session reading was captured, link it to the sit now that we have an
-      // id — best-effort, so a link failure never blocks the reward/flow.
-      if (preReadingIdRef.current) {
-        try {
-          await biometricsService.linkSession(preReadingIdRef.current, saved.id)
-        } catch {
-          // Leave the reading unlinked rather than failing the save; it stays in history.
-        }
-        preReadingIdRef.current = null
-      }
-      const after = await dashboardService.getStats()
-      // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
-      const bd = buildXpBreakdown(before, after, '🫁 Breathing')
-      setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch (err) {
       setError(err instanceof ApiError ? "Couldn't save the session." : messageForError(err))
       setSaving(false)
+      return
     }
+
+    savedSessionIdRef.current = saved.id
+    // Saved — drop the recovery draft and stop the tab-close beacon from re-firing.
+    savedRef.current = true
+    clearDraft(DRAFT_PAGE)
+    // If a pre-session reading was captured, link it to the sit now that we have an
+    // id — best-effort, so a link failure never blocks the reward/flow.
+    if (preReadingIdRef.current) {
+      try {
+        await biometricsService.linkSession(preReadingIdRef.current, saved.id)
+      } catch {
+        // Leave the reading unlinked rather than failing the save; it stays in history.
+      }
+      preReadingIdRef.current = null
+    }
+
+    // Post-save stats are best-effort: the session is already saved. The user must NOT
+    // see "Couldn't save the session." when only this stats fetch failed.
+    const after = await dashboardService.getStats().catch(() => {
+      statsFailed = true
+      return ZERO_STATS
+    })
+
+    // If either stats fetch fell back to zeros, the breakdown would render a confident
+    // "0 XP / level 1" after a real sit. Skip the reward overlay and go straight to the
+    // next step (hatch / reflection) rather than celebrating fake numbers.
+    if (statsFailed) {
+      setSaving(false)
+      proceedAfterReward()
+      return
+    }
+
+    // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
+    const bd = buildXpBreakdown(before, after, '🫁 Breathing')
+    setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
   function finish() {
@@ -708,7 +746,10 @@ export default function BreathePage() {
       navigate('/')
       return
     }
-    void saveSession(elapsed)
+    // Save the freshest accumulated seconds from the ref (updated every rAF frame),
+    // not the `elapsed` state, which can lag a frame behind — matches the ref-based
+    // duration MeditatePage/Trataka save from.
+    void saveSession(elapsedRef.current)
   }
 
   // Save a breathing sit recovered from a previous visit (idempotent on its token).
@@ -766,6 +807,23 @@ export default function BreathePage() {
   function advanceToReading() {
     setShowReflection(false)
     if (savedSessionIdRef.current) setShowReading(true)
+    else navigate('/')
+  }
+
+  // What happens once the sit is saved and the reward step is done (whether the reward
+  // overlay was shown, or skipped because the stats fetch failed): the onboarding hatch
+  // takes precedence (first sit → companion choose page), otherwise offer the reflection,
+  // else return home. Shared so the reward-overlay close and the stats-failed path agree.
+  function proceedAfterReward() {
+    // Onboarding hatch (§5): the very first sit "hatches" the companion. If a hatch is
+    // pending, clear the flag and send the user to the choose page (the celebratory
+    // reveal) instead of the usual reflection-modal / home path.
+    if (consumePendingHatch()) {
+      navigate('/spirit/choose')
+      return
+    }
+    // After XP, offer the optional reflection — never blocks.
+    if (savedSessionIdRef.current) setShowReflection(true)
     else navigate('/')
   }
 
@@ -1123,16 +1181,9 @@ export default function BreathePage() {
           breakdown={reward.breakdown}
           onClose={() => {
             setReward(null)
-            // Onboarding hatch (§5): the very first sit "hatches" the companion. If a hatch is
-            // pending, clear the flag and send the user to the choose page (the celebratory
-            // reveal) instead of the usual reflection-modal / home path.
-            if (consumePendingHatch()) {
-              navigate('/spirit/choose')
-              return
-            }
-            // After XP, offer the optional reflection — never blocks.
-            if (savedSessionIdRef.current) setShowReflection(true)
-            else navigate('/')
+            // The hatch / reflection / home routing is shared with the stats-failed
+            // path in saveSession (see proceedAfterReward) so both agree.
+            proceedAfterReward()
           }}
         />
       )}

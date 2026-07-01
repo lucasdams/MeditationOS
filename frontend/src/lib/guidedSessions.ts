@@ -279,9 +279,18 @@ export function isGuidedUnlocked(
 }
 
 export function getStructure(id: GuidedStructureId): GuidedStructure {
-  const s = GUIDED_STRUCTURES.find((g) => g.id === id)
+  const s = tryGetStructure(id)
   if (!s) throw new Error(`Unknown guided structure: ${id}`)
   return s
+}
+
+/**
+ * Like getStructure but returns null for an unknown id instead of throwing. For
+ * callers that render during React's render phase (e.g. GuidedCues), where an
+ * exception would blow up the tree — they can fall back to a plain timer instead.
+ */
+export function tryGetStructure(id: GuidedStructureId): GuidedStructure | null {
+  return GUIDED_STRUCTURES.find((g) => g.id === id) ?? null
 }
 
 // ── Scheduler ────────────────────────────────────────────────────────────────

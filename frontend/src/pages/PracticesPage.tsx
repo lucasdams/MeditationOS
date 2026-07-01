@@ -25,6 +25,7 @@ import {
 import { spiritService } from '../services/spirit'
 import { dashboardService } from '../services/dashboard'
 import { GUIDED_MIN_LEVEL, isGuidedUnlocked } from '../lib/guidedSessions'
+import { weakestNeed } from '../lib/spiritNeeds'
 import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
 import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
 
@@ -69,13 +70,6 @@ function feedsFor(card: PracticeCard, path: SpiritPath | null): SpiritNeedKey[] 
   const base = card.feeds ?? BASE_NEED[card.kind]
   if (path && SIGNATURE_KINDS[path].includes(card.kind)) return ['nourished', base]
   return [base]
-}
-
-// The spirit's weakest need (what it needs most) — the lowest 0..1 factor wins, matching the
-// backend's "overall condition = weakest need".
-function weakestNeed(s: SpiritState): SpiritNeedKey {
-  const keys: SpiritNeedKey[] = ['nourished', 'rested', 'joyful']
-  return keys.reduce((a, b) => (s.needs[b].factor < s.needs[a].factor ? b : a))
 }
 
 interface PracticeCard {
@@ -184,7 +178,7 @@ export default function PracticesPage() {
   // Only guide by needs for a creature that has chosen a path. A pathless spark shows the practices
   // + their generic feeds, but no "needs now" highlight (ADR-0031: the spirit is always alive).
   const guiding = spirit != null && spirit.path != null
-  const need = guiding ? weakestNeed(spirit) : null
+  const need = guiding ? weakestNeed(spirit.needs) : null
 
   return (
     <main id="main-content" className="dashboard practices-page">

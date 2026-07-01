@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
 import { spiritService } from '../services/spirit'
+import { weakestNeed } from '../lib/spiritNeeds'
 import { NEED_COPY } from './Spirit'
 import type { SpiritNeedKey, SpiritState } from '../types'
 
@@ -174,13 +175,10 @@ export default function AppHeader() {
   }, [userMenuOpen])
 
   // The companion's most-depleted need = what it prefers right now (lowest factor). Only when it has
-  // a chosen path — a pathless spark has no preference yet, so the chip stays hidden.
+  // a chosen path — a pathless spark has no preference yet, so the chip stays hidden. Shared with the
+  // Practices hub via weakestNeed() so both agree (and match the backend's condition = weakest need).
   const need: SpiritNeedKey | null =
-    spirit && spirit.path != null
-      ? (['nourished', 'rested', 'joyful'] as SpiritNeedKey[]).reduce((a, b) =>
-          spirit.needs[b].factor < spirit.needs[a].factor ? b : a,
-        )
-      : null
+    spirit && spirit.path != null ? weakestNeed(spirit.needs) : null
   const NeedIcon = need ? NEED_COPY[need].icon : null
   const spiritName = spirit?.name ?? 'Your spirit'
 

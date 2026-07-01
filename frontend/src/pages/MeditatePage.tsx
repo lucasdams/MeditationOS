@@ -409,6 +409,10 @@ export default function MeditatePage() {
       tokenRef.current = newClientToken()
       startedAtRef.current = new Date().toISOString()
       savedRef.current = false
+      // Zero the interval-bell mark so a fresh sit always rings from mark 1 — even if
+      // this start didn't come through reset() (which also clears it). Otherwise a
+      // long previous sit could leave a high stale mark and swallow the early bells.
+      lastBellMarkRef.current = 0
       setRestorable(null)
       bell() // opening bell on a fresh sit, not on resume
     }
@@ -599,6 +603,15 @@ export default function MeditatePage() {
   const isGuided = guidedChoice !== 'none'
   const speechOn = isGuided && spokenPref && speechSupported
 
+  // The <select>'s EFFECTIVE value: fall back to 'none' whenever the current choice
+  // resolves to a locked option (e.g. a `?guided=chakra-om` deep-link while level is
+  // still loading, or below the gate). The async gate effect above eventually resets
+  // guidedChoice itself, but binding the control to this computed value means it never
+  // points at a `disabled` <option> even transiently — which some browsers render
+  // inconsistently. isGuidedUnlocked treats a null level as locked (fail safe).
+  const selectedGuidedValue: GuidedChoice =
+    guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level) ? 'none' : guidedChoice
+
   const targetSec = targetMin * 60
   const remaining = targetSec > 0 ? Math.max(0, targetSec - elapsed) : elapsed
   // A sit is "underway" once started (running) or partway (paused). Before that, the
@@ -701,7 +714,7 @@ export default function MeditatePage() {
         <label htmlFor="guided-structure">Guided structure</label>
         <select
           id="guided-structure"
-          value={guidedChoice}
+          value={selectedGuidedValue}
           disabled={settingsDisabled}
           onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
         >
