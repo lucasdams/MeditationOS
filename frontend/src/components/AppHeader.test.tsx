@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import type { SpiritNeed, SpiritState } from '../types'
 
 const useAuthMock = vi.fn()
 
@@ -14,16 +15,39 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }))
 
-// The header self-fetches the level + the spirit on mount; keep both pending so they never
-// resolve in tests (the spirit-need chip + level chip simply stay absent).
+// The header self-fetches the level + the spirit on mount. The level stays pending (the level chip
+// simply stays absent); the spirit fetch is a controllable mock — by default pending so the
+// round-out chip is absent, but individual tests can resolve it to exercise the chip.
 vi.mock('../services/dashboard', () => ({
   dashboardService: { getStats: () => new Promise(() => {}) },
 }))
+const spiritGet = vi.fn(() => new Promise(() => {}))
 vi.mock('../services/spirit', () => ({
-  spiritService: { get: () => new Promise(() => {}) },
+  spiritService: { get: (...a: unknown[]) => spiritGet(...a) },
 }))
 
 import AppHeader from './AppHeader'
+
+const need = (factor: number): SpiritNeed => ({ tier: 'content', factor })
+
+// A minimal living spirit with an UNEVEN balance (joyful lags) → the round-out chip should surface.
+function spiritWith(overrides: Partial<SpiritState> = {}): SpiritState {
+  return {
+    stage: 'fledgling',
+    path: 'stillness',
+    name: 'Sage',
+    bond: { level: 5, xp_into_level: 0, xp_for_next: 20 },
+    needs: { nourished: need(0.9), rested: need(0.9), joyful: need(0.3) },
+    condition: need(0.9),
+    coins: 100,
+    cosmetics: {},
+    available: [],
+    collection: [],
+    set_bonus: { active: false, kind: null, count: 0, total: 0, label: 'Signature radiance' },
+    awakened_at: '2026-06-01T00:00:00Z',
+    ...overrides,
+  }
+}
 
 function renderHeader() {
   return render(
@@ -39,6 +63,7 @@ describe('AppHeader — grouped navigation', () => {
       user: { username: 'aria', is_admin: false },
       logout: vi.fn(),
     })
+    spiritGet.mockImplementation(() => new Promise(() => {})) // spirit pending → no chip
   })
   afterEach(() => {
     cleanup()
@@ -112,5 +137,51 @@ describe('AppHeader — grouped navigation', () => {
     renderHeader()
     fireEvent.click(screen.getByRole('button', { name: /Progress/ }))
     expect(within(document.getElementById('nav-progress-dropdown')!).getByRole('link', { name: /Admin/ })).toHaveAttribute('href', '/admin')
+  })
+})
+
+// The spirit-need chip is now an OPTIONAL round-out invitation (ADR-0032), not a "Wants X" demand.
+// It surfaces only for a chosen path with an uneven balance, and is easy to ignore.
+describe('AppHeader — spirit round-out chip (ADR-0032)', () => {
+  beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      user: { username: 'aria', is_admin: false },
+      logout: vi.fn(),
+    })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('surfaces a gentle round-out suggestion (not "Wants") for an uneven balance', async () => {
+    // joyful lags nourished/rested → the least-represented facet is Joy.
+    spiritGet.mockResolvedValue(spiritWith())
+    renderHeader()
+    // Copy is a soft invitation ("A little Joy?"), never the old "Wants Joy" demand.
+    const chip = await screen.findByText(/A little Joy\?/i)
+    expect(chip).toBeInTheDocument()
+    const link = chip.closest('a')!
+    expect(link).toHaveAttribute('href', '/practices')
+    expect(link.getAttribute('title')).toMatch(/round things out/i)
+    expect(screen.queryByText(/Wants/i)).toBeNull()
+  })
+
+  it('shows no chip when the balance is even', async () => {
+    spiritGet.mockResolvedValue(
+      spiritWith({ needs: { nourished: need(0.9), rested: need(0.9), joyful: need(0.9) } }),
+    )
+    renderHeader()
+    // Give the resolved fetch a tick to settle, then assert no chip appears.
+    await screen.findByRole('link', { name: 'Home' })
+    expect(screen.queryByText(/A little/i)).toBeNull()
+    expect(screen.queryByText(/Wants/i)).toBeNull()
+  })
+
+  it('shows no chip for a pathless spark', async () => {
+    spiritGet.mockResolvedValue(spiritWith({ path: null }))
+    renderHeader()
+    await screen.findByRole('link', { name: 'Home' })
+    expect(screen.queryByText(/A little/i)).toBeNull()
   })
 })

@@ -25,14 +25,16 @@ spark") splits which LEVEL each reads:
   ADR-0024: the balance comes from the STORED, monotonic `coins_spent` ledger (every upgrade
   and paid reset only ADDS to it; clearing an upgrade never refunds), so a committed choice
   can't be undone for free. Self-contained: this module owns its own `COINS_PER_LEVEL`.
-- **Needs** (ADR-0031, supersedes ADR-0029's survival meters; re-adopts the non-punishing needs
-  of ADR-0023 and the cosmetic modifiers of ADR-0025/0026/0028 stay removed) — THREE GENTLE meters
-  (`nourished` / `rested` / `joyful`), each a tier + 0..1 factor that eases down off the born-fed
-  baseline + the most-recent relevant practice (and a lighter, capped manual tend), but is FLOORED
-  at NEEDS_FLOOR so it never drops below a calm "content" tier. `nourished` ← the chosen creature's
-  signature practice, `rested` ← any sit, `joyful` ← a gratitude/journal entry. The overall
-  **condition** = the weakest need — a purely visual care read-out: there is no "ailing", no death.
-  XP/level/coins stay decoupled from needs, so practice progress is never lost.
+- **Vitality + Balance** (ADR-0032, refining ADR-0031/0029/0023) — the overall **condition** is
+  now **VITALITY** ("cared-for"): a single headline signal fed by ANY practice of ANY kind (any
+  sit, a gratitude entry, or a journal entry), decaying off the most-recent such practice and
+  FLOORED at NEEDS_FLOOR so its worst reachable tier is `content` (never alarming). The three
+  `nourished` / `rested` / `joyful` meters STAY — each a tier + 0..1 factor easing down off the
+  born-fed baseline + the most-recent relevant practice (and a lighter, capped manual tend), FLOORED
+  at NEEDS_FLOOR — but they are demoted to an **informational balance** (your recent practice mix),
+  not depleting debts and no longer the overall look. `nourished` ← the chosen creature's signature
+  practice, `rested` ← any sit, `joyful` ← a gratitude/journal entry. There is no "ailing", no
+  death. XP/level/coins stay decoupled, so practice progress is never lost.
 
 ADR-0023 also makes the `path` USER-CHOSEN (set once via `choose_path` while pathless)
 instead of auto-detected from the practice mix; the ADR-0022 `path_lean` and commit-on-read
@@ -203,7 +205,7 @@ HEART = "heart"
 _CHOOSABLE_PATHS: frozenset[str] = frozenset({STILLNESS, BREATH, HEART})
 
 
-# --- The three needs (ADR-0029 survival meters) + need keys -------------------------------
+# --- The three needs (ADR-0032 informational balance) + need keys -------------------------
 #
 # The three need KEYS (also the catalog `need` affinity tag, ADR-0026 → a display tag only under
 # ADR-0029). Kept as bare string constants so the catalog, the needs read, and the schema all
@@ -220,7 +222,9 @@ NEED_KEYS: tuple[str, ...] = (NOURISHED, RESTED, JOYFUL)
 # is reported as a tier (thriving → content → restless → unwell) + a 0..1 factor, but the factor is
 # FLOORED at NEEDS_FLOOR so it never drops below the calm "content" tier (ADR-0031 — the spirit is
 # encouraging-only; there is no empty, no "unwell"). The tier is banded from that value via
-# NEED_TIERS' factor thresholds (`_tier_for_factor`). What feeds each need:
+# NEED_TIERS' factor thresholds (`_tier_for_factor`). ADR-0032 demotes these three from the overall
+# look (that's now VITALITY, fed by any practice) to an INFORMATIONAL BALANCE — a read-out of your
+# recent practice MIX, advisory only, never a punishing debt. What feeds each:
 #   nourished — the chosen creature's SIGNATURE practice (the balancing one).
 #   rested    — ANY practice session (a sit of any kind).
 #   joyful    — a gratitude or journal entry.
@@ -231,7 +235,9 @@ CONDITION_CONTENT = "content"
 CONDITION_RESTLESS = "restless"
 CONDITION_UNWELL = "unwell"
 
-# Tier order, worst → best, so the overall condition can pick the WEAKEST need by index.
+# The canonical tier order, worst → best. (Was used to pick the weakest need for the overall
+# condition; ADR-0032 moved the overall look to Vitality, so nothing reads this now — kept as the
+# single source of truth for tier ordering.)
 _TIER_RANK: dict[str, int] = {
     CONDITION_UNWELL: 0,
     CONDITION_RESTLESS: 1,
@@ -375,6 +381,17 @@ def _last_reflection_at(db: DBSession, user_id: uuid.UUID) -> datetime | None:
     return _latest(last_grat, last_journal)
 
 
+def _last_any_practice_at(db: DBSession, user_id: uuid.UUID) -> datetime | None:
+    """The most recent timestamp of ANY practice of ANY kind (ADR-0032) — a sit
+    (mindfulness/breathing/etc.), a gratitude entry, OR a journal entry. This is the single signal
+    that feeds VITALITY: any one practice keeps the companion content, so we take the latest across
+    all three sources. None when the user has never practiced at all."""
+    return _latest(
+        _last_any_session_at(db, user_id),
+        _last_reflection_at(db, user_id),
+    )
+
+
 def _neutral_need() -> SpiritNeed:
     """A pathless spark's neutral, content-ish need (no care requirement until a creature is
     chosen)."""
@@ -451,9 +468,11 @@ def needs(
     rested_tended_at: datetime | None = None,
     joyful_tended_at: datetime | None = None,
 ) -> SpiritNeeds:
-    """The active creature's three GENTLE needs (ADR-0031 — supersedes ADR-0029's survival meters;
-    re-adopts the non-punishing stance of ADR-0023, with the cosmetic modifiers of
-    ADR-0025/0026/0028 still removed).
+    """The active creature's three GENTLE needs — an INFORMATIONAL BALANCE (ADR-0032, refining
+    ADR-0031/0029/0023). These are NOT depleting debts and no longer drive the overall look (that's
+    now VITALITY, fed by any practice — see `vitality`). They are a read-out of the practitioner's
+    recent practice MIX, advisory only: a low facet is a gentle "you could round this out" hint, not
+    a warning. Non-punishing and floored, exactly as before.
 
     A pathless spark (path is None) has no chosen creature, so every need returns a neutral,
     content-ish default rather than easing down.
@@ -491,14 +510,37 @@ def needs(
     )
 
 
-def overall_condition(spirit_needs: SpiritNeeds) -> SpiritCondition:
-    """The overall care state = the WEAKEST of the three needs (ADR-0023), so the frontend can
-    render one summary look. Ties on tier are broken by the lower factor. Visual-only."""
-    weakest = min(
-        (spirit_needs.nourished, spirit_needs.rested, spirit_needs.joyful),
-        key=lambda n: (_TIER_RANK[n.tier], n.factor),
-    )
-    return SpiritCondition(tier=weakest.tier, factor=weakest.factor)
+def vitality(
+    db: DBSession,
+    path: str | None,
+    user_id: uuid.UUID,
+    *,
+    now: datetime,
+    needs_baseline_at: datetime,
+) -> SpiritCondition:
+    """VITALITY (a.k.a. cared-for) — the single headline signal for the companion's overall look
+    (ADR-0032, refining ADR-0023/0029/0031). Unlike the old "condition = weakest of three needs",
+    vitality is fed by ANY practice of ANY kind: a sit (mindfulness/breathing/etc.), a gratitude
+    entry, OR a journal entry. So a day with just one practice of any sort keeps the companion
+    content — no single facet can drag the overall look down.
+
+    Its factor decays off the MOST-RECENT practice of any kind (floored at `needs_baseline_at`, the
+    born-fed anchor), easing from full toward the floor over DECAY_DAYS, and is FLOORED at
+    NEEDS_FLOOR so the worst reachable tier is `content` — never alarming (ADR-0031: the companion
+    is encouraging-only, never mortal). A pathless spark reports the same neutral, content-ish
+    default the three needs do. Visual/advisory only: never affects stage, level, coins, or the
+    collection."""
+    if path is None or path not in _CHOOSABLE_PATHS:
+        neutral = _neutral_need()
+        return SpiritCondition(tier=neutral.tier, factor=neutral.factor)
+
+    baseline = _as_aware(needs_baseline_at)
+    now = _as_aware(now)
+    # Fed by the later of the born-fed baseline and the most recent practice of ANY kind; no tend
+    # feeds vitality (tending tops up an individual facet, not the headline signal).
+    fed = _latest(baseline, _last_any_practice_at(db, user_id))
+    value = _need_value(now, fed, None)
+    return SpiritCondition(tier=_tier_for_factor(value), factor=value)
 
 
 # --- Cosmetics economy (ADR-0027: a per-slot skill tree — unlock-to-own, free equip) -------
@@ -1258,9 +1300,11 @@ def _build_state(
     # it's a visual flourish (no needs lift).
     set_bonus = _signature_set_bonus(cosmetics, spirit.path)
 
-    # ADR-0031: the three needs are GENTLE meters that ease down off the born-fed baseline, the
-    # most-recent relevant practice, and the per-need tend stamps — but are FLOORED so they never
-    # empty or punish (no health/ailing/death). A pathless spark gets neutral defaults.
+    # ADR-0032: the three needs are now an informational BALANCE (your recent practice mix), not
+    # three depleting debts. Each still eases down off the born-fed baseline, the most-recent
+    # relevant practice, and the per-need tend stamps — FLOORED so they never empty or punish
+    # (ADR-0031: no health/ailing/death) — but they no longer drive the overall look. A pathless
+    # spark gets neutral defaults.
     baseline = spirit.needs_baseline_at
     spirit_needs = needs(
         db,
@@ -1290,8 +1334,12 @@ def _build_state(
             xp_for_next=spirit_basis.xp_for_next,
         ),
         needs=spirit_needs,
-        # The overall condition is the weakest of the three needs — a calm, visual care read-out.
-        condition=overall_condition(spirit_needs),
+        # ADR-0032: `condition` is VITALITY — the single headline signal, fed by ANY practice of any
+        # kind and floored so it only ever roots for you. NOT the weakest of the three needs (those
+        # are now an informational balance). A calm, visual care read-out.
+        condition=vitality(
+            db, spirit.path, user_id, now=now, needs_baseline_at=baseline
+        ),
         coins=coins,
         cosmetics=cosmetics,
         available=_available_slots(cosmetics, owned, coins, level, spirit.path),
