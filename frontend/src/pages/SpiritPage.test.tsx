@@ -788,17 +788,17 @@ describe('SpiritPage customization slots (redesign)', () => {
   })
 })
 
-describe('SpiritPage care needs (ADR-0023)', () => {
+describe('SpiritPage care — vitality + balance (ADR-0032)', () => {
   beforeEach(() => {
     get.mockReset()
   })
 
-  it('shows the three needs and a kind care nudge when a need is low', async () => {
+  it('leads with Vitality and shows the balance + an optional round-out when a facet lags', async () => {
     get.mockResolvedValue(
       spiritWith({
         path: 'breath', // Pitta → balanced by gratitude & journaling (cooling)
         needs: {
-          nourished: okNeed('restless', 0.5),
+          nourished: okNeed('restless', 0.5), // lags the others → the round-out suggestion
           rested: okNeed('content'),
           joyful: okNeed('content'),
         },
@@ -808,14 +808,18 @@ describe('SpiritPage care needs (ADR-0023)', () => {
     renderPage()
 
     await showTab('Care')
-    // Scope the need-label assertions to the needs READ-OUT (the meter list): the same labels
+    // Vitality leads: the overall condition (content) is surfaced as "any practice keeps them so".
+    expect(screen.getByText(/any practice keeps them so/i)).toBeInTheDocument()
+    // Scope the facet-label assertions to the balance READ-OUT (the meter list): the same labels
     // (Nourishment / Rest / Joy) also tag the tree's options (ADR-0026) AND the Feed/Rest/Play
-    // tend buttons (ADR-0029), so even a Care-region getByText would match more than one.
+    // tend buttons, so even a Care-region getByText would match more than one.
     const needsList = document.querySelector('.spirit-needs') as HTMLElement
     expect(within(needsList).getByText('Nourishment')).toBeInTheDocument()
     expect(within(needsList).getByText('Rest')).toBeInTheDocument()
     expect(within(needsList).getByText('Joy')).toBeInTheDocument()
-    expect(screen.getByText(/Pitta is restless/i)).toBeInTheDocument()
-    expect(screen.getByText(/gratitude & journaling would revive it/i)).toBeInTheDocument()
+    // The optional round-out suggestion (ADR-0032) — invitation, not "is restless" / "needs" alarm.
+    expect(screen.getByText(/has had a little less nourishment lately/i)).toBeInTheDocument()
+    expect(screen.getByText(/gratitude & journaling would round things out/i)).toBeInTheDocument()
+    expect(screen.queryByText(/is restless|needs more|wants more/i)).toBeNull()
   })
 })

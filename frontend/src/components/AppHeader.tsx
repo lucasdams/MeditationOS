@@ -27,7 +27,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
 import { spiritService } from '../services/spirit'
-import { weakestNeed } from '../lib/spiritNeeds'
+import { roundOutFacet } from '../lib/spiritNeeds'
 import { NEED_COPY } from './Spirit'
 import type { SpiritNeedKey, SpiritState } from '../types'
 
@@ -174,11 +174,12 @@ export default function AppHeader() {
     }
   }, [userMenuOpen])
 
-  // The companion's most-depleted need = what it prefers right now (lowest factor). Only when it has
-  // a chosen path — a pathless spark has no preference yet, so the chip stays hidden. Shared with the
-  // Practices hub via weakestNeed() so both agree (and match the backend's condition = weakest need).
+  // ADR-0032: the three needs are an informational balance, not debts. The chip is an OPTIONAL
+  // round-out invitation for the least-represented facet — and only when the balance is actually
+  // uneven (roundOutFacet returns null on an even mix → no chip). Only when a path is chosen (a
+  // pathless spark has no mix yet). Shared with the Practices hub via roundOutFacet() so both agree.
   const need: SpiritNeedKey | null =
-    spirit && spirit.path != null ? weakestNeed(spirit.needs) : null
+    spirit && spirit.path != null ? roundOutFacet(spirit.needs) : null
   const NeedIcon = need ? NEED_COPY[need].icon : null
   const spiritName = spirit?.name ?? 'Your spirit'
 
@@ -270,16 +271,17 @@ export default function AppHeader() {
         </div>
       </nav>
       <div className="app-user" ref={userRef}>
-        {/* A persistent reminder of what the companion prefers right now — visible while you browse
-            practices. Links to the practices that help fill it. Hidden for a pathless spark. */}
+        {/* An optional, easy-to-ignore round-out invitation (ADR-0032) — surfaced only when the
+            recent-practice balance is a little uneven. A gentle suggestion, never a demand; links to
+            practices that round it out. Hidden for a pathless spark or an even balance. */}
         {need && NeedIcon && (
           <Link
             to="/practices"
             className="spirit-need-chip"
-            title={`${spiritName} wants more ${NEED_COPY[need].label.toLowerCase()} right now — these practices help`}
+            title={`${spiritName} has had less ${NEED_COPY[need].label.toLowerCase()} lately — a little would round things out`}
           >
             <NeedIcon size={15} strokeWidth={1.9} aria-hidden="true" />
-            <span className="spirit-need-chip-label">Wants {NEED_COPY[need].label}</span>
+            <span className="spirit-need-chip-label">A little {NEED_COPY[need].label}?</span>
           </Link>
         )}
         <div className="app-user-menu-wrap">

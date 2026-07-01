@@ -10,6 +10,7 @@ import {
   NeedsReadout,
   CareNudge,
   NEED_COPY,
+  TIER_COPY,
   slotLabel,
   optionLabel,
   titleize,
@@ -676,17 +677,25 @@ export default function SpiritPage() {
               </nav>
             )}
 
-            {/* Care (ADR-0023 / ADR-0031) — the three gentle needs ease down over time but never
-                empty or punish; a kind, optional nudge when one is a touch low, plus the Feed /
-                Rest / Play tend actions as gentle, optional care. Only for a chosen creature; a
-                pathless spark has no needs yet (the picker leads). */}
+            {/* Care (ADR-0032) — leads with VITALITY (the headline "cared-for" signal, fed by any
+                practice), then shows the three facets as an informational BALANCE of your recent
+                practice mix (not debts), a single optional round-out suggestion, and the Feed / Rest
+                / Play tend actions as gentle, optional care. Only for a chosen creature. */}
             {spirit.path && tab === 'care' && (
               <section className="spirit-section spirit-care" aria-label="Care">
                 <header className="spirit-section-head">
                   <h2 className="spirit-section-title">Care</h2>
+                  {/* Vitality first — any practice keeps them content; this is the overall read. */}
+                  <p className="spirit-vitality" role="status">
+                    <strong>{spirit.name ?? 'Your spirit'}</strong> is{' '}
+                    <strong className="spirit-vitality-tier">
+                      {(TIER_COPY[spirit.condition.tier]?.label ?? 'Content').toLowerCase()}
+                    </strong>{' '}
+                    — any practice keeps them so.
+                  </p>
                   <p className="muted spirit-section-subtitle">
-                    These meters ease down over time — tend them whenever you like, or practice to
-                    fill them fully.
+                    Below is your recent practice balance — a gentle read of your mix, never a
+                    to-do. Tend a facet whenever you like, or just practice.
                   </p>
                 </header>
 

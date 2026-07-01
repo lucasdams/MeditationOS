@@ -4,6 +4,7 @@ import { Soup, Moon, Sparkles, ArrowRight, type LucideProps } from 'lucide-react
 import { spiritService } from '../services/spirit'
 import { Loading, RetryableError } from './StateViews'
 import { messageForError } from '../lib/errors'
+import { roundOutFacet } from '../lib/spiritNeeds'
 import type {
   SpiritNeedTier,
   SpiritPath,
@@ -355,31 +356,33 @@ export function titleize(key: string): string {
 export const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? titleize(slot)
 export const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
 
-// The practice that revives a given need for a given creature (ADR-0023). Nourished is the
-// signature need (per dosha); rested wants a steady daily rhythm; joyful wants variety.
-export function reviveHint(
+// A gentle, optional round-out hint for a given facet + creature (ADR-0032). Framed as an
+// invitation ("would round things out"), never a demand: nourished suggests the dosha's balancing
+// practice; rested suggests a calm rhythm; joyful suggests a little variety.
+export function roundOutHint(
   need: keyof SpiritState['needs'],
   path: SpiritPath | null,
 ): string {
   if (need === 'nourished') {
     const practice = path ? DOSHA[path].practice : 'your practice'
-    return `a few minutes of ${practice} would revive it`
+    return `a few minutes of ${practice} would round things out`
   }
-  if (need === 'rested') return 'a calm daily rhythm would settle it'
-  return 'a little variety in your practice would lift it'
+  if (need === 'rested') return 'a calm daily rhythm would round things out'
+  return 'a little variety in your practice would round things out'
 }
 
-// The three needs in display order, so the read-out + nudges iterate consistently.
+// The three facets in display order, so the read-out + suggestion iterate consistently.
 const NEED_ORDER: Array<keyof SpiritState['needs']> = ['nourished', 'rested', 'joyful']
 
 /**
- * NeedsReadout — the three tended needs (Nourishment / Rest / Joy) as labeled 0–100 bars
- * (ADR-0023). Each shows its dimension label, current tier word, and a fill bar for the level
- * (the need's 0..1 factor), tinted by tier. Visual-only. Reused by the home summary + SpiritPage.
+ * NeedsReadout — the three-facet recent-practice BALANCE (Nourishment / Rest / Joy) as labeled
+ * 0–100 bars (ADR-0032 — informational, not debts). Each shows its facet label, current tier word,
+ * and a fill bar for the level (the facet's 0..1 factor), tinted by tier. Visual-only. Reused by
+ * the home summary + SpiritPage.
  */
 export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
   return (
-    <ul className="spirit-needs" aria-label="Care needs">
+    <ul className="spirit-needs" aria-label="Recent practice balance">
       {NEED_ORDER.map((key) => {
         const need = needs[key]
         const copy = NEED_COPY[key]
@@ -413,9 +416,11 @@ export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
 }
 
 /**
- * CareNudge — a single, kind care nudge for the lowest need that's slipped below content
- * (ADR-0023 guardrail: nudge, never shame). Names the creature (dosha) and the practice that
- * revives it. Renders nothing when every need is content-or-better. Reused on the home + page.
+ * CareNudge — at most ONE optional round-out suggestion (ADR-0032): the least-represented facet,
+ * framed as a gentle invitation, and shown ONLY when the recent-practice balance is uneven
+ * (roundOutFacet returns null on an even mix → renders nothing). Never a warning or a demand — the
+ * companion is content regardless (that's Vitality); this is only "you could round this out, if you
+ * like". Reused on the home + SpiritPage.
  */
 export function CareNudge({
   needs,
@@ -424,24 +429,14 @@ export function CareNudge({
   needs: SpiritState['needs']
   path: SpiritPath | null
 }) {
-  // Surface the single most-depleted low need so the nudge stays one calm line, not a list.
-  const TIER_RANK: Record<SpiritNeedTier, number> = {
-    unwell: 0,
-    restless: 1,
-    content: 2,
-    thriving: 3,
-  }
-  const low = NEED_ORDER.filter((k) => isLowTier(needs[k].tier)).sort(
-    (a, b) => TIER_RANK[needs[a].tier] - TIER_RANK[needs[b].tier],
-  )
-  if (low.length === 0) return null
-  const key = low[0]
-  const tier = needs[key].tier
-  const tierLabel = TIER_COPY[tier].label.toLowerCase()
+  const key = roundOutFacet(needs)
+  if (key === null) return null // the balance is even — no suggestion at all
   const creature = path ? `Your ${DOSHA[path].name}` : 'Your spark'
+  const facet = NEED_COPY[key].label.toLowerCase()
   return (
     <p className="spirit-care-nudge" role="status">
-      {creature} is {tierLabel} — {reviveHint(key, path)}.
+      {creature} has had a little less {facet} lately — {roundOutHint(key, path)}, if you feel like
+      it.
     </p>
   )
 }
@@ -5313,8 +5308,8 @@ export default function Spirit({
           </>
         )
       ) : (
-        // A chosen creature: its stage, a tidy needs read-out + a single kind, optional care nudge,
-        // and the bond level. Always encouraging — never a warning (ADR-0031).
+        // A chosen creature: its stage, the recent-practice balance read-out + at most one optional
+        // round-out suggestion, and the bond level. Always encouraging, never a warning (ADR-0032).
         <>
           <p className="spirit-stage">{copy.name}</p>
           <p className="spirit-note muted">{copy.note}</p>
