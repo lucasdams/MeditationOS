@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, CalendarRange, CircleCheck, ChevronRight } from 'lucide-react'
 import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import { ACTIVITY_META, type Activity } from '../lib/colors'
@@ -68,7 +68,10 @@ function PathDayRow({ day }: { day: PathDay }) {
   )
 }
 
-// A single path: not-enrolled shows the calm "Start this path"; enrolled lays out its days.
+// A single path as a uniform surface card (mirrors the Practices hub's .practice-card):
+//   • not-enrolled → the whole card is the enroll button: an icon chip, title, one-line blurb,
+//     a clean progress line, and a reveal chevron + hover lift.
+//   • enrolled → the same card head, then the day list beneath it (behaviour unchanged).
 function PathCard({
   path,
   onEnroll,
@@ -78,41 +81,64 @@ function PathCard({
   onEnroll: (id: string) => void
   enrolling: boolean
 }) {
-  return (
-    <section className="path-card" aria-label={path.title}>
-      <h2 className="path-card-title">{path.title}</h2>
-      <p className="path-card-blurb">{path.blurb}</p>
-      <p className="path-card-progress muted">{progressLine(path)}</p>
+  // Head shared by both states: an accent icon chip (a check once complete), the title, the
+  // blurb, and the tailored progress line. The chip carries the ONLY colour, keeping the list calm.
+  const HeadIcon = path.completed ? CircleCheck : CalendarRange
+  const head = (
+    <>
+      <span className="path-card-icon" aria-hidden="true">
+        <HeadIcon size={20} strokeWidth={1.9} />
+      </span>
+      <span className="path-card-body">
+        <span className="path-card-title">{path.title}</span>
+        <span className="path-card-blurb">{path.blurb}</span>
+        <span className="path-card-progress">{progressLine(path)}</span>
+      </span>
+    </>
+  )
 
-      {!path.enrolled ? (
-        <button
-          type="button"
-          className="path-start-btn today-action"
-          onClick={() => onEnroll(path.id)}
-          disabled={enrolling}
-        >
-          {enrolling ? 'Starting…' : 'Start this path'}
-        </button>
-      ) : (
-        <>
-          {/* Warm re-entry for an enrolled, unfinished path — never "you missed days". */}
-          {!path.completed && (
-            <p className="path-welcome muted">
-              Welcome back — you're on Day {path.current_day ?? 1}.
-            </p>
+  // Not enrolled: the whole card is one calm affordance to begin — a button styled as a card,
+  // with a reveal chevron. Disabled while the enroll request is in flight.
+  if (!path.enrolled) {
+    return (
+      <button
+        type="button"
+        className="path-card path-card--start"
+        onClick={() => onEnroll(path.id)}
+        disabled={enrolling}
+        aria-label={`Start ${path.title}`}
+      >
+        {head}
+        <span className="path-card-go" aria-hidden="true">
+          {enrolling ? (
+            <span className="path-card-starting">Starting…</span>
+          ) : (
+            <ChevronRight size={18} strokeWidth={2} />
           )}
-          {path.completed && (
-            <p className="path-complete">
-              You've finished this path. Beautifully done.
-            </p>
-          )}
-          <ol className="path-days">
-            {path.days.map((day) => (
-              <PathDayRow key={day.index} day={day} />
-            ))}
-          </ol>
-        </>
+        </span>
+      </button>
+    )
+  }
+
+  // Enrolled: the same card head as a static surface, then the re-entry line + day list.
+  return (
+    <section className="path-card path-card--enrolled" aria-label={path.title}>
+      <div className="path-card-head">{head}</div>
+
+      {/* Warm re-entry for an enrolled, unfinished path — never "you missed days". */}
+      {!path.completed && (
+        <p className="path-welcome muted">
+          Welcome back — you're on Day {path.current_day ?? 1}.
+        </p>
       )}
+      {path.completed && (
+        <p className="path-complete">You've finished this path. Beautifully done.</p>
+      )}
+      <ol className="path-days">
+        {path.days.map((day) => (
+          <PathDayRow key={day.index} day={day} />
+        ))}
+      </ol>
     </section>
   )
 }
@@ -172,11 +198,16 @@ export default function PathsPage() {
 
   return (
     <main id="main-content" className="paths-page">
-      <h1>Paths</h1>
-      <p className="zen-greeting muted">
-        A short, day-by-day course to settle into a practice. Go at your own pace — a missed day
-        is never a problem.
-      </p>
+      <Link to="/practices" className="back-link">
+        ← All practices
+      </Link>
+      <header className="page-head">
+        <h1>Paths</h1>
+        <p className="page-subtitle">
+          A short, day-by-day course to settle into a practice. Go at your own pace — a missed day
+          is never a problem.
+        </p>
+      </header>
 
       <RetryableError message={loadError} onRetry={retry} retrying={retrying} />
       <ErrorBanner message={enrollError} />

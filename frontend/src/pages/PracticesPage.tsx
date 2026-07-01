@@ -26,6 +26,10 @@ import {
   Dumbbell,
   Lock,
   ChevronRight,
+  Search,
+  X,
+  Compass,
+  Plus,
   type LucideProps,
 } from 'lucide-react'
 import { spiritService } from '../services/spirit'
@@ -176,6 +180,8 @@ export default function PracticesPage() {
   // level 5). Fetched non-blocking like the header; null until known, which keeps
   // gated cards locked (fail safe) rather than flashing them open then closing.
   const [level, setLevel] = useState<number | null>(null)
+  // The live filter query — matched case-insensitively against each card's name + description.
+  const [query, setQuery] = useState('')
   const reducedMotion = prefersReducedMotion()
 
   useEffect(() => {
@@ -199,6 +205,22 @@ export default function PracticesPage() {
   const guiding = spirit != null && spirit.path != null
   const need = guiding ? weakestNeed(spirit.needs) : null
 
+  // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc).
+  // With no query every group renders in full; with one, empty groups drop out and a gentle empty
+  // state shows if nothing at all matches. Filtering is presentational — it never touches the
+  // spirit-need highlight, which still keys off the (unfiltered) weakest need.
+  const q = query.trim().toLowerCase()
+  const filteredGroups = q
+    ? GROUPS.map((group) => ({
+        ...group,
+        cards: group.cards.filter(
+          (card) =>
+            card.name.toLowerCase().includes(q) || card.desc.toLowerCase().includes(q),
+        ),
+      })).filter((group) => group.cards.length > 0)
+    : GROUPS
+  const noMatches = q !== '' && filteredGroups.length === 0
+
   return (
     <main id="main-content" className="dashboard practices-page">
       <Link to="/" className="back-link">
@@ -208,6 +230,73 @@ export default function PracticesPage() {
         <h1>Practices</h1>
         <p className="page-subtitle">Every way to practice — and what it gives your spirit.</p>
       </header>
+
+      {/* Programs — the two non-technique destinations reachable from here (the old nav dropdown is
+          gone): a multi-day guided path, and logging a past session. Navigation, not techniques, so
+          they sit in their own quiet row above the practice groups. */}
+      <nav className="practices-programs" aria-label="Programs">
+        <Link to="/paths" className="practices-program-link">
+          <span className="practices-program-icon" aria-hidden="true">
+            <Compass size={18} strokeWidth={1.9} />
+          </span>
+          <span className="practices-program-body">
+            <span className="practices-program-name">Guided paths</span>
+            <span className="practices-program-desc">A day-by-day course to settle in</span>
+          </span>
+          <ChevronRight
+            className="practices-program-go"
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </Link>
+        <Link to="/sessions/new" className="practices-program-link">
+          <span className="practices-program-icon" aria-hidden="true">
+            <Plus size={18} strokeWidth={1.9} />
+          </span>
+          <span className="practices-program-body">
+            <span className="practices-program-name">Log a past session</span>
+            <span className="practices-program-desc">Record a practice you did offline</span>
+          </span>
+          <ChevronRight
+            className="practices-program-go"
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </Link>
+      </nav>
+
+      {/* Calm live search — filters the cards below as you type. Escape or the × clears it. */}
+      <div className="practices-search">
+        <Search
+          className="practices-search-icon"
+          size={18}
+          strokeWidth={1.9}
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          className="practices-search-input"
+          value={query}
+          placeholder="Search practices…"
+          aria-label="Search practices"
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setQuery('')
+          }}
+        />
+        {query !== '' && (
+          <button
+            type="button"
+            className="practices-search-clear"
+            aria-label="Clear search"
+            onClick={() => setQuery('')}
+          >
+            <X size={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+        )}
+      </div>
 
       {guiding && need && (
         <section className="practices-spirit-nudge" aria-live="polite">
@@ -234,7 +323,13 @@ export default function PracticesPage() {
         </section>
       )}
 
-      {GROUPS.map((group) => (
+      {noMatches && (
+        <p className="practices-empty" role="status">
+          No practices match “{query.trim()}”.
+        </p>
+      )}
+
+      {filteredGroups.map((group) => (
         <section key={group.title} className="practices-group">
           <h2 className="practices-group-title">
             {group.title}

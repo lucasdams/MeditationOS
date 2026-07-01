@@ -5,7 +5,7 @@
  * rejects (no creature) so the list-only assertions match the non-spirit render.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { SpiritNeed, SpiritState } from '../types'
 
@@ -344,5 +344,122 @@ describe('PracticesPage — Chakra Om level gate', () => {
     // level stays null → gated card stays locked.
     expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull()
     expect(screen.getByText(/reach level 5 to unlock/i)).toBeInTheDocument()
+  })
+})
+
+// ── Programs row (nav destinations surfaced on the hub) ──────────────────────
+// The nav "Practice" now links straight here, so the two non-technique destinations
+// that used to live in the dropdown (Guided paths → /paths, Log a past session →
+// /sessions/new) must be reachable from the hub itself.
+
+describe('PracticesPage — Programs row', () => {
+  afterEach(cleanup)
+  beforeEach(() => {
+    get.mockReset()
+    get.mockRejectedValue(new Error('no spirit'))
+    getStats.mockReset()
+    getStats.mockResolvedValue({ level: 10 })
+  })
+
+  it('surfaces a Guided paths link to /paths and a Log-a-session link to /sessions/new', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: /guided paths/i })).toHaveAttribute('href', '/paths')
+    expect(screen.getByRole('link', { name: /log a past session/i })).toHaveAttribute(
+      'href',
+      '/sessions/new',
+    )
+  })
+})
+
+// ── Live search / filter ─────────────────────────────────────────────────────
+// A calm search input filters the practice cards live (name + description, case-
+// insensitive). Empty groups drop out; a gentle empty state shows when nothing
+// matches; Escape and the × button clear the query.
+
+describe('PracticesPage — search filter', () => {
+  afterEach(cleanup)
+  beforeEach(() => {
+    get.mockReset()
+    get.mockRejectedValue(new Error('no spirit'))
+    getStats.mockReset()
+    getStats.mockResolvedValue({ level: 10 })
+  })
+
+  function typeSearch(value: string) {
+    fireEvent.change(screen.getByRole('searchbox', { name: /search practices/i }), {
+      target: { value },
+    })
+  }
+
+  it('filters cards live: a matching card stays, non-matching cards are hidden', () => {
+    renderPage()
+    // Baseline: both a matching and a non-matching card render.
+    expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+
+    typeSearch('resonance')
+
+    // The matching card is still shown; the non-matching one is gone.
+    expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
+  })
+
+  it('matches the description too, case-insensitively', () => {
+    renderPage()
+    // "Nadi Shodhana" only appears in Alternate nostril's description.
+    typeSearch('NADI')
+    expect(screen.getByRole('link', { name: /alternate nostril/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /resonance/i })).toBeNull()
+  })
+
+  it('hides empty groups while a query is active', () => {
+    renderPage()
+    typeSearch('resonance')
+    // Reflection has no "resonance" match → its heading drops out; Breathing stays.
+    expect(screen.queryByRole('heading', { name: /reflection/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /breathing/i })).toBeInTheDocument()
+  })
+
+  it('shows a gentle empty state when nothing matches', () => {
+    renderPage()
+    typeSearch('zzznope')
+    expect(screen.getByText(/no practices match/i)).toBeInTheDocument()
+    expect(screen.getByText(/zzznope/)).toBeInTheDocument()
+    // No practice cards left.
+    expect(screen.queryByRole('link', { name: /resonance/i })).toBeNull()
+  })
+
+  it('clears the query on Escape', () => {
+    renderPage()
+    const box = screen.getByRole('searchbox', { name: /search practices/i })
+    fireEvent.change(box, { target: { value: 'resonance' } })
+    expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
+
+    fireEvent.keyDown(box, { key: 'Escape' })
+    // Everything is back.
+    expect(screen.getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+    expect((box as HTMLInputElement).value).toBe('')
+  })
+
+  it('clears the query via the × clear button', () => {
+    renderPage()
+    typeSearch('resonance')
+    expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /clear search/i }))
+    expect(screen.getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+  })
+
+  it('keeps the spirit-need highlight working on the filtered results', async () => {
+    // A living Kapha spirit whose weakest need is Rest → sit practices get the "needed" class.
+    get.mockResolvedValue(spiritWith())
+    renderPage()
+    await screen.findByText(/needs more/i)
+
+    typeSearch('resonance')
+    const resonance = screen.getByRole('link', { name: /resonance/i })
+    expect(resonance).toBeInTheDocument()
+    // Still highlighted after filtering (filter is presentational; highlight keys off the need).
+    expect(resonance.className).toMatch(/practice-card--needed/)
   })
 })
