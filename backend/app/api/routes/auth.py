@@ -19,7 +19,7 @@ from app.core.exceptions import (
     UsernameTakenError,
 )
 from app.core.rate_limit import limiter
-from app.core.security import create_access_token
+from app.core.security import create_access_token, password_fingerprint
 from app.models.user import User
 from app.schemas.user import (
     ClaimAccount,
@@ -67,6 +67,16 @@ def _set_auth_cookie(
     )
 
 
+def _reissue_session_cookie(response: Response, user: User) -> None:
+    """Mint a fresh access cookie bound to the user's CURRENT password version. Used
+    after a flow that rotates `pwv` (settings change-password, guest claim) so the
+    acting session keeps working while every OTHER session for that user is revoked."""
+    _set_auth_cookie(
+        response,
+        create_access_token(str(user.id), pwv=password_fingerprint(user.password_hash)),
+    )
+
+
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.login_rate_limit)
 def register(
@@ -92,7 +102,10 @@ def guest(
 ) -> UserRead:
     """Create an anonymous account and sign it in — "use without signing up"."""
     user = user_service.create_guest(db)
-    _set_auth_cookie(response, create_access_token(str(user.id)))
+    _set_auth_cookie(
+        response,
+        create_access_token(str(user.id), pwv=password_fingerprint(user.password_hash)),
+    )
     return user
 
 
@@ -125,7 +138,9 @@ def login(
     )
     _set_auth_cookie(
         response,
-        create_access_token(str(user.id), expire_minutes),
+        create_access_token(
+            str(user.id), expire_minutes, pwv=password_fingerprint(user.password_hash)
+        ),
         expire_minutes,
     )
     return user
@@ -146,7 +161,10 @@ def google_login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google sign-in failed",
         ) from None
-    _set_auth_cookie(response, create_access_token(str(user.id)))
+    _set_auth_cookie(
+        response,
+        create_access_token(str(user.id), pwv=password_fingerprint(user.password_hash)),
+    )
     return user
 
 
@@ -226,12 +244,13 @@ def set_username(
 @limiter.limit(settings.login_rate_limit)  # re-checks the current password — throttle brute force
 def change_password(
     request: Request,  # required by the rate limiter
+    response: Response,
     data: PasswordUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserRead:
     try:
-        return user_service.set_password(
+        user = user_service.set_password(
             db,
             current_user,
             current_password=data.current_password,
@@ -242,6 +261,12 @@ def change_password(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
         ) from None
+    # Changing the password rotates the user's `pwv`, so every existing access-token
+    # cookie (this one included) is now revoked at get_current_user. Re-issue a fresh
+    # cookie bound to the new password so the acting session stays signed in while all
+    # OTHER sessions are logged out — the whole point of the change.
+    _reissue_session_cookie(response, user)
+    return user
 
 
 @router.post("/email", response_model=UserRead)
@@ -272,13 +297,14 @@ def change_email(
 
 @router.post("/claim", response_model=UserRead)
 def claim_account(
+    response: Response,
     data: ClaimAccount,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserRead:
     """Turn the current guest account into a real one (email + password)."""
     try:
-        return user_service.claim_account(db, current_user, data.email, data.password)
+        user = user_service.claim_account(db, current_user, data.email, data.password)
     except NotAGuestError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -288,6 +314,11 @@ def claim_account(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
         ) from None
+    # Claiming sets a real password_hash, rotating the guest's `pwv` (was the
+    # passwordless sentinel). Re-issue the cookie so the acting session survives the
+    # transition rather than being logged out on its next request.
+    _reissue_session_cookie(response, user)
+    return user
 
 
 @router.post("/password/reset-request", status_code=status.HTTP_202_ACCEPTED)

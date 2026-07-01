@@ -2,7 +2,6 @@
 touch the database directly (see docs/decisions/0006-layered-architecture.md).
 """
 
-import hashlib
 import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -29,6 +28,7 @@ from app.core.security import (
     decode_email_verification_token,
     decode_password_reset_token,
     hash_password,
+    password_fingerprint,
     verify_password,
 )
 from app.models.biometric_reading import BiometricReading
@@ -150,8 +150,10 @@ def change_email(db: Session, user: User, *, new_email: str, current_password: s
 
 def _password_version(password_hash: str) -> str:
     """A short fingerprint of the password hash, embedded in reset tokens so a
-    token stops working once the password changes (single-use)."""
-    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+    token stops working once the password changes (single-use). Shares the exact
+    fingerprint used for the access-token `pwv` claim (see
+    `app.core.security.password_fingerprint`) so the two mechanisms stay in lock-step."""
+    return password_fingerprint(password_hash)
 
 
 def _reset_email_body(user: User, link: str) -> str:
