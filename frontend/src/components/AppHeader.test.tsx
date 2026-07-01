@@ -1,9 +1,8 @@
 /**
- * Smoke tests for the grouped header navigation: Home + Practice / Progress / More dropdown
- * menus + a standalone Spirit link. Verifies that opening a menu reveals its destinations,
- * that the Progress menu carries stats + Settings, that the More menu carries the advanced /
- * depth features (Candle gazing, Goals, Schedule), that Admin is admin-only, and basic a11y
- * (aria-expanded toggling on the menu buttons).
+ * Smoke tests for the grouped header navigation: Home + Practice / Progress dropdown menus +
+ * a standalone Spirit link. Verifies that opening a menu reveals its destinations, that Practice
+ * carries the activities (incl. Candle gazing), that Progress carries stats + planning + Settings
+ * (the old "More" menu merged in), that Admin is admin-only, and basic a11y (aria-expanded).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -15,9 +14,13 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }))
 
-// The header self-fetches the level on mount; keep it pending so it never resolves in tests.
+// The header self-fetches the level + the spirit on mount; keep both pending so they never
+// resolve in tests (the spirit-need chip + level chip simply stay absent).
 vi.mock('../services/dashboard', () => ({
   dashboardService: { getStats: () => new Promise(() => {}) },
+}))
+vi.mock('../services/spirit', () => ({
+  spiritService: { get: () => new Promise(() => {}) },
 }))
 
 import AppHeader from './AppHeader'
@@ -42,12 +45,13 @@ describe('AppHeader — grouped navigation', () => {
     vi.clearAllMocks()
   })
 
-  it('shows Home, the Practice/Progress/More menu buttons, and a standalone Spirit link', () => {
+  it('shows Home, the Practice/Progress menu buttons (no More), and a standalone Spirit link', () => {
     renderHeader()
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Practice/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Progress/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /More/ })).toBeInTheDocument()
+    // The old "More" junk-drawer menu is gone — its items merged into Practice / Progress.
+    expect(screen.queryByRole('button', { name: /More/ })).toBeNull()
     // Spirit stands alone as a direct link (there are mobile duplicates of menu links, so
     // assert at least one Spirit link with the right href exists at top level).
     const spirit = screen.getAllByRole('link', { name: /Spirit/ })
@@ -68,36 +72,28 @@ describe('AppHeader — grouped navigation', () => {
     expect(within(dropdown).getByRole('link', { name: /Meditate/ })).toHaveAttribute('href', '/meditate')
     expect(within(dropdown).getByRole('link', { name: /Breathe/ })).toBeInTheDocument()
     expect(within(dropdown).getByRole('link', { name: /Log a session/ })).toBeInTheDocument()
-    // Candle gazing moved to the More menu — no longer a beginner Practice item.
-    expect(within(dropdown).queryByRole('link', { name: /Candle gazing/ })).toBeNull()
-  })
-
-  it('opening More reveals the advanced/depth destinations (Candle gazing, Goals, Schedule)', () => {
-    renderHeader()
-    const moreBtn = screen.getByRole('button', { name: /More/ })
-    expect(moreBtn).toHaveAttribute('aria-expanded', 'false')
-
-    fireEvent.click(moreBtn)
-    expect(moreBtn).toHaveAttribute('aria-expanded', 'true')
-
-    const dropdown = document.getElementById('nav-more-dropdown')!
-    expect(dropdown).toBeInTheDocument()
+    // Candle gazing now lives in Practice (a focal meditation, not a "more" extra).
     expect(within(dropdown).getByRole('link', { name: /Candle gazing/ })).toHaveAttribute('href', '/trataka')
-    expect(within(dropdown).getByRole('link', { name: /Goals/ })).toHaveAttribute('href', '/goals')
-    expect(within(dropdown).getByRole('link', { name: /Schedule/ })).toHaveAttribute('href', '/schedule')
   })
 
-  it('opening Progress reveals Analytics + Settings together', () => {
+  it('no longer has a separate More menu (merged into Progress)', () => {
+    renderHeader()
+    expect(screen.queryByRole('button', { name: /More/ })).toBeNull()
+    expect(document.getElementById('nav-more-dropdown')).toBeNull()
+  })
+
+  it('opening Progress reveals stats, planning, and Settings together', () => {
     renderHeader()
     const progressBtn = screen.getByRole('button', { name: /Progress/ })
     fireEvent.click(progressBtn)
 
     const dropdown = document.getElementById('nav-progress-dropdown')!
     expect(within(dropdown).getByRole('link', { name: /Analytics/ })).toHaveAttribute('href', '/analytics')
+    expect(within(dropdown).getByRole('link', { name: /Timeline/ })).toHaveAttribute('href', '/timeline')
+    // Goals + Schedule merged in from the old More menu.
+    expect(within(dropdown).getByRole('link', { name: /Goals/ })).toHaveAttribute('href', '/goals')
+    expect(within(dropdown).getByRole('link', { name: /Schedule/ })).toHaveAttribute('href', '/schedule')
     expect(within(dropdown).getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/settings')
-    // Goals + Schedule moved to the More menu — Progress is review/config only now.
-    expect(within(dropdown).queryByRole('link', { name: /Goals/ })).toBeNull()
-    expect(within(dropdown).queryByRole('link', { name: /Schedule/ })).toBeNull()
   })
 
   it('opening one menu closes the other (single open menu at a time)', () => {

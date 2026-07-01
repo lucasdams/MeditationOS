@@ -145,12 +145,14 @@ def test_stats_gratitude_adds_xp(client):
     client.post("/api/v1/gratitude", json={"category": "self", "text": "I showed up today"})
     after = client.get("/api/v1/dashboard/stats").json()
     assert after["gratitude_count"] == 1
-    # 5 (the gratitude entry) + today's gratitude quest XP if this one entry completes it.
-    # The bonus is paid for the completed condition whether or not the gratitude quest is
-    # in today's surfaced rotation, so derive it from the pool: the base "Write a gratitude"
-    # variant is done by one entry; "Write three gratitudes" is not.
+    # 5 (the gratitude entry) + today's gratitude quest XP, but ONLY if this single
+    # "self"-category entry actually completes today's variant. The bonus is paid for any
+    # completed condition regardless of surfacing (dashboard_service), so derive `done` from
+    # the variant: ONE preset-category entry completes only the base "Write a gratitude"
+    # variant — not "Write three gratitudes" (needs 3) nor "gratitude in your own words"
+    # (gratitude_custom, which needs an entry in the *custom* category).
     quest = quest_for("gratitude", datetime.now(UTC).date())
-    done = quest.variant != "gratitude_three"
+    done = quest.variant == "gratitude"
     assert after["xp"] == 5 + (quest.xp if done else 0)
 
 

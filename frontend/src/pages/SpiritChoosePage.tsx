@@ -198,7 +198,7 @@ export default function SpiritChoosePage() {
       <header className="page-head">
         {fromOnboarding ? (
           <>
-            <h1>✨ You took your first breath — now meet the companion you’ll grow.</h1>
+            <h1>You took your first breath — now meet the companion you’ll grow.</h1>
             <p className="page-subtitle">
               {suggestedPath
                 ? `Based on what you told us, ${DOSHA[suggestedPath].name} might suit you — but choose whichever calls to you.`
@@ -232,7 +232,7 @@ export default function SpiritChoosePage() {
                 {/* A gentle, never-forced suggestion when arriving from onboarding — the dosha
                     that matches the warm question's answer. All three stay equally pickable. */}
                 {suggestedPath === path && (
-                  <p className="spirit-choose-suggested">✨ Suggested for you</p>
+                  <p className="spirit-choose-suggested">Suggested for you</p>
                 )}
                 <div className="spirit-choose-art" aria-hidden="true">
                   {creatureArt(path)}
@@ -249,7 +249,7 @@ export default function SpiritChoosePage() {
                       className="spirit-choose-roll"
                       onClick={() => rollLook(path)}
                     >
-                      🎲 {randomLooks[path] ? 'Roll a new look' : 'Try a random look'}
+                      {randomLooks[path] ? 'Roll a new look' : 'Try a random look'}
                     </button>
                     {randomLooks[path] && (
                       <button

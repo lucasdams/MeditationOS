@@ -60,7 +60,8 @@ export default function FirstRunCard({ onDismiss }: Props) {
       <h2 className="first-run-title">New here? Start with one small step.</h2>
       <p className="first-run-body muted">
         Begin with a short breathing session, or log a sit you&rsquo;ve already done.
-        Your dashboard fills in as you practice.
+        Your dashboard fills in as you practice. A few minutes a day is how the habit
+        forms and the practice rewires your brain.
       </p>
       <div className="first-run-actions">
         <Link to="/breathe" className="first-run-action">
@@ -69,9 +70,6 @@ export default function FirstRunCard({ onDismiss }: Props) {
         <Link to="/sessions/new" className="first-run-action first-run-action-secondary">
           Log a session
         </Link>
-        <button type="button" className="first-run-gotit" onClick={dismiss}>
-          Got it
-        </button>
       </div>
     </section>
   )

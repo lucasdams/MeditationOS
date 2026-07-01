@@ -8,6 +8,7 @@ import { ToastProvider } from './context/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import { initSentry } from './lib/observability'
 import { installButtonClickSfx } from './lib/sfx'
+import '@fontsource-variable/inter'
 import './index.css'
 
 // Initialise Sentry before the app renders.  No-op when VITE_SENTRY_DSN is unset.

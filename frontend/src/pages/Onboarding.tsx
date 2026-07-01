@@ -42,7 +42,7 @@ const INTENTS = [
     key: 'curious',
     label: 'Just curious',
     sub: 'Exploring',
-    emoji: '✨',
+    emoji: '🧭',
     quests: ['breathe', 'gratitude', 'journal'],
   },
 ] as const
@@ -89,7 +89,7 @@ export default function Onboarding() {
   return (
     <main className="auth-card onboarding">
       <AuthBrand />
-      <h1>Welcome 🧘</h1>
+      <h1>Welcome</h1>
       <p className="muted">
         One gentle question, then we’ll take a slow minute together. No pressure — you can change
         anything later in Settings.

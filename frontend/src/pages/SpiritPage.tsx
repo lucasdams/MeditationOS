@@ -75,9 +75,10 @@ const PATH_LABEL = PATH_COPY
 function NeedTag({ need }: { need: SpiritNeedKey }) {
   const copy = NEED_COPY[need]
   if (!copy) return null
+  const NeedIcon = copy.icon
   return (
     <span className="spirit-option-need" title={`Favours ${copy.label}`}>
-      <span aria-hidden="true">{copy.icon}</span> {copy.label}
+      <NeedIcon size={14} strokeWidth={1.75} aria-hidden="true" /> {copy.label}
     </span>
   )
 }
@@ -100,13 +101,10 @@ function SetBonusStatus({
   if (setBonus.active) {
     return (
       <div className="spirit-setbonus spirit-setbonus--active" role="status">
-        <span className="spirit-setbonus-badge">
-          <span aria-hidden="true">✦ </span>
-          {setBonus.label}
-        </span>
+        <span className="spirit-setbonus-badge">{setBonus.label}</span>
         <span className="spirit-setbonus-note">
           Your companion shimmers with a special glow for wearing all {setBonus.total} of its
-          signature pieces. ✨
+          signature pieces.
         </span>
       </div>
     )
@@ -130,7 +128,7 @@ function SetBonusStatus({
         onBlur={() => onPreview(false)}
         onClick={() => onPreview(!previewOn)}
       >
-        ✨ {previewOn ? 'Previewing the radiance…' : 'See the radiance'}
+        {previewOn ? 'Previewing the radiance…' : 'See the radiance'}
       </button>
     </div>
   )
@@ -318,7 +316,7 @@ export default function SpiritPage() {
       const next = await spiritService.unlock({ slot, option })
       setSpirit(next)
       setConfirmUnlock(null)
-      showToast(`${optionLabel(option)} unlocked — your spirit is delighted ✨`)
+      showToast(`${optionLabel(option)} unlocked — your spirit is delighted`)
     } catch {
       showToast('Not unlocked yet — practice earns the coins for it.', 'error')
     } finally {
@@ -370,7 +368,7 @@ export default function SpiritPage() {
       const next = await spiritService.awaken()
       setSpirit(next)
       setConfirmAwaken(false)
-      showToast('A new spark awakens. Your radiant spirit joins your collection. 🌟')
+      showToast('A new spark awakens. Your radiant spirit joins your collection.')
     } catch {
       showToast('Your spirit is not radiant yet — keep practicing.', 'error')
     } finally {
@@ -387,7 +385,8 @@ export default function SpiritPage() {
       const next = await spiritService.tend(kind)
       setSpirit(next)
       const copy = NEED_COPY[need]
-      showToast(`${copy.icon} ${copy.label} topped up — practice fills it fully.`)
+      // Toasts are plain strings (no React icon); the label alone conveys the need.
+      showToast(`${copy.label} topped up — practice fills it fully.`)
     } catch {
       showToast("Couldn't tend it just now — try once more.", 'error')
     } finally {
@@ -699,6 +698,7 @@ export default function SpiritPage() {
                 <div className="spirit-tend" role="group" aria-label="Tend your spirit">
                   {TEND_ACTIONS.map(({ kind, need, label }) => {
                     const copy = NEED_COPY[need]
+                    const TendIcon = copy.icon
                     return (
                       <button
                         key={kind}
@@ -709,7 +709,7 @@ export default function SpiritPage() {
                         onClick={() => tend(kind, need)}
                       >
                         <span className="spirit-tend-icon" aria-hidden="true">
-                          {copy.icon}
+                          <TendIcon size={22} strokeWidth={1.75} />
                         </span>
                         <span className="spirit-tend-label">{label}</span>
                         <span className="spirit-tend-need muted">{copy.label}</span>

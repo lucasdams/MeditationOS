@@ -60,7 +60,7 @@ export default function GraduationCard({ onDismiss }: Props) {
       >
         ✕
       </button>
-      <h2 className="first-run-title">You&rsquo;ve grown a real practice 🌱</h2>
+      <h2 className="first-run-title">You&rsquo;ve grown a real practice</h2>
       <p className="first-run-body muted">
         You&rsquo;ve stuck with it &mdash; that&rsquo;s the hard part. When you&rsquo;re ready,
         there&rsquo;s more waiting: measure how your breathing moves your HRV, dig into your full

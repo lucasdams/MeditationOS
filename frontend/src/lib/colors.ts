@@ -1,69 +1,47 @@
 // Shared colour coding, so the same concept reads the same colour everywhere
 // (nav, quests, goals, session logs, analytics, journal moods).
 
+import type { ComponentType } from 'react'
+import { Brain, Wind, HandHeart, NotebookPen, Star, type LucideProps } from 'lucide-react'
 import type { MeditationType, Mood } from '../types'
 
-// The four core activities. Matches the soft nav colours in index.css
-// (meditate = teal, breathe = sky) and extends them to gratitude/journal.
+// The four core activities — each its own cool-leaning bright colour so they read
+// as one modern Cool Electric set. Mirrors the soft nav tints in index.css and
+// extends them to gratitude/journal.
 export type Activity = 'meditate' | 'breathe' | 'gratitude' | 'journal' | 'custom'
 
 export const ACTIVITY_COLORS: Record<Activity, string> = {
-  meditate: '#14b8a6', // teal
-  breathe: '#0ea5e9', // sky
-  gratitude: '#f59e0b', // amber
-  journal: '#8b5cf6', // violet
-  custom: '#6366f1', // indigo — user-defined habits
+  meditate: '#6a5cff', // electric indigo (the hero accent)
+  breathe: '#06b6d4', // cyan
+  gratitude: '#f59e0b', // amber — the warm pop in a cool set
+  journal: '#3b82f6', // blue
+  custom: '#ec4899', // pink — user-defined habits
 }
 
-// The single source of truth for how an activity reads: emoji + label + colour.
+// The single source of truth for how an activity reads: icon + label + colour.
 // (Colour mirrors ACTIVITY_COLORS so the two never drift.) Pages that need a
 // context-specific label — e.g. "Write gratitude" on the goals form — override
-// the label locally; the emoji/colour stay shared.
-export const ACTIVITY_META: Record<Activity, { emoji: string; label: string; color: string }> = {
-  meditate: { emoji: '🧘', label: 'Meditate', color: ACTIVITY_COLORS.meditate },
-  breathe: { emoji: '🫁', label: 'Breathe', color: ACTIVITY_COLORS.breathe },
-  gratitude: { emoji: '🙏', label: 'Gratitude', color: ACTIVITY_COLORS.gratitude },
-  journal: { emoji: '📓', label: 'Journal', color: ACTIVITY_COLORS.journal },
-  custom: { emoji: '⭐', label: 'Custom', color: ACTIVITY_COLORS.custom },
+// the label locally; the icon/colour stay shared. `icon` is a lucide line-icon
+// component (consistent line icons app-wide, no system emoji) — render it sized
+// to context with strokeWidth={1.75}; it inherits `color` as its stroke.
+export type ActivityIcon = ComponentType<LucideProps>
+export const ACTIVITY_META: Record<Activity, { icon: ActivityIcon; label: string; color: string }> = {
+  meditate: { icon: Brain, label: 'Meditate', color: ACTIVITY_COLORS.meditate },
+  breathe: { icon: Wind, label: 'Breathe', color: ACTIVITY_COLORS.breathe },
+  gratitude: { icon: HandHeart, label: 'Gratitude', color: ACTIVITY_COLORS.gratitude },
+  journal: { icon: NotebookPen, label: 'Journal', color: ACTIVITY_COLORS.journal },
+  custom: { icon: Star, label: 'Custom', color: ACTIVITY_COLORS.custom },
 }
 
-// Bold, saturated fills for the dashboard quick-action tiles — distinct per destination
-// and dark enough that white label/icon text clears WCAG AA (≥4.5:1) in LIGHT mode. Dark
-// mode swaps to the brighter TILE_COLORS_DARK below (with a dark label) so the tiles pop on
-// the slate canvas. These are deliberately heavier than the soft ACTIVITY_COLORS used for
-// borders/quests, so the tiles read as the home screen's primary focal point.
-//   Warm Sanctuary: earthy, harmonious fills, each still ≥4.5:1 vs white text.
-export const TILE_COLORS = {
-  meditate: '#517042', // deep sage
-  breathe: '#3d7585', // deep dusty teal
-  gratitude: '#b45309', // amber-700 (already warm, on-brand)
-  journal: '#7d5a86', // deep warm mauve
-} as const
-
-// Dark-mode tile fills. The light TILE_COLORS are deep, near-700 shades that go muddy on the
-// dark slate canvas, so dark mode uses brighter, more saturated ~500 shades that pop. At those
-// brightnesses white text would drop below WCAG AA, so the dark tile carries a near-black slate
-// LABEL instead (TILE_TEXT_DARK) — the .feature-tile dark CSS pairs the two via --tile-fill-dark.
-//   Warm Sanctuary dark: lifted, warmer fills that pop on the espresso canvas (dark label).
-export const TILE_COLORS_DARK = {
-  meditate: '#93b27e', // sage
-  breathe: '#82b3c6', // dusty teal
-  gratitude: '#e3a83c', // warm amber
-  journal: '#bd9fc9', // warm mauve
-} as const
-
-// The label/icon colour used on the brighter dark-mode tile fills (warm espresso).
-export const TILE_TEXT_DARK = '#2a2119'
-
-// Meditation session types — same palette used by the session-log cards.
+// Meditation session types — same cool-leaning palette used by the session-log cards.
 export const TYPE_COLORS: Record<MeditationType, string> = {
-  mindfulness: '#14b8a6',
-  body_scan: '#8b5cf6',
-  walking: '#f59e0b',
-  loving_kindness: '#ec4899',
-  resonance_breathing: '#3b82f6',
-  energizing_breathing: '#d97706',
-  other: '#9ca3af',
+  mindfulness: '#6a5cff', // electric indigo
+  body_scan: '#8b5cf6', // violet
+  walking: '#10b981', // emerald
+  loving_kindness: '#ec4899', // pink
+  resonance_breathing: '#06b6d4', // cyan
+  energizing_breathing: '#f59e0b', // amber
+  other: '#94a3b8', // cool slate-grey
 }
 
 // Display labels for each meditation type — the single source of truth so the
@@ -80,24 +58,25 @@ export const TYPE_LABELS: Record<MeditationType, string> = {
   other: 'Other',
 }
 
-// Journal moods, grouped loosely by sentiment — pleasant moods stay warm/bright,
-// neutral is grey, and harder moods take calmer cool tones (never alarm-red).
+// Journal moods, grouped loosely by sentiment — a cool-leaning, vivid Cool Electric
+// set. Pleasant moods read bright; neutral is a cool slate; harder moods take cooler,
+// quieter tones. Tuned so no two are confusable.
 export const MOOD_COLORS: Record<Mood, string> = {
-  calm: '#14b8a6',
-  content: '#10b981',
-  focused: '#3b82f6',
-  energized: '#f59e0b',
-  grateful: '#ec4899',
-  hopeful: '#34d399',   // emerald-green — forward-looking warmth
-  excited: '#fbbf24',  // amber-yellow — bright, upbeat
-  peaceful: '#67e8f9', // cyan — soft and still
-  neutral: '#9ca3af',
-  restless: '#f97316',
-  anxious: '#8b5cf6',
-  frustrated: '#94a3b8', // slate — cool-muted, not alarm-red
-  overwhelmed: '#6366f1', // indigo — heavy but not alarming
-  tired: '#94a3b8',
-  low: '#64748b',
+  calm: '#06b6d4',     // cyan — still water
+  content: '#10b981',  // emerald
+  focused: '#6a5cff',  // electric indigo
+  energized: '#f59e0b', // amber — the warm pop
+  grateful: '#ec4899',  // pink
+  hopeful: '#22c55e',   // green — forward-looking
+  excited: '#f97316',   // orange — bright, upbeat
+  peaceful: '#2dd4bf',  // teal — soft and still
+  neutral: '#94a3b8',   // cool slate-grey
+  restless: '#fb7185',  // coral-rose — restive warmth
+  anxious: '#a855f7',   // purple — heavy but not alarming
+  frustrated: '#f43f5e', // rose-red — hot but cool-toned
+  overwhelmed: '#8b5cf6', // violet — heavy
+  tired: '#64748b',     // muted slate — quiet
+  low: '#475569',       // deep slate — grounded
 }
 
 // Mood emoji + label — the single source of truth for how a mood reads, shared by the
@@ -120,25 +99,26 @@ export const MOOD_META: Record<Mood, { emoji: string; label: string }> = {
   low: { emoji: '😔', label: 'Low' },
 }
 
-// A rotating palette for charts not keyed to a known concept.
-export const PALETTE = ['#6366f1', '#14b8a6', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#10b981']
+// A rotating palette for charts not keyed to a known concept — Cool Electric,
+// led by the electric indigo so charts open on the hero accent.
+export const PALETTE = ['#6a5cff', '#06b6d4', '#f59e0b', '#3b82f6', '#ec4899', '#10b981', '#8b5cf6']
 
 // Gratitude has ~37 categories — too many to hand-map. Derive a stable colour for each
 // from a curated palette by hashing the category key, so a given category is always the
-// same colour and the log reads as a spread of colours rather than all-amber.
+// same colour and the log reads as a spread of colours rather than all one hue.
 const GRATITUDE_PALETTE = [
+  '#6a5cff', // electric indigo
+  '#06b6d4', // cyan
   '#f59e0b', // amber
-  '#14b8a6', // teal
-  '#ec4899', // pink
-  '#8b5cf6', // violet
   '#3b82f6', // blue
+  '#ec4899', // pink
   '#10b981', // emerald
-  '#f97316', // orange
+  '#8b5cf6', // violet
   '#0ea5e9', // sky
+  '#14b8a6', // teal
+  '#f97316', // orange
   '#a855f7', // purple
-  '#e11d48', // rose
-  '#0891b2', // cyan
-  '#65a30d', // lime
+  '#22c55e', // green
 ]
 
 export const gratitudeColor = (category: string): string => {

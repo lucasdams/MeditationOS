@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import { ACTIVITY_META, type Activity } from '../lib/colors'
@@ -31,6 +32,7 @@ function progressLine(path: PathSummary): string {
 // locked days are dimmed and inert (no scolding, no lock-shaming copy).
 function PathDayRow({ day }: { day: PathDay }) {
   const meta = ACTIVITY_META[day.practice as Activity]
+  const PracticeIcon = meta.icon
   const minutes = `${day.min_minutes} min`
 
   return (
@@ -43,7 +45,7 @@ function PathDayRow({ day }: { day: PathDay }) {
           <span className="path-day-num">{dayLabel(day)}</span>
           <span className="path-day-title">{day.title}</span>
           <span className="path-day-practice">
-            <span aria-hidden="true">{meta.emoji}</span> {meta.label} · {minutes}
+            <PracticeIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {meta.label} · {minutes}
           </span>
         </p>
 
@@ -56,7 +58,8 @@ function PathDayRow({ day }: { day: PathDay }) {
               className="path-day-start today-action"
               aria-label={`Start ${dayLabel(day)}: ${day.title}`}
             >
-              Start →
+              Start
+              <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
             </Link>
           </>
         )}
@@ -100,7 +103,7 @@ function PathCard({
           )}
           {path.completed && (
             <p className="path-complete">
-              <span aria-hidden="true">🌟</span> You've finished this path. Beautifully done.
+              You've finished this path. Beautifully done.
             </p>
           )}
           <ol className="path-days">

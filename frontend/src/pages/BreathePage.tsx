@@ -64,10 +64,10 @@ const STATIC_SCALE = (MIN_SCALE + MAX_SCALE) / 2
 
 // A distinct icon + soft tint per pattern, so the cards read apart at a glance.
 const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
-  resonance: { emoji: '🌊', tint: '#e0f2fe' }, // rolling, longer exhale
-  box: { emoji: '🟦', tint: '#e0e7ff' }, // four equal sides
+  resonance: { emoji: '🌊', tint: '#dbeeef' }, // rolling, longer exhale — soft warm teal
+  box: { emoji: '🟦', tint: '#dde9e3' }, // four equal sides — soft teal-green
   energizing: { emoji: '☀️', tint: '#fef3c7' }, // brisk, active inhale
-  alternate: { emoji: '🌬️', tint: '#ede9fe' }, // calm violet — Nadi Shodhana
+  alternate: { emoji: '🌬️', tint: '#f0e7f2' }, // soft warm mauve — Nadi Shodhana
 }
 
 // Nadi Shodhana nostril guidance: on even rounds you inhale LEFT / exhale RIGHT, and the

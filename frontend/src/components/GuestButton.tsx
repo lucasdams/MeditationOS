@@ -23,7 +23,7 @@ export default function GuestButton({ onError }: { onError: (msg: string) => voi
   }
 
   return (
-    <button type="button" className="guest-btn" onClick={handleGuest} disabled={loading}>
+    <button type="button" className="btn btn--secondary guest-btn" onClick={handleGuest} disabled={loading}>
       {loading ? 'Starting…' : 'Continue as a guest'}
     </button>
   )

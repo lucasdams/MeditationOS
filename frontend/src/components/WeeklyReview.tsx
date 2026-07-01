@@ -34,7 +34,7 @@ export default function WeeklyReview() {
     return (
       <section className="weekly-review">
         <h2>This week</h2>
-        <p className="muted">No practice logged yet this week — a few mindful minutes is a great start. 🌱</p>
+        <p className="muted">No practice logged yet this week — a few mindful minutes is a great start.</p>
       </section>
     )
   }
@@ -62,7 +62,7 @@ export default function WeeklyReview() {
           <span className="weekly-label">days practiced</span>
         </div>
         <div className="weekly-stat">
-          <span className="weekly-value">{data.current_streak_days} 🌱</span>
+          <span className="weekly-value">{data.current_streak_days}</span>
           <span className="weekly-label">day streak</span>
         </div>
         <div className="weekly-stat">

@@ -7,13 +7,15 @@ export const GREETINGS = [
   'Namaste 🙏',
   'Welcome back — breathe easy 🧘',
   'Your cushion missed you 🪷',
-  'One breath at a time ✨',
+  'One breath at a time',
   'The present moment says hi 😌',
   'Be here now 🍃',
   'Inhale calm, exhale hustle 🌬️',
   'Soft mind, steady heart 🧘',
   'A little stillness goes a long way 🪷',
   'Wherever you go, there you are 😉',
+  'Showing up today rewires you a little',
+  'Build the habit, one breath at a time',
 ]
 
 // Mindful stand-ins for a bare "Loading…".

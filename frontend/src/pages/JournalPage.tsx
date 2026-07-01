@@ -461,7 +461,7 @@ export default function JournalPage() {
               onClick={resurfaceMemory}
               disabled={resurfacing}
             >
-              {resurfacing ? 'Finding…' : '✨ Resurface a memory'}
+              {resurfacing ? 'Finding…' : 'Resurface a memory'}
             </button>
           )}
         </div>

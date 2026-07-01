@@ -12,15 +12,28 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+// Filled lucide Hearts (a few cool-leaning tints) for the gentle drift of hearts that lands with the
+// reward — SVG, not emoji, so the flourish matches the app's craft (mirrors EncouragementNote's heart).
+const HEART_TINTS = ['#ec4899', '#6a5cff', '#06b6d4', '#f59e0b']
+const heartSvg = (fill: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" ` +
+  `fill="${fill}" stroke="${fill}" stroke-width="1.75" stroke-linecap="round" ` +
+  `stroke-linejoin="round" aria-hidden="true">` +
+  `<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>` +
+  `</svg>`
+
 // A warm word for finishing a sit — the session deserves love, not just XP. Gentle + never about
 // performance: showing up is the whole win.
 const REWARD_PRAISES = [
-  'Beautifully done. 💛',
+  'Beautifully done.',
   'You showed up — that’s what matters.',
   'That’s time well spent.',
-  'A quiet gift to yourself. 💛',
+  'A quiet gift to yourself.',
   'Every sit counts.',
   'Proud of you for this.',
+  'That’s another rep for your brain.',
+  'One more sit — the habit’s taking root.',
+  'You just strengthened the pathway.',
 ]
 
 /**
@@ -86,11 +99,10 @@ export default function RewardOverlay({
     if (reduceMotion) return
     const host = heartsHost.current
     if (!host) return
-    const glyphs = ['💛', '💗', '🤍', '💖']
     for (let k = 0; k < 4; k++) {
       const heart = document.createElement('span')
       heart.className = 'floating-heart'
-      heart.textContent = glyphs[k % glyphs.length]
+      heart.innerHTML = heartSvg(HEART_TINTS[k % HEART_TINTS.length])
       heart.style.setProperty('--dx', `${Math.round(Math.random() * 72 - 36)}px`)
       heart.style.animationDelay = `${180 + k * 130}ms`
       host.appendChild(heart)
@@ -199,7 +211,7 @@ export default function RewardOverlay({
 
         <div className="reward-level">
           Level {prog.level}
-          {leveledUp && <span className="reward-up"> · Level up! 🎉</span>}
+          {leveledUp && <span className="reward-up"> · Level up!</span>}
         </div>
         {leveledUp && (
           <div className={`reward-coins${reduceMotion ? '' : ' reward-coins--pop'}`}>

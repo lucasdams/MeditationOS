@@ -19,7 +19,7 @@ import type {
 const TREND_DAYS = 84 // ~12 weeks
 const HR_COLOR = '#ef4444' // warm red for heart rate
 const HRV_COLOR = '#10b981' // green for HRV (higher generally = more recovered)
-const CALM_COLOR = '#6366f1' // indigo for calm (matches the default bar accent)
+const CALM_COLOR = '#06b6d4' // cyan for calm (matches the calm mood colour)
 const FOCUS_COLOR = '#f59e0b' // amber for focus
 
 const TYPE_LABELS: Record<string, string> = {
@@ -55,7 +55,7 @@ function Bar({
   value,
   max,
   suffix = '',
-  color = '#6366f1',
+  color = '#6a5cff',
 }: {
   label: string
   value: number
@@ -208,7 +208,7 @@ function BiometricTrend() {
         <h2>Heart rate &amp; HRV</h2>
         <p className="muted">
           No readings yet — whenever you’re ready. Log a quick one after a sit, or{' '}
-          <Link to="/biometrics/new">add a resting reading</Link>, to start a gentle trend. 💛
+          <Link to="/biometrics/new">add a resting reading</Link>, to start a gentle trend.
         </p>
       </section>
     )
@@ -488,7 +488,7 @@ export default function AnalyticsPage() {
         <>
           <EmptyState>
             Nothing to chart yet — and that’s perfectly okay. Practice a few times and your patterns
-            will gently surface here. No rush. 🌱
+            will gently surface here. No rush.
           </EmptyState>
           {/* Readings can exist independently of sessions, so still offer the trend. */}
           <BiometricTrend />
@@ -671,7 +671,7 @@ export default function AnalyticsPage() {
                                   className="mood-seg"
                                   style={{
                                     height: `${(w.counts[m] / maxTotal) * 100}%`,
-                                    background: moodColors[m] ?? '#9ca3af',
+                                    background: moodColors[m] ?? '#94a3b8',
                                   }}
                                 />
                               ) : null,
@@ -689,7 +689,7 @@ export default function AnalyticsPage() {
                         <span key={m} className="mood-legend-item">
                           <span
                             className="mood-legend-dot"
-                            style={{ background: moodColors[m] ?? '#9ca3af' }}
+                            style={{ background: moodColors[m] ?? '#94a3b8' }}
                           />
                           {cap(m)}
                         </span>
