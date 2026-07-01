@@ -170,9 +170,14 @@ def test_monthly_comparison_counts_and_delta(client):
     today = datetime.now(UTC).date()
     last = _prev_month_day(today)
 
-    # This month: two sessions on two distinct days, 10 + 10 minutes.
+    # This month: two sessions on two DISTINCT days, 10 + 10 minutes. Use the 1st of the month as
+    # the second day — except when today IS the 1st, where that collides, so fall back to the 2nd
+    # (still this month, within the session-create future slack). Keeps the test date-deterministic.
+    second_day = _first_of_month(today)
+    if second_day == today:
+        second_day = today + timedelta(days=1)
     _session(client, on=today, seconds=600)
-    _session(client, on=_first_of_month(today), seconds=600)  # the 1st — a different day
+    _session(client, on=second_day, seconds=600)
     # Last month: one 10-minute session on one day.
     _session(client, on=last, seconds=600)
 
