@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Waves, Square, Sun, Wind, type LucideProps } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
@@ -71,12 +72,12 @@ const AUDIO_LOOKAHEAD = 2.5
 // rather than the tiny MIN_SCALE dot it would otherwise freeze at.
 const STATIC_SCALE = (MIN_SCALE + MAX_SCALE) / 2
 
-// A distinct icon + soft tint per pattern, so the cards read apart at a glance.
-const PATTERN_STYLE: Record<string, { emoji: string; tint: string }> = {
-  resonance: { emoji: '🌊', tint: '#dbeeef' }, // rolling, longer exhale — soft warm teal
-  box: { emoji: '🟦', tint: '#dde9e3' }, // four equal sides — soft teal-green
-  energizing: { emoji: '☀️', tint: '#fef3c7' }, // brisk, active inhale
-  alternate: { emoji: '🌬️', tint: '#f0e7f2' }, // soft warm mauve — Nadi Shodhana
+// A distinct lucide line icon + soft tint per pattern, so the cards read apart at a glance.
+const PATTERN_STYLE: Record<string, { Icon: ComponentType<LucideProps>; tint: string }> = {
+  resonance: { Icon: Waves, tint: '#dbeeef' }, // rolling, longer exhale — soft warm teal
+  box: { Icon: Square, tint: '#dde9e3' }, // four equal sides — soft teal-green
+  energizing: { Icon: Sun, tint: '#fef3c7' }, // brisk, active inhale
+  alternate: { Icon: Wind, tint: '#f0e7f2' }, // soft warm mauve — Nadi Shodhana
 }
 
 // Nadi Shodhana nostril guidance: on even rounds you inhale LEFT / exhale RIGHT, and the
@@ -733,7 +734,7 @@ export default function BreathePage() {
     }
 
     // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
-    const bd = buildXpBreakdown(before, after, '🫁 Breathing')
+    const bd = buildXpBreakdown(before, after, 'Breathing', Wind)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
@@ -974,7 +975,10 @@ export default function BreathePage() {
                 style={{ background: PATTERN_STYLE[p.key]?.tint }}
                 aria-hidden="true"
               >
-                {PATTERN_STYLE[p.key]?.emoji}
+                {(() => {
+                  const Icon = PATTERN_STYLE[p.key]?.Icon
+                  return Icon ? <Icon size={20} strokeWidth={1.75} /> : null
+                })()}
               </span>
               <span className="pattern-card-body">
                 <span className="pattern-card-name">{p.label}</span>

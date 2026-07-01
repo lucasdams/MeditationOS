@@ -9,16 +9,18 @@ export type Season = 'winter' | 'spring' | 'summer' | 'autumn'
 export type SeasonPref = 'auto' | Season
 export type DayPhase = 'dawn' | 'day' | 'dusk' | 'night'
 
-export const SEASONS: { value: Season; label: string; emoji: string }[] = [
-  { value: 'winter', label: 'Winter', emoji: '❄️' },
-  { value: 'spring', label: 'Spring', emoji: '🌸' },
-  { value: 'summer', label: 'Summer', emoji: '☀️' },
-  { value: 'autumn', label: 'Autumn', emoji: '🍂' },
+export const SEASONS: { value: Season; label: string }[] = [
+  { value: 'winter', label: 'Winter' },
+  { value: 'spring', label: 'Spring' },
+  { value: 'summer', label: 'Summer' },
+  { value: 'autumn', label: 'Autumn' },
 ]
 
+// Text-only labels: these render inside a native <select><option>, where an inline
+// lucide icon can't live — so the season emoji are dropped rather than swapped.
 export const SEASON_PREFS: { value: SeasonPref; label: string }[] = [
   { value: 'auto', label: 'Auto (by date)' },
-  ...SEASONS.map((s) => ({ value: s.value as SeasonPref, label: `${s.emoji} ${s.label}` })),
+  ...SEASONS.map((s) => ({ value: s.value as SeasonPref, label: s.label })),
 ]
 
 // Northern-hemisphere meteorological seasons, keyed by 0-indexed month.

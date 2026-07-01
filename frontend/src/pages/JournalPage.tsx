@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Brain, HandHeart, NotebookPen } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
@@ -226,7 +227,7 @@ export default function JournalPage() {
       // mood) and streak bonus it just completed. Post-save stats are best-effort too:
       // the entry is already saved, so fall back to `before` (zero gain) on failure.
       const after = await dashboardService.getStats().catch(() => before)
-      const bd = buildXpBreakdown(before, after, '📓 Journal entry')
+      const bd = buildXpBreakdown(before, after, 'Journal entry', NotebookPen)
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch {
       setError("Couldn't save your reflection.")
@@ -470,7 +471,12 @@ export default function JournalPage() {
           <div className="memory-card">
             <div className="memory-head">
               <span className="memory-kind">
-                {memory.kind === 'journal' ? '📓 From your journal' : '🙏 A gratitude'}
+                {memory.kind === 'journal' ? (
+                  <NotebookPen size={15} strokeWidth={1.75} aria-hidden="true" />
+                ) : (
+                  <HandHeart size={15} strokeWidth={1.75} aria-hidden="true" />
+                )}
+                {memory.kind === 'journal' ? 'From your journal' : 'A gratitude'}
                 {memory.mood && ` · ${cap(memory.mood)}`}
               </span>
               <span className="muted">{formatWhen(memory.when)}</span>
@@ -629,7 +635,9 @@ export default function JournalPage() {
                 <p className="journal-body">{j.body}</p>
               )}
               {linked && !editing && (
-                <p className="journal-session">🧘 On {sessionLabel(linked)}</p>
+                <p className="journal-session">
+                  <Brain size={15} strokeWidth={1.75} aria-hidden="true" /> On {sessionLabel(linked)}
+                </p>
               )}
             </article>
           )

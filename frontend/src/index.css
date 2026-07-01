@@ -1205,7 +1205,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0.5rem 1rem;
   font-size: var(--text-sm);
   background: var(--bg-surface);
-  color: #b91c1c;
+  color: var(--error-text);
   border: 1px solid #fecaca;
 }
 
@@ -1214,7 +1214,7 @@ a:hover { color: var(--accent-hover); }
 }
 
 .settings-confirm p {
-  color: #b91c1c;
+  color: var(--error-text);
   font-size: var(--text-sm);
   margin: 0 0 0.5rem;
 }
@@ -1312,6 +1312,12 @@ a:hover { color: var(--accent-hover); }
   border-radius: var(--radius-control);
   padding: 0.75rem 1rem;
   font-size: var(--text-sm);
+}
+
+/* Inline caution icon — nudged to sit on the text baseline of the first line. */
+.legal-template-icon {
+  vertical-align: -0.15em;
+  color: #b45309;
 }
 
 .legal-body h2 {
@@ -1488,8 +1494,16 @@ a:hover { color: var(--accent-hover); }
   padding: 1.25rem;
 }
 
-.landing-feature-emoji {
-  font-size: var(--text-2xl);
+/* Lucide line icon in a soft cool-accent chip — matches the app's icon treatment. */
+.landing-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: var(--radius-card);
+  background: var(--accent-subtle);
+  color: var(--accent);
 }
 
 .landing-feature h2 {
@@ -1838,6 +1852,9 @@ a:hover { color: var(--accent-hover); }
 }
 
 .memory-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-weight: 500;
   color: var(--nav-journal-text);
 }
@@ -1916,7 +1933,7 @@ a:hover { color: var(--accent-hover); }
   font-size: var(--text-lg);
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   cursor: pointer;
 }
@@ -2002,6 +2019,9 @@ a:hover { color: var(--accent-hover); }
 }
 
 .journal-session {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0.4rem 0 0;
   font-size: var(--text-sm);
   color: var(--nav-journal-text);
@@ -2377,7 +2397,7 @@ textarea::placeholder {
   background: var(--bg-surface);
   color: var(--accent);
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   font-weight: 500;
   text-decoration: none;
   border: 2px solid var(--accent);
@@ -2398,7 +2418,7 @@ textarea:focus-visible,
      lighter clay on dark) for a clearly visible keyboard-focus indicator. */
   outline: 2px solid var(--ring-accent);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
 }
 
 .error {
@@ -2488,7 +2508,7 @@ textarea:focus-visible,
   gap: 0.3rem;
   margin: 1.25rem 0 1.1rem;
   padding: 0.25rem;
-  background: var(--bg-page);
+  background: var(--bg-surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
 }
@@ -2760,6 +2780,19 @@ button.today-action:disabled {
   justify-content: space-between;
   gap: 1rem;
   color: var(--text-secondary);
+}
+
+/* Label + optional leading lucide icon, aligned to the line's baseline. */
+.reward-breakdown-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.reward-breakdown-icon {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .reward-breakdown-xp {
@@ -4300,7 +4333,7 @@ button.today-action:disabled {
   gap: 0.3rem;
   margin: 0 0 1.1rem;
   padding: 0.25rem;
-  background: var(--bg-page);
+  background: var(--bg-surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
 }
@@ -5190,7 +5223,7 @@ button.today-action:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay);
   animation: fade-in 0.2s ease;
   padding: 1rem;
 }
@@ -5972,7 +6005,7 @@ button.today-action:disabled {
   color: var(--text-muted);
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition: color 0.12s ease;
 }
@@ -7365,12 +7398,35 @@ details[open] .meditate-disclosure-summary::before {
   pointer-events: auto;
 }
 
+/* Cool semantic fills, derived from --success-text (#0fae6e) / --error-text (#e5484d)
+   and darkened enough to keep white toast text ≥4.5 contrast (success #09855b → 4.65,
+   error #d33f43 → 4.60). Re-keyed on dark via both the explicit-theme selector and the
+   system-preference variant, matching how other components flip. */
 .toast--success {
-  background: #4f7a44;
+  background: #09855b;
 }
 
 .toast--error {
-  background: #9a3412;
+  background: #d33f43;
+}
+
+:root[data-theme='dark'] .toast--success,
+:root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
+  background: #0a875d;
+}
+
+:root[data-theme='dark'] .toast--error,
+:root:not([data-theme='light']):not([data-theme='dark']) .toast--error {
+  background: #c73b3f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
+    background: #0a875d;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .toast--error {
+    background: #c73b3f;
+  }
 }
 
 .toast-action {
@@ -7767,7 +7823,9 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .onboarding-emoji {
-  font-size: var(--text-lg);
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
 }
 
 /* The single warm question heading + the choice rows' two-line body (label + sub). */

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import AuthBrand from './AuthBrand'
 import SiteFooter from './SiteFooter'
 
@@ -20,7 +21,8 @@ export default function LegalPage({
       <h1>{title}</h1>
       <p className="legal-meta muted">Last updated: {updated}</p>
       <p className="legal-template" role="note">
-        <span aria-hidden="true">⚠️</span> This is a starting-point template, not legal advice. Review it with a
+        <AlertTriangle className="legal-template-icon" size={16} strokeWidth={1.75} aria-hidden="true" />{' '}
+        This is a starting-point template, not legal advice. Review it with a
         qualified professional and fill in the bracketed details (company, contact,
         jurisdiction) before launch.
       </p>

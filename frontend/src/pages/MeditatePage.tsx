@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Brain } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { biometricsService } from '../services/biometrics'
@@ -509,7 +510,7 @@ export default function MeditatePage() {
       return
     }
 
-    const bd = buildXpBreakdown(before, after, '🧘 Meditation')
+    const bd = buildXpBreakdown(before, after, 'Meditation', Brain)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 

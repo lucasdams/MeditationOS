@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { HandHeart } from 'lucide-react'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
@@ -215,7 +216,7 @@ export default function GratitudePage() {
       // the breakdown would treat the user's entire lifetime XP as this entry's gain.
       if (beforeOk) {
         // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
-        const bd = buildXpBreakdown(before, after, '🙏 Gratitude')
+        const bd = buildXpBreakdown(before, after, 'Gratitude', HandHeart)
         setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
       }
       // Return to the "pick a category" state for next time.

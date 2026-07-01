@@ -2,18 +2,19 @@
 // deterministic helpers, so a "daily" line stays stable through the day rather than
 // flickering on every render.
 
-// Soft daily greetings shown under the dashboard heading.
+// Soft daily greetings shown under the dashboard heading. Text-only — the decorative
+// trailing emoji were dropped to match the app's de-emoji direction.
 export const GREETINGS = [
-  'Namaste 🙏',
-  'Welcome back — breathe easy 🧘',
-  'Your cushion missed you 🪷',
+  'Namaste',
+  'Welcome back — breathe easy',
+  'Your cushion missed you',
   'One breath at a time',
-  'The present moment says hi 😌',
-  'Be here now 🍃',
-  'Inhale calm, exhale hustle 🌬️',
-  'Soft mind, steady heart 🧘',
-  'A little stillness goes a long way 🪷',
-  'Wherever you go, there you are 😉',
+  'The present moment says hi',
+  'Be here now',
+  'Inhale calm, exhale hustle',
+  'Soft mind, steady heart',
+  'A little stillness goes a long way',
+  'Wherever you go, there you are',
   'Showing up today rewires you a little',
   'Build the habit, one breath at a time',
 ]

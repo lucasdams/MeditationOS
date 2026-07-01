@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Flame as FlameIcon } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
@@ -268,7 +269,7 @@ export default function TratakaPage() {
     clearDraft(DRAFT_PAGE)
 
     const after = await dashboardService.getStats().catch(() => ZERO_STATS)
-    const bd = buildXpBreakdown(before, after, '🕯️ Candle gazing')
+    const bd = buildXpBreakdown(before, after, 'Candle gazing', FlameIcon)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 

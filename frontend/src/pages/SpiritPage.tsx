@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import { Lock } from 'lucide-react'
 import { spiritService } from '../services/spirit'
 import { useToast } from '../context/ToastContext'
 import {
@@ -605,7 +606,7 @@ export default function SpiritPage() {
                 // toward.
                 <span className="spirit-node-controls">
                   <span className="spirit-node-locked">
-                    <span aria-hidden="true">🔒</span> {lockReason(opt)}
+                    <Lock size={14} strokeWidth={1.75} aria-hidden="true" /> {lockReason(opt)}
                   </span>
                 </span>
               )}
