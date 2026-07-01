@@ -994,6 +994,14 @@ def _owned(spirit: Spirit) -> set[str]:
     return set(_unlocked_list(spirit)) | set(_cosmetics(spirit).values())
 
 
+def _needs_reconcile(spirit: Spirit) -> bool:
+    """Whether any currently-equipped (legacy) option is NOT already captured in `unlocked` — i.e.
+    whether folding the loadout into `unlocked` would actually change it. False when the equipped
+    values are already a subset of `unlocked`, so callers can skip a churn-only JSON write (the
+    common case: everything equipped was `unlock`ed the normal way, so it's already in the list)."""
+    return not set(_cosmetics(spirit).values()).issubset(_unlocked_list(spirit))
+
+
 def _reconciled_unlocked(spirit: Spirit) -> list[str]:
     """The `unlocked` list folded together with any currently-equipped (legacy) items, preserving
     order and de-duplicating (ADR-0027). Persisting this on every write makes ownership MONOTONIC:
@@ -1206,13 +1214,19 @@ def _build_state(
     today: date,
     tz: str,
     basis: dashboard_service.WalletBasis | None = None,
+    spirit_basis: dashboard_service.WalletBasis | None = None,
 ) -> SpiritState:
     """Assemble the active spirit's computed read state from the (chosen-or-pathless) spirit
     row plus the user's wallet basis. Shared by the read endpoint and every write so the
     response shape is built once.
 
-    `basis` is computed here only if not supplied — callers that already have it (the read
-    endpoint, the writes) pass it through so the request does exactly one `get_wallet_basis`.
+    `basis` (the LIFETIME wallet basis, `since=None`) and `spirit_basis` (the SPIRIT-SCOPED
+    basis, `since=awakened_at`) are each computed here only if not supplied — callers that
+    already have them pass them through so the request does exactly one `get_wallet_basis` per
+    scope. IMPORTANT: `spirit_basis` must be scoped to THIS `spirit`'s `awakened_at`; only pass
+    it when the caller computed it for the same spirit being rendered (e.g. `unlock_cosmetic`),
+    never a basis computed for a different/now-retired spirit (e.g. `awaken`, which renders a
+    freshly born spark with its own window).
     """
     if basis is None:
         basis = dashboard_service.get_wallet_basis(db, user_id, today=today, tz=tz)
@@ -1225,9 +1239,10 @@ def _build_state(
     # account budget). For a first/never-died spirit (awakened ≈ account start) the two bases match,
     # so its stage/level are unchanged (backward-compatible — no migration).
     lifetime_level = basis.level
-    spirit_basis = dashboard_service.get_wallet_basis(
-        db, user_id, today=today, tz=tz, since=_as_aware(spirit.awakened_at)
-    )
+    if spirit_basis is None:
+        spirit_basis = dashboard_service.get_wallet_basis(
+            db, user_id, today=today, tz=tz, since=_as_aware(spirit.awakened_at)
+        )
     level = spirit_basis.level
     now = datetime.now(UTC)
 
@@ -1418,7 +1433,12 @@ def unlock_cosmetic(
     spirit.last_pampered_need = _option_need(data.slot, data.option)
     db.commit()
     db.refresh(spirit)
-    return _build_state(db, user_id, spirit, today=today, tz=tz, basis=basis)
+    # Thread BOTH already-computed bases through: the lifetime `basis` and the SAME-spirit
+    # `spirit_basis` (scoped to this spirit's `awakened_at`) — the unlock doesn't move
+    # `awakened_at`, so `spirit_basis` is still valid and `_build_state` skips its second pass.
+    return _build_state(
+        db, user_id, spirit, today=today, tz=tz, basis=basis, spirit_basis=spirit_basis
+    )
 
 
 def equip_cosmetic(
@@ -1447,8 +1467,11 @@ def equip_cosmetic(
 
     # Capture any legacy already-equipped item into `unlocked` BEFORE we mutate the loadout, so
     # clearing/swapping a slot can never drop a never-`unlocked` item from the owned set
-    # (ownership stays monotonic — ADR-0027).
-    spirit.unlocked = _reconciled_unlocked(spirit)
+    # (ownership stays monotonic — ADR-0027). Skip the write entirely when nothing legacy needs
+    # capturing (equipped ⊆ unlocked — the normal case), so an equip/clear doesn't churn the JSON
+    # column with an identical list on every call.
+    if _needs_reconcile(spirit):
+        spirit.unlocked = _reconciled_unlocked(spirit)
 
     equipped = dict(_cosmetics(spirit))
     if data.option is None:
@@ -1540,6 +1563,9 @@ def awaken(db: DBSession, user_id: uuid.UUID, *, today: date, tz: str = "UTC") -
         db.rollback()
         raise SpiritConflictError(str(user_id)) from err
     db.refresh(new_spark)
+    # Only the LIFETIME `basis` is threaded: the `spirit_basis` computed above is scoped to the
+    # RETIRED spirit's `awakened_at`, so it does NOT describe the freshly born `new_spark` (whose
+    # window starts now). `_build_state` recomputes the spirit-scoped basis for the new spark.
     return _build_state(db, user_id, new_spark, today=today, tz=tz, basis=basis)
 
 

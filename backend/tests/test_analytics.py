@@ -170,12 +170,15 @@ def test_monthly_comparison_counts_and_delta(client):
     today = datetime.now(UTC).date()
     last = _prev_month_day(today)
 
-    # This month: two sessions on two DISTINCT days, 10 + 10 minutes. Use the 1st of the month as
-    # the second day — except when today IS the 1st, where that collides, so fall back to the 2nd
-    # (still this month, within the session-create future slack). Keeps the test date-deterministic.
-    second_day = _first_of_month(today)
-    if second_day == today:
-        second_day = today + timedelta(days=1)
+    # This month: two 10-minute sessions on two DISTINCT days when possible. Both days must be in
+    # the past (the session endpoint clamps future dates), so on the 1st of the month there's only
+    # one in-month day available and both sessions land on today → this month shows 1 practiced day.
+    # Date-deterministic on any calendar date (fixes the 1st-of-month flake).
+    first = _first_of_month(today)
+    if today > first:
+        second_day, expected_this_days = first, 2
+    else:  # today IS the 1st — only one in-month day exists
+        second_day, expected_this_days = today, 1
     _session(client, on=today, seconds=600)
     _session(client, on=second_day, seconds=600)
     # Last month: one 10-minute session on one day.
@@ -184,14 +187,14 @@ def test_monthly_comparison_counts_and_delta(client):
     mc = client.get("/api/v1/analytics").json()["monthly_comparison"]
     assert mc["this_month"]["minutes"] == 20
     assert mc["this_month"]["sessions"] == 2
-    assert mc["this_month"]["days_practiced"] == 2
+    assert mc["this_month"]["days_practiced"] == expected_this_days
     assert mc["last_month"]["minutes"] == 10
     assert mc["last_month"]["sessions"] == 1
     assert mc["last_month"]["days_practiced"] == 1
     # Deltas are this − last (positive ⇒ more than last month).
     assert mc["minutes_delta"] == 10
     assert mc["sessions_delta"] == 1
-    assert mc["days_practiced_delta"] == 1
+    assert mc["days_practiced_delta"] == expected_this_days - 1
 
 
 def test_monthly_comparison_negative_delta(client):

@@ -45,8 +45,12 @@ def compute_streaks(dates: set[date], today: date) -> tuple[int, int, bool]:
       one exception is purely an invariant guard: if the insured current streak happens to
       exceed the longest consecutive run, `longest` is raised to it so `current ≤ longest`
       always holds.
-    - current: the run ending today OR yesterday (grace through end of today), allowing
-      up to REST_DAYS_PER_STREAK single-day gaps to be bridged; 0 if it has lapsed.
+    - current: the run ending today OR yesterday, allowing up to REST_DAYS_PER_STREAK
+      single-day gaps to be bridged; 0 if it has lapsed. Missing *only* today (practiced
+      yesterday) keeps the streak, but that today-grace and the rest-day bridge do NOT stack:
+      an absent today consumes the rest-day allowance, so a *second* consecutive missed day
+      (today AND yesterday both absent) ends the streak — matching "two missed days in a row
+      still ends it".
     - rest_day_used: whether the current streak is currently leaning on a rest day.
     """
     if not dates:
@@ -58,12 +62,25 @@ def compute_streaks(dates: set[date], today: date) -> tuple[int, int, bool]:
         run = run + 1 if (cur - prev).days == 1 else 1
         longest = max(longest, run)
 
-    # Walk back from today (a missing today is free — grace), bridging a single skipped
-    # day with the rest-day allowance. The bridged day isn't counted toward the length.
+    # Walk back from today, bridging a single skipped day with the rest-day allowance (the bridged
+    # day isn't counted toward the length). A missing today is graced, but that grace SPENDS the
+    # rest-day budget — so the today-grace and an interior rest-day bridge can't BOTH apply to the
+    # leading gap. That keeps the two allowances from stacking into two consecutive free days
+    # (which would let a streak survive two missed days in a row, contradicting the module rule).
     current = 0
     rest_budget = REST_DAYS_PER_STREAK
     rest_used = False
-    day = today if today in dates else today - timedelta(days=1)
+    if today in dates:
+        day = today
+    else:
+        # Grace the absent today by starting the walk at yesterday — but consume the rest-day
+        # budget for it, so a further gap (yesterday also missing) can't be bridged again. This
+        # does NOT flip `rest_used`: that flag means "an interior day is bridged" and drives the
+        # reminder logic (a streak leaning on a rest day is safe today, so it isn't nudged). A
+        # streak that has merely missed today but practiced yesterday IS still at risk of breaking
+        # at midnight and must stay nudge-eligible, so the today-grace must not set the flag.
+        day = today - timedelta(days=1)
+        rest_budget -= 1
     while True:
         if day in dates:
             current += 1
