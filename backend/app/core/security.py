@@ -60,8 +60,9 @@ def create_access_token(
 
     `pwv` binds the token to the user's current password version (see
     `password_fingerprint`). Every issue site passes it so a password change
-    invalidates all outstanding sessions. Omitted only in legacy call paths — tokens
-    without it are grandfathered by `decode_access_token_payload`."""
+    invalidates all outstanding sessions. `get_current_user` now REQUIRES the claim,
+    so a token minted without it (a pre-`pwv` legacy cookie) is rejected, not
+    grandfathered — only test/legacy call paths omit it."""
     minutes = (
         expire_minutes if expire_minutes is not None
         else settings.access_token_expire_minutes

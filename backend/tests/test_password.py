@@ -1,6 +1,6 @@
 """Tests for POST /api/v1/auth/password."""
 
-from app.core.security import create_access_token
+from app.core.security import create_access_token, password_fingerprint
 from app.models.user import User
 
 
@@ -65,7 +65,12 @@ def test_google_only_account_sets_first_password(client, db_session):
     db_session.commit()
     assert user.has_password is False
 
-    client.cookies.set("access_token", create_access_token(str(user.id)))
+    # A real Google login issues a token carrying `pwv` (the passwordless sentinel), so mint
+    # one the same way — a bare pwv-less token is now rejected (grandfathering removed).
+    client.cookies.set(
+        "access_token",
+        create_access_token(str(user.id), pwv=password_fingerprint(user.password_hash)),
+    )
     res = client.post("/api/v1/auth/password", json={"new_password": "brand new pw"})
     assert res.status_code == 200
     assert res.json()["has_password"] is True
