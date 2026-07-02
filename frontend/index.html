@@ -20,7 +20,11 @@
       content="A meditation app built around your practice data: track sessions, build streaks, breathe with intention (HRV resonance breathing), journal, and watch your progress grow."
     />
     <link rel="canonical" href="https://meditationos.app/" />
-    <meta name="theme-color" content="#c4744f" />
+    <!-- Cool Electric accent (electric violet). Light scheme shows the electric-violet accent;
+         dark scheme uses the deep-slate surface so the browser chrome matches either theme. -->
+    <meta name="theme-color" content="#6a5cff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#6a5cff" />
 
     <!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, …) -->
     <meta property="og:type" content="website" />
