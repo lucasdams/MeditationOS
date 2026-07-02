@@ -58,13 +58,20 @@ def _choose(client, path, name="Ember"):
     return client.post("/api/v1/spirit/choose", json={"path": path, "name": name})
 
 
-def _practice(client, minutes, *, day="2026-01-01"):
+def _recent_iso(now):
+    """A naive-UTC ISO timestamp a minute before `now` — a practice that reads as 'just now'
+    regardless of wall-clock time, so recency-based need/vitality tests don't flake late in
+    the UTC day (a fixed 08:00 practice would read as hours-old and decay below threshold)."""
+    return (now - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _practice(client, minutes, *, day="2026-01-01", at=None):
     return client.post(
         "/api/v1/sessions",
         json={
             "type": "mindfulness",
             "duration_seconds": minutes * 60,
-            "occurred_at": f"{day}T08:00:00",
+            "occurred_at": at or f"{day}T08:00:00",
         },
     )
 
@@ -203,13 +210,13 @@ def test_service_get_or_create_is_idempotent(db_session):
 # --- Practice helpers + id lookups ------------------------------------------------------
 
 
-def _breathe(client, minutes, *, day="2026-01-01"):
+def _breathe(client, minutes, *, day="2026-01-01", at=None):
     return client.post(
         "/api/v1/sessions",
         json={
             "type": "resonance_breathing",
             "duration_seconds": minutes * 60,
-            "occurred_at": f"{day}T08:00:00",
+            "occurred_at": at or f"{day}T08:00:00",
             "inhale_seconds": 6,
             "exhale_seconds": 6,
         },
@@ -493,7 +500,7 @@ def test_recent_signature_practice_keeps_nourished_full(client, db_session):
     user_id = _user_id(db_session, "needs_recent_practice@example.com")
     now = datetime.now(UTC)
     # Practice today; an old baseline that would otherwise have decayed nourished to 0.
-    _breathe(client, 30, day=now.date().isoformat())  # breathing = the Kapha creature's food
+    _breathe(client, 30, at=_recent_iso(now))  # breathing = the Kapha creature's food
     old_baseline = now - timedelta(days=DECAY_DAYS + 5)
     n = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=old_baseline)
     # The recent breathing session refills nourished (and rested — any sit feeds rested too).
@@ -512,7 +519,7 @@ def test_rested_fed_by_any_session_joyful_by_reflection(client, db_session):
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)
 
-    _practice(client, 10, day=now.date().isoformat())  # a meditation sit → feeds rested
+    _practice(client, 10, at=_recent_iso(now))  # a meditation sit → feeds rested
     rested_only = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
     assert rested_only.rested.factor > 0.9  # any sit feeds rested
     assert rested_only.joyful.factor == NEEDS_FLOOR  # no reflection → joyful eased to the floor
@@ -530,7 +537,7 @@ def test_signature_practice_is_path_specific(client, db_session):
     user_id = _user_id(db_session, "needs_pathfood@example.com")
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)
-    _practice(client, 10, day=now.date().isoformat())  # meditation
+    _practice(client, 10, at=_recent_iso(now))  # meditation
 
     heart = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
     assert heart.nourished.factor > 0.9  # meditation IS the Vata creature's food
@@ -584,7 +591,7 @@ def test_vitality_is_fed_by_any_practice_not_the_weakest_need(client, db_session
     user_id = _user_id(db_session, "vitality_any@example.com")
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)  # old baseline; facets would floor without activity
-    _practice(client, 10, day=now.date().isoformat())  # a meditation sit — NOT Kapha's food
+    _practice(client, 10, at=_recent_iso(now))  # a meditation sit — NOT Kapha's food
 
     # Two of the three facets have eased to the floor (nourished wants breathing; joyful wants
     # reflection) — under the OLD "weakest need" rule the condition would sit at the floor.
