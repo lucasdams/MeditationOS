@@ -30,8 +30,13 @@ def _is_allowed_push_endpoint(endpoint: str) -> bool:
 
 
 class PushKeys(BaseModel):
-    p256dh: str
-    auth: str
+    # Fixed-size Web Push encryption params (base64url): p256dh is a 65-byte ECDH public key
+    # (~88 chars), auth a 16-byte secret (~24 chars). Cap generously + forbid extras for parity
+    # with the parent schema (defense in depth — these are only used as encryption inputs).
+    model_config = ConfigDict(extra="forbid")
+
+    p256dh: str = Field(min_length=1, max_length=256)
+    auth: str = Field(min_length=1, max_length=128)
 
 
 class PushSubscriptionCreate(BaseModel):
