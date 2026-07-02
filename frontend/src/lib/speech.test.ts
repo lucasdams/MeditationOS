@@ -11,7 +11,13 @@ import {
   speechAvailable,
   pickVoice,
   speak,
+  speakSample,
   cancelSpeech,
+  curatedVoices,
+  getVoiceURIPref,
+  setVoiceURIPref,
+  savedVoice,
+  PREVIEW_LINE,
   SPEECH_RATE,
 } from './speech'
 
@@ -47,10 +53,12 @@ function installSynth(voices: FakeVoice[]) {
 
 beforeEach(() => {
   vi.stubGlobal('navigator', { language: 'en-US' })
+  localStorage.clear()
 })
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  localStorage.clear()
 })
 
 describe('speechAvailable', () => {
@@ -128,5 +136,123 @@ describe('cancelSpeech', () => {
   it('is safe when speech is unavailable', () => {
     vi.stubGlobal('speechSynthesis', undefined)
     expect(() => cancelSpeech()).not.toThrow()
+  })
+})
+
+describe('voiceURI preference persistence', () => {
+  it('round-trips a saved voiceURI through localStorage', () => {
+    expect(getVoiceURIPref()).toBeNull()
+    setVoiceURIPref('urn:voice:calm')
+    expect(getVoiceURIPref()).toBe('urn:voice:calm')
+    expect(localStorage.getItem('guidance.voiceURI')).toBe('urn:voice:calm')
+  })
+
+  it('clears the preference when set to null', () => {
+    setVoiceURIPref('urn:voice:calm')
+    setVoiceURIPref(null)
+    expect(getVoiceURIPref()).toBeNull()
+    expect(localStorage.getItem('guidance.voiceURI')).toBeNull()
+  })
+})
+
+describe('savedVoice', () => {
+  it('resolves the saved voiceURI to a live voice', () => {
+    installSynth([
+      { name: 'Calm', lang: 'en-US', voiceURI: 'urn:voice:calm', localService: true },
+      { name: 'Other', lang: 'en-US', voiceURI: 'urn:voice:other' },
+    ])
+    setVoiceURIPref('urn:voice:calm')
+    expect(savedVoice()?.name).toBe('Calm')
+  })
+
+  it('returns null when the saved voice is unavailable on this device', () => {
+    installSynth([{ name: 'Only', lang: 'en-US', voiceURI: 'urn:voice:only' }])
+    setVoiceURIPref('urn:voice:gone')
+    expect(savedVoice()).toBeNull()
+  })
+
+  it('returns null when no preference is saved', () => {
+    installSynth([{ name: 'Any', lang: 'en-US', voiceURI: 'urn:voice:any' }])
+    expect(savedVoice()).toBeNull()
+  })
+})
+
+describe('speak applies the saved voice', () => {
+  it('sets the chosen voice on the utterance', () => {
+    const { utterances } = installSynth([
+      { name: 'Default EN', lang: 'en-US', voiceURI: 'urn:voice:def', localService: true },
+      { name: 'Chosen', lang: 'en-GB', voiceURI: 'urn:voice:chosen', localService: true },
+    ])
+    setVoiceURIPref('urn:voice:chosen')
+    speak('Breathe in.')
+    const applied = utterances[0].voice as SpeechSynthesisVoice
+    expect(applied.name).toBe('Chosen')
+    // The utterance lang follows the chosen voice's locale.
+    expect(utterances[0].lang).toBe('en-GB')
+  })
+
+  it('falls back to a default voice when the saved one is missing', () => {
+    const { utterances } = installSynth([
+      { name: 'Local EN', lang: 'en-US', voiceURI: 'urn:voice:local', localService: true },
+    ])
+    setVoiceURIPref('urn:voice:not-on-this-device')
+    speak('Breathe out.')
+    const applied = utterances[0].voice as SpeechSynthesisVoice
+    // The saved voice is gone, so pickVoice falls through to the local in-language voice.
+    expect(applied.name).toBe('Local EN')
+  })
+})
+
+describe('speakSample (preview)', () => {
+  it('previews a specific voice with the sample line, ignoring the saved pref', () => {
+    const { speak: speakSpy, utterances } = installSynth([
+      { name: 'Saved', lang: 'en-US', voiceURI: 'urn:voice:saved', localService: true },
+      { name: 'Previewed', lang: 'en-US', voiceURI: 'urn:voice:preview', localService: true },
+    ])
+    setVoiceURIPref('urn:voice:saved')
+    const previewVoice = { name: 'Previewed', voiceURI: 'urn:voice:preview', lang: 'en-US' } as SpeechSynthesisVoice
+    speakSample(previewVoice)
+    expect(speakSpy).toHaveBeenCalledOnce()
+    expect(utterances[0].text).toBe(PREVIEW_LINE)
+    expect((utterances[0].voice as SpeechSynthesisVoice).name).toBe('Previewed')
+  })
+
+  it('falls back to the default voice when given null (Auto)', () => {
+    const { utterances } = installSynth([
+      { name: 'Local EN', lang: 'en-US', voiceURI: 'urn:voice:local', localService: true },
+    ])
+    speakSample(null)
+    expect(utterances[0].text).toBe(PREVIEW_LINE)
+    expect((utterances[0].voice as SpeechSynthesisVoice).name).toBe('Local EN')
+  })
+})
+
+describe('curatedVoices', () => {
+  it('returns in-language voices, local first then alphabetical, de-duped', () => {
+    installSynth([
+      { name: 'Zed EN', lang: 'en-US', voiceURI: 'urn:z', localService: true },
+      { name: 'Amy EN', lang: 'en-GB', voiceURI: 'urn:a', localService: true },
+      { name: 'Remote EN', lang: 'en-US', voiceURI: 'urn:r', localService: false },
+      { name: 'French', lang: 'fr-FR', voiceURI: 'urn:f', localService: true },
+      // duplicate voiceURI of Amy — should be collapsed
+      { name: 'Amy EN dup', lang: 'en-GB', voiceURI: 'urn:a', localService: true },
+    ])
+    const names = curatedVoices().map((v) => v.name)
+    // French excluded (out of language); Amy dup collapsed; locals before remote,
+    // locals sorted alphabetically (Amy, Zed), then the remote.
+    expect(names).toEqual(['Amy EN', 'Zed EN', 'Remote EN'])
+  })
+
+  it('falls back to all voices when none match the page language', () => {
+    installSynth([
+      { name: 'German', lang: 'de-DE', voiceURI: 'urn:de', localService: true },
+      { name: 'French', lang: 'fr-FR', voiceURI: 'urn:fr', localService: true },
+    ])
+    expect(curatedVoices().map((v) => v.name)).toEqual(['French', 'German'])
+  })
+
+  it('is empty when there are no voices', () => {
+    installSynth([])
+    expect(curatedVoices()).toEqual([])
   })
 })
