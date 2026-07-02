@@ -161,26 +161,33 @@ def send_due_weekly_summaries(db: DBSession, *, now_utc: datetime | None = None)
 
     sent = 0
     for user in candidates:
-        tz_zone = zone(user.timezone)
-        local_now = now_utc.astimezone(tz_zone)
-        if local_now.weekday() != user.weekly_summary_day:
-            continue
-        if local_now.hour < SUMMARY_SEND_HOUR:
-            continue
-        if user.weekly_summary_last_sent_at is not None:
-            last_local = user.weekly_summary_last_sent_at.astimezone(tz_zone)
-            if last_local.isocalendar()[:2] >= local_now.isocalendar()[:2]:
-                continue  # already sent this ISO week
-        review = get_weekly_review(
-            db, user.id, today=local_now.date(), tz=user.timezone or "UTC"
-        )
-        if email.send_email(
-            user.email,
-            WEEKLY_SUMMARY_SUBJECT,
-            _summary_body(user, review),
-            email.list_unsubscribe_headers(),
-        ):
+        try:
+            tz_zone = zone(user.timezone)
+            local_now = now_utc.astimezone(tz_zone)
+            if local_now.weekday() != user.weekly_summary_day:
+                continue
+            if local_now.hour < SUMMARY_SEND_HOUR:
+                continue
+            if user.weekly_summary_last_sent_at is not None:
+                last_local = user.weekly_summary_last_sent_at.astimezone(tz_zone)
+                if last_local.isocalendar()[:2] >= local_now.isocalendar()[:2]:
+                    continue  # already sent this ISO week
+            review = get_weekly_review(
+                db, user.id, today=local_now.date(), tz=user.timezone or "UTC"
+            )
+            # Stamp + commit BEFORE sending, and per user, so a crash mid-batch can never
+            # re-email an already-processed user (matches send_due_reminders' crash-safe
+            # per-user commit). A provider failure then simply skips this week rather than
+            # risking a duplicate — the right trade-off for a gentle weekly nudge.
             user.weekly_summary_last_sent_at = now_utc
+            db.commit()
+            email.send_email(
+                user.email,
+                WEEKLY_SUMMARY_SUBJECT,
+                _summary_body(user, review),
+                email.list_unsubscribe_headers(),
+            )
             sent += 1
-    db.commit()
+        except Exception:
+            logger.exception("weekly summary failed for user %s", user.id)
     return sent

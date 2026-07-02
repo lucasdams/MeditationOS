@@ -242,7 +242,7 @@ def _ratings_by_week(
             week_col,
             func.avg(cast(Session.calm, Float)),
             func.avg(cast(Session.focus, Float)),
-            func.count().filter(rated),
+            func.count(),  # every grouped row already satisfies `rated` via the WHERE below
         )
         .where(owned, rated, local_day >= since)
         .group_by(week_col)
