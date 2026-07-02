@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # Trust X-Forwarded-For for client IP (rate limiting). Only enable behind a
     # trusted reverse proxy — otherwise clients can spoof it to dodge limits.
     trust_proxy: bool = False
+    # Optional shared store for the per-email throttles + the slowapi IP limiter. When set
+    # (e.g. redis://redis:6379/0), the login-lockout, email-cooldown, and rate limiter use
+    # Redis so their state holds across multiple workers/hosts. Unset → in-memory (correct
+    # for a single process, but per-worker if you scale out — see core/throttle_store.py).
+    redis_url: str | None = None
     # Max rows a user may create per type (sessions / gratitude / journals / goals)
     # per UTC day — an anti-spam ceiling, set well above real use.
     daily_create_limit: int = 200

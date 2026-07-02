@@ -22,6 +22,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Optional shared store for the throttles + rate limiter (needed only when running multiple
+  # backend workers). Off by default — start it with `docker compose --profile redis up` and set
+  # REDIS_URL=redis://redis:6379/0 in .env to activate it. Unset REDIS_URL → in-memory (default).
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"
+
   backend:
     build: ./backend
     depends_on:
@@ -33,6 +42,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       ENVIRONMENT: ${ENVIRONMENT}
+      REDIS_URL: ${REDIS_URL:-} # empty → in-memory throttles; set to use the redis service above
       DEV_RELOAD: "1" # local hot-reload; prod entrypoint runs gunicorn workers
     ports:
       - "8000:8000"

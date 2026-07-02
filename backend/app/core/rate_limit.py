@@ -20,7 +20,10 @@ def client_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
+# When REDIS_URL is set the limiter counts in Redis (shared across workers/hosts); otherwise
+# slowapi's default in-memory storage (per-process). `storage_uri` accepts a redis:// URL.
 limiter = Limiter(
     key_func=client_ip,
     enabled=settings.environment != "test",
+    storage_uri=settings.redis_url or "memory://",
 )
