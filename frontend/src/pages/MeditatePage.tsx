@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Brain } from 'lucide-react'
 import { sessionService } from '../services/sessions'
+import { track } from '../lib/analytics'
 import { dashboardService } from '../services/dashboard'
 import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
@@ -481,6 +482,7 @@ export default function MeditatePage() {
     }
 
     savedSessionIdRef.current = saved.id
+    track('session_completed', { type: MEDITATION_TYPE })
     // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
     savedRef.current = true
     clearDraft(DRAFT_PAGE)

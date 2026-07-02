@@ -9,6 +9,7 @@ import PushToggle from '../components/PushToggle'
 import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
+import { analyticsOptedOut, setAnalyticsOptOut } from '../lib/analytics'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
@@ -70,6 +71,8 @@ export default function SettingsPage() {
   const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [reminderOk, setReminderOk] = useState(false)
+  // Privacy: local (per-browser) opt-out of the anonymous usage analytics.
+  const [analyticsOff, setAnalyticsOff] = useState(analyticsOptedOut())
   const [savingReminder, setSavingReminder] = useState(false)
   const [summaryEnabled, setSummaryEnabled] = useState(user?.weekly_summary_enabled ?? false)
   const [summaryDay, setSummaryDay] = useState(user?.weekly_summary_day ?? 1)
@@ -585,6 +588,27 @@ export default function SettingsPage() {
             {savingReminder ? 'Saving…' : 'Save reminders'}
           </button>
         </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>Privacy</h2>
+        <p className="muted">
+          MeditationOS records a few anonymous, non-personal usage events (like “a session was
+          completed”) to see what helps — never your journal text, moods, emails, or identity.
+          We also honor your browser’s Do Not Track.
+        </p>
+        <label className="settings-check">
+          <input
+            type="checkbox"
+            checked={!analyticsOff}
+            onChange={(e) => {
+              const on = e.target.checked
+              setAnalyticsOptOut(!on)
+              setAnalyticsOff(!on)
+            }}
+          />
+          Share anonymous usage analytics
+        </label>
       </section>
 
       <section className="settings-section">

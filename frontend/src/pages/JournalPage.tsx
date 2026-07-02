@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Brain, HandHeart, NotebookPen } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
+import { track } from '../lib/analytics'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { MOOD_COLORS, MOOD_META } from '../lib/colors'
@@ -218,6 +219,7 @@ export default function JournalPage() {
         mood: mood || null,
         session_id: sessionId || null,
       })
+      track('journal_created')
       setEntries((prev) => [created, ...(prev ?? [])])
       setBody('')
       setMood('')

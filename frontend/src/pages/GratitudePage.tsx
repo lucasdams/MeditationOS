@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { HandHeart } from 'lucide-react'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
+import { track } from '../lib/analytics'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
@@ -205,6 +206,7 @@ export default function GratitudePage() {
         return ZERO_STATS
       })
       const entry = await gratitudeService.create({ category, text: text.trim() })
+      track('gratitude_created')
       setEntries((prev) => [entry, ...(prev ?? [])])
       // The new row shifts everything down by one server-side; advance the cursor so
       // the next loadMore doesn't re-fetch the row now sitting at the old boundary.
