@@ -9237,3 +9237,62 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--success-text);
   background: #25301c;
 }
+
+/* ── In-app feedback ─────────────────────────────────────────────────────── */
+.feedback-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: min(92vw, 30rem);
+}
+.feedback-modal textarea {
+  width: 100%;
+  resize: vertical;
+}
+.feedback-count {
+  margin: 0;
+  text-align: right;
+  font-size: var(--text-xs);
+}
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Admin feedback inbox */
+.admin-feedback-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.admin-feedback-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+}
+.admin-feedback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+.admin-feedback-cat {
+  text-transform: capitalize;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--text-xs);
+}
+.admin-feedback-msg {
+  margin: 0;
+  white-space: pre-wrap;
+}

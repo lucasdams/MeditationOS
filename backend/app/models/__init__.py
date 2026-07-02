@@ -5,6 +5,7 @@
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.biometric_reading import BiometricReading  # noqa: F401
 from app.models.breathing_pattern import BreathingPattern  # noqa: F401
+from app.models.feedback import Feedback  # noqa: F401
 from app.models.goal import Goal, GoalCheckin  # noqa: F401
 from app.models.gratitude import GratitudeEntry  # noqa: F401
 from app.models.journal import Journal  # noqa: F401

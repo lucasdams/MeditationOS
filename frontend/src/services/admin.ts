@@ -5,6 +5,7 @@ import type {
   AdminUserList,
   AuditList,
 } from '../types'
+import type { AdminFeedbackList } from './feedback'
 
 // Admin-only endpoints. The backend gates every /admin/* route with require_admin
 // (403 for non-admins), so a non-admin reaching these would just get an error.
@@ -34,5 +35,13 @@ export const adminService = {
     if (params.offset != null) qs.set('offset', String(params.offset))
     const suffix = qs.toString() ? `?${qs}` : ''
     return api.get<AuditList>(`/admin/audit${suffix}`)
+  },
+  // In-app feedback inbox (newest-first, paginated). Admin-only.
+  listFeedback: (params: { limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams()
+    if (params.limit != null) qs.set('limit', String(params.limit))
+    if (params.offset != null) qs.set('offset', String(params.offset))
+    const suffix = qs.toString() ? `?${qs}` : ''
+    return api.get<AdminFeedbackList>(`/admin/feedback${suffix}`)
   },
 }
