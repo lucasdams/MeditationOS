@@ -6,6 +6,7 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
+import FeedbackButton from '../components/FeedbackButton'
 import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
@@ -585,6 +586,15 @@ export default function SettingsPage() {
             {savingReminder ? 'Saving…' : 'Save reminders'}
           </button>
         </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>Feedback</h2>
+        <p className="muted">
+          Found a bug, have an idea, or just want to say hi? Send a note — it goes straight to
+          the person who builds MeditationOS.
+        </p>
+        <FeedbackButton />
       </section>
 
       <section className="settings-section">

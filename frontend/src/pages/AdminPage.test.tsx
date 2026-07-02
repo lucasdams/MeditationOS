@@ -24,6 +24,7 @@ vi.mock('../services/admin', () => ({
     enableUser: (...a: unknown[]) => enableUser(...a),
     deleteUser: (...a: unknown[]) => deleteUser(...a),
     audit: (...a: unknown[]) => audit(...a),
+    listFeedback: () => Promise.resolve({ entries: [], total: 0 }),
   },
 }))
 vi.mock('../context/AuthContext', () => ({

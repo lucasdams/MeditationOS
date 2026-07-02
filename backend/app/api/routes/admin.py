@@ -17,7 +17,13 @@ from app.models.user import User
 from app.schemas.admin import AdminMetrics
 from app.schemas.admin_users import AdminUserDetail, AdminUserList
 from app.schemas.audit import AuditEntry, AuditList
-from app.services import admin_service, admin_users_service, audit_service
+from app.schemas.feedback import AdminFeedbackList
+from app.services import (
+    admin_service,
+    admin_users_service,
+    audit_service,
+    feedback_service,
+)
 
 router = APIRouter(
     prefix="/admin",
@@ -141,3 +147,19 @@ def list_audit(
     return AuditList(
         entries=[AuditEntry.model_validate(r) for r in rows], total=total
     )
+
+
+# ── Feedback inbox (read) ──────────────────────────────────────────────────
+
+
+@router.get("/feedback", response_model=AdminFeedbackList)
+def list_feedback(
+    db: DBSession = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> AdminFeedbackList:
+    """Read the in-app feedback inbox, newest-first (paginated). Unlike the metadata-only
+    metrics/user views, this surfaces the message the user chose to send us, plus the
+    sender's email (null if that account was since deleted) so the owner can follow up."""
+    entries, total = feedback_service.list_feedback(db, limit=limit, offset=offset)
+    return AdminFeedbackList(entries=entries, total=total)
