@@ -12,6 +12,7 @@ import RewardOverlay from '../components/RewardOverlay'
 import BiometricCapture from '../components/BiometricCapture'
 import Modal from '../components/Modal'
 import RatingChips from '../components/RatingChips'
+import ReflectionMood from '../components/ReflectionMood'
 import { ErrorBanner } from '../components/StateViews'
 import { mmss } from '../lib/format'
 import GuidedCues from '../components/GuidedCues'
@@ -27,6 +28,7 @@ import {
   writeDraft,
   type SessionDraft,
 } from '../lib/sessionDraft'
+import { moodLogService } from '../services/moodLogs'
 import { dailySuggestion } from '../lib/intentionPrompts'
 import {
   GUIDED_STRUCTURES,
@@ -40,7 +42,7 @@ import {
   loadSoundscapePref,
   type SoundscapeName,
 } from '../lib/soundscapes'
-import type { DashboardStats, MeditationType, SessionCreate } from '../types'
+import type { DashboardStats, MeditationType, Mood, SessionCreate } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
 // Passing it to buildXpBreakdown yields an all-zero breakdown rather than a crash.
@@ -198,6 +200,7 @@ export default function MeditatePage() {
   const [showReflection, setShowReflection] = useState(false)
   const [reflectFocus, setReflectFocus] = useState('')
   const [reflectCalm, setReflectCalm] = useState('')
+  const [reflectMood, setReflectMood] = useState<Mood | null>(null)
   const [reflectNotes, setReflectNotes] = useState('')
   const [reflectSaving, setReflectSaving] = useState(false)
   const [reflectError, setReflectError] = useState<string | null>(null)
@@ -551,10 +554,25 @@ export default function MeditatePage() {
     setRestorable(null)
   }
 
-  // Patch the already-saved session with reflection data, then move to biometric offer.
+  // Log the optional post-session mood via the MoodLog path (the same one the standalone
+  // check-in uses), so it feeds the identical mood trends on Analytics. Best-effort: a
+  // failure here must never block the reflection flow — the sit is already saved.
+  async function logReflectionMood() {
+    if (!reflectMood) return
+    try {
+      await moodLogService.create(reflectMood)
+    } catch {
+      // Swallow — the mood is an optional extra; the session save already succeeded.
+    }
+  }
+
+  // Patch the already-saved session with focus/calm/notes and log the optional mood, then
+  // move to the biometric offer. Mood is a separate resource (MoodLog), not a session
+  // field, so it's logged even when no session fields changed.
   async function saveReflection() {
     const sid = savedSessionIdRef.current
     if (!sid) {
+      await logReflectionMood()
       advanceToReading()
       return
     }
@@ -563,8 +581,10 @@ export default function MeditatePage() {
     if (reflectCalm) payload.calm = Number(reflectCalm)
     const trimmedNotes = reflectNotes.trim()
     if (trimmedNotes) payload.notes = trimmedNotes
-    // Nothing to patch — skip straight to the reading offer.
+    // Nothing to patch on the session — still log any chosen mood before moving on.
     if (Object.keys(payload).length === 0) {
+      setReflectSaving(true)
+      await logReflectionMood()
       advanceToReading()
       return
     }
@@ -572,6 +592,7 @@ export default function MeditatePage() {
     setReflectError(null)
     try {
       await sessionService.update(sid, payload)
+      await logReflectionMood()
       advanceToReading()
     } catch (err) {
       setReflectError(
@@ -954,6 +975,12 @@ export default function MeditatePage() {
                 onChange={setReflectCalm}
               />
             </div>
+          </div>
+
+          {/* Optional mood — logged via the MoodLog path so it feeds the mood trends. */}
+          <div className="session-reflect-mood">
+            <span className="session-reflect-label">Mood (optional)</span>
+            <ReflectionMood value={reflectMood} onChange={setReflectMood} />
           </div>
 
           <div className="session-reflect-notes">

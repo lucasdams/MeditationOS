@@ -7769,6 +7769,20 @@ details[open] .meditate-disclosure-summary::before {
   resize: vertical;
 }
 
+/* Optional mood row in the reflect card — label + a wrapping row of shared .mood-chip
+   buttons (same chips as the standalone check-in), so the mood reads identically. */
+.session-reflect-mood {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.session-reflect-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 /* Schedule page. */
 .schedule-form,
 .log-session form {

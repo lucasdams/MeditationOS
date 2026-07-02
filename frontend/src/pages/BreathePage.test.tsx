@@ -6,12 +6,13 @@
  * The audio/biometric/draft machinery is mocked away so the page mounts cleanly in jsdom.
  */
 import { afterAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const mockCreate = vi.fn()
 const mockUpdate = vi.fn()
 const mockGetStats = vi.fn()
+const mockMoodCreate = vi.fn()
 const SAVED_SESSION_ID = 'breathe-session-1'
 
 // Full stats shape expected by buildXpBreakdown.
@@ -36,6 +37,9 @@ vi.mock('../services/dashboard', () => ({
   dashboardService: { getStats: (...a: unknown[]) => mockGetStats(...a) },
 }))
 vi.mock('../services/biometrics', () => ({ biometricsService: { linkSession: vi.fn() } }))
+vi.mock('../services/moodLogs', () => ({
+  moodLogService: { create: (...a: unknown[]) => mockMoodCreate(...a) },
+}))
 // A stable navigate spy so tests can assert where a finished sit routes (e.g. the onboarding
 // hatch → /spirit/choose). Reset per test where it matters.
 const navigate = vi.fn()
@@ -177,9 +181,11 @@ describe('BreathePage — post-session reflection', () => {
     mockCreate.mockReset()
     mockUpdate.mockReset()
     mockGetStats.mockReset()
+    mockMoodCreate.mockReset()
     mockGetStats.mockResolvedValue(BASE_STATS)
     mockCreate.mockResolvedValue({ id: SAVED_SESSION_ID })
     mockUpdate.mockResolvedValue({ id: SAVED_SESSION_ID })
+    mockMoodCreate.mockResolvedValue({ id: 'mood-uuid', mood: 'calm', created_at: '' })
   })
   afterEach(cleanup)
 
@@ -247,6 +253,29 @@ describe('BreathePage — post-session reflection', () => {
 
     expect(mockUpdate).not.toHaveBeenCalled()
     expect(mockCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('logs a chosen mood via the mood-log path on keep — even with no focus/calm', async () => {
+    await driveToReflection()
+
+    const moodGroup = screen.getByRole('group', { name: /mood \(optional\)/i })
+    fireEvent.click(within(moodGroup).getByRole('button', { name: /calm/i }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^keep it$/i }))
+    await vi.waitFor(() => expect(mockMoodCreate).toHaveBeenCalledTimes(1))
+
+    expect(mockMoodCreate).toHaveBeenCalledWith('calm')
+    // Mood is a MoodLog, not a session field — no session PATCH when nothing else changed.
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('does not log a mood when none is chosen', async () => {
+    await driveToReflection()
+
+    fireEvent.click(screen.getByRole('button', { name: /skip/i }))
+    await act(async () => {})
+
+    expect(mockMoodCreate).not.toHaveBeenCalled()
   })
 })
 
