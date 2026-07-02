@@ -136,18 +136,27 @@
      tint, no colour glow. --shadow-color is the raw colour kept for the few places
      that blend a shadow into an accent via color-mix(). */
   --shadow-color: rgba(40, 44, 80, 0.10);
-  --shadow-card: 0 1px 2px rgba(30, 35, 70, 0.05), 0 4px 12px rgba(30, 35, 70, 0.06);
-  --shadow-modal: 0 4px 12px rgba(30, 35, 70, 0.1), 0 18px 48px rgba(30, 35, 70, 0.16);
-  --shadow-nav: 0 1px 2px rgba(30, 35, 70, 0.05), 0 6px 18px rgba(30, 35, 70, 0.08);
+  /* Crisper, tighter depth — a defined contact shadow + a short ambient one, so cards
+     read sharp (the 1px border does the rest) instead of floating on a soft blur. */
+  --shadow-card: 0 1px 1px rgba(30, 35, 70, 0.06), 0 2px 6px rgba(30, 35, 70, 0.06);
+  --shadow-modal: 0 6px 16px rgba(30, 35, 70, 0.12), 0 20px 44px rgba(30, 35, 70, 0.18);
+  --shadow-nav: 0 1px 1px rgba(30, 35, 70, 0.05), 0 4px 12px rgba(30, 35, 70, 0.07);
   --overlay: rgba(20, 24, 43, 0.42);
 
   /* ── Radius scale ──────────────────────────────────────────────────────────
      One ladder instead of two dozen ad-hoc corners. control = inputs/buttons,
      card = panels/tiles, lg = modals + large surfaces. Pills stay 999px, dots 50%. */
-  --radius-control: 8px;
-  --radius-card: 12px;
-  --radius-lg: 16px;
+  --radius-control: 7px;
+  --radius-card: 10px;
+  --radius-lg: 14px;
   --radius-pill: 999px;
+
+  /* ── Motion ────────────────────────────────────────────────────────────────
+     Snappy, subtle micro-interactions — fast easing with a whisper of overshoot.
+     Applied through shared interactive classes (buttons, cards, tabs, chips). */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.17, 1);
+  --duration-fast: 110ms;
+  --duration: 170ms;
 
   /* ── Spacing scale ─────────────────────────────────────────────────────────
      A 0.25rem-based step ladder so card padding + grid gaps share one rhythm. */
@@ -168,9 +177,9 @@
      Cohesive panel/glow finish applied through shared classes. On light the
      glow is barely-there; the dark palette below dials it up for depth on the
      warm-espresso canvas. All resolve per theme so nothing hardcodes structure. */
-  --panel-radius: var(--radius-lg);                      /* shared card corner — cozier */
+  --panel-radius: var(--radius-lg);                      /* shared card corner */
   --panel-shadow: var(--shadow-card);                    /* resting card lift */
-  --panel-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.6); /* top sheen */
+  --panel-hairline: 0 0 0 1px rgba(30, 35, 70, 0.04);    /* crisp hairline edge (flat, no sheen) */
   --glow-accent: 0 0 0 0 transparent;                    /* no idle glow on light */
   --glow-accent-hover: 0 6px 20px rgba(106, 92, 255, 0.22); /* hover lift glow */
   --ring-accent: var(--accent);                          /* focus-visible ring hue */
@@ -332,7 +341,7 @@
 
   /* Shadows — layered, deeper on the dark canvas but still soft (not opaque blobs). */
   --shadow-color: rgba(0, 0, 0, 0.40);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.34);
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.34), 0 2px 6px rgba(0, 0, 0, 0.36);
   --shadow-modal: 0 4px 12px rgba(0, 0, 0, 0.4), 0 18px 48px rgba(0, 0, 0, 0.5);
   --shadow-nav: 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 18px rgba(0, 0, 0, 0.34);
   --overlay: rgba(20, 12, 4, 0.6);
@@ -345,7 +354,7 @@
   /* Game-chrome polish — depth on the cool-slate canvas. A faint top sheen reads
      panels as raised glass; the soft accent glow gives a quiet game-UI lift on
      hover/active. Kept low-alpha so contrast and calm survive. */
-  --panel-hairline: inset 0 1px 0 rgba(230, 235, 255, 0.06);
+  --panel-hairline: 0 0 0 1px rgba(230, 235, 255, 0.06);    /* crisp hairline edge (flat, no sheen) */
   --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
   --glow-accent-hover: 0 8px 22px rgba(124, 124, 255, 0.28),
     0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
@@ -453,7 +462,7 @@
     --border-var: rgba(230, 235, 255, 0.22);
     --accent-var: #8b87ff;
     /* Game-chrome polish (mirrors the explicit dark theme above). */
-    --panel-hairline: inset 0 1px 0 rgba(230, 235, 255, 0.06);
+    --panel-hairline: 0 0 0 1px rgba(230, 235, 255, 0.06);    /* crisp hairline edge (flat, no sheen) */
     --glow-accent: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
     --glow-accent-hover: 0 8px 22px rgba(124, 124, 255, 0.28),
       0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
@@ -578,10 +587,12 @@ h3,
 
 h1,
 h2,
+h3,
 .landing-hero h1,
 .page-head h1 {
-  letter-spacing: -0.01em;
-  line-height: 1.15;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+  font-weight: 700;
 }
 
 /* The two brand numerals (HUD + level badge) use the display font so the figure
@@ -2213,7 +2224,9 @@ button {
   /* Chrome phase 2: a gentle accent lift on hover/focus so primary actions feel
      responsive. Subtle — a couple px and a soft lift, not neon. Ghost / text-style
      buttons opt out below so they keep their flat, quiet look. */
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  transition: transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    filter var(--duration-fast) var(--ease-out);
 }
 
 /* Form-submit spacing: the old global `margin-top: 1rem` used to sit these off the
@@ -2299,8 +2312,11 @@ textarea::placeholder {
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease,
-    border-color 0.12s ease, filter 0.12s ease;
+  transition: transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    filter var(--duration-fast) var(--ease-out);
 }
 
 .btn--sm {
