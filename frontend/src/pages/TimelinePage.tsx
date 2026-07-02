@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CalendarClock } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
@@ -280,7 +281,12 @@ export default function TimelinePage() {
       {items === null && !loadError && <Loading />}
 
       {items && items.length === 0 && (
-        <EmptyState>
+        <EmptyState
+          icon={CalendarClock}
+          title="Your story starts here"
+          actionTo="/meditate"
+          actionLabel="Start a session"
+        >
           Nothing here yet — your first <Link to="/meditate">sit</Link>,{' '}
           <Link to="/journal">note</Link>, or <Link to="/gratitude">gratitude</Link> starts the
           story.

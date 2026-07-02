@@ -527,18 +527,22 @@ export default function JournalPage() {
 
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         {entries === null && !loadError && <Loading />}
-        {entries && entries.length === 0 && (
-          <EmptyState>
-            {query || moodFilter
-              ? `No reflections match ${[
-                  query && `“${query}”`,
-                  moodFilter && `mood ${MOOD_META[moodFilter].label}`,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}.`
-              : 'A blank page, for now. Your first reflection goes up top.'}
-          </EmptyState>
-        )}
+        {entries && entries.length === 0 &&
+          (query || moodFilter ? (
+            <EmptyState>
+              {`No reflections match ${[
+                query && `“${query}”`,
+                moodFilter && `mood ${MOOD_META[moodFilter].label}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}.`}
+            </EmptyState>
+          ) : (
+            <EmptyState icon={NotebookPen} title="A blank page, for now">
+              Your first reflection goes up top — a sentence about your day, your
+              practice, or anything at all.
+            </EmptyState>
+          ))}
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined
           const editing = editingId === j.id

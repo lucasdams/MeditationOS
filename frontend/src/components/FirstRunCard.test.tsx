@@ -51,9 +51,16 @@ describe('FirstRunCard — dismiss interaction', () => {
     return onDismiss
   }
 
-  it('renders the orientation copy and both action links', () => {
+  it('leads with the "first 2-minute sit" hero CTA (a zero-config guided first sit)', () => {
     renderCard()
-    expect(screen.getByRole('link', { name: /breathe/i })).toHaveAttribute('href', '/breathe')
+    // The single unmissable primary action → the fixed 2-min guided breathe first sit.
+    expect(
+      screen.getByRole('link', { name: /your first 2-minute sit/i }),
+    ).toHaveAttribute('href', '/breathe?guided=1&duration=120')
+  })
+
+  it('keeps a quiet "log a session" fallback beneath the hero', () => {
+    renderCard()
     expect(screen.getByRole('link', { name: /log a session/i })).toHaveAttribute(
       'href',
       '/sessions/new',
