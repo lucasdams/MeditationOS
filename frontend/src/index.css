@@ -1224,6 +1224,29 @@ a:hover { color: var(--accent-hover); }
   background: #fef2f2;
 }
 
+/* Guidance-voice picker (Settings › Guidance voice). A calm select + a compact
+   Preview button on one row; the row wraps on narrow widths so it stays usable on
+   mobile. No animation — nothing here needs a reduced-motion guard. */
+.voice-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.voice-picker-select {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.voice-picker-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .settings-confirm p {
   color: var(--error-text);
   font-size: var(--text-sm);

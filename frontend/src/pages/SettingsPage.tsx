@@ -6,6 +6,7 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
+import VoicePicker from '../components/VoicePicker'
 import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
 import { SEASON_PREFS, SEASONS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
@@ -684,6 +685,8 @@ export default function SettingsPage() {
           Interface sounds (a soft tick when you tap controls)
         </label>
       </section>
+
+      <VoicePicker />
 
       <section className="settings-section">
         <h2>Your data</h2>
