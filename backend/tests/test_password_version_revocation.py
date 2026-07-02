@@ -5,8 +5,9 @@ password — through settings change-password OR the forgot-password reset flow,
 of which rewrite `password_hash` — rotates that version and invalidates every
 outstanding access-token cookie for the user. The acting session in the settings
 change-password (and guest claim) flow is re-issued a fresh cookie so it survives,
-while all OTHER sessions die. Legacy tokens minted before this change carry no `pwv`
-and are grandfathered so a deploy doesn't mass-logout.
+while all OTHER sessions die. The claim is now REQUIRED: a token minted without it
+(a pre-`pwv` legacy cookie) is rejected rather than grandfathered, so an old
+long-lived cookie can't outlive a password change.
 """
 
 import jwt
@@ -174,34 +175,29 @@ def test_reset_password_invalidates_old_access_token(client, db_session, monkeyp
     assert client.get("/api/v1/auth/me").status_code == 401
 
 
-# --- legacy tokens (no pwv claim) are grandfathered ---------------------------
+# --- legacy tokens (no pwv claim) are now REJECTED (grandfathering removed) ----
 
 
-def test_legacy_token_without_pwv_still_authenticates(client, db_session):
+def test_legacy_token_without_pwv_is_rejected(client, db_session):
+    """A pre-`pwv` access token (claim absent) still decodes structurally, but is
+    rejected at the auth layer: we now REQUIRE the claim so an old long-lived cookie
+    can't linger past a password change."""
     user_id = _register(client)
-    # An access token minted before this change: correct type, but no `pwv` claim.
     legacy = create_access_token(user_id)  # pwv defaults to None → claim omitted
     assert "pwv" not in jwt.decode(legacy, settings.secret_key, algorithms=[ALGORITHM])
-    assert decode_access_token(legacy) == user_id
+    assert decode_access_token(legacy) == user_id  # structurally valid…
 
     client.cookies.set("access_token", legacy)
-    assert client.get("/api/v1/auth/me").status_code == 200
+    assert client.get("/api/v1/auth/me").status_code == 401  # …but rejected: pwv required
 
 
-def test_legacy_token_survives_a_later_password_change(client, db_session):
-    """Grandfathering is by ABSENCE of the claim: a legacy (pwv-less) token keeps
-    working even after the password changes — it expires naturally instead."""
+def test_legacy_token_rejected_without_a_password_change(client, db_session):
+    """Rejection is by ABSENCE of the claim — it doesn't depend on any password change."""
     user_id = _register(client)
     legacy = create_access_token(user_id)
-
-    client.post("/api/v1/auth/login", json=CREDS)
-    client.post(
-        "/api/v1/auth/password",
-        json={"current_password": CREDS["password"], "new_password": "a new secret"},
-    )
     client.cookies.clear()
     client.cookies.set("access_token", legacy)
-    assert client.get("/api/v1/auth/me").status_code == 200
+    assert client.get("/api/v1/auth/me").status_code == 401
 
 
 # --- guests keep working ------------------------------------------------------

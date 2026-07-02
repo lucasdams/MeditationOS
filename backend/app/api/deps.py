@@ -50,10 +50,12 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     # Session revocation via the password-version (`pwv`) claim: a token is bound to the
     # password it was minted under, so changing the password (settings change-password or
     # the reset-password flow — both rewrite `password_hash`) invalidates every existing
-    # access-token cookie for that user. Legacy tokens minted before this change carry no
-    # `pwv` and are grandfathered (they expire naturally) so a deploy doesn't mass-logout.
+    # access-token cookie for that user. Every current issue site sets `pwv`, so we now
+    # REQUIRE it: a token missing the claim is a pre-`pwv` legacy cookie and is rejected
+    # rather than grandfathered — closing the window where an old long-lived ("remember
+    # me") cookie could outlive a password change. Affected users simply sign in again.
     token_pwv = payload.get("pwv")
-    if token_pwv is not None and token_pwv != password_fingerprint(user.password_hash):
+    if token_pwv is None or token_pwv != password_fingerprint(user.password_hash):
         raise _UNAUTHORIZED
     # An admin-disabled account is blocked here, so a still-valid token can't be used to
     # reach any authenticated route (including /auth/me). Enforced at the single choke
