@@ -59,6 +59,20 @@ class GoalNotCheckableError(Exception):
     their progress and can't be manually marked done."""
 
 
+class FriendSelfError(Exception):
+    """Raised when a user tries to send a friend request to themselves."""
+
+
+class FriendUsernameNotFoundError(Exception):
+    """Raised when a friend request targets a username that doesn't exist (or belongs
+    to an account that can't be befriended, e.g. a guest with only a synthetic handle)."""
+
+
+class FriendshipExistsError(Exception):
+    """Raised when a friend request would duplicate an existing friendship or pending
+    request in either direction (the pair is already linked)."""
+
+
 class UserNotFoundError(Exception):
     """Raised when an admin support action targets a user id that doesn't exist."""
 

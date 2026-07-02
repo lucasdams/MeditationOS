@@ -26,17 +26,26 @@ def _local_day_start_utc(tz: str) -> datetime:
     return local_midnight.astimezone(UTC)
 
 
-def enforce_daily_create_cap(db: Session, model: type, user_id: uuid.UUID) -> None:
+def enforce_daily_create_cap(
+    db: Session, model: type, user_id: uuid.UUID, *, owner_column: str = "user_id"
+) -> None:
     """Raise DailyLimitError if the user has already created `daily_create_limit`
-    rows of `model` since the start of their current local day."""
+    rows of `model` since the start of their current local day.
+
+    Counts rows whose `owner_column` (default ``user_id``) equals `user_id`. Most
+    user-owned tables key on ``user_id``; a table that records the creator under a
+    different name (e.g. `friendships.requester_id`) passes that column name so the
+    same per-day anti-spam cap still applies.
+    """
     tz = db.execute(
         select(User.timezone).where(User.id == user_id)
     ).scalar_one_or_none()
     start = _local_day_start_utc(tz or "UTC")
+    owner = getattr(model, owner_column)
     count = db.execute(
         select(func.count())
         .select_from(model)
-        .where(model.user_id == user_id, model.created_at >= start)
+        .where(owner == user_id, model.created_at >= start)
     ).scalar_one()
     if count >= settings.daily_create_limit:
         raise DailyLimitError()

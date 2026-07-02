@@ -28,6 +28,7 @@ const LogSessionPage  = lazy(() => import('./pages/LogSessionPage'))
 const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
 const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
 const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
+const FriendsPage     = lazy(() => import('./pages/FriendsPage'))
 const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
 const SpiritPage      = lazy(() => import('./pages/SpiritPage'))
 const SpiritChoosePage = lazy(() => import('./pages/SpiritChoosePage'))
@@ -87,6 +88,10 @@ export default function App() {
           <Route
             path="/goals"
             element={<Suspense fallback={<PageFallback />}><GoalsPage /></Suspense>}
+          />
+          <Route
+            path="/friends"
+            element={<Suspense fallback={<PageFallback />}><FriendsPage /></Suspense>}
           />
           <Route
             path="/analytics"

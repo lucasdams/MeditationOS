@@ -2147,6 +2147,93 @@ a:hover { color: var(--accent-hover); }
   gap: 1rem;
 }
 
+/* ── Friends (social, calm + non-competitive) ─────────────────────────────── */
+.friend-compose {
+  margin-bottom: 1.25rem;
+}
+
+/* Username input + "Add friend" sit on one row, stacking on narrow screens. */
+.friend-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.friend-add-row input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.friend-add-row .btn {
+  flex: 0 0 auto;
+}
+
+.friend-section {
+  margin-top: 1.25rem;
+}
+
+.friend-section-title {
+  margin: 0 0 0.4rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.friend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.friend-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border-light);
+}
+
+.friend-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.friend-name {
+  overflow-wrap: anywhere;
+}
+
+/* Level + streak on one quiet line — informational, never ranked. */
+.friend-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: var(--text-sm);
+}
+
+.friend-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.friend-activity {
+  font-size: var(--text-sm);
+}
+
+.friend-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
