@@ -889,7 +889,12 @@ export function buildSchedule(
   durationSec: number,
 ): PhaseWindow[] {
   const effectiveDuration = durationSec > 0 ? durationSec : 20 * 60
-  const totalWeight = structure.phases.reduce((sum, p) => sum + p.weight, 0)
+  if (structure.phases.length === 0) return []
+  // Every shipped structure has positive weights (enforced by a test), but guard the divide so a
+  // future all-zero-weight structure degrades gracefully (finite windows, last phase spans the
+  // duration) instead of emitting NaN start/end seconds.
+  const summedWeight = structure.phases.reduce((sum, p) => sum + p.weight, 0)
+  const totalWeight = summedWeight > 0 ? summedWeight : structure.phases.length
   const windows: PhaseWindow[] = []
   let cursor = 0
 
