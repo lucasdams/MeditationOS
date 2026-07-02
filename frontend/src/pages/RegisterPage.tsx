@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { messageForError } from '../lib/errors'
+import { track } from '../lib/analytics'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/GoogleSignInButton'
 import AuthBrand from '../components/AuthBrand'
@@ -38,6 +39,7 @@ export default function RegisterPage() {
     setSubmitting(true)
     try {
       await authService.register(email, password)
+      track('account_created')
       // Auto-login after successful registration.
       await authService.login(email, password)
       await refresh()

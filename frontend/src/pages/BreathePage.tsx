@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Waves, Square, Sun, Wind, type LucideProps } from 'lucide-react'
 import { sessionService } from '../services/sessions'
+import { track } from '../lib/analytics'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { messageForError } from '../lib/errors'
@@ -706,6 +707,8 @@ export default function BreathePage() {
     }
 
     savedSessionIdRef.current = saved.id
+    track('session_completed', { type: breathType })
+    track('breathing_completed')
     // Saved — drop the recovery draft and stop the tab-close beacon from re-firing.
     savedRef.current = true
     clearDraft(DRAFT_PAGE)

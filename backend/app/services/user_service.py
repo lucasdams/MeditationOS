@@ -414,9 +414,11 @@ def _dump(rows: list) -> list[dict]:
 # User-owned tables deliberately kept OUT of the portable export. `push_subscriptions`
 # holds browser push credentials (endpoint + keys) — device-bound credential material,
 # not portable content. `audit_logs` is operational/security record, not user content.
+# `analytics_events` is anonymous, PII-free usage telemetry that de-links on account
+# deletion (user_id ON DELETE SET NULL) — aggregate product signal, not the user's content.
 # Listed explicitly so the drift-guard test (tests/test_export_drift.py) treats the
 # omission as intentional rather than an accidental gap.
-_EXPORT_EXCLUDED = {"push_subscriptions", "audit_logs"}
+_EXPORT_EXCLUDED = {"push_subscriptions", "audit_logs", "analytics_events"}
 
 
 def export_user_data(db: Session, user: User) -> dict:

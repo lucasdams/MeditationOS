@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     # ONLY once verification email delivery (SMTP_*) is live and confirmed, or you lock
     # out every unconfirmed user. Mirrors the provider-optional pattern (email/AI/push).
     require_email_verification: bool = False
+    # First-party product analytics (self-hosted event ingest). Kill switch: when False,
+    # POST /api/v1/events acknowledges (204) but stores nothing — so tracking can be shut
+    # off instantly via env without a deploy. Default True (privacy-first by design: the
+    # events table is allowlisted + PII-free, see app/schemas/analytics_event.py).
+    analytics_enabled: bool = True
     # Error monitoring (Sentry). Leave blank to disable — the app runs identically
     # without a DSN (provider-optional pattern, same as email/AI/push).
     sentry_dsn: str = ""

@@ -2,6 +2,7 @@
 `Base.metadata` so Alembic autogenerate and `env.py` can see every model.
 """
 
+from app.models.analytics_event import AnalyticsEvent  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.biometric_reading import BiometricReading  # noqa: F401
 from app.models.breathing_pattern import BreathingPattern  # noqa: F401

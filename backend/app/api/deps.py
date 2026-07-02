@@ -65,6 +65,22 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+def get_current_user_optional(
+    request: Request, db: Session = Depends(get_db)
+) -> User | None:
+    """Best-effort auth for auth-OPTIONAL endpoints (e.g. analytics ingest): resolve the
+    user if a valid session cookie is present, else return None — never raise.
+
+    Reuses `get_current_user`'s full validation (signature, `pwv` revocation, disabled
+    check) so an anonymous, expired, revoked, OR disabled caller all resolve to None and
+    the event is simply stored unattributed (user_id NULL). Only the anonymous path stays
+    open; there is no way for a bad token to attach a user_id it shouldn't."""
+    try:
+        return get_current_user(request, db)
+    except HTTPException:
+        return None
+
+
 def require_verified_email(user: User = Depends(get_current_user)) -> None:
     """Router-level gate for data routes: block accounts whose email isn't confirmed
     when REQUIRE_EMAIL_VERIFICATION is on. Guests and Google sign-ins arrive verified,

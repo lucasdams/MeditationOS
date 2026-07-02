@@ -16,8 +16,14 @@ from app.core.exceptions import AdminSelfActionError, UserNotFoundError
 from app.models.user import User
 from app.schemas.admin import AdminMetrics
 from app.schemas.admin_users import AdminUserDetail, AdminUserList
+from app.schemas.analytics_event import AnalyticsEventSummary
 from app.schemas.audit import AuditEntry, AuditList
-from app.services import admin_service, admin_users_service, audit_service
+from app.services import (
+    admin_service,
+    admin_users_service,
+    analytics_event_service,
+    audit_service,
+)
 
 router = APIRouter(
     prefix="/admin",
@@ -33,6 +39,17 @@ _USER_NOT_FOUND = not_found("User not found")
 def get_metrics(db: DBSession = Depends(get_db)) -> AdminMetrics:
     """Aggregate business metrics across the whole user base (counts/sums only)."""
     return admin_service.get_admin_metrics(db)
+
+
+@router.get("/analytics/summary", response_model=AnalyticsEventSummary)
+def get_analytics_summary(
+    db: DBSession = Depends(get_db),
+    days: int = Query(default=30, ge=1, le=90),
+) -> AnalyticsEventSummary:
+    """Aggregate product-analytics snapshot over the last `days`: total events, counts per
+    event name, and distinct active users per day. Aggregate COUNTS ONLY — never per-user
+    event dumps, identifiers, or props."""
+    return analytics_event_service.get_summary(db, days=days)
 
 
 # ── User management / support (metadata-only reads; audited writes) ─────────
