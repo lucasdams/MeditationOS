@@ -343,7 +343,9 @@ export default function GratitudePage() {
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         {!entries && !loadError && <Loading />}
         {entries && entries.length === 0 && (
-          <EmptyState>Nothing noted yet — name one small good thing above.</EmptyState>
+          <EmptyState icon={HandHeart} title="One small good thing">
+            Nothing noted yet — pick a theme above and name something you’re grateful for.
+          </EmptyState>
         )}
         {entries && entries.length > 0 && (
           <ul className="journal-list grat-log">

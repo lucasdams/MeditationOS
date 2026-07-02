@@ -1,8 +1,16 @@
 import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 
 // A new account lands on a mostly-empty dashboard (quests, sanctuary, weekly review
 // all bare on day one). This calm "start here" card points to a first action until
 // the user has a few sessions logged, then retires itself naturally.
+//
+// The unmissable first step: a single hero CTA to a fixed, zero-config 2-minute
+// guided breathing sit (`/breathe?guided=1&duration=120` — the same guided-first-sit
+// flow onboarding uses). It leads above the home's gentle time-of-day recommendation
+// (DashboardPage), which stays a quiet, ignorable suggestion — so a brand-new user
+// has ONE clear path to their first completed session, not two competing CTAs.
+const FIRST_SIT_TO = '/breathe?guided=1&duration=120'
 
 const DISMISS_KEY = 'dashboard.firstRunDismissed'
 
@@ -59,18 +67,20 @@ export default function FirstRunCard({ onDismiss }: Props) {
       </button>
       <h2 className="first-run-title">New here? Start with one small step.</h2>
       <p className="first-run-body muted">
-        Begin with a short breathing session, or log a sit you&rsquo;ve already done.
-        Your dashboard fills in as you practice. A few minutes a day is how the habit
-        forms and the practice rewires your brain.
+        The clearest way in is a short, guided breathing sit — no setup, just follow
+        along. Your dashboard fills in as you practice, and a few minutes a day is how
+        the habit forms.
       </p>
       <div className="first-run-actions">
-        <Link to="/breathe" className="first-run-action">
-          Breathe
-        </Link>
-        <Link to="/sessions/new" className="first-run-action first-run-action-secondary">
-          Log a session
+        <Link to={FIRST_SIT_TO} className="first-run-action first-run-action-hero">
+          Start here · your first 2-minute sit
+          <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
         </Link>
       </div>
+      <p className="first-run-alt muted">
+        Rather log a sit you&rsquo;ve already done?{' '}
+        <Link to="/sessions/new">Log a session</Link>.
+      </p>
     </section>
   )
 }

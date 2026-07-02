@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Target } from 'lucide-react'
 import { goalService } from '../services/goals'
 import { ACTIVITY_COLORS, ACTIVITY_META, type ActivityIcon } from '../lib/colors'
 import { useToast } from '../context/ToastContext'
@@ -239,13 +240,14 @@ export default function GoalsPage() {
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         <ErrorBanner message={actionError} />
         {goals === null && !loadError && <Loading />}
-        {goals && goals.length === 0 && (
-          <EmptyState>
-            {view === 'active'
-              ? 'No habits yet. Pick one and a rhythm — small and repeatable beats grand.'
-              : 'No archived goals.'}
-          </EmptyState>
-        )}
+        {goals && goals.length === 0 &&
+          (view === 'active' ? (
+            <EmptyState icon={Target} title="Set your first goal">
+              No habits yet. Pick one above and a rhythm — small and repeatable beats grand.
+            </EmptyState>
+          ) : (
+            <EmptyState>No archived goals.</EmptyState>
+          ))}
         {goals?.map((g) => {
           const display = goalDisplay(g.activity, g.label)
           const GoalIcon = display.icon

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { LineChart } from 'lucide-react'
 import { analyticsService } from '../services/analytics'
 import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
@@ -486,7 +487,7 @@ export default function AnalyticsPage() {
 
       {data && data.total_sessions === 0 && data.moods.length === 0 && (
         <>
-          <EmptyState>
+          <EmptyState icon={LineChart} title="Your patterns start with one sit" actionTo="/meditate" actionLabel="Start a session">
             Nothing to chart yet — and that’s perfectly okay. Practice a few times and your patterns
             will gently surface here. No rush.
           </EmptyState>

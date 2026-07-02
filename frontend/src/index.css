@@ -1727,6 +1727,37 @@ a:hover { color: var(--accent-hover); }
   border-color: var(--accent);
 }
 
+/* The unmissable first step: a full-width gradient hero CTA (mirrors .today-action)
+   so a brand-new user's single clear path — their first 2-minute sit — leads the card. */
+.first-run-action-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.8rem 1.25rem;
+  font-size: var(--text-base);
+  background: var(--accent-gradient);
+  color: #ffffff;
+}
+
+.first-run-action-hero:hover {
+  filter: brightness(1.03);
+  background: var(--accent-gradient);
+}
+
+/* The quiet fallback beneath the hero — "already practiced? log it" — kept small so it
+   never competes with the primary action. */
+.first-run-alt {
+  margin: 0.7rem 0 0;
+}
+
+.first-run-alt a {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 .first-run-gotit {
   width: auto;
   margin: 0;
@@ -9236,4 +9267,72 @@ details[open] .meditate-disclosure-summary::before {
 :root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
   color: var(--success-text);
   background: #25301c;
+}
+
+/* ── Rich empty states ─────────────────────────────────────────────────────────
+   The inviting "nothing here yet" state shared by the data views (Analytics,
+   Timeline, Journal, Gratitude, Goals). Calm and low-pressure: a soft accent disc
+   with a lucide glyph, a warm one-liner, a quiet sub-line, and one clear primary
+   CTA that routes to the action which fills the view. Tokens auto-adapt to dark
+   mode. Appended at file end to keep the diff isolated. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 2rem 1.25rem;
+  margin: 0.5rem 0 1.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.empty-state-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state-body {
+  margin: 0;
+  max-width: 34ch;
+  line-height: 1.45;
+}
+
+.empty-state-body a {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.empty-state-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.empty-state-action:hover {
+  background: var(--accent-hover);
+  color: #ffffff;
 }
