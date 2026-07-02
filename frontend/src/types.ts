@@ -703,3 +703,31 @@ export interface PathSummary {
 export interface PathList {
   paths: PathSummary[]
 }
+
+// ── Friends (social, privacy-respecting) ─────────────────────────────────────
+// A friend is only ever exposed as a public username + a small derived stat summary
+// (level · streak · recent activity). Never email or private content. Matches the
+// backend FriendStats/Friend schemas (backend/app/schemas/friendship.py).
+
+export interface Friend {
+  friendship_id: string
+  user_id: string
+  username: string
+  level: number
+  current_streak: number // current consecutive-day practice streak
+  sessions_this_week: number // practice sessions in the last 7 local days
+  last_practiced_on: string | null // ISO date of their most recent practice, or null
+  friends_since: string // ISO timestamp the friendship was accepted
+}
+
+// A pending request (incoming or outgoing) — only the other party's public username.
+export interface FriendRequest {
+  id: string
+  username: string
+  created_at: string
+}
+
+export interface FriendRequests {
+  incoming: FriendRequest[] // others asked to friend me — I can accept/decline
+  outgoing: FriendRequest[] // I asked to friend them — awaiting their reply
+}

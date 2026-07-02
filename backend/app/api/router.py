@@ -9,6 +9,7 @@ from app.api.routes import (
     biometric_readings,
     breathing_patterns,
     dashboard,
+    friends,
     goals,
     gratitude,
     health,
@@ -34,6 +35,7 @@ api_router.include_router(journals.router)
 api_router.include_router(mood_logs.router)
 api_router.include_router(paths.router)
 api_router.include_router(goals.router)
+api_router.include_router(friends.router)
 api_router.include_router(push.router)
 api_router.include_router(scheduled_sessions.router)
 api_router.include_router(spirit.router)

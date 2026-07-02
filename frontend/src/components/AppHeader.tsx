@@ -14,6 +14,7 @@ import {
   Flame,
   Target,
   CalendarDays,
+  Users,
   Wrench,
   Flower2,
   Sparkles,
@@ -62,6 +63,7 @@ const PROGRESS_LINKS: MenuLink[] = [
   { to: '/timeline', icon: History, label: 'Timeline', light: '#0e8aa6', dark: '#5fd2e8' },
   { to: '/goals', icon: Target, label: 'Goals', light: '#6a5cff', dark: '#a8a2ff' },
   { to: '/schedule', icon: CalendarDays, label: 'Schedule', light: '#2f6fe0', dark: '#82b4ff' },
+  { to: '/friends', icon: Users, label: 'Friends', light: '#0e8aa6', dark: '#5fd2e8' },
   { to: '/settings', icon: Settings, label: 'Settings', light: '#545a73', dark: '#a6acc4' },
 ]
 
