@@ -22,6 +22,8 @@ import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, type Activity }
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
+import { recommendedPractice } from '../lib/recommendation'
+import { roundOutFacet } from '../lib/spiritNeeds'
 import type { DashboardStats, Mood, PathSummary, SpiritState } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
@@ -270,14 +272,23 @@ export default function DashboardPage() {
                 </Link>
               )
             }
+            // No active path → one gentle, optional recommendation for the hero, personalised to
+            // the companion's least-represented facet when its balance is uneven, else the time of
+            // day (see lib/recommendation.ts). The four quick-access tiles below stay the stable
+            // anchors; this is only a suggestion, and the guided-path invite remains.
+            const facet =
+              spirit && spirit.path != null && spirit.needs
+                ? roundOutFacet(spirit.needs)
+                : null
+            const rec = recommendedPractice({ hour: new Date().getHours(), facet })
             return (
               <>
-                <Link to="/breathe" className="today-action">
-                  Take a slow minute to breathe
+                <Link to={rec.to} className="today-action">
+                  {rec.cta}
                   <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
                 <p className="today-action-secondary">
-                  <Link to="/paths">Ease in with a guided path</Link>
+                  {rec.blurb} <Link to="/paths">Ease in with a guided path</Link>
                 </p>
               </>
             )
