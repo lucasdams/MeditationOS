@@ -278,22 +278,40 @@ export default function SpiritChoosePage() {
                 {favoursCopy(path)}
                 {canRoll && (
                   <div className="spirit-choose-tryons" aria-label={t('spirit.choose.tryonsAria', { name: d.name })}>
-                    <button
-                      type="button"
-                      className="spirit-choose-roll"
-                      onClick={() => rollLook(path)}
-                    >
-                      {randomLooks[path] ? t('spirit.choose.rollNew') : t('spirit.choose.tryRandom')}
-                    </button>
-                    {randomLooks[path] && (
+                    {/* The wrap is sized by the pill alone (Clear hangs off it absolutely), so the
+                        pill stays DEAD-CENTRE in the row and never moves when Clear mounts. */}
+                    <span className="spirit-choose-roll-wrap">
                       <button
                         type="button"
-                        className="spirit-choose-roll-clear"
-                        onClick={() => clearLook(path)}
+                        className="spirit-choose-roll"
+                        onClick={() => rollLook(path)}
                       >
-                        {t('spirit.choose.clear')}
+                        {/* Both labels are always in the pill, stacked in one grid cell with the
+                            inactive one invisible — so flipping the label never resizes the pill
+                            (its edges would otherwise breathe around centre on the first roll). */}
+                        <span
+                          className={`spirit-choose-roll-label${randomLooks[path] ? ' spirit-choose-roll-label--ghost' : ''}`}
+                          aria-hidden={!!randomLooks[path]}
+                        >
+                          {t('spirit.choose.tryRandom')}
+                        </span>
+                        <span
+                          className={`spirit-choose-roll-label${randomLooks[path] ? '' : ' spirit-choose-roll-label--ghost'}`}
+                          aria-hidden={!randomLooks[path]}
+                        >
+                          {t('spirit.choose.rollNew')}
+                        </span>
                       </button>
-                    )}
+                      {randomLooks[path] && (
+                        <button
+                          type="button"
+                          className="spirit-choose-roll-clear"
+                          onClick={() => clearLook(path)}
+                        >
+                          {t('spirit.choose.clear')}
+                        </button>
+                      )}
+                    </span>
                   </div>
                 )}
                 <button

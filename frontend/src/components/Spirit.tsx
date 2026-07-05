@@ -703,7 +703,19 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
   return (
     <>
       <circle cx={40} cy={40} r={r} fill={fill} opacity={Math.min(0.6, 0.14 * g * strength)} />
-      <circle cx={40} cy={40} r={r - 8} fill={fill} opacity={Math.min(0.7, 0.22 * g * strength)} />
+      <circle cx={40} cy={40} r={r - 8} fill={fill} opacity={Math.min(0.7, 0.26 * g * strength)} />
+      {/* A thin rim at the halo's edge — the aura reads as a deliberate ring of the spirit's
+          colour (accent for the bare path glow, the cosmetic's tint when one is applied) rather
+          than a smudge fading into the page. Opacity rides the daily glow like the discs. */}
+      <circle
+        cx={40}
+        cy={40}
+        r={r - 1.5}
+        fill="none"
+        stroke={style ? style.tint : pal.accent}
+        strokeWidth={1}
+        opacity={0.32 * g}
+      />
       {/* Starlit aura scatters a few faint stars in the halo — the richest, level-gated aura. */}
       {aura === 'starlit' &&
         Array.from({ length: 6 }, (_, k) => {

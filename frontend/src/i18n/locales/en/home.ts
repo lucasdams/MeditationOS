@@ -2,12 +2,9 @@
 // EN is the SOURCE OF TRUTH: every value stays byte-identical to the literal it replaced
 // (the dashboard test suite asserts exact text, so do not reword these).
 export const home: Record<string, string> = {
-  // DashboardPage — title, greeting fallback, tabs
+  // DashboardPage — title, greeting fallback
   'home.title': 'Your practice',
   'home.error.stats': "Couldn't load your stats.",
-  'home.sections.aria': 'Home sections',
-  'home.tabs.today': 'Today',
-  'home.tabs.progress': 'Progress',
 
   // Streak / rest-day
   'home.streak.aria': '{count} day streak',

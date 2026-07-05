@@ -1,12 +1,9 @@
 // home domain (日本語) — HOME/ダッシュボードのまとまり。落ち着いた、あたたかい、ていねいな
 // 表現（です・ます）。{var} プレースホルダーは英語版と同一に保つこと。
 export const home: Record<string, string> = {
-  // DashboardPage — タイトル・タブ
+  // DashboardPage — タイトル
   'home.title': 'あなたのプラクティス',
   'home.error.stats': '記録を読み込めませんでした。',
-  'home.sections.aria': 'ホームのセクション',
-  'home.tabs.today': '今日',
-  'home.tabs.progress': '歩み',
 
   // 連続日数 / 休息日
   'home.streak.aria': '{count} 日連続',

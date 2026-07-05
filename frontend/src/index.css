@@ -38,9 +38,12 @@
   /* Accent — electric indigo/violet (the Cool Electric signature) */
   --accent: #6a5cff;
   --on-accent: #ffffff;             /* text/icon on an --accent fill (AA: white on #6a5cff = 4.58) */
-  /* A subtle always-visible halo behind the spirit figure: a tight dark rim + a soft drop so the
-     creature reads against a same-colour background and thin forms (the Kapha orbiting-atom) stay legible. */
-  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(20, 24, 43, 0.42)) drop-shadow(0 2px 3px rgba(20, 24, 43, 0.18));
+  /* A subtle always-visible halo behind the spirit figure: a tight warm-dark contour rim + a soft
+     lift so the creature reads against a same-colour background and thin forms (the Kapha
+     orbiting-atom) stay legible. This is the ONLY shadow stack on the spirit — it hugs the figure;
+     the svg root carries none, so the soft aura discs stay clean light (no muddy grey halo). */
+  --spirit-figure-pop: drop-shadow(0 0 0.9px rgba(58, 38, 20, 0.62)) drop-shadow(0 0 1.8px rgba(58, 38, 20, 0.4))
+    drop-shadow(0 4px 7px rgba(74, 50, 22, 0.26));
   --accent-hover: #5847f0;
   --accent-subtle: #ecebff;         /* tinted background behind accent elements */
   --accent-border: #d2cdff;
@@ -251,7 +254,8 @@
   --accent: #8b87ff;
   --on-accent: #14182b;             /* dark ink on the light-violet fill (white would be 3.0 — fail) */
   /* Dark theme: a LIGHT rim halo so the figure separates from cool-dark / same-colour backgrounds. */
-  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.4)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.55)) drop-shadow(0 0 2.2px rgba(165, 180, 252, 0.28))
+    drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
   --accent-hover: #a09cff;
   --accent-subtle: #262a44;
   --accent-border: #3a3d66;
@@ -395,7 +399,8 @@
     --border-light: #232838;
     --accent: #8b87ff;
     --on-accent: #14182b;
-    --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.4)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+    --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.55)) drop-shadow(0 0 2.2px rgba(165, 180, 252, 0.28))
+      drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
     --accent-hover: #a09cff;
     --accent-subtle: #262a44;
     --accent-border: #3a3d66;
@@ -2494,38 +2499,6 @@ textarea:focus-visible,
   margin-top: 1.75rem;
 }
 
-/* Home tabs — a quiet two-way segmented control (Today / Progress), mirroring the spirit
-   page's .spirit-tabs so the home reads as one focused area at a time. */
-.dashboard-tabs {
-  display: flex;
-  gap: 0.3rem;
-  margin: 1.25rem 0 1.1rem;
-  padding: 0.25rem;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-}
-.dashboard-tab {
-  flex: 1;
-  padding: 0.5rem 0.6rem;
-  background: none;
-  border: none;
-  border-radius: var(--radius-control);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.14s ease, color 0.14s ease;
-}
-.dashboard-tab:hover {
-  color: var(--text-primary);
-}
-.dashboard-tab--active {
-  background: var(--bg-surface-raised);
-  color: var(--accent);
-  box-shadow: var(--shadow-card);
-}
-
 /* The slim pill row on the Today tab — only coins + streak, no level/XP. A quiet header
    above the companion. */
 .dashboard-pills {
@@ -3135,8 +3108,9 @@ button.today-action:disabled {
      creature's edge so a pale creature (or a light palette) never vanishes into the cream — a
      contour, not a hard sticker border. Then the offset shadow lifts it. */
   background: radial-gradient(circle at 50% 46%, #ffffff 0%, rgba(255, 255, 255, 0.5) 30%, transparent 58%);
-  filter: drop-shadow(0 0 0.9px rgba(58, 38, 20, 0.6)) drop-shadow(0 0 1.8px rgba(58, 38, 20, 0.42))
-    drop-shadow(0 5px 9px rgba(74, 50, 22, 0.26));
+  /* NOTE: no filter here. The contour/lift shadows live on `.spirit-creature`
+     (--spirit-figure-pop) so they hug ONLY the figure — a root-level drop-shadow also contours
+     the soft translucent aura discs, which reads as a muddy grey halo around the creature. */
 }
 
 .spirit-stage {
@@ -3662,14 +3636,21 @@ button.today-action:disabled {
 
 /* "Hover to try a look" — chips for the creature's signature pieces; hovering/focusing one morphs
    the card's art above. Calm + compact, centred under the copy. */
+/* The roll pill sits DEAD-CENTRE whether or not the "Clear" affordance is mounted: the row
+   centres a wrap that is sized by the pill ALONE, and Clear hangs off the wrap absolutely
+   (zero layout space) in a RESERVED lane under the pill — the constant padding-bottom keeps
+   the slot open in both states, so nothing shifts and Clear can never overflow a narrow card. */
 .spirit-choose-tryons {
   width: 100%;
   margin: 0.1rem 0 0.5rem;
+  padding-bottom: 1.25rem;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+}
+.spirit-choose-roll-wrap {
+  position: relative;
+  display: inline-flex;
 }
 /* "Try a random look" — a calm, inviting pill in the creature's accent. Each click rolls a full
    random combination of cosmetics onto the card's art (replaces the old one-at-a-time chips). */
@@ -3683,6 +3664,17 @@ button.today-action:disabled {
   color: var(--text-primary);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
+  /* Both state labels stack in ONE cell; the pill sizes to the widest, so flipping the label
+     never resizes it (see the JSX note in SpiritChoosePage). */
+  display: grid;
+  justify-items: center;
+}
+.spirit-choose-roll-label {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+.spirit-choose-roll-label--ghost {
+  visibility: hidden;
 }
 .spirit-choose-roll:hover,
 .spirit-choose-roll:focus-visible {
@@ -3690,8 +3682,14 @@ button.today-action:disabled {
   border-color: var(--card-accent);
   outline: none;
 }
-/* A quiet "Clear" back to the bare creature. */
+/* A quiet "Clear" back to the bare creature — hung off the pill's wrap absolutely (zero layout
+   space, so it never displaces the pill), centred in the reserved lane under the pill, and
+   faded in gently on mount. */
 .spirit-choose-roll-clear {
+  position: absolute;
+  top: calc(100% + 0.15rem);
+  left: 50%;
+  transform: translateX(-50%);
   padding: 0.2rem 0.4rem;
   border: none;
   background: none;
@@ -3699,6 +3697,8 @@ button.today-action:disabled {
   color: var(--text-muted);
   cursor: pointer;
   text-decoration: underline;
+  white-space: nowrap;
+  animation: fade-in 0.18s ease;
 }
 .spirit-choose-roll-clear:hover,
 .spirit-choose-roll-clear:focus-visible {
@@ -3708,6 +3708,9 @@ button.today-action:disabled {
 @media (prefers-reduced-motion: reduce) {
   .spirit-choose-roll {
     transition: none;
+  }
+  .spirit-choose-roll-clear {
+    animation: none;
   }
 }
 
@@ -3732,7 +3735,10 @@ button.today-action:disabled {
    clobbering them. Calm and kind: even at the floor (0.4) the creature stays clearly visible and
    coloured, just muted — never grey-dead or alarming. A gentle transition smooths tier changes. */
 .spirit-creature {
-  filter: var(--spirit-figure-pop) saturate(var(--spirit-vitality))
+  /* Saturation runs slightly OVER 1 at full vitality (×1.12) so a thriving creature reads
+     vivid — the pastel dosha ramps get a gentle push past the page's soft wash. At the
+     vitality floor (0.4 → ×0.45) it still reads clearly muted, as before. */
+  filter: var(--spirit-figure-pop) saturate(calc(var(--spirit-vitality) * 1.12))
     brightness(calc(0.92 + 0.08 * var(--spirit-vitality)));
   transition: filter 0.6s ease;
 }
@@ -4313,9 +4319,10 @@ button.today-action:disabled {
   color: var(--text-primary);
 }
 .spirit-tab--active {
-  background: var(--bg-surface-raised);
+  background: var(--bg-surface);
   color: var(--spirit-accent);
-  box-shadow: var(--shadow-card);
+  /* Even hairline ring rather than a drop shadow — see .dashboard-tab--active. */
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .spirit-slot {

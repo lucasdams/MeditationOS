@@ -164,4 +164,29 @@ export const auth: Record<string, string> = {
   'auth.cookieNotice.text.privacy': 'プライバシーポリシー',
   'auth.cookieNotice.text.post': 'をご覧ください。',
   'auth.cookieNotice.cta': '了解',
+
+  // ── VerifyEmailBanner ── auth.verify.resent / .resending を再利用
+  'auth.verifyBanner.please': 'アカウントを安全に保つため、メールアドレス（{email}）の確認をお願いします。',
+  'auth.verifyBanner.resend': 'リンクを再送する',
+  'auth.verifyBanner.error': '送信できませんでした。しばらくしてからお試しください。',
+
+  // ── ConfirmEmailGate ── auth.verify.resent / .resending / .resendError と common user.logout を再利用
+  'auth.confirmGate.title': 'メールアドレスの確認',
+  'auth.confirmGate.body.pre':
+    'アカウントを安全に保つため、続ける前にメールアドレスの確認をお願いします。確認リンクを ',
+  'auth.confirmGate.body.post': ' にお送りしました。開いて完了したら、ここに戻ってください。',
+  'auth.confirmGate.checking': '確認しています…',
+  'auth.confirmGate.confirmed': '確認しました — 続ける',
+  'auth.confirmGate.recheckFailed':
+    'まだ確認が取れていません。メールのリンクを開いてから、もう一度お試しください。',
+  'auth.confirmGate.didntGet': '届きませんでしたか？ ',
+  'auth.confirmGate.resendLink': 'リンクを再送する',
+  'auth.confirmGate.throttled':
+    '最近、何度かリンクをリクエストされています。少し待ってから、もう一度お試しください。',
+  'auth.confirmGate.wrongAddress': 'アドレスが違いますか？ ',
+
+  // ── GuestButton ──
+  'auth.guest.starting': '開始しています…',
+  'auth.guest.continue': 'ゲストとして続ける',
+  'auth.guest.error': 'ゲストセッションを開始できませんでした。もう一度お試しください。',
 }
