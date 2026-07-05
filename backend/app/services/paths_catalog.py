@@ -171,7 +171,10 @@ PATHS: tuple[Path, ...] = (
                 title="Day 5 · Name what pulls",
                 practice="meditate",
                 min_minutes=5,
-                cue="When something pulls you away, softly name it — thinking, hearing — and return.",
+                cue=(
+                    "When something pulls you away, softly name it — "
+                    "thinking, hearing — and return."
+                ),
             ),
             PathDay(
                 index=6,

@@ -680,11 +680,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "feather_plume": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
-        # PATH-EXCLUSIVE tier-2 accessories (mirrors the tier-2 auras) — an EARLIER, cheaper per-path
-        # worn item to chase before the tier-3 capstone: a flame tuft at the brow for Pitta (breath),
-        # a little acorn cap for Kapha (stillness), a wind ribbon for Vata (heart). Only the matching
-        # creature can buy/see each. NOT part of the 7-slot signature set (tier 3 only, per
-        # `_signature_option`), so "Signature radiance" is unaffected.
+        # PATH-EXCLUSIVE tier-2 accessories (mirrors the tier-2 auras) — an EARLIER, cheaper
+        # per-path worn item to chase before the tier-3 capstone: a flame tuft at the brow for
+        # Pitta (breath), a little acorn cap for Kapha (stillness), a wind ribbon for Vata
+        # (heart). Only the matching creature can buy/see each. NOT part of the 7-slot signature
+        # set (tier 3 only, per `_signature_option`), so "Signature radiance" is unaffected.
         "flame_tuft": {
             "cost": 90, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
         },
