@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { dashboardService } from '../services/dashboard'
 import { localYMD } from '../lib/format'
+import { useT } from '../i18n'
 import type { ActivityCalendar } from '../types'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTH_KEYS = [
+  'tracking.heatmap.month.jan',
+  'tracking.heatmap.month.feb',
+  'tracking.heatmap.month.mar',
+  'tracking.heatmap.month.apr',
+  'tracking.heatmap.month.may',
+  'tracking.heatmap.month.jun',
+  'tracking.heatmap.month.jul',
+  'tracking.heatmap.month.aug',
+  'tracking.heatmap.month.sep',
+  'tracking.heatmap.month.oct',
+  'tracking.heatmap.month.nov',
+  'tracking.heatmap.month.dec',
+]
 
 // Parse "YYYY-MM-DD" in local time (avoids a UTC off-by-one); `localYMD` formats.
 const parse = (iso: string) => {
@@ -24,6 +38,7 @@ type Cell = {
 }
 
 export default function ActivityHeatmap() {
+  const { t } = useT()
   const [cal, setCal] = useState<ActivityCalendar | null>(null)
   const [failed, setFailed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -44,7 +59,7 @@ export default function ActivityHeatmap() {
   }, [cal])
 
   if (failed) return null
-  if (!cal) return <p className="muted">Loading activity…</p>
+  if (!cal) return <p className="muted">{t('tracking.heatmap.loading')}</p>
 
   const byDate = new Map<string, DayInfo>(
     cal.days.map((d) => [d.date, { seconds: d.seconds, allQuests: d.all_quests }]),
@@ -88,7 +103,7 @@ export default function ActivityHeatmap() {
 
   return (
     <section className="calendar">
-      <h2>Activity</h2>
+      <h2>{t('tracking.heatmap.title')}</h2>
       <div className="heatmap-scroll" ref={scrollRef}>
         <div className="heatmap">
           <div className="heatmap-months">
@@ -97,7 +112,7 @@ export default function ActivityHeatmap() {
               const show = i === 0 ? false : month !== weeks[i - 1][0].date.getMonth()
               return (
                 <span key={week[0].iso} className="heatmap-month">
-                  {show ? MONTHS[month] : ''}
+                  {show ? t(MONTH_KEYS[month]) : ''}
                 </span>
               )
             })}
@@ -107,7 +122,11 @@ export default function ActivityHeatmap() {
               <div key={week[0].iso} className="heatmap-week">
                 {week.map((cell) => {
                   const cellLabel = cell.inRange
-                    ? `${cell.iso}: ${cell.minutes} min${cell.allQuests ? ', all missions completed' : ''}`
+                    ? t('tracking.heatmap.cellLabel', {
+                        iso: cell.iso,
+                        minutes: cell.minutes,
+                        allMissions: cell.allQuests ? t('tracking.heatmap.allMissionsSuffix') : '',
+                      })
                     : undefined
                   return (
                     <div
@@ -126,13 +145,12 @@ export default function ActivityHeatmap() {
       </div>
       <div className="heatmap-legend">
         <span className="muted">
-          {totalMin} min in the last month · {perfectDays} all-mission{' '}
-          {perfectDays === 1 ? 'day' : 'days'}
+          {t('tracking.heatmap.legend', { count: perfectDays, minutes: totalMin, perfect: perfectDays })}
         </span>
         <span className="heatmap-key" aria-hidden="true">
-          <i className="heatmap-cell lvl-0" /> None
-          <i className="heatmap-cell lvl-1" /> Active
-          <i className="heatmap-cell lvl-2" /> All missions
+          <i className="heatmap-cell lvl-0" /> {t('tracking.heatmap.keyNone')}
+          <i className="heatmap-cell lvl-1" /> {t('tracking.heatmap.keyActive')}
+          <i className="heatmap-cell lvl-2" /> {t('tracking.heatmap.keyAll')}
         </span>
       </div>
     </section>

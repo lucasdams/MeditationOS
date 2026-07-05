@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { levelProgress } from '../lib/level'
 import { playLevelUp, playReward } from '../lib/sfx'
 import CoinIcon from './CoinIcon'
+import { useT } from '../i18n'
 import type { XpLine } from '../lib/xpBreakdown'
 
 // Honor the OS "reduce motion" setting: when set we skip the count-up, the entrance
@@ -23,18 +24,9 @@ const heartSvg = (fill: string) =>
   `</svg>`
 
 // A warm word for finishing a sit — the session deserves love, not just XP. Gentle + never about
-// performance: showing up is the whole win.
-const REWARD_PRAISES = [
-  'Beautifully done.',
-  'You showed up — that’s what matters.',
-  'That’s time well spent.',
-  'A quiet gift to yourself.',
-  'Every sit counts.',
-  'Proud of you for this.',
-  'That’s another rep for your brain.',
-  'One more sit — the habit’s taking root.',
-  'You just strengthened the pathway.',
-]
+// performance: showing up is the whole win. Nine variants, keyed 'practice.reward.praise.0..8';
+// one index is picked at random on mount and resolved through t() so it re-labels on locale change.
+const REWARD_PRAISE_COUNT = 9
 
 /**
  * Post-session reward — a *quiet, non-blocking* inline card (not a modal). It animates
@@ -73,6 +65,7 @@ export default function RewardOverlay({
   // on the user dismissing the reward themselves.
   autoDismissMs?: number
 }) {
+  const { t } = useT()
   const reduceMotion = prefersReducedMotion()
   const startXp = Math.max(0, afterXp - xpGained)
   const [shownXp, setShownXp] = useState(reduceMotion ? afterXp : startXp)
@@ -83,8 +76,10 @@ export default function RewardOverlay({
   const [landed, setLanded] = useState(reduceMotion)
   const lastLevelRef = useRef(levelProgress(startXp).level)
   const leveledUp = levelProgress(afterXp).level > levelProgress(startXp).level
-  // A warm word of praise, picked once on mount, plus a host for a gentle drift of hearts.
-  const [praise] = useState(() => REWARD_PRAISES[Math.floor(Math.random() * REWARD_PRAISES.length)])
+  // A warm word of praise, picked once on mount (as an index so it re-labels on locale change),
+  // plus a host for a gentle drift of hearts.
+  const [praiseIdx] = useState(() => Math.floor(Math.random() * REWARD_PRAISE_COUNT))
+  const praise = t(`practice.reward.praise.${praiseIdx}`)
   const heartsHost = useRef<HTMLSpanElement>(null)
 
   // A chime when the reward appears (earned XP / completed a quest). A level
@@ -174,7 +169,7 @@ export default function RewardOverlay({
         <button
           type="button"
           className="reward-inline-dismiss"
-          aria-label="Dismiss reward"
+          aria-label={t('practice.reward.dismiss')}
           onClick={onClose}
         >
           ✕
@@ -205,24 +200,24 @@ export default function RewardOverlay({
             className={`reward-gained${landed ? ' reward-gained--landed' : ''}`}
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
-            +{shownGained} XP
+            {t('practice.reward.gained', { xp: shownGained })}
           </span>
         </div>
 
         <div className="reward-level">
-          Level {prog.level}
-          {leveledUp && <span className="reward-up"> · Level up!</span>}
+          {t('practice.reward.level', { level: prog.level })}
+          {leveledUp && <span className="reward-up">{t('practice.reward.levelUp')}</span>}
         </div>
         {leveledUp && (
           <div className={`reward-coins${reduceMotion ? '' : ' reward-coins--pop'}`}>
-            You've earned coins to spend on your spirit <CoinIcon />
+            {t('practice.reward.coins')} <CoinIcon />
           </div>
         )}
         <div className="xp-bar">
           <div className="xp-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="xp-text">
-          {prog.xpIntoLevel} / {prog.xpForNextLevel} to next level
+          {t('practice.reward.toNext', { into: prog.xpIntoLevel, forNext: prog.xpForNextLevel })}
         </div>
         {breakdown.length > 1 && (
           <ul className={`reward-breakdown${reduceMotion ? '' : ' reward-breakdown--stagger'}`}>
@@ -245,7 +240,7 @@ export default function RewardOverlay({
           </ul>
         )}
         <button type="button" className="reward-inline-continue" onClick={onClose}>
-          Continue
+          {t('practice.reward.continue')}
         </button>
       </div>
     </div>

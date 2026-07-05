@@ -214,6 +214,17 @@ export const OPTION_LABEL: Record<string, string> = {
   emberflame: 'Ember aura',
   grove: 'Grove aura',
   zephyr: 'Zephyr aura',
+  // Path-exclusive tier-2 auras (an earlier per-path signature glow before the tier-3 capstone).
+  cinders: 'Cinder aura',
+  dewfall: 'Dew aura',
+  petalwind: 'Petal aura',
+  // Path-exclusive tier-2 companions & accessories (earlier per-path options before the tier-3 capstones).
+  emberling: 'Emberling',
+  mosskit: 'Mosskit',
+  butterfly: 'Butterfly',
+  flame_tuft: 'Flame tuft',
+  acorn_cap: 'Acorn cap',
+  wind_ribbon: 'Wind ribbon',
   ember_crown: 'Ember crown',
   mossy_circlet: 'Mossy circlet',
   feather_plume: 'Feather plume',
@@ -223,6 +234,13 @@ export const OPTION_LABEL: Record<string, string> = {
   emberstone: 'Ember sun-stone',
   boulder: 'Mossy boulder',
   feather: 'Drifting feather',
+  // Path-exclusive tier-2 habitats & mounts (earlier per-path options before the tier-3 capstones).
+  ember_hollow: 'Ember hollow',
+  fern_hollow: 'Fern hollow',
+  cloud_terrace: 'Cloud terrace',
+  ember_log: 'Ember log',
+  mossy_rock: 'Mossy rock',
+  drift_leaf: 'Drifting leaf',
   // Universal tier-deepening options (added to enrich each slot's tree).
   dewlight: 'Dewlight',
   twilight: 'Twilight',
@@ -258,6 +276,10 @@ export const OPTION_LABEL: Record<string, string> = {
   ember_drift: 'Drifting embers',
   pollenfall: 'Pollen fall',
   galeswirl: 'Gale swirl',
+  // Path-exclusive tier-2 weathers (earlier per-path options before the tier-3 capstones).
+  heat_shimmer: 'Heat shimmer',
+  dewdrift: 'Dew drift',
+  featherfall: 'Feather fall',
   // Ground — a foreground base strip along the very bottom.
   grass: 'Grassy ground',
   pebbles: 'Pebble bed',
@@ -269,6 +291,10 @@ export const OPTION_LABEL: Record<string, string> = {
   emberbed: 'Ember bed',
   stonegarden: 'Stone garden',
   cloudfloor: 'Cloud floor',
+  // Path-exclusive tier-2 grounds (earlier per-path options before the tier-3 capstones).
+  ember_sand: 'Ember sand',
+  mossbed: 'Moss bed',
+  cloudtuft: 'Cloud tuft',
   // Quirky / hobby cosmetics — personality, not nature.
   headphones: 'Headphones',
   nerd_glasses: 'Nerd glasses',
@@ -494,6 +520,64 @@ const PALETTES: Record<string, { core: string; glow: string; accent: string; dee
 // fullest radiant body stays clear of the 80×80 frame and an equipped accessory.
 const SIZES: Record<string, number> = { tiny: 0.78, small: 0.9, large: 1.16, giant: 1.28 }
 
+// ── Spirit-tailored cosmetics (harmonisation) ──────────────────────────────────────────────
+// Worn / with-you cosmetics HARMONISE with the creature wearing them: they pick up the spirit's
+// effective body palette (`pal` — the equipped `palette` cosmetic, else the dosha default from
+// PATH_PALETTE) so a piece looks forged for THIS creature — a halo glows ember on a fire spirit,
+// amber on an earth spirit, soft mauve on an air spirit. A pathless spark has no `pal`, so every
+// cosmetic keeps its own default colours (pixel-identical to before harmonisation).
+
+// A soft palette-matched bloom drawn BEHIND a cosmetic so it sits in the spirit's colour field
+// rather than looking bolted on. Two stacked discs fake a gentle glow without an SVG filter; its
+// opacity rides the daily-glow `g`. Null for a pathless spark (no palette → no bloom, unchanged).
+function BelongingGlow({
+  cx,
+  cy,
+  r,
+  pal,
+  g,
+}: {
+  cx: number
+  cy: number
+  r: number
+  pal?: BodyPalette
+  g: number
+}) {
+  if (!pal) return null
+  return (
+    <g aria-hidden="true">
+      <circle cx={cx} cy={cy} r={r} fill={pal.glow} opacity={0.13 * g} />
+      <circle cx={cx} cy={cy} r={r * 0.58} fill={pal.glow} opacity={0.16 * g} />
+    </g>
+  )
+}
+
+// A faint palette wash laid over a SCENE region (the habitat backdrop / the ground strip) so the
+// whole scene reads in the spirit's colour field, not just the worn items. Rendered behind the
+// creature at the call site. Null for a pathless spark (no palette → the scene is unchanged).
+function SceneWash({
+  pal,
+  g,
+  x,
+  y,
+  width,
+  height,
+  rx,
+  strength,
+}: {
+  pal?: BodyPalette
+  g: number
+  x: number
+  y: number
+  width: number
+  height: number
+  rx: number
+  strength: number
+}) {
+  if (!pal) return null
+  return <rect x={x} y={y} width={width} height={height} rx={rx} fill={pal.glow} opacity={strength * g} />
+}
+
 const STAGE_ORDER: SpiritStage[] = ['spark', 'wisp', 'fledgling', 'ascendant', 'radiant']
 
 // 1-based stage index (1 = spark … 5 = radiant) — drives how much structure each form draws.
@@ -599,6 +683,12 @@ const AURA_STYLE: Record<string, { tint: string; grow: number; strength: number 
   emberflame: { tint: '#ea580c', grow: 9, strength: 3.0 },
   grove: { tint: '#10b981', grow: 9, strength: 2.8 },
   zephyr: { tint: '#e0f2fe', grow: 9, strength: 2.6 },
+  // Path-exclusive tier-2 auras — earlier, slightly smaller per-path glows (each layers its own
+  // procedural decor over this base glow in the cases below): drifting cinders (Pitta), a dew-ring
+  // (Kapha), a petal breeze (Vata).
+  cinders: { tint: '#f97316', grow: 7, strength: 2.7 },
+  dewfall: { tint: '#5eead4', grow: 7, strength: 2.4 },
+  petalwind: { tint: '#c4b5fd', grow: 7, strength: 2.5 },
 }
 
 // A soft outer aura shared by every path — its opacity carries the static daily-glow read-out.
@@ -872,6 +962,64 @@ function Aura({ path, p, g, aura }: { path: SpiritPath; p: number; g: number; au
           })}
         </>
       )}
+      {/* PATH-EXCLUSIVE tier-2: Cinders (Pitta) — a scatter of small drifting embers around the
+          glow, rising a touch (the fire's breath); lighter than the emberflame capstone. */}
+      {aura === 'cinders' &&
+        Array.from({ length: 10 }, (_, k) => {
+          const a = (k / 10) * Math.PI * 2
+          const rr = r - 2 + (k % 3) * 2
+          const rise = -Math.abs(Math.sin(a)) * 2
+          return (
+            <circle
+              key={`cinder-${k}`}
+              cx={40 + Math.cos(a) * rr}
+              cy={40 + Math.sin(a) * rr + rise}
+              r={k % 3 === 0 ? 1.3 : 0.8}
+              fill={k % 2 ? '#fb923c' : '#f97316'}
+              opacity={0.8 * g}
+            />
+          )
+        })}
+      {/* PATH-EXCLUSIVE tier-2: Dewfall (Kapha) — a soft ring hung with dew droplets, each with a
+          tiny highlight; grounded and calm, the earlier companion to the grove capstone. */}
+      {aura === 'dewfall' && (
+        <>
+          <circle cx={40} cy={40} r={r - 2} fill="none" stroke="#5eead4" strokeWidth={1} opacity={0.28 * g} />
+          {Array.from({ length: 8 }, (_, k) => {
+            const a = (k / 8) * Math.PI * 2
+            const dx = 40 + Math.cos(a) * (r - 1)
+            const dy = 40 + Math.sin(a) * (r - 1)
+            return (
+              <g key={`dew-${k}`}>
+                <circle cx={dx} cy={dy} r={k % 2 ? 1.5 : 1.1} fill={k % 2 ? '#99f6e4' : '#5eead4'} opacity={0.85 * g} />
+                <circle cx={dx - 0.4} cy={dy - 0.4} r={0.4} fill="#f0fdfa" opacity={0.9 * g} />
+              </g>
+            )
+          })}
+        </>
+      )}
+      {/* PATH-EXCLUSIVE tier-2: Petal breeze (Vata) — soft petals drifting on the air around the
+          glow; the earlier, gentler companion to the zephyr capstone. */}
+      {aura === 'petalwind' &&
+        Array.from({ length: 7 }, (_, k) => {
+          const a = (k / 7) * Math.PI * 2
+          const rr = r - 1
+          const px = 40 + Math.cos(a) * rr
+          const py = 40 + Math.sin(a) * rr
+          const deg = (a * 180) / Math.PI + 40
+          return (
+            <ellipse
+              key={`petal-${k}`}
+              cx={px}
+              cy={py}
+              rx={2}
+              ry={1}
+              fill={k % 2 ? '#ddd6fe' : '#c4b5fd'}
+              opacity={0.8 * g}
+              transform={`rotate(${deg} ${px} ${py})`}
+            />
+          )
+        })}
     </>
   )
 }
@@ -1192,18 +1340,91 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
       </g>
     )
   }
+  if (habitat === 'ember_hollow') {
+    // PATH-EXCLUSIVE tier-2 (Pitta / breath) — a cozy hearth cave: a dark warm panel with a soft
+    // ember-orange glow low-centre. A simpler companion to the tier-3 ember_canyon.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A dark warm panel, faint so the figure reads in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#431407" opacity={0.28} />
+        {/* A soft ember-orange glow banked low-centre — the hearth's warmth. */}
+        <ellipse cx={40} cy={66} rx={26} ry={12} fill="#ea580c" opacity={0.3} />
+        <ellipse cx={40} cy={68} rx={16} ry={7} fill="#f97316" opacity={0.32} />
+      </g>
+    )
+  }
+  if (habitat === 'fern_hollow') {
+    // PATH-EXCLUSIVE tier-2 (Kapha / stillness) — a shaded green nook: a soft green panel with a
+    // couple of fern fronds tucked in a bottom corner. A simpler companion to misty_grove.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A soft green shaded panel, faint so it recedes behind the figure. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#065f46" opacity={0.22} />
+        {/* A couple of fern fronds tucked in the bottom-left corner, off-centre. */}
+        {[0, 1].map((k) => (
+          <path
+            key={k}
+            d={`M ${11 + k * 6} 72 Q ${8 + k * 6} 60 ${13 + k * 6} 52`}
+            fill="none"
+            stroke="#34d399"
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            opacity={0.55}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (habitat === 'cloud_terrace') {
+    // PATH-EXCLUSIVE tier-2 (Vata / heart) — an airy pale sky: a pale sky-blue panel with 2–3
+    // soft white clouds up high. A simpler companion to the tier-3 open_sky.
+    return (
+      <g opacity={g} aria-hidden="true">
+        {/* A pale sky-blue panel, faint so the figure reads clearly in front. */}
+        <rect x={4} y={6} width={72} height={68} rx={10} fill="#e0f2fe" opacity={0.32} />
+        {/* 2–3 soft white clouds pushed up high, off the figure's centre. */}
+        {[
+          { cx: 16, cy: 16, r: 4 },
+          { cx: 62, cy: 13, r: 4.5 },
+          { cx: 44, cy: 20, r: 3.2 },
+        ].map((c, k) => (
+          <g key={k}>
+            <ellipse cx={c.cx} cy={c.cy} rx={c.r * 1.6} ry={c.r} fill="#f8fafc" opacity={0.7} />
+            <ellipse cx={c.cx + c.r} cy={c.cy + 1} rx={c.r} ry={c.r * 0.7} fill="#f8fafc" opacity={0.7} />
+          </g>
+        ))}
+      </g>
+    )
+  }
   return null
 }
 
 // A small worn accessory drawn on top of the figure (above its head, near y≈40-14). Each
 // option is a distinct, flat little shape — the on-character payoff of spending coins.
-function Accessory({ accessory, g }: { accessory: string; g: number }) {
+function Accessory({
+  accessory,
+  g,
+  pal,
+  path,
+}: {
+  accessory: string
+  g: number
+  pal?: BodyPalette
+  // The spirit's chosen path drives PER-PATH VARIANTS: the same owned accessory is drawn with a
+  // dosha-specific silhouette (an ember-ring halo for fire, a leaf-circlet for earth, a breeze-ring
+  // for air), so it looks made for THIS creature. Null (pathless spark) → the default silhouette.
+  path?: SpiritPath | null
+}) {
   // The figures sit roughly centred on x=40; their "head" tops out around y≈26-30. We perch
   // accessories just above that band so they read as worn rather than floating.
   const topY = 24
   if (accessory === 'halo') {
-    // A floating golden ring: a soft outer bloom, the bright gold band itself, and a faint
-    // highlight along the near edge so it reads as a glowing halo rather than a flat outline.
+    // A floating ring: a soft outer bloom, the bright band itself, and a faint highlight along the
+    // near edge so it reads as a glowing halo rather than a flat outline. Harmonised — the ring is
+    // forged from the spirit's own light (its palette); a pathless spark keeps the classic gold.
+    const m = pal
+      ? { bloom: pal.glow, band: pal.accent, gleam: pal.core }
+      : { bloom: '#fef9c3', band: '#fde68a', gleam: '#fffbeb' }
     return (
       <g opacity={0.95 * g} aria-hidden="true">
         {/* Soft glow blooming around the ring. */}
@@ -1213,29 +1434,83 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
           rx={9}
           ry={3}
           fill="none"
-          stroke="#fef9c3"
+          stroke={m.bloom}
           strokeWidth={3.6}
           opacity={0.4}
         />
-        {/* The bright gold band — the halo's defining shape, unchanged. */}
+        {/* The bright band — the halo's defining shape. */}
         <ellipse
           cx={40}
           cy={topY}
           rx={9}
           ry={3}
           fill="none"
-          stroke="#fde68a"
+          stroke={m.band}
           strokeWidth={1.8}
         />
         {/* A brighter highlight along the front-lower arc for a touch of shine. */}
         <path
           d={`M 31.5 ${topY + 1.2} Q 40 ${topY + 3.6} 48.5 ${topY + 1.2}`}
           fill="none"
-          stroke="#fffbeb"
+          stroke={m.gleam}
           strokeWidth={0.8}
           strokeLinecap="round"
           opacity={0.9}
         />
+        {/* PER-PATH VARIANT — the halo takes on the spirit's element: flame-flicks for fire, a
+            circlet of leaves for earth, drifting breeze-wisps for air. Pathless → just the ring. */}
+        {path === 'breath' &&
+          Array.from({ length: 5 }, (_, k) => {
+            const a = -Math.PI + (k / 4) * Math.PI
+            const bx = 40 + Math.cos(a) * 9
+            const by = topY + Math.sin(a) * 3
+            return (
+              <path
+                key={`halo-fire-${k}`}
+                d={`M ${bx} ${by} C ${bx - 1.3} ${by - 2}, ${bx - 1} ${by - 4}, ${bx} ${by - 4.8} C ${bx + 1} ${by - 4}, ${bx + 1.3} ${by - 2}, ${bx} ${by} Z`}
+                fill={m.band}
+                opacity={0.85}
+              />
+            )
+          })}
+        {path === 'stillness' &&
+          Array.from({ length: 5 }, (_, k) => {
+            const a = -Math.PI + (k / 4) * Math.PI
+            const bx = 40 + Math.cos(a) * 9
+            const by = topY + Math.sin(a) * 3
+            const deg = (a * 180) / Math.PI + 90
+            return (
+              <ellipse
+                key={`halo-leaf-${k}`}
+                cx={bx}
+                cy={by - 1.6}
+                rx={2.2}
+                ry={1.1}
+                fill={m.band}
+                opacity={0.9}
+                transform={`rotate(${deg} ${bx} ${by - 1.6})`}
+              />
+            )
+          })}
+        {path === 'heart' &&
+          Array.from({ length: 4 }, (_, k) => {
+            const a = -Math.PI + (k / 3) * Math.PI
+            const bx = 40 + Math.cos(a) * 9
+            const by = topY + Math.sin(a) * 3
+            return (
+              <g key={`halo-air-${k}`}>
+                <path
+                  d={`M ${bx - 2.4} ${by - 1} Q ${bx} ${by - 2.6} ${bx + 2.4} ${by - 1}`}
+                  fill="none"
+                  stroke={m.bloom}
+                  strokeWidth={0.8}
+                  strokeLinecap="round"
+                  opacity={0.8}
+                />
+                <circle cx={bx + 2.8} cy={by - 1.4} r={0.6} fill={m.gleam} opacity={0.85} />
+              </g>
+            )
+          })}
       </g>
     )
   }
@@ -1323,9 +1598,11 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
     )
   }
   if (accessory === 'star') {
-    // A tiny five-point star floating just above the head.
+    // A tiny five-point star floating just above the head — cast in the spirit's own light (its
+    // palette); a pathless spark keeps the classic gold.
     const sx = 40
     const sy = topY - 5
+    const m = pal ? { body: pal.glow, edge: pal.accent } : { body: '#fde68a', edge: '#fbbf24' }
     const pts = Array.from({ length: 5 }, (_, k) => {
       const a = -Math.PI / 2 + (k / 5) * Math.PI * 2
       return `${(sx + Math.cos(a) * 3).toFixed(2)},${(sy + Math.sin(a) * 3).toFixed(2)}`
@@ -1333,8 +1610,8 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
     return (
       <polygon
         points={pts.join(' ')}
-        fill="#fde68a"
-        stroke="#fbbf24"
+        fill={m.body}
+        stroke={m.edge}
         strokeWidth={0.5}
         opacity={0.95 * g}
         aria-hidden="true"
@@ -1791,10 +2068,109 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
       </g>
     )
   }
+  // --- Path-exclusive TIER-2 accessories (per_path in the catalog) -----------------------
+  // flame_tuft → breath (Pitta/fire), acorn_cap → stillness (Kapha/earth), wind_ribbon → heart
+  // (Vata/air). The earlier, cheaper per-path worn item to chase before each dosha's tier-3
+  // capstone. Fixed identity palettes — only ever shown on the matching dosha.
+  if (accessory === 'flame_tuft') {
+    // A small tuft of flame rising from the brow — three orange flame teardrops, tallest in the
+    // centre, each with a brighter core.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {[
+          { x: 36, h: 5 },
+          { x: 40, h: 8 },
+          { x: 44, h: 5 },
+        ].map((f, k) => (
+          <g key={k}>
+            <path
+              d={`M ${f.x - 1.7} ${topY + 1} Q ${f.x} ${topY + 1 - f.h} ${f.x + 1.7} ${topY + 1} Z`}
+              fill={k === 1 ? '#f97316' : '#fb923c'}
+            />
+            <path
+              d={`M ${f.x - 0.8} ${topY + 0.6} Q ${f.x} ${topY + 0.6 - f.h * 0.6} ${f.x + 0.8} ${topY + 0.6} Z`}
+              fill="#fde68a"
+            />
+          </g>
+        ))}
+      </g>
+    )
+  }
+  if (accessory === 'acorn_cap') {
+    // A little acorn cap perched on the head: a brown domed cap with a scaly texture, a tan nut
+    // body beneath, and a tiny stem on top.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The tan nut body beneath the cap. */}
+        <path
+          d={`M 36 ${topY} Q 40 ${topY + 6} 44 ${topY} Z`}
+          fill="#d9a441"
+        />
+        {/* The brown domed cap. */}
+        <path
+          d={`M 35 ${topY} Q 40 ${topY - 6} 45 ${topY} Z`}
+          fill="#78350f"
+        />
+        {/* A couple of scaly texture lines on the cap. */}
+        <path
+          d={`M 37 ${topY - 1} q 3 -2 6 0 M 38 ${topY - 2.6} q 2 -1.4 4 0`}
+          fill="none"
+          stroke="#a16207"
+          strokeWidth={0.6}
+          strokeLinecap="round"
+        />
+        {/* A tiny stem on top. */}
+        <path
+          d={`M 40 ${topY - 5} l 0 -2.4`}
+          fill="none"
+          stroke="#78350f"
+          strokeWidth={1}
+          strokeLinecap="round"
+        />
+      </g>
+    )
+  }
+  if (accessory === 'wind_ribbon') {
+    // A light ribbon streaming to one side in the breeze: a small knot near the head with a curved
+    // streamer trailing off, and a couple of soft wisps for lift.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The streamer curving off to one side. */}
+        <path
+          d={`M 44 ${topY} Q 52 ${topY - 3} 56 ${topY + 1} Q 51 ${topY + 1} 44 ${topY + 2} Z`}
+          fill="#bae6fd"
+        />
+        {/* A paler highlight along the streamer. */}
+        <path
+          d={`M 45 ${topY + 0.6} Q 51 ${topY - 1.4} 55 ${topY + 0.8}`}
+          fill="none"
+          stroke="#e0f2fe"
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
+        {/* A small knot where the ribbon meets the head. */}
+        <circle cx={44} cy={topY + 0.8} r={1.4} fill="#c4b5fd" />
+        {/* A faint wisp trailing behind for a sense of breeze. */}
+        <path
+          d={`M 48 ${topY + 3} q 3 -1 5.6 0.4`}
+          fill="none"
+          stroke="#e0f2fe"
+          strokeWidth={0.7}
+          strokeLinecap="round"
+          opacity={0.8}
+        />
+      </g>
+    )
+  }
   if (accessory === 'star_crown') {
     // LEGENDARY (tier 4) — a crown of stars: an arc of five-point golden stars set in a band
     // sweeping over the brow, the tallest at the centre, each with a soft halo glow. Joyful, the
     // spectacular endgame accessory and the richest in the slot.
+    // Harmonised — the stars are cast from the spirit's own light (its palette); a pathless spark
+    // keeps the classic gold crown.
+    const m = pal
+      ? { glow: pal.glow, bright: pal.glow, edge: pal.accent, gleam: pal.core, band: pal.accent }
+      : { glow: '#fde68a', bright: '#fde047', edge: '#fbbf24', gleam: '#fffbeb', band: '#fcd34d' }
     const star = (cx: number, cy: number, s: number, k: number) => {
       // A small five-point star built from its outer/inner radius points.
       const pts = Array.from({ length: 10 }, (_, i) => {
@@ -1804,31 +2180,78 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
       }).join(' ')
       return (
         <g key={k}>
-          <circle cx={cx} cy={cy} r={s * 1.7} fill="#fde68a" opacity={0.35} />
-          <polygon points={pts} fill={k % 2 === 0 ? '#fde047' : '#fbbf24'} />
-          <circle cx={cx} cy={cy} r={s * 0.3} fill="#fffbeb" />
+          <circle cx={cx} cy={cy} r={s * 1.7} fill={m.glow} opacity={0.35} />
+          <polygon points={pts} fill={k % 2 === 0 ? m.bright : m.edge} />
+          <circle cx={cx} cy={cy} r={s * 0.3} fill={m.gleam} />
         </g>
       )
     }
+    // PER-PATH VARIANT — the crown is set with the spirit's element instead of stars: flames for
+    // fire, leaves for earth, feather-wisps for air. A pathless spark keeps the crown of stars.
+    const crownGem = (cx: number, cy: number, s: number, k: number) => {
+      const fill = k % 2 === 0 ? m.bright : m.edge
+      if (path === 'breath') {
+        return (
+          <g key={k}>
+            <circle cx={cx} cy={cy} r={s * 1.7} fill={m.glow} opacity={0.32} />
+            <path
+              d={`M ${cx} ${cy + s} C ${cx - s} ${cy}, ${cx - s * 0.7} ${cy - s * 1.8}, ${cx} ${cy - s * 2.2} C ${cx + s * 0.7} ${cy - s * 1.8}, ${cx + s} ${cy}, ${cx} ${cy + s} Z`}
+              fill={fill}
+            />
+            <circle cx={cx} cy={cy + s * 0.1} r={s * 0.3} fill={m.gleam} />
+          </g>
+        )
+      }
+      if (path === 'stillness') {
+        return (
+          <g key={k}>
+            <circle cx={cx} cy={cy} r={s * 1.7} fill={m.glow} opacity={0.32} />
+            <ellipse cx={cx} cy={cy} rx={s * 0.85} ry={s * 1.7} fill={fill} />
+            <line
+              x1={cx}
+              y1={cy - s * 1.4}
+              x2={cx}
+              y2={cy + s * 1.4}
+              stroke={m.gleam}
+              strokeWidth={0.4}
+              opacity={0.7}
+            />
+          </g>
+        )
+      }
+      if (path === 'heart') {
+        return (
+          <g key={k}>
+            <circle cx={cx} cy={cy} r={s * 1.7} fill={m.glow} opacity={0.32} />
+            <path
+              d={`M ${cx} ${cy + s * 1.7} Q ${cx - s} ${cy}, ${cx} ${cy - s * 1.7} Q ${cx + s} ${cy}, ${cx} ${cy + s * 1.7} Z`}
+              fill={fill}
+            />
+            <circle cx={cx} cy={cy} r={s * 0.28} fill={m.gleam} />
+          </g>
+        )
+      }
+      return star(cx, cy, s, k)
+    }
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* The faint band the stars are set along, arcing over the brow. */}
+        {/* The faint band the gems are set along, arcing over the brow. */}
         <path
           d={`M 31 ${topY + 1} Q 40 ${topY - 6} 49 ${topY + 1}`}
           fill="none"
-          stroke="#fcd34d"
+          stroke={m.band}
           strokeWidth={0.8}
           strokeLinecap="round"
           opacity={0.6}
         />
-        {/* Five stars arched across the band, tallest (largest) at the centre. */}
+        {/* Five gems arched across the band, tallest (largest) at the centre. */}
         {Array.from({ length: 5 }, (_, k) => {
           const t = k / 4 // 0..1 across the band
           const sx = 32 + t * 16
           const lift = Math.sin(t * Math.PI) * 5 // higher toward the middle
           const sy = topY - lift
           const size = 1.6 + Math.sin(t * Math.PI) * 1.4
-          return star(sx, sy, size, k)
+          return crownGem(sx, sy, size, k)
         })}
       </g>
     )
@@ -1965,13 +2388,18 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
     // each tipped with a gem (a bigger center gem, smaller blue side gems), with sparkle
     // highlights. Girly.
     const ty = topY + 2
+    // Harmonised — the metal band is forged from the spirit's own light (its palette); the gems
+    // keep their jewel colours. A pathless spark keeps the classic gold band.
+    const m = pal
+      ? { band: pal.accent, gleam: pal.glow, spark: pal.core }
+      : { band: '#fcd34d', gleam: '#fde68a', spark: '#fffbeb' }
     return (
       <g opacity={0.95 * g} aria-hidden="true">
-        {/* The gold band, dipping low at the sides and rising to a central peak. */}
+        {/* The band, dipping low at the sides and rising to a central peak. */}
         <path
           d={`M 32 ${ty + 1.5} Q 36 ${ty - 1} 40 ${ty - 4} Q 44 ${ty - 1} 48 ${ty + 1.5}`}
           fill="none"
-          stroke="#fcd34d"
+          stroke={m.band}
           strokeWidth={1.8}
           strokeLinecap="round"
         />
@@ -1979,7 +2407,7 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
         <path
           d={`M 33 ${ty + 1.2} Q 36.5 ${ty - 0.8} 40 ${ty - 3.4} Q 43.5 ${ty - 0.8} 47 ${ty + 1.2}`}
           fill="none"
-          stroke="#fde68a"
+          stroke={m.gleam}
           strokeWidth={0.7}
           strokeLinecap="round"
           opacity={0.9}
@@ -1990,8 +2418,8 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
         <circle cx={40} cy={ty - 4.4} r={1.8} fill="#f472b6" />
         <circle cx={39.4} cy={ty - 5} r={0.5} fill="#fce7f3" opacity={0.95} />
         {/* A couple of sparkle dots for shine. */}
-        <circle cx={37} cy={ty - 2.2} r={0.4} fill="#fffbeb" opacity={0.9} />
-        <circle cx={43} cy={ty - 2.2} r={0.4} fill="#fffbeb" opacity={0.9} />
+        <circle cx={37} cy={ty - 2.2} r={0.4} fill={m.spark} opacity={0.9} />
+        <circle cx={43} cy={ty - 2.2} r={0.4} fill={m.spark} opacity={0.9} />
       </g>
     )
   }
@@ -2023,27 +2451,67 @@ function Accessory({ accessory, g }: { accessory: string; g: number }) {
 // A small friend that keeps the spirit company — drawn at the bottom-left of the 80×80
 // viewBox, in front of the habitat but well clear of the centred figure, so it never fights
 // the spirit. Static like every other cosmetic (the outer layer carries any animation).
-function Companion({ companion, g }: { companion: string; g: number }) {
+function Companion({
+  companion,
+  g,
+  pal,
+  path,
+}: {
+  companion: string
+  g: number
+  pal?: BodyPalette
+  // Drives per-path variants (e.g. the firefly reads as a rising ember for fire, a drifting seed
+  // for earth, a breeze-borne wisp for air). Null (pathless spark) → the default look.
+  path?: SpiritPath | null
+}) {
   // The little friend sits on the ground band, off to the left of the figure.
   const baseX = 16
   const baseY = 62
   if (companion === 'firefly') {
+    // Layered glowing dots — cast in the spirit's own light (its palette). The trailing detail is a
+    // PER-PATH VARIANT: embers RISE for fire, a little seed-leaf sits beside it for earth, a breeze
+    // wisp trails sideways for air. A pathless spark keeps the classic warm firefly + drifting spark.
+    const m = pal
+      ? { halo: pal.glow, aura: pal.accent, core: pal.glow, pin: pal.core }
+      : { halo: '#fde68a', aura: '#fcd34d', core: '#fef08a', pin: '#fffbeb' }
+    const spark = pal ? pal.glow : '#fde68a'
     return (
       <g opacity={g} aria-hidden="true">
-        {/* A couple of soft glowing dots hovering low and left — each a layered halo (wide soft
-            glow → warm aura → bright core → white-hot pinpoint) with a faint trailing spark, so
-            the little lights read as living embers rather than flat dots. */}
         {[
           { x: baseX - 2, y: baseY - 6 },
           { x: baseX + 6, y: baseY - 12 },
         ].map((d, k) => (
           <g key={k}>
-            <circle cx={d.x} cy={d.y} r={4.4} fill="#fde68a" opacity={0.16} />
-            <circle cx={d.x} cy={d.y} r={3} fill="#fcd34d" opacity={0.42} />
-            <circle cx={d.x} cy={d.y} r={1.6} fill="#fef08a" opacity={0.95} />
-            <circle cx={d.x - 0.4} cy={d.y - 0.4} r={0.7} fill="#fffbeb" opacity={0.95} />
-            {/* A faint trailing spark drifting below the glow. */}
-            <circle cx={d.x - 2.6} cy={d.y + 2.4} r={0.7} fill="#fde68a" opacity={0.5} />
+            <circle cx={d.x} cy={d.y} r={4.4} fill={m.halo} opacity={0.16} />
+            <circle cx={d.x} cy={d.y} r={3} fill={m.aura} opacity={0.42} />
+            <circle cx={d.x} cy={d.y} r={1.6} fill={m.core} opacity={0.95} />
+            <circle cx={d.x - 0.4} cy={d.y - 0.4} r={0.7} fill={m.pin} opacity={0.95} />
+            {/* Per-path trailing detail. */}
+            {path === 'breath' && (
+              <circle cx={d.x + 1.2} cy={d.y - 3} r={0.6} fill={spark} opacity={0.6} />
+            )}
+            {path === 'stillness' && (
+              <ellipse
+                cx={d.x + 2.4}
+                cy={d.y + 2.2}
+                rx={1.4}
+                ry={0.7}
+                fill={spark}
+                opacity={0.6}
+                transform={`rotate(35 ${d.x + 2.4} ${d.y + 2.2})`}
+              />
+            )}
+            {path === 'heart' && (
+              <path
+                d={`M ${d.x - 2} ${d.y + 2.4} q 2 -1.4 4 0`}
+                fill="none"
+                stroke={spark}
+                strokeWidth={0.7}
+                strokeLinecap="round"
+                opacity={0.6}
+              />
+            )}
+            {!path && <circle cx={d.x - 2.6} cy={d.y + 2.4} r={0.7} fill={spark} opacity={0.5} />}
           </g>
         ))}
       </g>
@@ -2227,6 +2695,117 @@ function Companion({ companion, g }: { companion: string; g: number }) {
         {/* A little red crown atop the head, and an eye. */}
         <circle cx={baseX - 5.4} cy={baseY - 16} r={0.9} fill="#ef4444" />
         <circle cx={baseX - 6.2} cy={baseY - 14.8} r={0.4} fill="#0f172a" />
+      </g>
+    )
+  }
+  // --- Path-exclusive TIER-2 companions (per_path in the catalog) ------------------------
+  // emberling → breath (Pitta/fire), mosskit → stillness (Kapha/earth), butterfly → heart
+  // (Vata/air). The earlier, smaller per-path friend to chase before each dosha's tier-3 capstone
+  // (kitsune / tortoise / crane). Fixed identity palettes — only ever shown on the matching dosha.
+  if (companion === 'emberling') {
+    // A tiny ember sprite: a small rounded glowing flame-body with two dot eyes and a little flame
+    // tuft flickering on top — warm and cheerful.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A soft warm glow behind the sprite. */}
+        <circle cx={baseX} cy={baseY - 4} r={7} fill="#fb923c" opacity={0.18} />
+        {/* The rounded flame-body. */}
+        <ellipse cx={baseX} cy={baseY - 3} rx={4} ry={4.6} fill="#f97316" />
+        {/* A brighter inner core. */}
+        <ellipse cx={baseX} cy={baseY - 2} rx={2.2} ry={2.8} fill="#fb923c" opacity={0.9} />
+        {/* A little flame tuft flickering off the top. */}
+        <path
+          d={`M ${baseX} ${baseY - 8} q 2 -2.4 0.6 -4.6 q 2.4 1.6 1 4.2 z`}
+          fill="#fb923c"
+        />
+        <path
+          d={`M ${baseX - 1.4} ${baseY - 7.4} q -1 -1.6 0.2 -3.2 q 1.4 1.4 0.6 3.2 z`}
+          fill="#fde68a"
+          opacity={0.9}
+        />
+        {/* Two dot eyes and a soft belly highlight. */}
+        <circle cx={baseX - 1.6} cy={baseY - 3.6} r={0.7} fill="#7c2d12" />
+        <circle cx={baseX + 1.6} cy={baseY - 3.6} r={0.7} fill="#7c2d12" />
+        <ellipse cx={baseX} cy={baseY - 0.8} rx={1.6} ry={1} fill="#fff7ed" opacity={0.8} />
+      </g>
+    )
+  }
+  if (companion === 'mosskit') {
+    // A small mossy pebble critter: a rounded grey-green stone body with dot eyes and a tiny leaf
+    // sprig poking from the top — grounded and calm.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* The rounded stone body. */}
+        <ellipse cx={baseX} cy={baseY - 2.5} rx={5.4} ry={4.2} fill="#78716c" />
+        {/* A patch of moss draped over the top. */}
+        <path
+          d={`M ${baseX - 5} ${baseY - 3.5}
+              Q ${baseX} ${baseY - 9} ${baseX + 5} ${baseY - 3.5}
+              Q ${baseX} ${baseY - 6.2} ${baseX - 5} ${baseY - 3.5} Z`}
+          fill="#10b981"
+        />
+        <circle cx={baseX - 2.4} cy={baseY - 4.6} r={1} fill="#34d399" opacity={0.9} />
+        <circle cx={baseX + 2} cy={baseY - 4.8} r={0.9} fill="#34d399" opacity={0.9} />
+        {/* A tiny leaf sprig on a short stem poking up from the moss. */}
+        <path
+          d={`M ${baseX + 0.4} ${baseY - 6.2} l 0.2 -3`}
+          fill="none"
+          stroke="#047857"
+          strokeWidth={0.7}
+          strokeLinecap="round"
+        />
+        <ellipse
+          cx={baseX + 1.8}
+          cy={baseY - 9}
+          rx={1.6}
+          ry={0.8}
+          fill="#34d399"
+          transform={`rotate(-30 ${baseX + 1.8} ${baseY - 9})`}
+        />
+        <ellipse
+          cx={baseX - 0.8}
+          cy={baseY - 8.6}
+          rx={1.4}
+          ry={0.7}
+          fill="#10b981"
+          transform={`rotate(30 ${baseX - 0.8} ${baseY - 8.6})`}
+        />
+        {/* Two dot eyes on the stone. */}
+        <circle cx={baseX - 1.8} cy={baseY - 1.8} r={0.7} fill="#292524" />
+        <circle cx={baseX + 1.8} cy={baseY - 1.8} r={0.7} fill="#292524" />
+      </g>
+    )
+  }
+  if (companion === 'butterfly') {
+    // A small resting butterfly: a slim body with two rounded wings (upper larger) on each side and
+    // tiny antennae — soft and airy.
+    const bodyY = baseY - 5
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* Left wings — a larger upper and a smaller lower. */}
+        <ellipse cx={baseX - 3.4} cy={bodyY - 1.4} rx={3.4} ry={2.6} fill="#a78bfa"
+          transform={`rotate(-18 ${baseX - 3.4} ${bodyY - 1.4})`} />
+        <ellipse cx={baseX - 2.8} cy={bodyY + 2.2} rx={2.2} ry={1.8} fill="#c4b5fd"
+          transform={`rotate(18 ${baseX - 2.8} ${bodyY + 2.2})`} />
+        {/* Right wings — mirror. */}
+        <ellipse cx={baseX + 3.4} cy={bodyY - 1.4} rx={3.4} ry={2.6} fill="#a78bfa"
+          transform={`rotate(18 ${baseX + 3.4} ${bodyY - 1.4})`} />
+        <ellipse cx={baseX + 2.8} cy={bodyY + 2.2} rx={2.2} ry={1.8} fill="#c4b5fd"
+          transform={`rotate(-18 ${baseX + 2.8} ${bodyY + 2.2})`} />
+        {/* Soft pale highlights on the upper wings. */}
+        <circle cx={baseX - 3.6} cy={bodyY - 1.8} r={0.9} fill="#ddd6fe" opacity={0.85} />
+        <circle cx={baseX + 3.6} cy={bodyY - 1.8} r={0.9} fill="#ddd6fe" opacity={0.85} />
+        {/* The slim body. */}
+        <ellipse cx={baseX} cy={bodyY} rx={0.9} ry={3.4} fill="#7c3aed" />
+        {/* Tiny antennae curling up from the head. */}
+        <path
+          d={`M ${baseX - 0.4} ${bodyY - 3.2} q -1.4 -1.8 -2.4 -2.2
+              M ${baseX + 0.4} ${bodyY - 3.2} q 1.4 -1.8 2.4 -2.2`}
+          fill="none"
+          stroke="#7c3aed"
+          strokeWidth={0.6}
+          strokeLinecap="round"
+        />
       </g>
     )
   }
@@ -2944,16 +3523,87 @@ function Mount({ mount, g }: { mount: string; g: number }) {
       </g>
     )
   }
+  if (mount === 'ember_log') {
+    // PATH-EXCLUSIVE tier-2 (Pitta / breath) — a dark smoldering log with a few glowing ember
+    // cracks. A simpler companion to the tier-3 emberstone.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A cast shadow, then the dark charred log the spirit rests on. */}
+        <ellipse cx={cx} cy={cy + 4} rx={17} ry={3.5} fill="#431407" opacity={0.5} />
+        <rect x={cx - 17} y={cy - 3} width={34} height={8} rx={4} fill="#3f2a1d" />
+        <ellipse cx={cx - 17} cy={cy + 1} rx={2.4} ry={4} fill="#292018" />
+        {/* A few glowing ember cracks along the top of the log. */}
+        {[-9, 0, 8].map((dx, k) => (
+          <path
+            key={k}
+            d={`M ${cx + dx} ${cy - 2} l 3 3`}
+            stroke={k % 2 ? '#f97316' : '#fbbf24'}
+            strokeWidth={1.2}
+            strokeLinecap="round"
+            opacity={0.9 * g}
+          />
+        ))}
+      </g>
+    )
+  }
+  if (mount === 'mossy_rock') {
+    // PATH-EXCLUSIVE tier-2 (Kapha / stillness) — a rounded grey stone capped with green moss.
+    // A simpler companion to the tier-3 boulder.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A cast shadow, then a rounded grey stone the spirit settles on. */}
+        <ellipse cx={cx} cy={cy + 4} rx={15} ry={3} fill="#57534e" opacity={0.45} />
+        <path
+          d={`M ${cx - 15} ${cy + 4} q -1 -9 8 -9 q 7 -2 14 0 q 9 0 8 9 z`}
+          fill="#a8a29e"
+          stroke="#78716c"
+          strokeWidth={1}
+        />
+        {/* A cap of green moss over the top of the stone. */}
+        <path d={`M ${cx - 13} ${cy - 3} q 13 -5 26 0 q -6 3 -13 3 q -8 0 -13 -3 z`} fill="#16a34a" />
+        <ellipse cx={cx - 5} cy={cy - 3} rx={3} ry={1.5} fill="#4ade80" opacity={0.9} />
+      </g>
+    )
+  }
+  if (mount === 'drift_leaf') {
+    // PATH-EXCLUSIVE tier-2 (Vata / heart) — a large soft green leaf to rest on. A simpler
+    // companion to the tier-3 feather.
+    return (
+      <g opacity={0.95 * g} aria-hidden="true">
+        {/* A cast shadow, then a broad green leaf with a central vein. */}
+        <ellipse cx={cx} cy={cy + 4} rx={16} ry={3} fill="#166534" opacity={0.4} />
+        <path
+          d={`M ${cx - 18} ${cy} q 18 -9 36 0 q -18 9 -36 0 z`}
+          fill="#4ade80"
+          stroke="#22c55e"
+          strokeWidth={0.8}
+        />
+        <path
+          d={`M ${cx - 16} ${cy} q 16 -2 32 0`}
+          stroke="#15803d"
+          strokeWidth={0.9}
+          fill="none"
+          strokeLinecap="round"
+        />
+      </g>
+    )
+  }
   return null
 }
 
-function Weather({ weather, g }: { weather: string; g: number }) {
+function Weather({ weather, g, pal }: { weather: string; g: number; pal?: BodyPalette }) {
   // An ambient overlay drifting OVER the whole 80×80 scene — the FRONT-MOST layer (drawn after
   // the creature + accessory). Kept light and low-opacity so the figure always reads through it:
   // a scatter of small particles across the field, never a solid sheet. Procedural like the rest
   // of the art (anchored coords, condition factor `g`, aria-hidden, no asset imports).
+  //
+  // HARMONISED: the UNIVERSAL weather types (petals / mist / rain / snow / fireflies) pick up the
+  // spirit's palette so the drift reads in its colour field; the path-exclusive + legendary types
+  // (ember_drift, pollenfall, galeswirl, aurora_storm) already carry their own themed colours and
+  // are left as-is. A pathless spark (no `pal`) keeps every default colour.
   if (weather === 'petals') {
-    // Soft pink cherry petals drifting down across the scene.
+    // Soft petals drifting down across the scene — tinted to the spirit's own hue.
+    const petal = pal ? pal.glow : '#fbcfe8'
     return (
       <g opacity={0.85 * g} aria-hidden="true">
         {Array.from({ length: 9 }, (_, k) => {
@@ -2966,7 +3616,7 @@ function Weather({ weather, g }: { weather: string; g: number }) {
               cy={y}
               rx={1.8}
               ry={1}
-              fill="#fbcfe8"
+              fill={petal}
               opacity={0.7}
               transform={`rotate(${(k * 40) % 360} ${x} ${y})`}
             />
@@ -2976,7 +3626,8 @@ function Weather({ weather, g }: { weather: string; g: number }) {
     )
   }
   if (weather === 'mist') {
-    // A few pale horizontal wisps of mist banding softly across the scene.
+    // A few pale horizontal wisps of mist banding softly across the scene — tinted to the spirit.
+    const wisp = pal ? pal.core : '#e2e8f0'
     return (
       <g opacity={0.7 * g} aria-hidden="true">
         {[18, 34, 50, 64].map((y, k) => (
@@ -2986,7 +3637,7 @@ function Weather({ weather, g }: { weather: string; g: number }) {
             cy={y}
             rx={26}
             ry={2.6}
-            fill="#e2e8f0"
+            fill={wisp}
             opacity={0.32}
           />
         ))}
@@ -2994,7 +3645,8 @@ function Weather({ weather, g }: { weather: string; g: number }) {
     )
   }
   if (weather === 'rain') {
-    // Thin slanted rain streaks falling across the scene.
+    // Thin slanted rain streaks falling across the scene — tinted to the spirit's hue.
+    const streak = pal ? pal.glow : '#93c5fd'
     return (
       <g opacity={0.8 * g} aria-hidden="true">
         {Array.from({ length: 11 }, (_, k) => {
@@ -3007,7 +3659,7 @@ function Weather({ weather, g }: { weather: string; g: number }) {
               y1={y}
               x2={x - 2}
               y2={y + 5}
-              stroke="#93c5fd"
+              stroke={streak}
               strokeWidth={0.8}
               strokeLinecap="round"
               opacity={0.6}
@@ -3039,20 +3691,25 @@ function Weather({ weather, g }: { weather: string; g: number }) {
     )
   }
   if (weather === 'snow') {
-    // Soft white snowflakes drifting down — gentle dots of varied size across the scene.
+    // Soft snowflakes drifting down — gentle dots of varied size, tinted to the spirit's pale hue.
+    const flake = pal ? pal.core : '#f8fafc'
     return (
       <g opacity={0.9 * g} aria-hidden="true">
         {Array.from({ length: 12 }, (_, k) => {
           const x = 6 + ((k * 17) % 68)
           const y = 6 + ((k * 29) % 60)
           const r = 0.8 + (k % 3) * 0.4
-          return <circle key={k} cx={x} cy={y} r={r} fill="#f8fafc" opacity={0.85} />
+          return <circle key={k} cx={x} cy={y} r={r} fill={flake} opacity={0.85} />
         })}
       </g>
     )
   }
   if (weather === 'fireflies') {
-    // Warm fireflies drifting over the scene — each a soft halo around a bright core.
+    // Fireflies drifting over the scene — each a soft halo around a bright core, cast in the
+    // spirit's own light.
+    const m = pal
+      ? { halo: pal.glow, core: pal.glow, gleam: pal.core }
+      : { halo: '#fde68a', core: '#fef08a', gleam: '#fffbeb' }
     return (
       <g opacity={0.9 * g} aria-hidden="true">
         {Array.from({ length: 7 }, (_, k) => {
@@ -3060,9 +3717,9 @@ function Weather({ weather, g }: { weather: string; g: number }) {
           const y = 10 + ((k * 26) % 52)
           return (
             <g key={k}>
-              <circle cx={x} cy={y} r={3} fill="#fde68a" opacity={0.18} />
-              <circle cx={x} cy={y} r={1.2} fill="#fef08a" opacity={0.9} />
-              <circle cx={x - 0.3} cy={y - 0.3} r={0.5} fill="#fffbeb" opacity={0.95} />
+              <circle cx={x} cy={y} r={3} fill={m.halo} opacity={0.18} />
+              <circle cx={x} cy={y} r={1.2} fill={m.core} opacity={0.9} />
+              <circle cx={x - 0.3} cy={y - 0.3} r={0.5} fill={m.gleam} opacity={0.95} />
             </g>
           )
         })}
@@ -3170,6 +3827,65 @@ function Weather({ weather, g }: { weather: string; g: number }) {
               cy={y}
               r={k % 3 === 0 ? 1.1 : 0.6}
               fill={k % 2 ? '#f0fdfa' : '#f5f3ff'}
+              opacity={0.85}
+            />
+          )
+        })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE tier-2 (Pitta / breath) — a few wavy warm shimmer lines rising over the scene,
+  // fixed FIRE colours (only ever shown on the matching dosha). Simpler than the tier-3 ember_drift.
+  if (weather === 'heat_shimmer') {
+    return (
+      <g opacity={0.7 * g} aria-hidden="true">
+        {Array.from({ length: 4 }, (_, k) => {
+          const x = 14 + ((k * 19) % 52)
+          const y = 20 + ((k * 23) % 40)
+          return (
+            <path
+              key={k}
+              d={`M ${x} ${y} q 3 -5 0 -10 q -3 -5 0 -10`}
+              stroke="#fdba74"
+              strokeWidth={0.9}
+              fill="none"
+              strokeLinecap="round"
+              opacity={0.7}
+            />
+          )
+        })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE tier-2 (Kapha / stillness) — small pale teal-green dew motes drifting down on
+  // fixed DEW colours (only ever shown on the matching dosha). Simpler than the tier-3 pollenfall.
+  if (weather === 'dewdrift') {
+    return (
+      <g opacity={0.8 * g} aria-hidden="true">
+        {Array.from({ length: 10 }, (_, k) => {
+          const x = 7 + ((k * 21) % 66)
+          const y = 8 + ((k * 27) % 58)
+          const r = 0.7 + (k % 3) * 0.3
+          return <circle key={k} cx={x} cy={y} r={r} fill="#99f6e4" opacity={0.8} />
+        })}
+      </g>
+    )
+  }
+  // PATH-EXCLUSIVE tier-2 (Vata / heart) — small soft pale feathers drifting on fixed AIR colours
+  // (only ever shown on the matching dosha). Simpler than the tier-3 galeswirl.
+  if (weather === 'featherfall') {
+    return (
+      <g opacity={0.75 * g} aria-hidden="true">
+        {Array.from({ length: 6 }, (_, k) => {
+          const x = 9 + ((k * 23) % 58)
+          const y = 10 + ((k * 29) % 54)
+          return (
+            <path
+              key={k}
+              d={`M ${x} ${y} q 5 -3 9 -1 q -4 3 -9 1 z`}
+              fill="#f0f9ff"
+              stroke="#dbeafe"
+              strokeWidth={0.5}
               opacity={0.85}
             />
           )
@@ -3427,6 +4143,44 @@ function Ground({ ground, g }: { ground: string; g: number }) {
           />
         ))}
         <circle cx={mcx} cy={my} r={1.4} fill="#fffbeb" />
+      </g>
+    )
+  }
+  if (ground === 'ember_sand') {
+    // PATH-EXCLUSIVE tier-2 (Pitta / breath) — a warm sand strip with a few glowing ember flecks.
+    // A simpler companion to the tier-3 emberbed.
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        <rect x={2} y={top} width={76} height={6} rx={2} fill="#c2612c" opacity={0.5} />
+        {Array.from({ length: 7 }, (_, k) => {
+          const x = 8 + k * 10
+          const y = top + 2 + (k % 2)
+          return <circle key={k} cx={x} cy={y} r={0.9} fill={k % 2 ? '#fb923c' : '#fbbf24'} opacity={0.9} />
+        })}
+      </g>
+    )
+  }
+  if (ground === 'mossbed') {
+    // PATH-EXCLUSIVE tier-2 (Kapha / stillness) — a soft green moss strip with tiny tufts. A
+    // simpler companion to the tier-3 stonegarden.
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        <rect x={2} y={top} width={76} height={6} rx={2} fill="#16a34a" opacity={0.45} />
+        {Array.from({ length: 9 }, (_, k) => (
+          <ellipse key={k} cx={7 + k * 8.4} cy={top} rx={2.2} ry={1.3} fill="#4ade80" opacity={0.8} />
+        ))}
+      </g>
+    )
+  }
+  if (ground === 'cloudtuft') {
+    // PATH-EXCLUSIVE tier-2 (Vata / heart) — a wispy pale cloud strip. A simpler companion to the
+    // tier-3 cloudfloor.
+    return (
+      <g opacity={0.9 * g} aria-hidden="true">
+        <rect x={2} y={top + 2} width={76} height={4} rx={2} fill="#dbeafe" opacity={0.5} />
+        {[12, 28, 44, 60, 72].map((x, k) => (
+          <ellipse key={k} cx={x} cy={top + 1} rx={5 + (k % 2)} ry={2.6} fill="#f8fafc" opacity={0.85} />
+        ))}
       </g>
     )
   }
@@ -5108,7 +5862,13 @@ export function SpiritArt({
           the background does not drift with the creature (ADR-0023). The aura glows up/down on
           its own `spirit-aura-glow` keyframe, independent of the creature's float. For a pathless
           spark the SparkForm carries its own halo, so no separate aura layer is drawn. */}
-      {habitat && <Habitat habitat={habitat} g={g} />}
+      {habitat && (
+        <>
+          <Habitat habitat={habitat} g={g} />
+          {/* A faint palette wash over the backdrop so the scene reads in the spirit's colour. */}
+          <SceneWash pal={pal} g={g} x={4} y={6} width={72} height={68} rx={10} strength={0.1} />
+        </>
+      )}
       {path && (
         <g className={auraClass}>
           <Aura path={path} p={stageProgress(stage)} g={g} aura={aura} />
@@ -5120,16 +5880,28 @@ export function SpiritArt({
           creature's float and the aura's glow), held still under reduced motion. */}
       {companion && (
         <g className={companionClass}>
-          <Companion companion={companion} g={g} />
+          <BelongingGlow cx={12} cy={68} r={9} pal={pal} g={g} />
+          <Companion companion={companion} g={g} pal={pal} path={path} />
         </g>
       )}
       {/* The mount sits centered and low in the static background band, UNDER the creature, so
           the figure appears to rest on / ride it without floating away with it or being hidden. */}
-      {mount && <Mount mount={mount} g={g} />}
+      {mount && (
+        <>
+          <BelongingGlow cx={40} cy={70} r={12} pal={pal} g={g} />
+          <Mount mount={mount} g={g} />
+        </>
+      )}
       {/* The ground is a FOREGROUND base strip along the very bottom — drawn in FRONT of the
           habitat/mount so it reads as the floor the figure rests on (but still behind the
           creature, which stands on it). */}
-      {ground && <Ground ground={ground} g={g} />}
+      {ground && (
+        <>
+          <Ground ground={ground} g={g} />
+          {/* A faint palette wash over the floor strip so it reads in the spirit's colour. */}
+          <SceneWash pal={pal} g={g} x={4} y={64} width={72} height={14} rx={6} strength={0.12} />
+        </>
+      )}
       {/* ── SIGNATURE RADIANCE (ADR-0028) ── when the full signature set is equipped, an extra
           subtle halo + sparkle ring blooms behind the figure (over the background, under the
           creature). */}
@@ -5156,13 +5928,18 @@ export function SpiritArt({
           ) : (
             <SparkForm g={g} />
           )}
-          {accessory && <Accessory accessory={accessory} g={g} />}
+          {accessory && (
+            <>
+              <BelongingGlow cx={40} cy={24} r={11} pal={pal} g={g} />
+              <Accessory accessory={accessory} g={g} pal={pal} path={path} />
+            </>
+          )}
         </g>
       </g>
       {/* The weather is the FRONT-MOST overlay — drawn after everything (incl. the accessory) so
           its light particles drift OVER the whole scene. Kept subtle so it never obscures the
           figure. */}
-      {weather && <Weather weather={weather} g={g} />}
+      {weather && <Weather weather={weather} g={g} pal={pal} />}
     </svg>
   )
 }

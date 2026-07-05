@@ -5,6 +5,7 @@ import {
   saveSoundscapePref,
   type SoundscapeName,
 } from '../lib/soundscapes'
+import { useT } from '../i18n'
 
 interface Props {
   value: SoundscapeName
@@ -38,6 +39,7 @@ export default function SoundscapePicker({
   previewEngineRef,
   previewEnabled = true,
 }: Props) {
+  const { t } = useT()
   // Latest volume in a ref so a fresh preview starts at the current level without
   // re-running effects on every slider tick.
   const volumeRef = useRef(volume)
@@ -69,7 +71,7 @@ export default function SoundscapePicker({
 
   return (
     <div className="soundscape-picker">
-      <div className="soundscape-chips" role="group" aria-label="Ambient soundscape">
+      <div className="soundscape-chips" role="group" aria-label={t('practice.soundscape.group')}>
         {SOUNDSCAPES.map((s) => (
           <button
             key={s.value}
@@ -93,7 +95,7 @@ export default function SoundscapePicker({
           step="0.05"
           value={volume}
           disabled={disabled}
-          aria-label="Soundscape volume"
+          aria-label={t('practice.soundscape.volume')}
           onChange={(e) => handleVolume(Number(e.target.value))}
         />
       )}

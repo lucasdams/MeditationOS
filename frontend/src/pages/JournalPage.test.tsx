@@ -78,9 +78,9 @@ describe('JournalPage — contextual prompt', () => {
 
     renderPage()
 
-    // The nudge still renders (the local daily prompt) — the "Need a nudge?" label is
+    // The prompt still renders (the local daily prompt) — the "Writing prompt" label is
     // always present when a prompt is shown, and the shuffle affordance is available.
-    expect(await screen.findByText(/need a nudge\?/i)).toBeInTheDocument()
+    expect(await screen.findByText(/writing prompt/i)).toBeInTheDocument()
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: /show another prompt/i }),

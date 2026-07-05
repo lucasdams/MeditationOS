@@ -952,8 +952,10 @@ describe('Spirit — new cosmetics render on the art', () => {
   })
 
   it('draws the tiara accessory (gold band + gem dots)', () => {
+    // Rendered on a pathless spark: with no palette the tiara keeps its default gold band (a path'd
+    // spirit harmonises the metal band to its own palette accent — verified separately).
     const { container } = renderSpirit(
-      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'tiara' } })} />,
+      <Spirit spirit={spiritState({ path: null, cosmetics: { accessory: 'tiara' } })} />,
     )
     // The gold band is a stroked path (#fcd34d); the center gem a pink circle (#f472b6).
     expect(container.querySelector('.spirit-svg path[stroke="#fcd34d"]')).not.toBeNull()
@@ -992,16 +994,18 @@ describe('Spirit — weather + ground slots render on the art', () => {
   // The two new cosmetic slots draw their signature element. Weather is the front-most drifting
   // overlay; ground is a foreground base strip along the bottom. Each must reach the SVG.
   it('draws the petals weather overlay (drifting pink petals)', () => {
+    // Pathless spark → default petal colour (a path'd spirit tints the drift to its own palette).
     const { container } = renderSpirit(
-      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { weather: 'petals' } })} />,
+      <Spirit spirit={spiritState({ path: null, cosmetics: { weather: 'petals' } })} />,
     )
     // Petals are pink ellipses (#fbcfe8).
     expect(container.querySelector('.spirit-svg ellipse[fill="#fbcfe8"]')).not.toBeNull()
   })
 
   it('draws the rain weather overlay (slanted blue streaks)', () => {
+    // Pathless spark → default rain colour (a path'd spirit tints the streaks to its own palette).
     const { container } = renderSpirit(
-      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { weather: 'rain' } })} />,
+      <Spirit spirit={spiritState({ path: null, cosmetics: { weather: 'rain' } })} />,
     )
     // Rain streaks are blue stroked lines (#93c5fd).
     expect(container.querySelector('.spirit-svg line[stroke="#93c5fd"]')).not.toBeNull()

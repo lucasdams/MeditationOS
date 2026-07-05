@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { authService } from '../services/auth'
 import { useAuth } from '../context/AuthContext'
+import { useT } from '../i18n'
 
 export default function VerifyEmailBanner() {
   const { user } = useAuth()
+  const { t } = useT()
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   // Nothing to show once the email is confirmed (or before we know the user).
@@ -22,17 +24,17 @@ export default function VerifyEmailBanner() {
   return (
     <div className="verify-banner" role="status">
       <span>
-        Please verify your email ({user.email}) to secure your account.
+        {t('auth.verifyBanner.please', { email: user.email })}
       </span>
       {state === 'sent' ? (
-        <span className="verify-banner-note">Sent — check your inbox.</span>
+        <span className="verify-banner-note">{t('auth.verify.resent')}</span>
       ) : (
         <button type="button" onClick={resend} disabled={state === 'sending'}>
-          {state === 'sending' ? 'Sending…' : 'Resend link'}
+          {state === 'sending' ? t('auth.verify.resending') : t('auth.verifyBanner.resend')}
         </button>
       )}
       {state === 'error' && (
-        <span className="verify-banner-note">Couldn’t send — try again shortly.</span>
+        <span className="verify-banner-note">{t('auth.verifyBanner.error')}</span>
       )}
     </div>
   )

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { useT } from '../i18n'
 
 // First-run activation flow, shown by ProtectedRoute while quest_features is null (i.e. only
 // for genuinely new users). Beginner-first (docs/beginner-first-revision.md §5): a single warm
@@ -20,36 +21,36 @@ import { messageForError } from '../lib/errors'
 const INTENTS = [
   {
     key: 'calm',
-    label: 'Calm',
-    sub: 'Stress relief',
+    labelKey: 'auth.onboarding.intent.calm.label',
+    subKey: 'auth.onboarding.intent.calm.sub',
     Icon: Waves,
     quests: ['breathe', 'gratitude', 'journal'],
   },
   {
     key: 'focus',
-    label: 'Focus',
-    sub: 'Clarity & attention',
+    labelKey: 'auth.onboarding.intent.focus.label',
+    subKey: 'auth.onboarding.intent.focus.sub',
     Icon: Target,
     quests: ['meditate', 'breathe', 'journal'],
   },
   {
     key: 'sleep',
-    label: 'Better sleep',
-    sub: 'Wind down & rest',
+    labelKey: 'auth.onboarding.intent.sleep.label',
+    subKey: 'auth.onboarding.intent.sleep.sub',
     Icon: Moon,
     quests: ['breathe', 'gratitude', 'meditate'],
   },
   {
     key: 'curious',
-    label: 'Just curious',
-    sub: 'Exploring',
+    labelKey: 'auth.onboarding.intent.curious.label',
+    subKey: 'auth.onboarding.intent.curious.sub',
     Icon: Compass,
     quests: ['breathe', 'gratitude', 'journal'],
   },
 ] as const satisfies readonly {
   key: string
-  label: string
-  sub: string
+  labelKey: string
+  subKey: string
   Icon: ComponentType<LucideProps>
   quests: string[]
 }[]
@@ -61,6 +62,7 @@ type IntentKey = (typeof INTENTS)[number]['key']
 const FIRST_SIT_BPM = '6'
 
 export default function Onboarding() {
+  const { t } = useT()
   const { refresh } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
@@ -96,13 +98,12 @@ export default function Onboarding() {
   return (
     <main className="auth-card onboarding">
       <AuthBrand />
-      <h1>Welcome</h1>
+      <h1>{t('auth.onboarding.title')}</h1>
       <p className="muted">
-        One gentle question, then we’ll take a slow minute together. No pressure — you can change
-        anything later in Settings.
+        {t('auth.onboarding.intro')}
       </p>
-      <h2 className="onboarding-question">What brings you here?</h2>
-      <div className="onboarding-options" role="group" aria-label="What brings you here?">
+      <h2 className="onboarding-question">{t('auth.onboarding.question')}</h2>
+      <div className="onboarding-options" role="group" aria-label={t('auth.onboarding.question')}>
         {INTENTS.map((i) => (
           <button
             key={i.key}
@@ -116,8 +117,8 @@ export default function Onboarding() {
               <i.Icon size={22} strokeWidth={1.75} />
             </span>{' '}
             <span className="onboarding-choice-body">
-              <span className="onboarding-choice-label">{i.label}</span>
-              <span className="onboarding-choice-sub muted">{i.sub}</span>
+              <span className="onboarding-choice-label">{t(i.labelKey)}</span>
+              <span className="onboarding-choice-sub muted">{t(i.subKey)}</span>
             </span>
           </button>
         ))}

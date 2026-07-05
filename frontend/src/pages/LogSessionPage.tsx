@@ -12,6 +12,7 @@ import { ErrorBanner } from '../components/StateViews'
 import { newClientToken } from '../lib/sessionDraft'
 import { toDatetimeLocal } from '../lib/format'
 import { dailySuggestion } from '../lib/intentionPrompts'
+import { useT } from '../i18n'
 import type { DashboardStats, MeditationType } from '../types'
 
 // Pre-session intention cap — mirrors the backend (INTENTION_MAX_LENGTH = 140).
@@ -26,16 +27,17 @@ const ZERO_STATS: DashboardStats = {
 }
 
 // The meditation style picker was dropped; only the structural meditation-vs-breathing
-// distinction remains, so a past breathing session can still be logged here.
+// distinction remains, so a past breathing session can still be logged here. Labels are
+// i18n keys resolved at render time so the picker re-labels live on a locale switch.
 const TYPES: {
   value: MeditationType
-  label: string
+  labelKey: string
   Icon: ComponentType<LucideProps>
   tint: string
 }[] = [
-  { value: 'mindfulness', label: 'Meditation', Icon: Brain, tint: '#ccfbf1' },
-  { value: 'resonance_breathing', label: 'Breathing', Icon: Wind, tint: '#e0f2fe' },
-  { value: 'energizing_breathing', label: 'Energizing breath', Icon: Sun, tint: '#fef3c7' },
+  { value: 'mindfulness', labelKey: 'tracking.logSession.type.meditation', Icon: Brain, tint: '#ccfbf1' },
+  { value: 'resonance_breathing', labelKey: 'tracking.logSession.type.breathing', Icon: Wind, tint: '#e0f2fe' },
+  { value: 'energizing_breathing', labelKey: 'tracking.logSession.type.energizing', Icon: Sun, tint: '#fef3c7' },
 ]
 
 // Quick-pick durations (minutes). A "Custom" option appears after these chips.
@@ -45,6 +47,7 @@ const DURATION_CHIPS = [5, 10, 15, 20, 30, 45, 60]
 const nowLocal = () => toDatetimeLocal(new Date())
 
 export default function LogSessionPage() {
+  const { t } = useT()
   const navigate = useNavigate()
   const [type, setType] = useState<MeditationType>('mindfulness')
   const [minutes, setMinutes] = useState('10')
@@ -88,11 +91,11 @@ export default function LogSessionPage() {
 
     const mins = Number(minutes)
     if (!Number.isFinite(mins) || mins <= 0) {
-      setError('Duration must be a positive number of minutes.')
+      setError(t('tracking.logSession.durationError'))
       return
     }
     if (!occurredAt) {
-      setError('Please choose a date and time.')
+      setError(t('tracking.logSession.dateError'))
       return
     }
 
@@ -122,7 +125,7 @@ export default function LogSessionPage() {
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? "Couldn't save the session. Try again."
+          ? t('tracking.logSession.saveError')
           : messageForError(err),
       )
       setSubmitting(false)
@@ -137,7 +140,7 @@ export default function LogSessionPage() {
     const bd = buildXpBreakdown(
       before,
       after,
-      isBreath ? 'Breathing' : 'Meditation',
+      isBreath ? t('tracking.logSession.type.breathing') : t('tracking.logSession.type.meditation'),
       isBreath ? Wind : Brain,
     )
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
@@ -146,43 +149,43 @@ export default function LogSessionPage() {
 
   return (
     <main id="main-content" className="dashboard log-session">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
       <header className="page-head">
-        <h1>Log a session</h1>
+        <h1>{t('tracking.logSession.title')}</h1>
         <p className="page-subtitle">
-          Record a meditation or breathing sit you did away from the app.
+          {t('tracking.logSession.subtitle')}
         </p>
       </header>
 
       <form onSubmit={handleSubmit} noValidate>
         {/* Practice type — pattern-card style matching how Breathe presents choices */}
-        <label>Practice</label>
-        <div className="pattern-cards" role="group" aria-label="Practice type">
-          {TYPES.map((t) => (
+        <label>{t('tracking.logSession.practice')}</label>
+        <div className="pattern-cards" role="group" aria-label={t('tracking.logSession.practiceTypeAria')}>
+          {TYPES.map((opt) => (
             <button
-              key={t.value}
+              key={opt.value}
               type="button"
-              className={`selectable pattern-card${type === t.value ? ' selected' : ''}`}
-              aria-pressed={type === t.value}
-              onClick={() => setType(t.value)}
+              className={`selectable pattern-card${type === opt.value ? ' selected' : ''}`}
+              aria-pressed={type === opt.value}
+              onClick={() => setType(opt.value)}
             >
               <span
                 className="pattern-card-icon"
-                style={{ background: t.tint }}
+                style={{ background: opt.tint }}
                 aria-hidden="true"
               >
-                <t.Icon size={20} strokeWidth={1.75} />
+                <opt.Icon size={20} strokeWidth={1.75} />
               </span>
               <span className="pattern-card-body">
-                <span className="pattern-card-name">{t.label}</span>
+                <span className="pattern-card-name">{t(opt.labelKey)}</span>
               </span>
             </button>
           ))}
         </div>
 
         {/* Duration — quick-pick chips + optional custom number input */}
-        <label>Duration (minutes)</label>
-        <div className="log-session-duration-chips" role="group" aria-label="Duration in minutes">
+        <label>{t('tracking.logSession.duration')}</label>
+        <div className="log-session-duration-chips" role="group" aria-label={t('tracking.logSession.durationAria')}>
           {DURATION_CHIPS.map((min) => (
             <button
               key={min}
@@ -203,7 +206,7 @@ export default function LogSessionPage() {
               setMinutes('')
             }}
           >
-            Custom
+            {t('tracking.logSession.custom')}
           </button>
         </div>
         {isCustom && (
@@ -211,8 +214,8 @@ export default function LogSessionPage() {
             id="minutes"
             type="number"
             min="1"
-            placeholder="e.g. 25"
-            aria-label="Custom duration in minutes"
+            placeholder={t('tracking.logSession.customPlaceholder')}
+            aria-label={t('tracking.logSession.customAria')}
             value={customMinutes}
             onChange={(e) => handleCustomMinutes(e.target.value)}
             style={{ marginTop: '0.35rem' }}
@@ -220,17 +223,21 @@ export default function LogSessionPage() {
         )}
 
         {/* Date & time */}
-        <label htmlFor="occurred">Date &amp; time</label>
+        <label htmlFor="occurred">{t('tracking.logSession.dateTime')}</label>
         <input
           id="occurred"
           type="datetime-local"
           value={occurredAt}
+          aria-describedby="occurred-hint"
           onChange={(e) => setOccurredAt(e.target.value)}
         />
+        <p id="occurred-hint" className="field-time-hint muted">
+          {t('tracking.logSession.yourLocalTime')}
+        </p>
 
         {/* Pre-session intention — optional; trimmed and omitted when blank. */}
         <label htmlFor="intention" className="session-intention-label">
-          Intention <span className="session-intention-opt">(optional)</span>
+          {t('tracking.logSession.intention')} <span className="session-intention-opt">{t('tracking.logSession.optional')}</span>
         </label>
         <textarea
           id="intention"
@@ -246,28 +253,28 @@ export default function LogSessionPage() {
         </p>
 
         {/* Focus rating — inline 1–5 buttons instead of a dropdown */}
-        <label>Focus (optional)</label>
-        <RatingChips ariaLabel="Focus rating" value={focus} onChange={setFocus} />
+        <label>{t('tracking.logSession.focus')}</label>
+        <RatingChips ariaLabel={t('tracking.logSession.focusRatingAria')} value={focus} onChange={setFocus} />
 
         {/* Calm rating — inline 1–5 buttons instead of a dropdown */}
-        <label>Calm (optional)</label>
-        <RatingChips ariaLabel="Calm rating" value={calm} onChange={setCalm} />
+        <label>{t('tracking.logSession.calm')}</label>
+        <RatingChips ariaLabel={t('tracking.logSession.calmRatingAria')} value={calm} onChange={setCalm} />
 
         {/* Notes */}
-        <label htmlFor="notes">Notes (optional)</label>
+        <label htmlFor="notes">{t('tracking.logSession.notes')}</label>
         <textarea
           id="notes"
           value={notes}
           rows={3}
           maxLength={2000}
-          placeholder="Anything notable about this sit…"
+          placeholder={t('tracking.logSession.notesPlaceholder')}
           onChange={(e) => setNotes(e.target.value)}
         />
 
         <ErrorBanner message={error} />
 
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving…' : 'Save session'}
+          {submitting ? t('common.saving') : t('tracking.logSession.save')}
         </button>
       </form>
 

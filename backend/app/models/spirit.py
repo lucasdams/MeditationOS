@@ -70,17 +70,6 @@ class Spirit(Base):
     coins_spent: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
-    # Last time a cosmetic was UNLOCKED for this spirit (ADR-0025). It once added a decaying,
-    # visual-only "pamper" needs boost; ADR-0029 REMOVED that effect (cosmetics are purely cosmetic
-    # now). Still STAMPED on unlock for forward-compat, but nothing reads it. Kept (not dropped) to
-    # avoid a needless migration. NULL = never unlocked a cosmetic.
-    last_pampered_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    # The need the LAST-unlocked cosmetic FAVOURS (ADR-0026): nourished | rested | joyful. Set
-    # alongside `last_pampered_at` on every unlock. Like `last_pampered_at`, its needs effect was
-    # removed by ADR-0029 — stamped for forward-compat only, read by nothing. Kept, not dropped.
-    last_pampered_need: Mapped[str | None] = mapped_column(Text, nullable=True)
     awakened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

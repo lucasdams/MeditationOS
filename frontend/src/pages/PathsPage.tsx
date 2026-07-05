@@ -6,6 +6,7 @@ import { pathDayHref } from '../lib/pathRoutes'
 import { ACTIVITY_META, type Activity } from '../lib/colors'
 import { Loading, RetryableError, EmptyState, ErrorBanner } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { t as translate, useT } from '../i18n'
 import type { PathDay, PathSummary } from '../types'
 
 // Paths — short, multi-day guided courses (beginner-first revision §8). A warm, never-punishing
@@ -16,15 +17,18 @@ import type { PathDay, PathSummary } from '../types'
 // "Day N" prefix for a path day's title. The backend titles may already read "Day 3 · …" or just
 // the bare title; we always show the index so the list stays scannable either way.
 function dayLabel(day: PathDay): string {
-  return `Day ${day.index}`
+  return translate('paths.dayLabel', { index: day.index })
 }
 
 // A short, warm progress line under a path's blurb. Tailored to the path's state so the copy is
 // always encouraging — never a "you're behind" framing.
 function progressLine(path: PathSummary): string {
-  if (path.completed) return `Complete · all ${path.total_days} days`
-  if (!path.enrolled) return `${path.total_days} days · a gentle place to begin`
-  return `Day ${path.current_day ?? 1} of ${path.total_days} · pick up where you left off`
+  if (path.completed) return translate('paths.progress.completed', { total: path.total_days })
+  if (!path.enrolled) return translate('paths.progress.notEnrolled', { total: path.total_days })
+  return translate('paths.progress.enrolled', {
+    current: path.current_day ?? 1,
+    total: path.total_days,
+  })
 }
 
 // One enrolled day as a list row. The current day is the only actionable one here — it carries
@@ -33,7 +37,7 @@ function progressLine(path: PathSummary): string {
 function PathDayRow({ day }: { day: PathDay }) {
   const meta = ACTIVITY_META[day.practice as Activity]
   const PracticeIcon = meta.icon
-  const minutes = `${day.min_minutes} min`
+  const minutes = translate('common.min', { count: day.min_minutes })
 
   return (
     <li className={`path-day path-day--${day.status}`}>
@@ -56,9 +60,9 @@ function PathDayRow({ day }: { day: PathDay }) {
             <Link
               to={pathDayHref(day)}
               className="path-day-start today-action"
-              aria-label={`Start ${dayLabel(day)}: ${day.title}`}
+              aria-label={translate('paths.dayStartAria', { day: dayLabel(day), title: day.title })}
             >
-              Start
+              {translate('paths.dayStart')}
               <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
             </Link>
           </>
@@ -106,12 +110,12 @@ function PathCard({
         className="path-card path-card--start"
         onClick={() => onEnroll(path.id)}
         disabled={enrolling}
-        aria-label={`Start ${path.title}`}
+        aria-label={translate('paths.cardStartAria', { title: path.title })}
       >
         {head}
         <span className="path-card-go" aria-hidden="true">
           {enrolling ? (
-            <span className="path-card-starting">Starting…</span>
+            <span className="path-card-starting">{translate('paths.starting')}</span>
           ) : (
             <ChevronRight size={18} strokeWidth={2} />
           )}
@@ -128,11 +132,11 @@ function PathCard({
       {/* Warm re-entry for an enrolled, unfinished path — never "you missed days". */}
       {!path.completed && (
         <p className="path-welcome muted">
-          Welcome back — you're on Day {path.current_day ?? 1}.
+          {translate('paths.welcomeBack', { current: path.current_day ?? 1 })}
         </p>
       )}
       {path.completed && (
-        <p className="path-complete">You've finished this path. Beautifully done.</p>
+        <p className="path-complete">{translate('paths.finished')}</p>
       )}
       <ol className="path-days">
         {path.days.map((day) => (
@@ -144,6 +148,7 @@ function PathCard({
 }
 
 export default function PathsPage() {
+  const { t } = useT()
   const [paths, setPaths] = useState<PathSummary[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -160,7 +165,7 @@ export default function PathsPage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (!ignored?.()) setLoadError(messageForError(err, "Couldn't load the paths."))
+        if (!ignored?.()) setLoadError(messageForError(err, t('paths.loadError')))
       })
       .finally(() => {
         if (!ignored?.()) setRetrying(false)
@@ -192,30 +197,27 @@ export default function PathsPage() {
           cur ? cur.map((p) => (p.id === enrolled.id ? enrolled : p)) : [enrolled],
         )
       })
-      .catch((err) => setEnrollError(messageForError(err, "Couldn't start the path. Try again.")))
+      .catch((err) => setEnrollError(messageForError(err, t('paths.enrollError'))))
       .finally(() => setEnrollingId(null))
   }
 
   return (
     <main id="main-content" className="paths-page">
       <Link to="/practices" className="back-link">
-        ← All practices
+        {t('paths.back')}
       </Link>
       <header className="page-head">
-        <h1>Paths</h1>
-        <p className="page-subtitle">
-          A short, day-by-day course to settle into a practice. Go at your own pace — a missed day
-          is never a problem.
-        </p>
+        <h1>{t('paths.title')}</h1>
+        <p className="page-subtitle">{t('paths.subtitle')}</p>
       </header>
 
       <RetryableError message={loadError} onRetry={retry} retrying={retrying} />
       <ErrorBanner message={enrollError} />
 
-      {!paths && !loadError && <Loading label="Gathering the paths…" />}
+      {!paths && !loadError && <Loading label={t('paths.loading')} />}
 
       {paths && paths.length === 0 && !loadError && (
-        <EmptyState>No paths yet — gentle courses are on the way.</EmptyState>
+        <EmptyState>{t('paths.empty')}</EmptyState>
       )}
 
       {paths && paths.length > 0 && (

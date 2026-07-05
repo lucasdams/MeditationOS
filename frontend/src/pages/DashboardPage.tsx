@@ -9,6 +9,7 @@ import { pathDayHref } from '../lib/pathRoutes'
 import LevelCard from '../components/LevelCard'
 import Spirit from '../components/Spirit'
 import EncouragementNote from '../components/EncouragementNote'
+import DailyReading from '../components/DailyReading'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import GraduationCard, {
   shouldShowGraduation,
@@ -24,6 +25,7 @@ import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
 import { recommendedPractice } from '../lib/recommendation'
 import { roundOutFacet } from '../lib/spiritNeeds'
+import { useT } from '../i18n'
 import type { DashboardStats, Mood, PathSummary, SpiritState } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
@@ -38,17 +40,19 @@ const QUEST_LINKS: Record<string, string> = {
 // counts vs not), so a terse label like "Breathe for 5+ minutes" isn't ambiguous. Note the
 // meditate/breathe split: meditation quests don't count breathing (it has its own), and any
 // breathing pattern (incl. alternate-nostril / energizing) counts toward the breathe quests.
+// Values are i18n catalog keys ('home.quests.detail.<variant>'); the copy lives in the locale
+// files and is resolved with t() at render time so it re-labels live on a language switch.
 const QUEST_DETAIL: Record<string, string> = {
-  meditate: 'Any non-breathing meditation, 1 min+',
-  long_sit: 'One meditation sit of 10 min+',
-  double_sit: 'Two separate meditation sits today',
-  breathe: 'Any breathing pattern, 1 min+',
-  deep_breathe: '5 min+ of breathing in total today',
-  slow_breathe: 'Breathing at 5 breaths/min or slower',
-  gratitude: 'One gratitude note',
-  gratitude_three: 'Three gratitude notes today',
-  journal: 'One journal entry',
-  mood_journal: 'A journal entry with a mood set',
+  meditate: 'home.quests.detail.meditate',
+  long_sit: 'home.quests.detail.long_sit',
+  double_sit: 'home.quests.detail.double_sit',
+  breathe: 'home.quests.detail.breathe',
+  deep_breathe: 'home.quests.detail.deep_breathe',
+  slow_breathe: 'home.quests.detail.slow_breathe',
+  gratitude: 'home.quests.detail.gratitude',
+  gratitude_three: 'home.quests.detail.gratitude_three',
+  journal: 'home.quests.detail.journal',
+  mood_journal: 'home.quests.detail.mood_journal',
 }
 
 // Quick-action tiles — one tap to the four main practices from the dashboard. A quiet,
@@ -63,6 +67,7 @@ const FEATURE_TILES = [
 ] as const
 
 export default function DashboardPage() {
+  const { t } = useT()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -108,7 +113,7 @@ export default function DashboardPage() {
         setStats(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, "Couldn't load your stats.")))
+      .catch((err) => setError(messageForError(err, t('home.error.stats'))))
       .finally(() => setRetrying(false))
   }
 
@@ -159,7 +164,7 @@ export default function DashboardPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <h1>Your practice</h1>
+      <h1>{t('home.title')}</h1>
       <p className="zen-greeting muted">{greeting}</p>
 
       <RetryableError message={error} onRetry={retryStats} retrying={retrying} />
@@ -188,7 +193,7 @@ export default function DashboardPage() {
           companion + the single primary action + gentle nudges; "Progress" holds the heavier
           level/weekly-review detail. Shown only once stats have loaded. */}
       {stats && (
-        <nav className="dashboard-tabs" role="tablist" aria-label="Home sections">
+        <nav className="dashboard-tabs" role="tablist" aria-label={t('home.sections.aria')}>
           <button
             type="button"
             role="tab"
@@ -198,7 +203,7 @@ export default function DashboardPage() {
             className={`dashboard-tab${tab === 'today' ? ' dashboard-tab--active' : ''}`}
             onClick={() => setTab('today')}
           >
-            Today
+            {t('home.tabs.today')}
           </button>
           <button
             type="button"
@@ -209,7 +214,7 @@ export default function DashboardPage() {
             className={`dashboard-tab${tab === 'progress' ? ' dashboard-tab--active' : ''}`}
             onClick={() => setTab('progress')}
           >
-            Progress
+            {t('home.tabs.progress')}
           </button>
         </nav>
       )}
@@ -231,7 +236,7 @@ export default function DashboardPage() {
               {stats.current_streak_days > 0 && (
                 <span
                   className="hud-pill hud-pill-streak"
-                  aria-label={`${stats.current_streak_days} day streak`}
+                  aria-label={t('home.streak.aria', { count: stats.current_streak_days })}
                 >
                   <Flame size={16} strokeWidth={1.75} aria-hidden="true" /> {stats.current_streak_days}
                 </span>
@@ -254,7 +259,7 @@ export default function DashboardPage() {
               fine" message isn't lost now that the streak is a small pill. */}
           {stats.current_streak_days > 0 && stats.rest_day_used && (
             <p className="quest-streak muted">
-              <Moon size={16} strokeWidth={1.75} aria-hidden="true" /> Rest day used — skipping one is fine.
+              <Moon size={16} strokeWidth={1.75} aria-hidden="true" /> {t('home.restDay')}
             </p>
           )}
 
@@ -267,7 +272,7 @@ export default function DashboardPage() {
             if (activePath && currentDay) {
               return (
                 <Link to={pathDayHref(currentDay)} className="today-action">
-                  Day {currentDay.index} · {currentDay.title}
+                  {t('home.today.pathDay', { index: currentDay.index, title: currentDay.title })}
                   <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
               )
@@ -288,7 +293,7 @@ export default function DashboardPage() {
                   <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
                 <p className="today-action-secondary">
-                  {rec.blurb} <Link to="/paths">Ease in with a guided path</Link>
+                  {rec.blurb} <Link to="/paths">{t('home.today.tryPath')}</Link>
                 </p>
               </>
             )
@@ -296,7 +301,7 @@ export default function DashboardPage() {
 
           {/* Quick-access tiles — secondary now, a quiet row beneath the primary CTA: one tap
               to start any of the practices. */}
-          <nav className="feature-tiles" aria-label="Quick access">
+          <nav className="feature-tiles" aria-label={t('home.quickAccess.aria')}>
             {FEATURE_TILES.map(({ label, icon: TileIcon, to, activity }) => (
               <Link
                 key={to}
@@ -322,7 +327,7 @@ export default function DashboardPage() {
                 <span className="quests-heading-icon" aria-hidden="true">
                   <Sprout size={16} strokeWidth={1.75} />
                 </span>
-                <span className="quests-heading-text">A nudge or two for today</span>
+                <span className="quests-heading-text">{t('home.quests.heading')}</span>
               </p>
               <ul className="quest-chips">
             {stats.daily_quests.map((q) => {
@@ -330,18 +335,24 @@ export default function DashboardPage() {
               const meta = ACTIVITY_META[q.key as Activity]
               const QuestIcon = meta?.icon ?? Star
               const accent = ACTIVITY_COLORS[q.key as Activity]
-              const detail = QUEST_DETAIL[q.variant]
+              const detailKey = QUEST_DETAIL[q.variant]
+              const detail = detailKey ? t(detailKey) : undefined
               return (
                 <li key={q.key}>
                   <Link
                     to={to}
                     className={q.done ? 'quest-chip done' : 'quest-chip'}
                     style={accent ? { ['--activity-accent' as string]: accent } : undefined}
-                    aria-label={`${q.label}${detail ? `. ${detail}` : ''}${
+                    aria-label={`${q.label}${detail ? t('home.quests.aria.detail', { detail }) : ''}${
                       q.target > 1
-                        ? ` — ${Math.min(q.progress, q.target)} of ${q.target}`
+                        ? t('home.quests.aria.progress', {
+                            progress: Math.min(q.progress, q.target),
+                            target: q.target,
+                          })
                         : ''
-                    }${q.xp > 0 ? ` — reward ${q.xp} XP` : ''}${q.done ? ' — done' : ''}`}
+                    }${q.xp > 0 ? t('home.quests.aria.reward', { xp: q.xp }) : ''}${
+                      q.done ? t('home.quests.aria.done') : ''
+                    }`}
                   >
                     <span className="quest-chip-emoji" aria-hidden="true">
                       <QuestIcon size={18} strokeWidth={1.75} />
@@ -402,15 +413,19 @@ export default function DashboardPage() {
               >
                 {todayMood ? (
                   <>
-                    You felt {MOOD_META[todayMood].label.toLowerCase()}{' '}
+                    {t('home.mood.reflect', { mood: MOOD_META[todayMood].label.toLowerCase() })}
                     <span aria-hidden="true">{MOOD_META[todayMood].emoji}</span>
                   </>
                 ) : (
-                  "Log today's mood"
+                  t('home.mood.log')
                 )}
               </button>
             </p>
           )}
+
+          {/* A quiet daily reading — one short, calming passage (Stoic/wisdom, rotating each day)
+              to close the Today view with a gentle moment of reflection. */}
+          <DailyReading />
 
           {/* Quiet fallback for the no-sessions state — only when the richer first-run card
               isn't on screen (dismissed), so the user never sees two "get started" prompts.
@@ -418,8 +433,8 @@ export default function DashboardPage() {
           {stats.session_count === 0 &&
             (firstRunDismissed || !shouldShowFirstRun(stats.session_count)) && (
               <p className="muted">
-                You're just getting started. <Link to="/sessions/new">Log a session</Link> or{' '}
-                <Link to="/breathe">breathe</Link> to earn your first coins.
+                {t('home.empty.lead')}<Link to="/sessions/new">{t('home.empty.logSession')}</Link>{t('home.empty.or')}
+                <Link to="/breathe">{t('home.empty.breathe')}</Link>{t('home.empty.trailing')}
               </p>
             )}
         </div>
@@ -441,7 +456,7 @@ export default function DashboardPage() {
               <WeeklyReview />
 
               <p className="dashboard-more-link">
-                <Link to="/analytics">See full analytics</Link>
+                <Link to="/analytics">{t('home.progress.seeAnalytics')}</Link>
               </p>
             </div>
           </section>
@@ -455,13 +470,13 @@ export default function DashboardPage() {
       {moodModalOpen && (
         <Modal
           onClose={closeMoodModal}
-          ariaLabel="How are you arriving?"
+          ariaLabel={t('home.moodModal.aria')}
           cardClassName="mood-modal"
           closeOnBackdrop
         >
-          <p className="mood-modal-kicker muted">Take a breath</p>
+          <p className="mood-modal-kicker muted">{t('home.moodModal.kicker')}</p>
           <MoodCheckin
-            heading="How are you arriving?"
+            heading={t('home.moodModal.heading')}
             onLogged={(mood) => {
               // Reflect the just-logged mood on the home line immediately (no reload),
               // then close the modal.
@@ -474,7 +489,7 @@ export default function DashboardPage() {
             className="mood-modal-skip"
             onClick={closeMoodModal}
           >
-            Skip for now
+            {t('home.moodModal.skip')}
           </button>
         </Modal>
       )}

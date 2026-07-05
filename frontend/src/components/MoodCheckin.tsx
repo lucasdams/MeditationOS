@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { moodLogService } from '../services/moodLogs'
 import { useToast } from '../context/ToastContext'
 import { MOOD_META } from '../lib/colors'
+import { useT } from '../i18n'
 import type { Mood } from '../types'
 
 // A one-tap "how do you feel?" — the low-friction counterpart to a written journal.
@@ -11,7 +12,7 @@ const MOODS = (Object.keys(MOOD_META) as Mood[]).map((mood) => ({ mood, ...MOOD_
 
 type Props = {
   // Heading text — lets the on-open modal frame it on the present moment
-  // ("how are you arriving?") while inline use keeps the plain prompt.
+  // ("how are you feeling?") while inline use keeps the plain prompt.
   heading?: string
   // The mood already logged today, if any — surfaced as the pre-selected chip when the
   // check-in is reopened to re-log, so the prior choice is visible rather than starting blank.
@@ -20,7 +21,8 @@ type Props = {
   onLogged?: (mood: Mood) => void
 }
 
-export default function MoodCheckin({ heading = 'How do you feel?', initial = null, onLogged }: Props) {
+export default function MoodCheckin({ heading, initial = null, onLogged }: Props) {
+  const { t } = useT()
   const { showToast } = useToast()
   // `logged` drives the selected chip — seeded with today's already-logged mood so the
   // prior choice shows when reopened. `justLogged` gates the confirmation line so it only
@@ -36,10 +38,10 @@ export default function MoodCheckin({ heading = 'How do you feel?', initial = nu
       await moodLogService.create(mood)
       setLogged(mood)
       setJustLogged(true)
-      showToast('Noted.')
+      showToast(t('home.moodCheckin.noted'))
       onLogged?.(mood)
     } catch {
-      showToast("Couldn't log that mood — try again.", 'error')
+      showToast(t('home.moodCheckin.error'), 'error')
     } finally {
       setSaving(null)
     }
@@ -47,8 +49,8 @@ export default function MoodCheckin({ heading = 'How do you feel?', initial = nu
 
   return (
     <section className="mood-checkin">
-      <h2>{heading}</h2>
-      <div className="mood-options" role="group" aria-label="Log your mood">
+      <h2>{heading ?? t('home.moodCheckin.heading')}</h2>
+      <div className="mood-options" role="group" aria-label={t('home.moodCheckin.group')}>
         {MOODS.map((m) => (
           <button
             key={m.mood}
@@ -67,7 +69,7 @@ export default function MoodCheckin({ heading = 'How do you feel?', initial = nu
         ))}
       </div>
       {justLogged && (
-        <p className="muted mood-logged">Thanks for checking in — it feeds your trends.</p>
+        <p className="muted mood-logged">{t('home.moodCheckin.thanks')}</p>
       )}
     </section>
   )

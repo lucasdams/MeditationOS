@@ -290,8 +290,7 @@ NEEDS_FLOOR = 0.8
 # and the choose-page preview. ADR-0029 REMOVES the gameplay effect of that affinity: cosmetics no
 # longer modify needs at all (no passive lift, no buy-boost) — needs are now the survival meters,
 # driven only by practice + tending. The affinity is kept purely as a display tag (`_option_need`),
-# and `last_pampered_need` is still STAMPED on unlock for forward-compat, but nothing reads it for
-# the needs computation anymore.
+# read by the shop/preview only — nothing in the needs computation reads it anymore.
 #
 # Default need affinity for any catalog option missing an explicit `need` (a safety net — every
 # real option gets an explicit one; see SPIRIT_COSMETICS_CATALOG and the catalog-coverage test).
@@ -607,6 +606,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "zephyr": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
+        # PATH-EXCLUSIVE tier-2 auras (ADR-0027) — an EARLIER, cheaper per-path signature glow so
+        # each creature has an exclusive to chase before its tier-3 capstone: drifting cinders for
+        # Pitta (breath), a dew-ring for Kapha (stillness), a petal breeze for Vata (heart). Only
+        # the matching creature can buy/see each. NOT part of the 7-slot signature set (tier 3 only,
+        # per `_signature_option`), so "Signature radiance" is unaffected.
+        "cinders": {
+            "cost": 95, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "dewfall": {
+            "cost": 95, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "petalwind": {
+            "cost": 95, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
+        },
     },
     # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star/berry_sprig/tiny_bell/
     # antlers are universal; the three PATH-EXCLUSIVE accessories carry a `per_path` key so only
@@ -667,6 +680,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "feather_plume": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
+        # PATH-EXCLUSIVE tier-2 accessories (mirrors the tier-2 auras) — an EARLIER, cheaper per-path
+        # worn item to chase before the tier-3 capstone: a flame tuft at the brow for Pitta (breath),
+        # a little acorn cap for Kapha (stillness), a wind ribbon for Vata (heart). Only the matching
+        # creature can buy/see each. NOT part of the 7-slot signature set (tier 3 only, per
+        # `_signature_option`), so "Signature radiance" is unaffected.
+        "flame_tuft": {
+            "cost": 90, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "acorn_cap": {
+            "cost": 90, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "wind_ribbon": {
+            "cost": 90, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
+        },
     },
     # A small backdrop the spirit sits in (the "habitat"). meadow/dusk/night/garden/seaside/
     # cottage/lily_pond/autumn_grove/starfall are universal; the three PATH-EXCLUSIVE backdrops
@@ -695,6 +722,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "open_sky": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 habitats (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # backdrop to chase before the tier-3 capstone: an ember hollow for Pitta (breath), a fern
+        # hollow for Kapha (stillness), a cloud terrace for Vata (heart). Only the matching creature
+        # can buy/see each. NOT part of the 7-slot signature set (tier 3 only).
+        "ember_hollow": {
+            "cost": 110, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "fern_hollow": {
+            "cost": 110, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "cloud_terrace": {
+            "cost": 110, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # A small friend that keeps the spirit company (the "companion"). firefly/bird/cat are
@@ -728,6 +768,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "crane": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
+        # PATH-EXCLUSIVE tier-2 companions (mirrors the tier-2 auras) — an EARLIER, cheaper per-path
+        # friend to chase before the tier-3 capstone: a tiny ember sprite for Pitta (breath), a
+        # mossy pebble critter for Kapha (stillness), a resting butterfly for Vata (heart). Only the
+        # matching creature can buy/see each. NOT part of the 7-slot signature set (tier 3 only, per
+        # `_signature_option`), so "Signature radiance" is unaffected.
+        "emberling": {
+            "cost": 95, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "mosskit": {
+            "cost": 95, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "butterfly": {
+            "cost": 95, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
+        },
     },
     # A serene thing the spirit floats on / rides — the calm take on a "mount". cloud/lotus/leaf
     # are universal; the three PATH-EXCLUSIVE mounts carry a `per_path` key so only the matching
@@ -752,6 +806,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "feather": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 mounts (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # perch to chase before the tier-3 capstone: an ember log for Pitta (breath), a mossy rock
+        # for Kapha (stillness), a drifting leaf for Vata (heart). Only the matching creature can
+        # buy/see each. NOT part of the 7-slot signature set (tier 3 only).
+        "ember_log": {
+            "cost": 100, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "mossy_rock": {
+            "cost": 100, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "drift_leaf": {
+            "cost": 100, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # An ambient drifting overlay across the whole scene (the "weather") — light particles that
@@ -780,6 +847,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "galeswirl": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
+        # PATH-EXCLUSIVE tier-2 weathers (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # overlay to chase before the tier-3 capstone: a heat shimmer for Pitta (breath), a dew
+        # drift for Kapha (stillness), a feather fall for Vata (heart). Only the matching creature
+        # can buy/see each. NOT part of the 7-slot signature set (tier 3 only).
+        "heat_shimmer": {
+            "cost": 95, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "dewdrift": {
+            "cost": 95, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "featherfall": {
+            "cost": 95, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
+        },
     },
     # A low foreground base decoration along the very bottom edge (the "ground") — a strip that
     # reads as the floor the figure rests on. The universal options (grass/pebbles/clover/
@@ -806,6 +886,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "cloudfloor": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 grounds (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # floor to chase before the tier-3 capstone: ember sand for Pitta (breath), a moss bed for
+        # Kapha (stillness), a cloud tuft for Vata (heart). Only the matching creature can buy/see
+        # each. NOT part of the 7-slot signature set (tier 3 only).
+        "ember_sand": {
+            "cost": 100, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "mossbed": {
+            "cost": 100, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "cloudtuft": {
+            "cost": 100, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # BODY cosmetics — these change the CREATURE ITSELF, not a layer drawn around it. Both are
@@ -1407,8 +1500,8 @@ def unlock_cosmetic(
     """Unlock a cosmetic option into the active spirit's owned collection AND auto-equip it
     (ADR-0027). Unlocking is the new "buying": it charges the option's full cost (added to the
     monotonic `coins_spent` ledger, never refunded), adds the option to `unlocked`, and equips it
-    in its slot. It still STAMPS `last_pampered_at` + the bought item's need for forward-compat,
-    but ADR-0029 removed the pamper needs effect (cosmetics are purely cosmetic now).
+    in its slot. ADR-0029 removed the old pamper needs effect entirely — cosmetics are purely
+    cosmetic now.
 
     Validates: unknown slot/option, or a path-exclusive option this creature can't use →
     UnknownCosmetic (404, exactly as the GET `available` shape hides it); already owned →
@@ -1473,12 +1566,6 @@ def unlock_cosmetic(
     equipped[data.slot] = data.option
     spirit.cosmetics = equipped
     spirit.coins_spent = spirit.coins_spent + cost
-    # ADR-0025/0026 stamped the unlock time + the bought item's need to drive a decaying needs
-    # boost; ADR-0029 removed that effect, so these are now forward-compat-only stamps (read by
-    # nothing). Kept so the columns/route behaviour stay stable. Same txn + lock as the
-    # unlock/equip and the coins_spent bump.
-    spirit.last_pampered_at = func.now()
-    spirit.last_pampered_need = _option_need(data.slot, data.option)
     db.commit()
     db.refresh(spirit)
     # Thread BOTH already-computed bases through: the lifetime `basis` and the SAME-spirit

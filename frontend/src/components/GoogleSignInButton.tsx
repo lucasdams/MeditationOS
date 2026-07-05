@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { useAuth } from '../context/AuthContext'
+import { t } from '../i18n'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
 
@@ -48,7 +49,7 @@ export default function GoogleSignInButton({ onError }: { onError?: (msg: string
         await refresh()
         navigate('/')
       } catch {
-        onError?.('Google sign-in failed. Please try again.')
+        onError?.(t('auth.google.error'))
       }
     }
 

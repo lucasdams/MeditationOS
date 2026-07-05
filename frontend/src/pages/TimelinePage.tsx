@@ -12,6 +12,7 @@ import { toDatetimeLocal } from '../lib/format'
 import RatingChips from '../components/RatingChips'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { t as translate, useT } from '../i18n'
 import type { MeditationType, Mood, Session } from '../types'
 
 // One unified, chronological feed of everything you log — reflections (journal),
@@ -30,7 +31,7 @@ const formatWhen = (iso: string) =>
     hour: 'numeric',
     minute: '2-digit',
   })
-const minutes = (seconds: number) => `${Math.round(seconds / 60)} min`
+const minutes = (seconds: number) => translate('common.min', { count: Math.round(seconds / 60) })
 
 // CSV export (sessions only) — quote per RFC 4180; injection-safe via csvEscape.
 function toCsv(rows: Session[]): string {
@@ -61,6 +62,7 @@ type TimelineItem =
 const sortByWhenDesc = (a: TimelineItem, b: TimelineItem) => (a.when < b.when ? 1 : -1)
 
 export default function TimelinePage() {
+  const { t } = useT()
   const { showToast } = useToast()
   const [items, setItems] = useState<TimelineItem[] | null>(null)
   const [error, setError] = useState<string | null>(null) // inline action errors (edit/export)
@@ -124,7 +126,7 @@ export default function TimelinePage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (!ignored?.()) setLoadError(messageForError(err, "Couldn't load your timeline."))
+        if (!ignored?.()) setLoadError(messageForError(err, t('tracking.timeline.loadError')))
       })
       .finally(() => setRetrying(false))
   }
@@ -203,9 +205,9 @@ export default function TimelinePage() {
             .sort(sortByWhenDesc) ?? null,
       )
       setEditingId(null)
-      showToast('Updated.')
+      showToast(t('tracking.timeline.updated'))
     } catch {
-      setError("Couldn't update that session.")
+      setError(t('tracking.timeline.updateError'))
     } finally {
       setSavingEdit(false)
     }
@@ -218,7 +220,7 @@ export default function TimelinePage() {
     setList: setItems,
     getId: (it) => it.id,
     remove: (id) => sessionService.remove(id),
-    messages: { success: 'Session deleted.', error: "Couldn't delete that session." },
+    messages: { success: t('tracking.timeline.sessionDeleted'), error: t('tracking.timeline.sessionDeleteError') },
     onStart: () => {
       setMenuId(null)
       setError(null)
@@ -230,7 +232,7 @@ export default function TimelinePage() {
     setList: setItems,
     getId: (it) => it.id,
     remove: (id) => moodLogService.remove(id),
-    messages: { success: 'Mood check-in removed.', error: "Couldn't remove that check-in." },
+    messages: { success: t('tracking.timeline.moodRemoved'), error: t('tracking.timeline.moodRemoveError') },
     onStart: () => {
       setMenuId(null)
       setError(null)
@@ -254,9 +256,9 @@ export default function TimelinePage() {
       a.download = 'meditation-sessions.csv'
       a.click()
       URL.revokeObjectURL(url)
-      showToast("Exported — it's on your device.")
+      showToast(t('tracking.timeline.exported'))
     } catch {
-      setError("Couldn't export your sessions.")
+      setError(t('tracking.timeline.exportError'))
     } finally {
       setExporting(false)
     }
@@ -270,8 +272,8 @@ export default function TimelinePage() {
         ← Dashboard
       </Link>
       <header className="page-head">
-        <h1>Timeline</h1>
-        <p className="page-subtitle">Everything you've logged, in one place.</p>
+        <h1>{t('tracking.timeline.title')}</h1>
+        <p className="page-subtitle">{t('tracking.timeline.subtitle')}</p>
       </header>
 
       <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
@@ -281,9 +283,11 @@ export default function TimelinePage() {
 
       {items && items.length === 0 && (
         <EmptyState>
-          Nothing here yet — your first <Link to="/meditate">sit</Link>,{' '}
-          <Link to="/journal">note</Link>, or <Link to="/gratitude">gratitude</Link> starts the
-          story.
+          {t('tracking.timeline.emptyPre')} <Link to="/meditate">{t('tracking.timeline.emptySit')}</Link>
+          {t('tracking.timeline.emptyMid')}{' '}
+          <Link to="/journal">{t('tracking.timeline.emptyNote')}</Link>
+          {t('tracking.timeline.emptyOr')} <Link to="/gratitude">{t('tracking.timeline.emptyGratitude')}</Link>{' '}
+          {t('tracking.timeline.emptyPost')}
         </EmptyState>
       )}
 
@@ -317,7 +321,7 @@ export default function TimelinePage() {
                 <li key={`session-${item.id}`} className="timeline-item timeline-item--session">
                   <div className="session-edit" style={{ width: '100%' }}>
                     <label>
-                      Type
+                      {t('tracking.timeline.type')}
                       <select value={editType} onChange={(e) => setEditType(e.target.value as MeditationType)}>
                         {Object.entries(TYPE_LABELS).map(([value, label]) => (
                           <option key={value} value={value}>
@@ -327,7 +331,7 @@ export default function TimelinePage() {
                       </select>
                     </label>
                     <label>
-                      Duration (min)
+                      {t('tracking.timeline.duration')}
                       <input
                         type="number"
                         min="1"
@@ -336,37 +340,42 @@ export default function TimelinePage() {
                       />
                     </label>
                     <label>
-                      When
-                      <input type="datetime-local" value={editWhen} onChange={(e) => setEditWhen(e.target.value)} />
+                      {t('tracking.timeline.when')}
+                      <input
+                        type="datetime-local"
+                        value={editWhen}
+                        title={t('tracking.timeline.yourLocalTime')}
+                        onChange={(e) => setEditWhen(e.target.value)}
+                      />
                     </label>
                     <label>
-                      Focus
-                      <RatingChips ariaLabel="Focus rating" value={editFocus} onChange={setEditFocus} />
+                      {t('tracking.timeline.focus')}
+                      <RatingChips ariaLabel={t('tracking.timeline.focusRatingAria')} value={editFocus} onChange={setEditFocus} />
                     </label>
                     <label>
-                      Calm
-                      <RatingChips ariaLabel="Calm rating" value={editCalm} onChange={setEditCalm} />
+                      {t('tracking.timeline.calm')}
+                      <RatingChips ariaLabel={t('tracking.timeline.calmRatingAria')} value={editCalm} onChange={setEditCalm} />
                     </label>
                     <label>
-                      Intention
+                      {t('tracking.timeline.intention')}
                       <textarea
                         rows={2}
                         value={editIntention}
                         maxLength={140}
-                        placeholder="An intention for this sit…"
+                        placeholder={t('tracking.timeline.intentionPlaceholder')}
                         onChange={(e) => setEditIntention(e.target.value)}
                       />
                     </label>
                     <label>
-                      Notes
+                      {t('tracking.timeline.notes')}
                       <textarea rows={2} value={editNotes} maxLength={2000} onChange={(e) => setEditNotes(e.target.value)} />
                     </label>
                     <div className="session-edit-actions">
                       <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
-                        {savingEdit ? 'Saving…' : 'Save'}
+                        {savingEdit ? t('common.saving') : t('tracking.timeline.editSave')}
                       </button>
                       <button type="button" className="link-neutral" onClick={() => setEditingId(null)}>
-                        Cancel
+                        {t('tracking.timeline.editCancel')}
                       </button>
                     </div>
                   </div>
@@ -398,7 +407,7 @@ export default function TimelinePage() {
                         {TYPE_LABELS[item.session.type]} · {minutes(item.session.duration_seconds)}
                       </span>
                     ) : item.kind === 'mood' ? (
-                      <span className="timeline-text">Felt {MOOD_META[item.mood].label.toLowerCase()}</span>
+                      <span className="timeline-text">{t('tracking.timeline.felt', { mood: MOOD_META[item.mood].label.toLowerCase() })}</span>
                     ) : (
                       <span className="timeline-text">{item.text}</span>
                     )}
@@ -420,7 +429,7 @@ export default function TimelinePage() {
                                 className="link-neutral"
                                 onClick={() => startEdit(item.session)}
                               >
-                                Edit
+                                {t('tracking.timeline.edit')}
                               </button>
                             )}
                             <button
@@ -430,14 +439,15 @@ export default function TimelinePage() {
                                 item.kind === 'mood' ? handleDeleteMood(item.id) : handleDelete(item.id)
                               }
                             >
-                              Delete
+                              {t('tracking.timeline.delete')}
                             </button>
                           </>
                         )}
                         <button
                           type="button"
                           className="journal-entry-menu"
-                          aria-label={item.kind === 'mood' ? 'Mood actions' : 'Session actions'}
+                          aria-label={item.kind === 'mood' ? t('tracking.timeline.moodActions') : t('tracking.timeline.sessionActions')}
+                          title={item.kind === 'mood' ? t('tracking.timeline.moodActionsTitle') : t('tracking.timeline.sessionActionsTitle')}
                           aria-haspopup="true"
                           aria-expanded={menuId === item.id}
                           aria-controls={`menu-${item.id}`}
@@ -459,21 +469,21 @@ export default function TimelinePage() {
                     (item.session.focus != null || item.session.calm != null) && (
                       <span className="timeline-ratings muted">
                         {item.session.focus != null && (
-                          <span>Focus {item.session.focus}/5</span>
+                          <span>{t('tracking.timeline.focusReadout', { n: item.session.focus })}</span>
                         )}
                         {item.session.calm != null && (
-                          <span>Calm {item.session.calm}/5</span>
+                          <span>{t('tracking.timeline.calmReadout', { n: item.session.calm })}</span>
                         )}
                       </span>
                     )}
                   <span className="timeline-meta muted">
                     {item.kind === 'session'
-                      ? 'Practice'
+                      ? t('tracking.timeline.metaPractice')
                       : item.kind === 'journal'
-                        ? 'Journal'
+                        ? t('tracking.timeline.metaJournal')
                         : item.kind === 'mood'
-                          ? 'Mood'
-                          : 'Gratitude'}
+                          ? t('tracking.timeline.metaMood')
+                          : t('tracking.timeline.metaGratitude')}
                     {' · '}
                     {formatWhen(item.when)}
                   </span>
@@ -487,7 +497,7 @@ export default function TimelinePage() {
       {hasSession && (
         <p className="history-export muted">
           <button type="button" className="link-neutral" onClick={exportCsv} disabled={exporting}>
-            {exporting ? 'Exporting…' : '⤓ Export sessions (CSV)'}
+            {exporting ? t('tracking.timeline.exporting') : t('tracking.timeline.exportCsv')}
           </button>
         </p>
       )}

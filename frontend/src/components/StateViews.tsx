@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useT } from '../i18n'
 
 /**
  * Tiny shared building blocks for a data view's loading / error / empty states,
@@ -10,8 +11,9 @@ import type { ReactNode } from 'react'
 // A quiet "Loading…" line. `label` overrides the default copy where a page used
 // something more specific; `className` lets a caller keep its existing placement
 // (e.g. "centered" full-page, or "muted" inside a fallback).
-export function Loading({ label = 'One moment…', className }: { label?: string; className?: string }) {
-  return <p className={className}>{label}</p>
+export function Loading({ label, className }: { label?: string; className?: string }) {
+  const { t } = useT()
+  return <p className={className}>{label ?? t('common.oneMoment')}</p>
 }
 
 // An accessible error banner — the `<p role="alert" className="error">` that
@@ -44,12 +46,13 @@ export function RetryableError({
   onRetry: () => void
   retrying?: boolean
 }) {
+  const { t } = useT()
   if (!message) return null
   return (
     <div role="alert" className="error error-retry">
       <span>{message}</span>
       <button type="button" className="retry-btn" onClick={onRetry} disabled={retrying}>
-        {retrying ? 'Retrying…' : 'Try again'}
+        {retrying ? t('common.retrying') : t('common.tryAgain')}
       </button>
     </div>
   )

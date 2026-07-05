@@ -6,6 +6,7 @@ import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import ActivityHeatmap from '../components/ActivityHeatmap'
 import { messageForError } from '../lib/errors'
+import { t as translate, useT } from '../i18n'
 import type {
   AnalyticsSummary,
   BiometricDelta,
@@ -22,24 +23,36 @@ const HRV_COLOR = '#10b981' // green for HRV (higher generally = more recovered)
 const CALM_COLOR = '#06b6d4' // cyan for calm (matches the calm mood colour)
 const FOCUS_COLOR = '#f59e0b' // amber for focus
 
-const TYPE_LABELS: Record<string, string> = {
-  mindfulness: 'Mindfulness',
-  body_scan: 'Body scan',
-  walking: 'Walking',
-  loving_kindness: 'Loving-kindness',
-  resonance_breathing: 'Resonance breathing',
-  energizing_breathing: 'Energizing breathing',
-  other: 'Other',
+// Analytics-local label maps as i18n keys — resolved at render via translate() so a
+// locale switch re-labels the charts. The backend sends plain strings for types; an
+// unknown type falls back to a capitalized version of the raw value.
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  mindfulness: 'tracking.analytics.type.mindfulness',
+  body_scan: 'tracking.analytics.type.body_scan',
+  walking: 'tracking.analytics.type.walking',
+  loving_kindness: 'tracking.analytics.type.loving_kindness',
+  resonance_breathing: 'tracking.analytics.type.resonance_breathing',
+  energizing_breathing: 'tracking.analytics.type.energizing_breathing',
+  other: 'tracking.analytics.type.other',
 }
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const BUCKET_LABELS: Record<string, string> = {
-  morning: 'Morning',
-  afternoon: 'Afternoon',
-  evening: 'Evening',
-  night: 'Night',
+const WEEKDAY_KEYS = [
+  'tracking.analytics.weekday.sun',
+  'tracking.analytics.weekday.mon',
+  'tracking.analytics.weekday.tue',
+  'tracking.analytics.weekday.wed',
+  'tracking.analytics.weekday.thu',
+  'tracking.analytics.weekday.fri',
+  'tracking.analytics.weekday.sat',
+]
+const BUCKET_LABEL_KEYS: Record<string, string> = {
+  morning: 'tracking.analytics.bucket.morning',
+  afternoon: 'tracking.analytics.bucket.afternoon',
+  evening: 'tracking.analytics.bucket.evening',
+  night: 'tracking.analytics.bucket.night',
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-const typeLabel = (t: string) => TYPE_LABELS[t] ?? cap(t)
+const typeLabel = (t: string) =>
+  TYPE_LABEL_KEYS[t] ? translate(TYPE_LABEL_KEYS[t]) : cap(t)
 
 // String-keyed views of the shared color maps. The backend sends plain strings for
 // types/moods, so indexing by string (with a fallback) is honest — no `as Enum` cast
@@ -81,6 +94,7 @@ function Bar({
 // Gentle, honest observations from the user's own data. Loads independently of the
 // charts so a hiccup in one doesn't blank the other.
 function Insights() {
+  const { t } = useT()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [error, setError] = useState(false)
 
@@ -96,26 +110,26 @@ function Insights() {
   if (error) {
     return (
       <section className="analytics-section">
-        <h2>Patterns</h2>
-        <p className="muted">Couldn’t load this section.</p>
+        <h2>{t('tracking.analytics.patterns.title')}</h2>
+        <p className="muted">{t('tracking.analytics.patterns.loadError')}</p>
       </section>
     )
   }
   if (!insights) {
     return (
       <section className="analytics-section">
-        <h2>Patterns</h2>
-        <p className="muted">Looking for patterns…</p>
+        <h2>{t('tracking.analytics.patterns.title')}</h2>
+        <p className="muted">{t('tracking.analytics.patterns.looking')}</p>
       </section>
     )
   }
 
   return (
     <section className="analytics-section">
-      <h2>Patterns</h2>
+      <h2>{t('tracking.analytics.patterns.title')}</h2>
       {insights.needs_more_data || insights.insights.length === 0 ? (
         <p className="muted">
-          Keep practicing — gentle patterns will appear here as your history grows.
+          {t('tracking.analytics.patterns.willAppear')}
         </p>
       ) : (
         <ul className="insight-cards">
@@ -136,25 +150,25 @@ function Insights() {
 function deltaSentence(delta: BiometricDelta): string | null {
   if (delta.sample_size < 1 || delta.avg_bpm_delta == null) return null
   const n = delta.sample_size
-  const bpmBasis = `based on ${n} ${n === 1 ? 'sit' : 'sits'} with a pre- and post-reading`
+  const bpmBasis = translate('tracking.analytics.hr.sitBasis', { count: n })
   const bpm = delta.avg_bpm_delta
   let sentence: string
   if (bpm < 0) {
-    sentence = `Your heart rate settles about ${Math.abs(bpm)} bpm over a sit, ${bpmBasis}.`
+    sentence = translate('tracking.analytics.hr.deltaDown', { bpm: Math.abs(bpm), basis: bpmBasis })
   } else if (bpm > 0) {
-    sentence = `Your heart rate is about ${bpm} bpm higher after a sit, ${bpmBasis}.`
+    sentence = translate('tracking.analytics.hr.deltaUp', { bpm, basis: bpmBasis })
   } else {
-    sentence = `Your heart rate is about the same before and after a sit, ${bpmBasis}.`
+    sentence = translate('tracking.analytics.hr.deltaSame', { basis: bpmBasis })
   }
   // Append HRV delta when available, using its own honest sample basis.
   if (delta.avg_hrv_ms_delta != null && delta.hrv_sample_size > 0) {
     const hn = delta.hrv_sample_size
-    const hrvBasis = `${hn} ${hn === 1 ? 'sit' : 'sits'}`
+    const hrvBasis = translate('tracking.analytics.hr.hrvBasis', { count: hn })
     const hrv = delta.avg_hrv_ms_delta
     if (hrv > 0) {
-      sentence += ` HRV rises about ${hrv} ms (based on ${hrvBasis} with HRV readings).`
+      sentence += translate('tracking.analytics.hr.hrvUp', { hrv, basis: hrvBasis })
     } else if (hrv < 0) {
-      sentence += ` HRV dips about ${Math.abs(hrv)} ms (based on ${hrvBasis} with HRV readings).`
+      sentence += translate('tracking.analytics.hr.hrvDown', { hrv: Math.abs(hrv), basis: hrvBasis })
     }
   }
   return sentence
@@ -164,6 +178,7 @@ function deltaSentence(delta: BiometricDelta): string | null {
 // a hiccup here never blanks the practice charts above. Readings are a personal
 // wellness signal the user enters — not a medical measurement.
 function BiometricTrend() {
+  const { t } = useT()
   const [readings, setReadings] = useState<BiometricReading[] | null>(null)
   const [delta, setDelta] = useState<BiometricDelta | null>(null)
   const [error, setError] = useState(false)
@@ -187,8 +202,8 @@ function BiometricTrend() {
   if (error) {
     return (
       <section className="analytics-section">
-        <h2>Heart rate &amp; HRV</h2>
-        <p className="muted">Couldn’t load this section.</p>
+        <h2>{t('tracking.analytics.hr.title')}</h2>
+        <p className="muted">{t('tracking.analytics.hr.loadError')}</p>
       </section>
     )
   }
@@ -196,8 +211,8 @@ function BiometricTrend() {
   if (!readings) {
     return (
       <section className="analytics-section">
-        <h2>Heart rate &amp; HRV</h2>
-        <p className="muted">Reading the tea leaves…</p>
+        <h2>{t('tracking.analytics.hr.title')}</h2>
+        <p className="muted">{t('tracking.analytics.hr.reading')}</p>
       </section>
     )
   }
@@ -205,10 +220,10 @@ function BiometricTrend() {
   if (readings.length === 0) {
     return (
       <section className="analytics-section">
-        <h2>Heart rate &amp; HRV</h2>
+        <h2>{t('tracking.analytics.hr.title')}</h2>
         <p className="muted">
-          No readings yet — whenever you’re ready. Log a quick one after a sit, or{' '}
-          <Link to="/biometrics/new">add a resting reading</Link>, to start a gentle trend.
+          {t('tracking.analytics.hr.emptyPre')}{' '}
+          <Link to="/biometrics/new">{t('tracking.analytics.hr.emptyLink')}</Link>{t('tracking.analytics.hr.emptyPost')}
         </p>
       </section>
     )
@@ -220,17 +235,17 @@ function BiometricTrend() {
     const latest = readings[0]
     return (
       <section className="analytics-section">
-        <h2>Heart rate &amp; HRV</h2>
+        <h2>{t('tracking.analytics.hr.title')}</h2>
         <p className="muted biometric-note">
-          A personal wellness signal you log yourself — not a medical measurement.
+          {t('tracking.analytics.hr.noteShort')}
         </p>
         <p className="biometric-delta">
-          Latest: {latest.bpm} bpm
-          {latest.hrv_ms != null ? ` · HRV ${latest.hrv_ms} ms` : ''}
+          {t('tracking.analytics.hr.latest', { bpm: latest.bpm })}
+          {latest.hrv_ms != null ? t('tracking.analytics.hr.latestHrv', { hrv: latest.hrv_ms }) : ''}
         </p>
-        <p className="muted">Log one more reading to start a trend.</p>
+        <p className="muted">{t('tracking.analytics.hr.oneMore')}</p>
         <p className="muted biometric-cta">
-          <Link to="/biometrics/new">Log a resting reading</Link>
+          <Link to="/biometrics/new">{t('tracking.analytics.hr.logResting')}</Link>
         </p>
       </section>
     )
@@ -255,9 +270,9 @@ function BiometricTrend() {
 
   return (
     <section className="analytics-section">
-      <h2>Heart rate &amp; HRV</h2>
+      <h2>{t('tracking.analytics.hr.title')}</h2>
       <p className="muted biometric-note">
-        A personal wellness signal you log yourself — not a medical measurement.
+        {t('tracking.analytics.hr.noteLong')}
       </p>
 
       <div className="weeks" aria-hidden="true">
@@ -277,9 +292,9 @@ function BiometricTrend() {
         ))}
       </div>
       <div className="muted analytics-axis">
-        <span>oldest</span>
-        <span>heart rate · range {minBpm}–{maxBpm} bpm</span>
-        <span>newest</span>
+        <span>{t('tracking.analytics.hr.oldest')}</span>
+        <span>{t('tracking.analytics.hr.rangeBpm', { min: minBpm, max: maxBpm })}</span>
+        <span>{t('tracking.analytics.hr.newest')}</span>
       </div>
 
       {hrvReadings.length > 0 && (
@@ -304,9 +319,9 @@ function BiometricTrend() {
             ))}
           </div>
           <div className="muted analytics-axis">
-            <span>oldest</span>
-            <span>HRV (when logged) · range {minHrv}–{maxHrv} ms</span>
-            <span>newest</span>
+            <span>{t('tracking.analytics.hr.oldest')}</span>
+            <span>{t('tracking.analytics.hr.rangeHrv', { min: minHrv, max: maxHrv })}</span>
+            <span>{t('tracking.analytics.hr.newest')}</span>
           </div>
         </>
       )}
@@ -314,7 +329,7 @@ function BiometricTrend() {
       {sentence && <p className="biometric-delta">{sentence}</p>}
 
       <p className="muted biometric-cta">
-        <Link to="/biometrics/new">Log a resting reading</Link>
+        <Link to="/biometrics/new">{t('tracking.analytics.hr.logResting')}</Link>
       </p>
     </section>
   )
@@ -324,6 +339,7 @@ function BiometricTrend() {
 // charts the numbers you logged, not a statistical claim. Only weeks with at least
 // one rated session appear, so the trend never implies data that isn't there.
 function CalmFocusTrend({ weeks }: { weeks: WeekRatings[] }) {
+  const { t } = useT()
   if (weeks.length === 0) return null
   // Map a 1–5 rating to a bar height, with a floor so a low rating stays visible.
   const barHeight = (v: number) => 12 + ((v - 1) / 4) * 88
@@ -349,9 +365,9 @@ function CalmFocusTrend({ weeks }: { weeks: WeekRatings[] }) {
 
   return (
     <section className="analytics-section">
-      <h2>Calm &amp; focus over time</h2>
+      <h2>{t('tracking.analytics.calmFocus.title')}</h2>
       <p className="muted">
-        Weekly averages of the calm and focus ratings you give your sits (1–5).
+        {t('tracking.analytics.calmFocus.subtitle')}
       </p>
       {/* sr-only text alternative for the color-coded chart */}
       <ul className="sr-only">
@@ -366,23 +382,23 @@ function CalmFocusTrend({ weeks }: { weeks: WeekRatings[] }) {
       {row('calm', CALM_COLOR)}
       <div className="muted analytics-axis" aria-hidden="true">
         <span>{weeks[0]?.week_start}</span>
-        <span>calm (1–5)</span>
+        <span>{t('tracking.analytics.calmFocus.calmAxis')}</span>
         <span>{weeks[weeks.length - 1]?.week_start}</span>
       </div>
       {row('focus', FOCUS_COLOR)}
       <div className="muted analytics-axis" aria-hidden="true">
         <span>{weeks[0]?.week_start}</span>
-        <span>focus (1–5)</span>
+        <span>{t('tracking.analytics.calmFocus.focusAxis')}</span>
         <span>{weeks[weeks.length - 1]?.week_start}</span>
       </div>
       <div className="mood-legend" aria-hidden="true">
         <span className="mood-legend-item">
           <span className="mood-legend-dot" style={{ background: CALM_COLOR }} />
-          Calm
+          {t('tracking.analytics.calmFocus.calm')}
         </span>
         <span className="mood-legend-item">
           <span className="mood-legend-dot" style={{ background: FOCUS_COLOR }} />
-          Focus
+          {t('tracking.analytics.calmFocus.focus')}
         </span>
       </div>
     </section>
@@ -397,6 +413,7 @@ const MOOD_OVER_TIME_MIN_ENTRIES = 6
 // "This month vs last" — a clear, honest summary card. The delta is this − last, so a
 // positive number reads as ▲ (more than last month) and a negative as ▼.
 function MonthVsLast({ data }: { data: MonthComparison }) {
+  const { t } = useT()
   const { this_month: now, last_month: prev } = data
 
   // A signed delta line: an arrow + magnitude + plain-language comparison, or a calm
@@ -404,32 +421,34 @@ function MonthVsLast({ data }: { data: MonthComparison }) {
   // (e.g. "12 more than last month") carries the meaning for screen readers.
   const Delta = ({ delta, unit }: { delta: number; unit: string }) => {
     if (delta === 0) {
-      return <span className="month-delta month-delta-flat">same as last month</span>
+      return <span className="month-delta month-delta-flat">{t('tracking.analytics.month.same')}</span>
     }
     const up = delta > 0
     const mag = Math.abs(delta)
     return (
       <span className={`month-delta ${up ? 'month-delta-up' : 'month-delta-down'}`}>
-        <span aria-hidden="true">{up ? '▲' : '▼'}</span> {mag} {unit}{' '}
-        {up ? 'more' : 'fewer'} than last month
+        <span aria-hidden="true">{up ? '▲' : '▼'}</span>{' '}
+        {up
+          ? t('tracking.analytics.month.more', { mag, unit })
+          : t('tracking.analytics.month.fewer', { mag, unit })}
       </span>
     )
   }
 
   const rows: { label: string; now: number; delta: number; unit: string }[] = [
-    { label: 'Minutes', now: now.minutes, delta: data.minutes_delta, unit: 'min' },
-    { label: 'Sessions', now: now.sessions, delta: data.sessions_delta, unit: 'sessions' },
+    { label: t('tracking.analytics.month.rowMinutes'), now: now.minutes, delta: data.minutes_delta, unit: t('tracking.analytics.month.unitMin') },
+    { label: t('tracking.analytics.month.rowSessions'), now: now.sessions, delta: data.sessions_delta, unit: t('tracking.analytics.month.unitSessions') },
     {
-      label: 'Days practiced',
+      label: t('tracking.analytics.month.rowDays'),
       now: now.days_practiced,
       delta: data.days_practiced_delta,
-      unit: 'days',
+      unit: t('tracking.analytics.month.unitDays'),
     },
   ]
 
   return (
     <section className="analytics-section">
-      <h2>This month vs last</h2>
+      <h2>{t('tracking.analytics.month.title')}</h2>
       <ul className="month-compare">
         {rows.map((r) => (
           <li key={r.label} className="month-compare-row">
@@ -440,14 +459,16 @@ function MonthVsLast({ data }: { data: MonthComparison }) {
         ))}
       </ul>
       <p className="muted">
-        This calendar month so far, compared with all of last month
-        {prev.sessions === 0 ? ' (no practice last month yet)' : ''}.
+        {t('tracking.analytics.month.note', {
+          noPrev: prev.sessions === 0 ? t('tracking.analytics.month.noPrev') : '',
+        })}
       </p>
     </section>
   )
 }
 
 export default function AnalyticsPage() {
+  const { t } = useT()
   const [data, setData] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -459,7 +480,7 @@ export default function AnalyticsPage() {
         setData(d)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, "Couldn't load your analytics.")))
+      .catch((err) => setError(messageForError(err, t('tracking.analytics.loadError'))))
       .finally(() => setRetrying(false))
   }
 
@@ -475,10 +496,10 @@ export default function AnalyticsPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
       <header className="page-head">
-        <h1>Analytics</h1>
-        <p className="page-subtitle">Patterns in your practice.</p>
+        <h1>{t('tracking.analytics.title')}</h1>
+        <p className="page-subtitle">{t('tracking.analytics.subtitle')}</p>
       </header>
 
       <RetryableError message={error} onRetry={retry} retrying={retrying} />
@@ -487,8 +508,7 @@ export default function AnalyticsPage() {
       {data && data.total_sessions === 0 && data.moods.length === 0 && (
         <>
           <EmptyState>
-            Nothing to chart yet — and that’s perfectly okay. Practice a few times and your patterns
-            will gently surface here. No rush.
+            {t('tracking.analytics.empty')}
           </EmptyState>
           {/* Readings can exist independently of sessions, so still offer the trend. */}
           <BiometricTrend />
@@ -500,15 +520,15 @@ export default function AnalyticsPage() {
           <section className="analytics-stats">
             <div className="stat">
               <div className="stat-value">{data.total_sessions}</div>
-              <div className="stat-label">sessions</div>
+              <div className="stat-label">{t('tracking.analytics.stat.sessions')}</div>
             </div>
             <div className="stat">
               <div className="stat-value">{Math.round(data.total_minutes / 60)}</div>
-              <div className="stat-label">hours practiced</div>
+              <div className="stat-label">{t('tracking.analytics.stat.hours')}</div>
             </div>
             <div className="stat">
               <div className="stat-value">{data.days_practiced}</div>
-              <div className="stat-label">days practiced</div>
+              <div className="stat-label">{t('tracking.analytics.stat.days')}</div>
             </div>
           </section>
 
@@ -524,7 +544,7 @@ export default function AnalyticsPage() {
           <BiometricTrend />
 
           <section className="analytics-section">
-            <h2>Minutes per week</h2>
+            <h2>{t('tracking.analytics.minutesPerWeek')}</h2>
             {/* sr-only text alternative for the color-coded bar chart */}
             <ul className="sr-only">
               {data.minutes_by_week.map((w) => (
@@ -552,18 +572,18 @@ export default function AnalyticsPage() {
 
           {data.by_type.length > 0 && (
             <section className="analytics-section">
-              <h2>By type</h2>
+              <h2>{t('tracking.analytics.byType')}</h2>
               <div className="bars">
                 {(() => {
-                  const max = Math.max(1, ...data.by_type.map((t) => t.minutes))
-                  return data.by_type.map((t, i) => (
+                  const max = Math.max(1, ...data.by_type.map((bt) => bt.minutes))
+                  return data.by_type.map((bt, i) => (
                     <Bar
-                      key={t.type}
-                      label={typeLabel(t.type)}
-                      value={t.minutes}
+                      key={bt.type}
+                      label={typeLabel(bt.type)}
+                      value={bt.minutes}
                       max={max}
-                      suffix=" min"
-                      color={typeColors[t.type] ?? PALETTE[i % PALETTE.length]}
+                      suffix={t('tracking.analytics.minSuffix')}
+                      color={typeColors[bt.type] ?? PALETTE[i % PALETTE.length]}
                     />
                   ))
                 })()}
@@ -572,14 +592,14 @@ export default function AnalyticsPage() {
           )}
 
           <section className="analytics-section">
-            <h2>By day of week</h2>
+            <h2>{t('tracking.analytics.byWeekday')}</h2>
             <div className="bars">
               {(() => {
                 const max = Math.max(1, ...data.by_weekday.map((w) => w.count))
                 return data.by_weekday.map((w, i) => (
                   <Bar
                     key={w.weekday}
-                    label={WEEKDAYS[w.weekday]}
+                    label={translate(WEEKDAY_KEYS[w.weekday])}
                     value={w.count}
                     max={max}
                     color={PALETTE[i % PALETTE.length]}
@@ -590,14 +610,14 @@ export default function AnalyticsPage() {
           </section>
 
           <section className="analytics-section">
-            <h2>Time of day</h2>
+            <h2>{t('tracking.analytics.timeOfDay')}</h2>
             <div className="bars">
               {(() => {
                 const max = Math.max(1, ...data.by_time_of_day.map((b) => b.count))
                 return data.by_time_of_day.map((b, i) => (
                   <Bar
                     key={b.bucket}
-                    label={BUCKET_LABELS[b.bucket] ?? b.bucket}
+                    label={BUCKET_LABEL_KEYS[b.bucket] ? translate(BUCKET_LABEL_KEYS[b.bucket]) : b.bucket}
                     value={b.count}
                     max={max}
                     color={PALETTE[i % PALETTE.length]}
@@ -609,7 +629,7 @@ export default function AnalyticsPage() {
 
           {data.moods.length > 0 && (
             <section className="analytics-section">
-              <h2>Journal moods</h2>
+              <h2>{t('tracking.analytics.journalMoods')}</h2>
               <div className="bars">
                 {(() => {
                   const max = Math.max(1, ...data.moods.map((m) => m.count))
@@ -632,7 +652,7 @@ export default function AnalyticsPage() {
             0,
           ) >= MOOD_OVER_TIME_MIN_ENTRIES && (
             <section className="analytics-section">
-              <h2>Mood over time</h2>
+              <h2>{t('tracking.analytics.moodOverTime')}</h2>
               {(() => {
                 const totals = data.mood_by_week.map((w) =>
                   Object.values(w.counts).reduce((a, b) => a + b, 0),
@@ -652,7 +672,7 @@ export default function AnalyticsPage() {
                           .map((m) => `${cap(m)}: ${w.counts[m]}`)
                           .join(', ')
                         return (
-                          <li key={w.week_start}>{w.week_start}: {breakdown || 'no entries'}</li>
+                          <li key={w.week_start}>{w.week_start}: {breakdown || t('tracking.analytics.noEntries')}</li>
                         )
                       })}
                     </ul>
@@ -661,7 +681,7 @@ export default function AnalyticsPage() {
                         <div
                           key={w.week_start}
                           className="week-col"
-                          title={`${w.week_start}: ${totals[i]} ${totals[i] === 1 ? 'entry' : 'entries'}`}
+                          title={`${w.week_start}: ${t('tracking.analytics.entryCount', { count: totals[i] })}`}
                         >
                           <div className="mood-stack">
                             {present.map((m) =>
