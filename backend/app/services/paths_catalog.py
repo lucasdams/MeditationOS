@@ -44,8 +44,10 @@ class Path:
         return len(self.days)
 
 
-# Ordered list of every shipped path. Keep this small — ship 1–2 short paths first and expand
-# only once completion lands (see docs/beginner-first-revision.md §8).
+# Ordered list of every shipped path. Derived completion has landed (path_service.py computes a
+# day's completion from real logged activity), so the catalog now carries a small curated set:
+# two beginner on-ramps plus a focus week and an evening wind-down week. Keep entries short,
+# calm, and prescribing ONE practice a day — a sequence, not a content library.
 PATHS: tuple[Path, ...] = (
     Path(
         id="first-7-days",
@@ -128,6 +130,118 @@ PATHS: tuple[Path, ...] = (
                 practice="breathe",
                 min_minutes=3,
                 cue="Three slow minutes. Notice how much calmer the breath has become.",
+            ),
+        ),
+    ),
+    Path(
+        id="focus-foundations",
+        title="Focus Foundations",
+        blurb="A week of short sits to steady a busy mind.",
+        days=(
+            PathDay(
+                index=1,
+                title="Day 1 · Count the breath",
+                practice="meditate",
+                min_minutes=3,
+                cue="Count each out-breath, one to ten. Lose count? Begin again at one.",
+            ),
+            PathDay(
+                index=2,
+                title="Day 2 · The wander and the return",
+                practice="meditate",
+                min_minutes=3,
+                cue="Notice the moment the mind wanders. That noticing is the win — return gently.",
+            ),
+            PathDay(
+                index=3,
+                title="Day 3 · One anchor",
+                practice="meditate",
+                min_minutes=4,
+                cue="Pick one spot — nostrils or belly — and rest your attention there.",
+            ),
+            PathDay(
+                index=4,
+                title="Day 4 · A slow reset",
+                practice="breathe",
+                min_minutes=3,
+                cue="Slow breathing steadies the mind. Follow the orb and let it set your pace.",
+            ),
+            PathDay(
+                index=5,
+                title="Day 5 · Name what pulls",
+                practice="meditate",
+                min_minutes=5,
+                cue="When something pulls you away, softly name it — thinking, hearing — and return.",
+            ),
+            PathDay(
+                index=6,
+                title="Day 6 · A little longer",
+                practice="meditate",
+                min_minutes=5,
+                cue="Same sit as yesterday, held a little longer. Let it be ordinary.",
+            ),
+            PathDay(
+                index=7,
+                title="Day 7 · Steady, your way",
+                practice="meditate",
+                min_minutes=6,
+                cue="Choose your anchor and sit. A week of returns has built real steadiness.",
+            ),
+        ),
+    ),
+    Path(
+        id="wind-down-week",
+        title="Wind-Down Week",
+        blurb="Seven evenings to soften the end of the day.",
+        days=(
+            PathDay(
+                index=1,
+                title="Day 1 · Arrive home",
+                practice="breathe",
+                min_minutes=2,
+                cue="Two slow minutes. Let the day's pace drain out on each exhale.",
+            ),
+            PathDay(
+                index=2,
+                title="Day 2 · Put the day down",
+                practice="meditate",
+                min_minutes=3,
+                cue="Sit and let the day's replay soften. Nothing to fix tonight.",
+            ),
+            PathDay(
+                index=3,
+                title="Day 3 · Longer exhale",
+                practice="breathe",
+                min_minutes=3,
+                cue="Let the exhale lengthen — the body reads it as safety.",
+            ),
+            PathDay(
+                index=4,
+                title="Day 4 · One good thing",
+                practice="gratitude",
+                min_minutes=0,
+                cue="Name one good thing from today, however small.",
+            ),
+            PathDay(
+                index=5,
+                title="Day 5 · Heavy limbs",
+                practice="meditate",
+                min_minutes=5,
+                cue="Let your limbs grow heavy where you sit. Rest attention low in the body.",
+            ),
+            PathDay(
+                index=6,
+                title="Day 6 · Slow to slower",
+                practice="breathe",
+                min_minutes=5,
+                cue="Five unhurried minutes. Let the pace settle to slower than feels usual.",
+            ),
+            PathDay(
+                index=7,
+                title="Day 7 · A kind close",
+                practice="meditate",
+                min_minutes=5,
+                cue="Close the week kindly: a quiet sit, then straight toward rest.",
             ),
         ),
     ),

@@ -1,4 +1,5 @@
 import { MOOD_META } from '../lib/colors'
+import { useT } from '../i18n'
 import type { Mood } from '../types'
 
 // A calm, curated shortlist of moods offered in the post-session reflection step —
@@ -29,11 +30,12 @@ export default function ReflectionMood({
   value: Mood | null
   onChange: (mood: Mood | null) => void
 }) {
+  const { t } = useT()
   return (
     <div
       className="session-reflect-moods"
       role="group"
-      aria-label="Mood (optional)"
+      aria-label={t('practice.reflectionMood.group')}
     >
       {REFLECTION_MOODS.map((mood) => {
         const meta = MOOD_META[mood]

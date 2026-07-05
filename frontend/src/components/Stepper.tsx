@@ -5,6 +5,7 @@
 // entry, so the gaps need not be regular. Each step plays a soft tactile tick.
 
 import type { ReactNode } from 'react'
+import { useT } from '../i18n'
 
 export type StepperOption<T extends string | number> = { value: T; label: string }
 
@@ -34,6 +35,7 @@ export default function Stepper<T extends string | number>({
   nextLabel,
   valueSuffix,
 }: StepperProps<T>) {
+  const { t } = useT()
   const index = options.findIndex((o) => o.value === value)
   const current = index >= 0 ? options[index] : options[0]
   const atStart = index <= 0
@@ -57,7 +59,7 @@ export default function Stepper<T extends string | number>({
           className="stepper-btn"
           onClick={() => go(-1)}
           disabled={disabled || atStart}
-          aria-label={prevLabel ?? 'Previous'}
+          aria-label={prevLabel ?? t('practice.stepper.previous')}
         >
           −
         </button>
@@ -74,7 +76,7 @@ export default function Stepper<T extends string | number>({
           className="stepper-btn"
           onClick={() => go(1)}
           disabled={disabled || atEnd}
-          aria-label={nextLabel ?? 'Next'}
+          aria-label={nextLabel ?? t('practice.stepper.next')}
         >
           +
         </button>

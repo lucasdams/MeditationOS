@@ -4,8 +4,10 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { ErrorBanner } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { useT } from '../i18n'
 
 export default function ResetPasswordPage() {
+  const { t } = useT()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
 
@@ -19,11 +21,11 @@ export default function ResetPasswordPage() {
     e.preventDefault()
     setError(null)
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters.')
+      setError(t('auth.reset.passwordTooShort'))
       return
     }
     if (newPassword !== confirm) {
-      setError('The passwords don’t match.')
+      setError(t('auth.reset.mismatch'))
       return
     }
     setSubmitting(true)
@@ -33,7 +35,7 @@ export default function ResetPasswordPage() {
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 400
-          ? 'This reset link is invalid or has expired. Request a new one.'
+          ? t('auth.reset.invalidToken')
           : messageForError(err),
       )
     } finally {
@@ -44,10 +46,10 @@ export default function ResetPasswordPage() {
   if (done) {
     return (
       <main id="main-content" className="auth-card">
-        <h1>Password reset</h1>
-        <p>Your password has been changed. You can now log in with it.</p>
+        <h1>{t('auth.reset.doneTitle')}</h1>
+        <p>{t('auth.reset.doneBody')}</p>
         <p className="auth-aux">
-          <Link to="/login">Go to log in</Link>
+          <Link to="/login">{t('auth.reset.goLogin')}</Link>
         </p>
       </main>
     )
@@ -56,10 +58,10 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <main id="main-content" className="auth-card">
-        <h1>Reset your password</h1>
-        <ErrorBanner message="This reset link is missing its token. Request a new one." />
+        <h1>{t('auth.reset.missingTokenTitle')}</h1>
+        <ErrorBanner message={t('auth.reset.missingToken')} />
         <p className="auth-aux">
-          <Link to="/forgot-password">Request a reset link</Link>
+          <Link to="/forgot-password">{t('auth.reset.requestLink')}</Link>
         </p>
       </main>
     )
@@ -67,9 +69,9 @@ export default function ResetPasswordPage() {
 
   return (
     <main id="main-content" className="auth-card">
-      <h1>Choose a new password</h1>
+      <h1>{t('auth.reset.title')}</h1>
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="new-password">New password</label>
+        <label htmlFor="new-password">{t('auth.reset.newPasswordLabel')}</label>
         <input
           id="new-password"
           type="password"
@@ -79,7 +81,7 @@ export default function ResetPasswordPage() {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
-        <label htmlFor="confirm-password">Confirm new password</label>
+        <label htmlFor="confirm-password">{t('auth.reset.confirmLabel')}</label>
         <input
           id="confirm-password"
           type="password"
@@ -90,11 +92,11 @@ export default function ResetPasswordPage() {
         />
         <ErrorBanner message={error} id="reset-error" />
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving…' : 'Reset password'}
+          {submitting ? t('auth.reset.submitting') : t('auth.reset.cta')}
         </button>
       </form>
       <p className="auth-aux">
-        <Link to="/login">Back to log in</Link>
+        <Link to="/login">{t('auth.reset.backToLogin')}</Link>
       </p>
     </main>
   )

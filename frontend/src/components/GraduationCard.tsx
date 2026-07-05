@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useT } from '../i18n'
 
 // Phase 4 (beginner-first revision §11 — "graduation depth"). The app deliberately tucks the
 // advanced surfaces away for beginners (HRV measurement, full analytics, the full cosmetic tree).
@@ -43,6 +44,8 @@ type Props = {
 }
 
 export default function GraduationCard({ onDismiss }: Props) {
+  const { t } = useT()
+
   function dismiss() {
     persistDismissed()
     onDismiss()
@@ -51,33 +54,31 @@ export default function GraduationCard({ onDismiss }: Props) {
   // Reuses the first-run-card layout classes (consistent look) + a `graduation-card` modifier for a
   // distinct, growth-tinted accent.
   return (
-    <section className="first-run-card graduation-card" aria-label="You've grown">
+    <section className="first-run-card graduation-card" aria-label={t('home.graduation.aria')}>
       <button
         type="button"
         className="first-run-dismiss"
         onClick={dismiss}
-        aria-label="Dismiss"
+        aria-label={t('home.graduation.dismiss')}
       >
         ✕
       </button>
-      <h2 className="first-run-title">You&rsquo;ve grown a real practice</h2>
+      <h2 className="first-run-title">{t('home.graduation.title')}</h2>
       <p className="first-run-body muted">
-        You&rsquo;ve stuck with it &mdash; that&rsquo;s the hard part. When you&rsquo;re ready,
-        there&rsquo;s more waiting: measure how your breathing moves your HRV, dig into your full
-        history, and give your companion a deeper look.
+        {t('home.graduation.body')}
       </p>
       <div className="first-run-actions">
         <Link to="/biometrics/new" className="first-run-action">
-          Measure your HRV
+          {t('home.graduation.hrv')}
         </Link>
         <Link to="/analytics" className="first-run-action first-run-action-secondary">
-          Full analytics
+          {t('home.graduation.analytics')}
         </Link>
         <Link to="/spirit" className="first-run-action first-run-action-secondary">
-          Customize
+          {t('home.graduation.customize')}
         </Link>
         <button type="button" className="first-run-gotit" onClick={dismiss}>
-          Got it
+          {t('home.graduation.gotIt')}
         </button>
       </div>
     </section>

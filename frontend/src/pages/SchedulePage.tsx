@@ -7,6 +7,7 @@ import { TYPE_COLORS, TYPE_LABELS } from '../lib/colors'
 import { toDatetimeLocal } from '../lib/format'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { useT } from '../i18n'
 import type { MeditationType, ScheduledSession } from '../types'
 
 // Order shown in the picker; labels come from the shared TYPE_LABELS map.
@@ -33,6 +34,7 @@ function formatWhen(iso: string): string {
 }
 
 export default function SchedulePage() {
+  const { t } = useT()
   const { showToast } = useToast()
   const [items, setItems] = useState<ScheduledSession[] | null>(null)
   const [error, setError] = useState<string | null>(null) // create/remove action errors
@@ -53,8 +55,8 @@ export default function SchedulePage() {
     getId: (s) => s.id,
     remove: (id) => scheduledSessionService.remove(id),
     messages: {
-      success: 'Removed from your schedule.',
-      error: "Couldn't remove that session.",
+      success: t('tracking.schedule.removed'),
+      error: t('tracking.schedule.removeError'),
     },
     onStart: () => setError(null),
   })
@@ -66,7 +68,7 @@ export default function SchedulePage() {
         setItems(rows)
         setLoadError(null)
       })
-      .catch((err) => setLoadError(messageForError(err, "Couldn't load your schedule.")))
+      .catch((err) => setLoadError(messageForError(err, t('tracking.schedule.loadError'))))
       .finally(() => setRetrying(false))
   }
 
@@ -84,13 +86,13 @@ export default function SchedulePage() {
     e.preventDefault()
     setError(null)
     if (!when) {
-      setError('Pick a date and time.')
+      setError(t('tracking.schedule.pickDate'))
       return
     }
     // The Upcoming list only shows future sessions, so a past pick would save but
     // silently never appear — reject it with a clear message instead.
     if (new Date(when).getTime() <= Date.now()) {
-      setError('Pick a time in the future.')
+      setError(t('tracking.schedule.pickFuture'))
       return
     }
     setSubmitting(true)
@@ -104,9 +106,9 @@ export default function SchedulePage() {
       const rows = await scheduledSessionService.list()
       setItems(rows)
       setNote('')
-      showToast('On the calendar. See you then.')
+      showToast(t('tracking.schedule.created'))
     } catch {
-      setError("Couldn't schedule that session.")
+      setError(t('tracking.schedule.createError'))
     } finally {
       setSubmitting(false)
     }
@@ -114,16 +116,16 @@ export default function SchedulePage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
       <header className="page-head">
-        <h1>Schedule</h1>
+        <h1>{t('tracking.schedule.title')}</h1>
         <p className="page-subtitle">
-          Schedule a sit ahead of time, and add it to your own calendar.
+          {t('tracking.schedule.subtitle')}
         </p>
       </header>
 
       <form onSubmit={handleSubmit} noValidate className="schedule-form">
-        <label htmlFor="sched-type">Type</label>
+        <label htmlFor="sched-type">{t('tracking.schedule.type')}</label>
         <select id="sched-type" value={type} onChange={(e) => setType(e.target.value as MeditationType)}>
           {TYPE_OPTIONS.map((value) => (
             <option key={value} value={value}>
@@ -132,16 +134,20 @@ export default function SchedulePage() {
           ))}
         </select>
 
-        <label htmlFor="sched-when">When</label>
+        <label htmlFor="sched-when">{t('tracking.schedule.when')}</label>
         <input
           id="sched-when"
           type="datetime-local"
           min={minWhen}
           value={when}
+          aria-describedby="sched-when-hint"
           onChange={(e) => setWhen(e.target.value)}
         />
+        <p id="sched-when-hint" className="field-time-hint muted">
+          {t('tracking.schedule.yourLocalTime')}
+        </p>
 
-        <label htmlFor="sched-duration">Length</label>
+        <label htmlFor="sched-duration">{t('tracking.schedule.length')}</label>
         <select
           id="sched-duration"
           value={duration}
@@ -149,32 +155,32 @@ export default function SchedulePage() {
         >
           {DURATIONS.map((d) => (
             <option key={d} value={d}>
-              {d === 0 ? 'Unspecified' : `${d} min`}
+              {d === 0 ? t('tracking.schedule.unspecified') : t('common.min', { count: d })}
             </option>
           ))}
         </select>
 
-        <label htmlFor="sched-note">Note (optional)</label>
+        <label htmlFor="sched-note">{t('tracking.schedule.noteLabel')}</label>
         <input
           id="sched-note"
           type="text"
           maxLength={200}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. morning sit before work"
+          placeholder={t('tracking.schedule.notePlaceholder')}
         />
 
         <ErrorBanner message={error} />
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Scheduling…' : 'Schedule it'}
+          {submitting ? t('tracking.schedule.scheduling') : t('tracking.schedule.schedule')}
         </button>
       </form>
 
-      <h2 className="schedule-upcoming-title">Upcoming</h2>
+      <h2 className="schedule-upcoming-title">{t('tracking.schedule.upcoming')}</h2>
       <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
       {!items && !loadError && <Loading />}
       {items && items.length === 0 && (
-        <EmptyState>Nothing on the horizon — plan your first sit above. 🗓️</EmptyState>
+        <EmptyState>{t('tracking.schedule.empty')}</EmptyState>
       )}
       {items && items.length > 0 && (
         <ul className="schedule-list">
@@ -189,16 +195,16 @@ export default function SchedulePage() {
                 <span className="muted">
                   {' '}
                   · {TYPE_LABELS[s.type] ?? s.type}
-                  {s.duration_minutes ? ` · ${s.duration_minutes} min` : ''}
+                  {s.duration_minutes ? ` · ${t('common.min', { count: s.duration_minutes })}` : ''}
                 </span>
                 {s.note && <div className="muted schedule-note">{s.note}</div>}
               </div>
               <div className="schedule-actions">
                 <a className="schedule-ics" href={scheduledSessionService.icsUrl(s.id)}>
-                  Add to calendar
+                  {t('tracking.schedule.addToCalendar')}
                 </a>
                 <button type="button" onClick={() => handleDelete(s.id)}>
-                  Remove
+                  {t('tracking.schedule.remove')}
                 </button>
               </div>
             </li>

@@ -6,17 +6,19 @@ import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { t as translate, useT } from '../i18n'
 import type { Goal, GoalActivity, GoalPeriod, GoalStatus } from '../types'
 
 // Goal-form labels differ from the shared canonical ones where the goals context
 // reads better ("Write gratitude", "Custom habit…"); the icon/colour come from
-// the shared ACTIVITY_META so they never drift.
-const GOAL_LABELS: Record<GoalActivity, string> = {
-  meditate: 'Meditate',
-  breathe: 'Breathe',
-  gratitude: 'Write gratitude',
-  journal: 'Journal',
-  custom: 'Custom habit…',
+// the shared ACTIVITY_META so they never drift. Labels are i18n keys resolved at
+// render time so the form + cards re-label live on a locale switch.
+const GOAL_LABEL_KEYS: Record<GoalActivity, string> = {
+  meditate: 'tracking.goals.activity.meditate',
+  breathe: 'tracking.goals.activity.breathe',
+  gratitude: 'tracking.goals.activity.gratitude',
+  journal: 'tracking.goals.activity.journal',
+  custom: 'tracking.goals.activity.custom',
 }
 // Single source for a goal's display icon+label so the form dropdown and the
 // cards cannot drift. Custom goals show the user's own label when one is given.
@@ -24,36 +26,42 @@ const GOAL_LABELS: Record<GoalActivity, string> = {
 function goalDisplay(activity: GoalActivity, label?: string | null): { icon: ActivityIcon; label: string } {
   return {
     icon: ACTIVITY_META[activity].icon,
-    label: activity === 'custom' && label ? label : GOAL_LABELS[activity],
+    label: activity === 'custom' && label ? label : translate(GOAL_LABEL_KEYS[activity]),
   }
 }
 
-// A <select> <option> can only hold text, so the dropdown carries the label only;
-// the icon shows on the goal cards (where a component can render).
-const ACTIVITIES: { key: GoalActivity; label: string }[] = (
-  ['meditate', 'breathe', 'gratitude', 'journal', 'custom'] as const
-).map((key) => ({ key, label: goalDisplay(key).label }))
+// The activity order for the form dropdown; labels are resolved at render time.
+const ACTIVITY_KEYS: GoalActivity[] = ['meditate', 'breathe', 'gratitude', 'journal', 'custom']
 
-// Cadence presets — the only "target" is how often, not a number to type.
-const CADENCES: { label: string; count: number; period: GoalPeriod }[] = [
-  { label: 'Once a day', count: 1, period: 'day' },
-  { label: 'Twice a day', count: 2, period: 'day' },
-  { label: '3× a day', count: 3, period: 'day' },
-  { label: 'Once a week', count: 1, period: 'week' },
-  { label: '3× a week', count: 3, period: 'week' },
-  { label: '5× a week', count: 5, period: 'week' },
-  { label: '25 times total', count: 25, period: 'total' },
-  { label: '50 times total', count: 50, period: 'total' },
-  { label: '100 times total', count: 100, period: 'total' },
+// Cadence presets — the only "target" is how often, not a number to type. Each
+// carries its i18n label key (resolved at render) alongside its count + period.
+const CADENCES: { labelKey: string; count: number; period: GoalPeriod }[] = [
+  { labelKey: 'tracking.goals.cadence.daily', count: 1, period: 'day' },
+  { labelKey: 'tracking.goals.cadence.twiceDaily', count: 2, period: 'day' },
+  { labelKey: 'tracking.goals.cadence.thriceDaily', count: 3, period: 'day' },
+  { labelKey: 'tracking.goals.cadence.weekly', count: 1, period: 'week' },
+  { labelKey: 'tracking.goals.cadence.thriceWeekly', count: 3, period: 'week' },
+  { labelKey: 'tracking.goals.cadence.fiveWeekly', count: 5, period: 'week' },
+  { labelKey: 'tracking.goals.cadence.total25', count: 25, period: 'total' },
+  { labelKey: 'tracking.goals.cadence.total50', count: 50, period: 'total' },
+  { labelKey: 'tracking.goals.cadence.total100', count: 100, period: 'total' },
 ]
 
 function cadenceLabel(count: number, period: GoalPeriod): string {
-  if (period === 'total') return `${count} times total`
-  const times = count === 1 ? 'Once' : count === 2 ? 'Twice' : `${count}×`
-  return `${times} a ${period}`
+  if (period === 'total') return translate('tracking.goals.cadence.totalN', { count })
+  const times =
+    count === 1
+      ? translate('tracking.goals.cadence.once')
+      : count === 2
+        ? translate('tracking.goals.cadence.twice')
+        : translate('tracking.goals.cadence.nTimes', { count })
+  return period === 'day'
+    ? translate('tracking.goals.cadence.perDay', { times })
+    : translate('tracking.goals.cadence.perWeek', { times })
 }
 
 export default function GoalsPage() {
+  const { t } = useT()
   const { showToast } = useToast()
   const [goals, setGoals] = useState<Goal[] | null>(null)
   const [error, setError] = useState<string | null>(null) // create-goal form errors
@@ -77,7 +85,7 @@ export default function GoalsPage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (!ignored?.()) setLoadError(messageForError(err, "Couldn't load your goals."))
+        if (!ignored?.()) setLoadError(messageForError(err, t('tracking.goals.loadError')))
       })
       .finally(() => {
         if (!ignored?.()) setRetrying(false)
@@ -104,7 +112,7 @@ export default function GoalsPage() {
     e.preventDefault()
     setError(null)
     if (isCustom && !trimmedLabel) {
-      setError('Give your custom habit a name.')
+      setError(t('tracking.goals.needName'))
       return
     }
     const cadence = CADENCES[cadenceIdx]
@@ -117,10 +125,10 @@ export default function GoalsPage() {
         ...(isCustom ? { label: trimmedLabel } : {}),
       })
       if (view === 'active') setGoals((prev) => [created, ...(prev ?? [])])
-      showToast('Habit set. Now just keep showing up.')
+      showToast(t('tracking.goals.created'))
       if (isCustom) setLabel('')
     } catch {
-      setError("Couldn't create that goal.")
+      setError(t('tracking.goals.createError'))
     } finally {
       setSubmitting(false)
     }
@@ -133,9 +141,9 @@ export default function GoalsPage() {
         ? await goalService.undoCheckIn(goal.id)
         : await goalService.checkIn(goal.id)
       setGoals((prev) => prev?.map((g) => (g.id === updated.id ? updated : g)) ?? null)
-      showToast(updated.checked_in_today ? 'Done for today. ✓' : 'Undone — no harm.')
+      showToast(updated.checked_in_today ? t('tracking.goals.checkedIn') : t('tracking.goals.undone'))
     } catch {
-      setActionError("Couldn't update that check-in.")
+      setActionError(t('tracking.goals.checkinError'))
     }
   }
 
@@ -144,9 +152,9 @@ export default function GoalsPage() {
     try {
       await goalService.setStatus(id, status)
       setGoals((prev) => prev?.filter((g) => g.id !== id) ?? null)
-      showToast(status === 'archived' ? 'Tucked away.' : 'Back in rotation.')
+      showToast(status === 'archived' ? t('tracking.goals.archived') : t('tracking.goals.reactivated'))
     } catch {
-      setActionError("Couldn't update that goal.")
+      setActionError(t('tracking.goals.statusError'))
     }
   }
 
@@ -155,64 +163,64 @@ export default function GoalsPage() {
     setList: setGoals,
     getId: (g) => g.id,
     remove: (id) => goalService.remove(id),
-    messages: { success: 'Goal deleted.', error: "Couldn't delete that goal." },
+    messages: { success: t('tracking.goals.deleted'), error: t('tracking.goals.deleteError') },
     onStart: () => setActionError(null),
   })
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
       <header className="page-head">
-        <h1>Goals</h1>
-        <p className="page-subtitle">Pick a habit and a cadence, then check in as you practice.</p>
+        <h1>{t('tracking.goals.title')}</h1>
+        <p className="page-subtitle">{t('tracking.goals.subtitle')}</p>
       </header>
 
       {view === 'active' && (
         <section className="goal-compose">
           <form onSubmit={handleSubmit} noValidate>
-            <label htmlFor="activity">I want to…</label>
+            <label htmlFor="activity">{t('tracking.goals.iWantTo')}</label>
             <select
               id="activity"
               value={activity}
               onChange={(e) => setActivity(e.target.value as GoalActivity)}
             >
-              {ACTIVITIES.map((a) => (
-                <option key={a.key} value={a.key}>
-                  {a.label}
+              {ACTIVITY_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {goalDisplay(key).label}
                 </option>
               ))}
             </select>
 
             {isCustom && (
               <>
-                <label htmlFor="habit-name">Habit name</label>
+                <label htmlFor="habit-name">{t('tracking.goals.habitName')}</label>
                 <input
                   id="habit-name"
                   type="text"
                   value={label}
                   maxLength={40}
-                  placeholder="e.g. Gym, Read, Stretch"
+                  placeholder={t('tracking.goals.habitPlaceholder')}
                   onChange={(e) => setLabel(e.target.value)}
                 />
               </>
             )}
 
-            <label htmlFor="cadence">How often?</label>
+            <label htmlFor="cadence">{t('tracking.goals.howOften')}</label>
             <select
               id="cadence"
               value={cadenceIdx}
               onChange={(e) => setCadenceIdx(Number(e.target.value))}
             >
               {CADENCES.map((c, i) => (
-                <option key={c.label} value={i}>
-                  {c.label}
+                <option key={c.labelKey} value={i}>
+                  {t(c.labelKey)}
                 </option>
               ))}
             </select>
 
             <ErrorBanner message={error} />
             <button type="submit" disabled={submitting}>
-              {submitting ? 'Adding…' : 'Add goal'}
+              {submitting ? t('tracking.goals.adding') : t('tracking.goals.add')}
             </button>
           </form>
         </section>
@@ -224,14 +232,14 @@ export default function GoalsPage() {
           className={view === 'active' ? 'goal-tab active' : 'goal-tab'}
           onClick={() => setView('active')}
         >
-          Active
+          {t('tracking.goals.tabActive')}
         </button>
         <button
           type="button"
           className={view === 'archived' ? 'goal-tab active' : 'goal-tab'}
           onClick={() => setView('archived')}
         >
-          Archived
+          {t('tracking.goals.tabArchived')}
         </button>
       </div>
 
@@ -242,14 +250,19 @@ export default function GoalsPage() {
         {goals && goals.length === 0 && (
           <EmptyState>
             {view === 'active'
-              ? 'No habits yet. Pick one and a rhythm — small and repeatable beats grand.'
-              : 'No archived goals.'}
+              ? t('tracking.goals.emptyActive')
+              : t('tracking.goals.emptyArchived')}
           </EmptyState>
         )}
         {goals?.map((g) => {
           const display = goalDisplay(g.activity, g.label)
           const GoalIcon = display.icon
-          const when = g.period === 'day' ? 'today' : g.period === 'week' ? 'this week' : 'all-time'
+          const when =
+            g.period === 'day'
+              ? t('tracking.goals.when.today')
+              : g.period === 'week'
+                ? t('tracking.goals.when.week')
+                : t('tracking.goals.when.total')
           const isCustomGoal = g.activity === 'custom'
           return (
             <article
@@ -262,12 +275,12 @@ export default function GoalsPage() {
                   <GoalIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {display.label}
                 </strong>
                 <span className="goal-cadence">{cadenceLabel(g.count, g.period)}</span>
-                {g.achieved && <span className="goal-achieved">✓ Done</span>}
+                {g.achieved && <span className="goal-achieved">{t('tracking.goals.done')}</span>}
               </div>
               <div
                 className="goal-bar"
                 role="progressbar"
-                aria-label="Goal progress"
+                aria-label={t('tracking.goals.progressAria')}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(g.progress * 100)}
@@ -278,7 +291,10 @@ export default function GoalsPage() {
                 />
               </div>
               <div className="goal-card-meta muted">
-                {g.done} / {g.count} {when}
+                {t('tracking.goals.meta', { done: g.done, count: g.count, when })}
+                {/* Built-in activities count automatically from practice — say so, or a user
+                    hunts for the check-in button that only custom habits have. */}
+                {!isCustomGoal && <span className="goal-auto-note">{t('tracking.goals.autoNote')}</span>}
               </div>
               {isCustomGoal && g.status === 'active' && (
                 <button
@@ -286,21 +302,21 @@ export default function GoalsPage() {
                   className={g.checked_in_today ? 'goal-checkin done' : 'goal-checkin'}
                   onClick={() => toggleCheckin(g)}
                 >
-                  {g.checked_in_today ? '✓ Done today (tap to undo)' : 'Mark done today'}
+                  {g.checked_in_today ? t('tracking.goals.doneToday') : t('tracking.goals.markDone')}
                 </button>
               )}
               <div className="goal-card-actions">
                 {g.status === 'active' ? (
                   <button type="button" className="link-neutral" onClick={() => archive(g.id, 'archived')}>
-                    Archive
+                    {t('tracking.goals.archive')}
                   </button>
                 ) : (
                   <button type="button" className="link-neutral" onClick={() => archive(g.id, 'active')}>
-                    Reactivate
+                    {t('tracking.goals.reactivate')}
                   </button>
                 )}
                 <button type="button" className="link-danger" onClick={() => remove(g.id)}>
-                  Delete
+                  {t('tracking.goals.delete')}
                 </button>
               </div>
             </article>

@@ -8,6 +8,8 @@
 // gold is close to the surface colour. Sizes to its font context by default (`1em`), so it
 // lines up with the number/text beside it; pass `size` to override.
 
+import { t } from '../i18n'
+
 interface CoinIconProps {
   // px or any CSS length; defaults to 1em so the coin matches the surrounding text size.
   size?: number | string
@@ -23,7 +25,7 @@ export default function CoinIcon({ size = '1em', className }: CoinIconProps) {
       height={size}
       viewBox="0 0 24 24"
       role="img"
-      aria-label="coins"
+      aria-label={t('common.coins')}
       focusable="false"
       style={{ display: 'inline-block', verticalAlign: '-0.125em', flex: 'none' }}
     >

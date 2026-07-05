@@ -15,6 +15,7 @@ import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import Flame from '../components/Flame'
 import { useToast } from '../context/ToastContext'
+import { useT } from '../i18n'
 import {
   MIN_DRAFT_SECONDS,
   beaconSave,
@@ -48,19 +49,26 @@ const SESSION_TYPE: MeditationType = 'mindfulness'
 const DRAFT_PAGE = 'trataka'
 
 // Target length; 0 = open-ended (count up, finish manually). Trataka sits are usually
-// short to start, so the steps lean shorter than the meditation timer's.
-const DURATIONS: StepperOption<number>[] = [
-  { value: 0, label: 'Open' },
-  { value: 2, label: '2 min' },
-  { value: 5, label: '5 min' },
-  { value: 10, label: '10 min' },
-  { value: 15, label: '15 min' },
-  { value: 20, label: '20 min' },
+// short to start, so the steps lean shorter than the meditation timer's. The label is a
+// catalog key resolved at render (so it re-labels on locale change); 0 → "Untimed".
+const DURATION_VALUES: { value: number; labelKey: string }[] = [
+  { value: 0, labelKey: 'practice.duration.untimed' },
+  { value: 2, labelKey: 'practice.mins.2' },
+  { value: 5, labelKey: 'practice.mins.5' },
+  { value: 10, labelKey: 'practice.mins.10' },
+  { value: 15, labelKey: 'practice.mins.15' },
+  { value: 20, labelKey: 'practice.mins.20' },
 ]
 
 export default function TratakaPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useT()
+  // Duration options with labels resolved from the catalog (re-labels on locale change).
+  const DURATIONS: StepperOption<number>[] = DURATION_VALUES.map((d) => ({
+    value: d.value,
+    label: t(d.labelKey),
+  }))
   // Respect the OS reduced-motion preference: the flame falls back to a still (or barely
   // moving) frame instead of the organic sway. Mirrors BreathePage's reduced-motion gate.
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -153,7 +161,7 @@ export default function TratakaPage() {
     if (!payload) return
     writeDraft(DRAFT_PAGE, {
       clientToken: payload.client_token as string,
-      label: 'Candle gazing',
+      label: t('practice.trataka.recover.label'),
       elapsedSeconds: Math.floor(elapsedSec),
       payload,
       savedAt: Date.now(),
@@ -259,7 +267,7 @@ export default function TratakaPage() {
         client_token: tokenRef.current ?? undefined,
       })
     } catch (err) {
-      setError(err instanceof ApiError ? "Couldn't save the session." : messageForError(err))
+      setError(err instanceof ApiError ? t('practice.error.saveSession') : messageForError(err))
       setSaving(false)
       return
     }
@@ -269,7 +277,7 @@ export default function TratakaPage() {
     clearDraft(DRAFT_PAGE)
 
     const after = await dashboardService.getStats().catch(() => ZERO_STATS)
-    const bd = buildXpBreakdown(before, after, 'Candle gazing', FlameIcon)
+    const bd = buildXpBreakdown(before, after, t('practice.trataka.recover.label'), FlameIcon)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
@@ -291,9 +299,9 @@ export default function TratakaPage() {
       await sessionService.create(restorable.payload)
       clearDraft(DRAFT_PAGE)
       setRestorable(null)
-      showToast('That sit is yours.')
+      showToast(t('practice.recover.savedToast'))
     } catch {
-      setError("Couldn't save that session.")
+      setError(t('practice.recover.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -327,7 +335,7 @@ export default function TratakaPage() {
       navigate('/')
     } catch (err) {
       setReflectError(
-        err instanceof ApiError ? "Couldn't save reflection." : messageForError(err),
+        err instanceof ApiError ? t('practice.error.saveReflection') : messageForError(err),
       )
       setReflectSaving(false)
     }
@@ -347,23 +355,38 @@ export default function TratakaPage() {
       id="main-content"
       className={`breathe trataka${running ? ' trataka-immersive' : ''}`}
     >
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('practice.back.dashboard')}</Link>
       <header className="page-head">
-        <h1>Candle gazing</h1>
+        <h1>{t('practice.trataka.title')}</h1>
       </header>
+
+      {/* Beginner-friendly intro — the same "what you'll do" card the meditate/breathe start
+          screens show, so nobody is dropped cold in front of a flame. Hidden once underway. */}
+      {!started && (
+        <div className="practice-intro">
+          <p className="practice-intro-what">
+            {t('practice.trataka.intro.what')}
+          </p>
+          <p className="practice-intro-how">
+            {t('practice.trataka.intro.how')}
+          </p>
+        </div>
+      )}
 
       {restorable && !started && (
         <div className="session-recover">
           <span>
-            Unsaved {restorable.label.toLowerCase()} sit ·{' '}
-            {Math.round(restorable.elapsedSeconds / 60)} min from earlier.
+            {t('practice.recover.unsavedSit', {
+              label: restorable.label.toLowerCase(),
+              min: Math.round(restorable.elapsedSeconds / 60),
+            })}
           </span>
           <div className="session-recover-actions">
             <button type="button" onClick={restoreSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save it'}
+              {saving ? t('practice.recover.saving') : t('practice.recover.save')}
             </button>
             <button type="button" className="link-neutral" onClick={discardRestore}>
-              Discard
+              {t('practice.recover.discard')}
             </button>
           </div>
         </div>
@@ -373,33 +396,37 @@ export default function TratakaPage() {
         <Flame intensity={flameIntensity} size={running ? 360 : 220} />
         {running && (
           <p className={`trataka-guide${guideVisible ? '' : ' is-hidden'}`}>
-            Rest your gaze softly on the flame
+            {t('practice.trataka.guide')}
           </p>
         )}
         {started && <span className="trataka-time">{mmss(remaining)}</span>}
         <div className="breathe-phase">
-          {running ? 'Rest your gaze on the flame' : elapsed > 0 ? 'Paused' : 'Eyes open · gaze softly'}
+          {running
+            ? t('practice.trataka.phase.gazing')
+            : elapsed > 0
+              ? t('practice.state.paused')
+              : t('practice.trataka.phase.ready')}
         </div>
       </div>
 
       {started && (
         <div className="breathe-stats">
-          <span>{mmss(elapsed)} elapsed</span>
-          {targetMin > 0 && <span>{targetMin} min gaze</span>}
+          <span>{t('practice.elapsed', { time: mmss(elapsed) })}</span>
+          {targetMin > 0 && <span>{t('practice.trataka.minGaze', { min: targetMin })}</span>}
         </div>
       )}
 
-      <label>Duration</label>
+      <label>{t('practice.duration.label')}</label>
       <Stepper
         options={DURATIONS}
         value={targetMin}
         disabled={settingsDisabled}
-        ariaLabel="Duration"
+        ariaLabel={t('practice.duration.label')}
         onChange={setTargetMin}
       />
 
       <details className="meditate-disclosure">
-        <summary className="meditate-disclosure-summary">Ambient sound</summary>
+        <summary className="meditate-disclosure-summary">{t('practice.trataka.sound.summary')}</summary>
         <div className="meditate-disclosure-body">
           <SoundscapePicker
             value={soundscape}
@@ -422,51 +449,47 @@ export default function TratakaPage() {
       <div className="breathe-controls">
         {!running ? (
           <button type="button" onClick={start} disabled={saving}>
-            {elapsed > 0 ? 'Resume' : 'Start'}
+            {elapsed > 0 ? t('practice.control.resume') : t('practice.control.start')}
           </button>
         ) : (
           <button type="button" onClick={pause}>
-            Pause
+            {t('practice.control.pause')}
           </button>
         )}
         {started && (
           <button type="button" className="secondary" onClick={finish} disabled={saving}>
-            {saving ? 'Saving…' : 'Finish & save'}
+            {saving ? t('practice.recover.saving') : t('practice.control.finishSave')}
           </button>
         )}
       </div>
 
       {elapsed > 0 && !running && !saving && (
         <button type="button" className="meditate-reset" onClick={reset}>
-          Reset
+          {t('practice.control.reset')}
         </button>
       )}
 
       {/* ── About: tucked into a collapsed disclosure so the practice stays the focus ── */}
       <details className="trataka-about">
-        <summary className="trataka-about-summary">About candle gazing</summary>
+        <summary className="trataka-about-summary">{t('practice.trataka.about.summary')}</summary>
         <div className="trataka-about-body">
         <p>
-          Candle gazing — traditionally called <em>Trataka</em> — is a yogic concentration
-          practice (a form of <em>dharana</em>): you rest your open gaze on a single point,
-          classically a candle flame, and let your attention settle there. When the mind
-          wanders, you gently bring it back to the flame.
+          {t('practice.trataka.about.p1intro')} <em>Trataka</em>{' '}
+          {t('practice.trataka.about.p1mid')} <em>dharana</em>
+          {t('practice.trataka.about.p1end')}
         </p>
         <p>
-          It's traditionally used to <strong>train sustained attention</strong> — the idea being
-          that steadying your visual focus on one spot can carry over into steadier attention
-          overall. Research into concentration practices is still emerging, so we hold this as a
-          long-standing practice people find helpful, not a proven outcome.
+          {t('practice.trataka.about.p2intro')}{' '}
+          <strong>{t('practice.trataka.about.p2emph')}</strong>{' '}
+          {t('practice.trataka.about.p2end')}
         </p>
         <p>
-          Some people with attention difficulties find single-point focus grounding. That said,
-          candle gazing is <strong>not a treatment for ADHD or any condition</strong> and is no
-          substitute for professional care — if you have medical concerns, please speak with a
-          qualified professional.
+          {t('practice.trataka.about.p3intro')}{' '}
+          <strong>{t('practice.trataka.about.p3emph')}</strong>{' '}
+          {t('practice.trataka.about.p3end')}
         </p>
         <p className="trataka-about-note">
-          A gentle, traditional focus practice — supportive, not clinical, and not a medical
-          measurement or diagnosis.
+          {t('practice.trataka.about.note')}
         </p>
         </div>
       </details>
@@ -485,27 +508,27 @@ export default function TratakaPage() {
       )}
 
       {showReflection && (
-        <Modal ariaLabel="Reflect on your gaze" cardClassName="biometric-card session-reflect-card">
-          <h2>How was that?</h2>
+        <Modal ariaLabel={t('practice.trataka.reflect.aria')} cardClassName="biometric-card session-reflect-card">
+          <h2>{t('practice.reflect.heading')}</h2>
           <p className="biometric-intro">
-            Optional — rate it, or jot a quick note.
+            {t('practice.reflect.intro')}
           </p>
 
           <div className="session-reflect-ratings">
             <div className="session-reflect-row">
-              <span className="session-reflect-label">Focus</span>
+              <span className="session-reflect-label">{t('practice.reflect.focus')}</span>
               <RatingChips
-                ariaLabel="Focus"
-                notRatedLabel="—"
+                ariaLabel={t('practice.reflect.focus')}
+                notRatedLabel={t('practice.reflect.notRated')}
                 value={reflectFocus}
                 onChange={setReflectFocus}
               />
             </div>
             <div className="session-reflect-row">
-              <span className="session-reflect-label">Calm</span>
+              <span className="session-reflect-label">{t('practice.reflect.calm')}</span>
               <RatingChips
-                ariaLabel="Calm"
-                notRatedLabel="—"
+                ariaLabel={t('practice.reflect.calm')}
+                notRatedLabel={t('practice.reflect.notRated')}
                 value={reflectCalm}
                 onChange={setReflectCalm}
               />
@@ -514,12 +537,12 @@ export default function TratakaPage() {
 
           <div className="session-reflect-notes">
             <label htmlFor="reflect-notes" className="session-reflect-notes-label">
-              Notes (optional)
+              {t('practice.reflect.notesLabel')}
             </label>
             <textarea
               id="reflect-notes"
               rows={3}
-              placeholder="Anything that arose…"
+              placeholder={t('practice.reflect.notesPlaceholder')}
               value={reflectNotes}
               onChange={(e) => setReflectNotes(e.target.value)}
             />
@@ -529,7 +552,7 @@ export default function TratakaPage() {
 
           <div className="biometric-actions">
             <button type="button" onClick={saveReflection} disabled={reflectSaving}>
-              {reflectSaving ? 'Saving…' : 'Keep it'}
+              {reflectSaving ? t('practice.recover.saving') : t('practice.reflect.keep')}
             </button>
             <button
               type="button"
@@ -537,7 +560,7 @@ export default function TratakaPage() {
               onClick={() => navigate('/')}
               disabled={reflectSaving}
             >
-              Skip
+              {t('practice.reflect.skip')}
             </button>
           </div>
         </Modal>

@@ -262,30 +262,6 @@ def _stored_coins_spent(db_session, user_id):
     ).scalar_one()
 
 
-def _stored_last_pampered_at(db_session, user_id):
-    """The active spirit's stored pamper timestamp (ADR-0025) — read off the row (it isn't in
-    SpiritState). NULL until the first cosmetic purchase. ADR-0029 still STAMPS it on unlock for
-    forward-compat, even though it no longer affects needs, so the unlock tests still check it."""
-    db_session.expire_all()
-    return db_session.execute(
-        select(Spirit.last_pampered_at).where(
-            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
-        )
-    ).scalar_one()
-
-
-def _stored_last_pampered_need(db_session, user_id):
-    """The active spirit's stored last-pampered need (ADR-0026) — read off the row (not in
-    SpiritState). NULL until the first cosmetic purchase. Still STAMPED on unlock under ADR-0029
-    (forward-compat only; it no longer affects needs)."""
-    db_session.expire_all()
-    return db_session.execute(
-        select(Spirit.last_pampered_need).where(
-            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
-        )
-    ).scalar_one()
-
-
 # --- Choose the creature (ADR-0023; path is chosen, not auto-detected) ------------------
 
 
@@ -2021,9 +1997,9 @@ def test_high_level_spirit_owning_the_tier_three_can_unlock_each_tier_four(clien
         assert _spirit(client)["cosmetics"][slot] == legendary
 
 
-def test_unlock_owns_auto_equips_charges_and_pampers(client, db_session):
-    """One unlock does all of ADR-0027's effects: the option is owned, auto-equipped, charged to
-    the ledger, and the spirit is pampered (stamp + need recorded)."""
+def test_unlock_owns_auto_equips_and_charges(client, db_session):
+    """One unlock does all of ADR-0027's effects: the option is owned, auto-equipped, and charged
+    to the spend ledger."""
     _auth(client, "unlock_effects@example.com")
     user_id = _user_id(db_session, "unlock_effects@example.com")
     assert _choose(client, "stillness").status_code == 200
@@ -2038,9 +2014,6 @@ def test_unlock_owns_auto_equips_charges_and_pampers(client, db_session):
     # Charged to the ledger.
     assert body["coins"] == coins_before - _cost("aura", "soft")
     assert _stored_coins_spent(db_session, user_id) == _cost("aura", "soft")
-    # Pampered: stamp + the bought option's need recorded (soft favours rested).
-    assert _stored_last_pampered_at(db_session, user_id) is not None
-    assert _stored_last_pampered_need(db_session, user_id) == "rested"
 
 
 def test_equip_is_free_owned_only_and_can_clear_and_swap(client, db_session):

@@ -52,6 +52,18 @@ function renderPage() {
   )
 }
 
+// A practice can ALSO surface in the top "New here? Start here" / "Suggested for you" sections, so
+// a name may match more than one link. This returns the link inside the main CATALOG groups —
+// letting the deep-link/feed assertions target the category card regardless of which top section
+// happens to be showing (which depends on the async level fetch).
+function catalogLink(name: RegExp): HTMLElement {
+  const links = screen.getAllByRole('link', { name })
+  const inCatalog = links.filter(
+    (el) => !el.closest('.practices-suggested') && !el.closest('.practices-beginner'),
+  )
+  return (inCatalog[0] ?? links[0]) as HTMLElement
+}
+
 describe('PracticesPage', () => {
   afterEach(cleanup)
   beforeEach(() => {
@@ -83,7 +95,7 @@ describe('PracticesPage', () => {
 
   it('deep-links breathing cards with the right ?pattern= param', () => {
     renderPage()
-    expect(screen.getByRole('link', { name: /resonance/i })).toHaveAttribute(
+    expect(catalogLink(/resonance/i)).toHaveAttribute(
       'href',
       '/breathe?pattern=resonance',
     )
@@ -96,7 +108,7 @@ describe('PracticesPage', () => {
 
   it('deep-links guided meditation cards with the right ?guided= param', async () => {
     renderPage()
-    expect(screen.getByRole('link', { name: /body scan/i })).toHaveAttribute(
+    expect(catalogLink(/body scan/i)).toHaveAttribute(
       'href',
       '/meditate?guided=body-scan',
     )
@@ -142,7 +154,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the Body cards with the right ?guided= param', () => {
     renderPage()
-    expect(screen.getByRole('link', { name: /body scan/i })).toHaveAttribute(
+    expect(catalogLink(/body scan/i)).toHaveAttribute(
       'href',
       '/meditate?guided=body-scan',
     )
@@ -166,7 +178,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the new Meditation cards (Focused attention, Mantra, Dopamine reset)', () => {
     renderPage()
-    expect(screen.getByRole('link', { name: /focused attention/i })).toHaveAttribute(
+    expect(catalogLink(/focused attention/i)).toHaveAttribute(
       'href',
       '/meditate?guided=focus',
     )
@@ -330,7 +342,7 @@ describe('PracticesPage', () => {
     expect(nudge.textContent).toMatch(/round things out/i)
     // Every sit (breathing + meditation) feeds rested → each gets the quiet "round-out" highlight
     // (the .practice-card--needed class); reflection (joyful) does not.
-    expect(screen.getByRole('link', { name: /resonance/i }).className).toMatch(/practice-card--needed/)
+    expect(catalogLink(/resonance/i).className).toMatch(/practice-card--needed/)
     expect(screen.getByRole('link', { name: /journal/i }).className).not.toMatch(/practice-card--needed/)
   })
 
@@ -383,7 +395,7 @@ describe('PracticesPage', () => {
     get.mockResolvedValue(spiritWith()) // stillness, rested weakest
     renderPage()
     await screen.findByText(/a little less/i)
-    const bodyScan = screen.getByRole('link', { name: /body scan/i })
+    const bodyScan = catalogLink(/body scan/i)
     expect(within(bodyScan).getByText('Rest')).toBeInTheDocument()
     expect(within(bodyScan).queryByText('Joy')).toBeNull()
     const mindfulness = screen.getByRole('link', { name: /mindfulness/i })
@@ -397,8 +409,8 @@ describe('PracticesPage', () => {
     await waitFor(() => expect(get).toHaveBeenCalled())
     expect(screen.queryByText(/a little less/i)).toBeNull()
     // No "needed" highlight for a pathless spark.
-    expect(screen.getByRole('link', { name: /resonance/i }).className).not.toMatch(/practice-card--needed/)
-    expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
+    expect(catalogLink(/resonance/i).className).not.toMatch(/practice-card--needed/)
+    expect(catalogLink(/resonance/i)).toBeInTheDocument()
   })
 })
 
@@ -497,13 +509,13 @@ describe('PracticesPage — search filter', () => {
   it('filters cards live: a matching card stays, non-matching cards are hidden', () => {
     renderPage()
     // Baseline: both a matching and a non-matching card render.
-    expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+    expect(catalogLink(/resonance/i)).toBeInTheDocument()
+    expect(catalogLink(/body scan/i)).toBeInTheDocument()
 
     typeSearch('resonance')
 
     // The matching card is still shown; the non-matching one is gone.
-    expect(screen.getByRole('link', { name: /resonance/i })).toBeInTheDocument()
+    expect(catalogLink(/resonance/i)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
   })
 
@@ -540,7 +552,7 @@ describe('PracticesPage — search filter', () => {
 
     fireEvent.keyDown(box, { key: 'Escape' })
     // Everything is back.
-    expect(screen.getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+    expect(catalogLink(/body scan/i)).toBeInTheDocument()
     expect((box as HTMLInputElement).value).toBe('')
   })
 
@@ -550,7 +562,7 @@ describe('PracticesPage — search filter', () => {
     expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /clear search/i }))
-    expect(screen.getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+    expect(catalogLink(/body scan/i)).toBeInTheDocument()
   })
 
   it('keeps the spirit-need highlight working on the filtered results', async () => {
@@ -558,10 +570,12 @@ describe('PracticesPage — search filter', () => {
     // class and the gentle round-out nudge appears (ADR-0032).
     get.mockResolvedValue(spiritWith())
     renderPage()
-    await screen.findByText(/round things out/i)
+    // The nudge specifically (its "…has had a little less…" phrasing) — distinct from the Suggested
+    // section's "…would round things out" subtitle, which shares the ADR-0032 round-out language.
+    await screen.findByText(/a little less/i)
 
     typeSearch('resonance')
-    const resonance = screen.getByRole('link', { name: /resonance/i })
+    const resonance = catalogLink(/resonance/i)
     expect(resonance).toBeInTheDocument()
     // Still highlighted after filtering (filter is presentational; highlight keys off the need).
     expect(resonance.className).toMatch(/practice-card--needed/)

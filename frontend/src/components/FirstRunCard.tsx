@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useT } from '../i18n'
 
 // A new account lands on a mostly-empty dashboard (quests, sanctuary, weekly review
 // all bare on day one). This calm "start here" card points to a first action until
@@ -42,33 +43,33 @@ type Props = {
 }
 
 export default function FirstRunCard({ onDismiss }: Props) {
+  const { t } = useT()
+
   function dismiss() {
     persistDismissed()
     onDismiss()
   }
 
   return (
-    <section className="first-run-card" aria-label="Getting started">
+    <section className="first-run-card" aria-label={t('home.firstRun.aria')}>
       <button
         type="button"
         className="first-run-dismiss"
         onClick={dismiss}
-        aria-label="Dismiss getting started"
+        aria-label={t('home.firstRun.dismiss')}
       >
         ✕
       </button>
-      <h2 className="first-run-title">New here? Start with one small step.</h2>
+      <h2 className="first-run-title">{t('home.firstRun.title')}</h2>
       <p className="first-run-body muted">
-        Begin with a short breathing session, or log a sit you&rsquo;ve already done.
-        Your dashboard fills in as you practice. A few minutes a day is how the habit
-        forms and the practice rewires your brain.
+        {t('home.firstRun.body')}
       </p>
       <div className="first-run-actions">
         <Link to="/breathe" className="first-run-action">
-          Breathe
+          {t('home.firstRun.breathe')}
         </Link>
         <Link to="/sessions/new" className="first-run-action first-run-action-secondary">
-          Log a session
+          {t('home.firstRun.logSession')}
         </Link>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Heart } from 'lucide-react'
+import { useT } from '../i18n'
 
 // A pink heart colour for the tap-heart button + the floating hearts — reads as affection
 // (and as the Cool Electric pink pop, not the indigo action accent). Used by the Heart fill below.
@@ -17,23 +18,25 @@ const FLOATING_HEART_SVG =
 
 // Warm, never-punishing affirmations — the app speaking kindly to a beginner. Kept gentle and
 // low-pressure on purpose: showing up is the win, rest is allowed, and there's no wrong way to begin.
+// The array holds i18n catalog keys ('home.encouragement.N'); the copy lives in the locale files
+// and is resolved with t() at render time so a language switch re-labels the note live.
 const MESSAGES = [
-  'You showed up today. That’s enough. 💛',
-  'Be gentle with yourself.',
-  'Every breath is a fresh start.',
-  'Small steps still move you forward.',
-  'Rest is part of the practice, too.',
-  'You’re doing better than you think.',
-  'Your companion is glad you’re here.',
-  'There’s no wrong way to begin.',
-  'A few quiet breaths is a real win.',
-  'Whatever today holds, you’ve got this.',
-  'Progress isn’t always loud.',
-  'Showing up is the hard part — and you did.',
-  'Every session quietly rewires your brain.',
-  'You’re building a habit, one breath at a time.',
-  'Show up enough and the habit carries you.',
-  'Each sit wires in a little more calm.',
+  'home.encouragement.0',
+  'home.encouragement.1',
+  'home.encouragement.2',
+  'home.encouragement.3',
+  'home.encouragement.4',
+  'home.encouragement.5',
+  'home.encouragement.6',
+  'home.encouragement.7',
+  'home.encouragement.8',
+  'home.encouragement.9',
+  'home.encouragement.10',
+  'home.encouragement.11',
+  'home.encouragement.12',
+  'home.encouragement.13',
+  'home.encouragement.14',
+  'home.encouragement.15',
 ]
 
 /**
@@ -43,6 +46,7 @@ const MESSAGES = [
  * it (see index.css). Self-contained — no props, no network.
  */
 export default function EncouragementNote() {
+  const { t } = useT()
   const [index, setIndex] = useState(() => Math.floor(Math.random() * MESSAGES.length))
   const heartsHost = useRef<HTMLSpanElement>(null)
 
@@ -68,13 +72,13 @@ export default function EncouragementNote() {
   return (
     <div className="encouragement-note">
       <p className="encouragement-message" aria-live="polite">
-        {MESSAGES[index]}
+        {t(MESSAGES[index])}
       </p>
       <button
         type="button"
         className="encouragement-heart"
         onClick={sendLove}
-        aria-label="Send a little love"
+        aria-label={t('home.encouragement.sendLove')}
       >
         <span className="encouragement-heart-glyph" aria-hidden="true">
           <Heart size={22} strokeWidth={1.75} fill={HEART_COLOR} color={HEART_COLOR} />

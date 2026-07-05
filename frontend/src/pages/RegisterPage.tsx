@@ -9,8 +9,10 @@ import AuthBrand from '../components/AuthBrand'
 import GuestButton from '../components/GuestButton'
 import { ErrorBanner } from '../components/StateViews'
 import { EMAIL_RE } from '../lib/validation'
+import { useT } from '../i18n'
 
 export default function RegisterPage() {
+  const { t } = useT()
   const { refresh } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -25,12 +27,12 @@ export default function RegisterPage() {
     setError(null)
 
     if (!EMAIL_RE.test(email)) {
-      setError('Please enter a valid email address.')
+      setError(t('auth.register.invalidEmail'))
       emailRef.current?.focus()
       return
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError(t('auth.register.passwordTooShort'))
       passwordRef.current?.focus()
       return
     }
@@ -44,7 +46,7 @@ export default function RegisterPage() {
       navigate('/')
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setError('That email is already registered.')
+        setError(t('auth.register.emailTaken'))
       } else {
         setError(messageForError(err))
       }
@@ -56,9 +58,9 @@ export default function RegisterPage() {
   return (
     <main id="main-content" className="auth-card">
       <AuthBrand />
-      <h1>Create your account</h1>
+      <h1>{t('auth.register.title')}</h1>
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="email">Email</label>
+        <label htmlFor="email">{t('auth.register.emailLabel')}</label>
         <input
           ref={emailRef}
           id="email"
@@ -70,7 +72,7 @@ export default function RegisterPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password">{t('auth.register.passwordLabel')}</label>
         <input
           ref={passwordRef}
           id="password"
@@ -81,28 +83,28 @@ export default function RegisterPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <small id="register-pw-hint">At least 8 characters.</small>
+        <small id="register-pw-hint">{t('auth.register.passwordHint')}</small>
 
         <ErrorBanner message={error} id="register-error" />
 
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create account'}
+          {submitting ? t('auth.register.submitting') : t('auth.register.cta')}
         </button>
 
         <p className="auth-legal muted">
-          By creating an account you agree to our <Link to="/terms">Terms</Link> and{' '}
-          <Link to="/privacy">Privacy Policy</Link>.
+          {t('auth.register.legal.pre')}<Link to="/terms">{t('auth.register.legal.terms')}</Link>{t('auth.register.legal.and')}
+          <Link to="/privacy">{t('auth.register.legal.privacy')}</Link>{t('auth.register.legal.post')}
         </p>
       </form>
 
       <div className="auth-divider">
-        <span>or</span>
+        <span>{t('auth.register.or')}</span>
       </div>
       <GoogleSignInButton onError={setError} />
       <GuestButton onError={setError} />
 
       <p>
-        Already have an account? <Link to="/login">Log in</Link>
+        {t('auth.register.haveAccount.text')}<Link to="/login">{t('auth.register.haveAccount.link')}</Link>
       </p>
     </main>
   )

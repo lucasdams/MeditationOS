@@ -6,11 +6,9 @@ import { useToast } from '../context/ToastContext'
 import {
   SpiritArt,
   STAGE_COPY,
-  PATH_COPY,
   NeedsReadout,
   CareNudge,
   NEED_COPY,
-  TIER_COPY,
   slotLabel,
   optionLabel,
   titleize,
@@ -22,6 +20,7 @@ import EncouragementNote from '../components/EncouragementNote'
 import Modal from '../components/Modal'
 import { Loading, RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { t, useT } from '../i18n'
 import type {
   SpiritNeedKey,
   SpiritPath,
@@ -33,10 +32,10 @@ import type {
 // The three calm tend actions (ADR-0031) — each tops up one gentle need, a purely optional touch
 // of care (no survival stakes). Labelled with the matching NEED_COPY icon + need name so it's clear
 // which meter it fills. Order mirrors the needs read-out (Nourishment / Rest / Joy).
-const TEND_ACTIONS: { kind: SpiritTendKind; need: SpiritNeedKey; label: string }[] = [
-  { kind: 'feed', need: 'nourished', label: 'Feed' },
-  { kind: 'rest', need: 'rested', label: 'Rest' },
-  { kind: 'play', need: 'joyful', label: 'Play' },
+const TEND_ACTIONS: { kind: SpiritTendKind; need: SpiritNeedKey; labelKey: string }[] = [
+  { kind: 'feed', need: 'nourished', labelKey: 'spirit.tend.feed' },
+  { kind: 'rest', need: 'rested', labelKey: 'spirit.tend.rest' },
+  { kind: 'play', need: 'joyful', labelKey: 'spirit.tend.play' },
 ]
 
 /**
@@ -58,16 +57,25 @@ const TEND_ACTIONS: { kind: SpiritTendKind; need: SpiritNeedKey; label: string }
  * Calm, low-pressure UX: the tree is a soft progression, never a shouty shop.
  */
 
-// Stage labels reuse Spirit's STAGE_COPY (single source of truth) — just the display name here.
-const STAGE_LABEL: Record<string, string> = Object.fromEntries(
-  Object.entries(STAGE_COPY).map(([stage, copy]) => [stage, copy.name]),
-)
-
 // The five stages in order (STAGE_COPY is defined spark → radiant), for the journey stepper.
-const STAGE_ORDER = Object.keys(STAGE_LABEL)
+const STAGE_ORDER = Object.keys(STAGE_COPY)
 
-// Path labels reuse Spirit's PATH_COPY (single source of truth).
-const PATH_LABEL = PATH_COPY
+// Stage display name, localized at the call site (the art's own aria-label in Spirit.tsx stays its
+// English STAGE_COPY name — that's the single source of truth for the SVG label). Unknown stages
+// fall back to the tidied key.
+function stageLabelOf(stage: string): string {
+  return STAGE_COPY[stage as keyof typeof STAGE_COPY] ? t(`spirit.stage.${stage}`) : titleize(stage)
+}
+
+// Path → dosha catalog key (Kapha / Pitta / Vata), so the path label localizes at the call site.
+const PATH_DOSHA_KEY: Record<SpiritPath, string> = {
+  stillness: 'kapha',
+  breath: 'pitta',
+  heart: 'vata',
+}
+function pathLabelOf(path: SpiritPath): string {
+  return t(`spirit.dosha.${PATH_DOSHA_KEY[path]}.name`)
+}
 
 // The cosmetic slot/option label maps + helpers (slotLabel / optionLabel / titleize) now live in
 // Spirit.tsx (the single source of truth, shared with SpiritChoosePage's grows-into preview).
@@ -78,9 +86,10 @@ function NeedTag({ need }: { need: SpiritNeedKey }) {
   const copy = NEED_COPY[need]
   if (!copy) return null
   const NeedIcon = copy.icon
+  const label = t(`needs.${need}`)
   return (
-    <span className="spirit-option-need" title={`Favours ${copy.label}`}>
-      <NeedIcon size={14} strokeWidth={1.75} aria-hidden="true" /> {copy.label}
+    <span className="spirit-option-need" title={t('spirit.needTag.favours', { label })}>
+      <NeedIcon size={14} strokeWidth={1.75} aria-hidden="true" /> {label}
     </span>
   )
 }
@@ -105,8 +114,7 @@ function SetBonusStatus({
       <div className="spirit-setbonus spirit-setbonus--active" role="status">
         <span className="spirit-setbonus-badge">{setBonus.label}</span>
         <span className="spirit-setbonus-note">
-          Your companion shimmers with a special glow for wearing all {setBonus.total} of its
-          signature pieces.
+          {t('spirit.setbonus.activeNote', { total: setBonus.total })}
         </span>
       </div>
     )
@@ -116,9 +124,11 @@ function SetBonusStatus({
   return (
     <div className="spirit-setbonus spirit-setbonus--progress">
       <p className="muted spirit-setbonus-explain">
-        <strong>Signature radiance</strong> is a gentle glowing shimmer your companion earns once you
-        equip all {setBonus.total} of its <em>signature pieces</em> — its own path-exclusive capstone
-        cosmetics. You have {setBonus.count} of {setBonus.total} so far.
+        <strong>{t('spirit.setbonus.radiance')}</strong>
+        {t('spirit.setbonus.progress.explain1', { total: setBonus.total })}
+        <em>{t('spirit.setbonus.progress.signaturePieces')}</em>
+        {t('spirit.setbonus.progress.explain2')} {' '}
+        {t('spirit.setbonus.progress.count', { count: setBonus.count, total: setBonus.total })}
       </p>
       <button
         type="button"
@@ -130,7 +140,7 @@ function SetBonusStatus({
         onBlur={() => onPreview(false)}
         onClick={() => onPreview(!previewOn)}
       >
-        {previewOn ? 'Previewing the radiance…' : 'See the radiance'}
+        {previewOn ? t('spirit.setbonus.previewing') : t('spirit.setbonus.see')}
       </button>
     </div>
   )
@@ -156,8 +166,8 @@ function nodeState(opt: SpiritSlotOption): NodeState {
 // prerequisite — owning a lower-tier option in the same slot first. Kept calm and concrete.
 function lockReason(opt: SpiritSlotOption): string {
   if (opt.unlock_hint) return opt.unlock_hint
-  if (opt.tier > 1) return `Unlock a tier-${opt.tier - 1} option first`
-  return 'Keep practicing to unlock this'
+  if (opt.tier > 1) return t('spirit.lock.tier', { prev: opt.tier - 1 })
+  return t('spirit.lock.keepPracticing')
 }
 
 // ── Capstone relic (ornate frame + engraved elemental sigil) ───────────────────────────────
@@ -250,6 +260,9 @@ const RESET_COST = 250
 
 export default function SpiritPage() {
   const { showToast } = useToast()
+  // Subscribe to the locale so the whole page (incl. the module-level t() helpers used during this
+  // render) re-labels live when the language changes in Settings.
+  useT()
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -289,6 +302,24 @@ export default function SpiritPage() {
   // Read the OS reduced-motion preference once, so the hero art's JS motion matches the CSS
   // media query — the single source of truth.
   const reducedMotion = prefersReducedMotion()
+  // One-time "what is this?" explainer — this is the app's most concept-dense screen (needs,
+  // coins, cosmetics), so a newcomer gets three plain lines up front. Dismiss persists; an
+  // unavailable localStorage (private mode) errs on the side of not nagging.
+  const [introDismissed, setIntroDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('spirit.intro.dismissed') === '1'
+    } catch {
+      return true
+    }
+  })
+  function dismissIntro() {
+    setIntroDismissed(true)
+    try {
+      localStorage.setItem('spirit.intro.dismissed', '1')
+    } catch {
+      // fine — it will show again next visit
+    }
+  }
 
   function load() {
     setRetrying(true)
@@ -298,7 +329,7 @@ export default function SpiritPage() {
         setSpirit(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, "Couldn't reach your spirit.")))
+      .catch((err) => setError(messageForError(err, t('spirit.error'))))
       .finally(() => setRetrying(false))
   }
 
@@ -318,9 +349,9 @@ export default function SpiritPage() {
       const next = await spiritService.unlock({ slot, option })
       setSpirit(next)
       setConfirmUnlock(null)
-      showToast(`${optionLabel(option)} unlocked — your spirit is delighted`)
+      showToast(t('spirit.toast.unlocked', { label: optionLabel(option) }))
     } catch {
-      showToast('Not unlocked yet — practice earns the coins for it.', 'error')
+      showToast(t('spirit.toast.unlockFail'), 'error')
     } finally {
       setBusy(null)
     }
@@ -335,10 +366,12 @@ export default function SpiritPage() {
       const next = await spiritService.equip({ slot, option })
       setSpirit(next)
       showToast(
-        option ? `${optionLabel(option)} on.` : `${slotLabel(slot)} set aside.`,
+        option
+          ? t('spirit.toast.equipOn', { label: optionLabel(option) })
+          : t('spirit.toast.slotCleared', { slot: slotLabel(slot) }),
       )
     } catch {
-      showToast("Couldn't change that right now.", 'error')
+      showToast(t('spirit.toast.equipFail'), 'error')
     } finally {
       setBusy(null)
     }
@@ -354,9 +387,9 @@ export default function SpiritPage() {
     try {
       setSpirit(await spiritService.resetName({ name: next }))
       setResetNameOpen(false)
-      showToast('Renamed. It answers to that now.')
+      showToast(t('spirit.toast.renamed'))
     } catch {
-      showToast("Couldn't change the name — you may need more coins.", 'error')
+      showToast(t('spirit.toast.renameFail'), 'error')
     } finally {
       setBusy(null)
     }
@@ -370,9 +403,9 @@ export default function SpiritPage() {
       const next = await spiritService.awaken()
       setSpirit(next)
       setConfirmAwaken(false)
-      showToast('A new spark awakens. Your radiant spirit joins your collection.')
+      showToast(t('spirit.toast.awakened'))
     } catch {
-      showToast('Your spirit is not radiant yet — keep practicing.', 'error')
+      showToast(t('spirit.toast.awakenFail'), 'error')
     } finally {
       setBusy(null)
     }
@@ -386,11 +419,10 @@ export default function SpiritPage() {
     try {
       const next = await spiritService.tend(kind)
       setSpirit(next)
-      const copy = NEED_COPY[need]
       // Toasts are plain strings (no React icon); the label alone conveys the need.
-      showToast(`${copy.label} topped up — practice fills it fully.`)
+      showToast(t('spirit.toast.tended', { label: t(`needs.${need}`) }))
     } catch {
-      showToast("Couldn't tend it just now — try once more.", 'error')
+      showToast(t('spirit.toast.tendFail'), 'error')
     } finally {
       setBusy(null)
     }
@@ -402,26 +434,42 @@ export default function SpiritPage() {
   return (
     <main id="main-content" className="dashboard spirit-page">
       <Link to="/" className="back-link">
-        ← Dashboard
+        {t('common.backDashboard')}
       </Link>
       <header className="page-head">
-        <h1>Your spirit</h1>
+        <h1>{t('spirit.page.title')}</h1>
         {/* The promise copy describes a loaded spirit, so gate it behind one being present: on a
             first-load failure the heading + retry stand alone, not copy about a spirit that
             never arrived. */}
         {spirit && (
           <p className="page-subtitle">
-            A companion you grow through practice.
+            {t('spirit.page.subtitle')}
           </p>
         )}
       </header>
 
-      {!spirit && !error && <Loading label="Waking your spirit…" />}
+      {/* First-visit orientation — what the spirit IS and how the pieces fit, in plain words.
+          Shown once (dismiss persists) so returning users keep a calm page. */}
+      {spirit && !introDismissed && (
+        <div className="practice-intro spirit-intro">
+          <p className="practice-intro-what">
+            {t('spirit.intro.what')}
+          </p>
+          <p className="practice-intro-how">
+            {t('spirit.intro.how')}
+          </p>
+          <button type="button" className="link-neutral spirit-intro-gotit" onClick={dismissIntro}>
+            {t('spirit.intro.gotit')}
+          </button>
+        </div>
+      )}
+
+      {!spirit && !error && <Loading label={t('spirit.loading')} />}
       <RetryableError message={error} onRetry={load} retrying={retrying} />
 
       {spirit && (() => {
         const form = formFor(spirit)
-        const stageLabel = STAGE_LABEL[spirit.stage] ?? titleize(spirit.stage)
+        const stageLabel = stageLabelOf(spirit.stage)
         const isRadiant = spirit.stage === 'radiant'
 
         // The live preview merges the explored option into the EQUIPPED cosmetics ({...current,
@@ -461,7 +509,7 @@ export default function SpiritPage() {
               <summary className="spirit-slot-summary">
                 <span className="spirit-slot-name">{slotLabel(s.slot)}</span>
                 <span className="spirit-slot-equipped muted">
-                  {equippedOption ? optionLabel(equippedOption) : 'none yet'}
+                  {equippedOption ? optionLabel(equippedOption) : t('spirit.slot.noneYet')}
                 </span>
                 <span className="spirit-tree-progress muted">
                   {ownedCount}/{visible.length}
@@ -476,7 +524,9 @@ export default function SpiritPage() {
                     className="spirit-locked-toggle"
                     onClick={() => toggleLocked(s.slot)}
                   >
-                    {showLocked ? 'Show fewer' : `+ ${locked.length} more unlock as you grow`}
+                    {showLocked
+                      ? t('spirit.slot.showFewer')
+                      : t('spirit.slot.moreUnlock', { count: locked.length })}
                   </button>
                 )}
               </div>
@@ -529,7 +579,7 @@ export default function SpiritPage() {
                 {prize && (
                   <span
                     className={`spirit-node-seal spirit-node-seal--${prize}`}
-                    title={prize === 'legendary' ? 'Radiant capstone' : 'Signature capstone'}
+                    title={prize === 'legendary' ? t('spirit.capstone.radiant') : t('spirit.capstone.signature')}
                   >
                     <CapstoneSigil kind={prizeSigilKind(prize, spirit.path)} />
                   </span>
@@ -542,16 +592,16 @@ export default function SpiritPage() {
                 // cleared (calls equip(slot, null)).
                 <span className="spirit-node-controls">
                   <span className="spirit-node-worn">
-                    <span aria-hidden="true">✓</span> Worn
+                    <span aria-hidden="true">✓</span> {t('spirit.node.worn')}
                   </span>
                   <button
                     type="button"
                     className="spirit-node-remove"
                     disabled={busy != null}
-                    aria-label={`Remove ${label}`}
+                    aria-label={t('spirit.node.removeAria', { label })}
                     onClick={() => equip(slot, null)}
                   >
-                    Remove
+                    {t('spirit.node.remove')}
                   </button>
                 </span>
               )}
@@ -562,10 +612,10 @@ export default function SpiritPage() {
                   type="button"
                   className="spirit-node-btn spirit-node-equip"
                   disabled={busy != null}
-                  aria-label={`Equip ${label}`}
+                  aria-label={t('spirit.node.equipAria', { label })}
                   onClick={() => equip(slot, opt.option)}
                 >
-                  Equip
+                  {t('spirit.node.equip')}
                 </button>
               )}
 
@@ -576,10 +626,10 @@ export default function SpiritPage() {
                   type="button"
                   className="spirit-node-btn spirit-node-unlock"
                   disabled={busy != null}
-                  aria-label={`Unlock ${label} for ${opt.cost} coins`}
+                  aria-label={t('spirit.node.unlockAria', { label, cost: opt.cost })}
                   onClick={() => setConfirmUnlock({ slot, option: opt.option })}
                 >
-                  Unlock <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
+                  {t('spirit.node.unlock')} <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
                 </button>
               )}
 
@@ -591,12 +641,12 @@ export default function SpiritPage() {
                     type="button"
                     className="spirit-node-btn spirit-node-unlock"
                     disabled
-                    aria-label={`Unlock ${label} for ${opt.cost} coins — need more coins`}
+                    aria-label={t('spirit.node.unlockUnaffordableAria', { label, cost: opt.cost })}
                   >
-                    Unlock <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
+                    {t('spirit.node.unlock')} <span className="spirit-node-cost"><CoinIcon /> {opt.cost}</span>
                   </button>
                   <span className="spirit-node-hint">
-                    need {Math.max(0, opt.cost - spirit.coins)} more coins
+                    {t('spirit.node.needMore', { count: Math.max(0, opt.cost - spirit.coins) })}
                   </span>
                 </span>
               )}
@@ -626,7 +676,7 @@ export default function SpiritPage() {
             {/* The hero: a COMPACT status read-out (name / stage / path / bond) plus the single
                 coin balance (shown once here — never doubled elsewhere on the page). The big
                 spirit render lives on the centered customization stage below. */}
-            <section className="spirit-hero spirit-hero--compact" aria-label="Your spirit">
+            <section className="spirit-hero spirit-hero--compact" aria-label={t('spirit.page.title')}>
               {/* A prominent portrait of the equipped companion, so the page LEADS with your spirit
                   rather than a text read-out. Hidden on the Customize tab, which has its own live,
                   editable stage below (no need to show the creature twice there). */}
@@ -646,14 +696,14 @@ export default function SpiritPage() {
               <p className="spirit-hero-stage">
                 {stageLabel}
                 {spirit.path ? (
-                  <> · {PATH_LABEL[spirit.path]} spirit</>
+                  <> · {t('spirit.hero.pathSpirit', { name: pathLabelOf(spirit.path) })}</>
                 ) : (
-                  <span className="muted"> · a pathless spark</span>
+                  <span className="muted">{t('spirit.hero.pathless')}</span>
                 )}
               </p>
-              <p className="muted spirit-hero-bond">Bond level {spirit.bond.level}</p>
+              <p className="muted spirit-hero-bond">{t('spirit.hero.bond', { level: spirit.bond.level })}</p>
               <p className="spirit-hero-coins">
-                <CoinIcon /> {spirit.coins} <span className="muted">coins to spend</span>
+                <CoinIcon /> {spirit.coins} <span className="muted">{t('spirit.hero.coins')}</span>
               </p>
               {/* A warm word by the companion (Care / Collection tabs; the Customize tab is the
                   editing view). */}
@@ -662,16 +712,16 @@ export default function SpiritPage() {
 
             {/* Tabs — show Care / Customize / Collection one at a time so the page stays calm. */}
             {spirit.path && (
-              <nav className="spirit-tabs" aria-label="Spirit sections">
-                {(['care', 'customize', 'collection'] as const).map((t) => (
+              <nav className="spirit-tabs" aria-label={t('spirit.tabs.aria')}>
+                {(['care', 'customize', 'collection'] as const).map((tabKey) => (
                   <button
-                    key={t}
+                    key={tabKey}
                     type="button"
-                    className={`spirit-tab${tab === t ? ' spirit-tab--active' : ''}`}
-                    aria-current={tab === t ? 'page' : undefined}
-                    onClick={() => setTab(t)}
+                    className={`spirit-tab${tab === tabKey ? ' spirit-tab--active' : ''}`}
+                    aria-current={tab === tabKey ? 'page' : undefined}
+                    onClick={() => setTab(tabKey)}
                   >
-                    {t === 'care' ? 'Care' : t === 'customize' ? 'Customize' : 'Collection'}
+                    {t(`spirit.tabs.${tabKey}`)}
                   </button>
                 ))}
               </nav>
@@ -682,20 +732,29 @@ export default function SpiritPage() {
                 practice mix (not debts), a single optional round-out suggestion, and the Feed / Rest
                 / Play tend actions as gentle, optional care. Only for a chosen creature. */}
             {spirit.path && tab === 'care' && (
-              <section className="spirit-section spirit-care" aria-label="Care">
+              <section className="spirit-section spirit-care" aria-label={t('spirit.care.title')}>
                 <header className="spirit-section-head">
-                  <h2 className="spirit-section-title">Care</h2>
+                  <h2 className="spirit-section-title">{t('spirit.care.title')}</h2>
                   {/* Vitality first — any practice keeps them content; this is the overall read. */}
                   <p className="spirit-vitality" role="status">
-                    <strong>{spirit.name ?? 'Your spirit'}</strong> is{' '}
+                    <strong>{spirit.name ?? t('spirit.care.fallbackName')}</strong>
+                    {t('spirit.care.vitalityIs')}
                     <strong className="spirit-vitality-tier">
-                      {(TIER_COPY[spirit.condition.tier]?.label ?? 'Content').toLowerCase()}
-                    </strong>{' '}
-                    — any practice keeps them so.
+                      {(spirit.condition.tier
+                        ? t(`spirit.tier.${spirit.condition.tier}`)
+                        : t('spirit.tier.content')
+                      ).toLowerCase()}
+                    </strong>
+                    {t('spirit.care.vitalityAny')}
                   </p>
                   <p className="muted spirit-section-subtitle">
-                    Below is your recent practice balance — a gentle read of your mix, never a
-                    to-do. Tend a facet whenever you like, or just practice.
+                    {t('spirit.care.subtitle.p1')}
+                    <strong>{t('needs.rested')}</strong>
+                    {t('spirit.care.subtitle.p2')}
+                    <strong>{t('needs.joyful')}</strong>
+                    {t('spirit.care.subtitle.p3')}
+                    <strong>{t('needs.nourished')}</strong>
+                    {t('spirit.care.subtitle.p4')}
                   </p>
                 </header>
 
@@ -705,29 +764,31 @@ export default function SpiritPage() {
                 {/* The tend actions — Feed → nourished, Rest → rested, Play → joyful. Each tops its
                     need to ~60%; only practice fills it fully (the subtitle + toast convey this).
                     Gentle, optional care; disabled only while a tend is in flight. */}
-                <div className="spirit-tend" role="group" aria-label="Tend your spirit">
-                  {TEND_ACTIONS.map(({ kind, need, label }) => {
+                <div className="spirit-tend" role="group" aria-label={t('spirit.tend.aria')}>
+                  {TEND_ACTIONS.map(({ kind, need, labelKey }) => {
                     const copy = NEED_COPY[need]
                     const TendIcon = copy.icon
+                    const label = t(labelKey)
+                    const needLabel = t(`needs.${need}`)
                     return (
                       <button
                         key={kind}
                         type="button"
                         className="spirit-tend-btn"
                         disabled={busy != null}
-                        aria-label={`${label} — top up ${copy.label}`}
+                        aria-label={t('spirit.tend.btnAria', { label, need: needLabel })}
                         onClick={() => tend(kind, need)}
                       >
                         <span className="spirit-tend-icon" aria-hidden="true">
                           <TendIcon size={22} strokeWidth={1.75} />
                         </span>
                         <span className="spirit-tend-label">{label}</span>
-                        <span className="spirit-tend-need muted">{copy.label}</span>
+                        <span className="spirit-tend-need muted">{needLabel}</span>
                       </button>
                     )
                   })}
                 </div>
-                <p className="muted spirit-tend-hint">Practice fills a need fully; tending tops it up.</p>
+                <p className="muted spirit-tend-hint">{t('spirit.tend.hint')}</p>
               </section>
             )}
 
@@ -737,22 +798,22 @@ export default function SpiritPage() {
             {tab === 'customize' && (
             <section
               className="spirit-section spirit-personalize"
-              aria-label="Customize"
+              aria-label={t('spirit.customize.title')}
               // The creature's element (dosha) — drives the SIGNATURE capstones' thematic glow
               // (Pitta fire / Kapha earth / Vata air) so a fire spirit's signature reads as fire.
               data-path={spirit.path ?? undefined}
             >
               <header className="spirit-section-head">
-                <h2 className="spirit-section-title">Customize</h2>
+                <h2 className="spirit-section-title">{t('spirit.customize.title')}</h2>
                 {/* Beginner-first (Phase 3): a warm one-line teaser, not the full skill-tree pitch.
                     The deeper "unlock along each tree" framing lives below the reveal. */}
                 <p className="muted spirit-section-subtitle">
-                  Spend coins you earn through practice to give your companion a look.
+                  {t('spirit.customize.subtitle')}
                 </p>
               </header>
               {renderableSlots.length === 0 ? (
                 <p className="muted">
-                  Keep practicing — adornments unlock as your spirit grows.
+                  {t('spirit.customize.empty')}
                 </p>
               ) : (
                 <>
@@ -773,14 +834,14 @@ export default function SpiritPage() {
                           setRadiant={spirit.set_bonus.active || previewRadiance}
                         />
                       </div>
-                      {preview && <span className="spirit-preview-badge">Preview</span>}
+                      {preview && <span className="spirit-preview-badge">{t('spirit.customize.preview')}</span>}
                     </div>
                     <p className="spirit-stage-caption">{stageCaption}</p>
                   </div>
 
                   {/* Every cosmetic slot as a clean grid of collapsible cards BELOW the creature —
                       all visible at once (no "show all" gate), one tap to open each. */}
-                  <div className="spirit-slots-grid" aria-label="Customization slots">
+                  <div className="spirit-slots-grid" aria-label={t('spirit.customize.slotsAria')}>
                     {renderableSlots.map(renderSlot)}
                   </div>
 
@@ -799,15 +860,15 @@ export default function SpiritPage() {
                 grew to radiance and set free (ADR-0031 removed the death path, so every entry is a
                 graduate). */}
             {tab === 'collection' && (
-            <section className="spirit-section spirit-collection" aria-label="Collection">
+            <section className="spirit-section spirit-collection" aria-label={t('spirit.collection.title')}>
               <header className="spirit-section-head">
-                <h2 className="spirit-section-title">Collection</h2>
+                <h2 className="spirit-section-title">{t('spirit.collection.title')}</h2>
                 <p className="muted spirit-section-subtitle">
-                  Spirits you grew to radiance and set free.
+                  {t('spirit.collection.subtitle')}
                 </p>
               </header>
               {spirit.collection.length === 0 ? (
-                <p className="muted">Empty for now — past companions rest here.</p>
+                <p className="muted">{t('spirit.collection.empty')}</p>
               ) : (
                 <ul className="spirit-collection-grid">
                   {spirit.collection.map((r) => {
@@ -823,11 +884,11 @@ export default function SpiritPage() {
                           />
                         </div>
                         <span className="spirit-collection-name">
-                          {r.name ?? `${STAGE_LABEL[r.stage] ?? titleize(r.stage)} spirit`}
+                          {r.name ?? t('spirit.collection.retiredName', { stage: stageLabelOf(r.stage) })}
                         </span>
                         {r.path && (
                           <span className="muted spirit-collection-path">
-                            {PATH_LABEL[r.path]}
+                            {pathLabelOf(r.path)}
                           </span>
                         )}
                       </li>
@@ -843,27 +904,27 @@ export default function SpiritPage() {
                 reads as a muted sentence with a small text-button — never a prominent section. */}
             <p className="muted spirit-reset-name-line">
               <span>
-                Reset your companion's name for {RESET_COST} coins.
+                {t('spirit.resetName.line', { cost: RESET_COST })}
               </span>
               <button
                 type="button"
                 className="spirit-reset-quiet"
                 disabled={busy != null || spirit.coins < RESET_COST}
-                title={spirit.coins < RESET_COST ? `Needs ${RESET_COST} coins` : undefined}
+                title={spirit.coins < RESET_COST ? t('spirit.resetName.needsCoins', { cost: RESET_COST }) : undefined}
                 onClick={() => {
                   setResetNameDraft(spirit.name ?? '')
                   setResetNameOpen(true)
                 }}
               >
-                Reset name
+                {t('spirit.resetName.button')}
               </button>
             </p>
 
             {/* How it grows — a quiet progress ladder + set-free explainer, low on the page
                 (the hero already shows the current stage, so this needn't lead). */}
-            <section className="spirit-section spirit-journey" aria-label="How your spirit grows">
+            <section className="spirit-section spirit-journey" aria-label={t('spirit.journey.aria')}>
               <header className="spirit-section-head">
-                <h2 className="spirit-section-title">Growing to radiance</h2>
+                <h2 className="spirit-section-title">{t('spirit.journey.title')}</h2>
               </header>
               <ol className="spirit-journey-stages">
                 {STAGE_ORDER.map((s, i) => {
@@ -871,15 +932,21 @@ export default function SpiritPage() {
                   const cls = i === here ? ' is-current' : i < here ? ' is-done' : ''
                   return (
                     <li key={s} className={`spirit-journey-stage${cls}`}>
-                      {STAGE_LABEL[s] ?? s}
+                      {stageLabelOf(s)}
                     </li>
                   )
                 })}
               </ol>
               <p className="muted spirit-journey-note">
-                Practice grows your spirit from spark to <strong>radiant</strong>.
+                {t('spirit.journey.note.lead')}
+                <strong>{t('spirit.journey.note.radiantWord')}</strong>
+                {t('spirit.journey.note.tail')}
                 {isRadiant && (
-                  <> Radiant now — you can <strong>set it free</strong> below.</>
+                  <>
+                    {t('spirit.journey.note.radiantNow.lead')}
+                    <strong>{t('spirit.journey.note.radiantNow.setFree')}</strong>
+                    {t('spirit.journey.note.radiantNow.tail')}
+                  </>
                 )}
               </p>
             </section>
@@ -887,10 +954,9 @@ export default function SpiritPage() {
             {/* Awaken a new spark — only at radiant. A calm action behind a confirmation that
                 states it retires the current spirit into the collection. */}
             {isRadiant && (
-              <section className="spirit-section spirit-awaken" aria-label="Awaken a new spark">
+              <section className="spirit-section spirit-awaken" aria-label={t('spirit.awaken.aria')}>
                 <p className="muted spirit-awaken-note">
-                  Awaken a new spark when you’re ready — this one retires into your collection,
-                  kept forever.
+                  {t('spirit.awaken.note')}
                 </p>
                 <button
                   type="button"
@@ -898,21 +964,20 @@ export default function SpiritPage() {
                   disabled={busy != null}
                   onClick={() => setConfirmAwaken(true)}
                 >
-                  Awaken a new spark
+                  {t('spirit.awaken.button')}
                 </button>
               </section>
             )}
 
             {confirmAwaken && (
               <Modal
-                ariaLabel="Awaken a new spark"
+                ariaLabel={t('spirit.awaken.modal.aria')}
                 onClose={() => setConfirmAwaken(false)}
                 closeOnBackdrop
               >
-                <h3>Awaken a new spark?</h3>
+                <h3>{t('spirit.awaken.modal.title')}</h3>
                 <p className="muted">
-                  Your radiant spirit will retire into your collection, kept forever, and a fresh
-                  pathless spark begins. This can’t be undone.
+                  {t('spirit.awaken.modal.body')}
                 </p>
                 <div className="spirit-awaken-actions">
                   <button
@@ -921,7 +986,7 @@ export default function SpiritPage() {
                     disabled={busy === 'awaken'}
                     onClick={awaken}
                   >
-                    {busy === 'awaken' ? 'Awakening…' : 'Awaken a new spark'}
+                    {busy === 'awaken' ? t('spirit.awaken.modal.doing') : t('spirit.awaken.button')}
                   </button>
                   <button
                     type="button"
@@ -929,7 +994,7 @@ export default function SpiritPage() {
                     disabled={busy === 'awaken'}
                     onClick={() => setConfirmAwaken(false)}
                   >
-                    Keep this one
+                    {t('spirit.awaken.modal.keep')}
                   </button>
                 </div>
               </Modal>
@@ -951,14 +1016,16 @@ export default function SpiritPage() {
               const unlocking = busy === `${slot}:${option}`
               return (
                 <Modal
-                  ariaLabel={`Unlock ${optionLabel(option)} for your spirit`}
+                  ariaLabel={t('spirit.unlock.modal.aria', { label: optionLabel(option) })}
                   onClose={() => setConfirmUnlock(null)}
                   closeOnBackdrop
                 >
-                  <h3>Unlock {optionLabel(option)}?</h3>
+                  <h3>{t('spirit.unlock.modal.title', { label: optionLabel(option) })}</h3>
                   <p className="muted">
-                    See how your spirit looks now and with {slotLabel(slot).toLowerCase()}{' '}
-                    {optionLabel(option)} equipped. Unlocking owns it forever and equips it now.
+                    {t('spirit.unlock.modal.body', {
+                      slot: slotLabel(slot).toLowerCase(),
+                      label: optionLabel(option),
+                    })}
                   </p>
                   <div className="spirit-buy-preview">
                     <div className="spirit-buy-art">
@@ -969,7 +1036,7 @@ export default function SpiritPage() {
                         cosmetics={spirit.cosmetics}
                         reducedMotion={reducedMotion}
                       />
-                      <span className="spirit-buy-caption">Now</span>
+                      <span className="spirit-buy-caption">{t('spirit.unlock.modal.now')}</span>
                     </div>
                     <span className="spirit-buy-arrow" aria-hidden="true">
                       →
@@ -982,7 +1049,7 @@ export default function SpiritPage() {
                         cosmetics={afterCosmetics}
                         reducedMotion={reducedMotion}
                       />
-                      <span className="spirit-buy-caption">With {optionLabel(option)}</span>
+                      <span className="spirit-buy-caption">{t('spirit.unlock.modal.with', { label: optionLabel(option) })}</span>
                     </div>
                   </div>
                   {cost != null && (
@@ -997,7 +1064,7 @@ export default function SpiritPage() {
                       disabled={busy != null}
                       onClick={() => unlock(slot, option)}
                     >
-                      {unlocking ? 'Unlocking…' : 'Unlock'}
+                      {unlocking ? t('spirit.unlock.modal.doing') : t('spirit.unlock.modal.confirm')}
                     </button>
                     <button
                       type="button"
@@ -1005,7 +1072,7 @@ export default function SpiritPage() {
                       disabled={busy != null}
                       onClick={() => setConfirmUnlock(null)}
                     >
-                      Cancel
+                      {t('spirit.unlock.modal.cancel')}
                     </button>
                   </div>
                 </Modal>
@@ -1015,22 +1082,21 @@ export default function SpiritPage() {
             {/* Reset name (ADR-0024) — a paid change to the otherwise-immutable name. */}
             {resetNameOpen && (
               <Modal
-                ariaLabel="Reset your spirit's name"
+                ariaLabel={t('spirit.resetName.modal.aria')}
                 onClose={() => setResetNameOpen(false)}
                 closeOnBackdrop
               >
-                <h3>Reset your spirit's name?</h3>
+                <h3>{t('spirit.resetName.modal.title')}</h3>
                 <p className="muted">
-                  Your companion's name was set when you chose it. Changing it costs{' '}
-                  {RESET_COST} coins.
+                  {t('spirit.resetName.modal.body', { cost: RESET_COST })}
                 </p>
                 <label className="spirit-field">
-                  <span>New name</span>
+                  <span>{t('spirit.resetName.modal.newName')}</span>
                   <input
                     type="text"
                     value={resetNameDraft}
                     maxLength={NAME_MAX}
-                    placeholder="A new name"
+                    placeholder={t('spirit.resetName.modal.placeholder')}
                     disabled={busy === 'reset-name'}
                     onChange={(e) => setResetNameDraft(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && resetName()}
@@ -1043,7 +1109,9 @@ export default function SpiritPage() {
                     disabled={busy === 'reset-name' || !resetNameDraft.trim()}
                     onClick={resetName}
                   >
-                    {busy === 'reset-name' ? 'Changing…' : `Change name (${RESET_COST} coins)`}
+                    {busy === 'reset-name'
+                      ? t('spirit.resetName.modal.doing')
+                      : t('spirit.resetName.modal.confirm', { cost: RESET_COST })}
                   </button>
                   <button
                     type="button"
@@ -1051,7 +1119,7 @@ export default function SpiritPage() {
                     disabled={busy === 'reset-name'}
                     onClick={() => setResetNameOpen(false)}
                   >
-                    Cancel
+                    {t('spirit.resetName.modal.cancel')}
                   </button>
                 </div>
               </Modal>

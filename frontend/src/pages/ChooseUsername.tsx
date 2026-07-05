@@ -5,6 +5,7 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
+import { useT } from '../i18n'
 
 // Backend rule (see backend/app/schemas/user.py): 3–20 chars, letters/numbers/_.
 const MIN_LEN = 3
@@ -29,6 +30,7 @@ function suggestionFrom(email: string | undefined): string {
 }
 
 export default function ChooseUsername() {
+  const { t } = useT()
   const { user, refresh } = useAuth()
   const [username, setUsername] = useState(() => suggestionFrom(user?.email))
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +49,7 @@ export default function ChooseUsername() {
     const value = sanitize(username)
     // The only genuinely-blocking rule that remains: too short to be a valid handle.
     if (value.length < MIN_LEN) {
-      setError(`A little longer, please — at least ${MIN_LEN} characters.`)
+      setError(t('auth.chooseUsername.tooShort', { min: MIN_LEN }))
       return
     }
     setSubmitting(true)
@@ -57,7 +59,7 @@ export default function ChooseUsername() {
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 409
-          ? 'That username is taken — try another.'
+          ? t('auth.chooseUsername.taken')
           : messageForError(err),
       )
     } finally {
@@ -70,27 +72,26 @@ export default function ChooseUsername() {
   return (
     <main id="main-content" className="auth-card">
       <AuthBrand />
-      <h1>Pick a username</h1>
+      <h1>{t('auth.chooseUsername.title')}</h1>
       <p className="muted">
-        This is the name shown in the app instead of your email. You can change it later
-        in Settings.
+        {t('auth.chooseUsername.intro')}
       </p>
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">{t('auth.chooseUsername.label')}</label>
         <input
           id="username"
           autoFocus
           value={username}
           onChange={(e) => handleChange(e.target.value)}
           aria-describedby={error ? 'username-hint username-error' : 'username-hint'}
-          placeholder="e.g. calm_otter"
+          placeholder={t('auth.chooseUsername.placeholder')}
         />
         <p id="username-hint" className="muted field-hint">
-          {MIN_LEN}–{MAX_LEN} characters · letters, numbers, and underscores
+          {t('auth.chooseUsername.hint', { min: MIN_LEN, max: MAX_LEN })}
         </p>
         <ErrorBanner message={error} id="username-error" />
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving…' : 'Continue'}
+          {submitting ? t('auth.chooseUsername.submitting') : t('auth.chooseUsername.cta')}
         </button>
       </form>
     </main>

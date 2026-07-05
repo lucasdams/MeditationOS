@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Sentry } from '../lib/observability'
+import { t } from '../i18n'
 
 /**
  * Catches render-time errors anywhere below it and shows a friendly fallback
@@ -28,12 +29,12 @@ export default class ErrorBoundary extends Component<
     if (!this.state.hasError) return this.props.children
     return (
       <main id="main-content" className="auth-card">
-        <h1>Something went wrong</h1>
+        <h1>{t('error.title')}</h1>
         <p className="muted">
-          An unexpected error broke this page. Reloading usually fixes it.
+          {t('error.body')}
         </p>
         <button type="button" onClick={() => window.location.assign('/')}>
-          Reload the app
+          {t('error.reload')}
         </button>
       </main>
     )
