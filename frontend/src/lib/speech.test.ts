@@ -92,6 +92,19 @@ describe('pickVoice', () => {
     installSynth([])
     expect(pickVoice()).toBeNull()
   })
+
+  it('picks by the CONTENT language (en cues), not the browser language', () => {
+    // The guided-cue text is English (content localization deferred): even when a local
+    // ja voice exists (and would match a Japanese browser), the en voice must win — a ja
+    // voice reading English text comes out badly garbled.
+    installSynth([
+      { name: 'Local JA', lang: 'ja-JP', localService: true },
+      { name: 'Remote EN', lang: 'en-US', localService: false },
+    ])
+    expect(pickVoice()?.name).toBe('Remote EN')
+    // An explicit content language is honored when passed.
+    expect(pickVoice('ja')?.name).toBe('Local JA')
+  })
 })
 
 describe('speak', () => {

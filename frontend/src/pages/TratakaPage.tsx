@@ -284,11 +284,14 @@ export default function TratakaPage() {
   function finish() {
     if (running) pause()
     stopSoundscape()
-    if (elapsed < 1) {
+    // pause() above flushed the exact accumulated seconds into baseElapsedRef; save that
+    // rather than the `elapsed` state, which can lag by up to the interval cadence (~250ms)
+    // — the same precision fix MeditatePage carries.
+    if (baseElapsedRef.current < 1) {
       navigate('/')
       return
     }
-    void saveSession(elapsed)
+    void saveSession(baseElapsedRef.current)
   }
 
   async function restoreSave() {

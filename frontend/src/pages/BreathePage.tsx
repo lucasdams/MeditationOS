@@ -550,14 +550,20 @@ export default function BreathePage() {
     const tick = () => {
       const a = audio() // re-reads volume/ambient from the live refs, so mid-session
       //                    audio tweaks take effect on the next queued cue
-      if (!a.isRunning()) {
-        a.resume() // suspended (e.g. returning to a mobile tab) — re-anchor handles re-sync
-        return
-      }
-      const ctxNow = a.audioTime()
 
-      // Timed sessions finish + save even while backgrounded (within a throttle tick).
+      // The true elapsed needs no audio — compute it FIRST so timed sessions finish + save
+      // and the recovery draft stays fresh even while the AudioContext is suspended (a hidden
+      // tab / iOS interruption, where resume() may not succeed until foregrounded) and while
+      // rAF is paused in a background tab. Previously this sat below the isRunning() early
+      // return, so a backgrounded timed sit silently overshot and the pagehide draft carried
+      // a stale pre-hide elapsed.
       const total = baseElapsedRef.current + (performance.now() - cycleStartRef.current) / 1000
+      elapsedRef.current = total
+      const sec = Math.floor(total)
+      if (sec !== lastPersistRef.current) {
+        lastPersistRef.current = sec
+        persistDraft(total)
+      }
       if (targetRef.current > 0 && total >= targetRef.current * 60) {
         setRunning(false)
         a.stop()
@@ -565,6 +571,12 @@ export default function BreathePage() {
         void saveSession(targetRef.current * 60)
         return
       }
+
+      if (!a.isRunning()) {
+        a.resume() // suspended (e.g. returning to a mobile tab) — re-anchor handles re-sync
+        return
+      }
+      const ctxNow = a.audioTime()
 
       // Queue every cue whose start falls within the look-ahead window.
       const p = patternRef.current
