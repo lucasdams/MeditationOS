@@ -30,8 +30,8 @@ export type NeedIcon = ComponentType<LucideProps>
  *  - `breath`    → Pitta — a fierce fire-and-water blaze of flame tongues (GRATITUDE + JOURNALING nourish it).
  *  - `heart`     → Vata  — an airy wisp of breeze and drifting motes (MEDITATION nourishes it).
  *
- * Until the user chooses (path === null), the spirit is a PATHLESS SPARK: a neutral, un-themed
- * glowing mote with no creature form yet — the picker invites the choice.
+ * Until the user chooses (path === null), the spirit is a PATHLESS EGG: a neutral, un-themed
+ * warm egg with a spark glowing inside and a first hairline crack — the picker is the hatch.
  *
  * Each form is drawn distinctly across the five stages, in the flat vector style of
  * SanctuaryPlant (hardcoded hex fills, a 0 0 80 80 viewBox), with its own palette.
@@ -5697,24 +5697,65 @@ function VataForm({
 }
 
 /**
- * The PATHLESS SPARK (ADR-0023) — a neutral, un-themed glowing mote shown before the user
- * chooses a creature. No path palette, no creature features: just a soft white-gold core with a
- * faint halo, so it reads as "a spark waiting to become something". Drawn at every stage the
- * same calm way (a pathless spirit is, by design, always early — the choice comes first).
+ * The PATHLESS EGG (ADR-0023, redrawn) — a neutral, un-themed egg shown before the user chooses
+ * a creature: a warm speckled shell with a spark glowing INSIDE and a first hairline crack, so
+ * the default state reads as "something waiting to hatch" (the choose flow IS the hatch — see
+ * spirit.choose.hatch.*). No path palette, no creature features; drawn at every stage the same
+ * calm way (a pathless spirit is, by design, always early — the choice comes first).
  */
 function SparkForm({ g }: { g: number }) {
-  // A warm amber spark with a defined edge so it reads clearly on light / beige backgrounds —
-  // the old pale near-white core was nearly invisible. The halo carries the condition glow; the
-  // core stays solidly opaque (not scaled by glow) so the spark is never hard to see.
+  // Warm amber family (matches the old spark, tied to no dosha). The halo carries the condition
+  // glow; the shell stays solidly opaque (not scaled by glow) so the egg is never hard to see.
   const halo = '#fbbf24'
-  const core = '#fef3c7'
+  const shell = '#fef3c7'
+  const rim = '#d97706'
   return (
     <g>
-      <circle cx={40} cy={40} r={20} fill={halo} opacity={Math.min(0.4, 0.18 * g)} />
-      <circle cx={40} cy={40} r={13} fill={halo} opacity={Math.min(0.55, 0.3 * g)} />
-      <circle cx={40} cy={40} r={8.5} fill={core} stroke="#d97706" strokeWidth={1.5} opacity={0.96} />
-      <circle cx={40} cy={40} r={4.5} fill="#f59e0b" opacity={0.95} />
-      <circle cx={38} cy={38.5} r={1.8} fill="#ffffff" opacity={0.9} />
+      {/* The soft halo behind — the light of the spark inside, breathing with the daily glow. */}
+      <circle cx={40} cy={43} r={20} fill={halo} opacity={Math.min(0.4, 0.18 * g)} />
+      <circle cx={40} cy={43} r={13} fill={halo} opacity={Math.min(0.55, 0.3 * g)} />
+      {/* A grounding shadow so the egg rests rather than floats. */}
+      <ellipse cx={40} cy={56.8} rx={10} ry={2.1} fill={rim} opacity={0.16} />
+      {/* The shell — egg-shaped (narrow crown, round base), cream with a warm defined rim. */}
+      <path
+        d={`M 40 30
+            C 47 30 50 38 50 45
+            C 50 52.5 45.5 56.5 40 56.5
+            C 34.5 56.5 30 52.5 30 45
+            C 30 38 33 30 40 30 Z`}
+        fill={shell}
+        stroke={rim}
+        strokeWidth={1.5}
+        opacity={0.97}
+      />
+      {/* The spark, now INSIDE: a warm glow showing through the shell's middle. */}
+      <circle cx={40} cy={45} r={5.5} fill={halo} opacity={0.5} />
+      <circle cx={40} cy={45} r={3} fill="#f59e0b" opacity={0.6} />
+      {/* Speckles — a quiet, deterministic scatter so the shell reads organic, not flat. */}
+      <circle cx={34.8} cy={40.5} r={0.9} fill="#f59e0b" opacity={0.45} />
+      <circle cx={45.2} cy={48.5} r={1} fill="#f59e0b" opacity={0.4} />
+      <circle cx={37} cy={51.5} r={0.8} fill="#f59e0b" opacity={0.45} />
+      <circle cx={44.4} cy={37.5} r={0.7} fill="#f59e0b" opacity={0.4} />
+      {/* The first hairline crack near the crown — it's beginning; choosing finishes the hatch. */}
+      <path
+        d="M 43.6 32.6 l -1.7 2.1 l 1.9 1.5 l -1.5 1.9"
+        fill="none"
+        stroke={rim}
+        strokeWidth={0.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.55}
+      />
+      {/* Sheen highlight, upper left. */}
+      <ellipse
+        cx={35.8}
+        cy={36.4}
+        rx={2.4}
+        ry={3.4}
+        fill="#ffffff"
+        opacity={0.8}
+        transform="rotate(-16 35.8 36.4)"
+      />
     </g>
   )
 }
@@ -5839,9 +5880,11 @@ export function SpiritArt({
   // absent → 1.0 (the stage's natural size). Both resolve to the path-default / no-op when unset.
   const pal = (path && cosmetics?.palette && PALETTES[cosmetics.palette]) || (path ? PATH_PALETTE[path] : undefined)
   const sizeScale = SIZES[cosmetics?.size ?? ''] ?? 1
-  // A pathless spark has no creature label yet — describe it as an awakening spark.
-  const creature = path ? `${PATH_COPY[path]} spirit` : 'awakening spark'
-  const label = `${STAGE_COPY[stage].name} ${creature}${previewing ? ' (preview)' : ''}`
+  // A pathless spirit has no creature label yet — describe it as the unhatched spirit egg
+  // (no stage prefix: "Spark spirit egg" reads oddly; the egg is simply pre-stage).
+  const label = path
+    ? `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit${previewing ? ' (preview)' : ''}`
+    : `Unhatched spirit egg${previewing ? ' (preview)' : ''}`
   // The celebration + pacer transform now target the CREATURE group, so the static background
   // (habitat + aura) never swells with the one-shot or drifts with the breath.
   const creatureRef = useRef<SVGGElement | null>(null)

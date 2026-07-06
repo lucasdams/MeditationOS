@@ -697,11 +697,11 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
   })
 })
 
-describe('Spirit — pathless spark vs chosen creature (ADR-0023)', () => {
-  it('renders a neutral pathless spark (no creature form) when the path is null', () => {
+describe('Spirit — pathless egg vs chosen creature (ADR-0023)', () => {
+  it('renders the neutral unhatched egg (no creature form) when the path is null', () => {
     renderSpirit(<Spirit spirit={spiritState({ stage: 'spark', path: null })} />)
-    // The pathless spark is labelled as an awakening spark, not any creature.
-    expect(screen.getByRole('img', { name: /awakening spark/i })).toBeInTheDocument()
+    // The pathless default is labelled as the spirit egg, not any creature.
+    expect(screen.getByRole('img', { name: /spirit egg/i })).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /kapha|pitta|vata/i })).toBeNull()
   })
 
