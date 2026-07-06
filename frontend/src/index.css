@@ -1941,6 +1941,10 @@ a:hover { color: var(--accent-hover); }
 }
 
 :root[data-theme='dark'] .journal-mood,
+:root:not([data-theme='light']):not([data-theme='dark']) .journal-mood {
+  background: color-mix(in srgb, var(--pill) 22%, #1e2130);
+  color: color-mix(in srgb, var(--pill) 65%, #fff);
+}
 
 .journal-entry-actions {
   margin-left: auto;
@@ -2008,11 +2012,7 @@ a:hover { color: var(--accent-hover); }
 }
 
 /* Active filter chip — same theme-aware pill treatment as .journal-mood, driven
-   by the inline --pill custom property (was inline background/color/borderColor).
-   Mixes against the surface/ink TOKENS (the old literals included a typo'd
-   #1e2130, one digit off --bg-surface-raised). The system-dark fallback lives
-   inside the media query — unwrapped it would apply dark chips to light-OS
-   users the day a "system" theme option removes the data-theme attribute. */
+   by the inline --pill custom property (was inline background/color/borderColor). */
 .mood-filter-chip.selected {
   font-weight: 600;
   background: color-mix(in srgb, var(--pill, #888) 16%, var(--bg-surface));
@@ -2290,6 +2290,9 @@ button:disabled {
 /* On dark, 0.6 opacity reads as broken/near-invisible — lift it so the disabled
    state is still perceptible (~4.5:1) without looking like an error. */
 :root[data-theme='dark'] button:disabled,
+:root:not([data-theme='light']):not([data-theme='dark']) button:disabled {
+  opacity: 0.78;
+}
 
 /* Placeholder text — token-driven so it reads (but stays clearly secondary) in both themes. */
 input::placeholder,
@@ -3294,6 +3297,9 @@ button.today-action:disabled {
 /* On dark the faint slate track nearly vanishes against the deep canvas — give the
    empty portion a readable track so the need's fill level stays legible. */
 :root[data-theme='dark'] .spirit-need-bar,
+:root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-bar {
+  background: rgba(148, 163, 184, 0.4);
+}
 
 .spirit-need-bar-fill {
   display: block;
@@ -6583,8 +6589,6 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-secondary);
 }
 
-/* <summary> isn't covered by the global a/button focus list — every disclosure summary
-   (meditate / trataka-about / dosha-about) gets the same visible keyboard ring. */
 .meditate-disclosure-summary:focus-visible,
 .trataka-about-summary:focus-visible,
 .dosha-about-summary:focus-visible {
@@ -7333,8 +7337,14 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 :root[data-theme='dark'] .toast--success,
+:root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
+  background: #0a875d;
+}
 
 :root[data-theme='dark'] .toast--error,
+:root:not([data-theme='light']):not([data-theme='dark']) .toast--error {
+  background: #c73b3f;
+}
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
@@ -9069,17 +9079,39 @@ details[open] .meditate-disclosure-summary::before {
    the light-mode aesthetic.
    ─────────────────────────────────────────────────────────────────────────── */
 :root[data-theme='dark'] .badge.earned,
+:root:not([data-theme='light']):not([data-theme='dark']) .badge.earned {
+  background: var(--bg-surface-raised);
+  border-color: #7a5a2e;
+}
 
 /* .memory-card and .level-card now flip via their --memory-card-* / --level-card-*
    tokens (defined per theme above), so no explicit dark override is needed here. */
 
 :root[data-theme='dark'] .session-recover,
+:root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
+  background: #2a2010;
+  border-color: #3d300a;
+}
 
 :root[data-theme='dark'] .auth-notice,
+:root:not([data-theme='light']):not([data-theme='dark']) .auth-notice {
+  background: #2a1f00;
+  border-color: #3d2e00;
+  color: #fcd34d;
+}
 
 :root[data-theme='dark'] .verify-banner,
+:root:not([data-theme='light']):not([data-theme='dark']) .verify-banner {
+  background: #2a1f00;
+  border-color: #3d2e00;
+  color: #fcd34d;
+}
 
 :root[data-theme='dark'] .legal-template,
+:root:not([data-theme='light']):not([data-theme='dark']) .legal-template {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
 
 /* ── Dark-mode visibility fixes for hardcoded light hexes ───────────────────
    Each rule lists both dark selectors (explicit data-theme + system-pref).
@@ -9088,112 +9120,66 @@ details[open] .meditate-disclosure-summary::before {
 /* .error now flips via its --error-text token (red that reads on dark). */
 
 :root[data-theme='dark'] .success,
+:root:not([data-theme='light']):not([data-theme='dark']) .success {
+  color: var(--success-text);
+}
 
 :root[data-theme='dark'] .pace-difficulty.d-gentle,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-gentle {
+  color: #34d399;
+}
 :root[data-theme='dark'] .pace-difficulty.d-moderate,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-moderate {
+  color: var(--accent);
+}
 :root[data-theme='dark'] .pace-difficulty.d-advanced,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-advanced {
+  color: #fbbf24;
+}
 :root[data-theme='dark'] .pace-difficulty.d-expert,
+:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-expert {
+  color: #f87171;
+}
 
 /* Beat the inline near-white tints set in BreathePage.tsx. */
 :root[data-theme='dark'] .pattern-card-icon,
+:root:not([data-theme='light']):not([data-theme='dark']) .pattern-card-icon {
+  background: var(--bg-surface-raised) !important;
+}
 
 :root[data-theme='dark'] .guided-cues-text,
+:root:not([data-theme='light']):not([data-theme='dark']) .guided-cues-text {
+  color: var(--text-secondary);
+}
 
 /* .xp-bar now flips via its --xp-track token (deep green on dark). */
 
 :root[data-theme='dark'] .quest.done .quest-check,
+:root:not([data-theme='light']):not([data-theme='dark']) .quest.done .quest-check {
+  color: var(--success-text);
+}
 
 :root[data-theme='dark'] .settings-danger,
+:root:not([data-theme='light']):not([data-theme='dark']) .settings-danger {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
 :root[data-theme='dark'] .settings-danger:hover:not(:disabled),
+:root:not([data-theme='light']):not([data-theme='dark']) .settings-danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.12);
+}
 :root[data-theme='dark'] .settings-confirm p,
+:root:not([data-theme='light']):not([data-theme='dark']) .settings-confirm p {
+  color: #f87171;
+}
 
 :root[data-theme='dark'] .goal-achieved,
+:root:not([data-theme='light']):not([data-theme='dark']) .goal-achieved {
+  color: var(--success-text);
+  background: #25301c;
+}
 :root[data-theme='dark'] .goal-checkin.done,
-
-
-/* System-theme dark fallbacks — every `:root:not([data-theme…])` variant MUST live inside
-   the prefers-color-scheme media query: unwrapped at top level they would apply dark
-   component styles to light-OS users the day a "system" theme option removes the
-   data-theme attribute. (Consolidated from previously top-level rules.) */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):not([data-theme='dark']) .journal-mood {
-    background: color-mix(in srgb, var(--pill) 22%, #1e2130);
-    color: color-mix(in srgb, var(--pill) 65%, #fff);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) button:disabled {
-    opacity: 0.78;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-bar {
-    background: rgba(148, 163, 184, 0.4);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
-    background: #0a875d;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .toast--error {
-    background: #c73b3f;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .badge.earned {
-    background: var(--bg-surface-raised);
-    border-color: #7a5a2e;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
-    background: #2a2010;
-    border-color: #3d300a;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .auth-notice {
-    background: #2a1f00;
-    border-color: #3d2e00;
-    color: #fcd34d;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .verify-banner {
-    background: #2a1f00;
-    border-color: #3d2e00;
-    color: #fcd34d;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .legal-template {
-    background: var(--bg-surface);
-    border-color: var(--border);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .success {
-    color: var(--success-text);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-gentle {
-    color: #34d399;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-moderate {
-    color: var(--accent);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-advanced {
-    color: #fbbf24;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-expert {
-    color: #f87171;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .pattern-card-icon {
-    background: var(--bg-surface-raised) !important;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .guided-cues-text {
-    color: var(--text-secondary);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .quest.done .quest-check {
-    color: var(--success-text);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .settings-danger {
-    color: #f87171;
-    border-color: rgba(248, 113, 113, 0.4);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .settings-danger:hover:not(:disabled) {
-    background: rgba(248, 113, 113, 0.12);
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .settings-confirm p {
-    color: #f87171;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .goal-achieved {
-    color: var(--success-text);
-    background: #25301c;
-  }
-  :root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
-    color: var(--success-text);
-    background: #25301c;
-  }
+:root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
+  color: var(--success-text);
+  background: #25301c;
 }
