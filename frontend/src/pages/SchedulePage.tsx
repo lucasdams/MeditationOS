@@ -7,7 +7,7 @@ import { TYPE_COLORS, TYPE_LABELS } from '../lib/colors'
 import { toDatetimeLocal } from '../lib/format'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { useT } from '../i18n'
+import { fmtDate, useT } from '../i18n'
 import type { MeditationType, ScheduledSession } from '../types'
 
 // Order shown in the picker; labels come from the shared TYPE_LABELS map.
@@ -23,8 +23,9 @@ function defaultWhen(): string {
   return toDatetimeLocal(d)
 }
 
+// Locale-aware via the i18n fmtDate wrapper (never the browser locale).
 function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+  return fmtDate(new Date(iso), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',

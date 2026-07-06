@@ -329,6 +329,8 @@ export const practice: Record<string, string> = {
   'practice.trataka.minGaze': '{min} min gaze',
   'practice.trataka.sound.summary': 'Ambient sound',
   'practice.trataka.recover.label': 'Candle gazing',
+  // The procedural flame's screen-reader description (components/Flame.tsx)
+  'practice.trataka.flameAria': 'A softly glowing candle flame to gaze at',
   'practice.trataka.reflect.aria': 'Reflect on your gaze',
   'practice.trataka.about.summary': 'About candle gazing',
   'practice.trataka.about.p1intro': 'Candle gazing — traditionally called',
@@ -356,6 +358,10 @@ export const practice: Record<string, string> = {
   'practice.reward.coins': "You've earned coins to spend on your spirit",
   'practice.reward.toNext': '{into} / {forNext} to next level',
   'practice.reward.continue': 'Continue',
+  // XP-source lines in the reward breakdown (lib/xpBreakdown.ts). {label} is the
+  // server-provided quest copy, passed through as-is.
+  'practice.reward.quest': 'Quest: {label}',
+  'practice.reward.streakBonus': 'Streak bonus',
   // Warm words of praise on finishing a sit (picked at random).
   'practice.reward.praise.0': 'Beautifully done.',
   'practice.reward.praise.1': 'You showed up — that’s what matters.',

@@ -60,9 +60,9 @@ const TEND_ACTIONS: { kind: SpiritTendKind; need: SpiritNeedKey; labelKey: strin
 // The five stages in order (STAGE_COPY is defined spark → radiant), for the journey stepper.
 const STAGE_ORDER = Object.keys(STAGE_COPY)
 
-// Stage display name, localized at the call site (the art's own aria-label in Spirit.tsx stays its
-// English STAGE_COPY name — that's the single source of truth for the SVG label). Unknown stages
-// fall back to the tidied key.
+// Stage display name, localized at the call site (Spirit.tsx's STAGE_COPY carries the same
+// 'spirit.stage.*' keys, so the SVG art label localizes identically). Unknown stages fall back
+// to the tidied key.
 function stageLabelOf(stage: string): string {
   return STAGE_COPY[stage as keyof typeof STAGE_COPY] ? t(`spirit.stage.${stage}`) : titleize(stage)
 }

@@ -104,6 +104,11 @@ export const settings: Record<string, string> = {
   'settings.push.on': 'Push notifications are on for this device.',
   'settings.push.off': 'Push notifications turned off.',
   'settings.push.err': 'Couldn’t change push notifications.',
+  // Coded enable-failure reasons (services/push.ts PushError → mapped here by PushToggle)
+  'settings.push.error.noServiceWorker':
+    'Push needs the installed app (service worker not active here).',
+  'settings.push.error.notConfigured': 'Push notifications aren’t configured on the server yet.',
+  'settings.push.error.permissionDenied': 'Notification permission was denied.',
 
   // Timezone
   'settings.timezone.heading': 'Timezone',

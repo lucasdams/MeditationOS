@@ -12,7 +12,7 @@ import { toDatetimeLocal } from '../lib/format'
 import RatingChips from '../components/RatingChips'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { t as translate, useT } from '../i18n'
+import { fmtDate, t as translate, useT } from '../i18n'
 import type { MeditationType, Mood, Session } from '../types'
 
 // One unified, chronological feed of everything you log — reflections (journal),
@@ -23,9 +23,10 @@ const PER_SOURCE = 50
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // The API serializes timestamps as UTC ISO (with `Z`); render them in the user's
-// local time, matching SchedulePage.
+// local time, matching SchedulePage. Locale-aware via the i18n fmtDate wrapper (never
+// the browser locale).
 const formatWhen = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
+  fmtDate(new Date(iso), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -269,7 +270,7 @@ export default function TimelinePage() {
   return (
     <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">
-        ← Dashboard
+        {t('common.backDashboard')}
       </Link>
       <header className="page-head">
         <h1>{t('tracking.timeline.title')}</h1>

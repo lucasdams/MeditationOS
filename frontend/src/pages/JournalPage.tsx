@@ -14,7 +14,7 @@ import { ApiError } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
-import { useT } from '../i18n'
+import { fmtDate, useT } from '../i18n'
 import type { DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -43,8 +43,9 @@ const TYPE_LABELS: Record<MeditationType, string> = {
 
 // The API serializes timestamps as UTC ISO (with `Z`); render them in the user's
 // local time, matching TimelinePage so the same moment reads identically app-wide.
+// Locale-aware via the i18n fmtDate wrapper (never the browser locale).
 const formatWhen = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
+  fmtDate(new Date(iso), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -234,7 +235,7 @@ export default function JournalPage() {
       // mood) and streak bonus it just completed. Post-save stats are best-effort too:
       // the entry is already saved, so fall back to `before` (zero gain) on failure.
       const after = await dashboardService.getStats().catch(() => before)
-      const bd = buildXpBreakdown(before, after, 'Journal entry', NotebookPen)
+      const bd = buildXpBreakdown(before, after, t('tracking.journal.activityLabel'), NotebookPen)
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch {
       setError(t('tracking.journal.saveError'))

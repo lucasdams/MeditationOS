@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { pushService, pushSupported } from '../services/push'
+import { PushError, pushService, pushSupported } from '../services/push'
 import { useT } from '../i18n'
 
 // Push notification opt-in. Self-contained: it checks its own subscription state and
@@ -34,7 +34,9 @@ export default function PushToggle() {
         setMsg(t('settings.push.on'))
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : t('settings.push.err'))
+      // PushError carries a CODE (why enabling failed); everything else falls back to
+      // the generic copy. Codes map to catalog keys so the reason localizes.
+      setErr(e instanceof PushError ? t(`settings.push.error.${e.code}`) : t('settings.push.err'))
     } finally {
       setBusy(false)
     }

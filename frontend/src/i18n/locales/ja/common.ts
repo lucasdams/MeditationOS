@@ -65,6 +65,10 @@ export const common: Record<string, string> = {
   'notFound.body': 'このパスの先には何もありません。なくなったか、もともと無かったようです。',
   'notFound.back': '← ホームに戻る',
 
+  // API失敗時の文言（lib/errors.ts）— ネットワーク起因とサーバー側起因を区別
+  'common.error.network': 'サーバーに接続できません — 通信環境を確認して、もう一度お試しください。',
+  'common.error.server': 'こちら側で問題が起きました。少し待ってから、もう一度お試しください。',
+
   // 描画エラーのフォールバック（ErrorBoundary.tsx）
   'error.title': '問題が発生しました',
   'error.body': '予期しないエラーでこのページが表示できませんでした。たいていは再読み込みで直ります。',

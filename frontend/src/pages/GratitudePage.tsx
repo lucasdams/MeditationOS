@@ -9,7 +9,7 @@ import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor } from '../lib/colors'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { useT } from '../i18n'
+import { fmtDate, useT } from '../i18n'
 import type { DashboardStats, Gratitude, GratitudeCategory } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -86,8 +86,9 @@ const COMMON_KEYS: GratitudeCategory[] = [
 const COMMON = CATEGORIES.filter((c) => COMMON_KEYS.includes(c.key))
 const REST = CATEGORIES.filter((c) => !COMMON_KEYS.includes(c.key))
 
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+// Locale-aware via the i18n fmtDate wrapper (never the browser locale). Named fmtDay so
+// it doesn't shadow the imported helper.
+const fmtDay = (iso: string) => fmtDate(new Date(iso), { month: 'short', day: 'numeric' })
 
 const GRAT_PAGE = 50
 const MAX_LEN = 500
@@ -225,7 +226,7 @@ export default function GratitudePage() {
       // the breakdown would treat the user's entire lifetime XP as this entry's gain.
       if (beforeOk) {
         // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
-        const bd = buildXpBreakdown(before, after, 'Gratitude', HandHeart)
+        const bd = buildXpBreakdown(before, after, t('tracking.gratitude.activityLabel'), HandHeart)
         setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
       }
       // Return to the "pick a category" state for next time.
@@ -375,7 +376,7 @@ export default function GratitudePage() {
                 style={{ borderLeftColor: color }}
               >
                 <div className="journal-entry-head">
-                  <span className="muted">{fmtDate(e.created_at)}</span>
+                  <span className="muted">{fmtDay(e.created_at)}</span>
                   <span
                     className="journal-mood"
                     style={{ '--pill': color } as React.CSSProperties}

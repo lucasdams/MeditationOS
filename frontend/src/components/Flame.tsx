@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { flamePoseAt } from '../lib/flame'
+import { useT } from '../i18n'
 
 interface FlameProps {
   // 0 = perfectly still (reduced-motion), 1 = normal gentle sway. The page passes a
@@ -14,6 +15,7 @@ interface FlameProps {
 // `flamePoseAt`, so the same code stills the flame when `intensity` is 0. The renderer
 // is a thin shell; all the motion math lives in `lib/flame.ts` (unit-tested).
 export default function Flame({ intensity = 1, size = 220 }: FlameProps) {
+  const { t } = useT()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const intensityRef = useRef(intensity)
   intensityRef.current = intensity
@@ -98,7 +100,7 @@ export default function Flame({ intensity = 1, size = 220 }: FlameProps) {
       // narrow phones (e.g. 320px); aspect-ratio keeps it square as it scales down.
       style={{ width: size, maxWidth: '90vw', aspectRatio: '1 / 1', height: 'auto' }}
       role="img"
-      aria-label="A softly glowing candle flame to gaze at"
+      aria-label={t('practice.trataka.flameAria')}
     />
   )
 }

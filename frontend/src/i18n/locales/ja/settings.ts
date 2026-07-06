@@ -104,6 +104,11 @@ export const settings: Record<string, string> = {
   'settings.push.on': 'この端末でプッシュ通知がオンになりました。',
   'settings.push.off': 'プッシュ通知をオフにしました。',
   'settings.push.err': 'プッシュ通知を変更できませんでした。',
+  // 有効化に失敗した理由のコード（services/push.ts の PushError → PushToggle が対応付け）
+  'settings.push.error.noServiceWorker':
+    'プッシュ通知にはインストール版のアプリが必要です（ここではサービスワーカーが動いていません）。',
+  'settings.push.error.notConfigured': 'プッシュ通知はまだサーバー側で設定されていません。',
+  'settings.push.error.permissionDenied': '通知が許可されませんでした。',
 
   // タイムゾーン
   'settings.timezone.heading': 'タイムゾーン',

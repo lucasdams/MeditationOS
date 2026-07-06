@@ -5,6 +5,7 @@ import { spiritService } from '../services/spirit'
 import { Loading, RetryableError } from './StateViews'
 import { messageForError } from '../lib/errors'
 import { roundOutFacet } from '../lib/spiritNeeds'
+import { t, useT } from '../i18n'
 import type {
   SpiritNeedTier,
   SpiritPath,
@@ -60,13 +61,14 @@ export type NeedIcon = ComponentType<LucideProps>
 
 // A calm, friendly label per stage — used for the screen-reader description and the quiet
 // caption under the art. A brand-new user is at `spark`; we frame that as the first awakening.
-// Exported so SpiritPage shares the same labels/notes (a single source of truth).
-export const STAGE_COPY: Record<SpiritStage, { name: string; note: string }> = {
-  spark: { name: 'Spark', note: 'Your spirit is just awakening.' },
-  wisp: { name: 'Wisp', note: 'Your spirit is taking shape.' },
-  fledgling: { name: 'Fledgling', note: 'Your spirit is finding its form.' },
-  ascendant: { name: 'Ascendant', note: 'Your spirit is growing brighter.' },
-  radiant: { name: 'Radiant', note: 'Your spirit shines fully.' },
+// Exported so SpiritPage shares the same stage set/order (a single source of truth). Values are
+// i18n catalog KEYS (locales/{en,ja}/spirit.ts), resolved with t() where they render.
+export const STAGE_COPY: Record<SpiritStage, { nameKey: string; noteKey: string }> = {
+  spark: { nameKey: 'spirit.stage.spark', noteKey: 'spirit.stage.note.spark' },
+  wisp: { nameKey: 'spirit.stage.wisp', noteKey: 'spirit.stage.note.wisp' },
+  fledgling: { nameKey: 'spirit.stage.fledgling', noteKey: 'spirit.stage.note.fledgling' },
+  ascendant: { nameKey: 'spirit.stage.ascendant', noteKey: 'spirit.stage.note.ascendant' },
+  radiant: { nameKey: 'spirit.stage.radiant', noteKey: 'spirit.stage.note.radiant' },
 }
 
 // The dosha each path is labelled as in the UI (ADR-0023; the internal `path` value is
@@ -132,13 +134,14 @@ export const PATH_COPY: Record<SpiritPath, string> = {
 // The three doshas in the order the picker presents them (Kapha / Pitta / Vata).
 export const PATH_ORDER: SpiritPath[] = ['stillness', 'breath', 'heart']
 
-// Calm, never-shaming copy per care tier (ADR-0023 guardrail: nudge, never shame). `label` is
-// the pill text, `tone` the CSS state suffix. Exported so SpiritPage + the home summary share it.
-export const TIER_COPY: Record<SpiritNeedTier, { label: string; tone: string }> = {
-  thriving: { label: 'Thriving', tone: 'thriving' },
-  content: { label: 'Content', tone: 'content' },
-  restless: { label: 'Restless', tone: 'restless' },
-  unwell: { label: 'Needs care', tone: 'unwell' },
+// Calm, never-shaming copy per care tier (ADR-0023 guardrail: nudge, never shame). `labelKey`
+// is the pill text's i18n catalog key ('spirit.tier.*', resolved with t() where it renders),
+// `tone` the CSS state suffix. Exported so SpiritPage + the home summary share it.
+export const TIER_COPY: Record<SpiritNeedTier, { labelKey: string; tone: string }> = {
+  thriving: { labelKey: 'spirit.tier.thriving', tone: 'thriving' },
+  content: { labelKey: 'spirit.tier.content', tone: 'content' },
+  restless: { labelKey: 'spirit.tier.restless', tone: 'restless' },
+  unwell: { labelKey: 'spirit.tier.unwell', tone: 'unwell' },
 }
 
 // A care-need tier is "low" (worth a gentle nudge) once it slips below content.
@@ -151,20 +154,25 @@ export function isLowTier(tier: SpiritNeedTier): boolean {
 // are path-agnostic. Used for the needs read-out and the per-need care nudges.
 export const NEED_COPY: Record<
   keyof SpiritState['needs'],
-  { label: string; icon: NeedIcon }
+  { labelKey: string; icon: NeedIcon }
 > = {
   // Labels name the DIMENSION (a noun), not a positive state — so "Nourishment · Needs care"
   // reads honestly, rather than "Nourished" claiming the opposite of the tier beside it.
-  // `icon` is a lucide line-icon component, rendered sized to context at each call site.
-  nourished: { label: 'Nourishment', icon: Soup },
-  rested: { label: 'Rest', icon: Moon },
-  joyful: { label: 'Joy', icon: Sparkles },
+  // `labelKey` is the shared 'needs.*' i18n key (locales/{en,ja}/common.ts), resolved with t()
+  // where it renders; `icon` is a lucide line-icon component, sized to context at each call site.
+  nourished: { labelKey: 'needs.nourished', icon: Soup },
+  rested: { labelKey: 'needs.rested', icon: Moon },
+  joyful: { labelKey: 'needs.joyful', icon: Sparkles },
 }
 
 // Calm display names for the cosmetic slots and their options (matching the backend catalog
 // SPIRIT_COSMETICS_CATALOG). Unknown keys fall back to a tidied key. Exported as the single
 // source of truth so SpiritPage (the customize tree) and SpiritChoosePage (the grows-into
 // preview) label options identically.
+// I18N: the values here are the FROZEN ENGLISH, mirrored byte-identically in the catalogs as
+// 'spirit.slot.<slot>' / 'spirit.option.<option>' (locales/{en,ja}/spirit.ts). Rendering goes
+// through slotLabel()/optionLabel() below, which resolve those keys with t() at call time —
+// these maps double as the KNOWN-KEY set (membership decides catalog lookup vs titleize).
 export const SLOT_LABEL: Record<string, string> = {
   aura: 'Aura',
   accessory: 'Accessory',
@@ -379,22 +387,38 @@ export function titleize(key: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? titleize(slot)
-export const optionLabel = (option: string) => OPTION_LABEL[option] ?? titleize(option)
+// Localized at CALL time: known keys resolve from the i18n catalog (so the label follows the
+// active locale); unknown keys keep the tidied-key fallback. Callers all sit under components
+// that subscribe via useT(), so a locale switch re-renders them.
+export const slotLabel = (slot: string) =>
+  slot in SLOT_LABEL ? t(`spirit.slot.${slot}`) : titleize(slot)
+export const optionLabel = (option: string) =>
+  option in OPTION_LABEL ? t(`spirit.option.${option}`) : titleize(option)
+
+// Path → dosha catalog key (Kapha / Pitta / Vata), so dosha copy localizes at the call site
+// (mirrors the same map in SpiritPage / SpiritChoosePage).
+const PATH_DOSHA_KEY: Record<SpiritPath, string> = {
+  stillness: 'kapha',
+  breath: 'pitta',
+  heart: 'vata',
+}
 
 // A gentle, optional round-out hint for a given facet + creature (ADR-0032). Framed as an
 // invitation ("would round things out"), never a demand: nourished suggests the dosha's balancing
-// practice; rested suggests a calm rhythm; joyful suggests a little variety.
+// practice; rested suggests a calm rhythm; joyful suggests a little variety. Resolved from the
+// i18n catalog at call time (rendered by CareNudge, which subscribes via useT).
 export function roundOutHint(
   need: keyof SpiritState['needs'],
   path: SpiritPath | null,
 ): string {
   if (need === 'nourished') {
-    const practice = path ? DOSHA[path].practice : 'your practice'
-    return `a few minutes of ${practice} would round things out`
+    const practice = path
+      ? t(`spirit.dosha.${PATH_DOSHA_KEY[path]}.practice`)
+      : t('spirit.nudge.yourPractice')
+    return t('spirit.nudge.hint.nourished', { practice })
   }
-  if (need === 'rested') return 'a calm daily rhythm would round things out'
-  return 'a little variety in your practice would round things out'
+  if (need === 'rested') return t('spirit.nudge.hint.rested')
+  return t('spirit.nudge.hint.joyful')
 }
 
 // The three facets in display order, so the read-out + suggestion iterate consistently.
@@ -407,13 +431,16 @@ const NEED_ORDER: Array<keyof SpiritState['needs']> = ['nourished', 'rested', 'j
  * the home summary + SpiritPage.
  */
 export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
+  const { t } = useT()
   return (
-    <ul className="spirit-needs" aria-label="Recent practice balance">
+    <ul className="spirit-needs" aria-label={t('spirit.needs.aria')}>
       {NEED_ORDER.map((key) => {
         const need = needs[key]
         const copy = NEED_COPY[key]
         const NeedIconCmp = copy.icon
         const tier = TIER_COPY[need.tier]
+        const label = t(copy.labelKey)
+        const tierLabel = t(tier.labelKey)
         const pct = Math.round(need.factor * 100)
         return (
           <li key={key} className={`spirit-need spirit-need--${tier.tone}`}>
@@ -421,8 +448,8 @@ export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
               <span className="spirit-need-icon" aria-hidden="true">
                 <NeedIconCmp size={16} strokeWidth={1.75} />
               </span>
-              <span className="spirit-need-label">{copy.label}</span>
-              <span className="spirit-need-tier">{tier.label}</span>
+              <span className="spirit-need-label">{label}</span>
+              <span className="spirit-need-tier">{tierLabel}</span>
             </div>
             <div
               className="spirit-need-bar"
@@ -430,7 +457,7 @@ export function NeedsReadout({ needs }: { needs: SpiritState['needs'] }) {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={pct}
-              aria-label={`${copy.label}: ${pct} of 100 — ${tier.label}`}
+              aria-label={t('spirit.needs.barAria', { label, pct, tier: tierLabel })}
             >
               <span className="spirit-need-bar-fill" style={{ width: `${pct}%` }} />
             </div>
@@ -455,14 +482,16 @@ export function CareNudge({
   needs: SpiritState['needs']
   path: SpiritPath | null
 }) {
+  const { t } = useT()
   const key = roundOutFacet(needs)
   if (key === null) return null // the balance is even — no suggestion at all
-  const creature = path ? `Your ${DOSHA[path].name}` : 'Your spark'
-  const facet = NEED_COPY[key].label.toLowerCase()
+  const creature = path
+    ? t('spirit.nudge.creature', { name: t(`spirit.dosha.${PATH_DOSHA_KEY[path]}.name`) })
+    : t('spirit.nudge.spark')
+  const facet = t(NEED_COPY[key].labelKey).toLowerCase()
   return (
     <p className="spirit-care-nudge" role="status">
-      {creature} has had a little less {facet} lately — {roundOutHint(key, path)}, if you feel like
-      it.
+      {t('spirit.nudge.line', { creature, facet, hint: roundOutHint(key, path) })}
     </p>
   )
 }
@@ -5866,6 +5895,7 @@ export function SpiritArt({
   // radiance" flourish (a soft halo + a faint sparkle ring) over the scene. Advisory/visual only.
   setRadiant?: boolean
 }) {
+  const { t } = useT() // subscribe: the aria label below re-renders on locale switch
   const g = clampGlow(glow)
   const aura = cosmetics?.aura
   const accessory = cosmetics?.accessory
@@ -5882,9 +5912,13 @@ export function SpiritArt({
   const sizeScale = SIZES[cosmetics?.size ?? ''] ?? 1
   // A pathless spirit has no creature label yet — describe it as the unhatched spirit egg
   // (no stage prefix: "Spark spirit egg" reads oddly; the egg is simply pre-stage).
-  const label = path
-    ? `${STAGE_COPY[stage].name} ${PATH_COPY[path]} spirit${previewing ? ' (preview)' : ''}`
-    : `Unhatched spirit egg${previewing ? ' (preview)' : ''}`
+  const label =
+    (path
+      ? t('spirit.art.pathLabel', {
+          stage: t(STAGE_COPY[stage].nameKey),
+          dosha: t(`spirit.dosha.${PATH_DOSHA_KEY[path]}.name`),
+        })
+      : t('spirit.art.egg')) + (previewing ? t('spirit.art.preview') : '')
   // The celebration + pacer transform now target the CREATURE group, so the static background
   // (habitat + aura) never swells with the one-shot or drifts with the breath.
   const creatureRef = useRef<SVGGElement | null>(null)
@@ -6064,6 +6098,7 @@ export default function Spirit({
   // a celebratory hatch invite (onboarding §5). Defaults to 0 → the gentle first-time copy.
   sessionCount?: number
 }) {
+  const { t } = useT() // subscribe: all the copy below re-renders on locale switch
   const [fetched, setFetched] = useState<SpiritState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -6077,7 +6112,7 @@ export default function Spirit({
         setFetched(s)
         setError(null)
       })
-      .catch((err) => setError(messageForError(err, "Couldn't reach your spirit.")))
+      .catch((err) => setError(messageForError(err, t('spirit.error'))))
       .finally(() => {
         setRetrying(false)
         setLoading(false)
@@ -6095,7 +6130,7 @@ export default function Spirit({
 
   if (error && !spirit) {
     return (
-      <section className="spirit-home" aria-label="Your spirit">
+      <section className="spirit-home" aria-label={t('spirit.home.aria')}>
         <RetryableError message={error} onRetry={load} retrying={retrying} />
       </section>
     )
@@ -6106,8 +6141,8 @@ export default function Spirit({
   if (!spirit) {
     if (loading && spiritProp === undefined) {
       return (
-        <section className="spirit-home" aria-label="Your spirit">
-          <Loading label="Waking your spirit…" />
+        <section className="spirit-home" aria-label={t('spirit.home.aria')}>
+          <Loading label={t('spirit.loading')} />
         </section>
       )
     }
@@ -6164,22 +6199,22 @@ export default function Spirit({
         // "hatch" invite (onboarding §5) — the companion is the reward for that first sit.
         sessionCount >= 1 ? (
           <>
-            <p className="spirit-stage">You’ve taken your first breath</p>
-            <p className="spirit-note muted">Now meet the companion you brought to life.</p>
+            <p className="spirit-stage">{t('spirit.home.firstBreath.title')}</p>
+            <p className="spirit-note muted">{t('spirit.home.firstBreath.note')}</p>
             <p className="spirit-choose-prompt">
               <Link to="/spirit/choose" className="spirit-choose-cta">
-                Meet your companion
+                {t('spirit.home.firstBreath.cta')}
                 <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
               </Link>
             </p>
           </>
         ) : (
           <>
-            <p className="spirit-stage">Choose your companion</p>
-            <p className="spirit-note muted">Pick the one whose nature fits you.</p>
+            <p className="spirit-stage">{t('spirit.home.choose.title')}</p>
+            <p className="spirit-note muted">{t('spirit.home.choose.note')}</p>
             <p className="spirit-choose-prompt">
               <Link to="/spirit/choose" className="spirit-choose-cta">
-                Choose your companion
+                {t('spirit.home.choose.cta')}
                 <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
               </Link>
             </p>
@@ -6189,11 +6224,11 @@ export default function Spirit({
         // A chosen creature: its stage, the recent-practice balance read-out + at most one optional
         // round-out suggestion, and the bond level. Always encouraging, never a warning (ADR-0032).
         <>
-          <p className="spirit-stage">{copy.name}</p>
-          <p className="spirit-note muted">{copy.note}</p>
+          <p className="spirit-stage">{t(copy.nameKey)}</p>
+          <p className="spirit-note muted">{t(copy.noteKey)}</p>
           <NeedsReadout needs={needs} />
           <CareNudge needs={needs} path={path} />
-          <p className="spirit-bond muted">Bond level {bond.level}</p>
+          <p className="spirit-bond muted">{t('spirit.hero.bond', { level: bond.level })}</p>
         </>
       )}
     </section>

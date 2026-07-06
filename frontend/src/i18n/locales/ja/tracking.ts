@@ -4,6 +4,8 @@ export const tracking: Record<string, string> = {
   // ── Journal ──────────────────────────────────────────────────────────────
   'tracking.journal.title': 'ジャーナル',
   'tracking.journal.subtitle': 'プラクティスや一日のこと、なんでも自由に振り返る場所です。',
+  // 保存後のXP内訳に出る行（RewardOverlay）
+  'tracking.journal.activityLabel': 'ジャーナルの記録',
   'tracking.journal.prompt.labelDim': '書くヒント · 下書きを消すと使えます',
   'tracking.journal.prompt.label': '書くヒント',
   'tracking.journal.prompt.use': 'このヒントを使う：{text}',
@@ -56,6 +58,8 @@ export const tracking: Record<string, string> = {
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': '感謝',
   'tracking.gratitude.subtitle': '何に感謝していますか？テーマを選ぶか、自由に書いてみましょう。',
+  // 保存後のXP内訳に出る行（RewardOverlay）
+  'tracking.gratitude.activityLabel': '感謝',
   'tracking.gratitude.fewerThemes': 'テーマを減らす',
   'tracking.gratitude.moreThemes': 'テーマをもっと見る…',
   'tracking.gratitude.loadingIdeas': 'ヒントを読み込み中…',

@@ -8,6 +8,11 @@
 // status, or an unknown throw) means the server answered or the failure isn't a
 // connectivity one, so we use the gentler "on our end" copy.
 
+import { t } from '../i18n'
+
+// The frozen English copy (the i18n catalog's source of truth — see locales/en/common.ts).
+// Kept as named constants so tests can assert the exact wording; rendering resolves the
+// catalog keys below at CALL time, so the message follows the active locale.
 const NETWORK_MESSAGE =
   "Can't reach the server — check your connection and try again."
 const SERVER_MESSAGE =
@@ -34,9 +39,12 @@ export function isNetworkError(err: unknown): boolean {
 
 // The user-facing message for a thrown error from a service/API call. Pass an
 // optional `fallback` to override the generic server-side copy with something more
-// specific to the action (e.g. "Could not save the reading.").
-export function messageForError(err: unknown, fallback: string = SERVER_MESSAGE): string {
-  return isNetworkError(err) ? NETWORK_MESSAGE : fallback
+// specific to the action (e.g. "Could not save the reading."). Messages resolve from
+// the i18n catalog at call time (callers re-render via useT, so this stays in step
+// with the active locale).
+export function messageForError(err: unknown, fallback?: string): string {
+  if (isNetworkError(err)) return t('common.error.network')
+  return fallback ?? t('common.error.server')
 }
 
 export { NETWORK_MESSAGE, SERVER_MESSAGE }

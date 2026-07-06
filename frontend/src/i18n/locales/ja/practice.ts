@@ -310,6 +310,8 @@ export const practice: Record<string, string> = {
   'practice.trataka.minGaze': '{min}分の凝視',
   'practice.trataka.sound.summary': '環境音',
   'practice.trataka.recover.label': 'キャンドル瞑想',
+  // 炎のスクリーンリーダー向け説明（components/Flame.tsx）
+  'practice.trataka.flameAria': '見つめるための、やわらかく灯るキャンドルの炎',
   'practice.trataka.reflect.aria': '凝視をふりかえる',
   'practice.trataka.about.summary': 'キャンドル瞑想について',
   'practice.trataka.about.p1intro': 'キャンドル瞑想 — 伝統的には',
@@ -337,6 +339,9 @@ export const practice: Record<string, string> = {
   'practice.reward.coins': 'スピリットに使えるコインを獲得しました',
   'practice.reward.toNext': '次のレベルまで {into} / {forNext}',
   'practice.reward.continue': '続ける',
+  // 報酬内訳のXPの出どころ（lib/xpBreakdown.ts）。{label} はサーバーからのミッション文言です。
+  'practice.reward.quest': 'ミッション: {label}',
+  'practice.reward.streakBonus': '連続ボーナス',
   'practice.reward.praise.0': 'お見事でした。',
   'practice.reward.praise.1': 'あなたは取り組みました — それが大切なことです。',
   'practice.reward.praise.2': '有意義な時間でしたね。',

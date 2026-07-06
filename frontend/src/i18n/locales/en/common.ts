@@ -74,6 +74,10 @@ export const common: Record<string, string> = {
   'notFound.body': 'This path leads nowhere — it’s gone or never was.',
   'notFound.back': '← Back to home',
 
+  // API-failure copy (lib/errors.ts) — network vs server-side, resolved at call time
+  'common.error.network': "Can't reach the server — check your connection and try again.",
+  'common.error.server': 'Something stumbled on our end. Give it a moment and try again.',
+
   // Render-error fallback (ErrorBoundary.tsx)
   'error.title': 'Something went wrong',
   'error.body': 'An unexpected error broke this page. Reloading usually fixes it.',

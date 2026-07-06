@@ -7,6 +7,8 @@ export const tracking: Record<string, string> = {
   'tracking.journal.title': 'Journal',
   'tracking.journal.subtitle':
     'A space to reflect — on your practice, your day, or anything at all.',
+  // The activity line in the post-save XP breakdown (RewardOverlay)
+  'tracking.journal.activityLabel': 'Journal entry',
   'tracking.journal.prompt.labelDim': 'Writing prompt · clear your draft to use it',
   'tracking.journal.prompt.label': 'Writing prompt',
   'tracking.journal.prompt.use': 'Use prompt: {text}',
@@ -59,6 +61,8 @@ export const tracking: Record<string, string> = {
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': 'Gratitude',
   'tracking.gratitude.subtitle': 'What are you grateful for? Pick a theme, or write your own.',
+  // The activity line in the post-save XP breakdown (RewardOverlay)
+  'tracking.gratitude.activityLabel': 'Gratitude',
   'tracking.gratitude.fewerThemes': 'Fewer themes',
   'tracking.gratitude.moreThemes': 'More themes…',
   'tracking.gratitude.loadingIdeas': 'Loading ideas…',
