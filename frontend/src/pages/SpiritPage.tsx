@@ -920,36 +920,37 @@ export default function SpiritPage() {
               </button>
             </p>
 
-            {/* How it grows — a quiet progress ladder + set-free explainer, low on the page
-                (the hero already shows the current stage, so this needn't lead). */}
-            <section className="spirit-section spirit-journey" aria-label={t('spirit.journey.aria')}>
-              <header className="spirit-section-head">
-                <h2 className="spirit-section-title">{t('spirit.journey.title')}</h2>
-              </header>
-              <ol className="spirit-journey-stages">
-                {STAGE_ORDER.map((s, i) => {
-                  const here = STAGE_ORDER.indexOf(spirit.stage)
-                  const cls = i === here ? ' is-current' : i < here ? ' is-done' : ''
-                  return (
-                    <li key={s} className={`spirit-journey-stage${cls}`}>
-                      {stageLabelOf(s)}
-                    </li>
-                  )
-                })}
-              </ol>
-              <p className="muted spirit-journey-note">
-                {t('spirit.journey.note.lead')}
-                <strong>{t('spirit.journey.note.radiantWord')}</strong>
-                {t('spirit.journey.note.tail')}
-                {isRadiant && (
-                  <>
-                    {t('spirit.journey.note.radiantNow.lead')}
-                    <strong>{t('spirit.journey.note.radiantNow.setFree')}</strong>
-                    {t('spirit.journey.note.radiantNow.tail')}
-                  </>
-                )}
-              </p>
-            </section>
+            {/* How it grows — the progress ladder + set-free explainer, folded behind a quiet
+                disclosure low on the page (the hero already shows the current stage, so this is
+                reference material, not another stacked section). */}
+            <details className="meditate-disclosure spirit-journey" aria-label={t('spirit.journey.aria')}>
+              <summary className="meditate-disclosure-summary">{t('spirit.journey.title')}</summary>
+              <div className="meditate-disclosure-body">
+                <ol className="spirit-journey-stages">
+                  {STAGE_ORDER.map((s, i) => {
+                    const here = STAGE_ORDER.indexOf(spirit.stage)
+                    const cls = i === here ? ' is-current' : i < here ? ' is-done' : ''
+                    return (
+                      <li key={s} className={`spirit-journey-stage${cls}`}>
+                        {stageLabelOf(s)}
+                      </li>
+                    )
+                  })}
+                </ol>
+                <p className="muted spirit-journey-note">
+                  {t('spirit.journey.note.lead')}
+                  <strong>{t('spirit.journey.note.radiantWord')}</strong>
+                  {t('spirit.journey.note.tail')}
+                  {isRadiant && (
+                    <>
+                      {t('spirit.journey.note.radiantNow.lead')}
+                      <strong>{t('spirit.journey.note.radiantNow.setFree')}</strong>
+                      {t('spirit.journey.note.radiantNow.tail')}
+                    </>
+                  )}
+                </p>
+              </div>
+            </details>
 
             {/* Awaken a new spark — only at radiant. A calm action behind a confirmation that
                 states it retires the current spirit into the collection. */}

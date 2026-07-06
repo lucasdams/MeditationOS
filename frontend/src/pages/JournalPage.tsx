@@ -28,6 +28,8 @@ const ZERO_STATS: DashboardStats = {
 // Derive the journal mood palette from the shared MOOD_META so the composer, the
 // one-tap check-in, and the timeline always offer the identical canonical 15 moods.
 const MOODS = Object.keys(MOOD_META) as Mood[]
+// How many mood-filter chips show before the quiet "More moods" toggle.
+const MOOD_FILTER_PREVIEW = 6
 
 const TYPE_LABELS: Record<MeditationType, string> = {
   mindfulness: 'Mindfulness',
@@ -70,6 +72,9 @@ export default function JournalPage() {
   const [composing, setComposing] = useState(false) // expand the composer on focus/typing
   const [query, setQuery] = useState('') // text search over reflections
   const [moodFilter, setMoodFilter] = useState<Mood | ''>('') // filter the list by mood
+  // The full 15-mood filter row wraps into 2–3 lines; show a handful by default with a
+  // quiet "more" toggle (mirrors Gratitude's More-themes chip).
+  const [allMoodsShown, setAllMoodsShown] = useState(false)
 
   // Journaling prompt nudge — stable daily default, shuffleable, dismissible. The
   // backend serves a prompt tuned to recent practice (last session type / streak
@@ -508,13 +513,20 @@ export default function JournalPage() {
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        {/* Quiet mood filter — chips toggle the existing ?mood= list filter. */}
+        {/* Quiet mood filter — chips toggle the existing ?mood= list filter. Only a handful show
+            by default (the full 15 wrap into a 2–3 line band); "More moods" reveals the rest, and
+            an active filter from the hidden tail stays visible so it can always be un-picked. */}
         <div
           className="journal-mood-filter"
           role="group"
           aria-label={t('tracking.journal.moodFilterAria')}
         >
-          {MOODS.map((m) => {
+          {(allMoodsShown
+            ? MOODS
+            : MOODS.filter(
+                (m, i) => i < MOOD_FILTER_PREVIEW || m === moodFilter,
+              )
+          ).map((m) => {
             const active = moodFilter === m
             return (
               <button
@@ -529,6 +541,14 @@ export default function JournalPage() {
               </button>
             )
           })}
+          <button
+            type="button"
+            className="chip grat-more"
+            aria-expanded={allMoodsShown}
+            onClick={() => setAllMoodsShown((v) => !v)}
+          >
+            {allMoodsShown ? t('tracking.journal.fewerMoods') : t('tracking.journal.moreMoods')}
+          </button>
         </div>
 
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />

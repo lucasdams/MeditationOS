@@ -13,9 +13,10 @@ export const practice: Record<string, string> = {
   'practice.hub.search.placeholder': 'Search practices…',
   'practice.hub.search.label': 'Search practices',
   'practice.hub.search.clear': 'Clear search',
-  // Category filter chips — All + one chip per group; the calm one-shelf-at-a-time browse.
+  // Category filter chips — All + Start here + one chip per group; the calm one-shelf browse.
   'practice.hub.filter.aria': 'Browse by category',
   'practice.hub.filter.all': 'All',
+  'practice.hub.filter.starter': 'Start here',
   'practice.hub.seeAll': 'See all {count}',
   'practice.hub.beginner.title': 'New here? Start here',
   'practice.hub.beginner.blurb': 'Gentle places to begin — short, simple, and no experience needed.',
@@ -188,6 +189,7 @@ export const practice: Record<string, string> = {
   'practice.error.saveReflection': "Couldn't save reflection.",
 
   // Pre-session intention (shared)
+  'practice.prep.summary': 'Session prep — intention & pre-reading (optional)',
   'practice.intention.label': 'Intention',
   'practice.intention.optional': '(optional)',
 
@@ -305,6 +307,7 @@ export const practice: Record<string, string> = {
   'practice.breathe.chime': 'Chime',
   'practice.breathe.volume': 'Volume',
   'practice.breathe.soundscape.summary': 'Ambient soundscape',
+  'practice.breathe.audio.summary': 'Sound — breath wash, chime & soundscape',
   'practice.breathe.preReading.done': 'Pre-breathing reading logged.',
   'practice.breathe.preReading.intro':
     'Optional: your heart rate now, to see how a breathing sit settles you.',

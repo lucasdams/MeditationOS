@@ -380,6 +380,8 @@ export default function SettingsPage() {
         </section>
       )}
 
+      {/* Account — the read-only details (email, joined) and the editable username share ONE
+          section: the info lines alone don't earn their own divider. */}
       <section className="settings-section">
         <h2>{t('settings.account.heading')}</h2>
         <dl className="settings-info">
@@ -388,10 +390,6 @@ export default function SettingsPage() {
           <dt>{t('settings.account.memberSince')}</dt>
           <dd>{formatJoined(user.created_at)}</dd>
         </dl>
-      </section>
-
-      <section className="settings-section">
-        <h2>{t('settings.username.heading')}</h2>
         <p className="muted">{t('settings.username.desc')}</p>
         <form onSubmit={handleUsername} noValidate>
           <label htmlFor="username">{t('settings.username.label')}</label>

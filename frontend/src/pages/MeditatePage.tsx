@@ -790,67 +790,48 @@ export default function MeditatePage() {
           })}
         </select>
 
-        {/* Spoken guidance — only meaningful for a guided sit. The voice reads each
-            cue aloud so eyes can stay closed; off falls back to text + bell. */}
-        {isGuided && (
-          <div className="meditate-spoken">
-            <label className="meditate-spoken-toggle" htmlFor="spoken-guidance">
-              <input
-                id="spoken-guidance"
-                type="checkbox"
-                checked={spokenPref}
-                disabled={settingsDisabled || !speechSupported}
-                onChange={(e) => setSpokenPref(e.target.checked)}
-              />
-              <span>{t('practice.meditate.spoken.toggle')}</span>
-            </label>
-            <p className="meditate-spoken-hint">
-              {!speechSupported
-                ? t('practice.meditate.spoken.unavailable')
-                : spokenPref
-                  ? t('practice.meditate.spoken.on')
-                  : t('practice.meditate.spoken.off')}
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Pre-session intention — optional, skippable, hidden once the sit has started. */}
+      {/* Session prep — the optional intention + pre-session reading, folded behind ONE quiet
+          disclosure so the visible setup stays Duration → Guidance → Start. Hidden once the sit
+          has started; values persist while collapsed. */}
       {!started && (
-        <div className="session-intention">
-          <label htmlFor="intention" className="session-intention-label">
-            {t('practice.intention.label')} <span className="session-intention-opt">{t('practice.intention.optional')}</span>
-          </label>
-          <textarea
-            id="intention"
-            className="session-intention-input"
-            rows={2}
-            maxLength={140}
-            placeholder={intentionPlaceholder}
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Optional pre-session reading — calm, skippable; captured now and linked to the
-          sit afterwards so the pre/post calming delta can pair them. */}
-      {!started && (
-        <div className="session-prereading">
-          {preReadingIdRef.current ? (
-            <p className="session-prereading-done" aria-live="polite">
-              <span aria-hidden="true">✓</span> {t('practice.breathe.preReadingDone.meditate')}
-            </p>
-          ) : (
-            <button
-              type="button"
-              className="link-neutral session-prereading-btn"
-              onClick={() => setShowPreReading(true)}
-            >
-              {t('practice.prereading.log')}
-            </button>
-          )}
-        </div>
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">
+            {t('practice.prep.summary')}
+          </summary>
+          <div className="meditate-disclosure-body">
+            <div className="session-intention">
+              <label htmlFor="intention" className="session-intention-label">
+                {t('practice.intention.label')} <span className="session-intention-opt">{t('practice.intention.optional')}</span>
+              </label>
+              <textarea
+                id="intention"
+                className="session-intention-input"
+                rows={2}
+                maxLength={140}
+                placeholder={intentionPlaceholder}
+                value={intention}
+                onChange={(e) => setIntention(e.target.value)}
+              />
+            </div>
+            <div className="session-prereading">
+              {preReadingIdRef.current ? (
+                <p className="session-prereading-done" aria-live="polite">
+                  <span aria-hidden="true">✓</span> {t('practice.breathe.preReadingDone.meditate')}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="link-neutral session-prereading-btn"
+                  onClick={() => setShowPreReading(true)}
+                >
+                  {t('practice.prereading.log')}
+                </button>
+              )}
+            </div>
+          </div>
+        </details>
       )}
 
       {/* ── Secondary: Sound & bells — tucked behind a quiet disclosure ───────── */}
@@ -911,6 +892,31 @@ export default function MeditatePage() {
             disabled={!bellsOn}
             onChange={(e) => setVolume(Number(e.target.value))}
           />
+
+          {/* Spoken guidance — only meaningful for a guided sit; lives here with the other
+              audio controls (voice, bells, soundscape) rather than stacking under the
+              structure picker. The voice reads each cue aloud so eyes can stay closed. */}
+          {isGuided && (
+            <div className="meditate-spoken">
+              <label className="meditate-spoken-toggle" htmlFor="spoken-guidance">
+                <input
+                  id="spoken-guidance"
+                  type="checkbox"
+                  checked={spokenPref}
+                  disabled={settingsDisabled || !speechSupported}
+                  onChange={(e) => setSpokenPref(e.target.checked)}
+                />
+                <span>{t('practice.meditate.spoken.toggle')}</span>
+              </label>
+              <p className="meditate-spoken-hint">
+                {!speechSupported
+                  ? t('practice.meditate.spoken.unavailable')
+                  : spokenPref
+                    ? t('practice.meditate.spoken.on')
+                    : t('practice.meditate.spoken.off')}
+              </p>
+            </div>
+          )}
         </div>
       </details>
       </div>

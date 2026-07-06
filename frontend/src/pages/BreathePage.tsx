@@ -1099,117 +1099,120 @@ export default function BreathePage() {
         onChange={setTargetMin}
       />
 
-      {/* Pre-session intention — optional, skippable; hidden once a sit is underway. */}
+      {/* Session prep — the optional intention + pre-session reading, folded behind ONE quiet
+          disclosure (mirrors MeditatePage) so the visible setup stays Pattern → Pace → Duration
+          → Start. Hidden once a sit is underway; values persist while collapsed. */}
       {elapsed === 0 && (
-        <div className="session-intention">
-          <label htmlFor="breathe-intention" className="session-intention-label">
-            {t('practice.intention.label')} <span className="session-intention-opt">{t('practice.intention.optional')}</span>
-          </label>
-          <textarea
-            id="breathe-intention"
-            className="session-intention-input"
-            rows={2}
-            maxLength={140}
-            placeholder={intentionPlaceholder}
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Optional pre-session reading — calm, skippable; captured now and linked to the
-          sit afterwards so the pre/post calming delta can pair them. */}
-      {elapsed === 0 && (
-        <div className="session-prereading">
-          {preReadingIdRef.current ? (
-            <p className="session-prereading-done" aria-live="polite">
-              <span aria-hidden="true">✓</span> {t('practice.breathe.preReading.done')}
-            </p>
-          ) : (
-            <button
-              type="button"
-              className="link-neutral session-prereading-btn"
-              onClick={() => setShowPreReading(true)}
-            >
-              {t('practice.prereading.log')}
-            </button>
-          )}
-        </div>
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">
+            {t('practice.prep.summary')}
+          </summary>
+          <div className="meditate-disclosure-body">
+            <div className="session-intention">
+              <label htmlFor="breathe-intention" className="session-intention-label">
+                {t('practice.intention.label')} <span className="session-intention-opt">{t('practice.intention.optional')}</span>
+              </label>
+              <textarea
+                id="breathe-intention"
+                className="session-intention-input"
+                rows={2}
+                maxLength={140}
+                placeholder={intentionPlaceholder}
+                value={intention}
+                onChange={(e) => setIntention(e.target.value)}
+              />
+            </div>
+            <div className="session-prereading">
+              {preReadingIdRef.current ? (
+                <p className="session-prereading-done" aria-live="polite">
+                  <span aria-hidden="true">✓</span> {t('practice.breathe.preReading.done')}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="link-neutral session-prereading-btn"
+                  onClick={() => setShowPreReading(true)}
+                >
+                  {t('practice.prereading.log')}
+                </button>
+              )}
+            </div>
+          </div>
+        </details>
       )}
         </>
       )}
 
-      {/* Audio stays adjustable during a session — a live comfort knob. Hidden for a guided
-          first sit, which keeps its calm defaults (the ambient wash + chime are on already). */}
+      {/* Sound — ALL the audio controls (breath wash, chime, volume, soundscape) live together
+          behind ONE quiet disclosure (mirrors MeditatePage's Sound & bells), instead of three
+          loose controls plus a separate soundscape collapse. Everything stays live-adjustable
+          during a session — open the disclosure to change it. Hidden for a guided first sit,
+          which keeps its calm defaults (the ambient wash + chime are on already). */}
       {!guided && (
-        <>
-      <label htmlFor="ambient">{t('practice.breathe.sound.label')}</label>
-      <select
-        id="ambient"
-        value={audioOn ? ambient : 'off'}
-        onChange={(e) => {
-          const v = e.target.value
-          if (v === 'off') {
-            toggleAudio(false)
-          } else {
-            setAmbient(v as AmbientSound)
-            if (!audioOn) toggleAudio(true)
-            else if (running) audioRef.current?.stop() // switch the wash live (rebuilds next cue)
-          }
-        }}
-      >
-        <option value="off">{t('practice.breathe.sound.off')}</option>
-        {AMBIENT_SOUNDS.map((s) => (
-          <option key={s.value} value={s.value}>
-            {s.label}
-          </option>
-        ))}
-      </select>
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">{t('practice.breathe.audio.summary')}</summary>
+          <div className="meditate-disclosure-body">
+            <label htmlFor="ambient">{t('practice.breathe.sound.label')}</label>
+            <select
+              id="ambient"
+              value={audioOn ? ambient : 'off'}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === 'off') {
+                  toggleAudio(false)
+                } else {
+                  setAmbient(v as AmbientSound)
+                  if (!audioOn) toggleAudio(true)
+                  else if (running) audioRef.current?.stop() // switch the wash live (rebuilds next cue)
+                }
+              }}
+            >
+              <option value="off">{t('practice.breathe.sound.off')}</option>
+              {AMBIENT_SOUNDS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
 
-      <label className="breathe-check">
-        <input
-          type="checkbox"
-          checked={chimeOn}
-          onChange={(e) => toggleChime(e.target.checked)}
-        />
-        {t('practice.breathe.chime')}
-      </label>
+            <label className="breathe-check">
+              <input
+                type="checkbox"
+                checked={chimeOn}
+                onChange={(e) => toggleChime(e.target.checked)}
+              />
+              {t('practice.breathe.chime')}
+            </label>
 
-      <label htmlFor="volume">{t('practice.breathe.volume')}</label>
-      <input
-        id="volume"
-        className="breathe-volume"
-        type="range"
-        min="0"
-        max="1"
-        step="0.05"
-        value={volume}
-        disabled={!audioOn && !chimeOn}
-        onChange={(e) => setVolume(Number(e.target.value))}
-      />
+            <label htmlFor="volume">{t('practice.breathe.volume')}</label>
+            <input
+              id="volume"
+              className="breathe-volume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={volume}
+              disabled={!audioOn && !chimeOn}
+              onChange={(e) => setVolume(Number(e.target.value))}
+            />
 
-      {/* Ambient soundscape — secondary, tucked behind a collapsed disclosure so the
-          pre-start view stays calm. Open it to choose a backdrop (preview-on-select
-          still works), and to switch it live during a session. */}
-      <details className="meditate-disclosure">
-        <summary className="meditate-disclosure-summary">{t('practice.breathe.soundscape.summary')}</summary>
-        <div className="meditate-disclosure-body">
-          <SoundscapePicker
-            value={soundscape}
-            volume={soundscapeVol}
-            previewEngineRef={soundscapeEngineRef}
-            previewEnabled={!(running || elapsed > 0)}
-            onSoundscapeChange={(name) => {
-              setSoundscape(name)
-              // Switch the live bed during a session, reusing the shared start/stop helper
-              // (which dedupes a matching engine) rather than re-implementing it inline.
-              if (running) startBreathSoundscape(name)
-            }}
-            onVolumeChange={setSoundscapeVol}
-          />
-        </div>
-      </details>
-        </>
+            <label>{t('practice.breathe.soundscape.summary')}</label>
+            <SoundscapePicker
+              value={soundscape}
+              volume={soundscapeVol}
+              previewEngineRef={soundscapeEngineRef}
+              previewEnabled={!(running || elapsed > 0)}
+              onSoundscapeChange={(name) => {
+                setSoundscape(name)
+                // Switch the live bed during a session, reusing the shared start/stop helper
+                // (which dedupes a matching engine) rather than re-implementing it inline.
+                if (running) startBreathSoundscape(name)
+              }}
+              onVolumeChange={setSoundscapeVol}
+            />
+          </div>
+        </details>
       )}
 
       <ErrorBanner message={error} />

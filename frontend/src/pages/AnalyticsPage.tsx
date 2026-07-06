@@ -570,62 +570,72 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          {data.by_type.length > 0 && (
-            <section className="analytics-section">
-              <h2>{t('tracking.analytics.byType')}</h2>
-              <div className="bars">
-                {(() => {
-                  const max = Math.max(1, ...data.by_type.map((bt) => bt.minutes))
-                  return data.by_type.map((bt, i) => (
-                    <Bar
-                      key={bt.type}
-                      label={typeLabel(bt.type)}
-                      value={bt.minutes}
-                      max={max}
-                      suffix={t('tracking.analytics.minSuffix')}
-                      color={typeColors[bt.type] ?? PALETTE[i % PALETTE.length]}
-                    />
-                  ))
-                })()}
-              </div>
-            </section>
-          )}
+          {/* Session breakdowns — the secondary by-type / by-weekday / time-of-day slices, folded
+              behind ONE quiet disclosure (collapsed by default) so the page leads with the habit
+              metrics (stats, calendar, month-vs-last, minutes) instead of a 4-screen chart wall. */}
+          <details className="meditate-disclosure analytics-breakdowns">
+            <summary className="meditate-disclosure-summary">
+              {t('tracking.analytics.breakdowns')}
+            </summary>
+            <div className="meditate-disclosure-body">
+              {data.by_type.length > 0 && (
+                <section className="analytics-section">
+                  <h2>{t('tracking.analytics.byType')}</h2>
+                  <div className="bars">
+                    {(() => {
+                      const max = Math.max(1, ...data.by_type.map((bt) => bt.minutes))
+                      return data.by_type.map((bt, i) => (
+                        <Bar
+                          key={bt.type}
+                          label={typeLabel(bt.type)}
+                          value={bt.minutes}
+                          max={max}
+                          suffix={t('tracking.analytics.minSuffix')}
+                          color={typeColors[bt.type] ?? PALETTE[i % PALETTE.length]}
+                        />
+                      ))
+                    })()}
+                  </div>
+                </section>
+              )}
 
-          <section className="analytics-section">
-            <h2>{t('tracking.analytics.byWeekday')}</h2>
-            <div className="bars">
-              {(() => {
-                const max = Math.max(1, ...data.by_weekday.map((w) => w.count))
-                return data.by_weekday.map((w, i) => (
-                  <Bar
-                    key={w.weekday}
-                    label={translate(WEEKDAY_KEYS[w.weekday])}
-                    value={w.count}
-                    max={max}
-                    color={PALETTE[i % PALETTE.length]}
-                  />
-                ))
-              })()}
-            </div>
-          </section>
+              <section className="analytics-section">
+                <h2>{t('tracking.analytics.byWeekday')}</h2>
+                <div className="bars">
+                  {(() => {
+                    const max = Math.max(1, ...data.by_weekday.map((w) => w.count))
+                    return data.by_weekday.map((w, i) => (
+                      <Bar
+                        key={w.weekday}
+                        label={translate(WEEKDAY_KEYS[w.weekday])}
+                        value={w.count}
+                        max={max}
+                        color={PALETTE[i % PALETTE.length]}
+                      />
+                    ))
+                  })()}
+                </div>
+              </section>
 
-          <section className="analytics-section">
-            <h2>{t('tracking.analytics.timeOfDay')}</h2>
-            <div className="bars">
-              {(() => {
-                const max = Math.max(1, ...data.by_time_of_day.map((b) => b.count))
-                return data.by_time_of_day.map((b, i) => (
-                  <Bar
-                    key={b.bucket}
-                    label={BUCKET_LABEL_KEYS[b.bucket] ? translate(BUCKET_LABEL_KEYS[b.bucket]) : b.bucket}
-                    value={b.count}
-                    max={max}
-                    color={PALETTE[i % PALETTE.length]}
-                  />
-                ))
-              })()}
+              <section className="analytics-section">
+                <h2>{t('tracking.analytics.timeOfDay')}</h2>
+                <div className="bars">
+                  {(() => {
+                    const max = Math.max(1, ...data.by_time_of_day.map((b) => b.count))
+                    return data.by_time_of_day.map((b, i) => (
+                      <Bar
+                        key={b.bucket}
+                        label={BUCKET_LABEL_KEYS[b.bucket] ? translate(BUCKET_LABEL_KEYS[b.bucket]) : b.bucket}
+                        value={b.count}
+                        max={max}
+                        color={PALETTE[i % PALETTE.length]}
+                      />
+                    ))
+                  })()}
+                </div>
+              </section>
             </div>
-          </section>
+          </details>
 
           {data.moods.length > 0 && (
             <section className="analytics-section">

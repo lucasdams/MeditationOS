@@ -332,14 +332,18 @@ const PRACTICE_META: Record<string, { minsKey: string; beginner?: boolean }> = {
   '/journal': { minsKey: 'practice.mins.5' },
 }
 
-// The "New here? Start here" on-ramp — an ordered, curated handful of the gentlest practices, shown
-// to newcomers so they aren't faced with all 48 at once. All ungated + beginner-flagged above.
+// The "Start here" on-ramp — an ordered, curated handful of the gentlest practices. Lives behind
+// its own chip in the category bar (not a permanently-open section — one curation layer, not
+// three), so anyone can peek at it in one tap. All ungated + beginner-flagged above.
 const BEGINNER_STARTERS = [
   '/meditate?guided=three-breaths',
   '/breathe?pattern=resonance',
   '/meditate?guided=body-scan',
   '/meditate?guided=focus',
 ]
+
+// The starter chip's sentinel value for `activeGroup` — distinct from every group titleKey.
+const STARTER_GROUP = 'starter'
 
 // One practice card — shared by the Suggested set and every category group so they stay identical.
 // `compact` is the calm catalog-grid diet: icon, name, beginner tag and minutes only (no
@@ -475,9 +479,11 @@ export default function PracticesPage() {
             t(card.nameKey).toLowerCase().includes(q) || t(card.descKey).toLowerCase().includes(q),
         ),
       })).filter((group) => group.cards.length > 0)
-    : activeGroup
-      ? GROUPS.filter((group) => group.titleKey === activeGroup)
-      : GROUPS
+    : activeGroup === STARTER_GROUP
+      ? [] // the starter chip shows the curated on-ramp shelf instead of catalog groups
+      : activeGroup
+        ? GROUPS.filter((group) => group.titleKey === activeGroup)
+        : GROUPS
   const noMatches = searching && filteredGroups.length === 0
 
   // The calm "All" overview shows each group as a short PREVIEW (its first few cards + a quiet
@@ -493,10 +499,9 @@ export default function PracticesPage() {
     filterRef.current?.scrollIntoView?.({ block: 'start' })
   }
 
-  // Newcomer heuristic: a low (or not-yet-known) level → show the gentle "New here? Start here"
-  // on-ramp instead of the personalised "Suggested for you" set. Returning practitioners (level > 3)
-  // get Suggested; newcomers get the starter section. `null` (still loading) counts as a newcomer so
-  // the friendly path shows first for a brand-new guest.
+  // Newcomer heuristic: the personalised "Suggested for you" set only shows for returning
+  // practitioners (level > 3) — newcomers have the "Start here" chip instead. `null` (still
+  // loading) counts as a newcomer so nothing personalised flashes for a brand-new guest.
   const newcomer = level == null || level <= 3
   const notSearching = q === ''
 
@@ -525,39 +530,19 @@ export default function PracticesPage() {
         <p className="page-subtitle">{t('practice.hub.subtitle')}</p>
       </header>
 
-      {/* Programs — the two non-technique destinations reachable from here (the old nav dropdown is
-          gone): a multi-day guided path, and logging a past session. Navigation, not techniques, so
-          they sit in their own quiet row above the practice groups. */}
+      {/* Programs — the two non-technique destinations reachable from here (a multi-day guided
+          path, and logging a past session). Navigation, not techniques — kept to ONE quiet line of
+          small links so they don't stack another card layer above the catalog. */}
       <nav className="practices-programs" aria-label={t('practice.hub.programsLabel')}>
         <Link to="/paths" className="practices-program-link">
-          <span className="practices-program-icon" aria-hidden="true">
-            <Compass size={18} strokeWidth={1.9} />
-          </span>
-          <span className="practices-program-body">
-            <span className="practices-program-name">{t('practice.hub.paths.name')}</span>
-            <span className="practices-program-desc">{t('practice.hub.paths.desc')}</span>
-          </span>
-          <ChevronRight
-            className="practices-program-go"
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <Compass size={15} strokeWidth={1.9} aria-hidden="true" />
+          {t('practice.hub.paths.name')}
+          <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
         </Link>
         <Link to="/sessions/new" className="practices-program-link">
-          <span className="practices-program-icon" aria-hidden="true">
-            <Plus size={18} strokeWidth={1.9} />
-          </span>
-          <span className="practices-program-body">
-            <span className="practices-program-name">{t('practice.hub.logPast.name')}</span>
-            <span className="practices-program-desc">{t('practice.hub.logPast.desc')}</span>
-          </span>
-          <ChevronRight
-            className="practices-program-go"
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <Plus size={15} strokeWidth={1.9} aria-hidden="true" />
+          {t('practice.hub.logPast.name')}
+          <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
         </Link>
       </nav>
 
@@ -603,6 +588,16 @@ export default function PracticesPage() {
         >
           {t('practice.hub.filter.all')}
         </button>
+        {/* The curated "Start here" on-ramp lives behind its own chip — one tap for newcomers,
+            zero stacked sections for everyone else. */}
+        <button
+          type="button"
+          className={`chip practices-filter-starter${activeGroup === STARTER_GROUP ? ' chip-active' : ''}`}
+          aria-pressed={activeGroup === STARTER_GROUP}
+          onClick={() => setActiveGroup(STARTER_GROUP)}
+        >
+          <Sprout size={13} strokeWidth={2} aria-hidden="true" /> {t('practice.hub.filter.starter')}
+        </button>
         {GROUPS.map((group) => (
           <button
             key={group.titleKey}
@@ -616,10 +611,10 @@ export default function PracticesPage() {
         ))}
       </div>
 
-      {/* New here? Start here — a gentle on-ramp for newcomers so they aren't faced with all 48 at
-          once. Curated easiest practices + warm copy. Hidden while searching, on a single-category
-          view (the chips), and for returning practitioners (who see "Suggested for you" instead). */}
-      {notSearching && activeGroup === null && newcomer && beginnerCards.length > 0 && (
+      {/* Start here — the curated on-ramp shelf, shown when its chip is picked (it no longer
+          stacks permanently above the catalog). Full cards (with descriptions): it's the one
+          place explanation matters most. */}
+      {notSearching && activeGroup === STARTER_GROUP && beginnerCards.length > 0 && (
         <section className="practices-group practices-beginner">
           <div className="practices-group-head">
             <span className="practices-group-icon" aria-hidden="true">

@@ -91,6 +91,8 @@ const fmtDate = (iso: string) =>
 
 const GRAT_PAGE = 50
 const MAX_LEN = 500
+// How many suggestion chips show before the quiet "+N more ideas" toggle.
+const IDEAS_PREVIEW = 4
 // Show the remaining-characters hint only as the user nears the limit, so it stays quiet.
 const COUNTER_THRESHOLD = 50
 
@@ -100,6 +102,8 @@ export default function GratitudePage() {
   const [showAllThemes, setShowAllThemes] = useState(false)
   const [options, setOptions] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
+  // Long idea lists wrap into a dense chip band — preview a handful with a quiet "see all".
+  const [allIdeasShown, setAllIdeasShown] = useState(false)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null) // save / load-more action errors
@@ -308,7 +312,7 @@ export default function GratitudePage() {
               </div>
               {!loadingOptions && options.length > 0 && (
                 <div className="grat-options">
-                  {options.map((opt) => (
+                  {(allIdeasShown ? options : options.slice(0, IDEAS_PREVIEW)).map((opt) => (
                     <button
                       key={opt}
                       type="button"
@@ -318,6 +322,16 @@ export default function GratitudePage() {
                       {opt}
                     </button>
                   ))}
+                  {!allIdeasShown && options.length > IDEAS_PREVIEW && (
+                    <button
+                      type="button"
+                      className="chip grat-more"
+                      aria-expanded={false}
+                      onClick={() => setAllIdeasShown(true)}
+                    >
+                      {t('tracking.gratitude.moreIdeas', { count: options.length - IDEAS_PREVIEW })}
+                    </button>
+                  )}
                 </div>
               )}
             </>

@@ -12,9 +12,10 @@ export const practice: Record<string, string> = {
   'practice.hub.search.placeholder': 'プラクティスを検索…',
   'practice.hub.search.label': 'プラクティスを検索',
   'practice.hub.search.clear': '検索をクリア',
-  // カテゴリの絞り込みチップ — 「すべて」+ 各グループ。ひと棚ずつ、落ち着いて眺められます。
+  // カテゴリの絞り込みチップ — 「すべて」+「はじめて」+ 各グループ。ひと棚ずつ、落ち着いて。
   'practice.hub.filter.aria': 'カテゴリで絞り込み',
   'practice.hub.filter.all': 'すべて',
+  'practice.hub.filter.starter': 'はじめて',
   'practice.hub.seeAll': 'すべて見る（{count}）',
   'practice.hub.beginner.title': 'はじめての方はこちらから',
   'practice.hub.beginner.blurb': 'やさしい入り口です — 短く、シンプルで、経験は必要ありません。',
@@ -179,6 +180,7 @@ export const practice: Record<string, string> = {
   'practice.error.saveSession': 'セッションを保存できませんでした。',
   'practice.error.saveReflection': 'ふりかえりを保存できませんでした。',
 
+  'practice.prep.summary': 'セッションの準備 — 意図と事前計測（任意）',
   'practice.intention.label': '意図',
   'practice.intention.optional': '（任意）',
 
@@ -286,6 +288,7 @@ export const practice: Record<string, string> = {
   'practice.breathe.chime': 'チャイム',
   'practice.breathe.volume': '音量',
   'practice.breathe.soundscape.summary': '環境サウンドスケープ',
+  'practice.breathe.audio.summary': 'サウンド — 呼吸の音・チャイム・サウンドスケープ',
   'practice.breathe.preReading.done': '呼吸前の計測を記録しました。',
   'practice.breathe.preReading.intro':
     '任意です：いまの心拍数を記録し、呼吸セッションでどれだけ落ち着くか見てみましょう。',

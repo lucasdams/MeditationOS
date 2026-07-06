@@ -539,6 +539,25 @@ describe('PracticesPage — category chips + shelf previews', () => {
     expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
   })
 
+  it('keeps the Start-here on-ramp behind its chip (not stacked on the All view)', () => {
+    renderPage()
+    // No permanently-open beginner section on the All overview…
+    expect(document.querySelector('.practices-beginner')).toBeNull()
+    // …the curated shelf opens from its chip, with full (described) cards…
+    fireEvent.click(screen.getByRole('button', { name: /start here/i }))
+    const starter = document.querySelector('.practices-beginner') as HTMLElement
+    expect(starter).not.toBeNull()
+    expect(
+      within(starter).getByRole('link', { name: /three mindful breaths/i }),
+    ).toHaveAttribute('href', '/meditate?guided=three-breaths')
+    // …and the catalog shelves stand aside while the on-ramp is open.
+    expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
+    // "All" returns to the overview.
+    fireEvent.click(screen.getByRole('button', { name: /^all$/i }))
+    expect(screen.getByRole('heading', { name: /^breathing/i })).toBeInTheDocument()
+    expect(document.querySelector('.practices-beginner')).toBeNull()
+  })
+
   it('keeps grid cards compact (no description), while search still matches description text', () => {
     renderPage()
     openGroup(/^breathing$/i)

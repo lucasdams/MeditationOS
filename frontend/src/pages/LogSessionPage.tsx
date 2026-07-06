@@ -235,23 +235,6 @@ export default function LogSessionPage() {
           {t('tracking.logSession.yourLocalTime')}
         </p>
 
-        {/* Pre-session intention — optional; trimmed and omitted when blank. */}
-        <label htmlFor="intention" className="session-intention-label">
-          {t('tracking.logSession.intention')} <span className="session-intention-opt">{t('tracking.logSession.optional')}</span>
-        </label>
-        <textarea
-          id="intention"
-          className="session-intention-input"
-          rows={2}
-          maxLength={INTENTION_MAX}
-          placeholder={intentionPlaceholder}
-          value={intention}
-          onChange={(e) => setIntention(e.target.value)}
-        />
-        <p className="session-intention-counter" aria-live="polite">
-          {intention.length}/{INTENTION_MAX}
-        </p>
-
         {/* Focus rating — inline 1–5 buttons instead of a dropdown */}
         <label>{t('tracking.logSession.focus')}</label>
         <RatingChips ariaLabel={t('tracking.logSession.focusRatingAria')} value={focus} onChange={setFocus} />
@@ -260,16 +243,40 @@ export default function LogSessionPage() {
         <label>{t('tracking.logSession.calm')}</label>
         <RatingChips ariaLabel={t('tracking.logSession.calmRatingAria')} value={calm} onChange={setCalm} />
 
-        {/* Notes */}
-        <label htmlFor="notes">{t('tracking.logSession.notes')}</label>
-        <textarea
-          id="notes"
-          value={notes}
-          rows={3}
-          maxLength={2000}
-          placeholder={t('tracking.logSession.notesPlaceholder')}
-          onChange={(e) => setNotes(e.target.value)}
-        />
+        {/* Intention + notes — both optional free text, folded behind ONE quiet disclosure so the
+            core form (type, duration, when, ratings) stays short. Values persist while collapsed. */}
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">
+            {t('tracking.logSession.reflection')}
+          </summary>
+          <div className="meditate-disclosure-body">
+            <label htmlFor="intention" className="session-intention-label">
+              {t('tracking.logSession.intention')} <span className="session-intention-opt">{t('tracking.logSession.optional')}</span>
+            </label>
+            <textarea
+              id="intention"
+              className="session-intention-input"
+              rows={2}
+              maxLength={INTENTION_MAX}
+              placeholder={intentionPlaceholder}
+              value={intention}
+              onChange={(e) => setIntention(e.target.value)}
+            />
+            <p className="session-intention-counter" aria-live="polite">
+              {intention.length}/{INTENTION_MAX}
+            </p>
+
+            <label htmlFor="notes">{t('tracking.logSession.notes')}</label>
+            <textarea
+              id="notes"
+              value={notes}
+              rows={3}
+              maxLength={2000}
+              placeholder={t('tracking.logSession.notesPlaceholder')}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </details>
 
         <ErrorBanner message={error} />
 
