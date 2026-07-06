@@ -1479,13 +1479,13 @@ a:hover { color: var(--accent-hover); }
   /* Modern touch: the violet→blue hero gradient (this + .today-action only). */
   background: var(--accent-gradient);
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--on-accent);
   transition: filter 0.15s ease;
 }
 
 .landing-primary:hover {
   filter: brightness(1.06);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .landing-secondary {
@@ -1728,7 +1728,7 @@ a:hover { color: var(--accent-hover); }
   font-weight: 600;
   text-decoration: none;
   background: var(--accent);
-  color: #ffffff;
+  color: var(--on-accent);
 }
 
 .first-run-action:hover {
@@ -1941,10 +1941,6 @@ a:hover { color: var(--accent-hover); }
 }
 
 :root[data-theme='dark'] .journal-mood,
-:root:not([data-theme='light']):not([data-theme='dark']) .journal-mood {
-  background: color-mix(in srgb, var(--pill) 22%, #1e2130);
-  color: color-mix(in srgb, var(--pill) 65%, #fff);
-}
 
 .journal-entry-actions {
   margin-left: auto;
@@ -2012,19 +2008,30 @@ a:hover { color: var(--accent-hover); }
 }
 
 /* Active filter chip — same theme-aware pill treatment as .journal-mood, driven
-   by the inline --pill custom property (was inline background/color/borderColor). */
+   by the inline --pill custom property (was inline background/color/borderColor).
+   Mixes against the surface/ink TOKENS (the old literals included a typo'd
+   #1e2130, one digit off --bg-surface-raised). The system-dark fallback lives
+   inside the media query — unwrapped it would apply dark chips to light-OS
+   users the day a "system" theme option removes the data-theme attribute. */
 .mood-filter-chip.selected {
   font-weight: 600;
-  background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
-  color: color-mix(in srgb, var(--pill, #444) 52%, #14182b);
+  background: color-mix(in srgb, var(--pill, #888) 16%, var(--bg-surface));
+  color: color-mix(in srgb, var(--pill, #444) 52%, var(--text-primary));
   border-color: var(--pill, var(--border-var));
 }
 
-:root[data-theme='dark'] .mood-filter-chip.selected,
-:root:not([data-theme='light']):not([data-theme='dark']) .mood-filter-chip.selected {
-  background: color-mix(in srgb, var(--pill) 22%, #1e2130);
+:root[data-theme='dark'] .mood-filter-chip.selected {
+  background: color-mix(in srgb, var(--pill) 22%, var(--bg-surface-raised));
   color: color-mix(in srgb, var(--pill) 65%, #fff);
   border-color: var(--pill);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .mood-filter-chip.selected {
+    background: color-mix(in srgb, var(--pill) 22%, var(--bg-surface-raised));
+    color: color-mix(in srgb, var(--pill) 65%, #fff);
+    border-color: var(--pill);
+  }
 }
 
 .journal-edit {
@@ -2078,7 +2085,7 @@ a:hover { color: var(--accent-hover); }
 
 .goal-tab.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .goal-card {
@@ -2149,7 +2156,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0.5rem;
   font-size: var(--text-sm);
   font-weight: 500;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--activity-accent);
   border: none;
   border-radius: var(--radius-control);
@@ -2283,9 +2290,6 @@ button:disabled {
 /* On dark, 0.6 opacity reads as broken/near-invisible — lift it so the disabled
    state is still perceptible (~4.5:1) without looking like an error. */
 :root[data-theme='dark'] button:disabled,
-:root:not([data-theme='light']):not([data-theme='dark']) button:disabled {
-  opacity: 0.78;
-}
 
 /* Placeholder text — token-driven so it reads (but stays clearly secondary) in both themes. */
 input::placeholder,
@@ -2520,7 +2524,7 @@ textarea:focus-visible,
   /* Modern touch: the violet→blue hero gradient (this + .landing-primary only). */
   background: var(--accent-gradient);
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--on-accent);
   font-size: var(--text-base);
   font-weight: 600;
   text-align: center;
@@ -2530,7 +2534,7 @@ textarea:focus-visible,
 }
 .today-action:hover {
   filter: brightness(1.06);
-  color: #fff;
+  color: var(--on-accent);
 }
 /* The same hero button rendered as a <button> (the path enroll / day "Start"): reset native
    chrome and match cursor/disabled affordances so it reads identically to the <a> variant. */
@@ -3156,7 +3160,7 @@ button.today-action:disabled {
 
 .spirit-choose-cta:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   transform: translateY(-1px);
 }
 
@@ -3290,9 +3294,6 @@ button.today-action:disabled {
 /* On dark the faint slate track nearly vanishes against the deep canvas — give the
    empty portion a readable track so the need's fill level stays legible. */
 :root[data-theme='dark'] .spirit-need-bar,
-:root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-bar {
-  background: rgba(148, 163, 184, 0.4);
-}
 
 .spirit-need-bar-fill {
   display: block;
@@ -3447,7 +3448,7 @@ button.today-action:disabled {
 .spirit-setbonus-preview:focus-visible,
 .spirit-setbonus-preview.is-on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
@@ -3539,7 +3540,7 @@ button.today-action:disabled {
 .spirit-picker-choose {
   margin-top: auto;
   background: var(--card-accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -3680,7 +3681,6 @@ button.today-action:disabled {
 .spirit-choose-roll:focus-visible {
   background: color-mix(in srgb, var(--card-accent) 18%, var(--bg-surface));
   border-color: var(--card-accent);
-  outline: none;
 }
 /* A quiet "Clear" back to the bare creature — hung off the pill's wrap absolutely (zero layout
    space, so it never displaces the pill), centred in the reserved lane under the pill, and
@@ -3703,7 +3703,6 @@ button.today-action:disabled {
 .spirit-choose-roll-clear:hover,
 .spirit-choose-roll-clear:focus-visible {
   color: var(--text-secondary);
-  outline: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .spirit-choose-roll {
@@ -4562,7 +4561,7 @@ button.today-action:disabled {
 .spirit-node-unlock {
   background: var(--slot-accent);
   border-color: var(--slot-accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* The cost chip inside an Unlock button — a faint pill around the coin + amount so the spend reads
@@ -4612,7 +4611,7 @@ button.today-action:disabled {
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
   background: var(--slot-accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -6584,7 +6583,11 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-secondary);
 }
 
-.meditate-disclosure-summary:focus-visible {
+/* <summary> isn't covered by the global a/button focus list — every disclosure summary
+   (meditate / trataka-about / dosha-about) gets the same visible keyboard ring. */
+.meditate-disclosure-summary:focus-visible,
+.trataka-about-summary:focus-visible,
+.dosha-about-summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-control);
@@ -7330,14 +7333,8 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 :root[data-theme='dark'] .toast--success,
-:root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
-  background: #0a875d;
-}
 
 :root[data-theme='dark'] .toast--error,
-:root:not([data-theme='light']):not([data-theme='dark']) .toast--error {
-  background: #c73b3f;
-}
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
@@ -7633,7 +7630,7 @@ details[open] .meditate-disclosure-summary::before {
 .log-session-rating .chip-active {
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   border-color: var(--accent-hover);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
@@ -7957,7 +7954,7 @@ details[open] .meditate-disclosure-summary::before {
   place-items: center;
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--section-accent) 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--section-accent) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 24%, transparent);
   color: var(--section-accent);
 }
 .practices-group-heading {
@@ -7978,7 +7975,7 @@ details[open] .meditate-disclosure-summary::before {
 
 /* A small count pill beside each category title ("Breathing  4"), tinted with the section accent. */
 .practices-group-count {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0;
   color: var(--section-accent);
@@ -8016,7 +8013,7 @@ details[open] .meditate-disclosure-summary::before {
   gap: 0.25rem;
   margin-left: 0.5rem;
   padding: 0.05rem 0.4rem;
-  font-size: 0.66rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
   color: #15803d;
@@ -8107,7 +8104,6 @@ details[open] .meditate-disclosure-summary::before {
 .practices-see-all:hover,
 .practices-see-all:focus-visible {
   text-decoration: underline;
-  outline: none;
 }
 
 /* Clean, uniform card: ONE white surface for every practice (no patchwork tints) — the
@@ -8852,7 +8848,7 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .admin-tab.is-active {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -9073,39 +9069,17 @@ details[open] .meditate-disclosure-summary::before {
    the light-mode aesthetic.
    ─────────────────────────────────────────────────────────────────────────── */
 :root[data-theme='dark'] .badge.earned,
-:root:not([data-theme='light']):not([data-theme='dark']) .badge.earned {
-  background: var(--bg-surface-raised);
-  border-color: #7a5a2e;
-}
 
 /* .memory-card and .level-card now flip via their --memory-card-* / --level-card-*
    tokens (defined per theme above), so no explicit dark override is needed here. */
 
 :root[data-theme='dark'] .session-recover,
-:root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
-  background: #2a2010;
-  border-color: #3d300a;
-}
 
 :root[data-theme='dark'] .auth-notice,
-:root:not([data-theme='light']):not([data-theme='dark']) .auth-notice {
-  background: #2a1f00;
-  border-color: #3d2e00;
-  color: #fcd34d;
-}
 
 :root[data-theme='dark'] .verify-banner,
-:root:not([data-theme='light']):not([data-theme='dark']) .verify-banner {
-  background: #2a1f00;
-  border-color: #3d2e00;
-  color: #fcd34d;
-}
 
 :root[data-theme='dark'] .legal-template,
-:root:not([data-theme='light']):not([data-theme='dark']) .legal-template {
-  background: var(--bg-surface);
-  border-color: var(--border);
-}
 
 /* ── Dark-mode visibility fixes for hardcoded light hexes ───────────────────
    Each rule lists both dark selectors (explicit data-theme + system-pref).
@@ -9114,66 +9088,112 @@ details[open] .meditate-disclosure-summary::before {
 /* .error now flips via its --error-text token (red that reads on dark). */
 
 :root[data-theme='dark'] .success,
-:root:not([data-theme='light']):not([data-theme='dark']) .success {
-  color: var(--success-text);
-}
 
 :root[data-theme='dark'] .pace-difficulty.d-gentle,
-:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-gentle {
-  color: #34d399;
-}
 :root[data-theme='dark'] .pace-difficulty.d-moderate,
-:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-moderate {
-  color: var(--accent);
-}
 :root[data-theme='dark'] .pace-difficulty.d-advanced,
-:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-advanced {
-  color: #fbbf24;
-}
 :root[data-theme='dark'] .pace-difficulty.d-expert,
-:root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-expert {
-  color: #f87171;
-}
 
 /* Beat the inline near-white tints set in BreathePage.tsx. */
 :root[data-theme='dark'] .pattern-card-icon,
-:root:not([data-theme='light']):not([data-theme='dark']) .pattern-card-icon {
-  background: var(--bg-surface-raised) !important;
-}
 
 :root[data-theme='dark'] .guided-cues-text,
-:root:not([data-theme='light']):not([data-theme='dark']) .guided-cues-text {
-  color: var(--text-secondary);
-}
 
 /* .xp-bar now flips via its --xp-track token (deep green on dark). */
 
 :root[data-theme='dark'] .quest.done .quest-check,
-:root:not([data-theme='light']):not([data-theme='dark']) .quest.done .quest-check {
-  color: var(--success-text);
-}
 
 :root[data-theme='dark'] .settings-danger,
-:root:not([data-theme='light']):not([data-theme='dark']) .settings-danger {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.4);
-}
 :root[data-theme='dark'] .settings-danger:hover:not(:disabled),
-:root:not([data-theme='light']):not([data-theme='dark']) .settings-danger:hover:not(:disabled) {
-  background: rgba(248, 113, 113, 0.12);
-}
 :root[data-theme='dark'] .settings-confirm p,
-:root:not([data-theme='light']):not([data-theme='dark']) .settings-confirm p {
-  color: #f87171;
-}
 
 :root[data-theme='dark'] .goal-achieved,
-:root:not([data-theme='light']):not([data-theme='dark']) .goal-achieved {
-  color: var(--success-text);
-  background: #25301c;
-}
 :root[data-theme='dark'] .goal-checkin.done,
-:root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
-  color: var(--success-text);
-  background: #25301c;
+
+
+/* System-theme dark fallbacks — every `:root:not([data-theme…])` variant MUST live inside
+   the prefers-color-scheme media query: unwrapped at top level they would apply dark
+   component styles to light-OS users the day a "system" theme option removes the
+   data-theme attribute. (Consolidated from previously top-level rules.) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .journal-mood {
+    background: color-mix(in srgb, var(--pill) 22%, #1e2130);
+    color: color-mix(in srgb, var(--pill) 65%, #fff);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) button:disabled {
+    opacity: 0.78;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .spirit-need-bar {
+    background: rgba(148, 163, 184, 0.4);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .toast--success {
+    background: #0a875d;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .toast--error {
+    background: #c73b3f;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .badge.earned {
+    background: var(--bg-surface-raised);
+    border-color: #7a5a2e;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .session-recover {
+    background: #2a2010;
+    border-color: #3d300a;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .auth-notice {
+    background: #2a1f00;
+    border-color: #3d2e00;
+    color: #fcd34d;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .verify-banner {
+    background: #2a1f00;
+    border-color: #3d2e00;
+    color: #fcd34d;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .legal-template {
+    background: var(--bg-surface);
+    border-color: var(--border);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .success {
+    color: var(--success-text);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-gentle {
+    color: #34d399;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-moderate {
+    color: var(--accent);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-advanced {
+    color: #fbbf24;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .pace-difficulty.d-expert {
+    color: #f87171;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .pattern-card-icon {
+    background: var(--bg-surface-raised) !important;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .guided-cues-text {
+    color: var(--text-secondary);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .quest.done .quest-check {
+    color: var(--success-text);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .settings-danger {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.4);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .settings-danger:hover:not(:disabled) {
+    background: rgba(248, 113, 113, 0.12);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .settings-confirm p {
+    color: #f87171;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .goal-achieved {
+    color: var(--success-text);
+    background: #25301c;
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
+    color: var(--success-text);
+    background: #25301c;
+  }
 }
