@@ -375,6 +375,44 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     }
   })
 
+  // ── Every creature form wears a face ── each dosha has its own face language (Pitta beams,
+  // Vata gazes, Kapha rests), and EVERY body form carries it on its brightest element so no
+  // form reads as a faceless object. The eye fingerprints are distinctive within each creature
+  // group: Kapha = two pal.deep arcs at strokeWidth 0.9; Vata = two pal.deep-filled dot circles.
+  const KAPHA_DEEP = '#b45309'
+
+  it('gives every Kapha body form the serene closed-lid face (two pal.deep eye arcs)', () => {
+    const forms = [
+      undefined, // seated (the bare default)
+      'cluster',
+      'cairn',
+      'orbital',
+      'lotus',
+      'enso',
+      'prism',
+      'sprout',
+      'wheel',
+    ]
+    for (const form of forms) {
+      const body = kaphaCreature({ cosmetics: form ? { form } : {} })
+      const eyeArcs = Array.from(body.querySelectorAll('path')).filter(
+        (el) =>
+          el.getAttribute('stroke') === KAPHA_DEEP && el.getAttribute('stroke-width') === '0.9',
+      )
+      expect(eyeArcs.length, `kapha form=${form ?? 'seated'} should wear 2 eye arcs`).toBe(2)
+    }
+  })
+
+  it('gives the once-faceless Vata forms a face too (constellation lead star, whirlwind top)', () => {
+    for (const form of ['constellation', 'whirlwind']) {
+      const body = vataCreature({ cosmetics: { form } })
+      const eyeDots = Array.from(body.querySelectorAll('circle')).filter(
+        (el) => el.getAttribute('fill') === VATA_DEEP,
+      )
+      expect(eyeDots.length, `vata form=${form} should wear 2 eye dots`).toBe(2)
+    }
+  })
+
   // The Pitta `form` cosmetic now swaps the WHOLE silhouette for a DISTINCT fire OBJECT (like
   // Kapha's swapped bodies), not a recoloured/resized flame. Each test below renders a Pitta with
   // the form and asserts the object's defining elements, plus that it differs from a bare blaze.

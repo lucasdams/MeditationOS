@@ -4240,6 +4240,26 @@ function StillnessForm({
     form === 'wheel'
       ? form
       : 'seated'
+  // Serene closed-lid eyes — two soft downward arcs in pal.deep, from wisp onward. Every Kapha
+  // body wears them on its brightest element so each form reads as a creature, not an object
+  // (each dosha keeps its own face language: Pitta beams, Vata gazes, Kapha rests). `ex`/`ey`
+  // is the element centre; `spread` the eye separation; `sc` an optional size scale.
+  const eyes = (ex: number, ey: number, spread: number, sc = 1, key = 'eyes') =>
+    i >= 2 ? (
+      <g key={key}>
+        {[-1, 1].map((dir) => (
+          <path
+            key={`eye-${dir}`}
+            d={`M ${ex + dir * spread - 1.2 * sc} ${ey} q ${1.2 * sc} ${1.15 * sc} ${2.4 * sc} 0`}
+            fill="none"
+            stroke={pal.deep}
+            strokeWidth={0.9}
+            strokeLinecap="round"
+            opacity={0.85 * g}
+          />
+        ))}
+      </g>
+    ) : null
   return (
     <g>
       {/* Lotus base, from fledgling onward — a few warm petals under the seated figure. */}
@@ -4302,6 +4322,8 @@ function StillnessForm({
           />
           {/* Inner-light highlight for the seated mote. */}
           <circle cx={38.5} cy={cy - bodyH * 0.5 - 1} r={1.6 * scale} fill="#ffffff" opacity={0.8 * g} />
+          {/* The serene face, on the head mote (below the highlight). */}
+          {eyes(40, cy - bodyH * 0.5 + 0.8, 2.1 * scale, scale)}
           {/* Radiant gains a small ushnisha crown-point — the final flourish. */}
           {i >= 5 && <circle cx={40} cy={cy - bodyH * 0.5 - 5 * scale} r={1.8} fill={pal.accent} opacity={0.9 * g} />}
         </>
@@ -4352,6 +4374,8 @@ function StillnessForm({
                 fill="#ffffff"
                 opacity={0.85 * g}
               />
+              {/* The serene face, on the brightest orb of the huddle. */}
+              {eyes(bright.cx, bright.cy + bright.r * 0.15, bright.r * 0.42, scale * 0.9)}
             </>
           )
         })()}
@@ -4387,6 +4411,8 @@ function StillnessForm({
                   opacity={(0.78 + 0.18 * p) * g}
                 />
               ))}
+              {/* The serene face, on the small crown stone at the top of the stack. */}
+              {eyes(40, stones[stones.length - 1].cy, stones[stones.length - 1].rx * 0.42, scale * 0.8)}
             </>
           )
         })()}
@@ -4421,6 +4447,8 @@ function StillnessForm({
               {/* The bright nucleus. */}
               <circle cx={40} cy={cy} r={4 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
               <circle cx={38.7} cy={cy - 1.2} r={1.3 * scale} fill="#ffffff" opacity={0.85 * g} />
+              {/* The serene face, on the nucleus. */}
+              {eyes(40, cy + 0.6, 1.8 * scale, scale * 0.9)}
             </>
           )
         })()}
@@ -4455,6 +4483,8 @@ function StillnessForm({
               {/* The bright flower centre + a tiny highlight. */}
               <circle cx={40} cy={cy} r={3.2 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
               <circle cx={38.8} cy={cy - 1} r={1.2 * scale} fill="#ffffff" opacity={0.85 * g} />
+              {/* The serene face, on the flower centre. */}
+              {eyes(40, cy + 0.5, 1.5 * scale, scale * 0.85)}
             </>
           )
         })()}
@@ -4483,6 +4513,9 @@ function StillnessForm({
               ))}
               {/* A soft centre dot at the still point. */}
               <circle cx={40} cy={cy} r={2.4 * scale} fill={pal.core} opacity={(0.8 + 0.15 * p) * g} />
+              {/* The serene face, just inside the innermost ring — the ensō reads as the face's
+                  calm outline rather than an empty ring. */}
+              {eyes(40, cy + 0.2, 2.2 * scale, scale * 0.9)}
             </>
           )
         })()}
@@ -4525,6 +4558,8 @@ function StillnessForm({
               ))}
               {/* A bright glint at the gem's heart. */}
               <circle cx={40} cy={cy} r={1.6 * scale} fill={pal.core} opacity={0.9 * g} />
+              {/* The serene face, on the gem's front facet flanking the glint. */}
+              {eyes(40, cy + 0.5, 2.6 * scale, scale * 0.9)}
             </>
           )
         })()}
@@ -4578,6 +4613,8 @@ function StillnessForm({
               {/* A small bright bud at the very top of the stem. */}
               <circle cx={40} cy={topY} r={2.4 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
               <circle cx={39.2} cy={topY - 0.6} r={0.9 * scale} fill="#ffffff" opacity={0.8 * g} />
+              {/* The serene face, on the bud. */}
+              {eyes(40, topY + 0.4, 1.3 * scale, scale * 0.75)}
             </>
           )
         })()}
@@ -4632,6 +4669,8 @@ function StillnessForm({
               {/* The bright hub at the still centre + a tiny highlight. */}
               <circle cx={40} cy={cy} r={2.6 * scale} fill={pal.core} opacity={(0.85 + 0.15 * p) * g} />
               <circle cx={38.9} cy={cy - 0.9} r={1 * scale} fill="#ffffff" opacity={0.8 * g} />
+              {/* The serene face, on the hub. */}
+              {eyes(40, cy + 0.4, 1.4 * scale, scale * 0.8)}
             </>
           )
         })()}
@@ -5353,7 +5392,8 @@ function VataForm({
 
     // CONSTELLATION — a cluster of ether-stars: 4+i small star points (pal.core / pal.glow dots +
     // a few 4-point sparkles) joined by faint pal.accent connector lines into a loose constellation.
-    // More stars up the stages. Faceless (eyes would read oddly on scattered points).
+    // More stars up the stages. The LEAD star (k=0, near the scatter's centre) is drawn a touch
+    // larger and wears the face, so the constellation reads as a creature, not scattered points.
     if (form === 'constellation') {
       const count = 4 + i // 5..9 stars
       const spread = 13 + p * 8
@@ -5383,9 +5423,10 @@ function VataForm({
               />
             )
           })}
-          {/* The star points — dots, with a few drawn as 4-point sparkles for sparkle. */}
+          {/* The star points — dots, with a few drawn as 4-point sparkles for sparkle. The lead
+              star (k=0) is a touch larger: it carries the face below. */}
           {pts.map((pt, k) => {
-            const r = 1.3 + p * 0.7 + (k % 3 === 0 ? 0.8 : 0)
+            const r = 1.3 + p * 0.7 + (k % 3 === 0 ? 0.8 : 0) + (k === 0 ? 1.1 : 0)
             const sparkle = k % 3 === 0
             return (
               <g key={`star-${k}`}>
@@ -5403,6 +5444,8 @@ function VataForm({
               </g>
             )
           })}
+          {/* The gentle face, on the lead star. */}
+          {eyes(pts[0].sx, pts[0].sy + 0.3, 1.3 + p * 0.5, 0.55 + p * 0.2)}
         </g>
       )
     }
@@ -5449,7 +5492,8 @@ function VataForm({
 
     // WHIRLWIND — a little funnel: a vertical whirlwind, WIDER at the top narrowing toward the
     // bottom, drawn as stacked curved pal.glow / pal.accent swirl bands, with a few debris motes
-    // spinning around it. Taller / fuller up the stages. Faceless (a funnel reads odd with a face).
+    // spinning around it. Taller / fuller up the stages. Wears the face high on the wide top of
+    // the funnel (the classic friendly-tornado read), so it's a creature, not just weather.
     if (form === 'whirlwind') {
       const bands = 4 + Math.min(3, i) // 5..7 stacked bands
       const topY = cy - 16 - p * 6
@@ -5477,6 +5521,8 @@ function VataForm({
           })}
           {/* A faint core seam down the funnel. */}
           <path d={`M ${cx} ${topY} Q ${cx + 3} ${cy} ${cx} ${botY}`} fill="none" stroke={pal.deep} strokeWidth={1 + p * 0.4} strokeLinecap="round" opacity={0.4 * g} />
+          {/* The gentle face, high on the funnel's wide top band. */}
+          {eyes(cx, topY + 4.5, 3.2 + p, 0.9 + p * 0.3)}
           {/* Debris motes spinning around the funnel. */}
           {Array.from({ length: 3 + i }, (_, k) => {
             const t = k / (3 + i)
