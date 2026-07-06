@@ -1032,18 +1032,19 @@ def _option_per_path(slot: str, option: str) -> str | None:
 
 
 def _signature_option(slot: str, path: str | None) -> str | None:
-    """The SIGNATURE option for `slot` and chosen `path` (ADR-0028) = the slot's option whose
-    `per_path == path` — its path-exclusive tier-3 capstone. There is exactly one per slot for a
-    chosen path (a catalog invariant; the set-coverage test guards it), so the first match is the
-    signature. None for a pathless spark (no creature → no signature) or an unknown slot, and None
-    for the body-cosmetic slots (palette/size/form) — they change the creature itself and stand
-    outside the signature set even when, like `form`, they carry per-path options."""
+    """The SIGNATURE option for `slot` and chosen `path` (ADR-0028) = the slot's path-exclusive
+    TIER-3 capstone. Since the tier-2 per-path exclusives shipped, a slot carries TWO per-path
+    options per path — the signature is pinned to tier 3 explicitly (not dict order), so a
+    catalog reorder can never silently redefine the "Signature radiance" set to the cheaper
+    tier-2 item. None for a pathless spark (no creature → no signature) or an unknown slot, and
+    None for the body-cosmetic slots (palette/size/form) — they change the creature itself and
+    stand outside the signature set even when, like `form`, they carry per-path options."""
     if path is None or path not in _CHOOSABLE_PATHS:
         return None
     if slot in _NON_SIGNATURE_SLOTS:
         return None
-    for option in SPIRIT_COSMETICS_CATALOG.get(slot, {}):
-        if _option_per_path(slot, option) == path:
+    for option, spec in SPIRIT_COSMETICS_CATALOG.get(slot, {}).items():
+        if _option_per_path(slot, option) == path and spec.get("tier") == 3:
             return option
     return None
 

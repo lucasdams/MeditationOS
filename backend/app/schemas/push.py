@@ -44,7 +44,9 @@ class PushSubscriptionCreate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    endpoint: str = Field(min_length=1)
+    # Real push endpoints are a few hundred chars; 1024 caps abuse (the column is unbounded
+    # text, and the reminder cron POSTs to every stored endpoint).
+    endpoint: str = Field(min_length=1, max_length=1024)
     keys: PushKeys
 
     @field_validator("endpoint")
@@ -58,7 +60,7 @@ class PushSubscriptionCreate(BaseModel):
 class PushUnsubscribe(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    endpoint: str = Field(min_length=1)
+    endpoint: str = Field(min_length=1, max_length=1024)
 
 
 class PushConfig(BaseModel):

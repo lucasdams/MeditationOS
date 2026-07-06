@@ -141,6 +141,54 @@ def test_subscribe_recovers_from_insert_race(db_session, monkeypatch):
     assert count == 1
 
 
+def test_subscribe_caps_rows_per_user_evicting_oldest(db_session):
+    """The per-user subscription cap: a fresh subscribe over a full set evicts the OLDEST
+    rows, so a user can't grow unbounded rows (DB bloat + reminder-cron send amplification).
+    Rows are seeded with explicit, distinct created_at stamps (inside a test transaction the
+    server-default now() would tie them all)."""
+    from datetime import UTC, datetime, timedelta
+
+    user = _user(db_session, "svc-cap@example.com")
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    for i in range(push_service.MAX_SUBSCRIPTIONS_PER_USER + 2):
+        db_session.add(
+            PushSubscription(
+                user_id=user.id,
+                endpoint=f"https://fcm.googleapis.com/e{i}",
+                p256dh="p",
+                auth="a",
+                created_at=base + timedelta(minutes=i),
+            )
+        )
+    db_session.commit()
+
+    push_service.subscribe(db_session, user.id, _create("https://fcm.googleapis.com/new"))
+
+    rows = (
+        db_session.query(PushSubscription).filter(PushSubscription.user_id == user.id).all()
+    )
+    assert len(rows) == push_service.MAX_SUBSCRIPTIONS_PER_USER
+    endpoints = {r.endpoint for r in rows}
+    # The fresh subscription and the newest seeds survived; the three oldest were evicted.
+    assert "https://fcm.googleapis.com/new" in endpoints
+    assert f"https://fcm.googleapis.com/e{push_service.MAX_SUBSCRIPTIONS_PER_USER + 1}" in endpoints
+    for i in range(3):
+        assert f"https://fcm.googleapis.com/e{i}" not in endpoints
+
+
+def test_subscribe_cap_does_not_evict_other_users(db_session):
+    """Eviction is scoped to the subscribing user — a busy user can't age out anyone else's rows."""
+    a = _user(db_session, "svc-cap-a@example.com")
+    b = _user(db_session, "svc-cap-b@example.com")
+    push_service.subscribe(db_session, b.id, _create("https://fcm.googleapis.com/b0"))
+    for i in range(push_service.MAX_SUBSCRIPTIONS_PER_USER + 2):
+        push_service.subscribe(db_session, a.id, _create(f"https://fcm.googleapis.com/a{i}"))
+    b_count = (
+        db_session.query(PushSubscription).filter(PushSubscription.user_id == b.id).count()
+    )
+    assert b_count == 1
+
+
 def test_send_is_noop_without_vapid(db_session):
     user = _user(db_session, "svc2@example.com")
     push_service.subscribe(db_session, user.id, _create())

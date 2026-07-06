@@ -2235,6 +2235,89 @@ def test_unlock_non_matching_path_slot_cosmetic_is_rejected_404(client):
         assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"
 
 
+# --- Tier-2 path exclusives (the earlier, cheaper per-path items before the capstones) ----
+# The 21 tier-2 per-path options across the seven scene/worn slots. Mirrors
+# _PATH_SLOT_COSMETICS (the tier-3 capstones) so the exclusivity + economy gating is pinned
+# at BOTH exclusive tiers — a regression letting a Kapha buy Vata's petalwind would
+# otherwise be invisible.
+_PATH_TIER2_EXCLUSIVES = [
+    ("aura", "cinders", "breath"),
+    ("aura", "dewfall", "stillness"),
+    ("aura", "petalwind", "heart"),
+    ("accessory", "flame_tuft", "breath"),
+    ("accessory", "acorn_cap", "stillness"),
+    ("accessory", "wind_ribbon", "heart"),
+    ("habitat", "ember_hollow", "breath"),
+    ("habitat", "fern_hollow", "stillness"),
+    ("habitat", "cloud_terrace", "heart"),
+    ("companion", "emberling", "breath"),
+    ("companion", "mosskit", "stillness"),
+    ("companion", "butterfly", "heart"),
+    ("mount", "ember_log", "breath"),
+    ("mount", "mossy_rock", "stillness"),
+    ("mount", "drift_leaf", "heart"),
+    ("weather", "heat_shimmer", "breath"),
+    ("weather", "dewdrift", "stillness"),
+    ("weather", "featherfall", "heart"),
+    ("ground", "ember_sand", "breath"),
+    ("ground", "mossbed", "stillness"),
+    ("ground", "cloudtuft", "heart"),
+]
+
+
+def test_tier2_path_exclusives_are_tier2_in_the_catalog():
+    """The mirror list stays honest: every entry exists, is tier 2, and carries per_path."""
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        spec = SPIRIT_COSMETICS_CATALOG[slot][option]
+        assert spec["tier"] == 2, f"{slot}/{option} should be tier 2"
+        assert spec["per_path"] == owner_path
+
+
+def test_tier2_path_exclusive_available_only_for_its_path(client):
+    """Every tier-2 path exclusive is offered (`available: True`) only to its matching dosha."""
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        for path in _ALL_PATHS:
+            _auth(client, f"avail2_{slot}_{option}_{path}@example.com")
+            assert _choose(client, path).status_code == 200
+            opt = _option_state(_spirit(client), slot, option)
+            assert opt is not None, f"{slot}/{option} missing from the {path} catalog"
+            assert opt["available"] is (path == owner_path)
+
+
+def test_unlock_matching_tier2_path_exclusive_succeeds(client):
+    """Each tier-2 exclusive, unlocked on its matching path after a tier-1 in the slot,
+    charges coins, owns, and equips into its slot."""
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        _auth(client, f"buy2_{slot}_{option}@example.com")
+        assert _choose(client, owner_path).status_code == 200
+        _earn_to_level(client, 5)  # unlock_level 4 + coins (5 × 80 = 400 > tier1 + ~110)
+        tier1 = next(
+            o for o, spec in SPIRIT_COSMETICS_CATALOG[slot].items() if spec["tier"] == 1
+        )
+        assert _unlock(client, slot, tier1).status_code == 200, f"{slot}/{tier1} tier-1"
+        before = _spirit(client)["coins"]
+        res = _unlock(client, slot, option)
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["cosmetics"][slot] == option
+        assert body["coins"] == before - SPIRIT_COSMETICS_CATALOG[slot][option]["cost"]
+
+
+def test_unlock_non_matching_tier2_path_exclusive_is_rejected_404_and_free(client):
+    """A Pitta (breath) spirit cannot unlock any other path's tier-2 exclusive — 404, and the
+    coin balance is untouched (no charge on the rejected path)."""
+    _auth(client, "wrongpath_tier2@example.com")
+    assert _choose(client, "breath").status_code == 200
+    _earn_to_level(client, 6)
+    before = _spirit(client)["coins"]
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        if owner_path == "breath":
+            continue
+        res = _unlock(client, slot, option)
+        assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"
+    assert _spirit(client)["coins"] == before
+
+
 # --- The read-only per-path tree PREVIEW for the choose page (GET /spirit/preview) -------
 #
 # A stateless, catalog-only preview of what each creature GROWS INTO: each path's slots with
@@ -2375,6 +2458,13 @@ def test_signature_option_is_the_path_exclusive_capstone_per_slot():
             sig = spirit_service._signature_option(slot, path)
             assert sig is not None
             assert SPIRIT_COSMETICS_CATALOG[slot][sig].get("per_path") == path
+            # There are now TWO per-path options per slot (tier 2 + the tier-3 capstone) and
+            # _signature_option picks by dict order — pin that the signature stays the TIER-3
+            # capstone, or a catalog reorder would silently redefine "Signature radiance" to
+            # the cheap tier-2 item and the set bonus would cost a third of the coins.
+            assert SPIRIT_COSMETICS_CATALOG[slot][sig]["tier"] == 3, (
+                f"signature for {slot}/{path} must be the tier-3 capstone, got {sig}"
+            )
         # The universal body slots have NO signature for any chosen path.
         for slot in _BODY_SLOTS:
             assert spirit_service._signature_option(slot, path) is None
