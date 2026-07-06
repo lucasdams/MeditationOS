@@ -687,8 +687,10 @@ def test_practice_lifts_a_floored_need_back_up(client, db_session):
     _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 100)
     assert _spirit(client)["needs"]["nourished"]["factor"] == NEEDS_FLOOR
 
-    # A breathing sit today (the Kapha creature's signature) refills nourished above the floor.
-    _breathe(client, 30, day=date.today().isoformat())
+    # A breathing sit just now (the Kapha creature's signature) refills nourished above the floor.
+    # Practice at `now` (not a fixed 08:00) so freshness holds whenever the suite runs — needs
+    # decay by the hour, so an 08:00 sit reads floored by evening UTC.
+    _breathe(client, 30, at=datetime.now(UTC).isoformat())
     assert _spirit(client)["needs"]["nourished"]["factor"] > NEEDS_FLOOR
 
 
