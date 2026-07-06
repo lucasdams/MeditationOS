@@ -12,6 +12,10 @@ export const practice: Record<string, string> = {
   'practice.hub.search.placeholder': 'プラクティスを検索…',
   'practice.hub.search.label': 'プラクティスを検索',
   'practice.hub.search.clear': '検索をクリア',
+  // カテゴリの絞り込みチップ — 「すべて」+ 各グループ。ひと棚ずつ、落ち着いて眺められます。
+  'practice.hub.filter.aria': 'カテゴリで絞り込み',
+  'practice.hub.filter.all': 'すべて',
+  'practice.hub.seeAll': 'すべて見る（{count}）',
   'practice.hub.beginner.title': 'はじめての方はこちらから',
   'practice.hub.beginner.blurb': 'やさしい入り口です — 短く、シンプルで、経験は必要ありません。',
   'practice.hub.suggested.title': 'あなたへのおすすめ',

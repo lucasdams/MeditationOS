@@ -64,6 +64,12 @@ function catalogLink(name: RegExp): HTMLElement {
   return (inCatalog[0] ?? links[0]) as HTMLElement
 }
 
+// The calm "All" overview previews each shelf (first 3 cards + "See all N"); a category CHIP
+// shows one full shelf. Tests that assert cards beyond a shelf's preview open its chip first.
+function openGroup(name: RegExp) {
+  fireEvent.click(screen.getByRole('button', { name }))
+}
+
 describe('PracticesPage', () => {
   afterEach(cleanup)
   beforeEach(() => {
@@ -95,10 +101,12 @@ describe('PracticesPage', () => {
 
   it('deep-links breathing cards with the right ?pattern= param', () => {
     renderPage()
+    // Resonance sits in the shelf preview; the rest need the full Breathing shelf (its chip).
     expect(catalogLink(/resonance/i)).toHaveAttribute(
       'href',
       '/breathe?pattern=resonance',
     )
+    openGroup(/^breathing$/i)
     expect(screen.getByRole('link', { name: /box/i })).toHaveAttribute('href', '/breathe?pattern=box')
     expect(screen.getByRole('link', { name: /alternate nostril/i })).toHaveAttribute(
       'href',
@@ -108,6 +116,7 @@ describe('PracticesPage', () => {
 
   it('deep-links guided meditation cards with the right ?guided= param', async () => {
     renderPage()
+    // Cross-shelf assertions: open each shelf's chip for the cards beyond its preview.
     expect(catalogLink(/body scan/i)).toHaveAttribute(
       'href',
       '/meditate?guided=body-scan',
@@ -116,14 +125,11 @@ describe('PracticesPage', () => {
       'href',
       '/meditate?guided=loving-kindness',
     )
+    openGroup(/^meditation$/i)
     expect(screen.getByRole('link', { name: /mindfulness/i })).toHaveAttribute('href', '/meditate')
     expect(screen.getByRole('link', { name: /name what you feel/i })).toHaveAttribute(
       'href',
       '/meditate?guided=name-feelings',
-    )
-    expect(screen.getByRole('link', { name: /mindful stretching/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=stretching',
     )
     // Chakra Om is gated but level 10 (default) unlocks it → a real link.
     await waitFor(() =>
@@ -132,10 +138,17 @@ describe('PracticesPage', () => {
         '/meditate?guided=chakra-om',
       ),
     )
+    openGroup(/^body$/i)
+    expect(screen.getByRole('link', { name: /mindful stretching/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=stretching',
+    )
   })
 
   it('renders the Body group with Body scan + Mindful stretching moved out of Meditation', () => {
     renderPage()
+    // Open the full Body shelf and assert its membership.
+    openGroup(/^body$/i)
     const bodyHeading = screen.getByRole('heading', { name: /^body/i })
     const bodySection = bodyHeading.closest('section') as HTMLElement
     // Body scan and Mindful stretching now live in Body, not Meditation.
@@ -146,6 +159,8 @@ describe('PracticesPage', () => {
     expect(within(bodySection).getByRole('link', { name: /muscle release/i })).toBeInTheDocument()
     expect(within(bodySection).getByRole('link', { name: /mindful walking/i })).toBeInTheDocument()
 
+    // The full Meditation shelf must NOT carry them.
+    openGroup(/^meditation$/i)
     const medHeading = screen.getByRole('heading', { name: /meditation/i })
     const medSection = medHeading.closest('section') as HTMLElement
     expect(within(medSection).queryByRole('link', { name: /body scan/i })).toBeNull()
@@ -154,6 +169,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the Body cards with the right ?guided= param', () => {
     renderPage()
+    openGroup(/^body$/i)
     expect(catalogLink(/body scan/i)).toHaveAttribute(
       'href',
       '/meditate?guided=body-scan',
@@ -178,6 +194,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the new Meditation cards (Focused attention, Mantra, Dopamine reset)', () => {
     renderPage()
+    openGroup(/^meditation$/i)
     expect(catalogLink(/focused attention/i)).toHaveAttribute(
       'href',
       '/meditate?guided=focus',
@@ -194,6 +211,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the added Meditation cards (Count the breath, Noting, Sound meditation)', () => {
     renderPage()
+    openGroup(/^meditation$/i)
     expect(screen.getByRole('link', { name: /count the breath/i })).toHaveAttribute(
       'href',
       '/meditate?guided=count-breath',
@@ -210,10 +228,12 @@ describe('PracticesPage', () => {
 
   it('renders the Heart section with Loving-kindness moved into it', () => {
     renderPage()
+    openGroup(/^heart$/i)
     const heartHeading = screen.getByRole('heading', { name: /^heart/i })
     const heartSection = heartHeading.closest('section') as HTMLElement
     // Loving-kindness now lives in Heart, not Meditation.
     expect(within(heartSection).getByRole('link', { name: /loving-kindness/i })).toBeInTheDocument()
+    openGroup(/^meditation$/i)
     const medHeading = screen.getByRole('heading', { name: /meditation/i })
     const medSection = medHeading.closest('section') as HTMLElement
     expect(within(medSection).queryByRole('link', { name: /loving-kindness/i })).toBeNull()
@@ -221,6 +241,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the Heart cards (loving-kindness + 4 new joy practices)', () => {
     renderPage()
+    openGroup(/^heart$/i)
     expect(screen.getByRole('link', { name: /loving-kindness/i })).toHaveAttribute(
       'href',
       '/meditate?guided=loving-kindness',
@@ -245,6 +266,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the added Heart cards (Forgiveness, Gratitude meditation, Sympathetic joy, Awe)', () => {
     renderPage()
+    openGroup(/^heart$/i)
     expect(screen.getByRole('link', { name: /forgiveness/i })).toHaveAttribute(
       'href',
       '/meditate?guided=forgiveness',
@@ -283,6 +305,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the new Steady section cards', () => {
     renderPage()
+    openGroup(/^steady$/i)
     const steadyHeading = screen.getByRole('heading', { name: /^steady/i })
     const steadySection = steadyHeading.closest('section') as HTMLElement
     expect(
@@ -301,6 +324,7 @@ describe('PracticesPage', () => {
 
   it('deep-links the new Everyday section cards', () => {
     renderPage()
+    openGroup(/^everyday$/i)
     const everydayHeading = screen.getByRole('heading', { name: /^everyday/i })
     const everydaySection = everydayHeading.closest('section') as HTMLElement
     expect(
@@ -327,6 +351,8 @@ describe('PracticesPage', () => {
       within(reflectionSection).getByRole('link', { name: /gratitude/i }),
     ).toHaveAttribute('href', '/gratitude')
     expect(screen.getByRole('link', { name: /journal/i })).toHaveAttribute('href', '/journal')
+    // Candle gazing lives deep in the Meditation shelf → open its chip.
+    openGroup(/^meditation$/i)
     expect(screen.getByRole('link', { name: /candle gazing/i })).toHaveAttribute('href', '/trataka')
   })
 
@@ -346,34 +372,32 @@ describe('PracticesPage', () => {
     expect(screen.getByRole('link', { name: /journal/i }).className).not.toMatch(/practice-card--needed/)
   })
 
-  it('shows what each practice gives the spirit (feed badges)', async () => {
+  it('keeps the cards quiet: no per-card facet badges (the nudge + highlight carry the signal)', async () => {
     get.mockResolvedValue(spiritWith())
     renderPage()
     await screen.findByText(/a little less/i)
-    // Kapha (stillness): breathwork is the signature → feeds Nourishment; sits feed Rest; reflection
-    // feeds Joy. All three need labels appear as badges across the cards.
-    expect(screen.getAllByText('Rest').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Joy').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Nourishment').length).toBeGreaterThan(0)
+    // The old feed badges are gone from the cards — the round-out reads through the nudge banner
+    // (which names Rest) and the quiet rose border on the matching cards, not per-card labels.
+    const resonance = catalogLink(/resonance/i)
+    expect(within(resonance).queryByText('Rest')).toBeNull()
+    expect(within(resonance).queryByText('Nourishment')).toBeNull()
+    expect(within(resonance).queryByText('Joy')).toBeNull()
+    expect(resonance.className).toMatch(/practice-card--needed/)
   })
 
-  it('feeds Joy from the Heart practices via the per-card feeds override (Kapha spirit)', async () => {
+  it('does not highlight a Heart practice for a Kapha whose weakest facet is Rest (feeds override)', async () => {
     // Kapha (stillness): meditation is NOT its signature, so a heart practice's `feeds:'joyful'`
-    // override stands alone → it shows only a Joy badge, never Rest.
+    // override stands alone — it doesn't feed Rest, so it isn't highlighted for a rest gap.
     get.mockResolvedValue(spiritWith()) // stillness, rested weakest
     renderPage()
     await screen.findByText(/a little less/i)
     const lk = screen.getByRole('link', { name: /loving-kindness/i })
-    expect(within(lk).getByText('Joy')).toBeInTheDocument()
-    expect(within(lk).queryByText('Rest')).toBeNull()
-    expect(within(lk).queryByText('Nourishment')).toBeNull()
-    // Weakest need is Rest, and Loving-kindness no longer feeds Rest → not highlighted.
     expect(lk.className).not.toMatch(/practice-card--needed/)
   })
 
-  it('feeds Joy AND Nourishment from the Heart practices for a Vata/heart spirit', async () => {
-    // Vata (heart): meditation IS the path signature, so a heart practice feeds `nourished` too —
-    // alongside the `feeds:'joyful'` override base. Both badges appear on the card.
+  it('highlights a Heart practice for a Vata/heart spirit low on Nourishment (signature feed)', async () => {
+    // Vata (heart): meditation IS the path signature, so a heart practice also feeds `nourished`
+    // — the weakest facet here — and gets the quiet round-out highlight.
     get.mockResolvedValue(
       spiritWith({
         path: 'heart',
@@ -383,24 +407,18 @@ describe('PracticesPage', () => {
     renderPage()
     await screen.findByText(/a little less/i)
     const lk = screen.getByRole('link', { name: /loving-kindness/i })
-    expect(within(lk).getByText('Joy')).toBeInTheDocument()
-    expect(within(lk).getByText('Nourishment')).toBeInTheDocument()
-    expect(within(lk).queryByText('Rest')).toBeNull()
-    // Vata's weakest need is Nourishment, which this signature heart practice feeds → highlighted.
     expect(lk.className).toMatch(/practice-card--needed/)
   })
 
-  it('keeps the rest-feeding meditations (Body scan, Mindfulness) feeding Rest, not Joy', async () => {
-    // Sanity: only the Heart cards carry the override. Plain meditations still feed Rest.
+  it('keeps the rest-feeding meditations (Body scan, Mindfulness) highlighted for a rest gap', async () => {
+    // Sanity: plain meditations still feed Rest → both get the highlight when Rest lags.
     get.mockResolvedValue(spiritWith()) // stillness, rested weakest
     renderPage()
     await screen.findByText(/a little less/i)
-    const bodyScan = catalogLink(/body scan/i)
-    expect(within(bodyScan).getByText('Rest')).toBeInTheDocument()
-    expect(within(bodyScan).queryByText('Joy')).toBeNull()
-    const mindfulness = screen.getByRole('link', { name: /mindfulness/i })
-    expect(within(mindfulness).getByText('Rest')).toBeInTheDocument()
-    expect(within(mindfulness).queryByText('Joy')).toBeNull()
+    expect(catalogLink(/body scan/i).className).toMatch(/practice-card--needed/)
+    expect(screen.getByRole('link', { name: /mindfulness/i }).className).toMatch(
+      /practice-card--needed/,
+    )
   })
 
   it('shows no spirit nudge for a pathless spark (list still renders)', async () => {
@@ -431,6 +449,8 @@ describe('PracticesPage — Chakra Om level gate', () => {
     getStats.mockResolvedValue({ level: 3 })
     renderPage()
     await waitFor(() => expect(getStats).toHaveBeenCalled())
+    // Chakra Om sits deep in the Meditation shelf — open its chip to see the full shelf.
+    openGroup(/^meditation$/i)
     // Not a link while locked.
     await waitFor(() =>
       expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull(),
@@ -443,6 +463,7 @@ describe('PracticesPage — Chakra Om level gate', () => {
   it('renders Chakra Om as a real deep-link at level 5+', async () => {
     getStats.mockResolvedValue({ level: 5 })
     renderPage()
+    openGroup(/^meditation$/i)
     await waitFor(() =>
       expect(screen.getByRole('link', { name: /chakra om/i })).toHaveAttribute(
         'href',
@@ -456,9 +477,79 @@ describe('PracticesPage — Chakra Om level gate', () => {
     getStats.mockRejectedValue(new Error('network'))
     renderPage()
     await waitFor(() => expect(getStats).toHaveBeenCalled())
+    openGroup(/^meditation$/i)
     // level stays null → gated card stays locked.
     expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull()
     expect(screen.getByText(/reach level 5 to unlock/i)).toBeInTheDocument()
+  })
+})
+
+// ── Category chips + shelf previews (the calm browse) ────────────────────────
+// The "All" overview shows each group as its first 3 cards + a quiet "See all N";
+// a category chip (or the See-all button) shows that one group in full. Grid cards
+// are compact — no per-card description (it still indexes for search).
+
+describe('PracticesPage — category chips + shelf previews', () => {
+  afterEach(cleanup)
+  beforeEach(() => {
+    get.mockReset()
+    get.mockRejectedValue(new Error('no spirit'))
+    getStats.mockReset()
+    getStats.mockResolvedValue({ level: 10 })
+  })
+
+  it('previews each shelf on the All view: 3 cards + a "See all N" for larger groups', () => {
+    renderPage()
+    const medSection = screen
+      .getByRole('heading', { name: /meditation/i })
+      .closest('section') as HTMLElement
+    // Only the first 3 of Meditation's 10 cards render in the preview…
+    expect(medSection.querySelectorAll('.practice-card').length).toBe(3)
+    // …with a quiet "See all 10" at the shelf's foot.
+    expect(within(medSection).getByRole('button', { name: /see all 10/i })).toBeInTheDocument()
+    // A small group (Reflection, 2 cards) shows whole — no See-all.
+    const reflection = screen
+      .getByRole('heading', { name: /reflection/i })
+      .closest('section') as HTMLElement
+    expect(reflection.querySelectorAll('.practice-card').length).toBe(2)
+    expect(within(reflection).queryByRole('button', { name: /see all/i })).toBeNull()
+  })
+
+  it('shows one full shelf when its category chip is picked, and All restores the overview', () => {
+    renderPage()
+    openGroup(/^meditation$/i)
+    // Only the Meditation section remains, in full (all 10 cards).
+    expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
+    const medSection = screen
+      .getByRole('heading', { name: /meditation/i })
+      .closest('section') as HTMLElement
+    expect(medSection.querySelectorAll('.practice-card').length).toBe(10)
+    // "All" brings the calm overview back.
+    fireEvent.click(screen.getByRole('button', { name: /^all$/i }))
+    expect(screen.getByRole('heading', { name: /^breathing/i })).toBeInTheDocument()
+  })
+
+  it('expands a shelf via its "See all N" button too', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /see all 10/i }))
+    const medSection = screen
+      .getByRole('heading', { name: /meditation/i })
+      .closest('section') as HTMLElement
+    expect(medSection.querySelectorAll('.practice-card').length).toBe(10)
+    expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
+  })
+
+  it('keeps grid cards compact (no description), while search still matches description text', () => {
+    renderPage()
+    openGroup(/^breathing$/i)
+    // The Alternate nostril card no longer displays its description ("Nadi Shodhana")…
+    const alt = screen.getByRole('link', { name: /alternate nostril/i })
+    expect(within(alt).queryByText(/nadi shodhana/i)).toBeNull()
+    // …but searching that hidden text still finds the practice (name + desc stay indexed).
+    fireEvent.change(screen.getByRole('searchbox', { name: /search practices/i }), {
+      target: { value: 'NADI' },
+    })
+    expect(screen.getByRole('link', { name: /alternate nostril/i })).toBeInTheDocument()
   })
 })
 

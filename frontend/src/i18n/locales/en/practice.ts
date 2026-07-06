@@ -13,6 +13,10 @@ export const practice: Record<string, string> = {
   'practice.hub.search.placeholder': 'Search practices…',
   'practice.hub.search.label': 'Search practices',
   'practice.hub.search.clear': 'Clear search',
+  // Category filter chips — All + one chip per group; the calm one-shelf-at-a-time browse.
+  'practice.hub.filter.aria': 'Browse by category',
+  'practice.hub.filter.all': 'All',
+  'practice.hub.seeAll': 'See all {count}',
   'practice.hub.beginner.title': 'New here? Start here',
   'practice.hub.beginner.blurb': 'Gentle places to begin — short, simple, and no experience needed.',
   'practice.hub.suggested.title': 'Suggested for you',

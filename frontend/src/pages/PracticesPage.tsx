@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Waves,
@@ -341,31 +341,26 @@ const BEGINNER_STARTERS = [
   '/meditate?guided=focus',
 ]
 
-// A small facet badge (icon + label) reusing NEED_COPY — `current` marks the facet the page is
-// gently suggesting you round out (ADR-0032), so the matching cards read as "a little more of this".
-function FeedBadge({ need, current }: { need: SpiritNeedKey; current: boolean }) {
-  const { t } = useT()
-  const NeedIcon = NEED_COPY[need].icon
-  return (
-    <span className={`practice-feed-badge${current ? ' practice-feed-badge--current' : ''}`}>
-      <NeedIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {t(`needs.${need}`)}
-    </span>
-  )
-}
-
 // One practice card — shared by the Suggested set and every category group so they stay identical.
-// A level-locked card is non-interactive (a <div>, not a <Link>): a Lock badge over the icon, muted
-// text, and a "Reach level N to unlock" line in place of the description + feed badges.
+// `compact` is the calm catalog-grid diet: icon, name, beginner tag and minutes only (no
+// description) so the long shelves read quietly; the curated Beginner/Suggested sections render
+// full cards (their descriptions are the explanation). The spirit round-out still reads through
+// the `--needed` highlight + the nudge banner — the old per-card facet badges are gone (they were
+// the grid's noisiest element; ADR-0032 keeps the balance informational, not front-and-centre).
+// A level-locked card is non-interactive (a <div>, not a <Link>): a Lock badge over the icon,
+// muted text, and a "Reach level N to unlock" line in place of the description.
 function PracticeCardLink({
   card,
   need,
   path,
   level,
+  compact = false,
 }: {
   card: PracticeCard
   need: SpiritNeedKey | null
   path: SpiritPath | null
   level: number | null
+  compact?: boolean
 }) {
   const { t } = useT()
   const feeds = feedsFor(card, path)
@@ -412,17 +407,14 @@ function PracticeCardLink({
             </span>
           )}
         </span>
-        <span className="practice-card-desc">{t(card.descKey)}</span>
-        <span className="practice-card-feeds">
-          {meta?.minsKey && (
+        {!compact && <span className="practice-card-desc">{t(card.descKey)}</span>}
+        {meta?.minsKey && (
+          <span className="practice-card-feeds">
             <span className="practice-length">
               <Clock size={14} strokeWidth={1.9} aria-hidden="true" /> {t(meta.minsKey)}
             </span>
-          )}
-          {feeds.map((n) => (
-            <FeedBadge key={n} need={n} current={need === n} />
-          ))}
-        </span>
+          </span>
+        )}
       </span>
       <ChevronRight className="practice-card-go" size={18} strokeWidth={2} aria-hidden="true" />
     </Link>
@@ -438,6 +430,11 @@ export default function PracticesPage() {
   const [level, setLevel] = useState<number | null>(null)
   // The live filter query — matched case-insensitively against each card's name + description.
   const [query, setQuery] = useState('')
+  // The active category chip (a group titleKey), or null for the calm "All" overview where each
+  // group shows only its first few cards. One shelf at a time keeps the big catalog uncrowded.
+  const [activeGroup, setActiveGroup] = useState<string | null>(null)
+  // The chip bar — "See all" scrolls back up to it so the expanded shelf lands in view.
+  const filterRef = useRef<HTMLDivElement>(null)
   const reducedMotion = prefersReducedMotion()
 
   useEffect(() => {
@@ -462,12 +459,15 @@ export default function PracticesPage() {
   const guiding = spirit != null && spirit.path != null
   const need = guiding ? roundOutFacet(spirit.needs) : null
 
-  // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc).
-  // With no query every group renders in full; with one, empty groups drop out and a gentle empty
-  // state shows if nothing at all matches. Filtering is presentational — it never touches the
-  // round-out highlight, which still keys off the (unfiltered) least-represented facet.
+  // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc —
+  // the description still indexes even though the compact grid cards no longer display it). With a
+  // query, empty groups drop out and a gentle empty state shows if nothing at all matches. A search
+  // overrides the category chips (an explicit act — results show across every group, in full).
+  // Filtering is presentational — it never touches the round-out highlight, which still keys off
+  // the (unfiltered) least-represented facet.
   const q = query.trim().toLowerCase()
-  const filteredGroups = q
+  const searching = q !== ''
+  const filteredGroups = searching
     ? GROUPS.map((group) => ({
         ...group,
         cards: group.cards.filter(
@@ -475,8 +475,23 @@ export default function PracticesPage() {
             t(card.nameKey).toLowerCase().includes(q) || t(card.descKey).toLowerCase().includes(q),
         ),
       })).filter((group) => group.cards.length > 0)
-    : GROUPS
-  const noMatches = q !== '' && filteredGroups.length === 0
+    : activeGroup
+      ? GROUPS.filter((group) => group.titleKey === activeGroup)
+      : GROUPS
+  const noMatches = searching && filteredGroups.length === 0
+
+  // The calm "All" overview shows each group as a short PREVIEW (its first few cards + a quiet
+  // "See all N"); picking a chip (or searching) shows the full shelf. One shelf at a time keeps
+  // the 40-odd-card catalog from reading as one endless, busy scroll.
+  const PREVIEW_COUNT = 3
+  const previewing = !searching && activeGroup === null
+
+  // Open one group's full shelf (its chip becomes active) and bring the chip bar back into view so
+  // the expanded shelf lands where the eye is. (scrollIntoView is absent in jsdom — guard it.)
+  function openGroup(titleKey: string) {
+    setActiveGroup(titleKey)
+    filterRef.current?.scrollIntoView?.({ block: 'start' })
+  }
 
   // Newcomer heuristic: a low (or not-yet-known) level → show the gentle "New here? Start here"
   // on-ramp instead of the personalised "Suggested for you" set. Returning practitioners (level > 3)
@@ -577,10 +592,34 @@ export default function PracticesPage() {
         )}
       </div>
 
+      {/* Category chips — the calm browse: "All" previews each shelf; one chip = one full shelf.
+          A live search overrides the chips (results show across every group). */}
+      <div className="practices-filter" role="group" aria-label={t('practice.hub.filter.aria')} ref={filterRef}>
+        <button
+          type="button"
+          className={`chip${activeGroup === null ? ' chip-active' : ''}`}
+          aria-pressed={activeGroup === null}
+          onClick={() => setActiveGroup(null)}
+        >
+          {t('practice.hub.filter.all')}
+        </button>
+        {GROUPS.map((group) => (
+          <button
+            key={group.titleKey}
+            type="button"
+            className={`chip${activeGroup === group.titleKey ? ' chip-active' : ''}`}
+            aria-pressed={activeGroup === group.titleKey}
+            onClick={() => setActiveGroup(group.titleKey)}
+          >
+            {t(group.titleKey)}
+          </button>
+        ))}
+      </div>
+
       {/* New here? Start here — a gentle on-ramp for newcomers so they aren't faced with all 48 at
-          once. Curated easiest practices + warm copy. Hidden while searching and for returning
-          practitioners (who see "Suggested for you" instead). */}
-      {notSearching && newcomer && beginnerCards.length > 0 && (
+          once. Curated easiest practices + warm copy. Hidden while searching, on a single-category
+          view (the chips), and for returning practitioners (who see "Suggested for you" instead). */}
+      {notSearching && activeGroup === null && newcomer && beginnerCards.length > 0 && (
         <section className="practices-group practices-beginner">
           <div className="practices-group-head">
             <span className="practices-group-icon" aria-hidden="true">
@@ -607,7 +646,7 @@ export default function PracticesPage() {
         </section>
       )}
 
-      {guiding && need && (
+      {guiding && need && activeGroup === null && (
         <section className="practices-spirit-nudge" aria-live="polite">
           <div className="practices-spirit-nudge-art" aria-hidden="true">
             <SpiritArt
@@ -633,8 +672,9 @@ export default function PracticesPage() {
       )}
 
       {/* Suggested for you — a small, ignorable set at the top: the spirit's least-fed facet when
-          uneven, else a time-of-day pick, plus a short anytime on-ramp. Hidden while searching. */}
-      {suggestion && suggestedCards.length > 0 && (
+          uneven, else a time-of-day pick, plus a short anytime on-ramp. Hidden while searching and
+          on a single-category view. */}
+      {suggestion && suggestedCards.length > 0 && activeGroup === null && (
         <section className="practices-group practices-suggested">
           <div className="practices-group-head">
             <span className="practices-group-icon" aria-hidden="true">
@@ -667,6 +707,9 @@ export default function PracticesPage() {
 
       {filteredGroups.map((group) => {
         const GroupIcon = group.icon
+        // The "All" overview shows a short preview of each shelf; a chip / search shows it whole.
+        const visibleCards = previewing ? group.cards.slice(0, PREVIEW_COUNT) : group.cards
+        const hiddenCount = group.cards.length - visibleCards.length
         return (
           <section
             key={group.titleKey}
@@ -689,16 +732,27 @@ export default function PracticesPage() {
               </div>
             </div>
             <div className="practices-grid">
-              {group.cards.map((card) => (
+              {visibleCards.map((card) => (
                 <PracticeCardLink
                   key={card.to}
                   card={card}
                   need={need}
                   path={spirit?.path ?? null}
                   level={level}
+                  compact
                 />
               ))}
             </div>
+            {hiddenCount > 0 && (
+              <button
+                type="button"
+                className="practices-see-all"
+                onClick={() => openGroup(group.titleKey)}
+              >
+                {t('practice.hub.seeAll', { count: group.cards.length })}
+                <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
+              </button>
+            )}
           </section>
         )
       })}

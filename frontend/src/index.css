@@ -7215,6 +7215,10 @@ details[open] .meditate-disclosure-summary::before {
   .app-nav.open {
     display: flex;
     flex-direction: column;
+    /* The base .app-nav is flex-wrap:wrap (desktop row); combined with the max-height cap
+       below, a column that overruns the screen would COLUMN-WRAP into a lopsided second
+       column instead of scrolling. Force nowrap so the menu is one aligned, scrollable stack. */
+    flex-wrap: nowrap;
     align-items: stretch;
     position: absolute;
     top: 100%;
@@ -8098,6 +8102,37 @@ details[open] .meditate-disclosure-summary::before {
   gap: var(--space-4);
 }
 
+/* Category chips — the calm one-shelf-at-a-time browse ("All" previews every shelf). Reuses the
+   shared .chip pill; wraps on narrow screens. */
+.practices-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0.25rem;
+}
+
+/* The quiet "See all N" at the foot of a previewed shelf — a link-style button that opens the
+   shelf's chip. */
+.practices-see-all {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 0.55rem;
+  padding: 0.15rem 0.1rem;
+  border: none;
+  background: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+}
+.practices-see-all:hover,
+.practices-see-all:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 /* Clean, uniform card: ONE white surface for every practice (no patchwork tints) — the
    per-practice colour is carried only by a tidy icon CHIP. Soft shadow; a hover lift with a
    colour-tinted border + a reveal chevron. --card-accent resolves light/dark below. */
@@ -8258,31 +8293,17 @@ details[open] .meditate-disclosure-summary::before {
   white-space: nowrap;
 }
 
-/* The "what it gives your spirit" meta — kept QUIET (muted inline labels, no pills) so the card
-   stays clean; the spirit's CURRENT-need practice gets the amber accent. */
+/* The card's quiet meta row — now just the suggested-minutes cue (the per-card facet badges are
+   gone: the round-out signal reads through the rose border + the nudge banner instead). */
 .practice-card-feeds {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;
   margin-top: 0.45rem;
 }
-.practice-feed-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.practice-feed-badge--current {
-  color: var(--needed-accent);
-  font-weight: 600;
-}
 
 /* A practice the spirit needs MOST right now — dialed down to just a quiet rose BORDER (no loud
-   tag or ring); the rose "current need" feed label below carries the rest of the signal, and the
-   header chip + nudge banner say what's needed. Border kept rose on hover too. */
+   tag or ring); the header chip + nudge banner say what's needed. Border kept rose on hover too. */
 .practice-card--needed,
 .practice-card--needed:hover,
 .practice-card--needed:focus-visible {
