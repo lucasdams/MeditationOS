@@ -2234,7 +2234,8 @@ def test_unlock_matching_path_slot_cosmetic_succeeds(client):
     for slot, option, owner_path in _PATH_SLOT_COSMETICS:
         _auth(client, f"buyslot_{slot}_{option}@example.com")
         assert _choose(client, owner_path).status_code == 200
-        _earn_to_level(client, 8)  # weather tier-3 now needs L8; 8 × 80 = 640 coins covers the chain
+        # Weather tier-3 now needs L8; 8 × 80 = 640 coins covers the chain.
+        _earn_to_level(client, 8)
         # Climb the tree: a tier-1 then the universal tier-2 in this slot satisfy the tier-3 prereq.
         tier2 = _SLOT_TIER2_PREREQ[slot]
         assert SPIRIT_COSMETICS_CATALOG[slot][tier2]["tier"] == 2
@@ -2316,7 +2317,8 @@ def test_unlock_matching_tier2_path_exclusive_succeeds(client):
     for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
         _auth(client, f"buy2_{slot}_{option}@example.com")
         assert _choose(client, owner_path).status_code == 200
-        _earn_to_level(client, 6)  # weather tier-2 now needs L6; 6 × 80 = 480 coins covers tier1 + tier2
+        # Weather tier-2 now needs L6; 6 × 80 = 480 coins covers tier1 + tier2.
+        _earn_to_level(client, 6)
         tier1 = next(
             o for o, spec in SPIRIT_COSMETICS_CATALOG[slot].items() if spec["tier"] == 1
         )
