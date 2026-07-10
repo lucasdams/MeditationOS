@@ -107,6 +107,10 @@ function SetBonusStatus({
   previewOn: boolean
   onPreview: (on: boolean) => void
 }) {
+  // Click PINS the preview so it stays after the pointer leaves — and is the touch/tap path (no
+  // hover there). Hover/focus previews transiently. This gives the click a real job instead of a
+  // toggle that mouse-leave immediately undoes.
+  const [pinned, setPinned] = useState(false)
   // A pathless spark has no signatures (total 0) → nothing to show; the picker leads instead.
   if (setBonus.total === 0) return null
   if (setBonus.active) {
@@ -123,22 +127,42 @@ function SetBonusStatus({
   // stage creature — hover/focus to hold it, or tap to toggle (keyboard + touch friendly).
   return (
     <div className="spirit-setbonus spirit-setbonus--progress">
+      {/* A contained card (title + progress + one-line explanation + preview), so the radiance
+          status reads as a designed element rather than a loose wall of text under the grid. */}
+      <div className="spirit-setbonus-head">
+        <strong className="spirit-setbonus-title">{t('spirit.setbonus.radiance')}</strong>
+        <span className="spirit-setbonus-count muted">
+          {t('spirit.setbonus.progress.count', { count: setBonus.count, total: setBonus.total })}
+        </span>
+      </div>
+      <div
+        className="spirit-setbonus-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={setBonus.total}
+        aria-valuenow={setBonus.count}
+      >
+        <span
+          className="spirit-setbonus-bar-fill"
+          style={{ width: `${setBonus.total ? (setBonus.count / setBonus.total) * 100 : 0}%` }}
+        />
+      </div>
       <p className="muted spirit-setbonus-explain">
-        <strong>{t('spirit.setbonus.radiance')}</strong>
-        {t('spirit.setbonus.progress.explain1', { total: setBonus.total })}
-        <em>{t('spirit.setbonus.progress.signaturePieces')}</em>
-        {t('spirit.setbonus.progress.explain2')} {' '}
-        {t('spirit.setbonus.progress.count', { count: setBonus.count, total: setBonus.total })}
+        {t('spirit.setbonus.progress.tagline', { total: setBonus.total })}
       </p>
       <button
         type="button"
         className={`spirit-setbonus-preview${previewOn ? ' is-on' : ''}`}
         aria-pressed={previewOn}
         onMouseEnter={() => onPreview(true)}
-        onMouseLeave={() => onPreview(false)}
+        onMouseLeave={() => onPreview(pinned)}
         onFocus={() => onPreview(true)}
-        onBlur={() => onPreview(false)}
-        onClick={() => onPreview(!previewOn)}
+        onBlur={() => onPreview(pinned)}
+        onClick={() => {
+          const next = !pinned
+          setPinned(next)
+          onPreview(next)
+        }}
       >
         {previewOn ? t('spirit.setbonus.previewing') : t('spirit.setbonus.see')}
       </button>
@@ -296,6 +320,11 @@ export default function SpiritPage() {
   // Which area is showing — Care / Customize / Collection — so the page reads one thing at a time
   // instead of one long scroll (the hero stays on top always).
   const [tab, setTab] = useState<'care' | 'customize' | 'collection'>('care')
+  // The Customize tab shows ONE cosmetic category at a time (a "dressing room"): this is the
+  // selected category's slot key; null falls back to the first renderable slot. Only its option
+  // grid renders, so the tab is a pinned creature + a category bar + one short grid, not a long
+  // scroll of every slot expanded at once.
+  const [activeSlot, setActiveSlot] = useState<string | null>(null)
   // Hover / tap "See the radiance" to PREVIEW the Signature-radiance shimmer on the stage creature
   // before you've earned the full set — so it's clear what the reward actually looks like.
   const [previewRadiance, setPreviewRadiance] = useState(false)
@@ -483,12 +512,13 @@ export default function SpiritPage() {
           ? optionLabel(preview.option)
           : spirit.name ?? stageLabel
 
-        // Render one cosmetic slot as a small SKILL TREE (ADR-0027): its available options laid
-        // out by tier (1 → 2 → 3) as a progression, so the climb to the tier-3 capstone reads as
-        // a tree. Each node shows its label + need tag and its state (equipped / owned /
-        // unlockable / unaffordable / locked), with preview-on-hover-and-focus. Returns null for a
-        // slot with no available options so the rail split below stays resilient.
-        const renderSlot = (s: (typeof spirit.available)[number]) => {
+        // Render the ACTIVE cosmetic category as a panel of option nodes (ADR-0027): its available
+        // options laid out by tier as a progression, each node showing its label + need tag and its
+        // state (equipped / owned / unlockable / unaffordable / locked), with preview-on-hover-and-
+        // focus. The options sit in a wrap GRID (not a tall column) so a category needs little
+        // vertical space; level-LOCKED future options tuck behind a quiet "+ N more" toggle. Returns
+        // null for a category with no available options.
+        const renderActivePanel = (s: (typeof spirit.available)[number]) => {
           // Per-path exclusivity: only the options offered to this creature (path filter).
           const visible = s.options.filter((opt) => opt.available)
           if (visible.length === 0) return null
@@ -496,17 +526,18 @@ export default function SpiritPage() {
           const equippedOption = visible.find((opt) => opt.equipped)?.option
           // CALM by default: show only ACTIONABLE options (owned / unlockable / equipped). The
           // level-LOCKED future ones are hidden behind a quiet "+ N more" toggle so the panel isn't
-          // a wall of "Reach level N". Sorted by tier so the climb still reads top → bottom.
+          // a wall of "Reach level N". Sorted by tier so the climb still reads low → high.
           const locked = visible.filter((opt) => nodeState(opt) === 'locked')
           const showLocked = revealLocked.has(s.slot)
           const shown = (showLocked ? visible : visible.filter((opt) => nodeState(opt) !== 'locked'))
             .slice()
             .sort((a, b) => a.tier - b.tier)
           return (
-            // Each slot is a collapsible disclosure — COLLAPSED by default so the panel reads as a
-            // tidy list of sections you expand on demand. `data-slot` sets each section's accent.
-            <details key={s.slot} className="spirit-slot" data-slot={s.slot}>
-              <summary className="spirit-slot-summary">
+            // The single open panel for the selected category — no per-slot collapse now (the
+            // category bar above is the selector). `data-slot` sets the panel's accent; tests key
+            // off `.spirit-slot[data-slot=…]` as the node container.
+            <div className="spirit-slot" data-slot={s.slot}>
+              <div className="spirit-slot-head">
                 <span className="spirit-slot-name">{slotLabel(s.slot)}</span>
                 <span className="spirit-slot-equipped muted">
                   {equippedOption ? optionLabel(equippedOption) : t('spirit.slot.noneYet')}
@@ -514,23 +545,22 @@ export default function SpiritPage() {
                 <span className="spirit-tree-progress muted">
                   {ownedCount}/{visible.length}
                 </span>
-                <span className="spirit-slot-chevron" aria-hidden="true">▾</span>
-              </summary>
-              <div className="spirit-slot-options">
-                {shown.map((opt) => renderNode(s.slot, opt))}
-                {locked.length > 0 && (
-                  <button
-                    type="button"
-                    className="spirit-locked-toggle"
-                    onClick={() => toggleLocked(s.slot)}
-                  >
-                    {showLocked
-                      ? t('spirit.slot.showFewer')
-                      : t('spirit.slot.moreUnlock', { count: locked.length })}
-                  </button>
-                )}
               </div>
-            </details>
+              <div className="spirit-option-grid">
+                {shown.map((opt) => renderNode(s.slot, opt))}
+              </div>
+              {locked.length > 0 && (
+                <button
+                  type="button"
+                  className="spirit-locked-toggle"
+                  onClick={() => toggleLocked(s.slot)}
+                >
+                  {showLocked
+                    ? t('spirit.slot.showFewer')
+                    : t('spirit.slot.moreUnlock', { count: locked.length })}
+                </button>
+              )}
+            </div>
           )
         }
 
@@ -671,6 +701,13 @@ export default function SpiritPage() {
         const renderableSlots = spirit.available.filter(
           (s) => s.options.some((opt) => opt.available),
         )
+        // The selected category (defaults to the first renderable slot) — only its panel shows at a
+        // time, so the Customize tab is a compact dressing room, not a long scroll of every slot.
+        const activeSlotKey =
+          activeSlot && renderableSlots.some((s) => s.slot === activeSlot)
+            ? activeSlot
+            : (renderableSlots[0]?.slot ?? null)
+        const activeSlotData = renderableSlots.find((s) => s.slot === activeSlotKey) ?? null
         return (
           <>
             {/* The hero: a COMPACT status read-out (name / stage / path / bond) plus the single
@@ -688,7 +725,9 @@ export default function SpiritPage() {
                     glow={spirit.condition.factor}
                     cosmetics={spirit.cosmetics}
                     reducedMotion={reducedMotion}
-                    setRadiant={spirit.set_bonus.active}
+                    // Earned radiance, OR a live "See the radiance" preview from the footer status
+                    // (which is now visible on every tab, so the shimmer must show on the portrait too).
+                    setRadiant={spirit.set_bonus.active || previewRadiance}
                   />
                 </div>
               )}
@@ -816,42 +855,67 @@ export default function SpiritPage() {
                   {t('spirit.customize.empty')}
                 </p>
               ) : (
-                <>
-                  {/* The live preview — the spirit shown LARGE at the TOP, reflecting whatever node
-                      you hover/focus below. Kept separate from the controls so nothing covers it. */}
-                  <div className="spirit-customize-preview">
-                    <div className="spirit-stage-frame">
-                      <div className="spirit-stage-art">
-                        <SpiritArt
-                          stage={spirit.stage}
-                          path={form}
-                          glow={spirit.condition.factor}
-                          cosmetics={previewCosmetics}
-                          reducedMotion={reducedMotion}
-                          previewing={preview !== null}
-                          // ADR-0028: the "Signature radiance" flourish — on when earned, OR while
-                          // previewing it from the set-bonus status below.
-                          setRadiant={spirit.set_bonus.active || previewRadiance}
-                        />
+                <div className="spirit-dressing">
+                  {/* The pinned "viewer": the creature + the category selector stay in view while the
+                      option grid below scrolls, so hovering an option always previews on a visible
+                      spirit and switching category never means scrolling back up. */}
+                  <div className="spirit-dressing-head">
+                    <div className="spirit-customize-preview">
+                      <div className="spirit-stage-frame">
+                        <div className="spirit-stage-art">
+                          <SpiritArt
+                            stage={spirit.stage}
+                            path={form}
+                            glow={spirit.condition.factor}
+                            cosmetics={previewCosmetics}
+                            reducedMotion={reducedMotion}
+                            previewing={preview !== null}
+                            // ADR-0028: the "Signature radiance" flourish — on when earned, OR while
+                            // previewing it from the set-bonus status below.
+                            setRadiant={spirit.set_bonus.active || previewRadiance}
+                          />
+                        </div>
+                        {preview && <span className="spirit-preview-badge">{t('spirit.customize.preview')}</span>}
                       </div>
-                      {preview && <span className="spirit-preview-badge">{t('spirit.customize.preview')}</span>}
+                      <p className="spirit-stage-caption">{stageCaption}</p>
                     </div>
-                    <p className="spirit-stage-caption">{stageCaption}</p>
+
+                    {/* The category selector — one chip per cosmetic slot; picking one shows ONLY
+                        that category's options below. A worn dot marks categories that already have
+                        something equipped. */}
+                    <div
+                      className="spirit-cat-bar"
+                      role="group"
+                      aria-label={t('spirit.customize.slotsAria')}
+                    >
+                      {renderableSlots.map((s) => {
+                        const isActive = s.slot === activeSlotKey
+                        const worn = s.options.some((opt) => opt.equipped)
+                        return (
+                          <button
+                            key={s.slot}
+                            type="button"
+                            className={`spirit-cat${isActive ? ' spirit-cat--active' : ''}`}
+                            data-slot={s.slot}
+                            aria-pressed={isActive}
+                            onClick={() => {
+                              setActiveSlot(s.slot)
+                              setPreview(null)
+                            }}
+                          >
+                            <span className="spirit-cat-name">{slotLabel(s.slot)}</span>
+                            {worn && <span className="spirit-cat-dot" aria-hidden="true" />}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
-                  {/* Every cosmetic slot as a clean grid of collapsible cards BELOW the creature —
-                      all visible at once (no "show all" gate), one tap to open each. */}
-                  <div className="spirit-slots-grid" aria-label={t('spirit.customize.slotsAria')}>
-                    {renderableSlots.map(renderSlot)}
-                  </div>
-
-                  {/* The signature set-bonus status + its live "See the radiance" preview. */}
-                  <SetBonusStatus
-                    setBonus={spirit.set_bonus}
-                    previewOn={previewRadiance}
-                    onPreview={setPreviewRadiance}
-                  />
-                </>
+                  {/* The selected category's options — a wrap grid, so one category stays short.
+                      (The Signature-radiance status now lives in the page footer, grouped with the
+                      name reset, rather than trailing the option grid.) */}
+                  {activeSlotData && renderActivePanel(activeSlotData)}
+                </div>
               )}
             </section>
             )}
@@ -899,18 +963,25 @@ export default function SpiritPage() {
             </section>
             )}
 
-            {/* Name reset — a minor, quiet line near the foot of the page (ADR-0024). The name
-                is committed at creation and immutable; changing it is a rare, paid action, so it
-                reads as a muted sentence with a small text-button — never a prominent section. */}
-            <p className="muted spirit-reset-name-line">
-              <span>
-                {t('spirit.resetName.line', { cost: RESET_COST })}
-              </span>
+            {/* Quiet footer under the tabs — the Signature-radiance status and the paid name reset
+                (ADR-0024), the two minor "spend / prestige" bits, tucked below the main content. The
+                name is committed at creation and immutable, so its reset is just a small button (the
+                cost + explanation live in its confirm modal), never a prominent section. */}
+            <div className="spirit-footer">
+              <SetBonusStatus
+                setBonus={spirit.set_bonus}
+                previewOn={previewRadiance}
+                onPreview={setPreviewRadiance}
+              />
               <button
                 type="button"
                 className="spirit-reset-quiet"
                 disabled={busy != null || spirit.coins < RESET_COST}
-                title={spirit.coins < RESET_COST ? t('spirit.resetName.needsCoins', { cost: RESET_COST }) : undefined}
+                title={
+                  spirit.coins < RESET_COST
+                    ? t('spirit.resetName.needsCoins', { cost: RESET_COST })
+                    : t('spirit.resetName.line', { cost: RESET_COST })
+                }
                 onClick={() => {
                   setResetNameDraft(spirit.name ?? '')
                   setResetNameOpen(true)
@@ -918,7 +989,7 @@ export default function SpiritPage() {
               >
                 {t('spirit.resetName.button')}
               </button>
-            </p>
+            </div>
 
             {/* How it grows — the progress ladder + set-free explainer, folded behind a quiet
                 disclosure low on the page (the hero already shows the current stage, so this is

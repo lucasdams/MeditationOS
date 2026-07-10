@@ -74,6 +74,39 @@ export function playClick(volume = 0.5): void {
 }
 
 /**
+ * A soft, playful "boop" — a quick upward pitch-bend bubble sound, for petting the spirit. `step`
+ * (a pet-combo index) raises the base pitch so rapid pets climb a little scale. Honours the
+ * interface-sounds preference; fired from a pointer gesture so the context is already unlocked.
+ */
+export function playBoop(volume = 0.5, step = 0): void {
+  if (!interfaceSoundsEnabled) return
+  try {
+    const ctx = getAudioContext()
+    if (ctx.state !== 'running') {
+      void ctx.resume().then(() => playBoop(volume, step)).catch(() => {})
+      return
+    }
+    const t = ctx.currentTime
+    const vol = Math.max(0, Math.min(1, volume))
+    const base = Math.min(500 + step * 45, 920)
+    const osc = ctx.createOscillator()
+    const g = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(base, t)
+    osc.frequency.linearRampToValueAtTime(base + 340, t + 0.09)
+    const peak = 0.13 * vol
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(peak, t + 0.01)
+    g.gain.linearRampToValueAtTime(0, t + 0.15)
+    osc.connect(g).connect(getMasterBus())
+    osc.start(t)
+    osc.stop(t + 0.17)
+  } catch {
+    // audio unavailable — skip silently
+  }
+}
+
+/**
  * The single, app-wide rule for "which controls make a click sound".
  *
  * A soft tick plays when the user activates a genuine *button* control — a native

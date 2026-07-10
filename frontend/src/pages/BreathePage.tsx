@@ -179,6 +179,9 @@ const DIFFICULTY = (bpm: number): { key: string } => {
 // catalog keys resolved at render (re-label on locale switch); 0 → "Untimed".
 const DURATION_VALUES: { value: number; labelKey: string }[] = [
   { value: 0, labelKey: 'practice.duration.untimed' },
+  // A 1-minute option — the gentlest timed sit, and the default a first-ever visit opens on so the
+  // newcomer's first breath reaches the whole minute that earns XP (see FIRST_SIT_TARGET_MIN).
+  { value: 1, labelKey: 'practice.mins.1' },
   { value: 2, labelKey: 'practice.mins.2' },
   { value: 3, labelKey: 'practice.mins.3' },
   { value: 5, labelKey: 'practice.mins.5' },
@@ -229,6 +232,20 @@ const loadPrefs = (): BreathePrefs => {
   }
   return DEFAULT_PREFS
 }
+
+// True once the breathe page has been used at least once on this device (its prefs blob was
+// persisted). Absent on the very first visit — used to give a brand-new practitioner a gentle
+// timed first sit (see the targetMin default).
+const hasBreathePrefs = (): boolean => {
+  try {
+    return localStorage.getItem(PREFS_KEY) != null
+  } catch {
+    return false
+  }
+}
+// A first-ever sit opens with this gentle timer (minutes) so it reaches the whole minute that earns
+// XP, instead of an open-ended breath a newcomer might end after a few seconds (scoring 0).
+const FIRST_SIT_TARGET_MIN = 1
 
 const DRAFT_PAGE = 'breathe'
 
@@ -290,7 +307,11 @@ export default function BreathePage() {
   })
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
-  const [scale, setScale] = useState(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
+  // At rest ("Ready", and after a session ends) the orb sits at the settled mid-size — a
+  // present, inviting circle rather than the tiny MIN_SCALE dot it used to freeze at. The
+  // live breathing range is still MIN..MAX (driven by `scaleAt` in the run loop below); this
+  // only sets the idle pose. Reduced motion already parks here too.
+  const [scale, setScale] = useState(STATIC_SCALE)
   const [elapsed, setElapsed] = useState(0)
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -326,11 +347,14 @@ export default function BreathePage() {
   const [ambient, setAmbient] = useState<AmbientSound>(() => loadPrefs().ambient)
   const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
   const [volume, setVolume] = useState(() => loadPrefs().volume)
-  // A guided first sit auto-finishes at its fixed length (seconds → minutes for the timer).
-  // A normal visit keeps the remembered target.
-  const [targetMin, setTargetMin] = useState(() =>
-    searchParams.get('guided') === '1' ? guidedDurationSec / 60 : loadPrefs().targetMin,
-  )
+  // A guided first sit auto-finishes at its fixed length (seconds → minutes for the timer). A
+  // first-ever visit (no saved prefs) opens with a gentle 1-minute timer so the newcomer's first
+  // breath earns XP; otherwise a normal visit keeps the remembered target.
+  const [targetMin, setTargetMin] = useState(() => {
+    if (searchParams.get('guided') === '1') return guidedDurationSec / 60
+    if (!hasBreathePrefs()) return FIRST_SIT_TARGET_MIN
+    return loadPrefs().targetMin
+  })
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(loadSoundscapeVolPref)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
@@ -694,7 +718,7 @@ export default function BreathePage() {
     elapsedRef.current = 0
     tokenRef.current = null
     clearDraft(DRAFT_PAGE)
-    setScale(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
+    setScale(STATIC_SCALE) // back to the settled "Ready" pose
     setPhase('inhale')
     // Drop any captured-but-unlinked pre-reading so it can't link to a later sit
     // (matches MeditatePage.reset()).

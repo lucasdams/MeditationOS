@@ -144,13 +144,13 @@ describe('Spirit — path-specific forms', () => {
       expect(strokedPaths.length).toBeGreaterThan(0)
     })
 
-    it('uses the airy warm-mauve palette (not the old pink bloom)', () => {
+    it('uses the airy amethyst palette (not the old pink bloom)', () => {
       const { container } = renderSpirit(
         <Spirit spirit={spiritState({ stage: 'radiant', path: 'heart' })} />,
       )
       const svg = container.querySelector('.spirit-svg')!.innerHTML
-      // Warm-mauve body present; the retired pink bloom colour is gone.
-      expect(svg).toContain('#e3cbdf')
+      // Amethyst body present; the retired pink bloom colour is gone.
+      expect(svg).toContain('#c9b0f5')
       expect(svg).not.toContain('#f9a8d4')
     })
 
@@ -189,9 +189,9 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
     // Bare Pitta: the dosha orange glow (#fb923c) is present.
     const bare = bodyMarkup({ path: 'breath' })
     expect(bare).toContain('#fb923c')
-    // With the `frost` palette: its warm-teal glow (#9fded2) appears and the dosha orange is gone.
+    // With the `frost` palette: its icy-cyan glow (#a5ddf5) appears and the dosha orange is gone.
     const recoloured = bodyMarkup({ path: 'breath', cosmetics: { palette: 'frost' } })
-    expect(recoloured).toContain('#9fded2')
+    expect(recoloured).toContain('#a5ddf5')
     expect(recoloured).not.toContain('#fb923c')
     // A NEWER palette recolours the body the same way: the `ocean` glow (#60a5fa) appears and the
     // dosha orange is gone — every entry in PALETTES feeds the body ramp universally.
@@ -201,9 +201,9 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
   })
 
   it('keeps each dosha default when no palette cosmetic is set', () => {
-    // Stillness default amber glow (#fcd34d) present; Vata default warm-mauve glow (#e3cbdf) present.
-    expect(bodyMarkup({ path: 'stillness' })).toContain('#fcd34d')
-    expect(bodyMarkup({ path: 'heart' })).toContain('#e3cbdf')
+    // Stillness default jade glow (#7fd3a3) present; Vata default amethyst glow (#c9b0f5) present.
+    expect(bodyMarkup({ path: 'stillness' })).toContain('#7fd3a3')
+    expect(bodyMarkup({ path: 'heart' })).toContain('#c9b0f5')
   })
 
   it('scales the creature group when a size cosmetic is set, and not when it is absent', () => {
@@ -211,8 +211,9 @@ describe('Spirit — body cosmetics recolour + resize the creature itself', () =
       const { container } = renderSpirit(
         <Spirit spirit={spiritState({ stage: 'radiant', path: 'breath', ...over })} />,
       )
-      // The size scale lives on an inner <g> inside the floating .spirit-creature group.
-      const inner = container.querySelector('.spirit-creature > g') as SVGGElement
+      // The size scale lives on an inner <g> inside the floating creature's gaze wrapper
+      // (.spirit-creature > .spirit-gaze > [size-scale g]).
+      const inner = container.querySelector('.spirit-gaze > g') as SVGGElement
       const t = inner.getAttribute('transform')
       cleanup()
       return t
@@ -288,8 +289,8 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
   }
   // The Vata palette colours (PATH_PALETTE.heart) — the object forms draw their structural parts in
   // these, so counting elements filled/stroked with each measures the object's distinctive shape.
-  const VATA_GLOW = '#e3cbdf'
-  const VATA_DEEP = '#9a6b9c'
+  const VATA_GLOW = '#c9b0f5'
+  const VATA_DEEP = '#5b34ad'
 
   it('draws a puffy CLOUD of several pal.glow bumps + a face with form=cloud', () => {
     const cloud = vataCreature({ cosmetics: { form: 'cloud' } })
@@ -341,12 +342,10 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(creatureMarkup('heart', { form: 'constellation' })).not.toBe(creatureMarkup('heart', {}))
   })
 
-  it('draws a DANDELION — many radiating stalks + tuft circles — with form=dandelion', () => {
+  it('draws a DANDELION bloom — many radiating ray petals — with form=dandelion', () => {
     const dand = vataCreature({ cosmetics: { form: 'dandelion' } })
-    // Many thin radiating stalk <line>s (≥9) forming the puff.
-    expect(dand.querySelectorAll('line').length).toBeGreaterThanOrEqual(9)
-    // Each tipped with a fuzzy seed-tuft <circle> — many tuft circles + the core + drifting seeds.
-    expect(dand.querySelectorAll('circle').length).toBeGreaterThanOrEqual(9)
+    // Many thin ray-petal <ellipse>s radiating from the centre disc (a flower bloom).
+    expect(dand.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(15)
     expect(creatureMarkup('heart', { form: 'dandelion' })).not.toBe(creatureMarkup('heart', {}))
   })
 
@@ -379,7 +378,7 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
   // Vata gazes, Kapha rests), and EVERY body form carries it on its brightest element so no
   // form reads as a faceless object. The eye fingerprints are distinctive within each creature
   // group: Kapha = two pal.deep arcs at strokeWidth 0.9; Vata = two pal.deep-filled dot circles.
-  const KAPHA_DEEP = '#b45309'
+  const KAPHA_DEEP = '#1a6b45'
 
   it('gives every Kapha body form the serene closed-lid face (two pal.deep eye arcs)', () => {
     const forms = [
@@ -403,6 +402,16 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     }
   })
 
+  it('gives the cairn little stone arms with fists (the coal rock-buddy recipe)', () => {
+    const body = kaphaCreature({ cosmetics: { form: 'cairn' } })
+    // The two fists are pal.deep-FILLED circles (the eye fingerprint above is pal.deep STROKES,
+    // so the two stay distinct).
+    const fists = Array.from(body.querySelectorAll('circle')).filter(
+      (el) => el.getAttribute('fill') === KAPHA_DEEP,
+    )
+    expect(fists.length).toBeGreaterThanOrEqual(2)
+  })
+
   it('gives the once-faceless Vata forms a face too (constellation lead star, whirlwind top)', () => {
     for (const form of ['constellation', 'whirlwind']) {
       const body = vataCreature({ cosmetics: { form } })
@@ -410,6 +419,19 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
         (el) => el.getAttribute('fill') === VATA_DEEP,
       )
       expect(eyeDots.length, `vata form=${form} should wear 2 eye dots`).toBe(2)
+    }
+  })
+
+  // Every shape wears a face at EVERY stage — including a young spark, where every new user starts.
+  // Both the creature's OWN default expression and a chosen/previewed face cosmetic render on a spark
+  // (the face used to be gated to wisp, so a young spark — and every shape previewed on it — read as a
+  // blank object). stageIndex is 1-based (spark=1), so `i >= 1` spans all stages.
+  it('gives every shape a face at every stage, including a bare spark and one with a face cosmetic', () => {
+    for (const creature of [kaphaCreature, vataCreature]) {
+      const bareSpark = creature({ stage: 'spark', cosmetics: {} })
+      expect(bareSpark.querySelectorAll('.spirit-eyes').length).toBe(1)
+      const facedSpark = creature({ stage: 'spark', cosmetics: { face: 'kawaii' } })
+      expect(facedSpark.querySelectorAll('.spirit-eyes').length).toBe(1)
     }
   })
 
@@ -429,27 +451,33 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
   // all drawn in it; counting elements filled/stroked with it measures the object's structure.
   const PITTA_DEEP = '#7c2d12'
 
-  it('draws crossed pal.deep LOG bars + a flame with form=campfire (a campfire silhouette)', () => {
+  it('draws crossed LOG bundles + a flame with form=campfire (a campfire silhouette)', () => {
     const camp = pittaCreature({ cosmetics: { form: 'campfire' } })
-    // Two or three rotated <rect> logs in the deep base colour cross at the base.
-    const logs = Array.from(camp.querySelectorAll('rect')).filter(
-      (el) => el.getAttribute('fill') === PITTA_DEEP && (el.getAttribute('transform') ?? '').includes('rotate'),
+    // Two or three crossed LOG groups at the base — each a bark-brown <rect> inside a rotate()'d <g>
+    // (with a pale cut-end face), so they read clearly as timber.
+    const logGroups = Array.from(camp.querySelectorAll('g')).filter(
+      (grp) =>
+        (grp.getAttribute('transform') ?? '').includes('rotate') &&
+        Array.from(grp.querySelectorAll('rect')).some((r) => r.getAttribute('fill') === PITTA_DEEP),
     )
-    expect(logs.length).toBeGreaterThanOrEqual(2)
+    expect(logGroups.length).toBeGreaterThanOrEqual(2)
     // It still carries a layered flame above the logs (filled flame paths).
     expect(camp.querySelectorAll('.pitta-flame path').length).toBeGreaterThanOrEqual(3)
     expect(creatureMarkup('breath', { form: 'campfire' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('draws a vertical pal.deep HANDLE + a flame with form=torch (a held torch)', () => {
+  it('draws a wrapped HEAD on a handle + a flame with form=torch (a held torch)', () => {
     const torch = pittaCreature({ cosmetics: { form: 'torch' } })
-    // The handle is a tall, narrow upright <rect> in the deep base colour (height ≫ width).
-    const handle = Array.from(torch.querySelectorAll('rect')).find((el) => {
+    // The rag-wrapped head is a wide <rect> in the deep base colour (wider than tall), and the wooden
+    // handle is a deep <path> below it — the bound-head silhouette that reads it as a torch.
+    const head = Array.from(torch.querySelectorAll('rect')).find((el) => {
       const w = Number(el.getAttribute('width'))
       const h = Number(el.getAttribute('height'))
-      return el.getAttribute('fill') === PITTA_DEEP && h > w * 3
+      return el.getAttribute('fill') === PITTA_DEEP && w > h
     })
-    expect(handle).toBeTruthy()
+    expect(head).toBeTruthy()
+    const handle = Array.from(torch.querySelectorAll('path')).some((el) => el.getAttribute('fill') === PITTA_DEEP)
+    expect(handle).toBe(true)
     expect(torch.querySelectorAll('.pitta-flame path').length).toBeGreaterThanOrEqual(3)
     expect(creatureMarkup('breath', { form: 'torch' })).not.toBe(creatureMarkup('breath', {}))
   })
@@ -485,10 +513,20 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(creatureMarkup('breath', { form: 'sun' })).not.toBe(creatureMarkup('breath', {}))
   })
 
-  it('draws several coal ELLIPSES and NO tall layered flame with form=coals (a low ember bed)', () => {
+  it('draws a black ROCK creature (faceted boulder + lava cracks) and NO tall layered flame with form=coals', () => {
     const coals = pittaCreature({ cosmetics: { form: 'coals' } })
-    // A heap of rounded coal stones — several <ellipse>s (3 + i ⇒ many at radiant).
-    expect(coals.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(6)
+    // The boulder + facets + bumps + arms are drawn in near-black tones (palette-independent) so it
+    // reads unmistakably as a coal rock rather than a bright ember or a flame.
+    const black = Array.from(coals.querySelectorAll('path')).filter((el) => {
+      const f = (el.getAttribute('fill') || '').toLowerCase()
+      return f === '#221f1c' || f === '#2e2a26' || f === '#161311'
+    })
+    expect(black.length).toBeGreaterThanOrEqual(4)
+    // Glowing lava CRACKS vein the seams (stroked <polyline>s).
+    const cracks = Array.from(coals.querySelectorAll('polyline')).filter(
+      (el) => el.getAttribute('fill') === 'none',
+    )
+    expect(cracks.length).toBeGreaterThanOrEqual(3)
     // The "resting" form has NO tall layered blaze (no .pitta-flame group).
     expect(coals.querySelectorAll('.pitta-flame').length).toBe(0)
     expect(creatureMarkup('breath', { form: 'coals' })).not.toBe(creatureMarkup('breath', {}))
@@ -565,12 +603,12 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(enso - bare).toBeGreaterThanOrEqual(2)
   })
 
-  it('swaps the Kapha body for a faceted GEM (a polygon + facet lines) with form=prism', () => {
-    // The default Kapha has no polygon; `prism` draws a hexagon polygon with internal facet lines.
-    expect(kaphaCreature({}).querySelectorAll('polygon').length).toBe(0)
+  it('swaps the Kapha body for a cut GEM (a faceted body path + facet lines) with form=prism', () => {
     const gem = kaphaCreature({ cosmetics: { form: 'prism' } })
-    expect(gem.querySelectorAll('polygon').length).toBeGreaterThanOrEqual(1)
-    expect(gem.querySelectorAll('line').length).toBeGreaterThanOrEqual(3)
+    // The cut gem draws several internal facet <line>s (girdle + crown + pavilion) and differs from
+    // the bare Kapha body.
+    expect(gem.querySelectorAll('line').length).toBeGreaterThanOrEqual(5)
+    expect(creatureMarkup('stillness', { form: 'prism' })).not.toBe(creatureMarkup('stillness', {}))
   })
 
   // Returns the full markup of a creature group for a path + cosmetics, so a test can assert a
@@ -603,20 +641,34 @@ describe('Spirit — the `form` (shape) cosmetic varies each creature silhouette
     expect(creatureMarkup('breath', { form: 'twin' })).not.toBe(creatureMarkup('breath', {}))
   })
 
+  // The two forms that used to render as a faceless object now wear a face like every other shape:
+  // the Pitta `twin` gives EACH forked head its own little face, and the Vata `plume` feather gets one.
+  it('gives the twin blaze two faces and the plume feather a face (no faceless shapes remain)', () => {
+    const twin = pittaCreature({ cosmetics: { form: 'twin' } })
+    expect(twin.querySelectorAll('.spirit-eyes').length).toBe(2)
+    const plume = vataCreature({ cosmetics: { form: 'plume' } })
+    expect(plume.querySelectorAll('.spirit-eyes').length).toBe(1)
+  })
 
-  it('swaps the Kapha body for an organic seedling (a stem path + leaf ellipses) with form=sprout', () => {
-    // `sprout` draws a slim stroked (fill:none) stem path plus several filled leaf ellipses + a bud —
-    // the only organic Kapha body. The default seated Kapha has no such stroked stem in its body.
-    const strokedPaths = (group: SVGGElement) =>
-      Array.from(group.querySelectorAll('path')).filter(
-        (el) => el.getAttribute('fill') === 'none',
-      ).length
-    const bareEllipses = kaphaCreature({}).querySelectorAll('ellipse').length
+
+  it('swaps the Kapha body for a lively seedling (stem + veined leaf blades + a bud) with form=sprout', () => {
+    // `sprout` is the only organic Kapha body: a stroked (fill:none) STEM + leaf VEINS, plus filled
+    // leaf BLADES + a crowning bud. Assert on its own structure (its motion/shine make cross-form
+    // stroked-path comparisons brittle).
     const sprout = kaphaCreature({ cosmetics: { form: 'sprout' } })
-    // The seedling adds at least two leaf ellipses over the bare body...
-    expect(sprout.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(bareEllipses + 2)
-    // ...and a stroked stem path the bare seated form never draws.
-    expect(strokedPaths(sprout)).toBeGreaterThan(strokedPaths(kaphaCreature({})))
+    // The stem + at least two leaf midribs are stroked fill:none paths.
+    const strokedPaths = Array.from(sprout.querySelectorAll('path')).filter(
+      (el) => el.getAttribute('fill') === 'none',
+    )
+    expect(strokedPaths.length).toBeGreaterThanOrEqual(3)
+    // At least two leaf blades + a bud are filled paths in the body palette.
+    const filledPaths = Array.from(sprout.querySelectorAll('path')).filter((el) => {
+      const f = el.getAttribute('fill')
+      return !!f && f !== 'none'
+    })
+    expect(filledPaths.length).toBeGreaterThanOrEqual(3)
+    // And it clearly differs from the bare seated body.
+    expect(creatureMarkup('stillness', { form: 'sprout' })).not.toBe(creatureMarkup('stillness', {}))
   })
 
   it('swaps the Kapha body for a dharma wheel (concentric ring OUTLINES + radial spoke lines) with form=wheel', () => {
@@ -928,12 +980,12 @@ describe('Spirit — new cosmetics render on the art', () => {
     expect(container.querySelector('.spirit-svg rect[stroke="#22d3ee"]')).not.toBeNull()
   })
 
-  it('draws the beanie accessory (cosy teal knit cap)', () => {
+  it('draws the beanie accessory (cosy clay knit cap)', () => {
     const { container } = renderSpirit(
       <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'beanie' } })} />,
     )
-    // The cap dome is a teal path (#14b8a6) — the beanie's signature colour.
-    expect(container.querySelector('.spirit-svg path[fill="#14b8a6"]')).not.toBeNull()
+    // The cap dome is a warm-clay path (#cd6a4f) — the beanie's signature colour.
+    expect(container.querySelector('.spirit-svg path[fill="#cd6a4f"]')).not.toBeNull()
   })
 
   it('draws the party_hat accessory (striped magenta cone)', () => {
@@ -990,16 +1042,16 @@ describe('Spirit — new cosmetics render on the art', () => {
   })
 
   it('draws the tiara accessory (gold band + gem dots)', () => {
-    // Rendered on a pathless spark: with no palette the tiara keeps its default gold band (a path'd
-    // spirit harmonises the metal band to its own palette accent — verified separately).
+    // The tiara is always gold (jewellery reads as precious on any creature, not tinted into the
+    // body colour), so it keeps its gold band on any path.
     const { container } = renderSpirit(
-      <Spirit spirit={spiritState({ path: null, cosmetics: { accessory: 'tiara' } })} />,
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'tiara' } })} />,
     )
     // The gold band is a stroked path (#fcd34d); the center gem a pink circle (#f472b6).
     expect(container.querySelector('.spirit-svg path[stroke="#fcd34d"]')).not.toBeNull()
     expect(container.querySelector('.spirit-svg circle[fill="#f472b6"]')).not.toBeNull()
-    // Two blue side gems (#93c5fd) flank the peak.
-    expect(container.querySelectorAll('.spirit-svg circle[fill="#93c5fd"]').length).toBeGreaterThanOrEqual(2)
+    // Two blue side gems (#60a5fa) flank the peak.
+    expect(container.querySelectorAll('.spirit-svg circle[fill="#60a5fa"]').length).toBeGreaterThanOrEqual(2)
   })
 
   it('draws the heart_clip accessory (a pink heart on a clip bar)', () => {
@@ -1116,6 +1168,247 @@ describe('Spirit — legendary tier-4 ultimates render on the art', () => {
     )
     // A drifting music note is a pink ellipse (#f472b6) — the boombox's signature marker.
     expect(container.querySelector('.spirit-svg ellipse[fill="#f472b6"]')).not.toBeNull()
+  })
+
+  // The ADORED THINGS — beloved universal darlings (companions + worn items + an onsen backdrop).
+  // Each carries a signature colour marker unique to its art so the test stays geometry-free.
+  it('draws the duckling companion (fuzzy yellow body)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'duckling' } })} />,
+    )
+    // The plump body is a warm-yellow ellipse (#ffd93d) — the duckling's marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#ffd93d"]')).not.toBeNull()
+  })
+
+  it('draws the axolotl companion (feathery pink gills)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'axolotl' } })} />,
+    )
+    // A gill frill is a rose circle (#fb6f92) — the axolotl's marker.
+    expect(container.querySelector('.spirit-svg circle[fill="#fb6f92"]')).not.toBeNull()
+  })
+
+  it('draws the boba companion (dark tapioca pearls)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { companion: 'boba' } })} />,
+    )
+    // A tapioca pearl is a near-black circle (#2b2320) — the bubble-tea marker.
+    expect(container.querySelector('.spirit-svg circle[fill="#2b2320"]')).not.toBeNull()
+  })
+
+  it('draws the capybara companion (chunky brown loaf)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'capybara' } })} />,
+    )
+    // The loaf body is a warm-brown ellipse (#9b7653) — the capybara's marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#9b7653"]')).not.toBeNull()
+  })
+
+  it('draws the wired_earbuds accessory (dangling white cord)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { accessory: 'wired_earbuds' } })} />,
+    )
+    // The cord is a soft off-white stroke (#eaeef3) — the earbuds' marker.
+    expect(container.querySelector('.spirit-svg path[stroke="#eaeef3"]')).not.toBeNull()
+  })
+
+  it('draws the cat_ears accessory (soft pink inner ear)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'cat_ears' } })} />,
+    )
+    // The inner ear is a rose path (#fb7185) — the cat-ears marker.
+    expect(container.querySelector('.spirit-svg path[fill="#fb7185"]')).not.toBeNull()
+  })
+
+  it('draws the bucket_hat accessory (denim crown)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'bucket_hat' } })} />,
+    )
+    // The crown dome is a denim path (#7c9cc4) — the bucket-hat marker.
+    expect(container.querySelector('.spirit-svg path[fill="#7c9cc4"]')).not.toBeNull()
+  })
+
+  it('draws the hot_spring habitat backdrop (teal onsen water)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { habitat: 'hot_spring' } })} />,
+    )
+    // The soaking pool is an onsen-teal rect (#4bb3c9) — unique to the hot-spring art.
+    expect(container.querySelector('.spirit-svg rect[fill="#4bb3c9"]')).not.toBeNull()
+  })
+
+  it('labels each adored darling in sentence case (OPTION_LABEL coverage)', () => {
+    expect(optionLabel('capybara')).toBe('Capybara')
+    expect(optionLabel('axolotl')).toBe('Axolotl')
+    expect(optionLabel('duckling')).toBe('Duckling')
+    expect(optionLabel('boba')).toBe('Bubble tea')
+    expect(optionLabel('wired_earbuds')).toBe('Wired earbuds')
+    expect(optionLabel('cat_ears')).toBe('Cat ears')
+    expect(optionLabel('bucket_hat')).toBe('Bucket hat')
+    expect(optionLabel('hot_spring')).toBe('Hot spring')
+  })
+
+  // ADORED THINGS wave 2 — more universal darlings. Each has a unique colour marker.
+  it('draws the mushroom companion (red toadstool cap)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'mushroom' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[fill="#e5484d"]')).not.toBeNull()
+  })
+
+  it('draws the hedgehog companion (brown spikes)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'hedgehog' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[fill="#6f5638"]')).not.toBeNull()
+  })
+
+  it('draws the penguin companion (dark tuxedo body)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { companion: 'penguin' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg ellipse[fill="#2b2f3a"]')).not.toBeNull()
+  })
+
+  it('draws the shiba companion (tan saddle)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'shiba' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[fill="#d99a5b"]')).not.toBeNull()
+  })
+
+  it('draws the beret accessory (raspberry felt)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { accessory: 'beret' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[fill="#a23e5c"]')).not.toBeNull()
+  })
+
+  it('draws the flower_crown accessory (leafy vine band)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'flower_crown' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[stroke="#6fbf73"]')).not.toBeNull()
+  })
+
+  it('draws the heartfall weather overlay (drifting rose hearts)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: null, cosmetics: { weather: 'heartfall' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[fill="#f6607f"]')).not.toBeNull()
+  })
+
+  it('draws the campsite habitat backdrop (terracotta tent)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { habitat: 'campsite' } })} />,
+    )
+    expect(container.querySelector('.spirit-svg path[fill="#cf6a4a"]')).not.toBeNull()
+  })
+
+  it('labels each wave-2 darling in sentence case (OPTION_LABEL coverage)', () => {
+    expect(optionLabel('mushroom')).toBe('Mushroom')
+    expect(optionLabel('hedgehog')).toBe('Hedgehog')
+    expect(optionLabel('penguin')).toBe('Penguin')
+    expect(optionLabel('shiba')).toBe('Shiba')
+    expect(optionLabel('beret')).toBe('Beret')
+    expect(optionLabel('flower_crown')).toBe('Flower crown')
+    expect(optionLabel('heartfall')).toBe('Drifting hearts')
+    expect(optionLabel('campsite')).toBe('Campsite')
+  })
+
+  // ONSEN & EARTH — the cosy hot-spring set (coal-buddy / capybara direction).
+  it('draws the onsen_towel accessory (folded white towel)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { accessory: 'onsen_towel' } })} />,
+    )
+    // The lower folded layer is a soft-white rect (#f4f1ea) — the towel's marker.
+    expect(container.querySelector('.spirit-svg rect[fill="#f4f1ea"]')).not.toBeNull()
+  })
+
+  it('draws the yuzu accessory (citrus ball on the crown)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { accessory: 'yuzu' } })} />,
+    )
+    // The yuzu is a warm citrus circle (#f7a91f) — its marker.
+    expect(container.querySelector('.spirit-svg circle[fill="#f7a91f"]')).not.toBeNull()
+  })
+
+  it('draws the otter companion (river-brown body hugging a pebble)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'otter' } })} />,
+    )
+    // The upright body is a river-brown ellipse (#8d6748) — the otter's marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#8d6748"]')).not.toBeNull()
+  })
+
+  it('draws the red_panda companion (rust body + ringed tail)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'red_panda' } })} />,
+    )
+    // The curled body is a rust ellipse and the wrapped tail a rust stroke (#c2532d).
+    expect(container.querySelector('.spirit-svg ellipse[fill="#c2532d"]')).not.toBeNull()
+    expect(container.querySelector('.spirit-svg path[stroke="#c2532d"]')).not.toBeNull()
+  })
+
+  it('draws the bamboo_grove habitat backdrop (jointed green stalks)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { habitat: 'bamboo_grove' } })} />,
+    )
+    // A near stalk is a bamboo-green rect (#79b356) — unique to the grove art.
+    expect(container.querySelector('.spirit-svg rect[fill="#79b356"]')).not.toBeNull()
+  })
+
+  it('draws the spring_stones ground (smooth wet stones)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { ground: 'spring_stones' } })} />,
+    )
+    // A wet stone is a grey ellipse (#8d949c) — the spring-stones marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#8d949c"]')).not.toBeNull()
+  })
+
+  it('draws the steam weather overlay (curling pale wisps)', () => {
+    // Pathless spark → the default pale wisp colour (a path'd spirit tints toward its core hue).
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: null, cosmetics: { weather: 'steam' } })} />,
+    )
+    // A steam wisp is a pale stroked path (#eef3f5) — the yukemuri marker.
+    expect(container.querySelector('.spirit-svg path[stroke="#eef3f5"]')).not.toBeNull()
+  })
+
+  it('draws the tanuki companion (warm brown body + lucky leaf)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'stillness', cosmetics: { companion: 'tanuki' } })} />,
+    )
+    // The round body is a warm-brown ellipse (#a8815c) — the tanuki's marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#a8815c"]')).not.toBeNull()
+  })
+
+  it('draws the snow_monkey companion (rosy soaking face)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'heart', cosmetics: { companion: 'snow_monkey' } })} />,
+    )
+    // The bare rosy face is a warm ellipse (#e77e6e) — the snow monkey's marker.
+    expect(container.querySelector('.spirit-svg ellipse[fill="#e77e6e"]')).not.toBeNull()
+  })
+
+  it('draws the teahouse habitat backdrop (tatami floor band)', () => {
+    const { container } = renderSpirit(
+      <Spirit spirit={spiritState({ path: 'breath', cosmetics: { habitat: 'teahouse' } })} />,
+    )
+    // The tatami band is a straw-toned rect (#cfc27f) — unique to the tea house art.
+    expect(container.querySelector('.spirit-svg rect[fill="#cfc27f"]')).not.toBeNull()
+  })
+
+  it('labels each onsen & earth option in sentence case (OPTION_LABEL coverage)', () => {
+    expect(optionLabel('onsen_towel')).toBe('Onsen towel')
+    expect(optionLabel('yuzu')).toBe('Yuzu')
+    expect(optionLabel('otter')).toBe('Otter')
+    expect(optionLabel('red_panda')).toBe('Red panda')
+    expect(optionLabel('bamboo_grove')).toBe('Bamboo grove')
+    expect(optionLabel('spring_stones')).toBe('Spring stones')
+    expect(optionLabel('steam')).toBe('Rising steam')
+    expect(optionLabel('tanuki')).toBe('Tanuki')
+    expect(optionLabel('snow_monkey')).toBe('Snow monkey')
+    expect(optionLabel('teahouse')).toBe('Tea house')
   })
 
   it('draws the nebula habitat backdrop (warm stellar gas)', () => {

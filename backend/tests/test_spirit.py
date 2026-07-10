@@ -331,6 +331,28 @@ def test_choose_rejects_unexpected_fields(client):
     assert res.status_code == 422
 
 
+def test_choose_starts_below_full_but_content(client):
+    """A freshly chosen creature is born a little hungry (the NEW_SPIRIT_START band), so caring for
+    it visibly fills its bars — not maxed at 100% on arrival — while staying AT/ABOVE the calm
+    `content` floor (never the alarming `restless` tier). See spirit_service.choose_path."""
+    _auth(client, "choose_start@example.com")
+    body = _choose(client, "stillness", name="Nascent").json()
+
+    # Overall condition (Vitality, ADR-0032) starts in the born-hungry band: below full, but never
+    # below the content floor, so a brand-new companion reads calm — never alarming.
+    cond = body["condition"]["factor"]
+    assert cond < 1.0  # not maxed
+    assert spirit_service.NEEDS_FLOOR <= cond <= spirit_service.NEW_SPIRIT_START_MAX + 1e-6
+    assert body["condition"]["tier"] == CONDITION_CONTENT
+
+    # Each of the three care needs likewise starts below full, at the calm content tier.
+    for need in ("nourished", "rested", "joyful"):
+        f = body["needs"][need]["factor"]
+        assert f < 1.0
+        assert spirit_service.NEEDS_FLOOR <= f <= spirit_service.NEW_SPIRIT_START_MAX + 1e-6
+        assert body["needs"][need]["tier"] == CONDITION_CONTENT
+
+
 # --- Gentle, floored needs (ADR-0031: the companion stops being mortal) -------------------
 #
 # Needs ease down on a clock since last fed but are FLOORED at NEEDS_FLOOR so they never empty or
@@ -1294,7 +1316,7 @@ def test_unlock_and_equip_a_form_per_path(client):
     for path, tier1, tier2 in cases:
         _auth(client, f"form_unlock_{path}@example.com")
         assert _choose(client, path).status_code == 200
-        _earn_to_level(client, 3)  # afford the tier-1 + tier-2 forms and clear the tier-2 L3 gate
+        _earn_to_level(client, 8)  # afford the tier-1 + tier-2 forms and clear the tier-2 L8 gate
 
         # Tier-1 form unlocks + auto-equips.
         res = _unlock(client, "form", tier1)
@@ -1324,7 +1346,7 @@ def test_unlock_and_equip_each_new_form_per_path(client):
     for path, options in cases:
         _auth(client, f"new_form_{path}@example.com")
         assert _choose(client, path).status_code == 200
-        _earn_to_level(client, 3)  # afford every form + clear the tier-2 L3 gate
+        _earn_to_level(client, 8)  # afford every form + clear the tier-2 L8 gate
         for option in options:
             res = _unlock(client, "form", option)
             assert res.status_code == 200, res.text
@@ -1346,7 +1368,7 @@ def test_unlock_and_equip_the_newest_forms_per_path(client):
     for path, options in cases:
         _auth(client, f"newest_form_{path}@example.com")
         assert _choose(client, path).status_code == 200
-        _earn_to_level(client, 3)  # afford every form + clear the tier-2 L3 gate
+        _earn_to_level(client, 8)  # afford every form + clear the tier-2 L8 gate
         for option in options:
             res = _unlock(client, "form", option)
             assert res.status_code == 200, res.text
@@ -1516,14 +1538,13 @@ def test_unlock_unaffordable_409(client):
     # A fresh user has COINS_PER_LEVEL coins. Unlock items until the balance can't cover the
     # next one, then assert the unaffordable unlock is rejected.
     _auth(client, "cosmetics_broke@example.com")
-    # COINS_PER_LEVEL (80) buys at most: aura soft (30) + ribbon (35) = 65; habitat meadow
-    # (50) then no longer fits (15 left). Spend down, then try the meadow.
+    # COINS_PER_LEVEL (80) buys aura soft (50), leaving 30 — not enough for accessory ribbon (35).
+    # Spend down, then try the ribbon.
     assert _unlock(client, "aura", "soft").status_code == 200
-    assert _unlock(client, "accessory", "ribbon").status_code == 200
-    broke = _unlock(client, "habitat", "meadow")
+    broke = _unlock(client, "accessory", "ribbon")
     assert broke.status_code == 409
     # The failed unlock changed nothing.
-    assert "habitat" not in _spirit(client)["cosmetics"]
+    assert "accessory" not in _spirit(client)["cosmetics"]
 
 
 def test_unlock_already_owned_is_409_and_does_not_recharge(client):
@@ -2213,7 +2234,7 @@ def test_unlock_matching_path_slot_cosmetic_succeeds(client):
     for slot, option, owner_path in _PATH_SLOT_COSMETICS:
         _auth(client, f"buyslot_{slot}_{option}@example.com")
         assert _choose(client, owner_path).status_code == 200
-        _earn_to_level(client, 6)  # unlock_level 6 + enough coins (6 × 80 = 480 > 220)
+        _earn_to_level(client, 8)  # weather tier-3 now needs L8; 8 × 80 = 640 coins covers the chain
         # Climb the tree: a tier-1 then the universal tier-2 in this slot satisfy the tier-3 prereq.
         tier2 = _SLOT_TIER2_PREREQ[slot]
         assert SPIRIT_COSMETICS_CATALOG[slot][tier2]["tier"] == 2
@@ -2295,7 +2316,7 @@ def test_unlock_matching_tier2_path_exclusive_succeeds(client):
     for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
         _auth(client, f"buy2_{slot}_{option}@example.com")
         assert _choose(client, owner_path).status_code == 200
-        _earn_to_level(client, 5)  # unlock_level 4 + coins (5 × 80 = 400 > tier1 + ~110)
+        _earn_to_level(client, 6)  # weather tier-2 now needs L6; 6 × 80 = 480 coins covers tier1 + tier2
         tier1 = next(
             o for o, spec in SPIRIT_COSMETICS_CATALOG[slot].items() if spec["tier"] == 1
         )
@@ -2450,7 +2471,7 @@ def _full_signature_loadout(path):
 # set-status helper skips them, keeping the total at 7). palette/size are universal recolour/resize;
 # `form` is per-path (Vata-only shapes) but is still a body cosmetic, not a signature capstone, so
 # it is excluded too (the service's `_NON_SIGNATURE_SLOTS`).
-_BODY_SLOTS = {"palette", "size", "form"}
+_BODY_SLOTS = {"palette", "size", "form", "face"}
 _SIGNATURE_SLOTS = [s for s in SPIRIT_COSMETICS_CATALOG if s not in _BODY_SLOTS]
 
 

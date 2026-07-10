@@ -361,8 +361,8 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
     unlock.mockReset()
   })
 
-  // The "night" habitat draws a dark backdrop rect (fill #1e293b). It's a stable marker that an
-  // equipped/previewed habitat cosmetic actually renders on the art.
+  // The "night" habitat draws a deep night-sky backdrop rect (fill #243357). It's a stable marker
+  // that an equipped/previewed habitat cosmetic actually renders on the art.
   const habitatTree: SpiritAvailableSlot = {
     slot: 'habitat',
     equipped: null,
@@ -372,7 +372,7 @@ describe('SpiritPage cosmetics on the art (preview)', () => {
   // The live spirit renders on the centered customize STAGE (the hero is a compact status line).
   const nightRectsInHero = () => {
     const stage = document.querySelector('.spirit-stage-art')
-    return stage ? stage.querySelectorAll('rect[fill="#1e293b"]').length : 0
+    return stage ? stage.querySelectorAll('rect[fill="#243357"]').length : 0
   }
 
   it('renders an equipped cosmetic on the centered customize stage', async () => {
@@ -748,8 +748,11 @@ describe('SpiritPage customization slots (redesign)', () => {
     options: [opt({ option: 'sprite', cost: 90, tier: 1, unlockable: true })],
   }
 
+  // Redesign: every renderable slot now has a category CHIP (`.spirit-cat[data-slot=…]`) in the
+  // selector bar, while only the SELECTED category renders its option panel (`.spirit-slot`). So
+  // "is this slot present/reachable?" reads off the chip.
   const slotEl = (slot: string) =>
-    document.querySelector(`.spirit-slot[data-slot="${slot}"]`)
+    document.querySelector(`.spirit-cat[data-slot="${slot}"]`)
 
   it('shows EVERY cosmetic slot + the set-bonus status by default (no "show all" gate)', async () => {
     get.mockResolvedValue(

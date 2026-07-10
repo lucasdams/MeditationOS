@@ -108,6 +108,22 @@ export default function AppHeader() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
 
+  // Publish the header's live height as --app-header-h on <html>, so sticky page elements (e.g.
+  // the Spirit Customize viewer) can pin just below the fixed header. The header wraps to two rows
+  // on narrow widths, so its height is content- and viewport-dependent — measure it rather than
+  // hard-code. A ResizeObserver keeps the var correct across wraps, locale switches, and resizes.
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const publish = () =>
+      document.documentElement.style.setProperty('--app-header-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // The admin entry renders only for admins (is_admin from /auth/me). Non-admins never
   // see it; the backend also 403s every /admin/* call regardless of the UI. It joins the
   // Progress menu (stats + account).
@@ -228,7 +244,7 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="app-header">
+    <header className="app-header" ref={headerRef}>
       <Link to="/" className="app-brand">
         MeditationOS
       </Link>

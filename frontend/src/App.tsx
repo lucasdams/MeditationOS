@@ -15,6 +15,7 @@ import JournalPage from './pages/JournalPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import NotFoundPage from './pages/NotFoundPage'
+import FormGallery from './pages/FormGallery'
 import ProtectedRoute from './components/ProtectedRoute'
 import CookieNotice from './components/CookieNotice'
 import ZenEgg from './components/ZenEgg'
@@ -62,6 +63,8 @@ export default function App() {
         {/* Public legal pages — reachable while logged out */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        {/* TEMP form-review gallery — delete with pages/FormGallery.tsx */}
+        <Route path="/formgallery" element={<FormGallery />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
           <Route
