@@ -1,0 +1,67 @@
+# Production-mode stack for LOCAL use — the app running as it would in production: the frontend as a
+# minified static bundle served by nginx, the backend via gunicorn workers with ENVIRONMENT=production
+# (prod security headers, JSON logs, fail-fast config validation). It runs on its OWN ports, project
+# name, and DB volume, so it coexists with the dev stack (docker-compose.yml) without clashing.
+#
+# Usage (from the repo root):
+#   cp .env.prod.example .env.prod          # then set a strong SECRET_KEY (openssl rand -hex 32)
+#   docker compose --env-file .env.prod -p medos-prod -f docker-compose.prod.yml up --build -d
+#   open http://localhost:8080
+#   docker compose -p medos-prod -f docker-compose.prod.yml logs -f       # follow logs
+#   docker compose -p medos-prod -f docker-compose.prod.yml down          # stop (keep DB volume)
+#   docker compose -p medos-prod -f docker-compose.prod.yml down -v       # stop + wipe the prod DB
+#
+# Ports (distinct from the dev stack's 5173 / 8000 / 5433):
+#   frontend  http://localhost:8080
+#   backend   http://localhost:8001   (API at /api/v1, docs at /docs)
+#   database  localhost:5434
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    depends_on:
+      database:
+        condition: service_healthy # wait for Postgres before migrating
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      ENVIRONMENT: production # gunicorn workers (no DEV_RELOAD) + prod config validation
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      REDIS_URL: ${REDIS_URL:-} # empty → in-memory throttles (per-worker; fine for local)
+    ports:
+      - "8001:8000"
+    # No source bind-mount and no DEV_RELOAD: the built image IS the artifact (prod behaviour).
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata_prod:
