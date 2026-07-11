@@ -3344,10 +3344,9 @@ button.today-action:disabled {
   color: var(--text-secondary);
 }
 
-/* --- Spirit tending + survival stakes (ADR-0029) ----------------------------------------- */
+/* --- Spirit tending --------------------------------------------------------------------- */
 /* The Feed / Rest / Play tend actions — calm, game-like cards under the needs read-out. Each
-   tops up one survival meter; the row stays low-pressure (no shouting) but the stakes are legible
-   via the ailing banner above. */
+   tops up one need; the row stays low-pressure (no shouting) — an optional, gentle loop. */
 .spirit-tend {
   display: flex;
   gap: 0.5rem;
@@ -4359,38 +4358,6 @@ button.today-action:disabled {
   }
 }
 
-/* AILING (ADR-0029): the creature is unwell but not yet dead. It droops harder and sighs slowly —
-   a heavy, low rise-and-fall instead of the lively wandering float, plus a deeper desaturation
-   (vitality is already pinned low by the component). Reads as "needs care", never alarming. The
-   `--alive` float class is NOT applied while ailing, so this won't be clobbered. */
-.spirit-creature--ailing {
-  transform-origin: center bottom;
-  transform-box: fill-box;
-  /* A pronounced wilt: lower + a touch smaller than the vitality droop alone. */
-  animation: spirit-sigh 4.8s ease-in-out infinite;
-  filter: saturate(0.35) brightness(0.9);
-}
-
-/* A slow, heavy sigh — sinks, holds low, rises a little. Calm, weary, never twitchy. */
-@keyframes spirit-sigh {
-  0%,
-  100% {
-    transform: translateY(3px) scale(0.97) rotate(0deg);
-  }
-  50% {
-    transform: translateY(6px) scale(0.955) rotate(-1.5deg);
-  }
-}
-
-/* DEAD (ADR-0029): a calm, still, faded silhouette — no motion at all, drained of colour, resting
-   low. The memorial scene (halo + headstone) sits behind it. Respectful, never gory. */
-.spirit-creature--dead {
-  transform-origin: center bottom;
-  transform-box: fill-box;
-  transform: translateY(7px) scale(0.95);
-  filter: saturate(0) brightness(0.92) opacity(0.7);
-}
-
 /* The COMPANION layer: the little friend in the corner bobs/sways gently on ITS OWN pace — a
    longer, distinct period (6.8s) from the creature's float (5s) and the aura's glow (4.6s), so the
    layers are visibly out of sync ("at their own pace"). Calm and low-amplitude, never frantic;
@@ -4582,11 +4549,6 @@ button.today-action:disabled {
   }
   .spirit-creature--pacing {
     transition: none;
-  }
-  /* The ailing sigh holds static under reduced motion (ADR-0029); the droop/desaturation still
-     SHOW (the unwell look is information, not motion) — just frozen. */
-  .spirit-creature--ailing {
-    animation: none;
   }
 }
 
@@ -5756,57 +5718,6 @@ button.today-action:disabled {
 
 .spirit-collection-path {
   font-size: var(--text-xs);
-}
-
-/* A died (memorial) collection entry (ADR-0029) — distinct from a radiant graduate: a quiet
-   muted treatment so the gallery reads the difference at a glance. */
-.spirit-collection-item--memorial {
-  opacity: 0.85;
-}
-
-.spirit-collection-lifespan {
-  font-size: var(--text-xs);
-}
-
-/* --- Spirit memorial panel (ADR-0029, dead) ---------------------------------------------- */
-/* Replaces the normal page body when the spirit has died: the passed art, the name, its lifespan,
-   a kind line, and a single "awaken a new spark" action. Calm + respectful, centred. */
-.spirit-memorial-panel {
-  text-align: center;
-}
-
-.spirit-memorial-art {
-  margin: 0 auto;
-  width: 180px;
-  max-width: 60%;
-}
-
-.spirit-memorial-art .spirit-svg {
-  width: 100%;
-}
-
-.spirit-memorial-name {
-  margin: 0.5rem 0 0.1rem;
-  font-size: var(--text-lg);
-}
-
-.spirit-memorial-lifespan {
-  margin: 0;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.spirit-memorial-line {
-  margin: 0.75rem auto 1rem;
-  max-width: 24rem;
-  font-size: var(--text-sm);
-}
-
-/* The single primary action to begin again — the ordinary indigo primary (not a danger idiom):
-   awakening a new spark after a loss is a gentle, hopeful step, not a destructive one. */
-.spirit-memorial-awaken {
-  margin-top: 0;
 }
 
 .spirit-awaken {
