@@ -7083,7 +7083,12 @@ function PittaForm({
           <ellipse cx={cx} cy={headY - headH * 0.5 + 0.5} rx={headHw * 0.8} ry={1.8} fill={pal.accent} opacity={(0.5 + 0.2 * p) * g} />
           {/* The torch FLAME on the bound head. */}
           {layeredFlame(cx, flameBaseY, fh, fw, tipCurl, 'torch-flame')}
-          {face(cx, flameBaseY - fh * 0.4, fw * 0.3)}
+          {/* The face (and its worn accessory) leans gently with the flame's life — the same
+              tilt treatment the blaze + campfire faces use, so it moves with the fire rather
+              than hanging rigidly on a flickering flame. */}
+          <g className="spirit-tilt" style={{ animationDuration: '4.2s' }}>
+            {face(cx, flameBaseY - fh * 0.4, fw * 0.3)}
+          </g>
           {sparks(cx, flameBaseY - fh + 2, fw + 2, 'torch-sparks')}
           {smoke(cx, flameBaseY - fh + 1, 2, 'torch-smoke')}
         </g>
@@ -7937,8 +7942,13 @@ function VataForm({
           })}
           {/* A faint core seam corkscrewing down the funnel. */}
           <path d={`M ${cx} ${topY} Q ${cx + 5} ${cy - 6} ${cx - 3} ${cy} Q ${cx - 5} ${cy + 6} ${cx} ${botY}`} fill="none" stroke={pal.deep} strokeWidth={1 + p * 0.4} strokeLinecap="round" opacity={0.4 * g} />
-          {/* The gentle face, high on the funnel's wide top band (the classic friendly-tornado read). */}
-          {face(cx, topY + 4.5, 3.6 + p, 0.98 + p * 0.3)}
+          {/* The gentle face, high on the funnel's wide top band (the classic friendly-tornado
+              read). The top band ALSO sways on its own x-phase (spirit-sway-x, t=0 → no delay) —
+              mirror that exact animation here so the face + worn accessory slide WITH the band
+              instead of hovering still while the funnel moves beneath them. */}
+          <g className="spirit-sway-x">
+            {face(cx, topY + 4.5, 3.6 + p, 0.98 + p * 0.3)}
+          </g>
           {/* Debris motes spinning around the funnel. */}
           {Array.from({ length: 3 + i }, (_, k) => {
             const t = k / (3 + i)
