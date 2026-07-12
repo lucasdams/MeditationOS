@@ -225,6 +225,44 @@ export default function FormGallery() {
         </div>
       </section>
 
+      {/* ── TEMP: accessory ANCHORING audit — every form wearing head/eye/neck items, so a
+          misplaced anchor is visible at a glance (halo=above head, shades=eyes, scarf=neck). ── */}
+      {(['halo', 'shades', 'scarf'] as const).map((acc) => (
+        <section key={`anchor-${acc}`} style={{ marginBottom: 32 }}>
+          <h2 style={{ font: '600 18px system-ui', margin: '0 0 12px' }}>Anchor audit — {acc} on every form</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {GROUPS.flatMap((group) =>
+              group.forms.map((f) => (
+                <div key={`${group.path}-${f.key ?? 'default'}-${acc}`} style={{ width: 120, textAlign: 'center', background: '#fff', border: '1px solid #eadfce', borderRadius: 10, padding: 5 }}>
+                  <SpiritArt
+                    stage="ascendant"
+                    path={group.path}
+                    glow={1}
+                    cosmetics={{ ...(f.key ? { form: f.key } : {}), accessory: acc }}
+                    reducedMotion
+                    previewing
+                  />
+                  <div style={{ font: '500 11px system-ui', marginTop: 2 }}>{group.path.slice(0, 2)} · {f.label}</div>
+                </div>
+              )),
+            )}
+          </div>
+        </section>
+      ))}
+
+      {/* ── TEMP: the reported bug close-up — the Vata constellation wearing several items. ── */}
+      <section style={{ marginBottom: 32 }}>
+        <h2 style={{ font: '600 18px system-ui', margin: '0 0 12px' }}>Constellation close-up (reported: scarf off the face)</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {['scarf', 'halo', 'party_hat', 'headphones', 'beanie', 'cat_ears', 'nerd_glasses', 'onsen_towel'].map((k) => (
+            <div key={`const-${k}`} style={{ width: 160, textAlign: 'center', background: '#fff', border: '1px solid #eadfce', borderRadius: 10, padding: 5 }}>
+              <SpiritArt stage="ascendant" path="heart" glow={1} cosmetics={{ form: 'constellation', accessory: k }} reducedMotion previewing />
+              <div style={{ font: '500 11px system-ui', marginTop: 2 }}>{k}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {GROUPS.map((group) => (
         <section key={group.dosha} style={{ marginBottom: 32 }}>
           <h2 style={{ font: '600 18px system-ui', margin: '0 0 12px' }}>{group.dosha}</h2>
