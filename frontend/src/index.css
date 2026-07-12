@@ -4183,6 +4183,24 @@ button.today-action:disabled {
     opacity: 1;
   }
 }
+/* GLEAM — a shape's repeated units take turns catching the light: a brightness lift that travels
+   unit → unit IN ORDER (petal → petal, stone → stone…). Filter-only — no transform or opacity —
+   so it wraps parts that already jiggle / breathe / rotate without fighting them. Give every unit
+   the SAME duration and delay = (k / n) × duration (see gleamProps in Spirit.tsx): one unit
+   shines at a time and the highlight sweeps the ring on a calm, readable rhythm. */
+.spirit-gleam {
+  animation: spirit-gleam 4.8s ease-in-out infinite;
+}
+@keyframes spirit-gleam {
+  0%,
+  18%,
+  100% {
+    filter: brightness(1);
+  }
+  9% {
+    filter: brightness(1.45);
+  }
+}
 /* SMOKE — a thin wisp rising off a fire, widening + fading as it climbs, then looping. Staggered
    per line so a couple of trails drift up out of sync. */
 .spirit-smoke {
@@ -4280,6 +4298,7 @@ button.today-action:disabled {
 /* The breathe pacer syncs the creature to the breath — hold its parts still there so nothing fights it. */
 .spirit-creature--pacing .spirit-jiggle,
 .spirit-creature--pacing .spirit-shimmer,
+.spirit-creature--pacing .spirit-gleam,
 .spirit-creature--pacing .spirit-smoke,
 .spirit-creature--pacing .spirit-shine,
 .spirit-creature--pacing .spirit-swing,
@@ -4330,6 +4349,7 @@ button.today-action:disabled {
   .spirit-breathe,
   .spirit-jiggle,
   .spirit-shimmer,
+  .spirit-gleam,
   .spirit-smoke,
   .spirit-shine,
   .spirit-swing,
