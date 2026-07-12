@@ -6051,6 +6051,21 @@ function drawFaceVariant(
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
  * figure haloed in gold. Warm amber/gold palette.
  */
+// Props for the `spirit-gleam` chase: unit `k` of `n` siblings briefly brightens IN ORDER on a
+// shared loop (delays spread over the full duration), so exactly one petal / stone / ray shines
+// at a time and the highlight travels around the shape. Filter-only, so it composes with a
+// unit's own jiggle / breathe / sway class — wrap that unit in a <g {...gleamProps(k, n)}>.
+// Duration scales with the unit count so the per-unit dwell stays calm at any n.
+function gleamProps(k: number, n: number, dur = Math.max(3.2, n * 0.55)) {
+  return {
+    className: 'spirit-gleam',
+    style: {
+      animationDelay: `${((k / n) * dur).toFixed(2)}s`,
+      animationDuration: `${dur.toFixed(2)}s`,
+    } as CSSProperties,
+  }
+}
+
 function StillnessForm({
   stage,
   g,
@@ -6256,10 +6271,11 @@ function StillnessForm({
           ]
           return (
             // Each bubble JIGGLES on its own phase (staggered); the centre one PULSES under the face.
+            // A gleam wrapper makes the bubbles take turns catching the light around the clump.
             <g>
               {orbs.map((o, k) => (
+                <g key={k} {...gleamProps(k, orbs.length)}>
                 <g
-                  key={k}
                   className={k === 0 ? 'spirit-pulse' : 'spirit-jiggle'}
                   style={
                     k === 0
@@ -6280,6 +6296,7 @@ function StillnessForm({
                     strokeLinecap="round"
                     opacity={0.6 * g}
                   />
+                </g>
                 </g>
               ))}
               {/* The serene face on the front-centre bubble. */}
@@ -6317,21 +6334,23 @@ function StillnessForm({
               {stones.map((s) => {
                 const isCrown = s.k === count - 1 // the crown stone wears the face — keep it steady
                 return (
-                  <ellipse
-                    key={s.k}
-                    className={isCrown ? undefined : 'spirit-jiggle'}
-                    style={
-                      isCrown
-                        ? undefined
-                        : { animationDelay: `${(s.k * 0.45).toFixed(2)}s`, animationDuration: `${(3.2 + s.k * 0.4).toFixed(1)}s` }
-                    }
-                    cx={40}
-                    cy={s.cy}
-                    rx={s.rx}
-                    ry={s.ry}
-                    fill={s.fill}
-                    opacity={(0.78 + 0.18 * p) * g}
-                  />
+                  // The gleam wrapper runs the highlight up the stack, stone by stone.
+                  <g key={s.k} {...gleamProps(s.k, count)}>
+                    <ellipse
+                      className={isCrown ? undefined : 'spirit-jiggle'}
+                      style={
+                        isCrown
+                          ? undefined
+                          : { animationDelay: `${(s.k * 0.45).toFixed(2)}s`, animationDuration: `${(3.2 + s.k * 0.4).toFixed(1)}s` }
+                      }
+                      cx={40}
+                      cy={s.cy}
+                      rx={s.rx}
+                      ry={s.ry}
+                      fill={s.fill}
+                      opacity={(0.78 + 0.18 * p) * g}
+                    />
+                  </g>
                 )
               })}
               {/* Little stone ARMS with fists resting down the sides (the coal rock-buddy recipe) —
@@ -6432,10 +6451,10 @@ function StillnessForm({
                   return (
                     <ellipse
                       key={k}
-                      // Opacity-only shimmer (safe alongside the rotate transform attr) → each petal
-                      // glows on its own phase while the whole flower slowly breathes.
-                      className="spirit-shimmer"
-                      style={{ animationDelay: `${(k * 0.31).toFixed(2)}s`, animationDuration: `${(2.4 + (k % 3) * 0.5).toFixed(1)}s` }}
+                      // Ordered gleam (filter-only, safe alongside the rotate transform attr) → the
+                      // petals take turns shining, the highlight sweeping around the bloom while the
+                      // whole flower slowly breathes.
+                      {...gleamProps(k, petals)}
                       cx={px}
                       cy={py}
                       rx={3 * scale}
@@ -6729,7 +6748,9 @@ function StillnessForm({
                 const ex = 40 + Math.cos(a) * outer
                 const ey = cy + Math.sin(a) * outer
                 return (
-                  <g key={`wheel-spoke-${k}`}>
+                  // The gleam chases spoke to spoke around the turning wheel (filter-only, safe
+                  // under the group's rotation).
+                  <g key={`wheel-spoke-${k}`} {...gleamProps(k, spokes)}>
                     <line
                       x1={40}
                       y1={cy}
@@ -7185,9 +7206,9 @@ function PittaForm({
               return (
                 <path
                   key={`ray-${k}`}
-                  // Each ray flickers on its own phase (opacity-only, safe under the crown's rotation).
-                  className="spirit-shimmer"
-                  style={{ animationDelay: `${(k * 0.24).toFixed(2)}s`, animationDuration: `${(1.9 + (k % 3) * 0.4).toFixed(1)}s` }}
+                  // Ordered gleam (filter-only, safe under the crown's rotation): the rays take
+                  // turns brightening, the shine sweeping around the sun.
+                  {...gleamProps(k, rayCount)}
                   d={`M ${bx + px} ${by + py} L ${tipX} ${tipY} L ${bx - px} ${by - py} Z`}
                   fill={pal.accent}
                   opacity={(0.7 + 0.16 * p) * g}
@@ -7591,17 +7612,19 @@ function VataForm({
           {Array.from({ length: bumps }, (_, k) => {
             const { bx, by, r } = bumpAt(k)
             return (
-              <circle
-                key={`bump-${k}`}
-                // Each puff drifts on its own phase → the cloud gently churns (while the whole lump bobs).
-                className="spirit-jiggle"
-                style={{ animationDelay: `${(k * 0.5).toFixed(2)}s`, animationDuration: `${(3.4 + (k % 3) * 0.6).toFixed(1)}s` }}
-                cx={bx}
-                cy={by}
-                r={r}
-                fill={pal.glow}
-                opacity={(0.7 + 0.2 * p) * g}
-              />
+              // The gleam runs across the lump puff by puff (wrapper, so the jiggle keeps its own phase).
+              <g key={`bump-${k}`} {...gleamProps(k, bumps)}>
+                <circle
+                  // Each puff drifts on its own phase → the cloud gently churns (while the whole lump bobs).
+                  className="spirit-jiggle"
+                  style={{ animationDelay: `${(k * 0.5).toFixed(2)}s`, animationDuration: `${(3.4 + (k % 3) * 0.6).toFixed(1)}s` }}
+                  cx={bx}
+                  cy={by}
+                  r={r}
+                  fill={pal.glow}
+                  opacity={(0.7 + 0.2 * p) * g}
+                />
+              </g>
             )
           })}
           {/* A flat-ish soft underside so the lump reads as a cloud, not a mound of orbs. */}
@@ -7927,17 +7950,19 @@ function VataForm({
             // not flat stacked rings.
             const bcx = cx + Math.sin(t * Math.PI * 2.4) * topW * 0.3
             return (
-              <path
-                key={`band-${k}`}
-                className="spirit-sway-x"
-                style={{ animationDelay: `${(-t * 1.9).toFixed(2)}s` }}
-                d={`M ${bcx - w} ${by} Q ${bcx} ${by + 3 + p} ${bcx + w} ${by} Q ${bcx} ${by - 3 - p} ${bcx - w} ${by}`}
-                fill="none"
-                stroke={k % 2 === 0 ? pal.glow : pal.accent}
-                strokeWidth={1.7 + p * 0.7}
-                strokeLinecap="round"
-                opacity={(0.52 + 0.25 * p) * g}
-              />
+              // The gleam runs down the funnel band by band (wrapper, so the sway keeps its phase).
+              <g key={`band-${k}`} {...gleamProps(k, bands)}>
+                <path
+                  className="spirit-sway-x"
+                  style={{ animationDelay: `${(-t * 1.9).toFixed(2)}s` }}
+                  d={`M ${bcx - w} ${by} Q ${bcx} ${by + 3 + p} ${bcx + w} ${by} Q ${bcx} ${by - 3 - p} ${bcx - w} ${by}`}
+                  fill="none"
+                  stroke={k % 2 === 0 ? pal.glow : pal.accent}
+                  strokeWidth={1.7 + p * 0.7}
+                  strokeLinecap="round"
+                  opacity={(0.52 + 0.25 * p) * g}
+                />
+              </g>
             )
           })}
           {/* A faint core seam corkscrewing down the funnel. */}
