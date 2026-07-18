@@ -914,9 +914,10 @@ a:hover { color: var(--accent-hover); }
   position: relative;
 }
 
-/* Practice / Progress triggers get the same "feature pill" treatment as the Spirit link — a
-   leading icon + label + caret, the Spirit teal tint, and a colour ring + soft lift — so the
-   three section pills read as a designed set, set apart from the violet Home. */
+/* Practice / Progress triggers keep the "feature pill" shape (leading icon + label + caret,
+   colour ring + soft lift) but in the neutral secondary tint — the Spirit teal is reserved
+   for the Spirit link so its pill stands out as the centerpiece instead of blending into a
+   row of three identical teal pills. */
 .nav-menu-btn {
   display: inline-flex;
   align-items: center;
@@ -928,10 +929,10 @@ a:hover { color: var(--accent-hover); }
   border-radius: var(--radius-control);
   font-size: var(--text-sm);
   font-weight: 500;
-  background: var(--nav-spirit-bg);
-  color: var(--nav-spirit-text);
+  background: var(--nav-more-bg);
+  color: var(--nav-more-text);
   border: 1px solid var(--border-strong);
-  box-shadow: 0 0 0 1px var(--nav-spirit-text), var(--shadow-card);
+  box-shadow: 0 0 0 1px var(--nav-more-text), var(--shadow-card);
   cursor: pointer;
 }
 
@@ -939,7 +940,7 @@ a:hover { color: var(--accent-hover); }
   filter: brightness(0.97);
   transform: none;
   /* Keep the colour ring on hover (don't let a glow replace it). */
-  box-shadow: 0 0 0 1px var(--nav-spirit-text), var(--shadow-card);
+  box-shadow: 0 0 0 1px var(--nav-more-text), var(--shadow-card);
 }
 
 /* The caret flips up when its dropdown is open. */

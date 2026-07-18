@@ -25,6 +25,7 @@ export const common: Record<string, string> = {
 
   'user.level': 'Lv {level}',
   'user.logout': 'ログアウト',
+  'user.guest': 'ゲスト',
 
   'needs.nourished': '滋養',
   'needs.rested': '休息',
