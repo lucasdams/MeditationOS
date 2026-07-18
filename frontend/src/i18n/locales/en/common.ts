@@ -29,6 +29,8 @@ export const common: Record<string, string> = {
   // User chip + account menu
   'user.level': 'Lv {level}',
   'user.logout': 'Log out',
+  // Shown in place of the auto-generated guest_<id> username.
+  'user.guest': 'Guest',
 
   // The spirit's three facets (shared by the header chip, practices badges, spirit page)
   'needs.nourished': 'Nourishment',

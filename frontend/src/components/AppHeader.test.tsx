@@ -124,6 +124,16 @@ describe('AppHeader — grouped navigation', () => {
     expect(progressBtn).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('shows "Guest" for guest accounts instead of the auto-generated guest_<id> username', () => {
+    useAuthMock.mockReturnValue({
+      user: { username: 'guest_3f9a1b2c4d5e', is_guest: true, is_admin: false },
+      logout: vi.fn(),
+    })
+    renderHeader()
+    expect(screen.getByRole('button', { name: /Guest/ })).toBeInTheDocument()
+    expect(screen.queryByText(/guest_3f9a1b2c4d5e/)).toBeNull()
+  })
+
   it('hides Admin from non-admins and shows it to admins in Progress', () => {
     renderHeader()
     fireEvent.click(screen.getByRole('button', { name: /Progress/ }))

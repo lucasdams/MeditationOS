@@ -317,7 +317,8 @@ export default function AppHeader() {
             onClick={() => setUserMenuOpen((o) => !o)}
           >
             <span>
-              {user?.username}
+              {/* Guests get an auto username like guest_3f9a… — show a friendly label instead. */}
+              {user?.is_guest ? t('user.guest') : user?.username}
               {level !== null && ` · ${t('user.level', { level })}`}
             </span>
             <ChevronDown size={14} strokeWidth={2} className="app-user-caret" aria-hidden="true" />
