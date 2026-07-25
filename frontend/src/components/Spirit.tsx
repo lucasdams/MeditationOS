@@ -2061,12 +2061,19 @@ function Habitat({ habitat, g }: { habitat: string; g: number }) {
 
 // A small worn accessory drawn on top of the figure (above its head, near y≈40-14). Each
 // option is a distinct, flat little shape — the on-character payoff of spending coins.
-// The viewBox-y of the creature's DEFAULT face (eye line) for a path + stage — the anchor worn
-// accessories align to. Each dosha draws its face at a different height (the Pitta face sits low on
-// its tall flame; the Kapha figure and Vata wisp sit higher) and each rises a little as the creature
-// grows, so a fixed offset can't fit all three. Derived from each Form's own face() placement and
-// pinned to measured positions (x is always 40). A non-default `form` cosmetic moves the face, so
-// accessories then only approximate — the common (default) creature is what this keeps aligned.
+// Render-prop each Form uses to place the worn accessory ON its face: `x`/`y` is the face centre
+// (the eye line) and `s` the face size relative to the dosha's default body (1 = default). The
+// slot is rendered right after the face, INSIDE the form's own animated group, so the accessory
+// tracks the face through the form's internal sway/drift/flicker — not just the outer float —
+// and lands correctly on off-centre / small-faced forms (e.g. the Vata constellation's lead star).
+type AccessorySlot = (anchor: { x: number; y: number; s: number }) => JSX.Element | null
+
+// The viewBox-y of the creature's DEFAULT face (eye line) for a path + stage. Worn accessories
+// now anchor through each Form's AccessorySlot (above), which knows the real per-form face; this
+// remains as the anchor for the pathless spark (SparkForm has no face helper) and documents the
+// measured default eye lines. Each dosha draws its face at a different height (the Pitta face
+// sits low on its tall flame; the Kapha figure and Vata wisp sit higher) and each rises a little
+// as the creature grows (x is always 40).
 export function faceEyeY(path: SpiritPath | null | undefined, stage: SpiritStage): number {
   const p = stageProgress(stage)
   if (path === 'breath') return 48.4 - 3.4 * p // the flame face, lower on the tall blaze
@@ -6044,18 +6051,35 @@ function drawFaceVariant(
  * head, body, folded legs, then a halo and a lotus base as it matures, ending a radiant
  * figure haloed in gold. Warm amber/gold palette.
  */
+// Props for the `spirit-gleam` chase: unit `k` of `n` siblings briefly brightens IN ORDER on a
+// shared loop (delays spread over the full duration), so exactly one petal / stone / ray shines
+// at a time and the highlight travels around the shape. Filter-only, so it composes with a
+// unit's own jiggle / breathe / sway class — wrap that unit in a <g {...gleamProps(k, n)}>.
+// Duration scales with the unit count so the per-unit dwell stays calm at any n.
+function gleamProps(k: number, n: number, dur = Math.max(3.2, n * 0.55)) {
+  return {
+    className: 'spirit-gleam',
+    style: {
+      animationDelay: `${((k / n) * dur).toFixed(2)}s`,
+      animationDuration: `${dur.toFixed(2)}s`,
+    } as CSSProperties,
+  }
+}
+
 function StillnessForm({
   stage,
   g,
   pal: palProp,
   form,
   face: faceVariant,
+  accessorySlot,
 }: {
   stage: SpiritStage
   g: number
   pal?: BodyPalette
   form?: string
   face?: string
+  accessorySlot?: AccessorySlot
 }) {
   // The recolour cosmetic (`palette`) replaces the dosha's body colours; absent → the default.
   const pal = palProp ?? PATH_PALETTE.stillness
@@ -6127,6 +6151,10 @@ function StillnessForm({
             />
           </>
         )}
+        {/* The worn accessory rides the face anchor (and this group's animation). `sc` is an
+            absolute eye scale here — the seated default passes `scale`, so divide it out to get
+            the size relative to the default body the accessories were drawn against. */}
+        {accessorySlot?.({ x: ex, y: ey, s: sc / scale })}
       </g>
     ) : null
   return (
@@ -6243,10 +6271,11 @@ function StillnessForm({
           ]
           return (
             // Each bubble JIGGLES on its own phase (staggered); the centre one PULSES under the face.
+            // A gleam wrapper makes the bubbles take turns catching the light around the clump.
             <g>
               {orbs.map((o, k) => (
+                <g key={k} {...gleamProps(k, orbs.length)}>
                 <g
-                  key={k}
                   className={k === 0 ? 'spirit-pulse' : 'spirit-jiggle'}
                   style={
                     k === 0
@@ -6267,6 +6296,7 @@ function StillnessForm({
                     strokeLinecap="round"
                     opacity={0.6 * g}
                   />
+                </g>
                 </g>
               ))}
               {/* The serene face on the front-centre bubble. */}
@@ -6304,21 +6334,23 @@ function StillnessForm({
               {stones.map((s) => {
                 const isCrown = s.k === count - 1 // the crown stone wears the face — keep it steady
                 return (
-                  <ellipse
-                    key={s.k}
-                    className={isCrown ? undefined : 'spirit-jiggle'}
-                    style={
-                      isCrown
-                        ? undefined
-                        : { animationDelay: `${(s.k * 0.45).toFixed(2)}s`, animationDuration: `${(3.2 + s.k * 0.4).toFixed(1)}s` }
-                    }
-                    cx={40}
-                    cy={s.cy}
-                    rx={s.rx}
-                    ry={s.ry}
-                    fill={s.fill}
-                    opacity={(0.78 + 0.18 * p) * g}
-                  />
+                  // The gleam wrapper runs the highlight up the stack, stone by stone.
+                  <g key={s.k} {...gleamProps(s.k, count)}>
+                    <ellipse
+                      className={isCrown ? undefined : 'spirit-jiggle'}
+                      style={
+                        isCrown
+                          ? undefined
+                          : { animationDelay: `${(s.k * 0.45).toFixed(2)}s`, animationDuration: `${(3.2 + s.k * 0.4).toFixed(1)}s` }
+                      }
+                      cx={40}
+                      cy={s.cy}
+                      rx={s.rx}
+                      ry={s.ry}
+                      fill={s.fill}
+                      opacity={(0.78 + 0.18 * p) * g}
+                    />
+                  </g>
                 )
               })}
               {/* Little stone ARMS with fists resting down the sides (the coal rock-buddy recipe) —
@@ -6419,10 +6451,10 @@ function StillnessForm({
                   return (
                     <ellipse
                       key={k}
-                      // Opacity-only shimmer (safe alongside the rotate transform attr) → each petal
-                      // glows on its own phase while the whole flower slowly breathes.
-                      className="spirit-shimmer"
-                      style={{ animationDelay: `${(k * 0.31).toFixed(2)}s`, animationDuration: `${(2.4 + (k % 3) * 0.5).toFixed(1)}s` }}
+                      // Ordered gleam (filter-only, safe alongside the rotate transform attr) → the
+                      // petals take turns shining, the highlight sweeping around the bloom while the
+                      // whole flower slowly breathes.
+                      {...gleamProps(k, petals)}
                       cx={px}
                       cy={py}
                       rx={3 * scale}
@@ -6716,7 +6748,9 @@ function StillnessForm({
                 const ex = 40 + Math.cos(a) * outer
                 const ey = cy + Math.sin(a) * outer
                 return (
-                  <g key={`wheel-spoke-${k}`}>
+                  // The gleam chases spoke to spoke around the turning wheel (filter-only, safe
+                  // under the group's rotation).
+                  <g key={`wheel-spoke-${k}`} {...gleamProps(k, spokes)}>
                     <line
                       x1={40}
                       y1={cy}
@@ -6756,12 +6790,14 @@ function PittaForm({
   pal: palProp,
   form,
   face: faceVariant,
+  accessorySlot,
 }: {
   stage: SpiritStage
   g: number
   pal?: BodyPalette
   form?: string
   face?: string
+  accessorySlot?: AccessorySlot
 }) {
   const pal = palProp ?? PATH_PALETTE.breath
   const i = stageIndex(stage)
@@ -6880,6 +6916,9 @@ function PittaForm({
             />
           </>
         )}
+        {/* The worn accessory rides the face anchor (and this group's animation). The default
+            blaze passes sc=1, so `sc` IS the size relative to the accessories' design baseline. */}
+        {accessorySlot?.({ x: ex, y: ey, s: sc })}
       </g>
     ) : null
 
@@ -7065,7 +7104,12 @@ function PittaForm({
           <ellipse cx={cx} cy={headY - headH * 0.5 + 0.5} rx={headHw * 0.8} ry={1.8} fill={pal.accent} opacity={(0.5 + 0.2 * p) * g} />
           {/* The torch FLAME on the bound head. */}
           {layeredFlame(cx, flameBaseY, fh, fw, tipCurl, 'torch-flame')}
-          {face(cx, flameBaseY - fh * 0.4, fw * 0.3)}
+          {/* The face (and its worn accessory) leans gently with the flame's life — the same
+              tilt treatment the blaze + campfire faces use, so it moves with the fire rather
+              than hanging rigidly on a flickering flame. */}
+          <g className="spirit-tilt" style={{ animationDuration: '4.2s' }}>
+            {face(cx, flameBaseY - fh * 0.4, fw * 0.3)}
+          </g>
           {sparks(cx, flameBaseY - fh + 2, fw + 2, 'torch-sparks')}
           {smoke(cx, flameBaseY - fh + 1, 2, 'torch-smoke')}
         </g>
@@ -7162,9 +7206,9 @@ function PittaForm({
               return (
                 <path
                   key={`ray-${k}`}
-                  // Each ray flickers on its own phase (opacity-only, safe under the crown's rotation).
-                  className="spirit-shimmer"
-                  style={{ animationDelay: `${(k * 0.24).toFixed(2)}s`, animationDuration: `${(1.9 + (k % 3) * 0.4).toFixed(1)}s` }}
+                  // Ordered gleam (filter-only, safe under the crown's rotation): the rays take
+                  // turns brightening, the shine sweeping around the sun.
+                  {...gleamProps(k, rayCount)}
                   d={`M ${bx + px} ${by + py} L ${tipX} ${tipY} L ${bx - px} ${by - py} Z`}
                   fill={pal.accent}
                   opacity={(0.7 + 0.16 * p) * g}
@@ -7271,8 +7315,12 @@ function PittaForm({
               opacity={(0.72 + 0.16 * p) * g}
             />
           ))}
-          {/* A warm glow patch so the face reads against the black, rocky brow ridges, + the face. */}
-          <ellipse cx={rcx} cy={faceY + 0.5} rx={rr * 0.5} ry={ry * 0.44} fill={pal.glow} opacity={0.4 * g} />
+          {/* A warm glow patch so the face reads against the black, rocky brow ridges, + the face.
+              A brighter core disc lifts chosen face COSMETICS too — drawFaceVariant inks in
+              pal.deep, which needs more light on the near-black rock than the default face's
+              warm-brown strokes do. */}
+          <ellipse cx={rcx} cy={faceY + 0.5} rx={rr * 0.5} ry={ry * 0.44} fill={pal.glow} opacity={0.55 * g} />
+          <ellipse cx={rcx} cy={faceY + 0.4} rx={rr * 0.36} ry={ry * 0.3} fill={pal.core} opacity={0.5 * g} />
           <path d={`M ${rcx - rr * 0.34} ${faceY - ry * 0.24} l ${rr * 0.24} ${-1}`} fill="none" stroke={INK} strokeWidth={1 + p * 0.2} strokeLinecap="round" />
           <path d={`M ${rcx + rr * 0.1} ${faceY - ry * 0.28} l ${rr * 0.24} ${1}`} fill="none" stroke={INK} strokeWidth={1 + p * 0.2} strokeLinecap="round" />
           {face(rcx, faceY, 2.3 + p * 0.5, 0.78)}
@@ -7447,12 +7495,14 @@ function VataForm({
   pal: palProp,
   form,
   face: faceVariant,
+  accessorySlot,
 }: {
   stage: SpiritStage
   g: number
   pal?: BodyPalette
   form?: string
   face?: string
+  accessorySlot?: AccessorySlot
 }) {
   const pal = palProp ?? PATH_PALETTE.heart
   const i = stageIndex(stage)
@@ -7516,6 +7566,10 @@ function VataForm({
             />
           </>
         )}
+        {/* The worn accessory rides the face anchor (and this group's animation — e.g. the
+            constellation's sway). `r` is the absolute eye radius; divide by the default wisp's
+            radius for the size relative to the accessories' design baseline. */}
+        {accessorySlot?.({ x: ex, y: ey, s: r / (0.9 + p * 0.4) })}
       </g>
     ) : null
 
@@ -7562,17 +7616,19 @@ function VataForm({
           {Array.from({ length: bumps }, (_, k) => {
             const { bx, by, r } = bumpAt(k)
             return (
-              <circle
-                key={`bump-${k}`}
-                // Each puff drifts on its own phase → the cloud gently churns (while the whole lump bobs).
-                className="spirit-jiggle"
-                style={{ animationDelay: `${(k * 0.5).toFixed(2)}s`, animationDuration: `${(3.4 + (k % 3) * 0.6).toFixed(1)}s` }}
-                cx={bx}
-                cy={by}
-                r={r}
-                fill={pal.glow}
-                opacity={(0.7 + 0.2 * p) * g}
-              />
+              // The gleam runs across the lump puff by puff (wrapper, so the jiggle keeps its own phase).
+              <g key={`bump-${k}`} {...gleamProps(k, bumps)}>
+                <circle
+                  // Each puff drifts on its own phase → the cloud gently churns (while the whole lump bobs).
+                  className="spirit-jiggle"
+                  style={{ animationDelay: `${(k * 0.5).toFixed(2)}s`, animationDuration: `${(3.4 + (k % 3) * 0.6).toFixed(1)}s` }}
+                  cx={bx}
+                  cy={by}
+                  r={r}
+                  fill={pal.glow}
+                  opacity={(0.7 + 0.2 * p) * g}
+                />
+              </g>
             )
           })}
           {/* A flat-ish soft underside so the lump reads as a cloud, not a mound of orbs. */}
@@ -7898,23 +7954,30 @@ function VataForm({
             // not flat stacked rings.
             const bcx = cx + Math.sin(t * Math.PI * 2.4) * topW * 0.3
             return (
-              <path
-                key={`band-${k}`}
-                className="spirit-sway-x"
-                style={{ animationDelay: `${(-t * 1.9).toFixed(2)}s` }}
-                d={`M ${bcx - w} ${by} Q ${bcx} ${by + 3 + p} ${bcx + w} ${by} Q ${bcx} ${by - 3 - p} ${bcx - w} ${by}`}
-                fill="none"
-                stroke={k % 2 === 0 ? pal.glow : pal.accent}
-                strokeWidth={1.7 + p * 0.7}
-                strokeLinecap="round"
-                opacity={(0.52 + 0.25 * p) * g}
-              />
+              // The gleam runs down the funnel band by band (wrapper, so the sway keeps its phase).
+              <g key={`band-${k}`} {...gleamProps(k, bands)}>
+                <path
+                  className="spirit-sway-x"
+                  style={{ animationDelay: `${(-t * 1.9).toFixed(2)}s` }}
+                  d={`M ${bcx - w} ${by} Q ${bcx} ${by + 3 + p} ${bcx + w} ${by} Q ${bcx} ${by - 3 - p} ${bcx - w} ${by}`}
+                  fill="none"
+                  stroke={k % 2 === 0 ? pal.glow : pal.accent}
+                  strokeWidth={1.7 + p * 0.7}
+                  strokeLinecap="round"
+                  opacity={(0.52 + 0.25 * p) * g}
+                />
+              </g>
             )
           })}
           {/* A faint core seam corkscrewing down the funnel. */}
           <path d={`M ${cx} ${topY} Q ${cx + 5} ${cy - 6} ${cx - 3} ${cy} Q ${cx - 5} ${cy + 6} ${cx} ${botY}`} fill="none" stroke={pal.deep} strokeWidth={1 + p * 0.4} strokeLinecap="round" opacity={0.4 * g} />
-          {/* The gentle face, high on the funnel's wide top band (the classic friendly-tornado read). */}
-          {face(cx, topY + 4.5, 3.6 + p, 0.98 + p * 0.3)}
+          {/* The gentle face, high on the funnel's wide top band (the classic friendly-tornado
+              read). The top band ALSO sways on its own x-phase (spirit-sway-x, t=0 → no delay) —
+              mirror that exact animation here so the face + worn accessory slide WITH the band
+              instead of hovering still while the funnel moves beneath them. */}
+          <g className="spirit-sway-x">
+            {face(cx, topY + 4.5, 3.6 + p, 0.98 + p * 0.3)}
+          </g>
           {/* Debris motes spinning around the funnel. */}
           {Array.from({ length: 3 + i }, (_, k) => {
             const t = k / (3 + i)
@@ -8189,7 +8252,14 @@ const PATH_FORM: Record<
   // `form` (shape) is the silhouette cosmetic — each Form varies its OWN silhouette by it: VataForm
   // its wisp count + body width, PittaForm its flame count + ember body, StillnessForm the seated
   // figure's proportions. Each renderer interprets only its own keys (a foreign/absent key → default).
-  (props: { stage: SpiritStage; g: number; pal?: BodyPalette; form?: string; face?: string }) => JSX.Element
+  (props: {
+    stage: SpiritStage
+    g: number
+    pal?: BodyPalette
+    form?: string
+    face?: string
+    accessorySlot?: AccessorySlot
+  }) => JSX.Element
 > = {
   stillness: StillnessForm,
   breath: PittaForm,
@@ -8347,6 +8417,18 @@ export function SpiritArt({
   // absent → 1.0 (the stage's natural size). Both resolve to the path-default / no-op when unset.
   const pal = (path && cosmetics?.palette && PALETTES[cosmetics.palette]) || (path ? PATH_PALETTE[path] : undefined)
   const sizeScale = SIZES[cosmetics?.size ?? ''] ?? 1
+  // The worn accessory as an AccessorySlot: each Form renders this at its OWN face anchor, inside
+  // its animated group, so the item sits on the real head/neck and moves with it. The Accessory
+  // component draws around (40, eyeY); the wrapper shifts that to the anchor x and scales around
+  // the anchor point for small-faced forms (identity transform for the default bodies).
+  const wornAccessory: AccessorySlot | undefined = accessory
+    ? ({ x, y, s }) => (
+        <g transform={`translate(${x - 40} 0) translate(40 ${y}) scale(${s}) translate(-40 ${-y})`}>
+          <BelongingGlow cx={40} cy={y - 13} r={11} pal={pal} g={g} />
+          <Accessory accessory={accessory} g={g} pal={pal} path={path} eyeY={y} />
+        </g>
+      )
+    : undefined
   // A pathless spirit has no creature label yet — describe it as the unhatched spirit egg
   // (no stage prefix: "Spark spirit egg" reads oddly; the egg is simply pre-stage).
   const label =
@@ -8868,15 +8950,22 @@ export function SpiritArt({
               (() => {
                 const Form = PATH_FORM[path]
                 // `reactFace` (heart-eyes on pet) briefly overrides the equipped face cosmetic.
-                return <Form stage={stage} g={g} pal={pal} form={cosmetics?.form} face={reactFace ?? cosmetics?.face} />
+                return (
+                  <Form
+                    stage={stage}
+                    g={g}
+                    pal={pal}
+                    form={cosmetics?.form}
+                    face={reactFace ?? cosmetics?.face}
+                    accessorySlot={wornAccessory}
+                  />
+                )
               })()
             ) : (
-              <SparkForm g={g} />
-            )}
-            {accessory && (
               <>
-                <BelongingGlow cx={40} cy={faceEyeY(path, stage) - 13} r={11} pal={pal} g={g} />
-                <Accessory accessory={accessory} g={g} pal={pal} path={path} eyeY={faceEyeY(path, stage)} />
+                <SparkForm g={g} />
+                {/* The pathless spark has no face helper — anchor at its measured eye line. */}
+                {wornAccessory?.({ x: 40, y: faceEyeY(null, stage), s: 1 })}
               </>
             )}
           </g>
