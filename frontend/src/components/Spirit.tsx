@@ -7315,8 +7315,12 @@ function PittaForm({
               opacity={(0.72 + 0.16 * p) * g}
             />
           ))}
-          {/* A warm glow patch so the face reads against the black, rocky brow ridges, + the face. */}
-          <ellipse cx={rcx} cy={faceY + 0.5} rx={rr * 0.5} ry={ry * 0.44} fill={pal.glow} opacity={0.4 * g} />
+          {/* A warm glow patch so the face reads against the black, rocky brow ridges, + the face.
+              A brighter core disc lifts chosen face COSMETICS too — drawFaceVariant inks in
+              pal.deep, which needs more light on the near-black rock than the default face's
+              warm-brown strokes do. */}
+          <ellipse cx={rcx} cy={faceY + 0.5} rx={rr * 0.5} ry={ry * 0.44} fill={pal.glow} opacity={0.55 * g} />
+          <ellipse cx={rcx} cy={faceY + 0.4} rx={rr * 0.36} ry={ry * 0.3} fill={pal.core} opacity={0.5 * g} />
           <path d={`M ${rcx - rr * 0.34} ${faceY - ry * 0.24} l ${rr * 0.24} ${-1}`} fill="none" stroke={INK} strokeWidth={1 + p * 0.2} strokeLinecap="round" />
           <path d={`M ${rcx + rr * 0.1} ${faceY - ry * 0.28} l ${rr * 0.24} ${1}`} fill="none" stroke={INK} strokeWidth={1 + p * 0.2} strokeLinecap="round" />
           {face(rcx, faceY, 2.3 + p * 0.5, 0.78)}

@@ -96,14 +96,26 @@ const PATH_AURA_KEYS: { key: string; path: SpiritPath }[] = [
   { key: 'zephyr', path: 'heart' },
 ]
 
-function CosmeticCard({ path, cosmetic, keyName }: { path: SpiritPath; cosmetic: Record<string, string>; keyName: string }) {
+function CosmeticCard({ path, cosmetic, keyName, stage = 'ascendant' }: { path: SpiritPath; cosmetic: Record<string, string>; keyName: string; stage?: string }) {
   return (
     <div style={{ width: 120, textAlign: 'center', background: '#fff', border: '1px solid #eadfce', borderRadius: 10, padding: 5 }}>
-      <SpiritArt stage="ascendant" path={path} glow={1} cosmetics={cosmetic} reducedMotion previewing />
+      <SpiritArt stage={stage as never} path={path} glow={1} cosmetics={cosmetic} reducedMotion previewing />
       <div style={{ font: '500 11px system-ui', marginTop: 2 }}>{keyName}</div>
     </div>
   )
 }
+
+// TEMP — face audit lists: every face-variant cosmetic (kawaii is the drawFaceVariant fallback),
+// and the forms whose face anchor is most at risk (small / off-centre / dark / crowded faces).
+const FACE_VARIANT_KEYS = ['kawaii', 'wink', 'lashes', 'tongue', 'frogface', 'starry', 'sleepy', 'surprised', 'hearts', 'cool']
+const TRICKY_FACE_FORMS: { path: SpiritPath; form?: string; label: string }[] = [
+  { path: 'heart', form: 'constellation', label: 'constellation' },
+  { path: 'stillness', form: 'cairn', label: 'cairn' },
+  { path: 'heart', form: 'whirlwind', label: 'whirlwind' },
+  { path: 'breath', form: 'coals', label: 'coals' },
+  { path: 'stillness', form: 'cluster', label: 'cluster' },
+  { path: 'breath', form: 'sun', label: 'sun' },
+]
 
 // TEMP — concept groupings for the exploration section.
 const CONCEPT_GROUPS = Array.from(new Set(CONCEPTS.map((c) => c.group)))
@@ -223,6 +235,56 @@ export default function FormGallery() {
             <CosmeticCard key={k} path="stillness" cosmetic={{ habitat: k }} keyName={k} />
           ))}
         </div>
+      </section>
+
+      {/* ── TEMP: FACE audit A — the default face on EVERY form, small (wisp) and grown
+          (ascendant), so a drifted / oversized / illegible face shows at a glance. ── */}
+      <section style={{ marginBottom: 32 }}>
+        <h2 style={{ font: '600 18px system-ui', margin: '0 0 12px' }}>Face audit — default face on every form (wisp → ascendant)</h2>
+        {GROUPS.map((group) => (
+          <div key={`face-a-${group.path}`} style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+            {group.forms.flatMap((f) =>
+              (['wisp', 'ascendant'] as const).map((st) => (
+                <CosmeticCard
+                  key={`${group.path}-${f.key ?? 'default'}-${st}`}
+                  path={group.path}
+                  stage={st}
+                  cosmetic={f.key ? { form: f.key } : {}}
+                  keyName={`${group.path.slice(0, 2)} · ${f.label} · ${st}`}
+                />
+              )),
+            )}
+          </div>
+        ))}
+      </section>
+
+      {/* ── TEMP: FACE audit B — every face-variant cosmetic on each dosha's default body. ── */}
+      <section style={{ marginBottom: 32 }}>
+        <h2 style={{ font: '600 18px system-ui', margin: '0 0 12px' }}>Face audit — variants on each dosha default</h2>
+        {(['stillness', 'breath', 'heart'] as SpiritPath[]).map((path) => (
+          <div key={`face-b-${path}`} style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+            {FACE_VARIANT_KEYS.map((v) => (
+              <CosmeticCard key={`${path}-${v}`} path={path} cosmetic={{ face: v }} keyName={`${path.slice(0, 2)} · ${v}`} />
+            ))}
+          </div>
+        ))}
+      </section>
+
+      {/* ── TEMP: FACE audit C — variants on the trickiest faces (small / off-centre / dark). ── */}
+      <section style={{ marginBottom: 32 }}>
+        <h2 style={{ font: '600 18px system-ui', margin: '0 0 12px' }}>Face audit — variants on tricky forms</h2>
+        {TRICKY_FACE_FORMS.map((t) => (
+          <div key={`face-c-${t.label}`} style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+            {FACE_VARIANT_KEYS.map((v) => (
+              <CosmeticCard
+                key={`${t.label}-${v}`}
+                path={t.path}
+                cosmetic={{ ...(t.form ? { form: t.form } : {}), face: v }}
+                keyName={`${t.label} · ${v}`}
+              />
+            ))}
+          </div>
+        ))}
       </section>
 
       {/* ── TEMP: accessory ANCHORING audit — every form wearing head/eye/neck items, so a
