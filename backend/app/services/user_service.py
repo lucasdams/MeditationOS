@@ -31,6 +31,7 @@ from app.core.security import (
     password_fingerprint,
     verify_password,
 )
+from app.models.ai_reflection import AIReflection
 from app.models.biometric_reading import BiometricReading
 from app.models.breathing_pattern import BreathingPattern
 from app.models.goal import Goal, GoalCheckin
@@ -448,6 +449,7 @@ def export_user_data(db: Session, user: User) -> dict:
         "scheduled_sessions": owned(ScheduledSession),
         "breathing_patterns": owned(BreathingPattern),
         "path_enrollments": owned(PathEnrollment),
+        "ai_reflections": owned(AIReflection),
     }
 
 

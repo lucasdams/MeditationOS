@@ -26,9 +26,12 @@ def _local_day_start_utc(tz: str) -> datetime:
     return local_midnight.astimezone(UTC)
 
 
-def enforce_daily_create_cap(db: Session, model: type, user_id: uuid.UUID) -> None:
-    """Raise DailyLimitError if the user has already created `daily_create_limit`
-    rows of `model` since the start of their current local day."""
+def enforce_daily_create_cap(
+    db: Session, model: type, user_id: uuid.UUID, *, limit: int | None = None
+) -> None:
+    """Raise DailyLimitError if the user has already created `limit` rows of `model`
+    since the start of their current local day. Defaults to the general anti-spam
+    ceiling; costlier resources (e.g. AI reflections) pass a tighter `limit`."""
     tz = db.execute(
         select(User.timezone).where(User.id == user_id)
     ).scalar_one_or_none()
@@ -38,5 +41,5 @@ def enforce_daily_create_cap(db: Session, model: type, user_id: uuid.UUID) -> No
         .select_from(model)
         .where(model.user_id == user_id, model.created_at >= start)
     ).scalar_one()
-    if count >= settings.daily_create_limit:
+    if count >= (limit if limit is not None else settings.daily_create_limit):
         raise DailyLimitError()
