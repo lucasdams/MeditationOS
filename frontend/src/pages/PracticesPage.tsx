@@ -8,38 +8,15 @@ import {
   Brain,
   ScanLine,
   Heart,
-  HeartHandshake,
-  Album,
-  Coffee,
-  Trophy,
   HandHeart,
   NotebookPen,
   Flame,
-  SmilePlus,
-  AudioLines,
-  Accessibility,
   Crosshair,
   BedDouble,
-  Unplug,
   Repeat,
-  Footprints,
-  Dumbbell,
-  ListOrdered,
   Tags,
-  Ear,
-  Feather,
-  Sunrise,
-  PartyPopper,
-  Telescope,
   Sunset,
-  CloudMoon,
-  CloudOff,
-  Eye,
-  Hand,
-  OctagonPause,
-  Activity,
   Leaf,
-  DoorOpen,
   Lock,
   ChevronRight,
   Search,
@@ -48,9 +25,7 @@ import {
   Plus,
   Sparkles,
   Moon,
-  Anchor,
   Clock,
-  PersonStanding,
   Sprout,
   type LucideProps,
 } from 'lucide-react'
@@ -160,7 +135,9 @@ const GROUPS: PracticeGroup[] = [
     ],
   },
   {
-    // Meditation — attention / mind practices (kind:'meditation', feed Rest).
+    // Meditation — attention / mind / body practices (kind:'meditation', feed Rest). Loving-kindness
+    // carries a `feeds: 'joyful'` override so it still nourishes a Vata/heart spirit via the
+    // signature while feeding Joy; three-breaths is the smallest on-ramp.
     titleKey: 'practice.group.meditation.title',
     icon: Brain,
     blurbKey: 'practice.group.meditation.blurb',
@@ -169,55 +146,17 @@ const GROUPS: PracticeGroup[] = [
     cards: [
       { to: '/meditate', icon: Brain, nameKey: 'practice.card.mindfulness.name', descKey: 'practice.card.mindfulness.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
       { to: '/meditate?guided=focus', icon: Crosshair, nameKey: 'practice.card.focus.name', descKey: 'practice.card.focus.desc', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
-      { to: '/meditate?guided=count-breath', icon: ListOrdered, nameKey: 'practice.card.countBreath.name', descKey: 'practice.card.countBreath.desc', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
       { to: '/meditate?guided=noting', icon: Tags, nameKey: 'practice.card.noting.name', descKey: 'practice.card.noting.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=sound-bath', icon: Ear, nameKey: 'practice.card.soundBath.name', descKey: 'practice.card.soundBath.desc', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=name-feelings', icon: SmilePlus, nameKey: 'practice.card.nameFeelings.name', descKey: 'practice.card.nameFeelings.desc', kind: 'meditation', light: '#2f6fe0', dark: '#82b4ff' },
-      { to: '/meditate?guided=chakra-om', icon: AudioLines, nameKey: 'practice.card.chakraOm.name', descKey: 'practice.card.chakraOm.desc', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd', gate: 'chakra-om' },
       { to: '/meditate?guided=mantra', icon: Repeat, nameKey: 'practice.card.mantra.name', descKey: 'practice.card.mantra.desc', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=just-sit', icon: Unplug, nameKey: 'practice.card.justSit.name', descKey: 'practice.card.justSit.desc', kind: 'meditation', light: '#0d9488', dark: '#5eead4' },
-      { to: '/trataka', icon: Flame, nameKey: 'practice.card.trataka.name', descKey: 'practice.card.trataka.desc', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
-    ],
-  },
-  {
-    // Body — somatic practices (kind:'meditation', feed Rest): scanning, moving, releasing.
-    titleKey: 'practice.group.body.title',
-    icon: PersonStanding,
-    blurbKey: 'practice.group.body.blurb',
-    light: '#7c3aed',
-    dark: '#c4b5fd',
-    cards: [
       { to: '/meditate?guided=body-scan', icon: ScanLine, nameKey: 'practice.card.bodyScan.name', descKey: 'practice.card.bodyScan.desc', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
-      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, nameKey: 'practice.card.yogaNidra.name', descKey: 'practice.card.yogaNidra.desc', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
-      { to: '/meditate?guided=pmr', icon: Dumbbell, nameKey: 'practice.card.pmr.name', descKey: 'practice.card.pmr.desc', kind: 'meditation', light: '#2563eb', dark: '#93c5fd' },
-      { to: '/meditate?guided=stretching', icon: Accessibility, nameKey: 'practice.card.stretching.name', descKey: 'practice.card.stretching.desc', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
-      { to: '/meditate?guided=walking', icon: Footprints, nameKey: 'practice.card.walking.name', descKey: 'practice.card.walking.desc', kind: 'meditation', light: '#0284c7', dark: '#7dd3fc' },
-    ],
-  },
-  {
-    // Heart practices — guided meditations (kind:'meditation', so they still nourish a Vata/heart
-    // spirit via the signature) that FEED JOY rather than rest. The per-card `feeds: 'joyful'`
-    // override reclassifies them away from the default rested base need.
-    titleKey: 'practice.group.heart.title',
-    icon: Heart,
-    blurbKey: 'practice.group.heart.blurb',
-    light: '#db2777',
-    dark: '#f472b6',
-    cards: [
       { to: '/meditate?guided=loving-kindness', icon: Heart, nameKey: 'practice.card.lovingKindness.name', descKey: 'practice.card.lovingKindness.desc', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
-      { to: '/meditate?guided=self-compassion', icon: HeartHandshake, nameKey: 'practice.card.selfCompassion.name', descKey: 'practice.card.selfCompassion.desc', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
-      { to: '/meditate?guided=recall-good', icon: Album, nameKey: 'practice.card.recallGood.name', descKey: 'practice.card.recallGood.desc', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
-      { to: '/meditate?guided=savoring', icon: Coffee, nameKey: 'practice.card.savoring.name', descKey: 'practice.card.savoring.desc', kind: 'meditation', feeds: 'joyful', light: '#16a34a', dark: '#4ade80' },
-      { to: '/meditate?guided=celebrate-win', icon: Trophy, nameKey: 'practice.card.celebrateWin.name', descKey: 'practice.card.celebrateWin.desc', kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
-      { to: '/meditate?guided=forgiveness', icon: Feather, nameKey: 'practice.card.forgiveness.name', descKey: 'practice.card.forgiveness.desc', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
-      { to: '/meditate?guided=gratitude-sit', icon: Sunrise, nameKey: 'practice.card.gratitudeSit.name', descKey: 'practice.card.gratitudeSit.desc', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
-      { to: '/meditate?guided=sympathetic-joy', icon: PartyPopper, nameKey: 'practice.card.sympatheticJoy.name', descKey: 'practice.card.sympatheticJoy.desc', kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
-      { to: '/meditate?guided=awe', icon: Telescope, nameKey: 'practice.card.awe.name', descKey: 'practice.card.awe.desc', kind: 'meditation', feeds: 'joyful', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/trataka', icon: Flame, nameKey: 'practice.card.trataka.name', descKey: 'practice.card.trataka.desc', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
+      { to: '/meditate?guided=three-breaths', icon: Leaf, nameKey: 'practice.card.threeBreaths.name', descKey: 'practice.card.threeBreaths.desc', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
     ],
   },
   {
-    // Sleep — wind-down practices (kind:'meditation', feed Rest). Softer voice, bells taper off,
-    // no bright end; several scripts intentionally underuse bells.
+    // Rest & sleep — wind-down practices (kind:'meditation', feed Rest). Softer voice, bells taper
+    // off, no bright end.
     titleKey: 'practice.group.sleep.title',
     icon: Moon,
     blurbKey: 'practice.group.sleep.blurb',
@@ -225,37 +164,7 @@ const GROUPS: PracticeGroup[] = [
     dark: '#a5b4fc',
     cards: [
       { to: '/meditate?guided=wind-down', icon: Sunset, nameKey: 'practice.card.windDown.name', descKey: 'practice.card.windDown.desc', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
-      { to: '/meditate?guided=four-seven-eight', icon: CloudMoon, nameKey: 'practice.card.fourSevenEight.name', descKey: 'practice.card.fourSevenEight.desc', kind: 'meditation', feeds: 'rested', light: '#4338ca', dark: '#a5b4fc' },
-      { to: '/meditate?guided=set-down-day', icon: CloudOff, nameKey: 'practice.card.setDownDay.name', descKey: 'practice.card.setDownDay.desc', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
-    ],
-  },
-  {
-    // Steady — self-regulation practices for harder moments (kind:'meditation', feed Rest, except
-    // Soften/soothe/allow which feeds Joy as kindness toward self). Non-clinical: NOT treatment.
-    titleKey: 'practice.group.steady.title',
-    icon: Anchor,
-    blurbKey: 'practice.group.steady.blurb',
-    light: '#0d9488',
-    dark: '#5eead4',
-    cards: [
-      { to: '/meditate?guided=physiological-sigh', icon: Wind, nameKey: 'practice.card.physiologicalSigh.name', descKey: 'practice.card.physiologicalSigh.desc', kind: 'meditation', feeds: 'rested', light: '#0e8aa6', dark: '#5fd2e8' },
-      { to: '/meditate?guided=steady-senses', icon: Eye, nameKey: 'practice.card.steadySenses.name', descKey: 'practice.card.steadySenses.desc', kind: 'meditation', feeds: 'rested', light: '#0284c7', dark: '#7dd3fc' },
-      { to: '/meditate?guided=steady-feet', icon: Footprints, nameKey: 'practice.card.steadyFeet.name', descKey: 'practice.card.steadyFeet.desc', kind: 'meditation', feeds: 'rested', light: '#0d9488', dark: '#5eead4' },
-      { to: '/meditate?guided=steady-soothe', icon: Hand, nameKey: 'practice.card.steadySoothe.name', descKey: 'practice.card.steadySoothe.desc', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
-    ],
-  },
-  {
-    // Everyday — short, anywhere, no-setup on-ramps (kind:'meditation', feed Rest).
-    titleKey: 'practice.group.everyday.title',
-    icon: Clock,
-    blurbKey: 'practice.group.everyday.blurb',
-    light: '#16a34a',
-    dark: '#4ade80',
-    cards: [
-      { to: '/meditate?guided=three-breaths', icon: Leaf, nameKey: 'practice.card.threeBreaths.name', descKey: 'practice.card.threeBreaths.desc', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
-      { to: '/meditate?guided=stop-pause', icon: OctagonPause, nameKey: 'practice.card.stopPause.name', descKey: 'practice.card.stopPause.desc', kind: 'meditation', feeds: 'rested', light: '#2563eb', dark: '#93c5fd' },
-      { to: '/meditate?guided=body-checkin', icon: Activity, nameKey: 'practice.card.bodyCheckin.name', descKey: 'practice.card.bodyCheckin.desc', kind: 'meditation', feeds: 'rested', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=arriving', icon: DoorOpen, nameKey: 'practice.card.arriving.name', descKey: 'practice.card.arriving.desc', kind: 'meditation', feeds: 'rested', light: '#5847f0', dark: '#a8a2ff' },
+      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, nameKey: 'practice.card.yogaNidra.name', descKey: 'practice.card.yogaNidra.desc', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
     ],
   },
   {
@@ -295,39 +204,14 @@ const PRACTICE_META: Record<string, { minsKey: string; beginner?: boolean }> = {
   '/breathe?pattern=alternate': { minsKey: 'practice.mins.5' },
   '/meditate': { minsKey: 'practice.mins.youChoose' },
   '/meditate?guided=focus': { minsKey: 'practice.mins.10', beginner: true },
-  '/meditate?guided=count-breath': { minsKey: 'practice.mins.10' },
   '/meditate?guided=noting': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=sound-bath': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=name-feelings': { minsKey: 'practice.mins.8' },
-  '/meditate?guided=chakra-om': { minsKey: 'practice.mins.12' },
   '/meditate?guided=mantra': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=just-sit': { minsKey: 'practice.mins.10' },
   '/trataka': { minsKey: 'practice.mins.youChoose' },
   '/meditate?guided=body-scan': { minsKey: 'practice.mins.15', beginner: true },
   '/meditate?guided=yoga-nidra': { minsKey: 'practice.mins.20' },
-  '/meditate?guided=pmr': { minsKey: 'practice.mins.12' },
-  '/meditate?guided=stretching': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=walking': { minsKey: 'practice.mins.10' },
   '/meditate?guided=loving-kindness': { minsKey: 'practice.mins.10', beginner: true },
-  '/meditate?guided=self-compassion': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=recall-good': { minsKey: 'practice.mins.8' },
-  '/meditate?guided=savoring': { minsKey: 'practice.mins.5' },
-  '/meditate?guided=celebrate-win': { minsKey: 'practice.mins.5' },
-  '/meditate?guided=forgiveness': { minsKey: 'practice.mins.12' },
-  '/meditate?guided=gratitude-sit': { minsKey: 'practice.mins.8' },
-  '/meditate?guided=sympathetic-joy': { minsKey: 'practice.mins.8' },
-  '/meditate?guided=awe': { minsKey: 'practice.mins.8' },
   '/meditate?guided=wind-down': { minsKey: 'practice.mins.15' },
-  '/meditate?guided=four-seven-eight': { minsKey: 'practice.mins.8' },
-  '/meditate?guided=set-down-day': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=physiological-sigh': { minsKey: 'practice.mins.2', beginner: true },
-  '/meditate?guided=steady-senses': { minsKey: 'practice.mins.3' },
-  '/meditate?guided=steady-feet': { minsKey: 'practice.mins.3' },
-  '/meditate?guided=steady-soothe': { minsKey: 'practice.mins.5' },
   '/meditate?guided=three-breaths': { minsKey: 'practice.mins.1', beginner: true },
-  '/meditate?guided=stop-pause': { minsKey: 'practice.mins.1', beginner: true },
-  '/meditate?guided=body-checkin': { minsKey: 'practice.mins.2' },
-  '/meditate?guided=arriving': { minsKey: 'practice.mins.1' },
   '/gratitude': { minsKey: 'practice.mins.3', beginner: true },
   '/journal': { minsKey: 'practice.mins.5' },
 }
@@ -428,9 +312,10 @@ function PracticeCardLink({
 export default function PracticesPage() {
   const { t } = useT()
   const [spirit, setSpirit] = useState<SpiritState | null>(null)
-  // The user's level — drives the guided-practice level gates (e.g. Chakra Om at
-  // level 5). Fetched non-blocking like the header; null until known, which keeps
-  // gated cards locked (fail safe) rather than flashing them open then closing.
+  // The user's level — drives any guided-practice level gates. Fetched non-blocking
+  // like the header; null until known, which keeps gated cards locked (fail safe)
+  // rather than flashing them open then closing. (No cards are gated at the moment,
+  // but the machinery stays wired for future level-gated practices.)
   const [level, setLevel] = useState<number | null>(null)
   // The live filter query — matched case-insensitively against each card's name + description.
   const [query, setQuery] = useState('')
@@ -488,7 +373,7 @@ export default function PracticesPage() {
 
   // The calm "All" overview shows each group as a short PREVIEW (its first few cards + a quiet
   // "See all N"); picking a chip (or searching) shows the full shelf. One shelf at a time keeps
-  // the 40-odd-card catalog from reading as one endless, busy scroll.
+  // the catalog from reading as one endless, busy scroll.
   const PREVIEW_COUNT = 3
   const previewing = !searching && activeGroup === null
 

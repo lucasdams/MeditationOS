@@ -10,62 +10,45 @@ import {
   type GuidedStructureId,
 } from './guidedSessions'
 
-// The 18 structures added in the practice-library expansion. Every one must be
-// reachable (via getStructure / tryGetStructure) and be a real, runnable script.
-const NEW_STRUCTURE_IDS: GuidedStructureId[] = [
-  'count-breath',
+// The full guided-session catalog after the practices trim (chore/trim-practices):
+// a tight core of 8 runnable scripts. Every one must be reachable (via getStructure
+// / tryGetStructure) and be a real, runnable script.
+const STRUCTURE_IDS: GuidedStructureId[] = [
+  'body-scan',
+  'loving-kindness',
+  'focus',
   'noting',
-  'sound-bath',
-  'forgiveness',
-  'gratitude-sit',
-  'sympathetic-joy',
-  'awe',
+  'mantra',
+  'yoga-nidra',
   'wind-down',
-  'four-seven-eight',
-  'set-down-day',
-  'physiological-sigh',
-  'steady-senses',
-  'steady-feet',
-  'steady-soothe',
   'three-breaths',
-  'stop-pause',
-  'body-checkin',
-  'arriving',
 ]
 
 // ── Structural integrity ─────────────────────────────────────────────────────
 
 describe('GUIDED_STRUCTURES', () => {
-  it('exports body-scan, loving-kindness, name-feelings, chakra-om, and stretching', () => {
-    const ids = GUIDED_STRUCTURES.map((s) => s.id)
-    expect(ids).toContain('body-scan')
-    expect(ids).toContain('loving-kindness')
-    expect(ids).toContain('name-feelings')
-    expect(ids).toContain('chakra-om')
-    expect(ids).toContain('stretching')
+  it('exports exactly the trimmed core of guided structures', () => {
+    const ids = GUIDED_STRUCTURES.map((s) => s.id).sort()
+    expect(ids).toEqual([...STRUCTURE_IDS].sort())
   })
 
-  it('exports the joy/heart structures (recall-good, self-compassion, savoring, celebrate-win)', () => {
+  it('no longer exports the cut structures', () => {
     const ids = GUIDED_STRUCTURES.map((s) => s.id)
-    expect(ids).toContain('recall-good')
-    expect(ids).toContain('self-compassion')
-    expect(ids).toContain('savoring')
-    expect(ids).toContain('celebrate-win')
-  })
-
-  it('exports the new mind/body structures (focus, yoga-nidra, just-sit, mantra, walking, pmr)', () => {
-    const ids = GUIDED_STRUCTURES.map((s) => s.id)
-    expect(ids).toContain('focus')
-    expect(ids).toContain('yoga-nidra')
-    expect(ids).toContain('just-sit')
-    expect(ids).toContain('mantra')
-    expect(ids).toContain('walking')
-    expect(ids).toContain('pmr')
-  })
-
-  it('no longer exports the old "acceptance" id (renamed to name-feelings)', () => {
-    const ids = GUIDED_STRUCTURES.map((s) => s.id)
-    expect(ids).not.toContain('acceptance')
+    for (const cut of [
+      'name-feelings',
+      'chakra-om',
+      'stretching',
+      'walking',
+      'pmr',
+      'sound-bath',
+      'count-breath',
+      'awe',
+      'four-seven-eight',
+      'physiological-sigh',
+      'arriving',
+    ]) {
+      expect(ids).not.toContain(cut)
+    }
   })
 
   it('each structure has at least 2 phases with positive weights', () => {
@@ -88,25 +71,18 @@ describe('GUIDED_STRUCTURES', () => {
   })
 })
 
-// ── Practice-library expansion — new structures ──────────────────────────────
-// Every new guided id must resolve from the array via getStructure and
+// ── Catalog resolution ───────────────────────────────────────────────────────
+// Every kept guided id must resolve from the array via getStructure and
 // tryGetStructure, and be a real script: at least 3 phases, each with a
 // non-empty cue. This is what makes a `?guided=<id>` deep-link "just work".
 
-describe('practice-library expansion structures', () => {
-  it('adds all 18 new ids to GUIDED_STRUCTURES', () => {
-    const ids = GUIDED_STRUCTURES.map((s) => s.id)
-    for (const id of NEW_STRUCTURE_IDS) {
-      expect(ids).toContain(id)
-    }
-  })
-
-  it.each(NEW_STRUCTURE_IDS)('resolves %s via getStructure + tryGetStructure', (id) => {
+describe('guided structure catalog', () => {
+  it.each(STRUCTURE_IDS)('resolves %s via getStructure + tryGetStructure', (id) => {
     expect(getStructure(id).id).toBe(id)
     expect(tryGetStructure(id)?.id).toBe(id)
   })
 
-  it.each(NEW_STRUCTURE_IDS)('%s has ≥3 phases, each with a non-empty cue', (id) => {
+  it.each(STRUCTURE_IDS)('%s has ≥3 phases, each with a non-empty cue', (id) => {
     const s = getStructure(id)
     expect(s.phases.length).toBeGreaterThanOrEqual(3)
     for (const p of s.phases) {
@@ -115,7 +91,7 @@ describe('practice-library expansion structures', () => {
     }
   })
 
-  it.each(NEW_STRUCTURE_IDS)('%s carries no level gate (always unlocked)', (id) => {
+  it.each(STRUCTURE_IDS)('%s carries no level gate (always unlocked)', (id) => {
     expect(GUIDED_MIN_LEVEL[id]).toBeUndefined()
     expect(isGuidedUnlocked(id, null)).toBe(true)
   })
@@ -123,21 +99,9 @@ describe('practice-library expansion structures', () => {
 
 describe('getStructure', () => {
   it('returns the correct structure by id', () => {
-    expect(getStructure('body-scan').id).toBe('body-scan')
-    expect(getStructure('loving-kindness').id).toBe('loving-kindness')
-    expect(getStructure('name-feelings').id).toBe('name-feelings')
-    expect(getStructure('chakra-om').id).toBe('chakra-om')
-    expect(getStructure('stretching').id).toBe('stretching')
-    expect(getStructure('recall-good').id).toBe('recall-good')
-    expect(getStructure('self-compassion').id).toBe('self-compassion')
-    expect(getStructure('savoring').id).toBe('savoring')
-    expect(getStructure('celebrate-win').id).toBe('celebrate-win')
-    expect(getStructure('focus').id).toBe('focus')
-    expect(getStructure('yoga-nidra').id).toBe('yoga-nidra')
-    expect(getStructure('just-sit').id).toBe('just-sit')
-    expect(getStructure('mantra').id).toBe('mantra')
-    expect(getStructure('walking').id).toBe('walking')
-    expect(getStructure('pmr').id).toBe('pmr')
+    for (const id of STRUCTURE_IDS) {
+      expect(getStructure(id).id).toBe(id)
+    }
   })
 
   it('throws for an unknown id', () => {
@@ -149,40 +113,19 @@ describe('getStructure', () => {
 // ── Level gates ──────────────────────────────────────────────────────────────
 
 describe('GUIDED_MIN_LEVEL + isGuidedUnlocked', () => {
-  it('gates chakra-om behind level 5', () => {
-    expect(GUIDED_MIN_LEVEL['chakra-om']).toBe(5)
+  it('ships no level-gated structures after the trim', () => {
+    expect(Object.keys(GUIDED_MIN_LEVEL)).toHaveLength(0)
   })
 
-  it('ungated structures are always unlocked, even with a null level', () => {
-    expect(isGuidedUnlocked('body-scan', null)).toBe(true)
-    expect(isGuidedUnlocked('name-feelings', 1)).toBe(true)
-    expect(isGuidedUnlocked('stretching', null)).toBe(true)
-    // The joy/heart structures carry no level gate.
-    expect(isGuidedUnlocked('recall-good', null)).toBe(true)
-    expect(isGuidedUnlocked('self-compassion', null)).toBe(true)
-    expect(isGuidedUnlocked('savoring', null)).toBe(true)
-    expect(isGuidedUnlocked('celebrate-win', null)).toBe(true)
-    // The new mind/body structures carry no level gate either.
-    expect(isGuidedUnlocked('focus', null)).toBe(true)
-    expect(isGuidedUnlocked('yoga-nidra', null)).toBe(true)
-    expect(isGuidedUnlocked('just-sit', null)).toBe(true)
-    expect(isGuidedUnlocked('mantra', null)).toBe(true)
-    expect(isGuidedUnlocked('walking', null)).toBe(true)
-    expect(isGuidedUnlocked('pmr', null)).toBe(true)
+  it('every structure is unlocked, even with a null level', () => {
+    for (const id of STRUCTURE_IDS) {
+      expect(isGuidedUnlocked(id, null)).toBe(true)
+    }
   })
 
-  it('a gated structure is locked below its minimum level', () => {
-    expect(isGuidedUnlocked('chakra-om', 1)).toBe(false)
-    expect(isGuidedUnlocked('chakra-om', 4)).toBe(false)
-  })
-
-  it('a gated structure unlocks at or above its minimum level', () => {
-    expect(isGuidedUnlocked('chakra-om', 5)).toBe(true)
-    expect(isGuidedUnlocked('chakra-om', 10)).toBe(true)
-  })
-
-  it('a null/unknown level keeps a gated structure locked (fail safe)', () => {
-    expect(isGuidedUnlocked('chakra-om', null)).toBe(false)
+  it('an absent gate keeps a structure unlocked at any level', () => {
+    expect(isGuidedUnlocked('body-scan', 1)).toBe(true)
+    expect(isGuidedUnlocked('focus', 100)).toBe(true)
   })
 })
 
