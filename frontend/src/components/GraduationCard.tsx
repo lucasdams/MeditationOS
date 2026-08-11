@@ -74,9 +74,6 @@ export default function GraduationCard({ onDismiss }: Props) {
         <Link to="/analytics" className="first-run-action first-run-action-secondary">
           {t('home.graduation.analytics')}
         </Link>
-        <Link to="/spirit" className="first-run-action first-run-action-secondary">
-          {t('home.graduation.customize')}
-        </Link>
         <button type="button" className="first-run-gotit" onClick={dismiss}>
           {t('home.graduation.gotIt')}
         </button>

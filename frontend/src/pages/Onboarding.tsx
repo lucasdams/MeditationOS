@@ -11,13 +11,12 @@ import { useT } from '../i18n'
 // First-run activation flow, shown by ProtectedRoute while quest_features is null (i.e. only
 // for genuinely new users). Beginner-first (docs/beginner-first-revision.md §5): a single warm
 // question shapes the daily quests and tone, then drops the user straight into a 1-minute guided
-// breath. The companion's dosha pick is DEFERRED to AFTER that first sit (the "hatch"), so we
-// don't gate onboarding on it. Experience / preferred-time / quest fine-tuning all remain
-// editable later in Settings.
+// breath. Experience / preferred-time / quest fine-tuning all remain editable later in Settings.
+// (The Spirit companion is hidden from the UI, so onboarding no longer flags a pending "hatch".)
 
 // One warm question. Each intent seeds a sensible default set of daily quests (reusing the
-// previous goal→quests mapping) and is remembered as `onboarding.intent` so the hatch page can
-// suggest a matching companion. "Just curious" uses a gentle, well-rounded default.
+// previous goal→quests mapping) and is remembered as `onboarding.intent`. "Just curious" uses a
+// gentle, well-rounded default.
 const INTENTS = [
   {
     key: 'calm',
@@ -74,12 +73,10 @@ export default function Onboarding() {
     setSubmitting(intent.key)
     setError(null)
     try {
-      // Remember the intent so the hatch page can suggest a matching companion, and flag that a
-      // hatch is pending so the first sit routes to the choose page instead of the usual close.
-      // Local-only and non-fatal — failures here never block the (server-side) setup below.
+      // Remember the chosen intent (a small personalization record) and the gentle first-sit
+      // pace. Local-only and non-fatal — failures here never block the (server-side) setup below.
       try {
         localStorage.setItem('breathe.bpm', FIRST_SIT_BPM)
-        localStorage.setItem('onboarding.pendingHatch', '1')
         localStorage.setItem('onboarding.intent', intent.key)
       } catch {
         /* localStorage unavailable (private mode, etc.) — non-fatal */
