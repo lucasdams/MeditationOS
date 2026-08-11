@@ -1,8 +1,8 @@
 /**
- * PracticesPage — the practices hub. Verifies the grouped sections render and deep-link
- * correctly, the level gates, the calm browse (chips + previews), and the live search.
- * The Spirit companion is hidden from the UI (dormant): the hub fetches no spirit state
- * and renders no spirit nudge or round-out highlight.
+ * PracticesPage — the practices hub. Verifies the trimmed, tight core: 4 sections /
+ * 16 cards render and deep-link correctly, the calm browse (chips + previews), and the
+ * live search. The Spirit companion is hidden from the UI (dormant): the hub fetches no
+ * spirit state and renders no spirit nudge or round-out highlight.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -45,7 +45,6 @@ describe('PracticesPage', () => {
   afterEach(cleanup)
   beforeEach(() => {
     getStats.mockReset()
-    // Default: a high level so gated cards (Chakra Om) render as normal links.
     getStats.mockResolvedValue({ level: 10 })
   })
 
@@ -55,273 +54,110 @@ describe('PracticesPage', () => {
     expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '/')
   })
 
-  it('renders all category groups (Breathing, Meditation, Body, Heart, Sleep, Steady, Everyday, Reflection)', () => {
+  it('renders the four category groups (Breathing, Meditation, Sleep, Reflection)', () => {
     renderPage()
     expect(screen.getByRole('heading', { name: /breathing/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /meditation/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^body/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^heart/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^sleep/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^steady/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^everyday/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /reflection/i })).toBeInTheDocument()
+    // The groups cut in the trim are gone entirely.
+    expect(screen.queryByRole('heading', { name: /^body/i })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^heart/i })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^steady/i })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^everyday/i })).toBeNull()
   })
 
   it('deep-links breathing cards with the right ?pattern= param', () => {
     renderPage()
     // Resonance sits in the shelf preview; the rest need the full Breathing shelf (its chip).
-    expect(catalogLink(/resonance/i)).toHaveAttribute(
-      'href',
-      '/breathe?pattern=resonance',
-    )
+    expect(catalogLink(/resonance/i)).toHaveAttribute('href', '/breathe?pattern=resonance')
     openGroup(/^breathing$/i)
     expect(screen.getByRole('link', { name: /box/i })).toHaveAttribute('href', '/breathe?pattern=box')
+    expect(screen.getByRole('link', { name: /energizing/i })).toHaveAttribute(
+      'href',
+      '/breathe?pattern=energizing',
+    )
     expect(screen.getByRole('link', { name: /alternate nostril/i })).toHaveAttribute(
       'href',
       '/breathe?pattern=alternate',
     )
   })
 
-  it('deep-links guided meditation cards with the right ?guided= param', async () => {
-    renderPage()
-    // Cross-shelf assertions: open each shelf's chip for the cards beyond its preview.
-    expect(catalogLink(/body scan/i)).toHaveAttribute(
-      'href',
-      '/meditate?guided=body-scan',
-    )
-    expect(screen.getByRole('link', { name: /loving-kindness/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=loving-kindness',
-    )
-    openGroup(/^meditation$/i)
-    expect(screen.getByRole('link', { name: /mindfulness/i })).toHaveAttribute('href', '/meditate')
-    expect(screen.getByRole('link', { name: /name what you feel/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=name-feelings',
-    )
-    // Chakra Om is gated but level 10 (default) unlocks it → a real link.
-    await waitFor(() =>
-      expect(screen.getByRole('link', { name: /chakra om/i })).toHaveAttribute(
-        'href',
-        '/meditate?guided=chakra-om',
-      ),
-    )
-    openGroup(/^body$/i)
-    expect(screen.getByRole('link', { name: /mindful stretching/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=stretching',
-    )
-  })
-
-  it('renders the Body group with Body scan + Mindful stretching moved out of Meditation', () => {
-    renderPage()
-    // Open the full Body shelf and assert its membership.
-    openGroup(/^body$/i)
-    const bodyHeading = screen.getByRole('heading', { name: /^body/i })
-    const bodySection = bodyHeading.closest('section') as HTMLElement
-    // Body scan and Mindful stretching now live in Body, not Meditation.
-    expect(within(bodySection).getByRole('link', { name: /body scan/i })).toBeInTheDocument()
-    expect(within(bodySection).getByRole('link', { name: /mindful stretching/i })).toBeInTheDocument()
-    // The new Body-only practices are here too.
-    expect(within(bodySection).getByRole('link', { name: /yoga nidra/i })).toBeInTheDocument()
-    expect(within(bodySection).getByRole('link', { name: /muscle release/i })).toBeInTheDocument()
-    expect(within(bodySection).getByRole('link', { name: /mindful walking/i })).toBeInTheDocument()
-
-    // The full Meditation shelf must NOT carry them.
-    openGroup(/^meditation$/i)
-    const medHeading = screen.getByRole('heading', { name: /meditation/i })
-    const medSection = medHeading.closest('section') as HTMLElement
-    expect(within(medSection).queryByRole('link', { name: /body scan/i })).toBeNull()
-    expect(within(medSection).queryByRole('link', { name: /mindful stretching/i })).toBeNull()
-  })
-
-  it('deep-links the Body cards with the right ?guided= param', () => {
-    renderPage()
-    openGroup(/^body$/i)
-    expect(catalogLink(/body scan/i)).toHaveAttribute(
-      'href',
-      '/meditate?guided=body-scan',
-    )
-    expect(screen.getByRole('link', { name: /yoga nidra/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=yoga-nidra',
-    )
-    expect(screen.getByRole('link', { name: /muscle release/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=pmr',
-    )
-    expect(screen.getByRole('link', { name: /mindful stretching/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=stretching',
-    )
-    expect(screen.getByRole('link', { name: /mindful walking/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=walking',
-    )
-  })
-
-  it('deep-links the new Meditation cards (Focused attention, Mantra, Dopamine reset)', () => {
+  it('deep-links the Meditation cards with the right route (mindfulness + 7 guided/gaze)', () => {
     renderPage()
     openGroup(/^meditation$/i)
-    expect(catalogLink(/focused attention/i)).toHaveAttribute(
+    const medSection = screen.getByRole('heading', { name: /meditation/i }).closest('section') as HTMLElement
+    expect(within(medSection).getByRole('link', { name: /mindfulness/i })).toHaveAttribute(
+      'href',
+      '/meditate',
+    )
+    expect(within(medSection).getByRole('link', { name: /focused attention/i })).toHaveAttribute(
       'href',
       '/meditate?guided=focus',
     )
-    expect(screen.getByRole('link', { name: /^mantra/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=mantra',
-    )
-    expect(screen.getByRole('link', { name: /dopamine reset/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=just-sit',
-    )
-  })
-
-  it('deep-links the added Meditation cards (Count the breath, Noting, Sound meditation)', () => {
-    renderPage()
-    openGroup(/^meditation$/i)
-    expect(screen.getByRole('link', { name: /count the breath/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=count-breath',
-    )
-    expect(screen.getByRole('link', { name: /^noting/i })).toHaveAttribute(
+    expect(within(medSection).getByRole('link', { name: /^noting/i })).toHaveAttribute(
       'href',
       '/meditate?guided=noting',
     )
-    expect(screen.getByRole('link', { name: /sound meditation/i })).toHaveAttribute(
+    expect(within(medSection).getByRole('link', { name: /^mantra/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=sound-bath',
+      '/meditate?guided=mantra',
     )
-  })
-
-  it('renders the Heart section with Loving-kindness moved into it', () => {
-    renderPage()
-    openGroup(/^heart$/i)
-    const heartHeading = screen.getByRole('heading', { name: /^heart/i })
-    const heartSection = heartHeading.closest('section') as HTMLElement
-    // Loving-kindness now lives in Heart, not Meditation.
-    expect(within(heartSection).getByRole('link', { name: /loving-kindness/i })).toBeInTheDocument()
-    openGroup(/^meditation$/i)
-    const medHeading = screen.getByRole('heading', { name: /meditation/i })
-    const medSection = medHeading.closest('section') as HTMLElement
-    expect(within(medSection).queryByRole('link', { name: /loving-kindness/i })).toBeNull()
-  })
-
-  it('deep-links the Heart cards (loving-kindness + 4 new joy practices)', () => {
-    renderPage()
-    openGroup(/^heart$/i)
-    expect(screen.getByRole('link', { name: /loving-kindness/i })).toHaveAttribute(
+    expect(within(medSection).getByRole('link', { name: /body scan/i })).toHaveAttribute(
+      'href',
+      '/meditate?guided=body-scan',
+    )
+    expect(within(medSection).getByRole('link', { name: /loving-kindness/i })).toHaveAttribute(
       'href',
       '/meditate?guided=loving-kindness',
     )
-    expect(screen.getByRole('link', { name: /self-compassion/i })).toHaveAttribute(
+    expect(within(medSection).getByRole('link', { name: /candle gazing/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=self-compassion',
+      '/trataka',
     )
-    expect(screen.getByRole('link', { name: /recount a good memory/i })).toHaveAttribute(
+    expect(within(medSection).getByRole('link', { name: /three mindful breaths/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=recall-good',
-    )
-    expect(screen.getByRole('link', { name: /savor something good/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=savoring',
-    )
-    expect(screen.getByRole('link', { name: /celebrate a win/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=celebrate-win',
+      '/meditate?guided=three-breaths',
     )
   })
 
-  it('deep-links the added Heart cards (Forgiveness, Gratitude meditation, Sympathetic joy, Awe)', () => {
+  it('moves body-scan, loving-kindness and three-breaths into Meditation (their old groups are gone)', () => {
     renderPage()
-    openGroup(/^heart$/i)
-    expect(screen.getByRole('link', { name: /forgiveness/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=forgiveness',
-    )
-    expect(screen.getByRole('link', { name: /gratitude meditation/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=gratitude-sit',
-    )
-    expect(screen.getByRole('link', { name: /sympathetic joy/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=sympathetic-joy',
-    )
-    expect(screen.getByRole('link', { name: /awe & wonder/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=awe',
-    )
+    openGroup(/^meditation$/i)
+    const medSection = screen.getByRole('heading', { name: /meditation/i }).closest('section') as HTMLElement
+    expect(within(medSection).getByRole('link', { name: /body scan/i })).toBeInTheDocument()
+    expect(within(medSection).getByRole('link', { name: /loving-kindness/i })).toBeInTheDocument()
+    expect(within(medSection).getByRole('link', { name: /three mindful breaths/i })).toBeInTheDocument()
   })
 
-  it('deep-links the new Sleep section cards', () => {
+  it('deep-links the Rest & sleep cards (wind-down + yoga-nidra)', () => {
     renderPage()
-    const sleepHeading = screen.getByRole('heading', { name: /^sleep/i })
-    const sleepSection = sleepHeading.closest('section') as HTMLElement
+    const sleepSection = screen.getByRole('heading', { name: /^sleep/i }).closest('section') as HTMLElement
     expect(within(sleepSection).getByRole('link', { name: /wind down/i })).toHaveAttribute(
       'href',
       '/meditate?guided=wind-down',
     )
-    expect(within(sleepSection).getByRole('link', { name: /4-7-8 breath/i })).toHaveAttribute(
+    expect(within(sleepSection).getByRole('link', { name: /yoga nidra/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=four-seven-eight',
+      '/meditate?guided=yoga-nidra',
     )
-    expect(within(sleepSection).getByRole('link', { name: /set down the day/i })).toHaveAttribute(
-      'href',
-      '/meditate?guided=set-down-day',
-    )
-  })
-
-  it('deep-links the new Steady section cards', () => {
-    renderPage()
-    openGroup(/^steady$/i)
-    const steadyHeading = screen.getByRole('heading', { name: /^steady/i })
-    const steadySection = steadyHeading.closest('section') as HTMLElement
-    expect(
-      within(steadySection).getByRole('link', { name: /physiological sigh/i }),
-    ).toHaveAttribute('href', '/meditate?guided=physiological-sigh')
-    expect(
-      within(steadySection).getByRole('link', { name: /ground in your senses/i }),
-    ).toHaveAttribute('href', '/meditate?guided=steady-senses')
-    expect(
-      within(steadySection).getByRole('link', { name: /feet on the ground/i }),
-    ).toHaveAttribute('href', '/meditate?guided=steady-feet')
-    expect(
-      within(steadySection).getByRole('link', { name: /soften, soothe, allow/i }),
-    ).toHaveAttribute('href', '/meditate?guided=steady-soothe')
-  })
-
-  it('deep-links the new Everyday section cards', () => {
-    renderPage()
-    openGroup(/^everyday$/i)
-    const everydayHeading = screen.getByRole('heading', { name: /^everyday/i })
-    const everydaySection = everydayHeading.closest('section') as HTMLElement
-    expect(
-      within(everydaySection).getByRole('link', { name: /three mindful breaths/i }),
-    ).toHaveAttribute('href', '/meditate?guided=three-breaths')
-    expect(
-      within(everydaySection).getByRole('link', { name: /pause & stop/i }),
-    ).toHaveAttribute('href', '/meditate?guided=stop-pause')
-    expect(
-      within(everydaySection).getByRole('link', { name: /body check-in/i }),
-    ).toHaveAttribute('href', '/meditate?guided=body-checkin')
-    expect(
-      within(everydaySection).getByRole('link', { name: /arriving/i }),
-    ).toHaveAttribute('href', '/meditate?guided=arriving')
   })
 
   it('links the reflection cards to their own pages', () => {
     renderPage()
-    // Scope to the Reflection section: "Gratitude" (reflection) and "Gratitude meditation" (Heart)
-    // both match /gratitude/i, so target the Reflection card explicitly.
-    const reflectionHeading = screen.getByRole('heading', { name: /reflection/i })
-    const reflectionSection = reflectionHeading.closest('section') as HTMLElement
-    expect(
-      within(reflectionSection).getByRole('link', { name: /gratitude/i }),
-    ).toHaveAttribute('href', '/gratitude')
-    expect(screen.getByRole('link', { name: /journal/i })).toHaveAttribute('href', '/journal')
-    // Candle gazing lives deep in the Meditation shelf → open its chip.
-    openGroup(/^meditation$/i)
-    expect(screen.getByRole('link', { name: /candle gazing/i })).toHaveAttribute('href', '/trataka')
+    // Scope to the Reflection section (Gratitude has a matching name in no other kept group now,
+    // but keep the scoping explicit and robust).
+    const reflectionSection = screen
+      .getByRole('heading', { name: /reflection/i })
+      .closest('section') as HTMLElement
+    expect(within(reflectionSection).getByRole('link', { name: /gratitude/i })).toHaveAttribute(
+      'href',
+      '/gratitude',
+    )
+    expect(within(reflectionSection).getByRole('link', { name: /journal/i })).toHaveAttribute(
+      'href',
+      '/journal',
+    )
   })
 
   it('renders no spirit nudge or round-out highlight (the companion is hidden from the UI)', async () => {
@@ -330,56 +166,6 @@ describe('PracticesPage', () => {
     expect(document.querySelector('.practices-spirit-nudge')).toBeNull()
     expect(screen.queryByText(/a little less/i)).toBeNull()
     expect(catalogLink(/resonance/i).className).not.toMatch(/practice-card--needed/)
-  })
-})
-
-// ── Chakra Om level gate ─────────────────────────────────────────────────────
-// Chakra Om unlocks at level 5. Below it the card is a non-interactive, locked
-// <div> (not a <Link>) showing "Reach level 5 to unlock"; at/above level 5 it's a
-// normal deep-link card.
-
-describe('PracticesPage — Chakra Om level gate', () => {
-  afterEach(cleanup)
-  beforeEach(() => {
-    getStats.mockReset()
-  })
-
-  it('renders Chakra Om locked (non-link, "Reach level 5") below level 5', async () => {
-    getStats.mockResolvedValue({ level: 3 })
-    renderPage()
-    await waitFor(() => expect(getStats).toHaveBeenCalled())
-    // Chakra Om sits deep in the Meditation shelf — open its chip to see the full shelf.
-    openGroup(/^meditation$/i)
-    // Not a link while locked.
-    await waitFor(() =>
-      expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull(),
-    )
-    // The card text is present with the unlock hint.
-    expect(screen.getByText(/chakra om/i)).toBeInTheDocument()
-    expect(screen.getByText(/reach level 5 to unlock/i)).toBeInTheDocument()
-  })
-
-  it('renders Chakra Om as a real deep-link at level 5+', async () => {
-    getStats.mockResolvedValue({ level: 5 })
-    renderPage()
-    openGroup(/^meditation$/i)
-    await waitFor(() =>
-      expect(screen.getByRole('link', { name: /chakra om/i })).toHaveAttribute(
-        'href',
-        '/meditate?guided=chakra-om',
-      ),
-    )
-    expect(screen.queryByText(/reach level 5 to unlock/i)).toBeNull()
-  })
-
-  it('keeps Chakra Om locked when the level fetch fails (fail safe)', async () => {
-    getStats.mockRejectedValue(new Error('network'))
-    renderPage()
-    await waitFor(() => expect(getStats).toHaveBeenCalled())
-    openGroup(/^meditation$/i)
-    // level stays null → gated card stays locked.
-    expect(screen.queryByRole('link', { name: /chakra om/i })).toBeNull()
-    expect(screen.getByText(/reach level 5 to unlock/i)).toBeInTheDocument()
   })
 })
 
@@ -400,10 +186,10 @@ describe('PracticesPage — category chips + shelf previews', () => {
     const medSection = screen
       .getByRole('heading', { name: /meditation/i })
       .closest('section') as HTMLElement
-    // Only the first 3 of Meditation's 10 cards render in the preview…
+    // Only the first 3 of Meditation's 8 cards render in the preview…
     expect(medSection.querySelectorAll('.practice-card').length).toBe(3)
-    // …with a quiet "See all 10" at the shelf's foot.
-    expect(within(medSection).getByRole('button', { name: /see all 10/i })).toBeInTheDocument()
+    // …with a quiet "See all 8" at the shelf's foot.
+    expect(within(medSection).getByRole('button', { name: /see all 8/i })).toBeInTheDocument()
     // A small group (Reflection, 2 cards) shows whole — no See-all.
     const reflection = screen
       .getByRole('heading', { name: /reflection/i })
@@ -415,12 +201,12 @@ describe('PracticesPage — category chips + shelf previews', () => {
   it('shows one full shelf when its category chip is picked, and All restores the overview', () => {
     renderPage()
     openGroup(/^meditation$/i)
-    // Only the Meditation section remains, in full (all 10 cards).
+    // Only the Meditation section remains, in full (all 8 cards).
     expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
     const medSection = screen
       .getByRole('heading', { name: /meditation/i })
       .closest('section') as HTMLElement
-    expect(medSection.querySelectorAll('.practice-card').length).toBe(10)
+    expect(medSection.querySelectorAll('.practice-card').length).toBe(8)
     // "All" brings the calm overview back.
     fireEvent.click(screen.getByRole('button', { name: /^all$/i }))
     expect(screen.getByRole('heading', { name: /^breathing/i })).toBeInTheDocument()
@@ -428,11 +214,11 @@ describe('PracticesPage — category chips + shelf previews', () => {
 
   it('expands a shelf via its "See all N" button too', () => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: /see all 10/i }))
+    fireEvent.click(screen.getByRole('button', { name: /see all 8/i }))
     const medSection = screen
       .getByRole('heading', { name: /meditation/i })
       .closest('section') as HTMLElement
-    expect(medSection.querySelectorAll('.practice-card').length).toBe(10)
+    expect(medSection.querySelectorAll('.practice-card').length).toBe(8)
     expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
   })
 
@@ -470,9 +256,8 @@ describe('PracticesPage — category chips + shelf previews', () => {
 })
 
 // ── Programs row (nav destinations surfaced on the hub) ──────────────────────
-// The nav "Practice" now links straight here, so the two non-technique destinations
-// that used to live in the dropdown (Guided paths → /paths, Log a past session →
-// /sessions/new) must be reachable from the hub itself.
+// The nav "Practice" links straight here, so the two non-technique destinations
+// (Guided paths → /paths, Log a past session → /sessions/new) must be reachable.
 
 describe('PracticesPage — Programs row', () => {
   afterEach(cleanup)
@@ -511,15 +296,16 @@ describe('PracticesPage — search filter', () => {
 
   it('filters cards live: a matching card stays, non-matching cards are hidden', () => {
     renderPage()
-    // Baseline: both a matching and a non-matching card render.
+    // Baseline: both a matching and a non-matching card render (mindfulness is a Meditation
+    // preview card and never appears in the suggested set, so it's unambiguous).
     expect(catalogLink(/resonance/i)).toBeInTheDocument()
-    expect(catalogLink(/body scan/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /mindfulness/i })).toBeInTheDocument()
 
     typeSearch('resonance')
 
     // The matching card is still shown; the non-matching one is gone.
     expect(catalogLink(/resonance/i)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /mindfulness/i })).toBeNull()
   })
 
   it('matches the description too, case-insensitively', () => {
@@ -551,20 +337,20 @@ describe('PracticesPage — search filter', () => {
     renderPage()
     const box = screen.getByRole('searchbox', { name: /search practices/i })
     fireEvent.change(box, { target: { value: 'resonance' } })
-    expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /mindfulness/i })).toBeNull()
 
     fireEvent.keyDown(box, { key: 'Escape' })
     // Everything is back.
-    expect(catalogLink(/body scan/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /mindfulness/i })).toBeInTheDocument()
     expect((box as HTMLInputElement).value).toBe('')
   })
 
   it('clears the query via the × clear button', () => {
     renderPage()
     typeSearch('resonance')
-    expect(screen.queryByRole('link', { name: /body scan/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /mindfulness/i })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /clear search/i }))
-    expect(catalogLink(/body scan/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /mindfulness/i })).toBeInTheDocument()
   })
 })
