@@ -54,6 +54,13 @@ export const tracking: Record<string, string> = {
   'tracking.journal.deleteError': 'その振り返りを削除できませんでした。',
   'tracking.journal.resurfaceError': '思い出を呼び起こせませんでした — もう一度お試しください。',
   'tracking.journal.resurfaceEmpty': 'まだ呼び起こせるものがありません — もう少し記録してみましょう。',
+  // 記録へのAIリフレクション（静かに、臨床的にならないトーンで）
+  'tracking.journal.reflect.button': 'そっと振り返る',
+  'tracking.journal.reflect.loading': '振り返り中…',
+  'tracking.journal.reflect.aria': 'この記録へのやさしい振り返りを受け取る',
+  'tracking.journal.reflect.title': 'やさしい振り返り',
+  'tracking.journal.reflect.error': '振り返りを受け取れませんでした — もう一度お試しください。',
+  'tracking.journal.reflect.capReached': '今日の振り返りはここまで — また明日どうぞ。',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': '感謝',

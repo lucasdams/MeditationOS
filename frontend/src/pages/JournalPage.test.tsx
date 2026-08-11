@@ -4,12 +4,13 @@
  * if that fetch fails.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const listJournals = vi.fn()
 const promptJournal = vi.fn()
 const listSessions = vi.fn()
+const reflectJournal = vi.fn()
 
 vi.mock('../services/journals', () => ({
   journalService: {
@@ -19,6 +20,8 @@ vi.mock('../services/journals', () => ({
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
+    reflect: (...a: unknown[]) => reflectJournal(...a),
+    getReflection: vi.fn(),
   },
 }))
 vi.mock('../services/sessions', () => ({
@@ -39,6 +42,7 @@ vi.mock('../context/ToastContext', async (importOriginal) => {
 })
 
 import JournalPage from './JournalPage'
+import { ApiError } from '../services/api'
 
 function renderPage() {
   return render(
@@ -51,7 +55,8 @@ function renderPage() {
 beforeEach(() => {
   listJournals.mockReset().mockResolvedValue([])
   listSessions.mockReset().mockResolvedValue([])
-  promptJournal.mockReset()
+  promptJournal.mockReset().mockResolvedValue({ text: 'p', context: 'generic', contextual: false })
+  reflectJournal.mockReset()
 })
 afterEach(cleanup)
 
@@ -74,7 +79,7 @@ describe('JournalPage — contextual prompt', () => {
   })
 
   it('falls back to a local daily prompt when the contextual fetch fails', async () => {
-    promptJournal.mockRejectedValue(new Error('boom'))
+    promptJournal.mockReset().mockRejectedValue(new Error('boom'))
 
     renderPage()
 
@@ -86,5 +91,80 @@ describe('JournalPage — contextual prompt', () => {
         screen.getByRole('button', { name: /show another prompt/i }),
       ).toBeInTheDocument(),
     )
+  })
+})
+
+describe('JournalPage — AI reflection', () => {
+  const ENTRY = {
+    id: 'j1',
+    body: 'Felt calmer after sitting today.',
+    mood: 'calm',
+    session_id: null,
+    created_at: '2026-08-12T08:00:00Z',
+  }
+  const REFLECTION = {
+    id: 'r1',
+    journal_id: 'j1',
+    reflection_text: 'You noticed a real shift toward calm today.',
+    followup_question: 'What helped you settle, do you think?',
+    source: 'ai',
+    created_at: '2026-08-12T08:05:00Z',
+  }
+
+  async function tapReflect() {
+    renderPage()
+    const btn = await screen.findByRole('button', {
+      name: /get a gentle reflection on this entry/i,
+    })
+    fireEvent.click(btn)
+    return btn
+  }
+
+  beforeEach(() => {
+    listJournals.mockResolvedValue([ENTRY])
+  })
+
+  it('tapping Reflect shows the reflection and follow-up as a quiet card', async () => {
+    reflectJournal.mockResolvedValue(REFLECTION)
+
+    await tapReflect()
+
+    expect(
+      await screen.findByText('You noticed a real shift toward calm today.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('What helped you settle, do you think?')).toBeInTheDocument()
+    expect(screen.getByText(/a gentle reflection/i)).toBeInTheDocument()
+    expect(reflectJournal).toHaveBeenCalledWith('j1')
+    // The affordance is replaced by the card once the reflection is shown.
+    expect(
+      screen.queryByRole('button', { name: /get a gentle reflection on this entry/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows a friendly note and disables Reflect when the daily cap is hit (429)', async () => {
+    reflectJournal.mockRejectedValue(new ApiError(429, 'Daily limit reached.'))
+
+    const btn = await tapReflect()
+
+    expect(
+      await screen.findByText(/all the reflections for today/i),
+    ).toBeInTheDocument()
+    expect(btn).toBeDisabled()
+  })
+
+  it('shows a gentle error and keeps the button as the retry on failure', async () => {
+    reflectJournal.mockRejectedValueOnce(new ApiError(500)).mockResolvedValueOnce(REFLECTION)
+
+    const btn = await tapReflect()
+
+    expect(
+      await screen.findByText(/couldn't reflect on this entry/i),
+    ).toBeInTheDocument()
+    expect(btn).toBeEnabled()
+
+    fireEvent.click(btn)
+    expect(
+      await screen.findByText('You noticed a real shift toward calm today.'),
+    ).toBeInTheDocument()
   })
 })

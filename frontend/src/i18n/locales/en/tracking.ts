@@ -57,6 +57,13 @@ export const tracking: Record<string, string> = {
   'tracking.journal.deleteError': "Couldn't delete that reflection.",
   'tracking.journal.resurfaceError': "Couldn't resurface a memory — try again.",
   'tracking.journal.resurfaceEmpty': 'Nothing to resurface yet — give it a few entries.',
+  // AI reflection on an entry (quiet, non-clinical)
+  'tracking.journal.reflect.button': 'Reflect',
+  'tracking.journal.reflect.loading': 'Reflecting…',
+  'tracking.journal.reflect.aria': 'Get a gentle reflection on this entry',
+  'tracking.journal.reflect.title': 'A gentle reflection',
+  'tracking.journal.reflect.error': "Couldn't reflect on this entry — tap Reflect to try again.",
+  'tracking.journal.reflect.capReached': "That's all the reflections for today — more tomorrow.",
 
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': 'Gratitude',
