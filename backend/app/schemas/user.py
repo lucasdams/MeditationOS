@@ -179,6 +179,7 @@ class ExportData(BaseModel):
     scheduled_sessions: list[dict]
     breathing_patterns: list[dict]
     path_enrollments: list[dict]
+    ai_reflections: list[dict]
 
 
 class UserRead(BaseModel):

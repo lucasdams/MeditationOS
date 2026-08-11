@@ -25,6 +25,7 @@ _TABLE_TO_EXPORT_KEY = {
     "scheduled_sessions": "scheduled_sessions",
     "breathing_patterns": "breathing_patterns",
     "path_enrollments": "path_enrollments",
+    "ai_reflections": "ai_reflections",
 }
 
 

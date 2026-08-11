@@ -477,6 +477,17 @@ export interface JournalPromptResponse {
   contextual: boolean // false when we fell back to a generic prompt
 }
 
+// An AI reflection on one journal entry: a short reflective note + one gentle
+// follow-up question. `source` says whether the model or the curated fallback wrote it.
+export interface AiReflection {
+  id: string
+  journal_id: string
+  reflection_text: string
+  followup_question: string
+  source: 'ai' | 'fallback'
+  created_at: string
+}
+
 export interface JournalCreate {
   body: string
   mood?: Mood | null
