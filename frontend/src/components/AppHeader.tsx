@@ -15,7 +15,6 @@ import {
   Target,
   CalendarDays,
   Wrench,
-  Flower2,
   Sparkles,
   TrendingUp,
   ChevronDown,
@@ -26,11 +25,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
-import { spiritService } from '../services/spirit'
-import { roundOutFacet } from '../lib/spiritNeeds'
-import { NEED_COPY } from './Spirit'
 import { t, useT } from '../i18n'
-import type { SpiritNeedKey, SpiritState } from '../types'
 
 // A menu destination. Each carries a per-destination accent (light + dark shades) so the menu
 // items read as the app's soft colour-tinted pills, not plain text. icon + label are separate
@@ -101,9 +96,6 @@ export default function AppHeader() {
   const [openMenu, setOpenMenu] = useState<'progress' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const navRef = useRef<HTMLElement>(null)
-  // The companion's needs — drives the small header reminder chip ("what it prefers right now").
-  // Non-blocking + absent for a pathless spark / on failure.
-  const [spirit, setSpirit] = useState<SpiritState | null>(null)
   // The account dropdown (Settings + Log out) that opens from the name chip.
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
@@ -137,17 +129,6 @@ export default function AppHeader() {
     dashboardService
       .getStats()
       .then((s) => { if (!ignore) setLevel(s.level) })
-      .catch(() => {})
-    return () => { ignore = true }
-  }, [location.pathname])
-
-  // The spirit's needs for the header reminder chip — refetched on navigation so it stays current
-  // after tending / practicing. Non-blocking: a failure (or a pathless spark) just hides the chip.
-  useEffect(() => {
-    let ignore = false
-    spiritService
-      .get()
-      .then((s) => { if (!ignore) setSpirit(s) })
       .catch(() => {})
     return () => { ignore = true }
   }, [location.pathname])
@@ -194,15 +175,6 @@ export default function AppHeader() {
       document.removeEventListener('keydown', onKey)
     }
   }, [userMenuOpen])
-
-  // ADR-0032: the three needs are an informational balance, not debts. The chip is an OPTIONAL
-  // round-out invitation for the least-represented facet — and only when the balance is actually
-  // uneven (roundOutFacet returns null on an even mix → no chip). Only when a path is chosen (a
-  // pathless spark has no mix yet). Shared with the Practices hub via roundOutFacet() so both agree.
-  const need: SpiritNeedKey | null =
-    spirit && spirit.path != null ? roundOutFacet(spirit.needs) : null
-  const NeedIcon = need ? NEED_COPY[need].icon : null
-  const spiritName = spirit?.name ?? t('needChip.fallbackName')
 
   async function handleLogout() {
     await logout()
@@ -278,11 +250,6 @@ export default function AppHeader() {
         </div>
         {renderMenu('progress', t('nav.progress'), TrendingUp, progressLinks)}
 
-        {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
-        <Link to="/spirit" className="nav-spirit nav-spirit-feature">
-          <Flower2 size={17} strokeWidth={1.75} aria-hidden="true" /> {t('nav.spirit')}
-        </Link>
-
         {/* On mobile the dropdowns are hidden; their links show inline as labelled sections. */}
         <div className="nav-mobile-extra">
           <p className="nav-mobile-heading">{t('nav.practice')}</p>
@@ -292,21 +259,6 @@ export default function AppHeader() {
         </div>
       </nav>
       <div className="app-user" ref={userRef}>
-        {/* An optional, easy-to-ignore round-out invitation (ADR-0032) — surfaced only when the
-            recent-practice balance is a little uneven. A gentle suggestion, never a demand; links to
-            practices that round it out. Hidden for a pathless spark or an even balance. */}
-        {need && NeedIcon && (
-          <Link
-            to="/practices"
-            className="spirit-need-chip"
-            title={t('needChip.title', { name: spiritName, need: t(`needs.${need}`).toLowerCase() })}
-          >
-            <NeedIcon size={15} strokeWidth={1.9} aria-hidden="true" />
-            <span className="spirit-need-chip-label">
-              {t('needChip.label', { need: t(`needs.${need}`) })}
-            </span>
-          </Link>
-        )}
         <div className="app-user-menu-wrap">
           <button
             type="button"
