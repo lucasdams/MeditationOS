@@ -29,14 +29,11 @@ import {
   Sprout,
   type LucideProps,
 } from 'lucide-react'
-import { spiritService } from '../services/spirit'
 import { dashboardService } from '../services/dashboard'
 import { GUIDED_MIN_LEVEL, isGuidedUnlocked } from '../lib/guidedSessions'
-import { roundOutFacet } from '../lib/spiritNeeds'
 import { suggestedPractices } from '../lib/suggestions'
-import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
 import { useT } from '../i18n'
-import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
+import type { SpiritNeedKey, SpiritPath } from '../types'
 
 // The Practices hub — one browsable "activities" screen listing every practice technique grouped
 // by category. Each card deep-links into its practice with the variant pre-selected (Breathe reads
@@ -311,7 +308,6 @@ function PracticeCardLink({
 
 export default function PracticesPage() {
   const { t } = useT()
-  const [spirit, setSpirit] = useState<SpiritState | null>(null)
   // The user's level — drives any guided-practice level gates. Fetched non-blocking
   // like the header; null until known, which keeps gated cards locked (fail safe)
   // rather than flashing them open then closing. (No cards are gated at the moment,
@@ -324,15 +320,6 @@ export default function PracticesPage() {
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
   // The chip bar — "See all" scrolls back up to it so the expanded shelf lands in view.
   const filterRef = useRef<HTMLDivElement>(null)
-  const reducedMotion = prefersReducedMotion()
-
-  useEffect(() => {
-    // Non-blocking enhancement — a failure just hides the spirit nudge; the list still works.
-    spiritService
-      .get()
-      .then(setSpirit)
-      .catch(() => setSpirit(null))
-  }, [])
 
   useEffect(() => {
     // Non-blocking — a failure leaves level null so gated cards stay locked.
@@ -341,12 +328,6 @@ export default function PracticesPage() {
       .then((s) => setLevel(s.level))
       .catch(() => {})
   }, [])
-
-  // Only suggest a round-out for a creature that has chosen a path. A pathless spark shows the
-  // practices + their generic feeds, but no highlight. ADR-0032: `need` is the least-represented
-  // facet worth gently rounding out, or null when the balance is even (then no highlight/nudge).
-  const guiding = spirit != null && spirit.path != null
-  const need = guiding ? roundOutFacet(spirit.needs) : null
 
   // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc —
   // the description still indexes even though the compact grid cards no longer display it). With a
@@ -398,7 +379,7 @@ export default function PracticesPage() {
   // Suggested-for-you — a few gentle picks for returning practitioners, shown only when not searching
   // and not a newcomer (they get the starter section instead). Routes resolved to catalog cards.
   const suggestion =
-    notSearching && !newcomer ? suggestedPractices({ hour: new Date().getHours(), facet: need }) : null
+    notSearching && !newcomer ? suggestedPractices({ hour: new Date().getHours(), facet: null }) : null
   const suggestedCards = suggestion
     ? suggestion.picks
         .map((to) => CARD_BY_TO.get(to))
@@ -517,8 +498,8 @@ export default function PracticesPage() {
               <PracticeCardLink
                 key={card.to}
                 card={card}
-                need={need}
-                path={spirit?.path ?? null}
+                need={null}
+                path={null}
                 level={level}
               />
             ))}
@@ -526,34 +507,8 @@ export default function PracticesPage() {
         </section>
       )}
 
-      {guiding && need && activeGroup === null && (
-        <section className="practices-spirit-nudge" aria-live="polite">
-          <div className="practices-spirit-nudge-art" aria-hidden="true">
-            <SpiritArt
-              stage={spirit.stage}
-              path={spirit.path}
-              glow={spirit.condition.factor}
-              cosmetics={spirit.cosmetics}
-              reducedMotion={reducedMotion}
-            />
-          </div>
-          <p className="practices-spirit-nudge-text">
-            <strong>{spirit.name ?? t('practice.hub.nudge.fallbackName')}</strong> {t('practice.hub.nudge.before')}{' '}
-            <strong className="practices-need-name">
-              {(() => {
-                const NeedIcon = NEED_COPY[need].icon
-                return <NeedIcon size={16} strokeWidth={1.75} aria-hidden="true" />
-              })()}{' '}
-              {t(`needs.${need}`)}
-            </strong>{' '}
-            {t('practice.hub.nudge.after')}
-          </p>
-        </section>
-      )}
-
-      {/* Suggested for you — a small, ignorable set at the top: the spirit's least-fed facet when
-          uneven, else a time-of-day pick, plus a short anytime on-ramp. Hidden while searching and
-          on a single-category view. */}
+      {/* Suggested for you — a small, ignorable set at the top: a time-of-day pick, plus a short
+          anytime on-ramp. Hidden while searching and on a single-category view. */}
       {suggestion && suggestedCards.length > 0 && activeGroup === null && (
         <section className="practices-group practices-suggested">
           <div className="practices-group-head">
@@ -570,8 +525,8 @@ export default function PracticesPage() {
               <PracticeCardLink
                 key={card.to}
                 card={card}
-                need={need}
-                path={spirit?.path ?? null}
+                need={null}
+                path={null}
                 level={level}
               />
             ))}
@@ -616,8 +571,8 @@ export default function PracticesPage() {
                 <PracticeCardLink
                   key={card.to}
                   card={card}
-                  need={need}
-                  path={spirit?.path ?? null}
+                  need={null}
+                  path={null}
                   level={level}
                   compact
                 />

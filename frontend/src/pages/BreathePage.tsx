@@ -9,7 +9,6 @@ import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAud
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import { mmss } from '../lib/format'
 import RewardOverlay from '../components/RewardOverlay'
-import Spirit from '../components/Spirit'
 import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
 import Modal from '../components/Modal'
@@ -248,19 +247,6 @@ const hasBreathePrefs = (): boolean => {
 const FIRST_SIT_TARGET_MIN = 1
 
 const DRAFT_PAGE = 'breathe'
-
-// Onboarding hatch flag (set by Onboarding §5): when '1', the first completed sit should route
-// to the companion choose page (the "hatch") instead of the usual close. Reads-and-clears in one
-// step so it only ever fires once; storage may be unavailable (private mode) — treat as no hatch.
-function consumePendingHatch(): boolean {
-  try {
-    if (localStorage.getItem('onboarding.pendingHatch') !== '1') return false
-    localStorage.removeItem('onboarding.pendingHatch')
-    return true
-  } catch {
-    return false
-  }
-}
 
 export default function BreathePage() {
   const navigate = useNavigate()
@@ -890,17 +876,9 @@ export default function BreathePage() {
   }
 
   // What happens once the sit is saved and the reward step is done (whether the reward
-  // overlay was shown, or skipped because the stats fetch failed): the onboarding hatch
-  // takes precedence (first sit → companion choose page), otherwise offer the reflection,
+  // overlay was shown, or skipped because the stats fetch failed): offer the reflection,
   // else return home. Shared so the reward-overlay close and the stats-failed path agree.
   function proceedAfterReward() {
-    // Onboarding hatch (§5): the very first sit "hatches" the companion. If a hatch is
-    // pending, clear the flag and send the user to the choose page (the celebratory
-    // reveal) instead of the usual reflection-modal / home path.
-    if (consumePendingHatch()) {
-      navigate('/spirit/choose')
-      return
-    }
     // After XP, offer the optional reflection — never blocks.
     if (savedSessionIdRef.current) setShowReflection(true)
     else navigate('/')
@@ -966,16 +944,6 @@ export default function BreathePage() {
           <div
             className={`breathe-circle ${running ? phase : 'idle'}`}
             style={{ transform: `scale(${scale})` }}
-          />
-          {/* The companion breathes with you: while running, it syncs to the SAME `scale`
-              (the breathe-circle's `scaleAt` value) so its aura expands on the inhale and
-              contracts on the exhale — one rAF clock, no drift. When paused it sits idle, and
-              it gives a brief happy swell once the post-session reward appears (`celebrate`).
-              Reduced-motion holds it static (handled inside Spirit). */}
-          <Spirit
-            compact
-            paceScale={running ? scale : undefined}
-            celebrate={reward !== null}
           />
           {/* aria-live="polite" announces phase changes (inhale / hold / exhale) to SR
               users — the primary cue when audio is off or headphones aren't in use. For

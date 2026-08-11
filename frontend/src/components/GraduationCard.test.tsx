@@ -48,11 +48,12 @@ describe('GraduationCard — depth links + dismiss interaction', () => {
     return onDismiss
   }
 
-  it('resurfaces the three depth surfaces (HRV, analytics, customization)', () => {
+  it('resurfaces the depth surfaces (HRV, analytics) with no link to the hidden Spirit', () => {
     renderCard()
     expect(screen.getByRole('link', { name: /HRV/i })).toHaveAttribute('href', '/biometrics/new')
     expect(screen.getByRole('link', { name: /analytics/i })).toHaveAttribute('href', '/analytics')
-    expect(screen.getByRole('link', { name: /customize/i })).toHaveAttribute('href', '/spirit')
+    // The Spirit companion is hidden from the UI — the customize link is unhooked.
+    expect(screen.queryByRole('link', { name: /customize/i })).toBeNull()
   })
 
   it('persists dismissal and calls onDismiss when "Got it" is clicked', () => {

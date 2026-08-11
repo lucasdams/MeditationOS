@@ -1,16 +1,15 @@
 /**
  * Light smoke tests for the DashboardPage.
  * Full integration coverage lives in E2E; these guard the quick-action tiles, the slim
- * coins/streak pills, the companion + single "today's action" CTA + gentle nudges that lead
- * the calm single-view home, the single-fetch spirit (coins) optimisation, and the quiet
- * "this week" glance inlined at the foot.
+ * streak pill, the single "today's action" CTA + gentle nudges that lead the calm
+ * single-view home, and the quiet "this week" glance inlined at the foot. The Spirit
+ * companion is hidden from the UI (dormant) — the home fetches no spirit state.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 const getStats = vi.fn()
-const getSpirit = vi.fn()
 const listMoodLogs = vi.fn()
 const listPaths = vi.fn()
 
@@ -19,9 +18,6 @@ vi.mock('../services/dashboard', () => ({
   dashboardService: {
     getStats: (...a: unknown[]) => getStats(...a),
   },
-}))
-vi.mock('../services/spirit', () => ({
-  spiritService: { get: (...a: unknown[]) => getSpirit(...a) },
 }))
 // Mock the mood-logs service: the home reads the single most recent mood log to decide
 // whether to reflect "You felt X" or show the "How do you feel?" prompt.
@@ -35,12 +31,6 @@ vi.mock('../services/paths', () => ({
   pathsService: { list: (...a: unknown[]) => listPaths(...a) },
 }))
 
-// The spirit is the home-screen centrepiece (docs/design/spirit.md, ADR-0022). It self-fetches
-// its state; mock it to a marker so the dashboard test stays backend-free and can assert the
-// spirit renders on the home (its own art/states are covered in Spirit.test.tsx).
-vi.mock('../components/Spirit', () => ({
-  default: () => <div data-testid="spirit" />,
-}))
 // Mock MoodCheckin: render a marker plus a "pick" button that fires onLogged, so tests
 // can exercise the "picking a mood closes the modal" path without the real API call.
 vi.mock('../components/MoodCheckin', () => ({
@@ -58,7 +48,7 @@ vi.mock('../components/WeeklyReview', () => ({
 
 import DashboardPage from './DashboardPage'
 import { localDateKey } from '../lib/zen'
-import type { DashboardStats, PathSummary, SpiritState } from '../types'
+import type { DashboardStats, PathSummary } from '../types'
 
 // The once-per-day mood prompt is keyed by the local date. Helpers to read/seed that gate.
 const moodPromptKey = () => `mood.prompted.${localDateKey()}`
@@ -82,10 +72,6 @@ const fakeStats = {
   streak_bonus_xp: 0,
 } as unknown as DashboardStats
 
-// The dashboard only reads `coins` from the spirit for the home top-line chip; the rest of
-// SpiritState is irrelevant here, so cast a minimal coins-only fake.
-const fakeSpirit = { coins: 142 } as unknown as SpiritState
-
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -101,7 +87,6 @@ const findLoaded = () => screen.findByRole('navigation', { name: /quick access/i
 beforeEach(() => {
   localStorage.clear()
   getStats.mockReset()
-  getSpirit.mockReset()
   listMoodLogs.mockReset()
   listPaths.mockReset()
   // Default: no mood logged today → the home shows the "How do you feel?" prompt.
@@ -123,7 +108,6 @@ describe('DashboardPage — quick-action feature tiles', () => {
   // and wait for the tab before asserting on them.
   beforeEach(() => {
     getStats.mockResolvedValue(fakeStats)
-    getSpirit.mockResolvedValue(fakeSpirit)
     seenMoodToday()
     renderPage()
   })
@@ -153,15 +137,14 @@ describe('DashboardPage — quick-action feature tiles', () => {
 describe('DashboardPage — home (calm default view)', () => {
   beforeEach(() => {
     getStats.mockResolvedValue(fakeStats)
-    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
-  it('shows the slim coins + streak pills on the Today tab once stats and spirit load', async () => {
+  it('shows the slim streak pill on the Today tab once stats load', async () => {
     renderPage()
     await findLoaded()
-    // Coins come from the spirit; the streak reads as a quiet 🔥 pill. No level/XP scoreboard.
-    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
+    // The streak reads as a quiet 🔥 pill. No level/XP scoreboard, no coin chip.
     expect(screen.getByLabelText(/3 day streak/i)).toBeInTheDocument()
+    expect(document.querySelector('.hud-pill-coins')).toBeNull()
   })
 
   it('quiets the XP: no level badge or XP bar on the Today tab', async () => {
@@ -225,9 +208,6 @@ describe('DashboardPage — home (calm default view)', () => {
     expect(
       within(questsSection).getByRole('link', { name: /meditate/i }),
     ).toHaveAttribute('href', '/meditate')
-
-    // The spirit is the home-screen centrepiece, rendered on the Today tab.
-    expect(screen.getByTestId('spirit')).toBeInTheDocument()
   })
 
   it('drops the level/XP card entirely and inlines the weekly review at the foot', async () => {
@@ -250,7 +230,6 @@ describe('DashboardPage — path-aware Today CTA', () => {
   beforeEach(() => {
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
-    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   // An enrolled, unfinished path whose current day (Day 3) is a 3-min breathe → guided 180s.
@@ -329,7 +308,6 @@ describe('DashboardPage — "this week" glance (inline, no tabs)', () => {
   beforeEach(() => {
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
-    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('inlines the weekly review + a link to full analytics once there is practice to summarise', async () => {
@@ -370,7 +348,6 @@ describe('DashboardPage — "this week" glance (inline, no tabs)', () => {
 describe('DashboardPage — multi-step quest progress counter', () => {
   beforeEach(() => {
     seenMoodToday()
-    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('shows an "X/Y" counter on multi-step quests and none on single-step quests', async () => {
@@ -418,7 +395,6 @@ describe('DashboardPage — today\'s mood reflection', () => {
     // Don't let the on-open modal interfere with the home mood-line assertions.
     seenMoodToday()
     getStats.mockResolvedValue(fakeStats)
-    getSpirit.mockResolvedValue(fakeSpirit)
   })
 
   it('reflects "You felt {mood}" when a mood was logged today', async () => {
@@ -460,34 +436,12 @@ describe('DashboardPage — today\'s mood reflection', () => {
   })
 })
 
-describe('DashboardPage — spirit (coins) single-fetch', () => {
-  it('calls the spirit fetch exactly once and shows its coin balance in the pill row', async () => {
-    seenMoodToday()
-    getSpirit.mockResolvedValue(fakeSpirit)
-    getStats.mockResolvedValue(fakeStats)
-
-    renderPage()
-    await findLoaded()
-
-    // The coin pill reflects the spirit's derived coin balance.
-    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
-
-    // Exactly one fetch — not two.
-    expect(getSpirit).toHaveBeenCalledTimes(1)
-  })
-})
-
 describe('DashboardPage — manual mood check-in (no auto-open)', () => {
-  beforeEach(() => {
-    getSpirit.mockResolvedValue(fakeSpirit)
-  })
-
   it('does NOT auto-open the mood modal on load', async () => {
     // No prior-prompt seeding — the modal must still stay closed; it never auto-pops now.
     getStats.mockResolvedValue(fakeStats)
     renderPage()
     await findLoaded()
-    await waitFor(() => expect(screen.getByText(/142/)).toBeInTheDocument())
 
     // The quiet inline mood line is present, but the modal is not auto-opened.
     expect(screen.getByRole('button', { name: /log today's mood/i })).toBeInTheDocument()
@@ -549,34 +503,27 @@ describe('DashboardPage — manual mood check-in (no auto-open)', () => {
   })
 })
 
-// First-run / hatch de-conflict (onboarding §5): a just-onboarded, still-pathless user (first
-// sit done, no companion chosen) shouldn't see BOTH the first-run card and the companion's warm
-// hatch invite. The first-run card stands down so the hatch leads.
-describe('DashboardPage — first-run vs hatch de-conflict', () => {
-  const pathlessSpirit = { coins: 0, path: null } as unknown as SpiritState
-
-  it('hides the first-run card for a pathless user who has logged their first sit', async () => {
-    getStats.mockResolvedValue({ ...fakeStats, session_count: 1 } as unknown as DashboardStats)
-    getSpirit.mockResolvedValue(pathlessSpirit)
-    renderPage()
-    await findLoaded()
-    // The hatch invite (in the real <Spirit>) leads; the first-run card stands down.
-    expect(screen.queryByRole('region', { name: /getting started/i })).toBeNull()
-  })
-
-  it('still shows the first-run card before the first sit (session_count 0)', async () => {
+// First-run card: with the companion hidden from the UI, the card simply follows
+// shouldShowFirstRun (a genuinely new user sees it; it retires with practice).
+describe('DashboardPage — first-run card', () => {
+  it('shows the first-run card before the first sit (session_count 0)', async () => {
     getStats.mockResolvedValue({ ...fakeStats, session_count: 0 } as unknown as DashboardStats)
-    getSpirit.mockResolvedValue(pathlessSpirit)
     renderPage()
     await findLoaded()
     expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
   })
 
-  it('still shows the first-run card when the user has already chosen a companion', async () => {
+  it('still shows the first-run card just after the first sit (no companion gating)', async () => {
     getStats.mockResolvedValue({ ...fakeStats, session_count: 1 } as unknown as DashboardStats)
-    getSpirit.mockResolvedValue({ coins: 0, path: 'stillness' } as unknown as SpiritState)
     renderPage()
     await findLoaded()
     expect(screen.getByRole('region', { name: /getting started/i })).toBeInTheDocument()
+  })
+
+  it('retires the first-run card once the user has practised (session_count 5)', async () => {
+    getStats.mockResolvedValue(fakeStats)
+    renderPage()
+    await findLoaded()
+    expect(screen.queryByRole('region', { name: /getting started/i })).toBeNull()
   })
 })
