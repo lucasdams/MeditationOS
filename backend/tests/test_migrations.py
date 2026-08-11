@@ -168,8 +168,9 @@ def test_autogenerate_diff_is_empty(scratch_engine):
     A non-empty diff means a model was changed without a matching migration (or vice
     versa) — the most common source of silent drift.
     """
-    from alembic import autogenerate
     from alembic.migration import MigrationContext
+
+    from alembic import autogenerate
 
     with scratch_engine.connect() as conn:
         mc = MigrationContext.configure(
