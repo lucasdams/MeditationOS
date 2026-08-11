@@ -7,7 +7,6 @@ import {
   NotebookPen,
   Flame,
   Target,
-  Sparkles,
   ChartLine,
   Sprout,
   type LucideProps,
@@ -26,7 +25,6 @@ const FEATURES: { Icon: ComponentType<LucideProps>; titleKey: string; bodyKey: s
   { Icon: NotebookPen, titleKey: 'auth.landing.feature.journal.title', bodyKey: 'auth.landing.feature.journal.body' },
   { Icon: Flame, titleKey: 'auth.landing.feature.trataka.title', bodyKey: 'auth.landing.feature.trataka.body' },
   { Icon: Target, titleKey: 'auth.landing.feature.goals.title', bodyKey: 'auth.landing.feature.goals.body' },
-  { Icon: Sparkles, titleKey: 'auth.landing.feature.spirit.title', bodyKey: 'auth.landing.feature.spirit.body' },
   { Icon: ChartLine, titleKey: 'auth.landing.feature.analytics.title', bodyKey: 'auth.landing.feature.analytics.body' },
   { Icon: Sprout, titleKey: 'auth.landing.feature.streaks.title', bodyKey: 'auth.landing.feature.streaks.body' },
 ]

@@ -15,7 +15,6 @@ import JournalPage from './pages/JournalPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import NotFoundPage from './pages/NotFoundPage'
-import FormGallery from './pages/FormGallery'
 import ProtectedRoute from './components/ProtectedRoute'
 import CookieNotice from './components/CookieNotice'
 import ZenEgg from './components/ZenEgg'
@@ -30,8 +29,6 @@ const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
 const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
 const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
 const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
-const SpiritPage      = lazy(() => import('./pages/SpiritPage'))
-const SpiritChoosePage = lazy(() => import('./pages/SpiritChoosePage'))
 const SchedulePage    = lazy(() => import('./pages/SchedulePage'))
 const SettingsPage    = lazy(() => import('./pages/SettingsPage'))
 const AdminPage       = lazy(() => import('./pages/AdminPage'))
@@ -63,8 +60,6 @@ export default function App() {
         {/* Public legal pages — reachable while logged out */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
-        {/* TEMP form-review gallery — delete with pages/FormGallery.tsx */}
-        <Route path="/formgallery" element={<FormGallery />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
           <Route
@@ -94,14 +89,6 @@ export default function App() {
           <Route
             path="/analytics"
             element={<Suspense fallback={<PageFallback />}><AnalyticsPage /></Suspense>}
-          />
-          <Route
-            path="/spirit"
-            element={<Suspense fallback={<PageFallback />}><SpiritPage /></Suspense>}
-          />
-          <Route
-            path="/spirit/choose"
-            element={<Suspense fallback={<PageFallback />}><SpiritChoosePage /></Suspense>}
           />
           <Route
             path="/schedule"
