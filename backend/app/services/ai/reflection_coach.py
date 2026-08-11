@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5-20251001"
 FALLBACK_MODEL = "fallback"
-TIMEOUT_SECONDS = 10.0
+TIMEOUT_SECONDS = 8.0
 MAX_TOKENS = 400
 MAX_REFLECTION_LEN = 600
 MAX_FOLLOWUP_LEN = 200
@@ -108,8 +108,13 @@ def generate(body: str, mood: str | None = None, journal_id: object = None) -> t
     try:
         import anthropic
 
+        # Single attempt (max_retries=0): the SDK otherwise retries twice, so one
+        # outage could pin a Starlette threadpool thread for ~30-40s. We fail fast to
+        # the curated fallback instead (ai-product.md: don't block on LLM calls).
         client = anthropic.Anthropic(
-            api_key=settings.anthropic_api_key, timeout=TIMEOUT_SECONDS
+            api_key=settings.anthropic_api_key,
+            timeout=TIMEOUT_SECONDS,
+            max_retries=0,
         )
         message = client.messages.create(
             model=MODEL,

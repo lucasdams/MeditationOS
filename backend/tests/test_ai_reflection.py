@@ -7,7 +7,10 @@ The LLM call is patched at the service seam — we never call the real Anthropic
 import uuid
 from unittest.mock import patch
 
+from sqlalchemy import text
+
 from app.core.config import settings
+from app.models.ai_reflection import AIReflection
 from app.services import reflection_service
 from app.services.ai import reflection_coach
 
@@ -138,6 +141,95 @@ def test_new_generations_capped_per_day(client, monkeypatch):
         assert capped.status_code == 429
         # Re-reading an existing reflection is never counted against the cap.
         assert client.post(f"/api/v1/journals/{ids[0]}/reflection").status_code == 200
+
+
+# ── Concurrency safety: the per-user generation advisory lock ────────────────
+
+
+def test_generation_takes_per_user_advisory_lock(client, monkeypatch):
+    """The generation path serializes on the per-user advisory lock (so the cap
+    COUNT and the INSERT are atomic per user). We spy the helper rather than force a
+    real race — a true concurrency test is impractical in pytest."""
+    calls: list[uuid.UUID] = []
+    real = reflection_service._lock_user_generation
+
+    def _spy(db, user_id):
+        calls.append(user_id)
+        return real(db, user_id)
+
+    monkeypatch.setattr(reflection_service, "_lock_user_generation", _spy)
+    _auth(client, "rlock@example.com")
+    journal_id = _entry(client)
+    with patch(GENERATE, return_value=AI_RESULT):
+        assert client.post(f"/api/v1/journals/{journal_id}/reflection").status_code == 201
+        # A second POST reuses the existing reflection before reaching the lock.
+        assert client.post(f"/api/v1/journals/{journal_id}/reflection").status_code == 200
+    assert len(calls) == 1  # exactly one generation → exactly one lock acquisition
+
+
+def test_advisory_lock_sql_is_issued(db_session):
+    """The helper actually issues pg_advisory_xact_lock — a transaction-scoped lock is
+    held on the connection after it runs (proves the SQL fires, not a no-op path)."""
+    reflection_service._lock_user_generation(db_session, uuid.uuid4())
+    held = db_session.execute(
+        text("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory'")
+    ).scalar()
+    assert held >= 1
+
+
+# ── Journal deleted mid-request → 404, not 500 (no wasted spend leaks a 500) ──
+
+
+def test_journal_deleted_midrequest_returns_404(client, db_session):
+    """If the journal is deleted between the ownership check and the commit, the FK
+    insert fails; that resolves to the same 404 as a missing journal, never a 500."""
+    _auth(client, "rdel@example.com")
+    journal_id = _entry(client)
+
+    def _delete_then_generate(*args, **kwargs):
+        # Simulate the entry being deleted while the LLM call is in flight.
+        db_session.execute(
+            text("DELETE FROM journals WHERE id = :id"), {"id": journal_id}
+        )
+        return AI_RESULT
+
+    with patch(GENERATE, side_effect=_delete_then_generate):
+        res = client.post(f"/api/v1/journals/{journal_id}/reflection")
+    assert res.status_code == 404
+
+
+# ── Guests: may READ an existing reflection, may not GENERATE one ─────────────
+
+
+def test_guest_cannot_generate_reflection(client):
+    client.post("/api/v1/auth/guest")
+    journal_id = _entry(client)
+    with patch(GENERATE) as gen:
+        res = client.post(f"/api/v1/journals/{journal_id}/reflection")
+    assert res.status_code == 403
+    gen.assert_not_called()  # no paid LLM call for a guest
+
+
+def test_guest_can_read_existing_reflection(client, db_session):
+    """Reading is free, so the GET route stays open to guests. Seed a reflection row
+    directly (guests can't generate one) and confirm the guest can read it — 200,
+    not 403."""
+    client.post("/api/v1/auth/guest")
+    me = client.get("/api/v1/auth/me").json()
+    journal_id = _entry(client)
+    db_session.add(
+        AIReflection(
+            user_id=uuid.UUID(me["id"]),
+            journal_id=uuid.UUID(journal_id),
+            reflection_text="A seeded reflection.",
+            followup_question="A seeded question?",
+            model=reflection_coach.FALLBACK_MODEL,
+        )
+    )
+    db_session.flush()
+    res = client.get(f"/api/v1/journals/{journal_id}/reflection")
+    assert res.status_code == 200
+    assert res.json()["reflection_text"] == "A seeded reflection."
 
 
 # ── The LLM service itself (no API key → curated fallback; output validation) ─

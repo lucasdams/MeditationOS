@@ -18,7 +18,12 @@ from slowapi.errors import RateLimitExceeded
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.db import engine
-from app.core.exceptions import DAILY_LIMIT_DETAIL, DailyLimitError
+from app.core.exceptions import (
+    DAILY_LIMIT_DETAIL,
+    GUEST_NOT_ALLOWED_DETAIL,
+    DailyLimitError,
+    GuestNotAllowedError,
+)
 from app.core.logging_config import RequestIdMiddleware, configure_logging
 from app.core.observability import init_sentry
 from app.core.rate_limit import client_ip, limiter
@@ -77,6 +82,17 @@ async def _daily_limit_handler(request: Request, exc: DailyLimitError) -> JSONRe
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={"detail": DAILY_LIMIT_DETAIL},
+    )
+
+
+@app.exception_handler(GuestNotAllowedError)
+async def _guest_not_allowed_handler(
+    request: Request, exc: GuestNotAllowedError
+) -> JSONResponse:
+    """Map guest-only-action rejection (raised in services) to HTTP 403 app-wide."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={"detail": GUEST_NOT_ALLOWED_DETAIL},
     )
 
 # Standard security response headers on every response (see security_headers.py).

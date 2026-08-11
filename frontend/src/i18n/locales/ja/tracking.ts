@@ -61,6 +61,7 @@ export const tracking: Record<string, string> = {
   'tracking.journal.reflect.title': 'やさしい振り返り',
   'tracking.journal.reflect.error': '振り返りを受け取れませんでした — もう一度お試しください。',
   'tracking.journal.reflect.capReached': '今日の振り返りはここまで — また明日どうぞ。',
+  'tracking.journal.reflect.guestBlocked': 'AIの振り返りを使うには、アカウントを保存してください。',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': '感謝',

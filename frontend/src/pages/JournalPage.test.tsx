@@ -152,6 +152,15 @@ describe('JournalPage — AI reflection', () => {
     expect(btn).toBeDisabled()
   })
 
+  it('shows a friendly note and disables Reflect for a guest account (403)', async () => {
+    reflectJournal.mockRejectedValue(new ApiError(403, 'Save your account to use this feature.'))
+
+    const btn = await tapReflect()
+
+    expect(await screen.findByText(/save your account to use ai reflections/i)).toBeInTheDocument()
+    expect(btn).toBeDisabled()
+  })
+
   it('shows a gentle error and keeps the button as the retry on failure', async () => {
     reflectJournal.mockRejectedValueOnce(new ApiError(500)).mockResolvedValueOnce(REFLECTION)
 

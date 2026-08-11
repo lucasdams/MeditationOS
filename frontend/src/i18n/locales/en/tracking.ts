@@ -64,6 +64,7 @@ export const tracking: Record<string, string> = {
   'tracking.journal.reflect.title': 'A gentle reflection',
   'tracking.journal.reflect.error': "Couldn't reflect on this entry — tap Reflect to try again.",
   'tracking.journal.reflect.capReached': "That's all the reflections for today — more tomorrow.",
+  'tracking.journal.reflect.guestBlocked': 'Save your account to use AI reflections.',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': 'Gratitude',

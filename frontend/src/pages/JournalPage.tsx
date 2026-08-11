@@ -130,11 +130,14 @@ export default function JournalPage() {
   const [reflections, setReflections] = useState<Record<string, AiReflection>>({})
   const [reflectingId, setReflectingId] = useState<string | null>(null)
   // One quiet inline notice at a time, on the entry that was tapped.
-  const [reflectNotice, setReflectNotice] = useState<{ id: string; kind: 'error' | 'cap' } | null>(
-    null,
-  )
+  const [reflectNotice, setReflectNotice] = useState<{
+    id: string
+    kind: 'error' | 'cap' | 'guest'
+  } | null>(null)
   // Once the daily generation cap is hit (429), further Reflect taps are disabled.
   const [reflectCapHit, setReflectCapHit] = useState(false)
+  // Guests can't generate reflections (403). Once told, disable further Reflect taps.
+  const [reflectGuestBlocked, setReflectGuestBlocked] = useState(false)
   // Inline editing of an existing entry (body + mood).
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState('')
@@ -264,6 +267,10 @@ export default function JournalPage() {
       if (err instanceof ApiError && err.status === 429) {
         setReflectCapHit(true)
         setReflectNotice({ id, kind: 'cap' })
+      } else if (err instanceof ApiError && err.status === 403) {
+        // Guest account — reflections are for saved accounts. Gentle note, no retry.
+        setReflectGuestBlocked(true)
+        setReflectNotice({ id, kind: 'guest' })
       } else {
         // The button stays put, so tapping Reflect again is the retry.
         setReflectNotice({ id, kind: 'error' })
@@ -714,7 +721,7 @@ export default function JournalPage() {
                       type="button"
                       className="reflect-btn"
                       aria-label={t('tracking.journal.reflect.aria')}
-                      disabled={reflectingId === j.id || reflectCapHit}
+                      disabled={reflectingId === j.id || reflectCapHit || reflectGuestBlocked}
                       onClick={() => reflectOn(j.id)}
                     >
                       <Sparkles size={14} strokeWidth={1.75} aria-hidden="true" />
@@ -726,7 +733,9 @@ export default function JournalPage() {
                       <span className="reflection-note" role="status">
                         {reflectNotice.kind === 'cap'
                           ? t('tracking.journal.reflect.capReached')
-                          : t('tracking.journal.reflect.error')}
+                          : reflectNotice.kind === 'guest'
+                            ? t('tracking.journal.reflect.guestBlocked')
+                            : t('tracking.journal.reflect.error')}
                       </span>
                     )}
                   </div>
