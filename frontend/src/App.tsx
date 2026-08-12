@@ -30,6 +30,7 @@ const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
 const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
 const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
 const SchedulePage    = lazy(() => import('./pages/SchedulePage'))
+const PhilosophersPage = lazy(() => import('./pages/PhilosophersPage'))
 const SettingsPage    = lazy(() => import('./pages/SettingsPage'))
 const AdminPage       = lazy(() => import('./pages/AdminPage'))
 
@@ -78,6 +79,10 @@ export default function App() {
           />
           <Route path="/gratitude" element={<GratitudePage />} />
           <Route path="/journal" element={<JournalPage />} />
+          <Route
+            path="/philosophers"
+            element={<Suspense fallback={<PageFallback />}><PhilosophersPage /></Suspense>}
+          />
           <Route
             path="/timeline"
             element={<Suspense fallback={<PageFallback />}><TimelinePage /></Suspense>}

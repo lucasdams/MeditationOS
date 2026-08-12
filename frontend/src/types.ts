@@ -494,6 +494,28 @@ export interface JournalCreate {
   session_id?: string | null
 }
 
+// A selectable historical thinker for the "chat with a philosopher" feature. The
+// system prompt lives server-side and is never sent to the client.
+export interface PhilosopherSummary {
+  id: string
+  name: string
+  tradition: string
+  blurb: string
+}
+
+// One turn in a philosopher chat. The client holds the whole conversation (the chat is
+// stateless server-side) and sends the bounded history each turn.
+export interface PhilosopherTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+// The guide's reply. `source` says whether the model or the curated fallback wrote it.
+export interface PhilosopherChatResponse {
+  reply: string
+  source: 'ai' | 'fallback'
+}
+
 export interface MoodLog {
   id: string
   mood: Mood
