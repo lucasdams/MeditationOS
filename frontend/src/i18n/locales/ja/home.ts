@@ -9,6 +9,14 @@ export const home: Record<string, string> = {
   'home.streak.aria': '{count} 日連続',
   'home.restDay': '休息日を使いました。1 日お休みしても大丈夫です。',
 
+  // Daily-goal ring
+  'home.goal.label': '今日の目標',
+  'home.goal.progress': '{done}／{goal} 分',
+  'home.goal.met': '今日の目標を達成',
+  'home.goal.adjust': '目標を調整',
+  'home.goal.aria.progress': '今日は {goal} 分中 {done} 分プラクティスしました',
+  'home.goal.aria.met': '今日の目標を達成しました — {goal} 分',
+
   // 今日のアクション（パス対応 + おすすめ）
   'home.today.pathDay': '{index} 日目 · {title}',
   'home.today.tryPath': 'ガイド付きパスを試す',

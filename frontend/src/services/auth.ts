@@ -30,6 +30,10 @@ export const authService = {
   setQuestFeatures: (features: string[]) =>
     api.post<User>('/auth/quest-features', { features }),
 
+  // Set the daily practice goal in minutes (1–120; validated server-side → 422).
+  setDailyGoal: (minutes: number) =>
+    api.post<User>('/auth/daily-goal', { minutes }),
+
   // current_password is omitted when a Google-only account sets its first password.
   setPassword: (newPassword: string, currentPassword?: string) =>
     api.post<User>('/auth/password', {

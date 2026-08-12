@@ -103,6 +103,16 @@ def set_quest_features(db: Session, user: User, features: list[str]) -> User:
     return user
 
 
+def set_daily_goal(db: Session, user: User, minutes: int) -> User:
+    """Set the user's daily practice goal (minutes) — the target the daily-goal ring
+    fills toward. The sane range (1–120) is enforced by the request schema
+    (`DailyGoalUpdate`), so this just persists the already-validated value."""
+    user.daily_goal_minutes = minutes
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def set_password(
     db: Session, user: User, *, current_password: str | None, new_password: str
 ) -> User:

@@ -10,6 +10,14 @@ export const home: Record<string, string> = {
   'home.streak.aria': '{count} day streak',
   'home.restDay': 'Rest day used — skipping one is fine.',
 
+  // Daily-goal ring
+  'home.goal.label': 'Daily goal',
+  'home.goal.progress': '{done} of {goal} min',
+  'home.goal.met': 'Goal met today',
+  'home.goal.adjust': 'Adjust goal',
+  'home.goal.aria.progress': '{done} of {goal} minutes practiced today',
+  'home.goal.aria.met': 'Daily goal met — {goal} minutes today',
+
   // Today CTA (path-aware + recommendation secondary)
   'home.today.pathDay': 'Day {index} · {title}',
   'home.today.tryPath': 'Try a guided path',
