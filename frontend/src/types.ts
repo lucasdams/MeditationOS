@@ -110,12 +110,6 @@ export interface DashboardStats {
   today_minutes: number
 }
 
-export interface ActivityDay {
-  date: string
-  seconds: number
-  all_quests: boolean // all three daily quests completed that day
-}
-
 export interface TypeBreakdown {
   type: string
   count: number
@@ -193,12 +187,6 @@ export interface Insight {
 export interface InsightsResponse {
   insights: Insight[]
   needs_more_data: boolean
-}
-
-export interface ActivityCalendar {
-  start: string
-  end: string
-  days: ActivityDay[] // sparse — only days with practice
 }
 
 export interface ConsistencyDay {
