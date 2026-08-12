@@ -12,6 +12,8 @@ export const common: Record<string, string> = {
   'nav.trataka': 'キャンドル瞑想',
   'nav.gratitude': '感謝',
   'nav.journal': 'ジャーナル',
+  'nav.prayer': '祈り',
+  'nav.philosophers': '哲学者',
   'nav.paths': 'コース',
   'nav.allPractices': 'プラクティス一覧',
   'nav.logSession': 'セッションを記録',

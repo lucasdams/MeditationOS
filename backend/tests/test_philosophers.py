@@ -53,6 +53,7 @@ def test_list_returns_full_roster(client):
         "laozi",
         "eckhart-tolle",
         "carl-jung",
+        "miyamoto-musashi",
     ]
     # Summaries carry the picker fields — and never the system prompt.
     for p in body:
@@ -194,10 +195,10 @@ def test_daily_cap_returns_429(client, monkeypatch):
 # ── The service/roster themselves ─────────────────────────────────────────────
 
 
-def test_roster_is_six_distinct_personas():
+def test_roster_is_seven_distinct_personas():
     ids = [p.id for p in philosophers.PHILOSOPHERS]
-    assert len(ids) == 6
-    assert len(set(ids)) == 6
+    assert len(ids) == 7
+    assert len(set(ids)) == 7
     # Every persona composes the shared boundaries into its system prompt.
     for p in philosophers.PHILOSOPHERS:
         assert "not a therapist" in p.system
@@ -206,5 +207,5 @@ def test_roster_is_six_distinct_personas():
 
 def test_list_personas_omits_system_prompt():
     summaries = philosopher_service.list_personas()
-    assert len(summaries) == 6
+    assert len(summaries) == 7
     assert not hasattr(summaries[0], "system")

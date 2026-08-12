@@ -14,6 +14,8 @@ export const common: Record<string, string> = {
   'nav.trataka': 'Candle gazing',
   'nav.gratitude': 'Gratitude',
   'nav.journal': 'Journal',
+  'nav.prayer': 'Prayer',
+  'nav.philosophers': 'Philosophers',
   'nav.paths': 'Paths',
   'nav.allPractices': 'All practices',
   'nav.logSession': 'Log a session',
