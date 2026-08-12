@@ -42,6 +42,13 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       ENVIRONMENT: ${ENVIRONMENT}
+      # LLM provider config for the AI features (reflection coach + gratitude).
+      # Passed from the root .env; unset → the app degrades to its curated fallback.
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
       REDIS_URL: ${REDIS_URL:-} # empty → in-memory throttles; set to use the redis service above
       DEV_RELOAD: "1" # local hot-reload; prod entrypoint runs gunicorn workers
     ports:
