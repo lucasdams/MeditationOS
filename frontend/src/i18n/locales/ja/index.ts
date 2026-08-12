@@ -9,6 +9,7 @@ import { spirit } from './spirit'
 import { settings } from './settings'
 import { paths } from './paths'
 import { philosophers } from './philosophers'
+import { prayer } from './prayer'
 
 export const JA: Record<string, string> = {
   ...common,
@@ -20,4 +21,5 @@ export const JA: Record<string, string> = {
   ...settings,
   ...paths,
   ...philosophers,
+  ...prayer,
 }

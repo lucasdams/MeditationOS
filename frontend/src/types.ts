@@ -516,6 +516,26 @@ export interface PhilosopherChatResponse {
   source: 'ai' | 'fallback'
 }
 
+// A prayer, intention, or blessing — a written entry the user can revisit and
+// optionally mark as answered. Non-denominational: the entry is just free text.
+export interface Prayer {
+  id: string
+  body: string
+  // ISO timestamp when the user marked it answered; null while it's still open.
+  answered_at: string | null
+  created_at: string
+}
+
+export interface PrayerCreate {
+  body: string
+}
+
+export interface PrayerUpdate {
+  body?: string
+  // true → mark answered (stamps answered_at); false → clear it (back to open).
+  answered?: boolean
+}
+
 export interface MoodLog {
   id: string
   mood: Mood
