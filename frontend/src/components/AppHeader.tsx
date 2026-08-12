@@ -95,6 +95,9 @@ export default function AppHeader() {
   // menu closes the other; outside-click / Escape close whichever is open.
   const [openMenu, setOpenMenu] = useState<'progress' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
+  // Which mobile nav group (Practice / Progress) is expanded inside the hamburger sheet.
+  // Collapsed by default so the opened menu reads as a few buttons, not one long list.
+  const [mobileSection, setMobileSection] = useState<'practice' | 'progress' | null>(null)
   const navRef = useRef<HTMLElement>(null)
   // The account dropdown (Settings + Log out) that opens from the name chip.
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -137,6 +140,7 @@ export default function AppHeader() {
   useEffect(() => {
     setOpenMenu(null)
     setNavOpen(false)
+    setMobileSection(null)
     setUserMenuOpen(false)
   }, [location.pathname])
 
@@ -225,7 +229,11 @@ export default function AppHeader() {
         className="nav-toggle"
         aria-label={t('nav.menu')}
         aria-expanded={navOpen}
-        onClick={() => setNavOpen((o) => !o)}
+        onClick={() => {
+          // Always (re)open the sheet with its groups collapsed, so it starts compact.
+          setMobileSection(null)
+          setNavOpen((o) => !o)
+        }}
       >
         {navOpen ? (
           <X size={20} strokeWidth={1.75} aria-hidden="true" />
@@ -250,12 +258,36 @@ export default function AppHeader() {
         </div>
         {renderMenu('progress', t('nav.progress'), TrendingUp, progressLinks)}
 
-        {/* On mobile the dropdowns are hidden; their links show inline as labelled sections. */}
+        {/* On mobile the desktop dropdowns are hidden; Practice / Progress become collapsible
+            group buttons so the opened sheet stays compact (a few buttons, not one long list).
+            Tapping a group expands its links; only one group opens at a time. */}
         <div className="nav-mobile-extra">
-          <p className="nav-mobile-heading">{t('nav.practice')}</p>
-          {PRACTICE_LINKS.map(renderMenuLink)}
-          <p className="nav-mobile-heading">{t('nav.progress')}</p>
-          {progressLinks.map(renderMenuLink)}
+          <button
+            type="button"
+            className="nav-mobile-group"
+            aria-expanded={mobileSection === 'practice'}
+            onClick={() => setMobileSection((s) => (s === 'practice' ? null : 'practice'))}
+          >
+            <Sparkles size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className="nav-mobile-group-label">{t('nav.practice')}</span>
+            <ChevronDown size={16} strokeWidth={2} className="nav-mobile-group-caret" aria-hidden="true" />
+          </button>
+          {mobileSection === 'practice' && (
+            <div className="nav-mobile-group-links">{PRACTICE_LINKS.map(renderMenuLink)}</div>
+          )}
+          <button
+            type="button"
+            className="nav-mobile-group"
+            aria-expanded={mobileSection === 'progress'}
+            onClick={() => setMobileSection((s) => (s === 'progress' ? null : 'progress'))}
+          >
+            <TrendingUp size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className="nav-mobile-group-label">{t('nav.progress')}</span>
+            <ChevronDown size={16} strokeWidth={2} className="nav-mobile-group-caret" aria-hidden="true" />
+          </button>
+          {mobileSection === 'progress' && (
+            <div className="nav-mobile-group-links">{progressLinks.map(renderMenuLink)}</div>
+          )}
         </div>
       </nav>
       <div className="app-user" ref={userRef}>
