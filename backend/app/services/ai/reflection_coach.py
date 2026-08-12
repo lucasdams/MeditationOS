@@ -1,8 +1,9 @@
 """AI journal reflection: a short reflective note + one follow-up question.
 
-Mirrors `gratitude_suggester`: the Anthropic SDK is imported lazily, model output is
+Mirrors `gratitude_suggester`: the LLM call goes through the provider-agnostic
+`llm_client.complete` seam (OpenAI or Anthropic, per settings), model output is
 treated as untrusted and validated (shape, non-empty, length caps), and any failure
-(no key, timeout, parse, validation) degrades to a curated fallback pair — this
+(no provider, timeout, parse, validation) degrades to a curated fallback pair — this
 function never raises. We DO send the journal text to the model (that is the
 feature), but we never log it: logs carry metadata only (journal id, model,
 ai/fallback). See .claude/rules/ai-product.md.
@@ -12,11 +13,13 @@ import json
 import logging
 import random
 
-from app.core.config import settings
 from app.prompts.reflection import SYSTEM, user_message
+from app.services.ai import llm_client
 
 logger = logging.getLogger(__name__)
 
+# Non-fallback sentinel model label (the live model id now comes from llm_client;
+# this constant remains the DB/test label for a "this came from the model" reflection).
 MODEL = "claude-haiku-4-5-20251001"
 FALLBACK_MODEL = "fallback"
 TIMEOUT_SECONDS = 8.0
@@ -103,35 +106,28 @@ def generate(body: str, mood: str | None = None, journal_id: object = None) -> t
     """Return (reflection_text, followup_question, model) for a journal entry.
     Never raises — degrades to a curated fallback pair. `journal_id` is only for
     log metadata; the journal text itself is never logged."""
-    if not settings.anthropic_api_key:
-        return _fallback()
     try:
-        import anthropic
-
-        # Single attempt (max_retries=0): the SDK otherwise retries twice, so one
-        # outage could pin a Starlette threadpool thread for ~30-40s. We fail fast to
-        # the curated fallback instead (ai-product.md: don't block on LLM calls).
-        client = anthropic.Anthropic(
-            api_key=settings.anthropic_api_key,
-            timeout=TIMEOUT_SECONDS,
-            max_retries=0,
-        )
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            temperature=1.0,
+        # The seam carries the fail-fast posture (max_retries=0 + timeout): the SDK
+        # otherwise retries, so one outage could pin a Starlette threadpool thread for
+        # tens of seconds. We fail fast to the curated fallback instead (ai-product.md:
+        # don't block on LLM calls).
+        result = llm_client.complete(
             system=SYSTEM,
-            messages=[{"role": "user", "content": user_message(body, mood)}],
+            user=user_message(body, mood),
+            max_tokens=MAX_TOKENS,
+            timeout=TIMEOUT_SECONDS,
         )
-        text = "".join(b.text for b in message.content if b.type == "text")
+        if result is None:
+            raise ValueError("no LLM result")
+        text, model_id = result
         start, end = text.find("{"), text.rfind("}")
         if start == -1 or end == -1:
             raise ValueError("no JSON object in model output")
         validated = _validate(json.loads(text[start : end + 1]))
         if validated is None:
             raise ValueError("model output failed validation")
-        logger.info("reflection generated journal_id=%s model=%s", journal_id, MODEL)
-        return validated[0], validated[1], MODEL
+        logger.info("reflection generated journal_id=%s model=%s", journal_id, model_id)
+        return validated[0], validated[1], model_id
     except Exception:
         # Any failure (network, timeout, parse, validation) degrades gracefully.
         # Metadata only — never the journal text.
