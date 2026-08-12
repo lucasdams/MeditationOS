@@ -9,6 +9,7 @@ import {
   Send,
   Sparkles,
   Sun,
+  Swords,
   Wind,
   type LucideIcon,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ const ICONS: Record<string, LucideIcon> = {
   laozi: Wind,
   'eckhart-tolle': Sun,
   'carl-jung': Sparkles,
+  'miyamoto-musashi': Swords,
 }
 
 // How long a single message may be — mirrors the backend MAX_CONTENT_LEN so we validate
@@ -141,7 +143,7 @@ export default function PhilosophersPage() {
   // ── Picker ────────────────────────────────────────────────────────────────
   if (!selected) {
     return (
-      <main id="main-content" className="philosophers">
+      <main id="main-content" className="dashboard philosophers">
         <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
         <header className="page-head">
           <h1>{t('philosophers.title')}</h1>
@@ -189,7 +191,7 @@ export default function PhilosophersPage() {
   // ── Chat view ───────────────────────────────────────────────────────────────
   const Icon = ICONS[selected.id] ?? MessageCircle
   return (
-    <main id="main-content" className="philosophers philosophers-chat">
+    <main id="main-content" className="dashboard philosophers philosophers-chat">
       <button type="button" className="back-link philo-back" onClick={backToPicker}>
         <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> {t('philosophers.change')}
       </button>
