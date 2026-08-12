@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
+from app.models.prayer import Prayer
 from app.models.session import BREATHING_SESSION_TYPES, Session
 from app.models.user import QUEST_FEATURES
 from app.schemas.dashboard import (
@@ -25,6 +26,7 @@ from app.schemas.dashboard import (
 )
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
+from app.services.prayer_service import PRAYER_XP
 from app.services.quest_pool import categories_for_day, quest_for
 from app.services.time_utils import MIN_PRACTICE_SECONDS, compute_streaks, local_date
 
@@ -107,6 +109,7 @@ MEDITATE_QUEST_SECONDS = 60
 # under these; beyond them the entries still save, they just stop paying XP.
 GRATITUDE_XP_DAILY_CAP = 5
 JOURNAL_XP_DAILY_CAP = 5
+PRAYER_XP_DAILY_CAP = 5
 # A day with at least this much resonance breathing completes the base breathing quest;
 # the "deep breathe" challenge variant asks for DEEP_BREATHE_SECONDS.
 BREATHE_QUEST_SECONDS = 60
@@ -436,6 +439,11 @@ def _xp_basis(
     journal_xp_units = _capped_daily_xp_units(
         db, Journal, user_id=user_id, tz=tz, cap=JOURNAL_XP_DAILY_CAP, since=since
     )
+    # Prayers earn XP exactly like a journal reflection — the same per-entry amount
+    # (PRAYER_XP) under the same per-day anti-farm cap.
+    prayer_xp_units = _capped_daily_xp_units(
+        db, Prayer, user_id=user_id, tz=tz, cap=PRAYER_XP_DAILY_CAP, since=since
+    )
 
     # Practice XP: each session is run through the front-loaded curve (sub-minute sits
     # earn 0; resonance breathing counts BREATHING_XP_MULTIPLIER×), then summed across
@@ -450,6 +458,7 @@ def _xp_basis(
         practice_xp
         + gratitude_xp_units * GRATITUDE_XP
         + journal_xp_units * JOURNAL_XP
+        + prayer_xp_units * PRAYER_XP
         + quest_bonus_xp
     )
     return _XpBasis(

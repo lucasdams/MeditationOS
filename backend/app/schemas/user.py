@@ -180,6 +180,7 @@ class ExportData(BaseModel):
     breathing_patterns: list[dict]
     path_enrollments: list[dict]
     ai_reflections: list[dict]
+    prayers: list[dict]
 
 
 class UserRead(BaseModel):

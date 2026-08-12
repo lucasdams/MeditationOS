@@ -39,6 +39,7 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.mood_log import MoodLog
 from app.models.path_enrollment import PathEnrollment
+from app.models.prayer import Prayer
 from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
 from app.models.spirit import Spirit
@@ -450,6 +451,7 @@ def export_user_data(db: Session, user: User) -> dict:
         "breathing_patterns": owned(BreathingPattern),
         "path_enrollments": owned(PathEnrollment),
         "ai_reflections": owned(AIReflection),
+        "prayers": owned(Prayer),
     }
 
 
