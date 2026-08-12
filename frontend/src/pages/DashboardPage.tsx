@@ -15,6 +15,7 @@ import GraduationCard, {
 import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
+import DailyGoalRing from '../components/DailyGoalRing'
 import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -182,6 +183,16 @@ export default function DashboardPage() {
               </span>
             </div>
           )}
+
+          {/* A calm daily-goal ring near the top, by the streak — today's practiced minutes
+              filling toward the user's small goal, with a soft "met" state (never confetti).
+              Always present (the goal always exists) and fed straight from the stats payload. */}
+          <div className="dashboard-goal">
+            <DailyGoalRing
+              todayMinutes={stats.today_minutes}
+              goalMinutes={stats.daily_goal_minutes}
+            />
+          </div>
 
           {/* A pocket of warmth — a gentle affirmation + a heart to tap for love. */}
           <EncouragementNote />

@@ -70,6 +70,8 @@ const fakeStats = {
   xp_for_next_level: 100,
   coins: 0,
   streak_bonus_xp: 0,
+  daily_goal_minutes: 10,
+  today_minutes: 6,
 } as unknown as DashboardStats
 
 function renderPage() {

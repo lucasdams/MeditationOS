@@ -6958,6 +6958,173 @@ button.today-action:disabled {
   height: 11px;
 }
 
+/* ── Daily-goal ring (dashboard) ─────────────────────────────────────────── */
+.dashboard-goal {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.goal-ring-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.goal-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+}
+
+.goal-ring-track {
+  stroke: var(--heatmap-cell-empty);
+}
+
+.goal-ring-progress {
+  stroke: var(--accent);
+  /* Gentle fill animation as progress lands; disabled under reduced motion below. */
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+/* Soft "met" state — a calm colour shift to the success hue, never confetti. */
+.goal-ring-card.met .goal-ring-progress {
+  stroke: var(--success-text);
+}
+
+.goal-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: var(--text-body, var(--text));
+}
+
+.goal-ring-center b {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.goal-ring-center small {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goal-ring-check {
+  color: var(--success-text);
+}
+
+.goal-ring-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.goal-ring-title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.goal-ring-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goal-ring-card.met .goal-ring-sub {
+  color: var(--success-text);
+}
+
+.goal-ring-adjust {
+  font-size: var(--text-xs);
+  margin-top: 0.15rem;
+}
+
+/* ── Consistency heatmap (analytics) — ~12 weeks, shaded by daily minutes ─── */
+.consistency {
+  margin-top: 1.5rem;
+}
+
+.consistency h2 {
+  font-size: var(--text-base);
+}
+
+.consistency-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.consistency-grid {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.consistency-week {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.consistency-cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--heatmap-cell-empty); /* lvl-0 / no practice */
+  box-shadow: inset 0 0 0 1px var(--heatmap-cell-edge);
+}
+
+/* A calm 4-step ramp: the accent mixed over the empty cell in rising strength, so each
+   step clears the last and lvl-4 is the full accent. Themed tokens keep it right in both
+   light and dark. */
+.consistency-cell.lvl-1 {
+  background: color-mix(in srgb, var(--accent) 25%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-2 {
+  background: color-mix(in srgb, var(--accent) 45%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-3 {
+  background: color-mix(in srgb, var(--accent) 70%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-4 {
+  background: var(--accent);
+}
+
+.consistency-cell.out {
+  background: transparent;
+  box-shadow: none;
+}
+
+.consistency-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.consistency-key {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.consistency-key .consistency-cell {
+  width: 11px;
+  height: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-ring-progress {
+    transition: none;
+  }
+}
+
 /* Gratitude "Recent" reuses the journal card look, minus the composer divider. */
 .grat-log {
   list-style: none;

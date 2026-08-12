@@ -87,6 +87,12 @@ class User(Base):
     # generation falls back to all four while NULL. Existing users were backfilled
     # to all four; guests are seeded with all four at creation.
     quest_features: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    # A small, encouraging daily practice target (minutes) — the calm daily-goal ring
+    # fills toward it. NOT NULL with a gentle 10-minute default; the editable range
+    # (1–120) is validated at the API layer, not the DB.
+    daily_goal_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="10", default=10
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

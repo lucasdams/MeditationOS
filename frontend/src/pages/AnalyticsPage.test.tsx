@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom'
 const getAnalytics = vi.fn()
 const getInsights = vi.fn()
 const getActivity = vi.fn()
+const getConsistency = vi.fn()
 const listBiometrics = vi.fn()
 const deltaBiometrics = vi.fn()
 
@@ -31,6 +32,7 @@ vi.mock('../services/biometrics', () => ({
 vi.mock('../services/dashboard', () => ({
   dashboardService: {
     getActivity: (...a: unknown[]) => getActivity(...a),
+    getConsistency: (...a: unknown[]) => getConsistency(...a),
   },
 }))
 
@@ -80,6 +82,9 @@ beforeEach(() => {
   getAnalytics.mockReset()
   getInsights.mockReset()
   getActivity.mockReset()
+  getConsistency.mockReset()
+  // The consistency heatmap self-fetches; keep it quiet/empty here.
+  getConsistency.mockResolvedValue({ start: '2026-05-20', end: '2026-08-12', days: [] })
   listBiometrics.mockReset()
   deltaBiometrics.mockReset()
   // The insights and biometric panels stay quiet on failure; keep them empty/quiet here.

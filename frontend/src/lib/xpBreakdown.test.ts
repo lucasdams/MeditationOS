@@ -21,6 +21,8 @@ const stats = (
   gratitude_count: 0,
   streak_bonus_xp,
   daily_quests,
+  daily_goal_minutes: 10,
+  today_minutes: 0,
 })
 
 const q = (key: string, label: string, xp: number, done: boolean): DailyQuest => ({

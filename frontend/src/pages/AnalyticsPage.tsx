@@ -5,6 +5,7 @@ import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import ActivityHeatmap from '../components/ActivityHeatmap'
+import ConsistencyHeatmap from '../components/ConsistencyHeatmap'
 import { messageForError } from '../lib/errors'
 import { t as translate, useT } from '../i18n'
 import type {
@@ -536,6 +537,10 @@ export default function AnalyticsPage() {
               Lives here with the rest of the stats (moved off the calm home). Self-fetches
               and carries its own loading/empty/error states. */}
           <ActivityHeatmap />
+
+          {/* A calmer, longer-horizon lens: ~12 weeks of practice shaded by daily minutes.
+              Self-fetches and carries its own loading/empty/error states. */}
+          <ConsistencyHeatmap />
 
           <MonthVsLast data={data.monthly_comparison} />
 

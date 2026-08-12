@@ -390,4 +390,16 @@ export const tracking: Record<string, string> = {
   'tracking.heatmap.month.oct': 'Oct',
   'tracking.heatmap.month.nov': 'Nov',
   'tracking.heatmap.month.dec': 'Dec',
+
+  // ── Consistency heatmap (last ~12 weeks, shaded by daily minutes) ─────────
+  'tracking.consistency.title': 'Your consistency',
+  'tracking.consistency.loading': 'Loading your consistency…',
+  'tracking.consistency.empty':
+    'No practice in the last 12 weeks yet — your first session will light this up.',
+  'tracking.consistency.cellLabel': '{minutes} min on {iso}',
+  'tracking.consistency.cellLabelEmpty': 'No practice on {iso}',
+  'tracking.consistency.summary_one': '{minutes} min across {days} day in the last 12 weeks',
+  'tracking.consistency.summary_other': '{minutes} min across {days} days in the last 12 weeks',
+  'tracking.consistency.less': 'Less',
+  'tracking.consistency.more': 'More',
 }

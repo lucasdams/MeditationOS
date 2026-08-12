@@ -74,6 +74,15 @@ export const settings: Record<string, string> = {
   'settings.missions.feature.journal': 'ジャーナル',
 
   // プラクティスのリマインダー
+  // Daily goal
+  'settings.goal.heading': '今日の目標',
+  'settings.goal.desc':
+    '毎日の小さなプラクティス目標です。ホームのリングがこの目標に向かって満ちていきます。1〜120 分。',
+  'settings.goal.label': '1 日あたりの分数',
+  'settings.goal.ok': '今日の目標を保存しました。',
+  'settings.goal.submit': '目標を保存',
+  'settings.goal.err.range': '1〜120 分の範囲で選んでください。',
+
   'settings.reminders.heading': 'プラクティスのリマインダー',
   'settings.reminders.desc':
     'お住まいの地域の時刻に、やさしいメールを毎日お送りします。すでにプラクティスした日は送りません。',

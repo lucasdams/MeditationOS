@@ -73,6 +73,15 @@ export const settings: Record<string, string> = {
   'settings.missions.feature.gratitude': 'Gratitude',
   'settings.missions.feature.journal': 'Journal',
 
+  // Daily goal
+  'settings.goal.heading': 'Daily goal',
+  'settings.goal.desc':
+    'A small daily practice target — the ring on your home fills toward it. 1–120 minutes.',
+  'settings.goal.label': 'Minutes per day',
+  'settings.goal.ok': 'Daily goal saved.',
+  'settings.goal.submit': 'Save goal',
+  'settings.goal.err.range': 'Choose between 1 and 120 minutes.',
+
   // Practice reminders
   'settings.reminders.heading': 'Practice reminders',
   'settings.reminders.desc':

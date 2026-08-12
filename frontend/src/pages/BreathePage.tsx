@@ -63,6 +63,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // How far ahead (seconds) the scheduler queues audio on the audio clock. Comfortably

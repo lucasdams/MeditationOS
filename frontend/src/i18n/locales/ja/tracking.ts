@@ -381,4 +381,15 @@ export const tracking: Record<string, string> = {
   'tracking.heatmap.month.oct': '10月',
   'tracking.heatmap.month.nov': '11月',
   'tracking.heatmap.month.dec': '12月',
+
+  // ── Consistency heatmap (last ~12 weeks, shaded by daily minutes) ─────────
+  'tracking.consistency.title': 'あなたの継続',
+  'tracking.consistency.loading': '継続を読み込み中…',
+  'tracking.consistency.empty':
+    'この 12 週間はまだプラクティスがありません。最初のセッションでここが灯ります。',
+  'tracking.consistency.cellLabel': '{iso} に {minutes} 分',
+  'tracking.consistency.cellLabelEmpty': '{iso} はプラクティスなし',
+  'tracking.consistency.summary_other': '過去 12 週間で {days} 日・計 {minutes} 分',
+  'tracking.consistency.less': '少',
+  'tracking.consistency.more': '多',
 }

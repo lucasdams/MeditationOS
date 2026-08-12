@@ -20,6 +20,8 @@ from app.models.user import QUEST_FEATURES
 from app.schemas.dashboard import (
     ActivityCalendar,
     ActivityDay,
+    ConsistencyCalendar,
+    ConsistencyDay,
     DailyTotal,
     DashboardStats,
     QuestStatus,
@@ -625,6 +627,7 @@ def get_stats(
     today: date,
     tz: str = "UTC",
     quest_features: list[str] | None = None,
+    daily_goal_minutes: int = 10,
 ) -> DashboardStats:
     total_seconds, session_count = db.execute(
         select(
@@ -660,6 +663,10 @@ def get_stats(
     for i in range(7):
         day = week_start + timedelta(days=i)
         this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
+
+    # Today's practiced minutes for the daily-goal ring — reuse the week aggregate (today
+    # is in-window) so we don't run a second query. Floored to whole minutes.
+    today_minutes = int(by_date.get(today, 0)) // 60
 
     # Total XP adds the streak bonus back; the displayed level rides full XP.
     xp = basis.xp
@@ -722,6 +729,8 @@ def get_stats(
         gratitude_count=basis.gratitude_count,
         streak_bonus_xp=streak_bonus_xp,
         daily_quests=daily_quests,
+        daily_goal_minutes=daily_goal_minutes,
+        today_minutes=today_minutes,
     )
 
 
@@ -786,3 +795,50 @@ def get_activity(
         for row in rows
     ]
     return ActivityCalendar(start=start, end=today, days=active_days)
+
+
+# The consistency heatmap spans roughly the last 12 weeks (columns) × 7 weekdays.
+CONSISTENCY_WEEKS = 12
+
+
+def get_consistency(
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+    weeks: int = CONSISTENCY_WEEKS,
+) -> ConsistencyCalendar:
+    """Per-day practice over roughly the last `weeks` weeks for the consistency heatmap.
+
+    Sparse (only days with at least one session), aggregated in SQL and scoped to the
+    user. Each day carries its total practice minutes (whole-minute floored) and the
+    number of sessions; the client shades each cell by minutes and fills the empty days.
+    Uses the user's local day for bucketing.
+    """
+    start = today - timedelta(days=weeks * 7 - 1)
+    local_day = _local_date(tz, Session.occurred_at)
+    rows = db.execute(
+        select(
+            local_day,
+            func.coalesce(func.sum(Session.duration_seconds), 0),
+            func.count(Session.id),
+        )
+        .where(
+            Session.user_id == user_id,
+            local_day >= start,
+            local_day <= today,
+        )
+        .group_by(local_day)
+        .order_by(local_day)
+    ).all()
+
+    days = [
+        ConsistencyDay(
+            date=row[0],
+            minutes=int(row[1]) // 60,
+            sessions=int(row[2]),
+        )
+        for row in rows
+    ]
+    return ConsistencyCalendar(start=start, end=today, days=days)

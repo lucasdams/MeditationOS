@@ -23,6 +23,7 @@ from app.core.security import create_access_token, password_fingerprint
 from app.models.user import User
 from app.schemas.user import (
     ClaimAccount,
+    DailyGoalUpdate,
     EmailUpdate,
     EmailVerify,
     ExportData,
@@ -224,6 +225,17 @@ def set_quest_features(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err)
         ) from None
+
+
+@router.post("/daily-goal", response_model=UserRead)
+def set_daily_goal(
+    data: DailyGoalUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    # `DailyGoalUpdate` bounds minutes to 1–120, so out-of-range input is rejected with
+    # 422 before we get here — the service just persists the validated value.
+    return user_service.set_daily_goal(db, current_user, data.minutes)
 
 
 @router.post("/username", response_model=UserRead)

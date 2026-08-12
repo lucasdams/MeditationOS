@@ -19,6 +19,8 @@ export interface User {
   // Daily-activity quests the user opted into (≥3 of QUEST_FEATURES). null until
   // they choose — the client shows a first-run picker while null.
   quest_features: string[] | null
+  // The user's small daily practice goal in minutes (the daily-goal ring target).
+  daily_goal_minutes: number
   created_at: string
 }
 
@@ -103,6 +105,9 @@ export interface DashboardStats {
   gratitude_count: number
   streak_bonus_xp: number
   daily_quests: DailyQuest[]
+  // The daily-goal ring: the user's target and today's practiced minutes (local day).
+  daily_goal_minutes: number
+  today_minutes: number
 }
 
 export interface ActivityDay {
@@ -194,6 +199,18 @@ export interface ActivityCalendar {
   start: string
   end: string
   days: ActivityDay[] // sparse — only days with practice
+}
+
+export interface ConsistencyDay {
+  date: string
+  minutes: number // whole practice minutes that day
+  sessions: number // how many sessions that day
+}
+
+export interface ConsistencyCalendar {
+  start: string
+  end: string
+  days: ConsistencyDay[] // sparse — only days with practice, over ~12 weeks
 }
 
 export type GratitudeCategory =
