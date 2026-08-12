@@ -10113,3 +10113,162 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--success-text);
   background: #25301c;
 }
+
+/* ── Chat with a philosopher ──────────────────────────────────────────────────
+   The picker reuses .practices-grid + .practice-card; only the small deltas below are
+   new (the card is a <button> here, and carries a tradition line). The chat view is a
+   simple thread + composer, styled to sit inside the app's calm card system. */
+.philo-picker-heading {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* The card is an interactive <button> here (picks a persona) rather than a link, so
+   normalise the button defaults back to the shared .practice-card look. */
+.philo-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.philo-card-tradition {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.philo-disclaimer {
+  margin-top: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* ── Chat view ──────────────────────────────────────────────────────────────── */
+.philo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.philo-chat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.philo-chat-avatar {
+  flex: none;
+}
+
+.philo-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  min-height: 40vh;
+}
+
+.philo-intro {
+  max-width: 42ch;
+  align-self: center;
+  text-align: center;
+  padding: var(--space-4) 0;
+  line-height: 1.5;
+}
+
+.philo-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 85%;
+}
+
+.philo-msg--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.philo-msg--guide {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.philo-msg-who {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.philo-msg-text {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.philo-msg--user .philo-msg-text {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--text-primary);
+  border-bottom-right-radius: var(--radius-control);
+}
+
+.philo-msg--guide .philo-msg-text {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+  border-bottom-left-radius: var(--radius-control);
+}
+
+.philo-typing {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.philo-notice {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.philo-composer {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.philo-composer textarea {
+  flex: 1;
+  resize: vertical;
+}
+
+.philo-send {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+@media (max-width: 32rem) {
+  .philo-composer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .philo-send {
+    justify-content: center;
+  }
+}

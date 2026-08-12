@@ -65,6 +65,11 @@ class GuestNotAllowedError(Exception):
 GUEST_NOT_ALLOWED_DETAIL = "Save your account to use this feature."
 
 
+class PhilosopherNotFoundError(Exception):
+    """Raised when a philosopher-chat request names an id that isn't in the roster.
+    Mapped to HTTP 404 in the route (an unknown persona is a missing resource)."""
+
+
 class GoalNotCheckableError(Exception):
     """Raised when checking in on a non-custom goal — built-in activities derive
     their progress and can't be manually marked done."""
