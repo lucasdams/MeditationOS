@@ -10447,14 +10447,22 @@ details[open] .meditate-disclosure-summary::before {
   cursor: pointer;
 }
 
-.philo-chat-head {
+/* The chat header reads like the persona's picker card, scaled up: the round accent
+   chip beside a clear name + tradition. The `.dashboard` scoping out-specifies the
+   `.dashboard .page-head { display: block }` rule that would otherwise stack the avatar
+   above the name. */
+.dashboard .philo-chat-head {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--space-3);
 }
 
 .philo-chat-avatar {
   flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
 }
 
 .philo-thread {
@@ -10465,12 +10473,90 @@ details[open] .meditate-disclosure-summary::before {
   min-height: 40vh;
 }
 
+/* Before the conversation starts, don't reserve the tall thread height — let the intro
+   and the starters sit together near the top instead of being pushed apart. */
+.philo-thread--empty {
+  min-height: 0;
+  margin-bottom: var(--space-2);
+}
+
+.philo-thread--empty .philo-intro {
+  padding-bottom: var(--space-2);
+}
+
 .philo-intro {
   max-width: 42ch;
   align-self: center;
   text-align: center;
   padding: var(--space-4) 0;
   line-height: 1.5;
+}
+
+/* Conversation starters shown on an empty chat — tappable first-person openers (the
+   persona's own, plus a personalized "today's practice" one). They sit between the
+   thread and the composer; tapping drops the text into the composer to send or edit. */
+.philo-openers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.philo-openers-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.philo-openers-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.philo-opener {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.3rem;
+  padding: 0.5rem 0.9rem;
+  text-align: left;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.philo-opener:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+/* The personalized "today's practice" opener — a soft accent tint + the spark icon, so it
+   reads as the one that's about *you*, distinct from the persona's generic starters. */
+.philo-opener--context {
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+
+.philo-opener--context:hover {
+  color: var(--accent-hover);
+}
+
+.philo-opener--context svg {
+  flex: none;
+  color: var(--accent);
 }
 
 .philo-msg {

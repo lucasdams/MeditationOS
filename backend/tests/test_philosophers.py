@@ -59,6 +59,9 @@ def test_list_returns_full_roster(client):
     for p in body:
         assert p["name"] and p["tradition"] and p["blurb"]
         assert "system" not in p
+        # Each persona ships a few first-person conversation starters for the empty chat.
+        assert isinstance(p["openers"], list) and 2 <= len(p["openers"]) <= 4
+        assert all(isinstance(o, str) and o.strip() for o in p["openers"])
 
 
 # ── Chat: auth ────────────────────────────────────────────────────────────────
@@ -209,3 +212,13 @@ def test_list_personas_omits_system_prompt():
     summaries = philosopher_service.list_personas()
     assert len(summaries) == 7
     assert not hasattr(summaries[0], "system")
+
+
+def test_every_persona_has_openers():
+    """Each persona ships a few first-person conversation starters, exposed on the
+    summary (the empty-chat chips) but distinct from the private system prompt."""
+    for p in philosophers.PHILOSOPHERS:
+        assert 2 <= len(p.openers) <= 4
+        assert all(o.strip() for o in p.openers)
+    summaries = philosopher_service.list_personas()
+    assert all(len(s.openers) >= 2 for s in summaries)

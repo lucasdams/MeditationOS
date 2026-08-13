@@ -10,6 +10,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 const listPersonas = vi.fn()
 const chatPersona = vi.fn()
+const getStats = vi.fn()
 
 vi.mock('../services/philosophers', () => ({
   philosopherService: {
@@ -18,12 +19,24 @@ vi.mock('../services/philosophers', () => ({
   },
 }))
 
+vi.mock('../services/dashboard', () => ({
+  dashboardService: {
+    getStats: (...a: unknown[]) => getStats(...a),
+  },
+}))
+
 import PhilosophersPage from './PhilosophersPage'
 import { ApiError } from '../services/api'
 
 const ROSTER = [
-  { id: 'marcus-aurelius', name: 'Marcus Aurelius', tradition: 'Stoicism', blurb: 'A Stoic voice.' },
-  { id: 'buddha', name: 'Buddha', tradition: 'Buddhism', blurb: 'A gentle voice.' },
+  {
+    id: 'marcus-aurelius',
+    name: 'Marcus Aurelius',
+    tradition: 'Stoicism',
+    blurb: 'A Stoic voice.',
+    openers: ['What is mine to do today?', 'Something is out of my control.'],
+  },
+  { id: 'buddha', name: 'Buddha', tradition: 'Buddhism', blurb: 'A gentle voice.', openers: ['I am clinging.'] },
 ]
 
 function renderPage() {
@@ -37,6 +50,8 @@ function renderPage() {
 beforeEach(() => {
   listPersonas.mockReset().mockResolvedValue(ROSTER)
   chatPersona.mockReset()
+  // Default: no practice today, so only the persona's own openers show.
+  getStats.mockReset().mockResolvedValue({ today_minutes: 0 })
 })
 
 afterEach(cleanup)
@@ -77,6 +92,25 @@ describe('PhilosophersPage', () => {
     expect(chatPersona).toHaveBeenCalledWith('marcus-aurelius', [
       { role: 'user', content: 'I feel restless.' },
     ])
+  })
+
+  it('offers the persona openers on an empty chat and fills the composer when tapped', async () => {
+    await openChat()
+    const chip = await screen.findByRole('button', { name: 'Start with: What is mine to do today?' })
+    fireEvent.click(chip)
+    const box = screen.getByLabelText('Your message') as HTMLTextAreaElement
+    expect(box.value).toBe('What is mine to do today?')
+    // Tapping fills the composer but never auto-sends.
+    expect(chatPersona).not.toHaveBeenCalled()
+  })
+
+  it('adds a personalized opener seeded with today’s practice', async () => {
+    getStats.mockResolvedValue({ today_minutes: 12 })
+    await openChat()
+    const seeded = await screen.findByRole('button', { name: /Start with: I sat for 12 minutes today/ })
+    fireEvent.click(seeded)
+    const box = screen.getByLabelText('Your message') as HTMLTextAreaElement
+    expect(box.value).toContain('I sat for 12 minutes today')
   })
 
   it('surfaces the guest note and disables the composer on 403', async () => {
