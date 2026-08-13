@@ -6,6 +6,7 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
+import FeedbackButton from '../components/FeedbackButton'
 import QuestPicker from '../components/QuestPicker'
 import { SEASON_PREFS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
@@ -663,6 +664,12 @@ export default function SettingsPage() {
           />
           {t('settings.privacy.toggle')}
         </label>
+      </section>
+
+      <section className="settings-section">
+        <h2>{t('settings.feedback.heading')}</h2>
+        <p className="muted">{t('settings.feedback.desc')}</p>
+        <FeedbackButton />
       </section>
 
       <section className="settings-section">

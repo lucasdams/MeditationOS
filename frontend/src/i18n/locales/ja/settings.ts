@@ -147,6 +147,27 @@ export const settings: Record<string, string> = {
     'MeditationOS は、何が役立つかを把握するため、ごく少数の匿名・非個人的な利用イベント（「セッションが完了した」など）のみを記録します。日記の内容・気分・メール・身元は一切記録しません。ブラウザの「トラッキング拒否（Do Not Track）」も尊重します。',
   'settings.privacy.toggle': '匿名の利用状況分析を共有する',
 
+  // フィードバック（開発者にメッセージを送る）
+  'settings.feedback.heading': 'フィードバック',
+  'settings.feedback.desc':
+    '不具合の報告、アイデア、ひとことの挨拶など、お気軽にどうぞ。MeditationOS を作っている本人に直接届きます。',
+  'settings.feedback.open': 'フィードバックを送る',
+  'settings.feedback.title': 'フィードバックを送る',
+  'settings.feedback.categoryLabel': 'どんな内容ですか？',
+  'settings.feedback.cat.idea': 'アイデア',
+  'settings.feedback.cat.bug': '不具合',
+  'settings.feedback.cat.praise': '感想',
+  'settings.feedback.cat.other': 'その他',
+  'settings.feedback.messageLabel': 'メッセージ',
+  'settings.feedback.placeholder': 'いま心にあることは？',
+  'settings.feedback.send': '送信',
+  'settings.feedback.sending': '送信中…',
+  'settings.feedback.cancel': 'キャンセル',
+  'settings.feedback.close': '閉じる',
+  'settings.feedback.sent': 'ありがとうございます。あなたのメッセージを送信しました。とても励みになります。',
+  'settings.feedback.emptyErr': '短いメッセージを入力してください。',
+  'settings.feedback.sendErr': 'フィードバックを送信できませんでした。もう一度お試しください。',
+
   // データ（書き出し・削除）
   'settings.data.heading': 'あなたのデータ',
   'settings.data.desc': 'アカウントを JSON で書き出すか、すべてのデータごと完全に削除できます。',
