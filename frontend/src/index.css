@@ -712,10 +712,33 @@ a:hover { color: var(--accent-hover); }
   border: 1px solid var(--border-strong);
 }
 
-/* A distinct soft color per destination. */
+/* Top-level nav items (Home / Practice / Progress) share one calm treatment: a quiet
+   secondary-ink label + icon with no heavy border, a soft neutral wash on hover, and the
+   app's soft accent pill only on the CURRENT destination. The colourful per-destination
+   tints live in the dropdowns, so the top bar itself stays clean and unified. */
 .app-nav a.nav-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.app-nav a.nav-home:hover {
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+  filter: none;
+  box-shadow: none;
+}
+
+/* Current destination — the soft accent pill (no ring), reused for whichever top-level
+   item is active. */
+.app-nav a.nav-home.active {
   background: var(--nav-home-bg);
   color: var(--nav-home-text);
+  font-weight: 600;
+  box-shadow: none;
 }
 
 /* Meditate / Breathe / Gratitude / Journal / Candle-gazing moved off the flat nav into the
@@ -925,22 +948,31 @@ a:hover { color: var(--accent-hover); }
   margin: 0;
   width: auto;
   min-height: 2.4rem;
-  padding: 0.55rem 0.85rem;
+  padding: 0.4rem 0.8rem;
   border-radius: var(--radius-control);
   font-size: var(--text-sm);
   font-weight: 500;
-  background: var(--nav-more-bg);
-  color: var(--nav-more-text);
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 0 0 1px var(--nav-more-text), var(--shadow-card);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
   cursor: pointer;
 }
 
 .nav-menu-btn:hover {
-  filter: brightness(0.97);
-  transform: none;
-  /* Keep the colour ring on hover (don't let a glow replace it). */
-  box-shadow: 0 0 0 1px var(--nav-more-text), var(--shadow-card);
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+  filter: none;
+  box-shadow: none;
+}
+
+/* Current destination (Practice on /practices) or an open dropdown (Progress) — the same
+   soft accent pill as the active Home item, so the three read as one unified nav. */
+.nav-menu-btn.active,
+.nav-menu-btn[aria-expanded='true'] {
+  background: var(--nav-home-bg);
+  color: var(--nav-home-text);
+  font-weight: 600;
 }
 
 /* The caret flips up when its dropdown is open. */

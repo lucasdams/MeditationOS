@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
+  House,
   Compass,
   Wind,
   Brain,
@@ -246,9 +247,10 @@ export default function AppHeader() {
         )}
       </button>
       <nav className={`app-nav${navOpen ? ' open' : ''}`} ref={navRef}>
-        <Link to="/" className="nav-home">
-          {t('nav.home')}
-        </Link>
+        <NavLink to="/" end className="nav-home">
+          <House size={17} strokeWidth={1.75} aria-hidden="true" />
+          <span className="nav-menu-btn-label">{t('nav.home')}</span>
+        </NavLink>
 
         {/* Practice links straight to the all-practices hub (it lists every practice as cards) —
             clicking it navigates rather than opening a menu. Wrapped in .nav-menu so it hides on
