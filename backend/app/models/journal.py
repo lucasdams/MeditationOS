@@ -58,6 +58,12 @@ class Journal(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     __table_args__ = (
         CheckConstraint(f"mood IS NULL OR mood IN ({_MOOD_LIST})", name="ck_journal_mood"),
