@@ -22,6 +22,7 @@ import { Loading } from './components/StateViews'
 
 // --- Lazily-loaded routes (heavy pages unlikely to be the first URL visited) ---
 const PracticesPage   = lazy(() => import('./pages/PracticesPage'))
+const PrayerPage      = lazy(() => import('./pages/PrayerPage'))
 const PathsPage       = lazy(() => import('./pages/PathsPage'))
 const TratakaPage     = lazy(() => import('./pages/TratakaPage'))
 const LogSessionPage  = lazy(() => import('./pages/LogSessionPage'))
@@ -29,9 +30,8 @@ const LogReadingPage  = lazy(() => import('./pages/LogReadingPage'))
 const TimelinePage    = lazy(() => import('./pages/TimelinePage'))
 const GoalsPage       = lazy(() => import('./pages/GoalsPage'))
 const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'))
-const SpiritPage      = lazy(() => import('./pages/SpiritPage'))
-const SpiritChoosePage = lazy(() => import('./pages/SpiritChoosePage'))
 const SchedulePage    = lazy(() => import('./pages/SchedulePage'))
+const PhilosophersPage = lazy(() => import('./pages/PhilosophersPage'))
 const SettingsPage    = lazy(() => import('./pages/SettingsPage'))
 const AdminPage       = lazy(() => import('./pages/AdminPage'))
 
@@ -81,6 +81,14 @@ export default function App() {
           <Route path="/gratitude" element={<GratitudePage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route
+            path="/philosophers"
+            element={<Suspense fallback={<PageFallback />}><PhilosophersPage /></Suspense>}
+          />
+          <Route
+            path="/prayer"
+            element={<Suspense fallback={<PageFallback />}><PrayerPage /></Suspense>}
+          />
+          <Route
             path="/timeline"
             element={<Suspense fallback={<PageFallback />}><TimelinePage /></Suspense>}
           />
@@ -91,14 +99,6 @@ export default function App() {
           <Route
             path="/analytics"
             element={<Suspense fallback={<PageFallback />}><AnalyticsPage /></Suspense>}
-          />
-          <Route
-            path="/spirit"
-            element={<Suspense fallback={<PageFallback />}><SpiritPage /></Suspense>}
-          />
-          <Route
-            path="/spirit/choose"
-            element={<Suspense fallback={<PageFallback />}><SpiritChoosePage /></Suspense>}
           />
           <Route
             path="/schedule"

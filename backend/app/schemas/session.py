@@ -59,7 +59,7 @@ class SessionCreate(BaseModel):
     calm: int | None = Field(default=None, ge=1, le=5)
     inhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
     exhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
-    cycles_completed: int | None = Field(default=None, ge=0)
+    cycles_completed: int | None = Field(default=None, ge=0, le=100_000)
     # Optional pre-session intention, trimmed and coerced to null when blank.
     intention: Intention = None
     # Optional client idempotency key — a save with a token already seen for this user
@@ -80,7 +80,7 @@ class SessionUpdate(BaseModel):
     calm: int | None = Field(default=None, ge=1, le=5)
     inhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
     exhale_seconds: int | None = Field(default=None, gt=0, le=BREATH_PHASE_MAX_SECONDS)
-    cycles_completed: int | None = Field(default=None, ge=0)
+    cycles_completed: int | None = Field(default=None, ge=0, le=100_000)
     intention: Intention = None
 
 

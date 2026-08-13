@@ -47,8 +47,9 @@ read-compute-write of a cosmetic purchase (or the retire+awaken swap) is atomic 
 parallel request — no double-spend, no two active spirits.
 """
 
+import random
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -284,14 +285,22 @@ TEND_CAP = 0.9  # a manual tend gives a gentle lift above the content floor (pra
 # of the reversal: the companion only ever roots for you.
 NEEDS_FLOOR = 0.8
 
+# A freshly chosen creature is born a little hungry (not maxed) so caring for it visibly fills it
+# in — the welcome has somewhere to grow rather than starting "done". We start it at a random point
+# in this band (a touch of per-creature variety) and let any practice top it to full. The band sits
+# AT/ABOVE NEEDS_FLOOR on purpose: dipping below 0.8 would drop the new companion into the
+# `restless` tier (a care-nudge, an "alarming" read) — the exact state ADR-0031's floor exists to
+# prevent. So it stays the calm `content` tier, just with room in its bars. See `choose_path`.
+NEW_SPIRIT_START_MIN = 0.80
+NEW_SPIRIT_START_MAX = 0.88
+
 # --- Per-item need affinity (ADR-0026 → ADR-0029) -----------------------------------------
 #
 # Each catalog option still declares the ONE need it FAVOURS (its `need`), used by the shop tags
 # and the choose-page preview. ADR-0029 REMOVES the gameplay effect of that affinity: cosmetics no
 # longer modify needs at all (no passive lift, no buy-boost) — needs are now the survival meters,
 # driven only by practice + tending. The affinity is kept purely as a display tag (`_option_need`),
-# and `last_pampered_need` is still STAMPED on unlock for forward-compat, but nothing reads it for
-# the needs computation anymore.
+# read by the shop/preview only — nothing in the needs computation reads it anymore.
 #
 # Default need affinity for any catalog option missing an explicit `need` (a safety net — every
 # real option gets an explicit one; see SPIRIT_COSMETICS_CATALOG and the catalog-coverage test).
@@ -579,7 +588,7 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # The path-exclusive capstones are tier 3. Drives the unlock prerequisite chain.
     # A soft surrounding glow — the gentlest touch, available from the start.
     "aura": {
-        "soft": {"cost": 30, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "soft": {"cost": 50, "unlock_level": 1, "need": RESTED, "tier": 1},
         "warm": {"cost": 45, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "starlit": {"cost": 70, "unlock_level": 5, "need": RESTED, "tier": 2},
         "ember": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
@@ -588,8 +597,11 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         # Universal additions (no per_path) deepening the tree — one per tier with varied needs:
         # a soft green dew glow (tier 1), a deep-purple dusk glow (tier 2), and a shimmering
         # multi-hue aurora ribbon (the universal tier-3 crown of the slot, open to every path).
-        "dewlight": {"cost": 40, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "dewlight": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "twilight": {"cost": 90, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # COOL/EDGY glows (universal tier-2): an electric neon halo + a moody shadow halo.
+        "neon": {"cost": 90, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        "shadow": {"cost": 95, "unlock_level": 5, "need": RESTED, "tier": 2},
         "aurora": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         # LEGENDARY (tier 4, ADR-0027) — the prestige endgame crown of the slot: a full
         # prismatic/rainbow radiant halo, joyful. Universal; highest level + cost, the richest art.
@@ -606,6 +618,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "zephyr": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 auras (ADR-0027) — an EARLIER, cheaper per-path signature glow so
+        # each creature has an exclusive to chase before its tier-3 capstone: drifting cinders for
+        # Pitta (breath), a dew-ring for Kapha (stillness), a petal breeze for Vata (heart). Only
+        # the matching creature can buy/see each. NOT part of the 7-slot signature set (tier 3 only,
+        # per `_signature_option`), so "Signature radiance" is unaffected.
+        "cinders": {
+            "cost": 95, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "dewfall": {
+            "cost": 95, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "petalwind": {
+            "cost": 95, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # A small worn accessory. halo/leaf_crown/ribbon/flower/scarf/star/berry_sprig/tiny_bell/
@@ -655,6 +681,21 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "heart_clip": {"cost": 40, "unlock_level": 2, "need": JOYFUL, "tier": 1},
         # A striped cone party hat topped with a pompom — pure celebration (tier 3).
         "party_hat": {"cost": 175, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # ADORED THINGS (universal) — beloved worn darlings. Iconic white WIRED EARBUDS with a
+        # dangling Y-cord (nostalgic-cool, tier 1); a kawaii CAT-EARS headband (tier 1); a trendy
+        # denim BUCKET HAT (streetwear-cosy, tier 2). No per_path — anyone can wear them.
+        "wired_earbuds": {"cost": 50, "unlock_level": 2, "need": RESTED, "tier": 1},
+        "cat_ears": {"cost": 45, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "bucket_hat": {"cost": 80, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # ADORED THINGS wave 2 (universal) — a tilted artist's BERET (tier 1) and a cottagecore
+        # FLOWER CROWN ringing the head (tier 2).
+        "beret": {"cost": 50, "unlock_level": 2, "need": RESTED, "tier": 1},
+        "flower_crown": {"cost": 85, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        # ONSEN & EARTH (universal) — the cosy hot-spring set: a folded white ONSEN TOWEL on the
+        # head (the capybara-soak look, tier 1) and a little YUZU fruit balanced on the crown
+        # (tier 1, nourishing citrus).
+        "onsen_towel": {"cost": 50, "unlock_level": 2, "need": RESTED, "tier": 1},
+        "yuzu": {"cost": 45, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         # LEGENDARY (tier 4) — a crown of stars circling the brow, joyful. Universal; the
         # prestige endgame accessory, gated behind any tier-3 accessory.
         "star_crown": {"cost": 400, "unlock_level": 10, "need": JOYFUL, "tier": 4},
@@ -667,6 +708,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "feather_plume": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
+        # PATH-EXCLUSIVE tier-2 accessories (mirrors the tier-2 auras) — an EARLIER, cheaper
+        # per-path worn item to chase before the tier-3 capstone: a flame tuft at the brow for
+        # Pitta (breath), a little acorn cap for Kapha (stillness), a wind ribbon for Vata
+        # (heart). Only the matching creature can buy/see each. NOT part of the 7-slot signature
+        # set (tier 3 only, per `_signature_option`), so "Signature radiance" is unaffected.
+        "flame_tuft": {
+            "cost": 90, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "acorn_cap": {
+            "cost": 90, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "wind_ribbon": {
+            "cost": 90, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
+        },
     },
     # A small backdrop the spirit sits in (the "habitat"). meadow/dusk/night/garden/seaside/
     # cottage/lily_pond/autumn_grove/starfall are universal; the three PATH-EXCLUSIVE backdrops
@@ -675,18 +730,55 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # (breath), the misty grove for the grounded Kapha (stillness), the open sky for the airy
     # Vata (heart).
     "habitat": {
-        "meadow": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
-        "dusk": {"cost": 65, "unlock_level": 3, "need": RESTED, "tier": 2},
-        "night": {"cost": 80, "unlock_level": 7, "need": RESTED, "tier": 3},
-        "garden": {"cost": 60, "unlock_level": 1, "need": NOURISHED, "tier": 1},
-        "seaside": {"cost": 70, "unlock_level": 3, "need": RESTED, "tier": 2},
-        "cottage": {"cost": 90, "unlock_level": 7, "need": RESTED, "tier": 3},
-        "lily_pond": {"cost": 55, "unlock_level": 2, "need": RESTED, "tier": 1},
-        "autumn_grove": {"cost": 100, "unlock_level": 4, "need": NOURISHED, "tier": 2},
-        "starfall": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # Habitats are the most SIGNIFICANT cosmetic — a full backdrop scene — so they're priced at
+        # the top of each tier band (clearly above small worn items). Clean tiers, no inversions:
+        # t1 ~75, t2 ~130-145, t3 ~205-225, t4 legendary ~470. (night/cottage were mis-tagged tier-3
+        # yet priced like tier-1 at 80/90 — a lower tier cost more; corrected here.)
+        "meadow": {"cost": 75, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "dusk": {"cost": 130, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "night": {"cost": 205, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "garden": {"cost": 75, "unlock_level": 1, "need": NOURISHED, "tier": 1},
+        "seaside": {"cost": 130, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "cottage": {"cost": 205, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "lily_pond": {"cost": 75, "unlock_level": 2, "need": RESTED, "tier": 1},
+        "autumn_grove": {"cost": 145, "unlock_level": 4, "need": NOURISHED, "tier": 2},
+        "starfall": {"cost": 215, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # COOL / EDGY backdrops (universal) — sharper, moodier scenes than the soft nature ones, so
+        # the habitat set isn't all pastel meadows. Spread across tiers 2–3.
+        # A stormy mountain peak — dark clouds, rain, forked lightning (tier 2).
+        "storm_peak": {"cost": 135, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # A neon cyberpunk skyline at night — glowing signs over a dark city (tier 2).
+        "neon_city": {"cost": 145, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        # A volcanic scene — dark rock, a lava-glow horizon, drifting embers (tier 3).
+        "volcano": {"cost": 215, "unlock_level": 7, "need": NOURISHED, "tier": 3},
+        # Deep space — a starfield, a distant planet + moon, a soft nebula band (tier 3).
+        "cosmic_void": {"cost": 210, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # DIVERSE backdrops (universal) — more places + moods beyond the pastel nature set.
+        # A wooden training DOJO — shoji screens + a rising-sun banner (tier 2).
+        "dojo": {"cost": 135, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # A raked ZEN GARDEN — pale sand with rake lines + a few dark stones (tier 2).
+        "zen_garden": {"cost": 130, "unlock_level": 3, "need": RESTED, "tier": 2},
+        # A cherry-blossom SAKURA scene — a pink-blossom branch + drifting petals (tier 2).
+        "sakura": {"cost": 140, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        # A serene BAMBOO GROVE — tall stalks at the edges, soft light through the canopy
+        # (tier 2, pairs with the hot spring + zen garden for the onsen set).
+        "bamboo_grove": {"cost": 140, "unlock_level": 4, "need": RESTED, "tier": 2},
+        # A warm TEA HOUSE — tatami, shoji panels, a low table with a steaming pot, a paper
+        # lamp (tier 3, the indoor-cosy corner of the onsen set).
+        "teahouse": {"cost": 205, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # A retro ARCADE — dark room, glowing cabinets, neon signs, checker floor (tier 3).
+        "arcade": {"cost": 210, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # UNDERWATER — blue depths, light rays, bubbles, kelp + fish silhouettes (tier 3).
+        "underwater": {"cost": 215, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # HOT SPRING (onsen) — a steamy stone soaking pool at warm dusk, rising steam, a paper
+        # lantern + rocks. A beloved cosy scene that pairs with the capybara companion (tier 3).
+        "hot_spring": {"cost": 210, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # CAMPSITE — a cosy night camp: a tent, a crackling campfire, and a starry sky. A beloved
+        # cottagecore/outdoors scene (tier 3).
+        "campsite": {"cost": 210, "unlock_level": 7, "need": RESTED, "tier": 3},
         # LEGENDARY (tier 4) — a cosmic nebula backdrop strewn with stars, rested. Universal; the
         # prestige endgame habitat, gated behind any tier-3 habitat.
-        "nebula": {"cost": 420, "unlock_level": 10, "need": RESTED, "tier": 4},
+        "nebula": {"cost": 470, "unlock_level": 10, "need": RESTED, "tier": 4},
         "ember_canyon": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
@@ -695,6 +787,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "open_sky": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 habitats (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # backdrop to chase before the tier-3 capstone: an ember hollow for Pitta (breath), a fern
+        # hollow for Kapha (stillness), a cloud terrace for Vata (heart). Only the matching creature
+        # can buy/see each. NOT part of the 7-slot signature set (tier 3 only).
+        "ember_hollow": {
+            "cost": 110, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "fern_hollow": {
+            "cost": 110, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "cloud_terrace": {
+            "cost": 110, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # A small friend that keeps the spirit company (the "companion"). firefly/bird/cat are
@@ -719,6 +824,37 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         # LEGENDARY (tier 4) — a small mythical curled dragon, nourished. Universal; the prestige
         # endgame companion, gated behind any tier-3 companion.
         "dragon": {"cost": 450, "unlock_level": 10, "need": NOURISHED, "tier": 4},
+        # PREMIUM picks — four fancier universal tier-3 companions: a serene koi, an ethereal
+        # jellyfish + luna moth, and a radiant firebird phoenix (the priciest tier-3, just under the
+        # legendary dragon). The slot keeps exactly ONE tier-4 legendary (the dragon), per
+        # invariant.
+        "koi": {"cost": 245, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "jellyfish": {"cost": 255, "unlock_level": 7, "need": RESTED, "tier": 3},
+        "luna_moth": {"cost": 240, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        "phoenix": {"cost": 300, "unlock_level": 8, "need": JOYFUL, "tier": 3},
+        # ADORED THINGS (universal) — beloved little darlings people already adore, spread across
+        # tiers 1–3 so there's a charmer to chase at every level. A fuzzy duckling (starter), a
+        # smiley axolotl + a bubble-tea cup (mid), and the unbothered capybara with a yuzu on its
+        # head (the calm tier-3 mascot). No per_path — any creature can befriend them.
+        "duckling": {"cost": 110, "unlock_level": 2, "need": JOYFUL, "tier": 1},
+        "axolotl": {"cost": 175, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        "boba": {"cost": 170, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        "capybara": {"cost": 245, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # ADORED THINGS wave 2 (universal) — more beloved darlings: a round toadstool + a spiny
+        # hedgehog (starters), a tuxedo penguin (mid), and a smug shiba (the doge, tier-3 charmer).
+        "mushroom": {"cost": 110, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "hedgehog": {"cost": 115, "unlock_level": 2, "need": NOURISHED, "tier": 1},
+        "penguin": {"cost": 175, "unlock_level": 4, "need": RESTED, "tier": 2},
+        "shiba": {"cost": 250, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # ONSEN & EARTH (universal) — cosy iyashikei friends alongside the capybara: a river
+        # OTTER hugging its lucky pebble (tier 2) and a RED PANDA curled asleep in its own
+        # ringed tail (the snuggly tier-3 nap champion).
+        "otter": {"cost": 180, "unlock_level": 4, "need": JOYFUL, "tier": 2},
+        "red_panda": {"cost": 250, "unlock_level": 7, "need": RESTED, "tier": 3},
+        # More onsen friends: a round TANUKI with its lucky leaf (tier 2) and a SNOW MONKEY
+        # soaking blissfully, steam rising off its fur (the tier-3 onsen icon).
+        "tanuki": {"cost": 185, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        "snow_monkey": {"cost": 255, "unlock_level": 7, "need": RESTED, "tier": 3},
         "kitsune": {
             "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": JOYFUL, "tier": 3,
         },
@@ -727,6 +863,20 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "crane": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 companions (mirrors the tier-2 auras) — an EARLIER, cheaper per-path
+        # friend to chase before the tier-3 capstone: a tiny ember sprite for Pitta (breath), a
+        # mossy pebble critter for Kapha (stillness), a resting butterfly for Vata (heart). Only the
+        # matching creature can buy/see each. NOT part of the 7-slot signature set (tier 3 only, per
+        # `_signature_option`), so "Signature radiance" is unaffected.
+        "emberling": {
+            "cost": 95, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "mosskit": {
+            "cost": 95, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "butterfly": {
+            "cost": 95, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # A serene thing the spirit floats on / rides — the calm take on a "mount". cloud/lotus/leaf
@@ -738,9 +888,12 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "cloud": {"cost": 70, "unlock_level": 1, "need": RESTED, "tier": 1},
         "mossy_stump": {"cost": 75, "unlock_level": 2, "need": NOURISHED, "tier": 1},
         "lotus": {"cost": 90, "unlock_level": 3, "need": RESTED, "tier": 2},
+        # A sleek neon HOVERBOARD the spirit rides — cool/futuristic (tier 2).
+        "hoverboard": {"cost": 135, "unlock_level": 5, "need": JOYFUL, "tier": 2},
         "reed_raft": {"cost": 130, "unlock_level": 4, "need": RESTED, "tier": 2},
-        "leaf": {"cost": 120, "unlock_level": 7, "need": JOYFUL, "tier": 3},
-        "crystal": {"cost": 190, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        # A tier-3 mount must cost more than the tier-2s (was 120 — below reed_raft's 130).
+        "leaf": {"cost": 200, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        "crystal": {"cost": 210, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         # LEGENDARY (tier 4) — a radiant comet/star the spirit rides, joyful. Universal; the
         # prestige endgame mount, gated behind any tier-3 mount.
         "comet": {"cost": 410, "unlock_level": 10, "need": JOYFUL, "tier": 4},
@@ -753,6 +906,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "feather": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
         },
+        # PATH-EXCLUSIVE tier-2 mounts (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # perch to chase before the tier-3 capstone: an ember log for Pitta (breath), a mossy rock
+        # for Kapha (stillness), a drifting leaf for Vata (heart). Only the matching creature can
+        # buy/see each. NOT part of the 7-slot signature set (tier 3 only).
+        "ember_log": {
+            "cost": 100, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "mossy_rock": {
+            "cost": 100, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "drift_leaf": {
+            "cost": 100, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
+        },
     },
     # An ambient drifting overlay across the whole scene (the "weather") — light particles that
     # drift over everything, kept subtle so they never obscure the figure. The universal options
@@ -761,24 +927,52 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     # carry a `per_path` key so only the matching creature can buy (and see) them — drifting embers
     # for the fiery Pitta (breath), a golden pollen fall for the grounded Kapha (stillness), and
     # swirling wind gusts for the airy Vata (heart). The path-exclusive ones are tier-3 capstones.
+    # Weather overlays the WHOLE scene with animated ambience — a significant, showy effect — so
+    # it's a real investment, pricier and gated higher than small worn items (t1 ~100 / L3,
+    # t2 ~160-170 /
+    # L5-6, t3 ~250-260 / L8, t4 legendary ~470 / L11).
     "weather": {
-        "petals": {"cost": 50, "unlock_level": 1, "need": JOYFUL, "tier": 1},
-        "mist": {"cost": 45, "unlock_level": 1, "need": RESTED, "tier": 1},
-        "rain": {"cost": 90, "unlock_level": 3, "need": RESTED, "tier": 2},
-        "leaffall": {"cost": 110, "unlock_level": 4, "need": NOURISHED, "tier": 2},
-        "snow": {"cost": 180, "unlock_level": 7, "need": RESTED, "tier": 3},
-        "fireflies": {"cost": 200, "unlock_level": 7, "need": JOYFUL, "tier": 3},
+        "petals": {"cost": 100, "unlock_level": 3, "need": JOYFUL, "tier": 1},
+        "mist": {"cost": 100, "unlock_level": 3, "need": RESTED, "tier": 1},
+        # Floating soap bubbles drifting over the scene (tier 1).
+        "bubbles": {"cost": 100, "unlock_level": 3, "need": JOYFUL, "tier": 1},
+        "rain": {"cost": 160, "unlock_level": 5, "need": RESTED, "tier": 2},
+        "leaffall": {"cost": 170, "unlock_level": 6, "need": NOURISHED, "tier": 2},
+        # Colourful confetti raining down — pure celebration (tier 2).
+        "confetti": {"cost": 165, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        # A shower of shooting stars streaking across the scene (tier 2).
+        "meteor_shower": {"cost": 170, "unlock_level": 6, "need": RESTED, "tier": 2},
+        # ADORED THINGS wave 2 — little hearts drifting down over the scene (tier 2).
+        "heartfall": {"cost": 165, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        # ONSEN & EARTH — soft hot-spring steam (yukemuri) curling up over the scene (tier 2,
+        # pairs with the hot spring / spring stones set).
+        "steam": {"cost": 160, "unlock_level": 5, "need": RESTED, "tier": 2},
+        "snow": {"cost": 250, "unlock_level": 8, "need": RESTED, "tier": 3},
+        "fireflies": {"cost": 260, "unlock_level": 8, "need": JOYFUL, "tier": 3},
         # LEGENDARY (tier 4) — an auroral storm overlay rippling across the scene, joyful.
         # Universal; the prestige endgame weather, gated behind any tier-3 weather.
-        "aurora_storm": {"cost": 390, "unlock_level": 10, "need": JOYFUL, "tier": 4},
+        "aurora_storm": {"cost": 470, "unlock_level": 11, "need": JOYFUL, "tier": 4},
         "ember_drift": {
-            "cost": 220, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 3,
+            "cost": 250, "unlock_level": 8, "per_path": BREATH, "need": NOURISHED, "tier": 3,
         },
         "pollenfall": {
-            "cost": 220, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 3,
+            "cost": 250, "unlock_level": 8, "per_path": STILLNESS, "need": RESTED, "tier": 3,
         },
         "galeswirl": {
-            "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+            "cost": 250, "unlock_level": 8, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 weathers (mirror the tier-2 auras) — an EARLIER per-path overlay to
+        # chase before the tier-3 capstone: a heat shimmer for Pitta (breath), a dew drift for Kapha
+        # (stillness), a feather fall for Vata (heart). Only the matching creature can buy/see each.
+        # NOT part of the 7-slot signature set (tier 3 only).
+        "heat_shimmer": {
+            "cost": 160, "unlock_level": 6, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "dewdrift": {
+            "cost": 160, "unlock_level": 6, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "featherfall": {
+            "cost": 160, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # A low foreground base decoration along the very bottom edge (the "ground") — a strip that
@@ -791,7 +985,15 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
     "ground": {
         "grass": {"cost": 50, "unlock_level": 1, "need": NOURISHED, "tier": 1},
         "pebbles": {"cost": 45, "unlock_level": 2, "need": RESTED, "tier": 1},
+        # A soft snow bank (tier 1).
+        "snow_bank": {"cost": 50, "unlock_level": 2, "need": RESTED, "tier": 1},
         "clover": {"cost": 90, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        # A cracked lava-rock floor (tier 2, pairs with the volcano scene).
+        "lava_rock": {"cost": 120, "unlock_level": 4, "need": NOURISHED, "tier": 2},
+        # A glowing synthwave neon grid (tier 2, pairs with neon city / arcade).
+        "neon_grid": {"cost": 130, "unlock_level": 5, "need": JOYFUL, "tier": 2},
+        # Smooth steaming SPRING STONES at the water's edge (tier 2, pairs with the hot spring).
+        "spring_stones": {"cost": 125, "unlock_level": 4, "need": RESTED, "tier": 2},
         "mushrooms": {"cost": 120, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "wildflowers": {"cost": 190, "unlock_level": 7, "need": JOYFUL, "tier": 3},
         "crystals": {"cost": 210, "unlock_level": 7, "need": RESTED, "tier": 3},
@@ -806,6 +1008,19 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         },
         "cloudfloor": {
             "cost": 220, "unlock_level": 6, "per_path": HEART, "need": JOYFUL, "tier": 3,
+        },
+        # PATH-EXCLUSIVE tier-2 grounds (mirror the tier-2 auras) — an EARLIER, cheaper per-path
+        # floor to chase before the tier-3 capstone: ember sand for Pitta (breath), a moss bed for
+        # Kapha (stillness), a cloud tuft for Vata (heart). Only the matching creature can buy/see
+        # each. NOT part of the 7-slot signature set (tier 3 only).
+        "ember_sand": {
+            "cost": 100, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 2,
+        },
+        "mossbed": {
+            "cost": 100, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 2,
+        },
+        "cloudtuft": {
+            "cost": 100, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 2,
         },
     },
     # BODY cosmetics — these change the CREATURE ITSELF, not a layer drawn around it. Both are
@@ -832,13 +1047,14 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         "slate": {"cost": 85, "unlock_level": 4, "need": NOURISHED, "tier": 2},
         "midnight": {"cost": 90, "unlock_level": 5, "need": NOURISHED, "tier": 2},
     },
-    # A body RESIZE — scales the creature independent of its growth stage. All tier 1 (no prereq
-    # chain; pick any size from the start) with modest costs.
+    # A body RESIZE — scales the whole creature independent of its growth stage: a big, noticeable
+    # change, so it's a real investment (pricier + gated higher than a recolour). All tier 1 (no
+    # prereq chain; the level + cost are the gate).
     "size": {
-        "tiny": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
-        "small": {"cost": 40, "unlock_level": 1, "need": RESTED, "tier": 1},
-        "large": {"cost": 55, "unlock_level": 2, "need": NOURISHED, "tier": 1},
-        "giant": {"cost": 70, "unlock_level": 3, "need": JOYFUL, "tier": 1},
+        "tiny": {"cost": 100, "unlock_level": 3, "need": JOYFUL, "tier": 1},
+        "small": {"cost": 100, "unlock_level": 3, "need": RESTED, "tier": 1},
+        "large": {"cost": 140, "unlock_level": 5, "need": NOURISHED, "tier": 1},
+        "giant": {"cost": 180, "unlock_level": 7, "need": JOYFUL, "tier": 1},
     },
     # A body SHAPE — varies the creature's SILHOUETTE (its trailing "legs"/wisp count + body
     # proportions), not just colour/size. Unlike palette/size these are PER-PATH: every option is
@@ -858,55 +1074,79 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
         # `cloud` reuses the existing key (a separate `form`-slot entry from the `cloud` MOUNT, its
         # shared "Cloud" label fits). `meteor` is a head + one long swept tail (keyed `meteor`, not
         # `comet`, since `comet` already names the tier-4 "Radiant comet" mount).
-        "cloud": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": NOURISHED, "tier": 1},
-        "plume": {"cost": 60, "unlock_level": 1, "per_path": HEART, "need": JOYFUL, "tier": 1},
+        # Shapes REPLACE the whole silhouette — the most dramatic body change — so they're a
+        # significant investment: pricier and gated higher than a recolour/resize
+        # (t1 ~120-130 / L4-5,
+        # t2 ~200 / L8, the tier-2 still needing an owned tier-1 of the same path).
+        "cloud": {"cost": 120, "unlock_level": 4, "per_path": HEART, "need": NOURISHED, "tier": 1},
+        "plume": {"cost": 120, "unlock_level": 4, "per_path": HEART, "need": JOYFUL, "tier": 1},
         "constellation": {
-            "cost": 65, "unlock_level": 2, "per_path": HEART, "need": RESTED, "tier": 1
+            "cost": 130, "unlock_level": 5, "per_path": HEART, "need": RESTED, "tier": 1
         },
         "dandelion": {
-            "cost": 65, "unlock_level": 2, "per_path": HEART, "need": NOURISHED, "tier": 1
+            "cost": 130, "unlock_level": 5, "per_path": HEART, "need": NOURISHED, "tier": 1
         },
-        "leaflet": {"cost": 95, "unlock_level": 3, "per_path": HEART, "need": RESTED, "tier": 2},
-        "whirlwind": {"cost": 100, "unlock_level": 3, "per_path": HEART, "need": JOYFUL, "tier": 2},
-        "meteor": {"cost": 70, "unlock_level": 2, "per_path": HEART, "need": JOYFUL, "tier": 1},
+        "leaflet": {"cost": 200, "unlock_level": 8, "per_path": HEART, "need": RESTED, "tier": 2},
+        "whirlwind": {"cost": 200, "unlock_level": 8, "per_path": HEART, "need": JOYFUL, "tier": 2},
+        "meteor": {"cost": 130, "unlock_level": 5, "per_path": HEART, "need": JOYFUL, "tier": 1},
         # Pitta (breath) — DISTINCT fire OBJECTS that REPLACE the bare blaze with a different
         # silhouette (not just a recoloured/resized flame): a logs-and-flame campfire, a flame on a
         # handle (torch), a comet-like fireball head + tail, a rayed sun disc, a low bed of coals,
         # and a flame cradled in a lantern. `twin` (a forked two-flame blaze) is kept.
         "campfire": {
-            "cost": 60, "unlock_level": 1, "per_path": BREATH, "need": NOURISHED, "tier": 1
+            "cost": 120, "unlock_level": 4, "per_path": BREATH, "need": NOURISHED, "tier": 1
         },
-        "torch": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": RESTED, "tier": 1},
-        "coals": {"cost": 60, "unlock_level": 1, "per_path": BREATH, "need": RESTED, "tier": 1},
-        "fireball": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
-        "sun": {"cost": 100, "unlock_level": 3, "per_path": BREATH, "need": NOURISHED, "tier": 2},
-        "lantern": {"cost": 95, "unlock_level": 3, "per_path": BREATH, "need": JOYFUL, "tier": 2},
+        "torch": {"cost": 130, "unlock_level": 5, "per_path": BREATH, "need": RESTED, "tier": 1},
+        "coals": {"cost": 120, "unlock_level": 4, "per_path": BREATH, "need": RESTED, "tier": 1},
+        "fireball": {"cost": 200, "unlock_level": 8, "per_path": BREATH, "need": JOYFUL, "tier": 2},
+        "sun": {"cost": 200, "unlock_level": 8, "per_path": BREATH, "need": NOURISHED, "tier": 2},
+        "lantern": {"cost": 200, "unlock_level": 8, "per_path": BREATH, "need": JOYFUL, "tier": 2},
         # `twin` forks the blaze into two ember cores.
-        "twin": {"cost": 65, "unlock_level": 2, "per_path": BREATH, "need": JOYFUL, "tier": 1},
+        "twin": {"cost": 130, "unlock_level": 5, "per_path": BREATH, "need": JOYFUL, "tier": 1},
         # Kapha (stillness) — alternate still-life bodies (a huddle of orbs, a stone cairn, an
         # orbiting atom) that REPLACE the seated figure, not just restretch it.
         "cluster": {
-            "cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": RESTED, "tier": 1
+            "cost": 120, "unlock_level": 4, "per_path": STILLNESS, "need": RESTED, "tier": 1
         },
-        "cairn": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
+        "cairn": {"cost": 130, "unlock_level": 5, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
         "orbital": {
-            "cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2
+            "cost": 200, "unlock_level": 8, "per_path": STILLNESS, "need": NOURISHED, "tier": 2
         },
         # `lotus` is a radiating flower, `enso` concentric zen rings, `crystal` a faceted gem — more
         # alternate still-life bodies that REPLACE the seated figure.
-        "lotus": {"cost": 60, "unlock_level": 1, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
+        "lotus": {"cost": 120, "unlock_level": 4, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
         "enso": {
-            "cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": NOURISHED, "tier": 1
+            "cost": 130, "unlock_level": 5, "per_path": STILLNESS, "need": NOURISHED, "tier": 1
         },
-        "prism": {"cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": RESTED, "tier": 2},
+        "prism": {"cost": 200, "unlock_level": 8, "per_path": STILLNESS, "need": RESTED, "tier": 2},
         # `sprout` is the one ORGANIC Kapha body — an earthy seedling (stem + leaves + bud). `wheel`
         # is a radial dharma wheel / mandala — concentric rings + radial spokes (keyed `wheel`, not
         # `mandala`, since `mandala` already names the tier-4 "Sacred mandala" ground). `wheel` is a
         # tier-2 form, so its prereq is any owned tier-1 stillness form (the usual slot chain).
-        "sprout": {"cost": 65, "unlock_level": 2, "per_path": STILLNESS, "need": JOYFUL, "tier": 1},
-        "wheel": {
-            "cost": 100, "unlock_level": 3, "per_path": STILLNESS, "need": NOURISHED, "tier": 2
+        "sprout": {
+            "cost": 130, "unlock_level": 5, "per_path": STILLNESS, "need": JOYFUL, "tier": 1
         },
+        "wheel": {
+            "cost": 200, "unlock_level": 8, "per_path": STILLNESS, "need": NOURISHED, "tier": 2
+        },
+    },
+    # A body FACE — swaps the creature's default expression for a chosen one (happy / wink /
+    # lashes / tongue-out / frog). UNIVERSAL (any creature) and, like palette/size/form, a body
+    # cosmetic that
+    # sits OUTSIDE the ADR-0028 signature set (see `_NON_SIGNATURE_SLOTS`). The frontend maps each
+    # key to a drawn face variant. Cheap, mostly tier 1 (frog is tier 2, needing an owned tier-1
+    # face).
+    "face": {
+        "kawaii": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "wink": {"cost": 40, "unlock_level": 1, "need": JOYFUL, "tier": 1},
+        "lashes": {"cost": 45, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "sleepy": {"cost": 45, "unlock_level": 1, "need": RESTED, "tier": 1},
+        "surprised": {"cost": 48, "unlock_level": 2, "need": JOYFUL, "tier": 1},
+        "tongue": {"cost": 50, "unlock_level": 2, "need": JOYFUL, "tier": 1},
+        "frogface": {"cost": 65, "unlock_level": 3, "need": RESTED, "tier": 2},
+        "starry": {"cost": 60, "unlock_level": 2, "need": JOYFUL, "tier": 2},
+        "hearts": {"cost": 60, "unlock_level": 3, "need": JOYFUL, "tier": 2},
+        "cool": {"cost": 70, "unlock_level": 3, "need": JOYFUL, "tier": 2},
     },
 }
 
@@ -917,7 +1157,7 @@ SPIRIT_COSMETICS_CATALOG: dict[str, dict[str, dict[str, int | str]]] = {
 # is a body cosmetic, not a signature capstone — so it must be skipped explicitly to keep the set
 # total at 7 (and to keep every decorative slot's "one signature per path" invariant). Listed here,
 # the signature helpers treat all three the same: no signature in any of them.
-_NON_SIGNATURE_SLOTS: frozenset[str] = frozenset({"palette", "size", "form"})
+_NON_SIGNATURE_SLOTS: frozenset[str] = frozenset({"palette", "size", "form", "face"})
 
 
 def _option_cost(slot: str, option: str) -> int:
@@ -939,18 +1179,19 @@ def _option_per_path(slot: str, option: str) -> str | None:
 
 
 def _signature_option(slot: str, path: str | None) -> str | None:
-    """The SIGNATURE option for `slot` and chosen `path` (ADR-0028) = the slot's option whose
-    `per_path == path` — its path-exclusive tier-3 capstone. There is exactly one per slot for a
-    chosen path (a catalog invariant; the set-coverage test guards it), so the first match is the
-    signature. None for a pathless spark (no creature → no signature) or an unknown slot, and None
-    for the body-cosmetic slots (palette/size/form) — they change the creature itself and stand
-    outside the signature set even when, like `form`, they carry per-path options."""
+    """The SIGNATURE option for `slot` and chosen `path` (ADR-0028) = the slot's path-exclusive
+    TIER-3 capstone. Since the tier-2 per-path exclusives shipped, a slot carries TWO per-path
+    options per path — the signature is pinned to tier 3 explicitly (not dict order), so a
+    catalog reorder can never silently redefine the "Signature radiance" set to the cheaper
+    tier-2 item. None for a pathless spark (no creature → no signature) or an unknown slot, and
+    None for the body-cosmetic slots (palette/size/form) — they change the creature itself and
+    stand outside the signature set even when, like `form`, they carry per-path options."""
     if path is None or path not in _CHOOSABLE_PATHS:
         return None
     if slot in _NON_SIGNATURE_SLOTS:
         return None
-    for option in SPIRIT_COSMETICS_CATALOG.get(slot, {}):
-        if _option_per_path(slot, option) == path:
+    for option, spec in SPIRIT_COSMETICS_CATALOG.get(slot, {}).items():
+        if _option_per_path(slot, option) == path and spec.get("tier") == 3:
             return option
     return None
 
@@ -1016,7 +1257,7 @@ def _cosmetics(spirit: Spirit) -> dict[str, str]:
     raw = spirit.cosmetics or {}
     if not isinstance(raw, dict):
         return {}
-    return {str(k): str(v) for k, v in raw.items() if isinstance(v, (str, int))}
+    return {str(k): str(v) for k, v in raw.items() if isinstance(v, str | int)}
 
 
 def _unlocked_list(spirit: Spirit) -> list[str]:
@@ -1025,7 +1266,7 @@ def _unlocked_list(spirit: Spirit) -> list[str]:
     raw = spirit.unlocked or []
     if not isinstance(raw, list):
         return []
-    return [str(v) for v in raw if isinstance(v, (str, int))]
+    return [str(v) for v in raw if isinstance(v, str | int)]
 
 
 def _owned(spirit: Spirit) -> set[str]:
@@ -1381,10 +1622,18 @@ def choose_path(
     if spirit.path is not None:
         raise PathAlreadyChosen(str(spirit.id))
 
+    # Born a little hungry (not maxed): back-date the born-fed baseline so the just-chosen creature
+    # starts at a random point in the NEW_SPIRIT_START band rather than a full 100%. Since the
+    # pre-practice value eases from full toward the floor over DECAY_DAYS, an offset of
+    # `DECAY_DAYS × (1 − start)` days lands the initial needs/vitality exactly at `start` (which is
+    # ≥ NEEDS_FLOOR, so it stays the calm `content` tier). Any practice then tops it to full.
+    start = random.uniform(NEW_SPIRIT_START_MIN, NEW_SPIRIT_START_MAX)
+    born_baseline = datetime.now(UTC) - timedelta(days=DECAY_DAYS * (1.0 - start))
+
     result = db.execute(
         Spirit.__table__.update()
         .where(Spirit.id == spirit.id, Spirit.path.is_(None))
-        .values(path=data.path, name=data.name)
+        .values(path=data.path, name=data.name, needs_baseline_at=born_baseline)
     )
     db.commit()
     if not result.rowcount:
@@ -1393,6 +1642,8 @@ def choose_path(
         raise PathAlreadyChosen(str(spirit.id))
     spirit.path = data.path
     spirit.name = data.name
+    # Keep the ORM object in sync for the state build below.
+    spirit.needs_baseline_at = born_baseline
     return _build_state(db, user_id, spirit, today=today, tz=tz)
 
 
@@ -1407,8 +1658,8 @@ def unlock_cosmetic(
     """Unlock a cosmetic option into the active spirit's owned collection AND auto-equip it
     (ADR-0027). Unlocking is the new "buying": it charges the option's full cost (added to the
     monotonic `coins_spent` ledger, never refunded), adds the option to `unlocked`, and equips it
-    in its slot. It still STAMPS `last_pampered_at` + the bought item's need for forward-compat,
-    but ADR-0029 removed the pamper needs effect (cosmetics are purely cosmetic now).
+    in its slot. ADR-0029 removed the old pamper needs effect entirely — cosmetics are purely
+    cosmetic now.
 
     Validates: unknown slot/option, or a path-exclusive option this creature can't use →
     UnknownCosmetic (404, exactly as the GET `available` shape hides it); already owned →
@@ -1473,12 +1724,6 @@ def unlock_cosmetic(
     equipped[data.slot] = data.option
     spirit.cosmetics = equipped
     spirit.coins_spent = spirit.coins_spent + cost
-    # ADR-0025/0026 stamped the unlock time + the bought item's need to drive a decaying needs
-    # boost; ADR-0029 removed that effect, so these are now forward-compat-only stamps (read by
-    # nothing). Kept so the columns/route behaviour stay stable. Same txn + lock as the
-    # unlock/equip and the coins_spent bump.
-    spirit.last_pampered_at = func.now()
-    spirit.last_pampered_need = _option_need(data.slot, data.option)
     db.commit()
     db.refresh(spirit)
     # Thread BOTH already-computed bases through: the lifetime `basis` and the SAME-spirit

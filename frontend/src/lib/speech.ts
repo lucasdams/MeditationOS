@@ -155,14 +155,21 @@ export function onVoicesReady(cb: () => void): () => void {
 /**
  * Pick the voice to speak with. The user's saved choice wins when it's still
  * available on this device; otherwise fall back to a sensible default — a local
- * (on-device) voice in the page's language, then any voice in that language, then
- * the platform default, then the first available. Returns null if none — the
+ * (on-device) voice in the CONTENT's language, then any voice in that language,
+ * then the platform default, then the first available. Returns null if none — the
  * caller then lets the platform choose.
+ *
+ * `contentLang` guards the DEFAULT only: the guided-cue text is currently English
+ * (content localization is deferred), so the default must NOT pick by
+ * `navigator.language` — on a Japanese-language browser that would select a ja
+ * voice reading English text, badly garbled (worse than the bell fallback). The
+ * user's explicit saved choice always overrides this.
  */
-export function pickVoice(): SpeechSynthesisVoice | null {
+export function pickVoice(contentLang = 'en'): SpeechSynthesisVoice | null {
   // The user's explicit choice takes precedence when it resolves on this device.
   const chosen = savedVoice()
   if (chosen) return chosen
+
 
   const s = synth()
   if (!s) return null
@@ -174,8 +181,7 @@ export function pickVoice(): SpeechSynthesisVoice | null {
   }
   if (voices.length === 0) return null
 
-  const lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US'
-  const base = lang.split('-')[0].toLowerCase()
+  const base = contentLang.split('-')[0].toLowerCase()
   const inLang = voices.filter((v) => v.lang?.toLowerCase().startsWith(base))
 
   return (

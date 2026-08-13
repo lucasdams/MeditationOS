@@ -1,3 +1,5 @@
+import { useT } from '../i18n'
+
 /**
  * A 1–5 rating chip row with a leading "not rated" chip, shared by the session
  * log, the post-sit reflection, and the timeline edit. The empty value is '' and
@@ -10,7 +12,7 @@ export default function RatingChips({
   value,
   onChange,
   ariaLabel,
-  notRatedLabel = 'Not rated',
+  notRatedLabel,
 }: {
   value: string
   onChange: (value: string) => void
@@ -18,6 +20,8 @@ export default function RatingChips({
   ariaLabel: string
   notRatedLabel?: string
 }) {
+  const { t } = useT()
+  const notRated = notRatedLabel ?? t('practice.rating.notRated')
   return (
     <div className="log-session-rating" role="group" aria-label={ariaLabel}>
       <button
@@ -26,7 +30,7 @@ export default function RatingChips({
         aria-pressed={value === ''}
         onClick={() => onChange('')}
       >
-        {notRatedLabel}
+        {notRated}
       </button>
       {[1, 2, 3, 4, 5].map((n) => (
         <button
@@ -34,7 +38,7 @@ export default function RatingChips({
           type="button"
           className={`chip${value === String(n) ? ' chip-active' : ''}`}
           aria-pressed={value === String(n)}
-          aria-label={`Rate ${n} of 5`}
+          aria-label={t('practice.rating.rateAria', { n })}
           onClick={() => onChange(String(n))}
         >
           {n}

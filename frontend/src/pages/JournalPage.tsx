@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, HandHeart, NotebookPen } from 'lucide-react'
+import { Brain, HandHeart, NotebookPen, Sparkles } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
+import { track } from '../lib/analytics'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { MOOD_COLORS, MOOD_META } from '../lib/colors'
@@ -14,7 +15,8 @@ import { ApiError } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
-import type { DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
+import { fmtDate, useT } from '../i18n'
+import type { AiReflection, DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
 const ZERO_STATS: DashboardStats = {
@@ -22,11 +24,14 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // Derive the journal mood palette from the shared MOOD_META so the composer, the
 // one-tap check-in, and the timeline always offer the identical canonical 15 moods.
 const MOODS = Object.keys(MOOD_META) as Mood[]
+// How many mood-filter chips show before the quiet "More moods" toggle.
+const MOOD_FILTER_PREVIEW = 6
 
 const TYPE_LABELS: Record<MeditationType, string> = {
   mindfulness: 'Mindfulness',
@@ -40,8 +45,9 @@ const TYPE_LABELS: Record<MeditationType, string> = {
 
 // The API serializes timestamps as UTC ISO (with `Z`); render them in the user's
 // local time, matching TimelinePage so the same moment reads identically app-wide.
+// Locale-aware via the i18n fmtDate wrapper (never the browser locale).
 const formatWhen = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
+  fmtDate(new Date(iso), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -52,6 +58,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const PAGE = 50
 
 export default function JournalPage() {
+  const { t } = useT()
   const { showToast } = useToast()
   const [entries, setEntries] = useState<Journal[] | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
@@ -68,6 +75,9 @@ export default function JournalPage() {
   const [composing, setComposing] = useState(false) // expand the composer on focus/typing
   const [query, setQuery] = useState('') // text search over reflections
   const [moodFilter, setMoodFilter] = useState<Mood | ''>('') // filter the list by mood
+  // The full 15-mood filter row wraps into 2–3 lines; show a handful by default with a
+  // quiet "more" toggle (mirrors Gratitude's More-themes chip).
+  const [allMoodsShown, setAllMoodsShown] = useState(false)
 
   // Journaling prompt nudge — stable daily default, shuffleable, dismissible. The
   // backend serves a prompt tuned to recent practice (last session type / streak
@@ -117,6 +127,19 @@ export default function JournalPage() {
     when: string
   } | null>(null)
   const [resurfacing, setResurfacing] = useState(false)
+  // AI reflections, one per entry, fetched on tap. The POST is create-or-return-
+  // existing, so tapping Reflect on an already-reflected entry just surfaces it.
+  const [reflections, setReflections] = useState<Record<string, AiReflection>>({})
+  const [reflectingId, setReflectingId] = useState<string | null>(null)
+  // One quiet inline notice at a time, on the entry that was tapped.
+  const [reflectNotice, setReflectNotice] = useState<{
+    id: string
+    kind: 'error' | 'cap' | 'guest'
+  } | null>(null)
+  // Once the daily generation cap is hit (429), further Reflect taps are disabled.
+  const [reflectCapHit, setReflectCapHit] = useState(false)
+  // Guests can't generate reflections (403). Once told, disable further Reflect taps.
+  const [reflectGuestBlocked, setReflectGuestBlocked] = useState(false)
   // Inline editing of an existing entry (body + mood).
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState('')
@@ -153,7 +176,7 @@ export default function JournalPage() {
         setLoadError(null)
       })
       .catch((err) => {
-        if (current()) setLoadError(messageForError(err, "Couldn't load your journal."))
+        if (current()) setLoadError(messageForError(err, t('tracking.journal.loadError')))
       })
       .finally(() => {
         if (current()) setRetrying(false)
@@ -194,7 +217,7 @@ export default function JournalPage() {
       })
       setHasMore(rows.length === PAGE)
     } catch {
-      setError("Couldn't load more reflections.")
+      setError(t('tracking.journal.loadMoreError'))
     } finally {
       setLoadingMore(false)
     }
@@ -218,6 +241,7 @@ export default function JournalPage() {
         mood: mood || null,
         session_id: sessionId || null,
       })
+      track('journal_created')
       setEntries((prev) => [created, ...(prev ?? [])])
       setBody('')
       setMood('')
@@ -227,12 +251,35 @@ export default function JournalPage() {
       // mood) and streak bonus it just completed. Post-save stats are best-effort too:
       // the entry is already saved, so fall back to `before` (zero gain) on failure.
       const after = await dashboardService.getStats().catch(() => before)
-      const bd = buildXpBreakdown(before, after, 'Journal entry', NotebookPen)
+      const bd = buildXpBreakdown(before, after, t('tracking.journal.activityLabel'), NotebookPen)
       setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
     } catch {
-      setError("Couldn't save your reflection.")
+      setError(t('tracking.journal.saveError'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function reflectOn(id: string) {
+    setReflectingId(id)
+    setReflectNotice(null)
+    try {
+      const r = await journalService.reflect(id)
+      setReflections((prev) => ({ ...prev, [id]: r }))
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        setReflectCapHit(true)
+        setReflectNotice({ id, kind: 'cap' })
+      } else if (err instanceof ApiError && err.status === 403) {
+        // Guest account — reflections are for saved accounts. Gentle note, no retry.
+        setReflectGuestBlocked(true)
+        setReflectNotice({ id, kind: 'guest' })
+      } else {
+        // The button stays put, so tapping Reflect again is the retry.
+        setReflectNotice({ id, kind: 'error' })
+      }
+    } finally {
+      setReflectingId(null)
     }
   }
 
@@ -260,9 +307,9 @@ export default function JournalPage() {
       })
       setEntries((prev) => prev?.map((j) => (j.id === id ? updated : j)) ?? null)
       cancelEdit()
-      showToast('Updated. Your words, kept.')
+      showToast(t('tracking.journal.updated'))
     } catch {
-      setError("Couldn't update that reflection.")
+      setError(t('tracking.journal.updateError'))
     } finally {
       setSavingEdit(false)
     }
@@ -274,8 +321,8 @@ export default function JournalPage() {
     getId: (j) => j.id,
     remove: (id) => journalService.remove(id),
     messages: {
-      success: 'Reflection deleted.',
-      error: "Couldn't delete that reflection.",
+      success: t('tracking.journal.deleted'),
+      error: t('tracking.journal.deleteError'),
     },
     onStart: () => setError(null),
   })
@@ -304,8 +351,8 @@ export default function JournalPage() {
         setMemory(null)
         showToast(
           failed
-            ? "Couldn't resurface a memory — try again."
-            : 'Nothing to resurface yet — give it a few entries.',
+            ? t('tracking.journal.resurfaceError')
+            : t('tracking.journal.resurfaceEmpty'),
         )
         return
       }
@@ -322,26 +369,30 @@ export default function JournalPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
-        <h1>Journal</h1>
+        <h1>{t('tracking.journal.title')}</h1>
         <p className="page-subtitle">
-          A space to reflect — on your practice, your day, or anything at all.
+          {t('tracking.journal.subtitle')}
         </p>
       </header>
 
       <section className="journal-compose">
         {!promptDismissed && (
           <div className="journal-nudge" role="note">
-            <span className="journal-nudge-label">Need a nudge?</span>
+            {/* When a draft exists the prompt is dimmed — say WHY in the visible label
+                (a hover `title` alone is invisible on touch). */}
+            <span className="journal-nudge-label">
+              {body.trim() ? t('tracking.journal.prompt.labelDim') : t('tracking.journal.prompt.label')}
+            </span>
             <button
               type="button"
               className="journal-nudge-text"
-              aria-label={`Use prompt: ${currentPrompt.text}`}
+              aria-label={t('tracking.journal.prompt.use', { text: currentPrompt.text })}
               // Tapping a prompt only fills an empty composer; dim/disable it once the
               // user has typed so the affordance matches its behavior (no dead taps).
               disabled={body.trim().length > 0}
-              title={body.trim() ? 'Clear your draft to use a prompt' : undefined}
+              title={body.trim() ? t('tracking.journal.prompt.clearHint') : undefined}
               onClick={() => {
                 setBody(currentPrompt.text + ' ')
                 setComposing(true)
@@ -353,18 +404,18 @@ export default function JournalPage() {
               <button
                 type="button"
                 className="journal-nudge-shuffle"
-                aria-label="Show another prompt"
+                aria-label={t('tracking.journal.prompt.anotherAria')}
                 onClick={() => {
                   promptTouched.current = true
                   setCurrentPrompt((p) => randomPrompt(p))
                 }}
               >
-                another
+                {t('tracking.journal.prompt.another')}
               </button>
               <button
                 type="button"
                 className="journal-nudge-dismiss"
-                aria-label="Dismiss prompt"
+                aria-label={t('tracking.journal.prompt.dismissAria')}
                 onClick={() => setPromptDismissed(true)}
               >
                 ✕
@@ -376,13 +427,13 @@ export default function JournalPage() {
         <form onSubmit={handleSubmit} noValidate>
           <textarea
             id="body"
-            aria-label="Reflection"
+            aria-label={t('tracking.journal.composerAria')}
             rows={composerOpen ? 4 : 2}
             value={body}
             maxLength={5000}
             onFocus={() => setComposing(true)}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="What's on your mind?"
+            placeholder={t('tracking.journal.composerPlaceholder')}
           />
 
           {composerOpen && (
@@ -390,7 +441,7 @@ export default function JournalPage() {
               <div className="journal-compose-controls">
                 <label className="field">
                   <span className="field-label">
-                    Mood (optional)
+                    {t('tracking.journal.moodLabel')}
                     {mood && (
                       <button
                         type="button"
@@ -400,12 +451,12 @@ export default function JournalPage() {
                           setMood('')
                         }}
                       >
-                        Clear
+                        {t('tracking.journal.clear')}
                       </button>
                     )}
                   </span>
                   <select value={mood} onChange={(e) => setMood(e.target.value as Mood | '')}>
-                    <option value="">No mood</option>
+                    <option value="">{t('tracking.journal.noMood')}</option>
                     {MOODS.map((m) => (
                       <option key={m} value={m}>
                         {cap(m)}
@@ -417,7 +468,7 @@ export default function JournalPage() {
                 {sessions.length > 0 && (
                   <label className="field">
                     <span className="field-label">
-                      On a session (optional)
+                      {t('tracking.journal.onSessionLabel')}
                       {sessionId && (
                         <button
                           type="button"
@@ -427,12 +478,12 @@ export default function JournalPage() {
                             setSessionId('')
                           }}
                         >
-                          Clear
+                          {t('tracking.journal.clear')}
                         </button>
                       )}
                     </span>
                     <select value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
-                      <option value="">Not linked</option>
+                      <option value="">{t('tracking.journal.notLinked')}</option>
                       {sessions.slice(0, 20).map((s) => (
                         <option key={s.id} value={s.id}>
                           {sessionLabel(s)}
@@ -445,7 +496,7 @@ export default function JournalPage() {
 
               <ErrorBanner message={error} />
               <button type="submit" disabled={submitting || !body.trim()}>
-                {submitting ? 'Saving…' : 'Save reflection'}
+                {submitting ? t('common.saving') : t('tracking.journal.save')}
               </button>
             </>
           )}
@@ -454,7 +505,7 @@ export default function JournalPage() {
 
       <section className="journal-list">
         <div className="journal-list-head">
-          <h2 className="journal-list-title">Past reflections</h2>
+          <h2 className="journal-list-title">{t('tracking.journal.pastTitle')}</h2>
           {entries && entries.length > 0 && (
             <button
               type="button"
@@ -462,7 +513,7 @@ export default function JournalPage() {
               onClick={resurfaceMemory}
               disabled={resurfacing}
             >
-              {resurfacing ? 'Finding…' : 'Resurface a memory'}
+              {resurfacing ? t('tracking.journal.finding') : t('tracking.journal.revisit')}
             </button>
           )}
         </div>
@@ -476,14 +527,14 @@ export default function JournalPage() {
                 ) : (
                   <HandHeart size={15} strokeWidth={1.75} aria-hidden="true" />
                 )}
-                {memory.kind === 'journal' ? 'From your journal' : 'A gratitude'}
+                {memory.kind === 'journal' ? t('tracking.journal.fromJournal') : t('tracking.journal.aGratitude')}
                 {memory.mood && ` · ${cap(memory.mood)}`}
               </span>
               <span className="muted">{formatWhen(memory.when)}</span>
               <button
                 type="button"
                 className="memory-close"
-                aria-label="Dismiss"
+                aria-label={t('tracking.journal.dismiss')}
                 onClick={() => setMemory(null)}
               >
                 ✕
@@ -497,18 +548,25 @@ export default function JournalPage() {
           type="search"
           className="journal-search"
           value={query}
-          placeholder="Search your reflections…"
-          aria-label="Search reflections"
+          placeholder={t('tracking.journal.searchPlaceholder')}
+          aria-label={t('tracking.journal.searchAria')}
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        {/* Quiet mood filter — chips toggle the existing ?mood= list filter. */}
+        {/* Quiet mood filter — chips toggle the existing ?mood= list filter. Only a handful show
+            by default (the full 15 wrap into a 2–3 line band); "More moods" reveals the rest, and
+            an active filter from the hidden tail stays visible so it can always be un-picked. */}
         <div
           className="journal-mood-filter"
           role="group"
-          aria-label="Filter reflections by mood"
+          aria-label={t('tracking.journal.moodFilterAria')}
         >
-          {MOODS.map((m) => {
+          {(allMoodsShown
+            ? MOODS
+            : MOODS.filter(
+                (m, i) => i < MOOD_FILTER_PREVIEW || m === moodFilter,
+              )
+          ).map((m) => {
             const active = moodFilter === m
             return (
               <button
@@ -523,6 +581,14 @@ export default function JournalPage() {
               </button>
             )
           })}
+          <button
+            type="button"
+            className="chip grat-more"
+            aria-expanded={allMoodsShown}
+            onClick={() => setAllMoodsShown((v) => !v)}
+          >
+            {allMoodsShown ? t('tracking.journal.fewerMoods') : t('tracking.journal.moreMoods')}
+          </button>
         </div>
 
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
@@ -530,18 +596,21 @@ export default function JournalPage() {
         {entries && entries.length === 0 && (
           <EmptyState>
             {query || moodFilter
-              ? `No reflections match ${[
-                  query && `“${query}”`,
-                  moodFilter && `mood ${MOOD_META[moodFilter].label}`,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}.`
-              : 'A blank page, for now. Your first reflection goes up top.'}
+              ? t('tracking.journal.noMatch', {
+                  criteria: [
+                    query && `“${query}”`,
+                    moodFilter && t('tracking.journal.noMatchMood', { label: MOOD_META[moodFilter].label }),
+                  ]
+                    .filter(Boolean)
+                    .join(' · '),
+                })
+              : t('tracking.journal.emptyFirst')}
           </EmptyState>
         )}
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined
           const editing = editingId === j.id
+          const reflection = reflections[j.id]
           return (
             <article
               key={j.id}
@@ -570,7 +639,7 @@ export default function JournalPage() {
                             setMenuId(null)
                           }}
                         >
-                          Edit
+                          {t('tracking.journal.edit')}
                         </button>
                         <button
                           type="button"
@@ -580,14 +649,14 @@ export default function JournalPage() {
                             setMenuId(null)
                           }}
                         >
-                          Delete
+                          {t('tracking.journal.delete')}
                         </button>
                       </>
                     )}
                     <button
                       type="button"
                       className="journal-entry-menu"
-                      aria-label="Entry actions"
+                      aria-label={t('tracking.journal.entryActions')}
                       aria-expanded={menuId === j.id}
                       aria-controls={`menu-${j.id}`}
                       onClick={() => setMenuId(menuId === j.id ? null : j.id)}
@@ -604,14 +673,14 @@ export default function JournalPage() {
                     value={editBody}
                     maxLength={5000}
                     onChange={(e) => setEditBody(e.target.value)}
-                    aria-label="Edit reflection"
+                    aria-label={t('tracking.journal.editBodyAria')}
                   />
                   <select
                     value={editMood}
                     onChange={(e) => setEditMood(e.target.value as Mood | '')}
-                    aria-label="Edit mood"
+                    aria-label={t('tracking.journal.editMoodAria')}
                   >
-                    <option value="">No mood</option>
+                    <option value="">{t('tracking.journal.noMood')}</option>
                     {MOODS.map((m) => (
                       <option key={m} value={m}>
                         {cap(m)}
@@ -624,10 +693,10 @@ export default function JournalPage() {
                       onClick={() => saveEdit(j.id)}
                       disabled={savingEdit || !editBody.trim()}
                     >
-                      {savingEdit ? 'Saving…' : 'Save'}
+                      {savingEdit ? t('common.saving') : t('tracking.journal.editSave')}
                     </button>
                     <button type="button" className="link-neutral" onClick={cancelEdit}>
-                      Cancel
+                      {t('tracking.journal.editCancel')}
                     </button>
                   </div>
                 </div>
@@ -636,15 +705,50 @@ export default function JournalPage() {
               )}
               {linked && !editing && (
                 <p className="journal-session">
-                  <Brain size={15} strokeWidth={1.75} aria-hidden="true" /> On {sessionLabel(linked)}
+                  <Brain size={15} strokeWidth={1.75} aria-hidden="true" /> {t('tracking.journal.on', { session: sessionLabel(linked) })}
                 </p>
               )}
+              {!editing &&
+                (reflection ? (
+                  <div className="reflection-card">
+                    <span className="reflection-kind">
+                      <Sparkles size={14} strokeWidth={1.75} aria-hidden="true" />
+                      {t('tracking.journal.reflect.title')}
+                    </span>
+                    <p className="reflection-text">{reflection.reflection_text}</p>
+                    <p className="reflection-question">{reflection.followup_question}</p>
+                  </div>
+                ) : (
+                  <div className="reflection-row">
+                    <button
+                      type="button"
+                      className="reflect-btn"
+                      aria-label={t('tracking.journal.reflect.aria')}
+                      disabled={reflectingId === j.id || reflectCapHit || reflectGuestBlocked}
+                      onClick={() => reflectOn(j.id)}
+                    >
+                      <Sparkles size={14} strokeWidth={1.75} aria-hidden="true" />
+                      {reflectingId === j.id
+                        ? t('tracking.journal.reflect.loading')
+                        : t('tracking.journal.reflect.button')}
+                    </button>
+                    {reflectNotice?.id === j.id && (
+                      <span className="reflection-note" role="status">
+                        {reflectNotice.kind === 'cap'
+                          ? t('tracking.journal.reflect.capReached')
+                          : reflectNotice.kind === 'guest'
+                            ? t('tracking.journal.reflect.guestBlocked')
+                            : t('tracking.journal.reflect.error')}
+                      </span>
+                    )}
+                  </div>
+                ))}
             </article>
           )
         })}
         {hasMore && (
           <button type="button" className="load-more" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? 'Loading…' : 'Load more'}
+            {loadingMore ? t('common.loading') : t('tracking.journal.loadMore')}
           </button>
         )}
       </section>

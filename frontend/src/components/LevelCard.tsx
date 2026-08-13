@@ -1,9 +1,11 @@
 import type { DashboardStats } from '../types'
+import { useT } from '../i18n'
 
 // Your level is the coin/unlock track — not a thing you grow. It shows the level and the XP
 // progress to the next one. The spendable coin balance lives on the home top line (sourced
 // from the spirit), so it isn't restated here.
 export default function LevelCard({ stats }: { stats: DashboardStats }) {
+  const { t } = useT()
   const pct = Math.min(100, Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100))
 
   return (
@@ -14,12 +16,12 @@ export default function LevelCard({ stats }: { stats: DashboardStats }) {
       </div>
       <div className="level-meta">
         <div className="level-title">
-          <span>Level {stats.level}</span>
+          <span>{t('home.level.title', { level: stats.level })}</span>
         </div>
         <div
           className="xp-bar"
           role="progressbar"
-          aria-label="XP progress"
+          aria-label={t('home.level.xpProgress')}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={pct}
@@ -27,8 +29,12 @@ export default function LevelCard({ stats }: { stats: DashboardStats }) {
           <div className="xp-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="xp-text">
-          {stats.xp_into_level} / {stats.xp_for_next_level} XP to level {stats.level + 1} ·{' '}
-          {stats.xp} total
+          {t('home.level.xpText', {
+            into: stats.xp_into_level,
+            forNext: stats.xp_for_next_level,
+            next: stats.level + 1,
+            total: stats.xp,
+          })}
         </div>
       </div>
     </section>

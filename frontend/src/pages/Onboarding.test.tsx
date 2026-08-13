@@ -54,15 +54,15 @@ describe('Onboarding — one warm question → guided breath', () => {
     expect(screen.queryByText(/How much have you practiced/i)).toBeNull()
   })
 
-  it('choosing Calm sets quests, the hatch flags, the first-sit pace, and routes to the guided breath', async () => {
+  it('choosing Calm sets quests, the intent, the first-sit pace, and routes to the guided breath', async () => {
     renderOnboarding()
     fireEvent.click(screen.getByRole('button', { name: /Calm/ }))
 
     await waitFor(() => expect(setQuestFeatures).toHaveBeenCalled())
     expect(setQuestFeatures).toHaveBeenCalledWith(['breathe', 'gratitude', 'journal'])
     expect(refresh).toHaveBeenCalled()
-    // The hatch flags steer the first sit → companion choose page, and remember the intent.
-    expect(localStorage.getItem('onboarding.pendingHatch')).toBe('1')
+    // The intent is remembered; the Spirit "hatch" flag is no longer set (companion hidden).
+    expect(localStorage.getItem('onboarding.pendingHatch')).toBeNull()
     expect(localStorage.getItem('onboarding.intent')).toBe('calm')
     // A gentle first-sit pace.
     expect(localStorage.getItem('breathe.bpm')).toBe('6')
@@ -70,7 +70,7 @@ describe('Onboarding — one warm question → guided breath', () => {
     expect(navigate).toHaveBeenCalledWith('/breathe?guided=1&duration=60')
   })
 
-  it('stores the chosen intent so the hatch page can suggest a matching companion', async () => {
+  it('stores the chosen intent', async () => {
     renderOnboarding()
     fireEvent.click(screen.getByRole('button', { name: /Focus/ }))
     await waitFor(() => expect(setQuestFeatures).toHaveBeenCalled())

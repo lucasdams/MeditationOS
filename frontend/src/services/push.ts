@@ -5,6 +5,19 @@ interface PushConfig {
   public_key: string
 }
 
+// Why enabling push failed — a CODE, not copy, so the UI (PushToggle) can render a
+// localized message for it. Services stay copy-free; the catalog owns the wording.
+export type PushErrorCode = 'noServiceWorker' | 'notConfigured' | 'permissionDenied'
+
+export class PushError extends Error {
+  readonly code: PushErrorCode
+  constructor(code: PushErrorCode) {
+    super(code)
+    this.name = 'PushError'
+    this.code = code
+  }
+}
+
 // Push needs a service worker + the Push API. The SW is registered in production only,
 // so this is inert in dev (no active registration) — by design.
 export function pushSupported(): boolean {
@@ -33,14 +46,14 @@ export const pushService = {
   },
 
   // Request permission, subscribe, and register the endpoint with the backend.
-  // Throws with a human-readable reason on failure.
+  // Throws a coded PushError on failure; PushToggle maps the code to localized copy.
   async enable(): Promise<void> {
     const reg = await registration()
-    if (!reg) throw new Error('Push needs the installed app (service worker not active here).')
+    if (!reg) throw new PushError('noServiceWorker')
     const config = await pushService.getConfig()
-    if (!config.configured) throw new Error('Push notifications aren’t configured on the server yet.')
+    if (!config.configured) throw new PushError('notConfigured')
     const permission = await Notification.requestPermission()
-    if (permission !== 'granted') throw new Error('Notification permission was denied.')
+    if (permission !== 'granted') throw new PushError('permissionDenied')
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(config.public_key) as BufferSource,

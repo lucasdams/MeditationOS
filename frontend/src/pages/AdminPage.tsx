@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { adminService } from '../services/admin'
+import AdminFeedbackSection from '../components/AdminFeedbackSection'
 import type {
   AdminMetrics,
   AdminUserDetail,
@@ -161,6 +162,8 @@ function MetricsView() {
           Distinct users adopting each surface, of {data.users.total} total.
         </p>
       </section>
+
+      <AdminFeedbackSection />
     </>
   )
 }

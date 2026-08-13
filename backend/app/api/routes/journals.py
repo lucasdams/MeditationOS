@@ -5,7 +5,7 @@ always scoped to the authenticated user.
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.api._http import not_found
@@ -19,13 +19,14 @@ from app.core.db import get_db
 from app.core.exceptions import LinkedSessionNotFoundError
 from app.core.rate_limit import limiter
 from app.models.user import User
+from app.schemas.ai_reflection import AIReflectionRead
 from app.schemas.journal import (
     JournalCreate,
     JournalPromptRead,
     JournalRead,
     JournalUpdate,
 )
-from app.services import journal_prompt_service, journal_service
+from app.services import journal_prompt_service, journal_service, reflection_service
 
 router = APIRouter(
     prefix="/journals",
@@ -115,6 +116,39 @@ def update_journal(
     if entry is None:
         raise _NOT_FOUND
     return entry
+
+
+@router.post("/{journal_id}/reflection", response_model=AIReflectionRead)
+@limiter.limit(settings.write_rate_limit)
+def create_reflection(
+    request: Request,  # required by the rate limiter
+    journal_id: uuid.UUID,
+    response: Response,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AIReflectionRead:
+    """Generate (or return the existing) AI reflection for one of the user's
+    journal entries. 201 on first generation, 200 thereafter.
+    DailyLimitError → 429 is mapped app-wide (see app/main.py)."""
+    result = reflection_service.create_or_get(db, current_user.id, journal_id)
+    if result is None:
+        raise _NOT_FOUND
+    reflection, created = result
+    if created:
+        response.status_code = status.HTTP_201_CREATED
+    return AIReflectionRead.from_row(reflection)
+
+
+@router.get("/{journal_id}/reflection", response_model=AIReflectionRead)
+def get_reflection(
+    journal_id: uuid.UUID,
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AIReflectionRead:
+    reflection = reflection_service.get_reflection(db, current_user.id, journal_id)
+    if reflection is None:
+        raise not_found("Reflection not found")
+    return AIReflectionRead.from_row(reflection)
 
 
 @router.delete("/{journal_id}", status_code=status.HTTP_204_NO_CONTENT)

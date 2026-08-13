@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useT } from '../i18n'
 
 const DISMISS_KEY = 'cookieNoticeDismissed'
 
@@ -7,6 +8,7 @@ const DISMISS_KEY = 'cookieNoticeDismissed'
 // cookie (the httpOnly auth session) and runs no third-party tracking, so this is
 // informational rather than a consent gate — but a public site should still say so.
 export default function CookieNotice() {
+  const { t } = useT()
   const [dismissed, setDismissed] = useState(() => {
     try {
       return localStorage.getItem(DISMISS_KEY) === '1'
@@ -27,13 +29,14 @@ export default function CookieNotice() {
   }
 
   return (
-    <div className="cookie-notice" role="region" aria-label="Cookie notice">
+    <div className="cookie-notice" role="region" aria-label={t('auth.cookieNotice.aria')}>
       <p className="cookie-notice-text">
-        We use one essential cookie to keep you signed in — no third-party tracking. See
-        our <Link to="/privacy">Privacy Policy</Link>.
+        {t('auth.cookieNotice.text.pre')}
+        <Link to="/privacy">{t('auth.cookieNotice.text.privacy')}</Link>
+        {t('auth.cookieNotice.text.post')}
       </p>
       <button type="button" onClick={dismiss}>
-        Got it
+        {t('auth.cookieNotice.cta')}
       </button>
     </div>
   )

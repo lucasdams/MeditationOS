@@ -10,6 +10,7 @@ import {
   onVoicesReady,
   speechAvailable,
 } from '../lib/speech'
+import { useT } from '../i18n'
 
 // Guidance-voice picker for the spoken guided cues. Self-contained, like PushToggle:
 // it enumerates the browser's on-device TTS voices (handling the async
@@ -31,6 +32,7 @@ function voiceLabel(v: SpeechSynthesisVoice): string {
 }
 
 export default function VoicePicker() {
+  const { t } = useT()
   // Voices load asynchronously on many engines, so start from whatever's ready and
   // refresh when `voiceschanged` fires. `ready` gates rendering: null while we don't
   // yet know, then a boolean once voices settle (or definitively don't exist).
@@ -84,12 +86,9 @@ export default function VoicePicker() {
 
   return (
     <section className="settings-section">
-      <h2>Guidance voice</h2>
-      <p className="muted">
-        The voice that reads guided-session cues aloud on this device. Preview one,
-        then it’s used whenever spoken guidance is on.
-      </p>
-      <label htmlFor="guidance-voice">Voice</label>
+      <h2>{t('settings.voice.heading')}</h2>
+      <p className="muted">{t('settings.voice.desc')}</p>
+      <label htmlFor="guidance-voice">{t('settings.voice.label')}</label>
       <div className="voice-picker-row">
         <select
           id="guidance-voice"
@@ -97,7 +96,7 @@ export default function VoicePicker() {
           value={effectiveSelected}
           onChange={(e) => choose(e.target.value)}
         >
-          <option value={AUTO}>Automatic (recommended)</option>
+          <option value={AUTO}>{t('settings.voice.auto')}</option>
           {voices.map((v) => (
             <option key={v.voiceURI || v.name} value={v.voiceURI || v.name}>
               {voiceLabel(v)}
@@ -110,7 +109,7 @@ export default function VoicePicker() {
           onClick={preview}
         >
           <Volume2 size={16} aria-hidden="true" />
-          Preview
+          {t('settings.voice.preview')}
         </button>
       </div>
     </section>
