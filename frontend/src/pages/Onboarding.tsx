@@ -6,50 +6,50 @@ import { useAuth } from '../context/AuthContext'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { useT } from '../i18n'
 
 // First-run activation flow, shown by ProtectedRoute while quest_features is null (i.e. only
 // for genuinely new users). Beginner-first (docs/beginner-first-revision.md §5): a single warm
 // question shapes the daily quests and tone, then drops the user straight into a 1-minute guided
-// breath. The companion's dosha pick is DEFERRED to AFTER that first sit (the "hatch"), so we
-// don't gate onboarding on it. Experience / preferred-time / quest fine-tuning all remain
-// editable later in Settings.
+// breath. Experience / preferred-time / quest fine-tuning all remain editable later in Settings.
+// (The Spirit companion is hidden from the UI, so onboarding no longer flags a pending "hatch".)
 
 // One warm question. Each intent seeds a sensible default set of daily quests (reusing the
-// previous goal→quests mapping) and is remembered as `onboarding.intent` so the hatch page can
-// suggest a matching companion. "Just curious" uses a gentle, well-rounded default.
+// previous goal→quests mapping) and is remembered as `onboarding.intent`. "Just curious" uses a
+// gentle, well-rounded default.
 const INTENTS = [
   {
     key: 'calm',
-    label: 'Calm',
-    sub: 'Stress relief',
+    labelKey: 'auth.onboarding.intent.calm.label',
+    subKey: 'auth.onboarding.intent.calm.sub',
     Icon: Waves,
     quests: ['breathe', 'gratitude', 'journal'],
   },
   {
     key: 'focus',
-    label: 'Focus',
-    sub: 'Clarity & attention',
+    labelKey: 'auth.onboarding.intent.focus.label',
+    subKey: 'auth.onboarding.intent.focus.sub',
     Icon: Target,
     quests: ['meditate', 'breathe', 'journal'],
   },
   {
     key: 'sleep',
-    label: 'Better sleep',
-    sub: 'Wind down & rest',
+    labelKey: 'auth.onboarding.intent.sleep.label',
+    subKey: 'auth.onboarding.intent.sleep.sub',
     Icon: Moon,
     quests: ['breathe', 'gratitude', 'meditate'],
   },
   {
     key: 'curious',
-    label: 'Just curious',
-    sub: 'Exploring',
+    labelKey: 'auth.onboarding.intent.curious.label',
+    subKey: 'auth.onboarding.intent.curious.sub',
     Icon: Compass,
     quests: ['breathe', 'gratitude', 'journal'],
   },
 ] as const satisfies readonly {
   key: string
-  label: string
-  sub: string
+  labelKey: string
+  subKey: string
   Icon: ComponentType<LucideProps>
   quests: string[]
 }[]
@@ -61,6 +61,7 @@ type IntentKey = (typeof INTENTS)[number]['key']
 const FIRST_SIT_BPM = '6'
 
 export default function Onboarding() {
+  const { t } = useT()
   const { refresh } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
@@ -72,12 +73,10 @@ export default function Onboarding() {
     setSubmitting(intent.key)
     setError(null)
     try {
-      // Remember the intent so the hatch page can suggest a matching companion, and flag that a
-      // hatch is pending so the first sit routes to the choose page instead of the usual close.
-      // Local-only and non-fatal — failures here never block the (server-side) setup below.
+      // Remember the chosen intent (a small personalization record) and the gentle first-sit
+      // pace. Local-only and non-fatal — failures here never block the (server-side) setup below.
       try {
         localStorage.setItem('breathe.bpm', FIRST_SIT_BPM)
-        localStorage.setItem('onboarding.pendingHatch', '1')
         localStorage.setItem('onboarding.intent', intent.key)
       } catch {
         /* localStorage unavailable (private mode, etc.) — non-fatal */
@@ -96,13 +95,12 @@ export default function Onboarding() {
   return (
     <main className="auth-card onboarding">
       <AuthBrand />
-      <h1>Welcome</h1>
+      <h1>{t('auth.onboarding.title')}</h1>
       <p className="muted">
-        One gentle question, then we’ll take a slow minute together. No pressure — you can change
-        anything later in Settings.
+        {t('auth.onboarding.intro')}
       </p>
-      <h2 className="onboarding-question">What brings you here?</h2>
-      <div className="onboarding-options" role="group" aria-label="What brings you here?">
+      <h2 className="onboarding-question">{t('auth.onboarding.question')}</h2>
+      <div className="onboarding-options" role="group" aria-label={t('auth.onboarding.question')}>
         {INTENTS.map((i) => (
           <button
             key={i.key}
@@ -116,8 +114,8 @@ export default function Onboarding() {
               <i.Icon size={22} strokeWidth={1.75} />
             </span>{' '}
             <span className="onboarding-choice-body">
-              <span className="onboarding-choice-label">{i.label}</span>
-              <span className="onboarding-choice-sub muted">{i.sub}</span>
+              <span className="onboarding-choice-label">{t(i.labelKey)}</span>
+              <span className="onboarding-choice-sub muted">{t(i.subKey)}</span>
             </span>
           </button>
         ))}

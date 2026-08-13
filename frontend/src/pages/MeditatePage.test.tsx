@@ -186,32 +186,15 @@ describe('guidedChoiceFromParams', () => {
     )
   })
 
-  it('maps the new guided ids (name-feelings, chakra-om, stretching)', () => {
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=name-feelings'))).toBe(
-      'name-feelings',
-    )
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=chakra-om'))).toBe('chakra-om')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=stretching'))).toBe('stretching')
-  })
-
-  it('maps the joy/heart guided ids (recall-good, self-compassion, savoring, celebrate-win)', () => {
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=recall-good'))).toBe('recall-good')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=self-compassion'))).toBe(
-      'self-compassion',
-    )
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=savoring'))).toBe('savoring')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=celebrate-win'))).toBe(
-      'celebrate-win',
-    )
-  })
-
-  it('maps the new mind/body guided ids (focus, yoga-nidra, just-sit, mantra, walking, pmr)', () => {
+  it('maps the rest of the trimmed guided core (focus, noting, mantra, yoga-nidra, wind-down, three-breaths)', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=focus'))).toBe('focus')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=yoga-nidra'))).toBe('yoga-nidra')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=just-sit'))).toBe('just-sit')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=noting'))).toBe('noting')
     expect(guidedChoiceFromParams(new URLSearchParams('guided=mantra'))).toBe('mantra')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=walking'))).toBe('walking')
-    expect(guidedChoiceFromParams(new URLSearchParams('guided=pmr'))).toBe('pmr')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=yoga-nidra'))).toBe('yoga-nidra')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=wind-down'))).toBe('wind-down')
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=three-breaths'))).toBe(
+      'three-breaths',
+    )
   })
 
   it('maps guided=none and style=mindfulness to unguided', () => {
@@ -221,6 +204,13 @@ describe('guidedChoiceFromParams', () => {
 
   it('no longer maps the old "acceptance" id (renamed → falls back to stored pref)', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=acceptance'))).toBeNull()
+  })
+
+  it('returns null for a cut guided id (falls back to stored pref → plain mindfulness)', () => {
+    // Old bookmarks to now-removed practices degrade gracefully to unguided.
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=chakra-om'))).toBeNull()
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=walking'))).toBeNull()
+    expect(guidedChoiceFromParams(new URLSearchParams('guided=stretching'))).toBeNull()
   })
 
   it('returns null for no / unknown params (falls back to stored pref)', () => {
@@ -244,20 +234,16 @@ describe('MeditatePage — guided deep-link', () => {
     expect(select.value).toBe('body-scan')
   })
 
-  it('pre-selects Name what you feel from ?guided=name-feelings', () => {
-    renderPageAt('/meditate?guided=name-feelings')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    expect(select.value).toBe('name-feelings')
-  })
-
-  it('pre-selects Mindful stretching from ?guided=stretching', () => {
-    renderPageAt('/meditate?guided=stretching')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    expect(select.value).toBe('stretching')
-  })
-
-  it('pre-selects the joy/heart structures from their ?guided= params', () => {
-    for (const id of ['recall-good', 'self-compassion', 'savoring', 'celebrate-win'] as const) {
+  it('pre-selects each guided structure in the trimmed core from its ?guided= param', () => {
+    for (const id of [
+      'loving-kindness',
+      'focus',
+      'noting',
+      'mantra',
+      'yoga-nidra',
+      'wind-down',
+      'three-breaths',
+    ] as const) {
       renderPageAt(`/meditate?guided=${id}`)
       const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
       expect(select.value).toBe(id)
@@ -265,75 +251,16 @@ describe('MeditatePage — guided deep-link', () => {
     }
   })
 
-  it('pre-selects the new mind/body structures from their ?guided= params', () => {
-    for (const id of ['focus', 'yoga-nidra', 'just-sit', 'mantra', 'walking', 'pmr'] as const) {
-      renderPageAt(`/meditate?guided=${id}`)
-      const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-      expect(select.value).toBe(id)
-      cleanup()
-    }
+  it('falls back to unguided (None) for a cut guided id (old bookmark degrades gracefully)', () => {
+    renderPageAt('/meditate?guided=walking')
+    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
+    expect(select.value).toBe('none')
   })
 
   it('defaults to unguided (None) with no param', () => {
     renderPageAt('/meditate')
     const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
     expect(select.value).toBe('none')
-  })
-})
-
-// ── Level gate (Chakra Om) ───────────────────────────────────────────────────
-// Chakra Om unlocks at level 5. A `?guided=chakra-om` deep-link selects it only
-// when the fetched level meets the gate; below it (or while the level is still
-// unknown) the page falls back to plain unguided sitting.
-
-describe('MeditatePage — Chakra Om level gate', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    mockGetStats.mockReset()
-  })
-  afterEach(cleanup)
-
-  it('falls back to None when ?guided=chakra-om is deep-linked below level 5', async () => {
-    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 3 })
-    renderPageAt('/meditate?guided=chakra-om')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    // Once the level resolves (3 < 5), the gate effect resets the choice to none.
-    await waitFor(() => expect(select.value).toBe('none'))
-  })
-
-  it('selects Chakra Om when ?guided=chakra-om is deep-linked at level 5+', async () => {
-    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 5 })
-    renderPageAt('/meditate?guided=chakra-om')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    // Initial render selects it from the param; the gate effect leaves it (5 >= 5).
-    await waitFor(() => expect(mockGetStats).toHaveBeenCalled())
-    expect(select.value).toBe('chakra-om')
-  })
-
-  it('renders the Chakra Om option disabled with a "Reach level 5" hint below level 5', async () => {
-    mockGetStats.mockResolvedValue({ ...BASE_STATS, level: 2 })
-    renderPageAt('/meditate')
-    await waitFor(() => expect(mockGetStats).toHaveBeenCalled())
-    const option = Array.from(
-      (screen.getByLabelText(/guided structure/i) as HTMLSelectElement).options,
-    ).find((o) => o.textContent?.includes('Chakra Om'))!
-    expect(option.disabled).toBe(true)
-    expect(option.textContent).toMatch(/Reach level 5 to unlock/)
-  })
-
-  it('never binds the select to the disabled option while the level is still loading', async () => {
-    // getStats stays pending → level is null the whole time. A ?guided=chakra-om
-    // deep-link sets guidedChoice to the (locked-while-null) structure. The select's
-    // EFFECTIVE value must resolve to 'none' immediately — it must NOT point at the
-    // disabled chakra-om <option>, even before the async gate effect could run.
-    mockGetStats.mockReturnValue(new Promise(() => {})) // never resolves
-    renderPageAt('/meditate?guided=chakra-om')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    // Bound to 'none' (the effective value), not the disabled locked option.
-    expect(select.value).toBe('none')
-    // Sanity: the chakra-om option is present but disabled.
-    const chakra = Array.from(select.options).find((o) => o.value === 'chakra-om')!
-    expect(chakra.disabled).toBe(true)
   })
 })
 

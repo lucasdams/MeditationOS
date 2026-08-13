@@ -58,13 +58,16 @@ def _choose(client, path, name="Ember"):
     return client.post("/api/v1/spirit/choose", json={"path": path, "name": name})
 
 
-def _practice(client, minutes, *, day="2026-01-01"):
+def _practice(client, minutes, *, day="2026-01-01", at=None):
+    # `at` (a full ISO timestamp) overrides the day+08:00 default — freshness tests pass `now` so
+    # "just practiced" is actually just-now (a fixed 08:00 reads stale when the suite runs late in
+    # the UTC day, since needs decay by the hour).
     return client.post(
         "/api/v1/sessions",
         json={
             "type": "mindfulness",
             "duration_seconds": minutes * 60,
-            "occurred_at": f"{day}T08:00:00",
+            "occurred_at": at or f"{day}T08:00:00",
         },
     )
 
@@ -203,13 +206,13 @@ def test_service_get_or_create_is_idempotent(db_session):
 # --- Practice helpers + id lookups ------------------------------------------------------
 
 
-def _breathe(client, minutes, *, day="2026-01-01"):
+def _breathe(client, minutes, *, day="2026-01-01", at=None):
     return client.post(
         "/api/v1/sessions",
         json={
             "type": "resonance_breathing",
             "duration_seconds": minutes * 60,
-            "occurred_at": f"{day}T08:00:00",
+            "occurred_at": at or f"{day}T08:00:00",
             "inhale_seconds": 6,
             "exhale_seconds": 6,
         },
@@ -257,30 +260,6 @@ def _stored_coins_spent(db_session, user_id):
     db_session.expire_all()
     return db_session.execute(
         select(Spirit.coins_spent).where(
-            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
-        )
-    ).scalar_one()
-
-
-def _stored_last_pampered_at(db_session, user_id):
-    """The active spirit's stored pamper timestamp (ADR-0025) — read off the row (it isn't in
-    SpiritState). NULL until the first cosmetic purchase. ADR-0029 still STAMPS it on unlock for
-    forward-compat, even though it no longer affects needs, so the unlock tests still check it."""
-    db_session.expire_all()
-    return db_session.execute(
-        select(Spirit.last_pampered_at).where(
-            Spirit.user_id == user_id, Spirit.retired_at.is_(None)
-        )
-    ).scalar_one()
-
-
-def _stored_last_pampered_need(db_session, user_id):
-    """The active spirit's stored last-pampered need (ADR-0026) — read off the row (not in
-    SpiritState). NULL until the first cosmetic purchase. Still STAMPED on unlock under ADR-0029
-    (forward-compat only; it no longer affects needs)."""
-    db_session.expire_all()
-    return db_session.execute(
-        select(Spirit.last_pampered_need).where(
             Spirit.user_id == user_id, Spirit.retired_at.is_(None)
         )
     ).scalar_one()
@@ -350,6 +329,28 @@ def test_choose_rejects_unexpected_fields(client):
         "/api/v1/spirit/choose", json={"path": "stillness", "name": "Ember", "x": 1}
     )
     assert res.status_code == 422
+
+
+def test_choose_starts_below_full_but_content(client):
+    """A freshly chosen creature is born a little hungry (the NEW_SPIRIT_START band), so caring for
+    it visibly fills its bars — not maxed at 100% on arrival — while staying AT/ABOVE the calm
+    `content` floor (never the alarming `restless` tier). See spirit_service.choose_path."""
+    _auth(client, "choose_start@example.com")
+    body = _choose(client, "stillness", name="Nascent").json()
+
+    # Overall condition (Vitality, ADR-0032) starts in the born-hungry band: below full, but never
+    # below the content floor, so a brand-new companion reads calm — never alarming.
+    cond = body["condition"]["factor"]
+    assert cond < 1.0  # not maxed
+    assert spirit_service.NEEDS_FLOOR <= cond <= spirit_service.NEW_SPIRIT_START_MAX + 1e-6
+    assert body["condition"]["tier"] == CONDITION_CONTENT
+
+    # Each of the three care needs likewise starts below full, at the calm content tier.
+    for need in ("nourished", "rested", "joyful"):
+        f = body["needs"][need]["factor"]
+        assert f < 1.0
+        assert spirit_service.NEEDS_FLOOR <= f <= spirit_service.NEW_SPIRIT_START_MAX + 1e-6
+        assert body["needs"][need]["tier"] == CONDITION_CONTENT
 
 
 # --- Gentle, floored needs (ADR-0031: the companion stops being mortal) -------------------
@@ -493,7 +494,7 @@ def test_recent_signature_practice_keeps_nourished_full(client, db_session):
     user_id = _user_id(db_session, "needs_recent_practice@example.com")
     now = datetime.now(UTC)
     # Practice today; an old baseline that would otherwise have decayed nourished to 0.
-    _breathe(client, 30, day=now.date().isoformat())  # breathing = the Kapha creature's food
+    _breathe(client, 30, at=now.isoformat())  # breathing just now = the Kapha creature's food
     old_baseline = now - timedelta(days=DECAY_DAYS + 5)
     n = _decayed_needs(db_session, "stillness", user_id, now=now, baseline=old_baseline)
     # The recent breathing session refills nourished (and rested — any sit feeds rested too).
@@ -512,7 +513,7 @@ def test_rested_fed_by_any_session_joyful_by_reflection(client, db_session):
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)
 
-    _practice(client, 10, day=now.date().isoformat())  # a meditation sit → feeds rested
+    _practice(client, 10, at=now.isoformat())  # a meditation sit just now → feeds rested
     rested_only = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
     assert rested_only.rested.factor > 0.9  # any sit feeds rested
     assert rested_only.joyful.factor == NEEDS_FLOOR  # no reflection → joyful eased to the floor
@@ -530,7 +531,7 @@ def test_signature_practice_is_path_specific(client, db_session):
     user_id = _user_id(db_session, "needs_pathfood@example.com")
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)
-    _practice(client, 10, day=now.date().isoformat())  # meditation
+    _practice(client, 10, at=now.isoformat())  # meditation just now
 
     heart = _decayed_needs(db_session, "heart", user_id, now=now, baseline=old)
     assert heart.nourished.factor > 0.9  # meditation IS the Vata creature's food
@@ -584,7 +585,7 @@ def test_vitality_is_fed_by_any_practice_not_the_weakest_need(client, db_session
     user_id = _user_id(db_session, "vitality_any@example.com")
     now = datetime.now(UTC)
     old = now - timedelta(days=DECAY_DAYS + 5)  # old baseline; facets would floor without activity
-    _practice(client, 10, day=now.date().isoformat())  # a meditation sit — NOT Kapha's food
+    _practice(client, 10, at=now.isoformat())  # a meditation sit just now — NOT Kapha's food
 
     # Two of the three facets have eased to the floor (nourished wants breathing; joyful wants
     # reflection) — under the OLD "weakest need" rule the condition would sit at the floor.
@@ -708,8 +709,10 @@ def test_practice_lifts_a_floored_need_back_up(client, db_session):
     _backdate_baseline(db_session, user_id, days_ago=DECAY_DAYS + 100)
     assert _spirit(client)["needs"]["nourished"]["factor"] == NEEDS_FLOOR
 
-    # A breathing sit today (the Kapha creature's signature) refills nourished above the floor.
-    _breathe(client, 30, day=date.today().isoformat())
+    # A breathing sit just now (the Kapha creature's signature) refills nourished above the floor.
+    # Practice at `now` (not a fixed 08:00) so freshness holds whenever the suite runs — needs
+    # decay by the hour, so an 08:00 sit reads floored by evening UTC.
+    _breathe(client, 30, at=datetime.now(UTC).isoformat())
     assert _spirit(client)["needs"]["nourished"]["factor"] > NEEDS_FLOOR
 
 
@@ -1313,7 +1316,7 @@ def test_unlock_and_equip_a_form_per_path(client):
     for path, tier1, tier2 in cases:
         _auth(client, f"form_unlock_{path}@example.com")
         assert _choose(client, path).status_code == 200
-        _earn_to_level(client, 3)  # afford the tier-1 + tier-2 forms and clear the tier-2 L3 gate
+        _earn_to_level(client, 8)  # afford the tier-1 + tier-2 forms and clear the tier-2 L8 gate
 
         # Tier-1 form unlocks + auto-equips.
         res = _unlock(client, "form", tier1)
@@ -1343,7 +1346,7 @@ def test_unlock_and_equip_each_new_form_per_path(client):
     for path, options in cases:
         _auth(client, f"new_form_{path}@example.com")
         assert _choose(client, path).status_code == 200
-        _earn_to_level(client, 3)  # afford every form + clear the tier-2 L3 gate
+        _earn_to_level(client, 8)  # afford every form + clear the tier-2 L8 gate
         for option in options:
             res = _unlock(client, "form", option)
             assert res.status_code == 200, res.text
@@ -1365,7 +1368,7 @@ def test_unlock_and_equip_the_newest_forms_per_path(client):
     for path, options in cases:
         _auth(client, f"newest_form_{path}@example.com")
         assert _choose(client, path).status_code == 200
-        _earn_to_level(client, 3)  # afford every form + clear the tier-2 L3 gate
+        _earn_to_level(client, 8)  # afford every form + clear the tier-2 L8 gate
         for option in options:
             res = _unlock(client, "form", option)
             assert res.status_code == 200, res.text
@@ -1535,14 +1538,13 @@ def test_unlock_unaffordable_409(client):
     # A fresh user has COINS_PER_LEVEL coins. Unlock items until the balance can't cover the
     # next one, then assert the unaffordable unlock is rejected.
     _auth(client, "cosmetics_broke@example.com")
-    # COINS_PER_LEVEL (80) buys at most: aura soft (30) + ribbon (35) = 65; habitat meadow
-    # (50) then no longer fits (15 left). Spend down, then try the meadow.
+    # COINS_PER_LEVEL (80) buys aura soft (50), leaving 30 — not enough for accessory ribbon (35).
+    # Spend down, then try the ribbon.
     assert _unlock(client, "aura", "soft").status_code == 200
-    assert _unlock(client, "accessory", "ribbon").status_code == 200
-    broke = _unlock(client, "habitat", "meadow")
+    broke = _unlock(client, "accessory", "ribbon")
     assert broke.status_code == 409
     # The failed unlock changed nothing.
-    assert "habitat" not in _spirit(client)["cosmetics"]
+    assert "accessory" not in _spirit(client)["cosmetics"]
 
 
 def test_unlock_already_owned_is_409_and_does_not_recharge(client):
@@ -2021,9 +2023,9 @@ def test_high_level_spirit_owning_the_tier_three_can_unlock_each_tier_four(clien
         assert _spirit(client)["cosmetics"][slot] == legendary
 
 
-def test_unlock_owns_auto_equips_charges_and_pampers(client, db_session):
-    """One unlock does all of ADR-0027's effects: the option is owned, auto-equipped, charged to
-    the ledger, and the spirit is pampered (stamp + need recorded)."""
+def test_unlock_owns_auto_equips_and_charges(client, db_session):
+    """One unlock does all of ADR-0027's effects: the option is owned, auto-equipped, and charged
+    to the spend ledger."""
     _auth(client, "unlock_effects@example.com")
     user_id = _user_id(db_session, "unlock_effects@example.com")
     assert _choose(client, "stillness").status_code == 200
@@ -2038,9 +2040,6 @@ def test_unlock_owns_auto_equips_charges_and_pampers(client, db_session):
     # Charged to the ledger.
     assert body["coins"] == coins_before - _cost("aura", "soft")
     assert _stored_coins_spent(db_session, user_id) == _cost("aura", "soft")
-    # Pampered: stamp + the bought option's need recorded (soft favours rested).
-    assert _stored_last_pampered_at(db_session, user_id) is not None
-    assert _stored_last_pampered_need(db_session, user_id) == "rested"
 
 
 def test_equip_is_free_owned_only_and_can_clear_and_swap(client, db_session):
@@ -2235,7 +2234,8 @@ def test_unlock_matching_path_slot_cosmetic_succeeds(client):
     for slot, option, owner_path in _PATH_SLOT_COSMETICS:
         _auth(client, f"buyslot_{slot}_{option}@example.com")
         assert _choose(client, owner_path).status_code == 200
-        _earn_to_level(client, 6)  # unlock_level 6 + enough coins (6 × 80 = 480 > 220)
+        # Weather tier-3 now needs L8; 8 × 80 = 640 coins covers the chain.
+        _earn_to_level(client, 8)
         # Climb the tree: a tier-1 then the universal tier-2 in this slot satisfy the tier-3 prereq.
         tier2 = _SLOT_TIER2_PREREQ[slot]
         assert SPIRIT_COSMETICS_CATALOG[slot][tier2]["tier"] == 2
@@ -2260,6 +2260,90 @@ def test_unlock_non_matching_path_slot_cosmetic_is_rejected_404(client):
             continue
         res = _unlock(client, slot, option)
         assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"
+
+
+# --- Tier-2 path exclusives (the earlier, cheaper per-path items before the capstones) ----
+# The 21 tier-2 per-path options across the seven scene/worn slots. Mirrors
+# _PATH_SLOT_COSMETICS (the tier-3 capstones) so the exclusivity + economy gating is pinned
+# at BOTH exclusive tiers — a regression letting a Kapha buy Vata's petalwind would
+# otherwise be invisible.
+_PATH_TIER2_EXCLUSIVES = [
+    ("aura", "cinders", "breath"),
+    ("aura", "dewfall", "stillness"),
+    ("aura", "petalwind", "heart"),
+    ("accessory", "flame_tuft", "breath"),
+    ("accessory", "acorn_cap", "stillness"),
+    ("accessory", "wind_ribbon", "heart"),
+    ("habitat", "ember_hollow", "breath"),
+    ("habitat", "fern_hollow", "stillness"),
+    ("habitat", "cloud_terrace", "heart"),
+    ("companion", "emberling", "breath"),
+    ("companion", "mosskit", "stillness"),
+    ("companion", "butterfly", "heart"),
+    ("mount", "ember_log", "breath"),
+    ("mount", "mossy_rock", "stillness"),
+    ("mount", "drift_leaf", "heart"),
+    ("weather", "heat_shimmer", "breath"),
+    ("weather", "dewdrift", "stillness"),
+    ("weather", "featherfall", "heart"),
+    ("ground", "ember_sand", "breath"),
+    ("ground", "mossbed", "stillness"),
+    ("ground", "cloudtuft", "heart"),
+]
+
+
+def test_tier2_path_exclusives_are_tier2_in_the_catalog():
+    """The mirror list stays honest: every entry exists, is tier 2, and carries per_path."""
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        spec = SPIRIT_COSMETICS_CATALOG[slot][option]
+        assert spec["tier"] == 2, f"{slot}/{option} should be tier 2"
+        assert spec["per_path"] == owner_path
+
+
+def test_tier2_path_exclusive_available_only_for_its_path(client):
+    """Every tier-2 path exclusive is offered (`available: True`) only to its matching dosha."""
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        for path in _ALL_PATHS:
+            _auth(client, f"avail2_{slot}_{option}_{path}@example.com")
+            assert _choose(client, path).status_code == 200
+            opt = _option_state(_spirit(client), slot, option)
+            assert opt is not None, f"{slot}/{option} missing from the {path} catalog"
+            assert opt["available"] is (path == owner_path)
+
+
+def test_unlock_matching_tier2_path_exclusive_succeeds(client):
+    """Each tier-2 exclusive, unlocked on its matching path after a tier-1 in the slot,
+    charges coins, owns, and equips into its slot."""
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        _auth(client, f"buy2_{slot}_{option}@example.com")
+        assert _choose(client, owner_path).status_code == 200
+        # Weather tier-2 now needs L6; 6 × 80 = 480 coins covers tier1 + tier2.
+        _earn_to_level(client, 6)
+        tier1 = next(
+            o for o, spec in SPIRIT_COSMETICS_CATALOG[slot].items() if spec["tier"] == 1
+        )
+        assert _unlock(client, slot, tier1).status_code == 200, f"{slot}/{tier1} tier-1"
+        before = _spirit(client)["coins"]
+        res = _unlock(client, slot, option)
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["cosmetics"][slot] == option
+        assert body["coins"] == before - SPIRIT_COSMETICS_CATALOG[slot][option]["cost"]
+
+
+def test_unlock_non_matching_tier2_path_exclusive_is_rejected_404_and_free(client):
+    """A Pitta (breath) spirit cannot unlock any other path's tier-2 exclusive — 404, and the
+    coin balance is untouched (no charge on the rejected path)."""
+    _auth(client, "wrongpath_tier2@example.com")
+    assert _choose(client, "breath").status_code == 200
+    _earn_to_level(client, 6)
+    before = _spirit(client)["coins"]
+    for slot, option, owner_path in _PATH_TIER2_EXCLUSIVES:
+        if owner_path == "breath":
+            continue
+        res = _unlock(client, slot, option)
+        assert res.status_code == 404, f"{slot}/{option} should be 404 for a breath spirit"
+    assert _spirit(client)["coins"] == before
 
 
 # --- The read-only per-path tree PREVIEW for the choose page (GET /spirit/preview) -------
@@ -2389,7 +2473,7 @@ def _full_signature_loadout(path):
 # set-status helper skips them, keeping the total at 7). palette/size are universal recolour/resize;
 # `form` is per-path (Vata-only shapes) but is still a body cosmetic, not a signature capstone, so
 # it is excluded too (the service's `_NON_SIGNATURE_SLOTS`).
-_BODY_SLOTS = {"palette", "size", "form"}
+_BODY_SLOTS = {"palette", "size", "form", "face"}
 _SIGNATURE_SLOTS = [s for s in SPIRIT_COSMETICS_CATALOG if s not in _BODY_SLOTS]
 
 
@@ -2402,6 +2486,13 @@ def test_signature_option_is_the_path_exclusive_capstone_per_slot():
             sig = spirit_service._signature_option(slot, path)
             assert sig is not None
             assert SPIRIT_COSMETICS_CATALOG[slot][sig].get("per_path") == path
+            # There are now TWO per-path options per slot (tier 2 + the tier-3 capstone) and
+            # _signature_option picks by dict order — pin that the signature stays the TIER-3
+            # capstone, or a catalog reorder would silently redefine "Signature radiance" to
+            # the cheap tier-2 item and the set bonus would cost a third of the coins.
+            assert SPIRIT_COSMETICS_CATALOG[slot][sig]["tier"] == 3, (
+                f"signature for {slot}/{path} must be the tier-3 capstone, got {sig}"
+            )
         # The universal body slots have NO signature for any chosen path.
         for slot in _BODY_SLOTS:
             assert spirit_service._signature_option(slot, path) is None

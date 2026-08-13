@@ -4,11 +4,13 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { ErrorBanner } from '../components/StateViews'
+import { useT } from '../i18n'
 
 type Status = 'verifying' | 'ok' | 'error' | 'missing'
 type ResendState = 'idle' | 'sending' | 'sent' | 'throttled' | 'error'
 
 export default function VerifyEmailPage() {
+  const { t } = useT()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const { user, refresh } = useAuth()
@@ -60,46 +62,46 @@ export default function VerifyEmailPage() {
 
   return (
     <main className="auth-card">
-      <h1>Email verification</h1>
+      <h1>{t('auth.verify.title')}</h1>
 
-      {status === 'verifying' && <p>Verifying your email…</p>}
+      {status === 'verifying' && <p>{t('auth.verify.verifying')}</p>}
 
-      {status === 'ok' && <p>Email confirmed — you’re all set.</p>}
+      {status === 'ok' && <p>{t('auth.verify.ok')}</p>}
 
       {status === 'missing' && (
-        <ErrorBanner message="This verification link is missing its token." />
+        <ErrorBanner message={t('auth.verify.missingToken')} />
       )}
 
       {status === 'error' && (
         <>
-          <ErrorBanner message="This link is invalid or has expired." />
+          <ErrorBanner message={t('auth.verify.invalidToken')} />
           {user ? (
             <>
-              <p>We can send a fresh confirmation link to {user.email}.</p>
+              <p>{t('auth.verify.resendPrompt', { email: user.email })}</p>
               {resend === 'sent' ? (
-                <p role="status" className="verify-banner-note">Sent — check your inbox.</p>
+                <p role="status" className="verify-banner-note">{t('auth.verify.resent')}</p>
               ) : (
                 <button type="button" onClick={handleResend} disabled={resend === 'sending'}>
-                  {resend === 'sending' ? 'Sending…' : 'Send a new link'}
+                  {resend === 'sending' ? t('auth.verify.resending') : t('auth.verify.resendCta')}
                 </button>
               )}
               {resend === 'throttled' && (
                 <p role="status" className="auth-notice">
-                  You’ve requested a few links recently. Please wait a moment, then try again.
+                  {t('auth.verify.throttled')}
                 </p>
               )}
               {resend === 'error' && (
-                <ErrorBanner message="Couldn’t send the link. Please try again shortly." />
+                <ErrorBanner message={t('auth.verify.resendError')} />
               )}
             </>
           ) : (
-            <p>Log in to request a new confirmation link.</p>
+            <p>{t('auth.verify.loginToResend')}</p>
           )}
         </>
       )}
 
       <p className="auth-aux">
-        <Link to="/">{user ? 'Go to dashboard' : 'Go to log in'}</Link>
+        <Link to="/">{user ? t('auth.verify.goDashboard') : t('auth.verify.goLogin')}</Link>
       </p>
     </main>
   )

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { Sprout, type LucideProps } from 'lucide-react'
+import { t } from '../i18n'
 import type { DashboardStats } from '../types'
 
 export interface XpLine {
@@ -28,9 +29,11 @@ export function buildXpBreakdown(
 ): { lines: XpLine[]; total: number } {
   const total = Math.max(0, after.xp - before.xp)
 
+  // Line labels resolve from the i18n catalog at call time (the reward overlay renders
+  // right after; `q.label` itself is server-provided quest copy and passes through as-is).
   const questLines: XpLine[] = after.daily_quests
     .filter((q) => q.done && !before.daily_quests.find((b) => b.key === q.key)?.done)
-    .map((q) => ({ label: `Quest: ${q.label}`, xp: q.xp }))
+    .map((q) => ({ label: t('practice.reward.quest', { label: q.label }), xp: q.xp }))
   const questTotal = questLines.reduce((sum, q) => sum + q.xp, 0)
 
   const streakDelta = Math.max(0, after.streak_bonus_xp - before.streak_bonus_xp)
@@ -39,6 +42,7 @@ export function buildXpBreakdown(
   const lines: XpLine[] = []
   if (activityXp > 0) lines.push({ label: activityLabel, xp: activityXp, icon: activityIcon })
   lines.push(...questLines)
-  if (streakDelta > 0) lines.push({ label: 'Streak bonus', xp: streakDelta, icon: Sprout })
+  if (streakDelta > 0)
+    lines.push({ label: t('practice.reward.streakBonus'), xp: streakDelta, icon: Sprout })
   return { lines, total }
 }

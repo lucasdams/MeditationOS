@@ -17,7 +17,12 @@ from app.models.session import Session
 from app.models.user import User
 from app.schemas.weekly_review import WeeklyReview
 from app.services.notifications import email
-from app.services.time_utils import compute_streaks, local_date, zone
+from app.services.time_utils import (
+    MIN_PRACTICE_SECONDS,
+    compute_streaks,
+    local_date,
+    zone,
+)
 
 logger = logging.getLogger("meditationos.weekly_summary")
 
@@ -55,10 +60,16 @@ def get_weekly_review(
         )
     ).scalar_one()
 
+    # A day only counts toward the streak once its total practice reaches the same
+    # MIN_PRACTICE_SECONDS floor the dashboard streak uses — otherwise this card's
+    # streak would contradict /dashboard/stats for sub-minute sits.
     all_days = {
         r[0]
         for r in db.execute(
-            select(sday).where(Session.user_id == user_id).distinct()
+            select(sday)
+            .where(Session.user_id == user_id)
+            .group_by(sday)
+            .having(func.sum(Session.duration_seconds) >= MIN_PRACTICE_SECONDS)
         ).all()
     }
     current_streak, _longest, _rest = compute_streaks(all_days, today)

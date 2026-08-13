@@ -19,6 +19,11 @@ from app.schemas.push import PushSubscriptionCreate
 
 logger = logging.getLogger("meditationos.push")
 
+# A user realistically has a handful of devices/browsers. Capping stored subscriptions
+# stops unlimited unique-endpoint rows (DB bloat + the reminder cron POSTing to all of
+# them); the oldest rows are dropped first — stale endpoints also age out on send failure.
+MAX_SUBSCRIPTIONS_PER_USER = 10
+
 
 def is_configured() -> bool:
     return bool(settings.vapid_public_key and settings.vapid_private_key)
@@ -35,6 +40,17 @@ def subscribe(
         db.commit()
         db.refresh(existing)
         return existing
+    # Enforce the per-user cap BEFORE inserting: evict the oldest subscription(s) so the
+    # newest device always wins (never reject the fresh subscribe).
+    subs = list(
+        db.execute(
+            select(PushSubscription)
+            .where(PushSubscription.user_id == user_id)
+            .order_by(PushSubscription.created_at.asc(), PushSubscription.id.asc())
+        ).scalars()
+    )
+    for stale in subs[: max(0, len(subs) - (MAX_SUBSCRIPTIONS_PER_USER - 1))]:
+        db.delete(stale)
     sub = PushSubscription(
         user_id=user_id,
         endpoint=data.endpoint,

@@ -3,12 +3,19 @@
    dev server / HMR.
    Cache versioning: bump CACHE_VERSION on every SW deploy so activate purges the old
    cache and returning users never get stranded on a stale index.html. */
-const CACHE = 'medos-v2-20260616'
+const CACHE = 'medos-v3-20260705'
 // Only precache truly static, rarely-changing assets.  index.html / '/' is intentionally
 // excluded: navigations are handled network-first below so the browser always fetches a
 // fresh shell on a deploy.  Caching '/' here would freeze the old HTML under a key that
 // activate can never bust (because the name didn't change between deploys).
-const STATIC_ASSETS = ['/favicon.svg', '/manifest.webmanifest']
+const STATIC_ASSETS = [
+  '/favicon.svg',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -80,8 +87,9 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/favicon.svg',
-      badge: '/favicon.svg',
+      // PNG, not SVG — Android's notification icon/badge pipeline doesn't render SVG.
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       tag: 'medos-reminder',
     }),
   )

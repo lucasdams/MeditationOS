@@ -11,6 +11,11 @@
   --bg-surface-raised: #f6f8fe;     /* slightly elevated surface (nav-settings pill) */
   --bg-input: #ffffff;              /* form inputs */
 
+  /* Height of the sticky global .app-header — the offset sticky page elements (e.g. the Spirit
+     Customize viewer) pin below so they don't tuck under the nav. Kept a touch generous to cover
+     the header's tallest (desktop) height. */
+  --app-header-h: 3.75rem;
+
   /* Text — cool slate inks (not pure black) */
   --text-primary: #14182b;
   --text-secondary: #545a73;
@@ -38,9 +43,12 @@
   /* Accent — electric indigo/violet (the Cool Electric signature) */
   --accent: #6a5cff;
   --on-accent: #ffffff;             /* text/icon on an --accent fill (AA: white on #6a5cff = 4.58) */
-  /* A subtle always-visible halo behind the spirit figure: a tight dark rim + a soft drop so the
-     creature reads against a same-colour background and thin forms (the Kapha orbiting-atom) stay legible. */
-  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(20, 24, 43, 0.42)) drop-shadow(0 2px 3px rgba(20, 24, 43, 0.18));
+  /* A subtle always-visible halo behind the spirit figure: a tight warm-dark contour rim + a soft
+     lift so the creature reads against a same-colour background and thin forms (the Kapha
+     orbiting-atom) stay legible. This is the ONLY shadow stack on the spirit — it hugs the figure;
+     the svg root carries none, so the soft aura discs stay clean light (no muddy grey halo). */
+  --spirit-figure-pop: drop-shadow(0 0 0.8px rgba(52, 33, 16, 0.92)) drop-shadow(0 0 2.2px rgba(58, 38, 20, 0.6))
+    drop-shadow(0 5px 9px rgba(74, 50, 22, 0.32));
   --accent-hover: #5847f0;
   --accent-subtle: #ecebff;         /* tinted background behind accent elements */
   --accent-border: #d2cdff;
@@ -251,7 +259,8 @@
   --accent: #8b87ff;
   --on-accent: #14182b;             /* dark ink on the light-violet fill (white would be 3.0 — fail) */
   /* Dark theme: a LIGHT rim halo so the figure separates from cool-dark / same-colour backgrounds. */
-  --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.4)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+  --spirit-figure-pop: drop-shadow(0 0 1px rgba(230, 236, 255, 0.8)) drop-shadow(0 0 2.6px rgba(165, 180, 252, 0.42))
+    drop-shadow(0 4px 7px rgba(0, 0, 0, 0.66));
   --accent-hover: #a09cff;
   --accent-subtle: #262a44;
   --accent-border: #3a3d66;
@@ -395,7 +404,8 @@
     --border-light: #232838;
     --accent: #8b87ff;
     --on-accent: #14182b;
-    --spirit-figure-pop: drop-shadow(0 0 1.1px rgba(226, 232, 255, 0.4)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+    --spirit-figure-pop: drop-shadow(0 0 1px rgba(230, 236, 255, 0.8)) drop-shadow(0 0 2.6px rgba(165, 180, 252, 0.42))
+      drop-shadow(0 4px 7px rgba(0, 0, 0, 0.66));
     --accent-hover: #a09cff;
     --accent-subtle: #262a44;
     --accent-border: #3a3d66;
@@ -562,6 +572,21 @@ body {
   background: transparent; /* the gradient is on :root (covers the full canvas) */
 }
 
+/* ── Japanese locale (i18n) ─────────────────────────────────────────────────
+   Inter carries no CJK glyphs, so under `lang="ja"` (set by src/i18n on locale change) the
+   font tokens gain the platforms' best Japanese sans (Hiragino on Apple, Yu Gothic/Meiryo on
+   Windows, Noto on Android) — every consumer inherits via the tokens. CJK body text also
+   reads better with a touch more leading. */
+html[lang='ja'] {
+  --font-body: 'Inter Variable', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic UI',
+    Meiryo, 'Noto Sans JP', system-ui, sans-serif;
+  --font-display: 'Inter Variable', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    'Yu Gothic UI', Meiryo, 'Noto Sans JP', system-ui, sans-serif;
+}
+html[lang='ja'] body {
+  line-height: 1.7;
+}
+
 /* ── Headings → display sans ────────────────────────────────────────────────
    Cool Electric drops the serif: --font-display is Inter, so headings render as a
    modern weighted sans. Large headings keep a slightly tighter tracking + line-height
@@ -595,9 +620,8 @@ h3,
   font-weight: 700;
 }
 
-/* The two brand numerals (HUD + level badge) use the display font so the figure
-   reads as a weighted brand mark, not a plain UI label. */
-.hud-level-num,
+/* The level badge numeral uses the display font so the figure reads as a weighted
+   brand mark, not a plain UI label. */
 .level-badge-num {
   font-family: var(--font-display);
 }
@@ -688,10 +712,33 @@ a:hover { color: var(--accent-hover); }
   border: 1px solid var(--border-strong);
 }
 
-/* A distinct soft color per destination. */
+/* Top-level nav items (Home / Practice / Progress) share one calm treatment: a quiet
+   secondary-ink label + icon with no heavy border, a soft neutral wash on hover, and the
+   app's soft accent pill only on the CURRENT destination. The colourful per-destination
+   tints live in the dropdowns, so the top bar itself stays clean and unified. */
 .app-nav a.nav-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.app-nav a.nav-home:hover {
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+  filter: none;
+  box-shadow: none;
+}
+
+/* Current destination — the soft accent pill (no ring), reused for whichever top-level
+   item is active. */
+.app-nav a.nav-home.active {
   background: var(--nav-home-bg);
   color: var(--nav-home-text);
+  font-weight: 600;
+  box-shadow: none;
 }
 
 /* Meditate / Breathe / Gratitude / Journal / Candle-gazing moved off the flat nav into the
@@ -890,31 +937,42 @@ a:hover { color: var(--accent-hover); }
   position: relative;
 }
 
-/* Practice / Progress triggers get the same "feature pill" treatment as the Spirit link — a
-   leading icon + label + caret, the Spirit teal tint, and a colour ring + soft lift — so the
-   three section pills read as a designed set, set apart from the violet Home. */
+/* Practice / Progress triggers keep the "feature pill" shape (leading icon + label + caret,
+   colour ring + soft lift) but in the neutral secondary tint — the Spirit teal is reserved
+   for the Spirit link so its pill stands out as the centerpiece instead of blending into a
+   row of three identical teal pills. */
 .nav-menu-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   margin: 0;
   width: auto;
-  padding: 0.4rem 0.7rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.8rem;
   border-radius: var(--radius-control);
   font-size: var(--text-sm);
   font-weight: 500;
-  background: var(--nav-spirit-bg);
-  color: var(--nav-spirit-text);
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 0 0 1px var(--nav-spirit-text), var(--shadow-card);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
   cursor: pointer;
 }
 
 .nav-menu-btn:hover {
-  filter: brightness(0.97);
-  transform: none;
-  /* Keep the colour ring on hover (don't let a glow replace it). */
-  box-shadow: 0 0 0 1px var(--nav-spirit-text), var(--shadow-card);
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+  filter: none;
+  box-shadow: none;
+}
+
+/* Current destination (Practice on /practices) or an open dropdown (Progress) — the same
+   soft accent pill as the active Home item, so the three read as one unified nav. */
+.nav-menu-btn.active,
+.nav-menu-btn[aria-expanded='true'] {
+  background: var(--nav-home-bg);
+  color: var(--nav-home-text);
+  font-weight: 600;
 }
 
 /* The caret flips up when its dropdown is open. */
@@ -1153,7 +1211,11 @@ a:hover { color: var(--accent-hover); }
 }
 
 .settings h1 {
+  /* Match the standard sub-page title (`.page-head h1`) so Settings doesn't read a
+     size larger than its siblings — it renders as a bare h1 without the page-head wrapper. */
   margin: 0.5rem 0 1.5rem;
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
 }
 
 .settings-section {
@@ -1460,13 +1522,13 @@ a:hover { color: var(--accent-hover); }
   /* Modern touch: the violet→blue hero gradient (this + .today-action only). */
   background: var(--accent-gradient);
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--on-accent);
   transition: filter 0.15s ease;
 }
 
 .landing-primary:hover {
   filter: brightness(1.06);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .landing-secondary {
@@ -1709,7 +1771,7 @@ a:hover { color: var(--accent-hover); }
   font-weight: 600;
   text-decoration: none;
   background: var(--accent);
-  color: #ffffff;
+  color: var(--on-accent);
 }
 
 .first-run-action:hover {
@@ -1962,6 +2024,147 @@ a:hover { color: var(--accent-hover); }
   overflow-wrap: anywhere;
 }
 
+/* ── Prayer journal ─────────────────────────────────────────────────────────
+   Reuses the journal composer/list/entry shells; only the answered state, the
+   answered toggle, and the filter tabs are prayer-specific. Kept calm and quiet. */
+.prayer-filter {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.prayer-filter-tab {
+  width: auto;
+  margin: 0;
+  padding: 0.3rem 0.85rem;
+  font-size: var(--text-sm);
+}
+
+/* An answered prayer softens: a calm accent rail + gently faded body, so it reads as
+   settled rather than shouting. Not loud — just a quiet visual "held". */
+.prayer-entry--answered {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface));
+}
+
+.prayer-entry--answered .journal-body {
+  color: var(--text-secondary);
+}
+
+.prayer-answered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* A quiet text button — discoverable but never a loud primary CTA. */
+.prayer-answer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: auto;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.prayer-answer-toggle:hover:not(:disabled) {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.prayer-answer-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* AI reflection — a quiet affordance and an even quieter card. No flashy AI
+   branding: a small sparkles glyph, soft accent tint, calm copy. */
+.reflection-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0.1rem;
+}
+
+.reflect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  margin: 0;
+  padding: 0.28rem 0.7rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reflect-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.reflect-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.reflection-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.reflection-card {
+  margin: 0.4rem 0 0.15rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface));
+}
+
+.reflection-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.reflection-text {
+  margin: 0.3rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.reflection-question {
+  margin: 0.3rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  font-style: italic;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
 .journal-search {
   width: 100%;
   margin-bottom: 0.25rem;
@@ -1977,7 +2180,8 @@ a:hover { color: var(--accent-hover); }
 }
 
 .mood-filter-chip {
-  padding: 0.25rem 0.6rem;
+  min-height: 2.2rem;
+  padding: 0.42rem 0.85rem;
   border: 1px solid var(--border-var, rgba(0, 0, 0, 0.12));
   border-radius: 999px;
   background: var(--card, rgba(255, 255, 255, 0.5));
@@ -1996,16 +2200,23 @@ a:hover { color: var(--accent-hover); }
    by the inline --pill custom property (was inline background/color/borderColor). */
 .mood-filter-chip.selected {
   font-weight: 600;
-  background: color-mix(in srgb, var(--pill, #888) 16%, #fff);
-  color: color-mix(in srgb, var(--pill, #444) 52%, #14182b);
+  background: color-mix(in srgb, var(--pill, #888) 16%, var(--bg-surface));
+  color: color-mix(in srgb, var(--pill, #444) 52%, var(--text-primary));
   border-color: var(--pill, var(--border-var));
 }
 
-:root[data-theme='dark'] .mood-filter-chip.selected,
-:root:not([data-theme='light']):not([data-theme='dark']) .mood-filter-chip.selected {
-  background: color-mix(in srgb, var(--pill) 22%, #1e2130);
+:root[data-theme='dark'] .mood-filter-chip.selected {
+  background: color-mix(in srgb, var(--pill) 22%, var(--bg-surface-raised));
   color: color-mix(in srgb, var(--pill) 65%, #fff);
   border-color: var(--pill);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .mood-filter-chip.selected {
+    background: color-mix(in srgb, var(--pill) 22%, var(--bg-surface-raised));
+    color: color-mix(in srgb, var(--pill) 65%, #fff);
+    border-color: var(--pill);
+  }
 }
 
 .journal-edit {
@@ -2051,7 +2262,8 @@ a:hover { color: var(--accent-hover); }
 .goal-tab {
   margin: 0;
   width: auto;
-  padding: 0.35rem 0.8rem;
+  min-height: 2.3rem;
+  padding: 0.55rem 1rem;
   font-size: var(--text-sm);
   background: var(--chip-bg);
   color: var(--text-secondary);
@@ -2059,7 +2271,7 @@ a:hover { color: var(--accent-hover); }
 
 .goal-tab.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .goal-card {
@@ -2130,7 +2342,7 @@ a:hover { color: var(--accent-hover); }
   padding: 0.5rem;
   font-size: var(--text-sm);
   font-weight: 500;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--activity-accent);
   border: none;
   border-radius: var(--radius-control);
@@ -2240,7 +2452,7 @@ form > button[type='submit'] {
 /* Solid (default-fill) buttons get the lift on hover. The :not() guards exclude the
    app's ghost / link / chip buttons, which set their own transparent background and
    shouldn't grow an accent lift. `.btn` opts out too — it owns its own neutral hover. */
-button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link):not(.app-user-trigger):not(.app-user-menu-item):not(.path-card--start):not(.practices-search-clear) {
+button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link):not(.app-user-trigger):not(.app-user-menu-item):not(.path-card--start):not(.practices-search-clear):not(.spirit-choose-roll-clear):not(.prayer-answer-toggle) {
   transform: translateY(-1px);
   box-shadow: var(--glow-accent-hover);
   filter: brightness(1.04);
@@ -2319,22 +2531,6 @@ textarea::placeholder {
     filter var(--duration-fast) var(--ease-out);
 }
 
-.btn--sm {
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-sm);
-}
-
-/* Solid accent — the primary action. */
-.btn--primary {
-  color: var(--on-accent);
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-}
-
 /* Surface + border — a quieter alternative action. */
 .btn--secondary {
   color: var(--accent);
@@ -2344,27 +2540,6 @@ textarea::placeholder {
 .btn--secondary:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--accent-subtle);
   border-color: var(--accent-border);
-}
-
-/* Transparent — text-style, gains only a faint hover wash. */
-.btn--ghost {
-  color: var(--text-secondary);
-  background: transparent;
-  border-color: transparent;
-}
-.btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
-  color: var(--text-primary);
-  background: var(--accent-subtle);
-}
-
-/* Warm error tone for destructive actions. */
-.btn--danger {
-  color: var(--error-text);
-  background: var(--bg-surface);
-  border-color: color-mix(in srgb, var(--error-text) 35%, transparent);
-}
-.btn--danger:hover:not(:disabled):not([aria-disabled='true']) {
-  background: color-mix(in srgb, var(--error-text) 10%, transparent);
 }
 
 /* Shared hover/active feel — a neutral lift, then a press squish. The press is also
@@ -2517,38 +2692,6 @@ textarea:focus-visible,
   margin-top: 1.75rem;
 }
 
-/* Home tabs — a quiet two-way segmented control (Today / Progress), mirroring the spirit
-   page's .spirit-tabs so the home reads as one focused area at a time. */
-.dashboard-tabs {
-  display: flex;
-  gap: 0.3rem;
-  margin: 1.25rem 0 1.1rem;
-  padding: 0.25rem;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-}
-.dashboard-tab {
-  flex: 1;
-  padding: 0.5rem 0.6rem;
-  background: none;
-  border: none;
-  border-radius: var(--radius-control);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.14s ease, color 0.14s ease;
-}
-.dashboard-tab:hover {
-  color: var(--text-primary);
-}
-.dashboard-tab--active {
-  background: var(--bg-surface-raised);
-  color: var(--accent);
-  box-shadow: var(--shadow-card);
-}
-
 /* The slim pill row on the Today tab — only coins + streak, no level/XP. A quiet header
    above the companion. */
 .dashboard-pills {
@@ -2570,7 +2713,7 @@ textarea:focus-visible,
   /* Modern touch: the violet→blue hero gradient (this + .landing-primary only). */
   background: var(--accent-gradient);
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--on-accent);
   font-size: var(--text-base);
   font-weight: 600;
   text-align: center;
@@ -2580,7 +2723,7 @@ textarea:focus-visible,
 }
 .today-action:hover {
   filter: brightness(1.06);
-  color: #fff;
+  color: var(--on-accent);
 }
 /* The same hero button rendered as a <button> (the path enroll / day "Start"): reset native
    chrome and match cursor/disabled affordances so it reads identically to the <a> variant. */
@@ -2969,10 +3112,16 @@ button.today-action:disabled {
   font-size: var(--text-sm);
   font-weight: 500;
   text-decoration: none;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .back-link:hover {
   color: var(--accent);
+  /* A whisper of leftward travel — a quiet "go back" affordance that matches the
+     app's snappy micro-interactions, applied consistently on every page's crumb. */
+  transform: translateX(-2px);
 }
 
 /* A calmer page header: a smaller, softer title with a one-line subtitle, instead of
@@ -3034,91 +3183,7 @@ button.today-action:disabled {
     var(--panel-hairline);
 }
 
-/* Level badge + XP bar take the lead; pills tuck to the right. The level group can grow
-   so the XP bar fills available width, then wraps gracefully on narrow screens. */
-.hud-level {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  flex: 1 1 14rem;
-  min-width: 0;
-}
-
-.hud-level-badge {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-}
-
-.hud-level-mark {
-  position: absolute;
-  font-size: var(--text-3xl);
-  line-height: 1;
-  color: var(--accent);
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
-}
-
-.hud-level-num {
-  position: relative;
-  font-weight: 700;
-  font-size: var(--text-sm);
-  color: #fff;
-}
-
-.hud-xp {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.hud-xp-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.3rem;
-}
-
-.hud-xp-label {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--text-primary);
-}
-
-.hud-xp-count {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-}
-
-.hud-xp-sep {
-  margin: 0 0.1rem;
-  opacity: 0.6;
-}
-
-.hud-xp-bar {
-  height: 8px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.hud-xp-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent) 70%, #fff),
-    var(--accent)
-  );
-  transition: width 0.5s ease;
-}
-
+/* The coin/streak pills row. */
 .hud-pills {
   display: flex;
   align-items: center;
@@ -3143,12 +3208,6 @@ button.today-action:disabled {
 .hud-pill-streak {
   border-color: color-mix(in srgb, var(--streak-accent) 40%, var(--border));
   background: color-mix(in srgb, var(--streak-accent) 10%, var(--bg-surface));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hud-xp-fill {
-    transition: none;
-  }
 }
 
 .level-card {
@@ -3197,11 +3256,6 @@ button.today-action:disabled {
   gap: 0.5rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-}
-
-.level-unlock {
-  font-size: var(--text-sm);
-  margin-top: 0.35rem;
 }
 
 .xp-bar {
@@ -3253,8 +3307,9 @@ button.today-action:disabled {
      creature's edge so a pale creature (or a light palette) never vanishes into the cream — a
      contour, not a hard sticker border. Then the offset shadow lifts it. */
   background: radial-gradient(circle at 50% 46%, #ffffff 0%, rgba(255, 255, 255, 0.5) 30%, transparent 58%);
-  filter: drop-shadow(0 0 0.9px rgba(58, 38, 20, 0.6)) drop-shadow(0 0 1.8px rgba(58, 38, 20, 0.42))
-    drop-shadow(0 5px 9px rgba(74, 50, 22, 0.26));
+  /* NOTE: no filter here. The contour/lift shadows live on `.spirit-creature`
+     (--spirit-figure-pop) so they hug ONLY the figure — a root-level drop-shadow also contours
+     the soft translucent aura discs, which reads as a muddy grey halo around the creature. */
 }
 
 .spirit-stage {
@@ -3300,7 +3355,7 @@ button.today-action:disabled {
 
 .spirit-choose-cta:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   transform: translateY(-1px);
 }
 
@@ -3530,27 +3585,6 @@ button.today-action:disabled {
   text-align: center;
 }
 
-/* The ailing warning — clear-but-calm; the stakes must be legible without alarm-red shouting. A
-   warm amber-edged panel reads as "needs care today", not a crisis. Shown on the page (banner)
-   and the home widget (a tighter nudge). */
-.spirit-ailing-banner {
-  margin: 0 0 0.75rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid #f59e0b;
-  border-radius: var(--panel-radius, 12px);
-  background: color-mix(in srgb, #f59e0b 12%, var(--bg-surface));
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
-.spirit-ailing-nudge {
-  margin: 0.4rem 0 0.2rem;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--warning-text);
-}
-
 /* --- Signature set status (ADR-0028) ----------------------------------------------------- */
 /* Shown near the customize tree. Calm + on-token, dark-default friendly: an accent-tinted badge
    when the full signature set is equipped ("Signature radiance"), or a quiet muted progress line
@@ -3560,8 +3594,52 @@ button.today-action:disabled {
   font-size: var(--text-sm);
 }
 
+/* Incomplete set: a self-contained card (title + progress bar + one concise line + preview),
+   so the radiance status reads as a designed element rather than loose text scattered below the
+   option grid. */
 .spirit-setbonus--progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
   color: var(--text-secondary);
+}
+.spirit-setbonus-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.spirit-setbonus-title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.spirit-setbonus-count {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.spirit-setbonus-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent-subtle, var(--bg-surface-raised));
+  overflow: hidden;
+}
+.spirit-setbonus-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spirit-setbonus-bar-fill {
+    transition: none;
+  }
 }
 
 /* Active: a soft pill carrying the bonus name + a one-line confirmation, tinted to the accent. */
@@ -3588,15 +3666,18 @@ button.today-action:disabled {
 /* The plain-language explanation of what "Signature radiance" is, plus a small affordance to PREVIEW
    the shimmer on the stage creature (hover/focus to hold, tap to toggle). */
 .spirit-setbonus-explain {
-  margin: 0 0 0.45rem;
+  margin: 0;
   max-width: 32rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 .spirit-setbonus-preview {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
-  padding: 0.28rem 0.72rem;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.9rem;
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--accent);
@@ -3612,7 +3693,7 @@ button.today-action:disabled {
 .spirit-setbonus-preview:focus-visible,
 .spirit-setbonus-preview.is-on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* --- Spirit dosha picker (ADR-0023) ------------------------------------------------------ */
@@ -3704,7 +3785,7 @@ button.today-action:disabled {
 .spirit-picker-choose {
   margin-top: auto;
   background: var(--card-accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -3801,14 +3882,21 @@ button.today-action:disabled {
 
 /* "Hover to try a look" — chips for the creature's signature pieces; hovering/focusing one morphs
    the card's art above. Calm + compact, centred under the copy. */
+/* The roll pill sits DEAD-CENTRE whether or not the "Clear" affordance is mounted: the row
+   centres a wrap that is sized by the pill ALONE, and Clear hangs off the wrap absolutely
+   (zero layout space) in a RESERVED lane under the pill — the constant padding-bottom keeps
+   the slot open in both states, so nothing shifts and Clear can never overflow a narrow card. */
 .spirit-choose-tryons {
   width: 100%;
   margin: 0.1rem 0 0.5rem;
+  padding-bottom: 1.25rem;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+}
+.spirit-choose-roll-wrap {
+  position: relative;
+  display: inline-flex;
 }
 /* "Try a random look" — a calm, inviting pill in the creature's accent. Each click rolls a full
    random combination of cosmetics onto the card's art (replaces the old one-at-a-time chips). */
@@ -3822,15 +3910,37 @@ button.today-action:disabled {
   color: var(--text-primary);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
+  /* Both state labels stack in ONE cell; the pill sizes to the widest, so flipping the label
+     never resizes it (see the JSX note in SpiritChoosePage). */
+  display: grid;
+  justify-items: center;
+}
+.spirit-choose-roll-label {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+.spirit-choose-roll-label--ghost {
+  visibility: hidden;
 }
 .spirit-choose-roll:hover,
 .spirit-choose-roll:focus-visible {
   background: color-mix(in srgb, var(--card-accent) 18%, var(--bg-surface));
   border-color: var(--card-accent);
-  outline: none;
 }
-/* A quiet "Clear" back to the bare creature. */
+/* A quiet "Clear" back to the bare creature — hung off the pill's wrap absolutely (zero layout
+   space, so it never displaces the pill), centred in the reserved lane under the pill, and
+   faded in gently on mount. */
 .spirit-choose-roll-clear {
+  position: absolute;
+  top: calc(100% + 0.15rem);
+  /* Centre it WITHOUT a transform: left/right:0 + auto inline-margins on a max-content width.
+     Using translateX(-50%) here meant the global button:hover lift (transform: translateY(-1px))
+     clobbered the centering and jolted the button sideways — which then slid it out from under
+     the cursor and made it flicker. Transform-free centering can't be overridden that way. */
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
   padding: 0.2rem 0.4rem;
   border: none;
   background: none;
@@ -3838,15 +3948,19 @@ button.today-action:disabled {
   color: var(--text-muted);
   cursor: pointer;
   text-decoration: underline;
+  white-space: nowrap;
+  animation: fade-in 0.18s ease;
 }
 .spirit-choose-roll-clear:hover,
 .spirit-choose-roll-clear:focus-visible {
   color: var(--text-secondary);
-  outline: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .spirit-choose-roll {
     transition: none;
+  }
+  .spirit-choose-roll-clear {
+    animation: none;
   }
 }
 
@@ -3871,8 +3985,13 @@ button.today-action:disabled {
    clobbering them. Calm and kind: even at the floor (0.4) the creature stays clearly visible and
    coloured, just muted — never grey-dead or alarming. A gentle transition smooths tier changes. */
 .spirit-creature {
-  filter: var(--spirit-figure-pop) saturate(var(--spirit-vitality))
-    brightness(calc(0.92 + 0.08 * var(--spirit-vitality)));
+  /* Saturation runs well OVER 1 at full vitality (×1.3) so a thriving creature reads VIVID — the
+     pastel dosha ramps (esp. the pale Kapha gold / Vata mauve) get a real push past the page's soft
+     wash instead of blending into it. A slight contrast bump crisps the form against the background.
+     At the vitality floor (0.4 → ×0.52) it still reads clearly muted, as before. */
+  filter: var(--spirit-figure-pop) saturate(calc(var(--spirit-vitality) * 1.3))
+    contrast(calc(1 + 0.1 * var(--spirit-vitality)))
+    brightness(calc(0.93 + 0.07 * var(--spirit-vitality)));
   transition: filter 0.6s ease;
 }
 
@@ -3914,22 +4033,516 @@ button.today-action:disabled {
 }
 
 /* The float is a gentle wandering drift — a bob with a little side-to-side sway and a slight tilt,
-   so the spirit reads as alive rather than just bobbing. */
+   plus a subtle SQUASH-AND-STRETCH (a touch squashed at rest, stretched at the top of the bob, with
+   origin at the feet) so the spirit reads as a bouncy little living thing rather than a rigid bob. */
 @keyframes spirit-float {
   0% {
-    transform: translate(0, 0) rotate(0deg);
+    transform: translate(0, 0) rotate(0deg) scale(1.025, 0.975);
   }
   25% {
-    transform: translate(2.5px, -5px) rotate(1.4deg);
+    transform: translate(2.5px, -5px) rotate(1.4deg) scale(0.99, 1.02);
   }
   50% {
-    transform: translate(0, -8px) rotate(0deg);
+    transform: translate(0, -8px) rotate(0deg) scale(0.975, 1.03);
   }
   75% {
-    transform: translate(-2.5px, -5px) rotate(-1.4deg);
+    transform: translate(-2.5px, -5px) rotate(-1.4deg) scale(0.99, 1.02);
   }
   100% {
-    transform: translate(0, 0) rotate(0deg);
+    transform: translate(0, 0) rotate(0deg) scale(1.025, 0.975);
+  }
+}
+
+/* ── "Living spirit" delight layer — a contact shadow, ambient sparkles, idle emotes, and a pet
+   burst. All reduced-motion-gated (the media query at the end, plus JS gates for the JS-driven
+   ones). ───────────────────────────────────────────────────────────────────────────────────── */
+
+/* Contact shadow — a soft pool under the creature that shrinks + softens as it bobs up (synced to
+   the float by sharing its duration), so the figure reads as physically lifting off the ground. */
+@keyframes spirit-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.82);
+  }
+}
+.spirit-shadow--alive {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-shadow calc(5s + (1 - var(--spirit-vitality)) * 4.2s) ease-in-out infinite;
+}
+
+/* Ambient sparkles around a thriving creature — a few motes that twinkle (fade + scale) on
+   staggered timers (delay set inline per mote), so a well-tended spirit glimmers. */
+@keyframes spirit-sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+.spirit-sparkle {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-sparkle 2.8s ease-in-out infinite;
+}
+
+/* A little emote (heart / sparkle / note / zzz) drifting up off the creature — rises + fades once
+   each time it appears (React remounts it via a changing key so the animation restarts). */
+@keyframes spirit-emote-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-1px) scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(-9px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.9);
+  }
+}
+.spirit-emote {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-emote-rise 2.2s ease-out forwards;
+}
+
+/* Pet burst — hearts/sparkles bursting up + out when you pet the creature. Each particle carries an
+   inline --dx (horizontal drift) so the burst fans out. */
+@keyframes spirit-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--dx, 0px) * 0.4), -3px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), -16px) scale(0.7);
+  }
+}
+.spirit-burst-particle {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-burst 0.9s ease-out forwards;
+}
+
+/* Singing — a stream of music notes rising FROM the creature's mouth while it "sings/whistles". Each
+   note carries an inline --dx (horizontal drift) + a per-note delay, and LOOPS for the length of the
+   bout (~2.8s ≈ two cycles), so the notes keep streaming out. */
+@keyframes spirit-sing-note-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 1px) scale(0.4);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(calc(var(--dx, 0px) * 0.5), -4px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), -17px) scale(0.85);
+  }
+}
+.spirit-sing-note {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: spirit-sing-note-rise 1.25s ease-out infinite;
+}
+
+/* The mouth itself opens + closes while singing (scaleY taller reads as an open "o" / whistle, with a
+   touch of scaleX pucker). Only runs while the creature carries `--singing`; otherwise it's static. */
+.spirit-mouth {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes spirit-sing {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+  }
+  50% {
+    transform: scaleY(1.85) scaleX(0.82);
+  }
+}
+.spirit-creature--singing .spirit-mouth {
+  animation: spirit-sing 0.42s ease-in-out infinite;
+}
+
+/* ── Per-part motion ── specific parts of some shapes move on their own: the atom's electron shell,
+   the sun's ray-crown and the dharma wheel TURN; the whirlwind's bands corkscrew side-to-side. The
+   rotators pivot on an exact viewBox point (passed via --spin-cx/--spin-cy) using transform-box:
+   view-box. All stop under reduced motion (and during the breathe pacer) — see below. */
+.spirit-spin-cw,
+.spirit-spin-ccw {
+  transform-box: view-box;
+  transform-origin: var(--spin-cx, 40px) var(--spin-cy, 40px);
+}
+.spirit-spin-cw {
+  animation: spirit-spin-cw 16s linear infinite;
+}
+.spirit-spin-ccw {
+  animation: spirit-spin-ccw 19s linear infinite;
+}
+@keyframes spirit-spin-cw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spirit-spin-ccw {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+.spirit-sway-x {
+  animation: spirit-sway-x 3.4s ease-in-out infinite;
+}
+@keyframes spirit-sway-x {
+  0%,
+  100% {
+    transform: translateX(-3.5px);
+  }
+  50% {
+    transform: translateX(3.5px);
+  }
+}
+/* Flame FLICKER — every layered flame (blaze, campfire, torch, lantern, twin, comet) licks + wobbles
+   from its base. Kept subtle so the face, which sits on the flame, stays put. */
+.pitta-flame {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: spirit-flicker 1.7s ease-in-out infinite;
+}
+@keyframes spirit-flicker {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1) skewX(0deg);
+  }
+  25% {
+    transform: scaleY(1.11) scaleX(0.94) skewX(2deg);
+  }
+  50% {
+    transform: scaleY(0.9) scaleX(1.06) skewX(0deg);
+  }
+  75% {
+    transform: scaleY(1.06) scaleX(0.97) skewX(-2deg);
+  }
+}
+/* PULSE — a soft breathing scale + glow, for embers / hot cores. */
+.spirit-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-pulse 2.6s ease-in-out infinite;
+}
+@keyframes spirit-pulse {
+  0%,
+  100% {
+    transform: scale(0.93);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.07);
+    opacity: 1;
+  }
+}
+/* TWINKLE — stars / sparkle points fade + pulse (staggered via inline animation-delay). */
+.spirit-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-twinkle 2.4s ease-in-out infinite;
+}
+@keyframes spirit-twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+/* DRIFT — a seed / mote lifts away on the breeze, then loops. */
+.spirit-drift {
+  animation: spirit-drift 4.2s ease-in-out infinite;
+}
+@keyframes spirit-drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(7px, -12px);
+  }
+}
+/* TILT — a gentle rotational wobble from the base (leaves / feathers / sprouts swaying on the breeze). */
+.spirit-tilt {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: spirit-tilt 3.8s ease-in-out infinite;
+}
+@keyframes spirit-tilt {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+/* BOB — a soft vertical bob (bubbles / clouds settling). */
+.spirit-bob {
+  animation: spirit-bob 3.1s ease-in-out infinite;
+}
+@keyframes spirit-bob {
+  0%,
+  100% {
+    transform: translateY(1.3px);
+  }
+  50% {
+    transform: translateY(-1.3px);
+  }
+}
+/* BREATHE — a very gentle scale in/out (lotus petals opening + closing a touch). */
+.spirit-breathe {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-breathe 4s ease-in-out infinite;
+}
+@keyframes spirit-breathe {
+  0%,
+  100% {
+    transform: scale(0.97);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+/* JIGGLE — a small independent bob + rotate wobble. Applied PER PART with a staggered animation-delay
+   so a cluster of stones / bubbles each move on their own phase (not as one rigid block). */
+.spirit-jiggle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-jiggle 2.7s ease-in-out infinite;
+}
+@keyframes spirit-jiggle {
+  0%,
+  100% {
+    transform: translateY(0.7px) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-0.7px) rotate(3deg);
+  }
+}
+/* SHIMMER — an opacity pulse only (no transform), so it's safe to layer on parts that already carry a
+   transform (outward-rotated petals, rays, barbs): they twinkle/glow independently while the whole
+   shape does its own thing. Staggered per part. */
+.spirit-shimmer {
+  animation: spirit-shimmer 2.1s ease-in-out infinite;
+}
+@keyframes spirit-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+/* GLEAM — a shape's repeated units take turns catching the light: a brightness lift that travels
+   unit → unit IN ORDER (petal → petal, stone → stone…). Filter-only — no transform or opacity —
+   so it wraps parts that already jiggle / breathe / rotate without fighting them. Give every unit
+   the SAME duration and delay = (k / n) × duration (see gleamProps in Spirit.tsx): one unit
+   shines at a time and the highlight sweeps the ring on a calm, readable rhythm. */
+.spirit-gleam {
+  animation: spirit-gleam 4.8s ease-in-out infinite;
+}
+@keyframes spirit-gleam {
+  0%,
+  18%,
+  100% {
+    filter: brightness(1);
+  }
+  9% {
+    filter: brightness(1.45);
+  }
+}
+/* SMOKE — a thin wisp rising off a fire, widening + fading as it climbs, then looping. Staggered
+   per line so a couple of trails drift up out of sync. */
+.spirit-smoke {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: spirit-smoke 3.8s ease-out infinite;
+}
+@keyframes spirit-smoke {
+  0% {
+    opacity: 0;
+    transform: translateY(1px) scaleX(0.7);
+  }
+  25% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scaleX(1.35);
+  }
+}
+/* SHINE — a bright gleam that sweeps across a gem, then pauses (a jewel catching the light). Clipped
+   to the gem at the call site so the streak stays inside. */
+.spirit-shine {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-shine 4.6s ease-in-out infinite;
+}
+@keyframes spirit-shine {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  28% {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+/* SWING — a gentle pendulum sway from the TOP (a lantern hanging on its bail handle). */
+.spirit-swing {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: spirit-swing 4.2s ease-in-out infinite;
+}
+@keyframes spirit-swing {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+/* EMBER — a spark that lifts off a fire, rises + fades, then loops (floating embers). Staggered. */
+.spirit-ember {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-ember 2.8s ease-out infinite;
+}
+@keyframes spirit-ember {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.5);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-9px) scale(1);
+  }
+}
+/* SWAY-SOFT — a very gentle whole-body sway (a small side-to-side lean from the base), for forms that
+   already carry inner motion but want a touch of overall life. */
+.spirit-sway-soft {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: spirit-sway-soft 5.2s ease-in-out infinite;
+}
+@keyframes spirit-sway-soft {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+/* The breathe pacer syncs the creature to the breath — hold its parts still there so nothing fights it. */
+.spirit-creature--pacing .spirit-jiggle,
+.spirit-creature--pacing .spirit-shimmer,
+.spirit-creature--pacing .spirit-gleam,
+.spirit-creature--pacing .spirit-smoke,
+.spirit-creature--pacing .spirit-shine,
+.spirit-creature--pacing .spirit-swing,
+.spirit-creature--pacing .spirit-ember,
+.spirit-creature--pacing .spirit-sway-soft,
+.spirit-creature--pacing .spirit-spin-cw,
+.spirit-creature--pacing .spirit-spin-ccw,
+.spirit-creature--pacing .spirit-sway-x,
+.spirit-creature--pacing .pitta-flame,
+.spirit-creature--pacing .spirit-pulse,
+.spirit-creature--pacing .spirit-twinkle,
+.spirit-creature--pacing .spirit-drift,
+.spirit-creature--pacing .spirit-tilt,
+.spirit-creature--pacing .spirit-bob,
+.spirit-creature--pacing .spirit-breathe {
+  animation: none;
+}
+
+/* The creature invites a pet — a subtle cursor cue on the interactive renders. */
+.spirit-svg--interactive {
+  cursor: pointer;
+}
+
+/* The cursor-gaze wrapper — leans the figure toward the pointer (transform set imperatively in JS);
+   this eases the lean in and back out smoothly. */
+.spirit-gaze {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spirit-shadow--alive,
+  .spirit-sparkle,
+  .spirit-emote,
+  .spirit-burst-particle,
+  .spirit-sing-note,
+  .spirit-creature--singing .spirit-mouth,
+  .spirit-spin-cw,
+  .spirit-spin-ccw,
+  .spirit-sway-x,
+  .pitta-flame,
+  .spirit-pulse,
+  .spirit-twinkle,
+  .spirit-drift,
+  .spirit-tilt,
+  .spirit-bob,
+  .spirit-breathe,
+  .spirit-jiggle,
+  .spirit-shimmer,
+  .spirit-gleam,
+  .spirit-smoke,
+  .spirit-shine,
+  .spirit-swing,
+  .spirit-ember,
+  .spirit-sway-soft {
+    animation: none;
+  }
+  .spirit-gaze {
+    transition: none;
   }
 }
 
@@ -3973,26 +4586,6 @@ button.today-action:disabled {
   }
 }
 
-/* The faint sweat-drop tell beside the head — a tiny slow trickle, prefers-reduced-motion safe
-   (the guard below holds it still). */
-.spirit-ailing-drop {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: spirit-drop 3.6s ease-in-out infinite;
-}
-
-@keyframes spirit-drop {
-  0%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.85;
-  }
-  50% {
-    transform: translateY(1.5px);
-    opacity: 0.55;
-  }
-}
-
 /* DEAD (ADR-0029): a calm, still, faded silhouette — no motion at all, drained of colour, resting
    low. The memorial scene (halo + headstone) sits behind it. Respectful, never gory. */
 .spirit-creature--dead {
@@ -4010,22 +4603,55 @@ button.today-action:disabled {
 .spirit-companion--alive {
   transform-origin: center;
   transform-box: fill-box;
-  animation: spirit-companion-bob 6.8s ease-in-out infinite;
+  animation: spirit-companion-hop 5.6s ease-in-out infinite;
   will-change: transform;
 }
 
-/* The companion's own soft drift — a gentle bob with a touch of sway and tilt, distinct from the
-   creature's wandering float so the two never look lock-step. */
-@keyframes spirit-companion-bob {
+/* The companion "does something": it idles with a gentle sway, then every cycle gives a little
+   double-hop before settling — a small action, not just a constant bob. Its own period (5.6s) stays
+   out of sync with the creature's float / aura glow. Held static under reduced motion (guard below). */
+@keyframes spirit-companion-hop {
   0%,
   100% {
     transform: translate(0, 0) rotate(0deg);
   }
-  30% {
-    transform: translate(-1px, -2.5px) rotate(-1.6deg);
+  20% {
+    transform: translate(-1px, -1.5px) rotate(-1.2deg);
   }
-  60% {
-    transform: translate(1px, -1.5px) rotate(1.2deg);
+  42% {
+    transform: translate(1px, -1px) rotate(1deg);
+  }
+  62% {
+    transform: translate(0, -6px) rotate(0deg);
+  }
+  70% {
+    transform: translate(0, -1px) rotate(0deg);
+  }
+  78% {
+    transform: translate(0, -3.5px) rotate(0deg);
+  }
+  88% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+/* Blink — the creature's eyes briefly close each cycle, the simplest "the pet is alive and doing
+   something" cue. Only the eyes squish (transform-box keeps the origin on the eye line); the cheeks
+   and mouth hold. Reduced-motion freezes it (guard below). */
+.spirit-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spirit-blink 5.4s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes spirit-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96.5% {
+    transform: scaleY(0.12);
   }
 }
 
@@ -4053,6 +4679,75 @@ button.today-action:disabled {
   }
 }
 
+/* Falling weather (rain / snow / leaves / petals …): a seamless downward drift. SpiritArt stacks
+   two field copies a viewBox-height (80u) apart; translating the pair down one full height on a
+   linear loop makes the particles fall continuously with no visible reset. Speed per type via
+   --wf-dur. Reduced-motion freezes it (and SpiritArt renders a single static copy anyway). */
+@keyframes spirit-weather-fall {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(80px);
+  }
+}
+.spirit-weather-fall {
+  animation: spirit-weather-fall var(--wf-dur, 3.6s) linear infinite;
+  will-change: transform;
+}
+
+/* In-place weather motion for the non-falling cosmetics (SpiritArt picks the class per type):
+   fireflies/embers twinkle, mist/gale drift sideways, aurora/heat shimmer. Subtle + slow so the
+   scene stays calm; reduced-motion freezes them. */
+@keyframes spirit-weather-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.spirit-weather-twinkle {
+  animation: spirit-weather-twinkle 3.6s ease-in-out infinite;
+}
+@keyframes spirit-weather-drift {
+  0%,
+  100% {
+    transform: translateX(-2.5px);
+  }
+  50% {
+    transform: translateX(2.5px);
+  }
+}
+.spirit-weather-drift {
+  animation: spirit-weather-drift 8s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes spirit-weather-shimmer {
+  0%,
+  100% {
+    opacity: 0.72;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.18);
+  }
+}
+.spirit-weather-shimmer {
+  animation: spirit-weather-shimmer 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spirit-weather-fall,
+  .spirit-weather-twinkle,
+  .spirit-weather-drift,
+  .spirit-weather-shimmer {
+    animation: none;
+  }
+}
+
 /* Pacer mode (BreathePage): the creature's inline transform (driven by the breathe-circle's
    `scaleAt` clock) IS the motion, so no idle keyframes run here. A soft transition smooths the
    per-frame scale steps without adding a second, drifting clock. The background stays static. */
@@ -4071,7 +4766,7 @@ button.today-action:disabled {
 }
 
 .spirit-art--compact .spirit-svg {
-  width: 72px;
+  width: 104px;
   filter: none;
   background: none;
 }
@@ -4082,7 +4777,8 @@ button.today-action:disabled {
   .spirit-creature--alive,
   .spirit-aura--alive,
   .spirit-companion--alive,
-  .spirit-radiance--alive {
+  .spirit-radiance--alive,
+  .spirit-eyes {
     animation: none;
     opacity: 1;
     filter: none;
@@ -4091,10 +4787,9 @@ button.today-action:disabled {
   .spirit-creature--pacing {
     transition: none;
   }
-  /* The ailing sigh + the sweat-drop trickle hold static under reduced motion (ADR-0029); the
-     droop/desaturation still SHOW (the unwell look is information, not motion) — just frozen. */
-  .spirit-creature--ailing,
-  .spirit-ailing-drop {
+  /* The ailing sigh holds static under reduced motion (ADR-0029); the droop/desaturation still
+     SHOW (the unwell look is information, not motion) — just frozen. */
+  .spirit-creature--ailing {
     animation: none;
   }
 }
@@ -4296,16 +4991,15 @@ button.today-action:disabled {
   padding: var(--space-4);
 }
 
-.spirit-section-head {
-  margin-bottom: 0.5rem;
-}
-
-/* The Care header stacks three lines — title, the Vitality lead read, then the balance
-   subtitle — so it must opt OUT of the `.dashboard header` flex row (which is meant for a
-   two-item title/subtitle split and otherwise floats the short "Care" title beside the middle
-   of the wrapped Vitality line). Specificity (0,2,0) beats `.dashboard header` (0,1,1). */
-.spirit-care .spirit-section-head {
+/* Every spirit section header stacks (title above subtitle) — it must opt OUT of the
+   `.dashboard header` flex row, which is meant for a two-item title/subtitle split and
+   otherwise collides the short title with a wrapped subtitle on narrow screens (at 375px the
+   Customize head rendered "Customize" jammed into its own subtitle). Specificity (0,2,0)
+   beats `.dashboard header` (0,1,1). Covers Care (three stacked lines), Customize, and
+   Collection alike. */
+.spirit-section .spirit-section-head {
   display: block;
+  margin-bottom: 0.5rem;
 }
 
 /* The Vitality lead line ("… is content — any practice keeps them so"): the overall read,
@@ -4460,7 +5154,8 @@ button.today-action:disabled {
 }
 .spirit-tab {
   flex: 1;
-  padding: 0.5rem 0.6rem;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.7rem;
   background: none;
   border: none;
   border-radius: var(--radius-control);
@@ -4474,9 +5169,10 @@ button.today-action:disabled {
   color: var(--text-primary);
 }
 .spirit-tab--active {
-  background: var(--bg-surface-raised);
+  background: var(--bg-surface);
   color: var(--spirit-accent);
-  box-shadow: var(--shadow-card);
+  /* Even hairline ring rather than a drop shadow — see .dashboard-tab--active. */
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .spirit-slot {
@@ -4496,25 +5192,32 @@ button.today-action:disabled {
 /* Per-section accent — the whole tree (header, tier dots, connector, node accents, unlock
    buttons) keys off --slot-accent, so one override colours the entire section. Distinct hues
    across the wheel so the collapsed list reads as a colour-coded index. */
-.spirit-slot[data-slot='aura'] {
+.spirit-slot[data-slot='aura'],
+.spirit-cat[data-slot='aura'] {
   --slot-accent: #a78bfa; /* violet */
 }
-.spirit-slot[data-slot='accessory'] {
+.spirit-slot[data-slot='accessory'],
+.spirit-cat[data-slot='accessory'] {
   --slot-accent: #f472b6; /* pink */
 }
-.spirit-slot[data-slot='habitat'] {
+.spirit-slot[data-slot='habitat'],
+.spirit-cat[data-slot='habitat'] {
   --slot-accent: #34d399; /* emerald */
 }
-.spirit-slot[data-slot='companion'] {
+.spirit-slot[data-slot='companion'],
+.spirit-cat[data-slot='companion'] {
   --slot-accent: #fbbf24; /* amber */
 }
-.spirit-slot[data-slot='mount'] {
+.spirit-slot[data-slot='mount'],
+.spirit-cat[data-slot='mount'] {
   --slot-accent: #60a5fa; /* blue */
 }
-.spirit-slot[data-slot='weather'] {
+.spirit-slot[data-slot='weather'],
+.spirit-cat[data-slot='weather'] {
   --slot-accent: #22d3ee; /* cyan */
 }
-.spirit-slot[data-slot='ground'] {
+.spirit-slot[data-slot='ground'],
+.spirit-cat[data-slot='ground'] {
   --slot-accent: #a3e635; /* lime */
 }
 
@@ -4596,7 +5299,7 @@ button.today-action:disabled {
 .spirit-locked-toggle {
   align-self: flex-start;
   margin-top: 0.05rem;
-  padding: 0.2rem 0.05rem;
+  padding: 0.45rem 0.35rem;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -4684,11 +5387,11 @@ button.today-action:disabled {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  min-height: 2rem;
-  padding: 0.34rem 0.8rem;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.95rem;
   border-radius: 999px;
   border: 1.5px solid var(--slot-accent);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
@@ -4716,7 +5419,7 @@ button.today-action:disabled {
 .spirit-node-unlock {
   background: var(--slot-accent);
   border-color: var(--slot-accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* The cost chip inside an Unlock button — a faint pill around the coin + amount so the spend reads
@@ -4766,7 +5469,7 @@ button.today-action:disabled {
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
   background: var(--slot-accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -4774,7 +5477,7 @@ button.today-action:disabled {
 
 .spirit-node-remove {
   margin-top: 0;
-  padding: 0.2rem 0.4rem;
+  padding: 0.4rem 0.5rem;
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -4981,6 +5684,130 @@ button.today-action:disabled {
   gap: 0.55rem;
   align-items: start;
   margin-top: 0.4rem;
+}
+
+/* ── Customize "dressing room" (redesign) ────────────────────────────────────────────────────
+   A PINNED viewer (creature + a one-chip-per-category selector) sitting over a SINGLE option grid,
+   so only one category shows at a time and the creature stays in view while options scroll. Fixes
+   the old layout, where every slot was a separately-expandable <details> card: opening several
+   stacked into an endless vertical scroll and the preview scrolled out of reach. */
+.spirit-dressing {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The pinned head: sticks just under the global app header while the option grid scrolls beneath.
+   An opaque raised card so scrolled options are cleanly masked (the page canvas is a gradient, so
+   a transparent bar wouldn't mask). */
+.spirit-dressing-head {
+  position: sticky;
+  top: calc(var(--app-header-h, 3.75rem) + 0.4rem);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  padding: 0.7rem 0.7rem 0.75rem;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* Inside the pinned head the creature drops its own framed pedestal (keeps just the soft glow) so
+   it doesn't read as a card-in-a-card, and it's smaller than the full stage to keep the head short
+   — important on mobile, where a full-size sticky creature would eat the viewport. */
+.spirit-dressing-head .spirit-customize-preview {
+  margin: 0;
+}
+.spirit-dressing-head .spirit-stage-frame {
+  max-width: 20rem;
+  padding: 0.35rem 0.6rem 0.2rem;
+  background: radial-gradient(
+    120% 80% at 50% 92%,
+    color-mix(in srgb, var(--spirit-accent) 16%, transparent),
+    transparent 70%
+  );
+  border: none;
+  box-shadow: none;
+}
+.spirit-dressing-head .spirit-stage-art .spirit-svg {
+  max-width: 168px;
+}
+.spirit-dressing-head .spirit-stage-caption {
+  margin-top: 0.4rem;
+}
+
+/* The category selector — one chip per cosmetic slot; picking one shows ONLY that category's
+   options below. Wraps to a few rows; centred. */
+.spirit-cat-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+.spirit-cat {
+  --slot-accent: var(--spirit-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+.spirit-cat:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--text-muted));
+}
+/* The selected category — filled in its own accent hue (per data-slot above). */
+.spirit-cat--active {
+  background: var(--slot-accent);
+  border-color: var(--slot-accent);
+  color: var(--on-accent);
+}
+/* A small dot marking a category that already has something equipped, so the bar reads at a glance
+   as "what's dressed". */
+.spirit-cat-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--slot-accent);
+}
+.spirit-cat--active .spirit-cat-dot {
+  background: var(--on-accent);
+}
+
+/* The active category panel header (replaces the old collapsible <summary>). */
+.spirit-slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+/* The options as a wrap GRID — 1 column on narrow, 2–3 on wide — so a single category is short and
+   needs little scrolling (the core fix). Replaces the old tall single-column list. */
+.spirit-option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: 0.5rem;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .spirit-dressing-head .spirit-stage-art .spirit-svg {
+    max-width: 128px;
+  }
 }
 
 /* (legacy dressing-room layout — no longer rendered, kept harmless) */
@@ -5231,39 +6058,44 @@ button.today-action:disabled {
 /* A quiet, link-like reset action (name reset / upgrades reset). Resetting is a rare escape
    hatch, not a primary CTA, so it reads as a small muted text-button — never a filled button.
    Reused by the bottom-of-page name reset and the foot of the Personalize panel. */
+/* The name reset — a standalone, quiet outlined pill button now (was an inline text link in a
+   sentence). The cost + explanation live in its confirm modal, so the button stays a plain "Reset
+   name". */
 .spirit-reset-quiet {
-  margin-top: 0;
-  padding: 0.2rem 0.1rem;
-  background: none;
-  border: none;
-  border-radius: 0.25rem;
+  align-self: center;
+  margin: 0;
+  padding: 0.4rem 0.95rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 2px;
   cursor: pointer;
+  transition: color 0.14s ease, border-color 0.14s ease;
 }
 
 .spirit-reset-quiet:hover:not(:disabled) {
   color: var(--text-primary);
+  border-color: var(--border-strong, var(--text-muted));
 }
 
 .spirit-reset-quiet:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  text-decoration: none;
 }
 
-/* The minor name-reset line at the foot of the page — a muted sentence with the quiet button
-   tucked inline, so it's available but never one of the first things you see. */
-.spirit-reset-name-line {
-  font-size: var(--text-sm);
+/* The quiet footer under the tabs — the Signature-radiance status (a full-width card) with the
+   name-reset button centred below it, separated from the main content by a hairline. Both are
+   minor "spend / prestige" bits, so they sit last and low-key. */
+.spirit-footer {
+  max-width: 36rem;
+  margin: 1.5rem auto 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem;
-  margin: 1.25rem 0 0;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 /* Before/after buy confirmation — two spirit renders side by side ("Now" vs "With X"), each
@@ -5887,45 +6719,6 @@ button.today-action:disabled {
   margin: 1.25rem 0;
 }
 
-/* Header block: the heading row sits over a thin completion meter so progress reads at a
-   glance, mirroring the HUD's XP bar. */
-.missions-head {
-  margin-bottom: 0.7rem;
-}
-
-.missions-meter {
-  height: 5px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.missions-meter-fill {
-  height: 100%;
-  width: 0;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent) 70%, #fff),
-    var(--accent)
-  );
-  transition: width 0.5s ease;
-}
-
-.missions-meter.complete .missions-meter-fill {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--success-text) 70%, #fff),
-    var(--success-text)
-  );
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .missions-meter-fill {
-    transition: none;
-  }
-}
-
 /* Quiet quest heading — a target icon, the label, and a done/total count, so the chips
    below clearly read as today's completable tasks (not just a stray row of links). */
 .quests-heading {
@@ -5946,18 +6739,6 @@ button.today-action:disabled {
 
 .quests-heading-text {
   text-transform: uppercase;
-}
-
-/* The "2/3" progress count — a small muted pill, calm not grindy. */
-.quests-heading-count {
-  margin-left: auto;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
-  border-radius: 999px;
-  padding: 0.05rem 0.45rem;
 }
 
 /* A single-column stack. The quests are horizontal cards (icon · label · meta pushed right), so a
@@ -6110,43 +6891,6 @@ button.today-action:disabled {
   text-align: center;
 }
 
-/* A quiet, centered text link (with a chevron) — deliberately no button chrome: no
-   border, no fill. It's still a real <button> (aria-expanded/aria-controls, keyboard
-   operable); this only restyles it to read as a gentle link. */
-.show-more-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  width: auto;
-  margin: 0 auto;
-  padding: 0.3rem 0.4rem;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-control);
-  cursor: pointer;
-  transition: color 0.12s ease;
-}
-
-.show-more-toggle:hover,
-.show-more-toggle:focus-visible {
-  color: var(--text-secondary);
-}
-
-.show-more-text {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  text-underline-offset: 3px;
-}
-
-.show-more-chevron {
-  font-size: var(--text-sm);
-  line-height: 1;
-}
-
 .stat-value {
   font-size: var(--text-2xl);
   font-weight: 700;
@@ -6254,6 +6998,173 @@ button.today-action:disabled {
 .heatmap-key .heatmap-cell {
   width: 11px;
   height: 11px;
+}
+
+/* ── Daily-goal ring (dashboard) ─────────────────────────────────────────── */
+.dashboard-goal {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.goal-ring-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.goal-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+}
+
+.goal-ring-track {
+  stroke: var(--heatmap-cell-empty);
+}
+
+.goal-ring-progress {
+  stroke: var(--accent);
+  /* Gentle fill animation as progress lands; disabled under reduced motion below. */
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+/* Soft "met" state — a calm colour shift to the success hue, never confetti. */
+.goal-ring-card.met .goal-ring-progress {
+  stroke: var(--success-text);
+}
+
+.goal-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: var(--text-body, var(--text));
+}
+
+.goal-ring-center b {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.goal-ring-center small {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goal-ring-check {
+  color: var(--success-text);
+}
+
+.goal-ring-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.goal-ring-title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.goal-ring-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goal-ring-card.met .goal-ring-sub {
+  color: var(--success-text);
+}
+
+.goal-ring-adjust {
+  font-size: var(--text-xs);
+  margin-top: 0.15rem;
+}
+
+/* ── Consistency heatmap (analytics) — ~12 weeks, shaded by daily minutes ─── */
+.consistency {
+  margin-top: 1.5rem;
+}
+
+.consistency h2 {
+  font-size: var(--text-base);
+}
+
+.consistency-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.consistency-grid {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.consistency-week {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.consistency-cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--heatmap-cell-empty); /* lvl-0 / no practice */
+  box-shadow: inset 0 0 0 1px var(--heatmap-cell-edge);
+}
+
+/* A calm 4-step ramp: the accent mixed over the empty cell in rising strength, so each
+   step clears the last and lvl-4 is the full accent. Themed tokens keep it right in both
+   light and dark. */
+.consistency-cell.lvl-1 {
+  background: color-mix(in srgb, var(--accent) 25%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-2 {
+  background: color-mix(in srgb, var(--accent) 45%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-3 {
+  background: color-mix(in srgb, var(--accent) 70%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-4 {
+  background: var(--accent);
+}
+
+.consistency-cell.out {
+  background: transparent;
+  box-shadow: none;
+}
+
+.consistency-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.consistency-key {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.consistency-key .consistency-cell {
+  width: 11px;
+  height: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-ring-progress {
+    transition: none;
+  }
 }
 
 /* Gratitude "Recent" reuses the journal card look, minus the composer divider. */
@@ -6393,7 +7304,8 @@ button.today-action:disabled {
 .chip {
   margin: 0;
   width: auto;
-  padding: 0.45rem 0.85rem;
+  min-height: 2.4rem;
+  padding: 0.55rem 1rem;
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-primary);
@@ -6514,6 +7426,22 @@ button.today-action:disabled {
   font-size: var(--text-base);
 }
 
+/* ── Sub-page section headers ────────────────────────────────────────────────
+   One calm, consistent divider for the content sub-pages: a small text-secondary
+   label with a thin accent bar. Previously only Analytics + Settings carried the
+   bar while "Recent" / "Past reflections" / "Upcoming" were plain (and mismatched
+   on colour). Unified here so every sub-page section reads as the same kind of
+   header. The gamified home hub (quests, consistency) keeps its own denser voice. */
+.analytics-section h2,
+.settings-section h2,
+.journal-list-title,
+.schedule-upcoming-title,
+.grat-journal h2 {
+  color: var(--text-secondary);
+  padding-left: 0.6rem;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 /* Breathing pacer */
 .breathe {
   max-width: 30rem;
@@ -6537,7 +7465,11 @@ button.today-action:disabled {
 }
 
 .breathe-stage {
-  height: 280px;
+  /* min-height, not a fixed height: the orb reserves a 200px layout box (its full-breath
+     footprint) even while it sits scaled-down at idle, so with the companion + phase label
+     stacked below it the column needs room to breathe. A hard height here would force the
+     flex children to shrink — which squashed the round orb into an ellipse. */
+  min-height: 360px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6549,6 +7481,8 @@ button.today-action:disabled {
 .breathe-circle {
   width: 200px;
   height: 200px;
+  /* Never let the flex column compress the orb — it must stay a true circle at every scale. */
+  flex-shrink: 0;
   border-radius: 50%;
   /* Indigo, but token-driven (like .meditate-orb) so it reads on both backdrops and
      carries a soft ring/glow rather than a flat disc. */
@@ -6556,11 +7490,22 @@ button.today-action:disabled {
   box-shadow:
     0 10px 30px var(--breathe-glow),
     inset 0 0 0 1px var(--breathe-ring);
-  /* transform (scale) is set inline from JS each frame */
+  /* transform (scale) is set inline from JS each frame. A short smoothing transition (matching
+     the companion's pacer) softens the per-frame steps and, more visibly, lets the orb settle
+     from its idle mid-size into the first inhale instead of snapping. */
+  transition: transform 0.12s linear;
 }
 
 .breathe-circle.idle {
   opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The orb is already pinned to a static scale here, so the smoothing transition is inert —
+     drop it anyway to keep the reduced-motion contract explicit. */
+  .breathe-circle {
+    transition: none;
+  }
 }
 
 /* Meditation timer: a calm orb with the time at its centre. Teal echoes the
@@ -6826,7 +7771,9 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-secondary);
 }
 
-.meditate-disclosure-summary:focus-visible {
+.meditate-disclosure-summary:focus-visible,
+.trataka-about-summary:focus-visible,
+.dosha-about-summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-control);
@@ -6935,6 +7882,42 @@ details[open] .meditate-disclosure-summary::before {
   gap: 1.5rem;
   color: var(--text-muted);
   margin-bottom: 1rem;
+}
+
+/* Quiet "the setup is just hidden" hint while a breath runs — so the vanished pattern/pace
+   controls read as intentional, not broken. */
+.breathe-running-hint {
+  margin: -0.4rem 0 1rem;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+/* A tiny timezone cue under datetime-local inputs (Log a session / Schedule) — native pickers
+   never say which zone they mean, and a traveller shouldn't have to guess. */
+.field-time-hint {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+/* The "counts automatically as you practice" note on built-in goal cards — inherits the meta
+   row's muted colour; explicit so the styling isn't an accident of inheritance. */
+.goal-auto-note {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+/* The spirit page's one-time orientation card (reuses the practice-intro surface) — the "Got it"
+   dismiss reads as a quiet trailing link, not a button. */
+.spirit-intro {
+  margin-bottom: 1.25rem;
+}
+.spirit-intro-gotit {
+  width: auto;
+  margin-top: 0.5rem;
+  padding: 0;
+  font-size: var(--text-sm);
 }
 
 /* Nadi Shodhana nostril cue (alternate-nostril preset only). The label appends the side
@@ -7421,6 +8404,10 @@ details[open] .meditate-disclosure-summary::before {
   .app-nav.open {
     display: flex;
     flex-direction: column;
+    /* The base .app-nav is flex-wrap:wrap (desktop row); combined with the max-height cap
+       below, a column that overruns the screen would COLUMN-WRAP into a lopsided second
+       column instead of scrolling. Force nowrap so the menu is one aligned, scrollable stack. */
+    flex-wrap: nowrap;
     align-items: stretch;
     position: absolute;
     top: 100%;
@@ -7481,6 +8468,43 @@ details[open] .meditate-disclosure-summary::before {
   .nav-mobile-extra a.active {
     background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
     box-shadow: inset 0.2rem 0 0 var(--menu-ink);
+  }
+  /* Practice / Progress collapsible group buttons (replace the old flat heading + list). */
+  .nav-mobile-group {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  .nav-mobile-group:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+  }
+  .nav-mobile-group-label {
+    flex: 1;
+  }
+  .nav-mobile-group-caret {
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+  }
+  .nav-mobile-group[aria-expanded='true'] .nav-mobile-group-caret {
+    transform: rotate(180deg);
+  }
+  /* The expanded group's links, slightly indented so they read as belonging to the group. */
+  .nav-mobile-group-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.15rem 0 0.35rem 0.6rem;
   }
 }
 
@@ -7835,7 +8859,7 @@ details[open] .meditate-disclosure-summary::before {
 .log-session-rating .chip-active {
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   border-color: var(--accent-hover);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
@@ -7911,24 +8935,6 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* Onboarding wizard (first run). */
-.onboarding-progress {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
-  margin: 0.5rem 0 1.2rem;
-}
-
-.onboarding-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: var(--border-var, rgba(0, 0, 0, 0.18));
-}
-
-.onboarding-dot.active {
-  background: var(--accent-var, #6a5cff);
-}
-
 .onboarding-options {
   display: flex;
   flex-direction: column;
@@ -7984,16 +8990,6 @@ details[open] .meditate-disclosure-summary::before {
 .onboarding-choice-sub {
   font-size: var(--text-sm);
   font-weight: 400;
-}
-
-.onboarding-back {
-  margin-top: 0.6rem;
-  background: none;
-  border: none;
-  color: inherit;
-  opacity: 0.7;
-  cursor: pointer;
-  font: inherit;
 }
 
 /* Quick-action feature tiles — a compact, tappable row linking to the four main
@@ -8062,76 +9058,39 @@ details[open] .meditate-disclosure-summary::before {
 /* Programs row — the two navigation destinations (Guided paths, Log a past session) that used to
    live in the nav dropdown. Quiet surface links, lighter than a practice card, in a responsive
    row so they read as wayfinding above the technique groups. */
+/* Programs — one quiet LINE of two small pill links (Guided paths / Log a past session), not a
+   row of cards: they're navigation, and the top of the hub already stacks search + chips. */
 .practices-programs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--space-3);
-  margin: 0 0 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
 }
 .practices-program-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.7rem 0.85rem;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: 999px;
   background: var(--bg-surface);
-  box-shadow: var(--shadow-card);
   text-decoration: none;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: border-color 0.14s ease, background 0.14s ease;
 }
 .practices-program-link:hover,
 .practices-program-link:focus-visible {
-  transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  box-shadow: var(--shadow-modal);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
 }
 @media (prefers-reduced-motion: reduce) {
   .practices-program-link {
-    transition: box-shadow 0.12s ease, border-color 0.12s ease;
-  }
-  .practices-program-link:hover,
-  .practices-program-link:focus-visible {
-    transform: none;
+    transition: none;
   }
 }
-.practices-program-icon {
-  flex: none;
-  width: 2.1rem;
-  height: 2.1rem;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  color: var(--accent);
-}
-.practices-program-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-  flex: 1;
-}
-.practices-program-name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.practices-program-desc {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.practices-program-go {
-  flex: none;
-  color: var(--text-faint);
-  opacity: 0.55;
-  transition: opacity 0.14s ease, transform 0.14s ease, color 0.14s ease;
-}
-.practices-program-link:hover .practices-program-go,
-.practices-program-link:focus-visible .practices-program-go {
-  opacity: 1;
-  transform: translateX(2px);
+.practices-program-link svg {
   color: var(--accent);
 }
 
@@ -8182,44 +9141,206 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* Gentle empty state when a query matches nothing. */
-.practices-empty {
-  margin: 1.5rem 0;
+/* Shared empty-state line ("nothing yet") for every data view. A calm, centred note with
+   generous breathing room so an empty list reads as intentional quiet space, not a stray
+   sentence. Used by the shared <EmptyState> building block and the Practices no-matches note. */
+.empty-state {
+  margin: 1.75rem auto 0;
+  max-width: 36ch;
+  padding: 1.25rem 1rem;
+  text-align: center;
   color: var(--text-muted);
   font-size: var(--text-sm);
+  line-height: 1.6;
+  text-wrap: balance;
 }
 
+/* Each category is its own BLOCK, not one uniform grid: a real header (accent icon chip + title +
+   one-line blurb) sits over a soft accent hairline, and generous spacing separates the groups. The
+   section hue comes from --section-accent (per-theme light/dark, resolved from the inline
+   --section-fill / --section-fill-dark set in the page). Cards below stay calm + white. */
+/* Each category is a CONTAINED shelf — a rounded panel with a faint wash of the section's
+   accent + a tinted hairline border, so one group is unmistakably delimited from the next
+   (a bare heading between uniform white cards wasn't enough of a boundary). The white cards
+   sit on the wash, which keeps the hue identity subtle rather than loud. */
 .practices-group {
-  margin: 0 0 1.75rem;
+  --section-accent: var(--section-fill, var(--accent));
+  margin: 0 0 1.4rem;
+  padding: 1rem 1.1rem 1.05rem;
+  background: color-mix(in srgb, var(--section-accent) 4%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--section-accent) 18%, var(--border-light));
+  border-radius: var(--radius-card);
+}
+
+/* Section header row — the accent icon + the heading block, over an accent hairline that
+   colour-codes the category inside its shelf panel. */
+.practices-group-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 0 0 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--section-accent) 24%, var(--border-light));
+}
+.practices-group-icon {
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  margin-top: 0.1rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--section-accent) 14%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--section-accent) 24%, transparent);
+  color: var(--section-accent);
+}
+.practices-group-heading {
+  min-width: 0;
+  flex: 1;
 }
 
 .practices-group-title {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  margin: 0 0 0.85rem;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* A small count pill beside each category title ("Breathing  4"), tinted with the section accent. */
+.practices-group-count {
   font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--section-accent);
+  background: color-mix(in srgb, var(--section-accent) 12%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--section-accent) 22%, transparent);
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* One-line description of what the category is for — the quiet part of the section's identity. */
+.practices-group-blurb {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
-/* A small count pill beside each category eyebrow ("Breathing  4"). */
-.practices-group-count {
-  font-size: 0.7rem;
+/* Suggested-for-you — same header language, but keyed to the app's primary violet since it isn't
+   tied to any one category's hue. */
+.practices-suggested {
+  --section-fill: var(--accent);
+  --section-fill-dark: var(--accent);
+}
+
+/* New here? Start here — the beginner on-ramp, keyed to a calm green (growth / new-shoot). */
+.practices-beginner {
+  --section-fill: #16a34a;
+  --section-fill-dark: #4ade80;
+}
+
+/* A quiet "Good first practice" badge beside the name on beginner-friendly cards. */
+.practice-beginner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.4rem;
+  font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 0;
-  color: var(--text-muted);
-  background: var(--chip-bg);
-  padding: 0.05rem 0.45rem;
+  letter-spacing: 0.01em;
+  color: #15803d;
+  background: color-mix(in srgb, #16a34a 12%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, #16a34a 24%, transparent);
   border-radius: 999px;
+  white-space: nowrap;
+}
+:root[data-theme='dark'] .practice-beginner-badge {
+  color: #86efac;
+  background: color-mix(in srgb, #4ade80 15%, var(--bg-surface));
+  border-color: color-mix(in srgb, #4ade80 28%, transparent);
+}
+
+/* The suggested-length time cue in the card meta row — a quiet clock + label, sits alongside the
+   spirit feed badges. */
+.practice-length {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Beginner-friendly "what you'll do" intro on the meditate / breathe start screens — a calm,
+   soft-tinted card so a newcomer knows what's coming before pressing Start. */
+.practice-intro {
+  margin: 0 0 1.25rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-card);
+  background: var(--accent-subtle);
+}
+.practice-intro-what {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.practice-intro-how {
+  margin: 0.3rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
 }
 
 .practices-grid {
   display: grid;
   /* Cards wrap and stack down to ~240px — minmax keeps a single column on narrow phones. */
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-4);
+}
+
+/* Category chips — the calm one-shelf-at-a-time browse ("All" previews every shelf). Reuses the
+   shared .chip pill; wraps on narrow screens. */
+.practices-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0.25rem;
+}
+/* The "Start here" chip carries a small sprout icon — align it with its label. */
+.practices-filter-starter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* The quiet "See all N" at the foot of a previewed shelf — a link-style button that opens the
+   shelf's chip. */
+.practices-see-all {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 0.55rem;
+  padding: 0.15rem 0.1rem;
+  border: none;
+  background: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+}
+.practices-see-all:hover,
+.practices-see-all:focus-visible {
+  text-decoration: underline;
 }
 
 /* Clean, uniform card: ONE white surface for every practice (no patchwork tints) — the
@@ -8280,6 +9401,10 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .practice-card-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem 0;
   font-size: var(--text-base);
   font-weight: 600;
   line-height: 1.25;
@@ -8378,31 +9503,17 @@ details[open] .meditate-disclosure-summary::before {
   white-space: nowrap;
 }
 
-/* The "what it gives your spirit" meta — kept QUIET (muted inline labels, no pills) so the card
-   stays clean; the spirit's CURRENT-need practice gets the amber accent. */
+/* The card's quiet meta row — now just the suggested-minutes cue (the per-card facet badges are
+   gone: the round-out signal reads through the rose border + the nudge banner instead). */
 .practice-card-feeds {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;
   margin-top: 0.45rem;
 }
-.practice-feed-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.practice-feed-badge--current {
-  color: var(--needed-accent);
-  font-weight: 600;
-}
 
 /* A practice the spirit needs MOST right now — dialed down to just a quiet rose BORDER (no loud
-   tag or ring); the rose "current need" feed label below carries the rest of the signal, and the
-   header chip + nudge banner say what's needed. Border kept rose on hover too. */
+   tag or ring); the header chip + nudge banner say what's needed. Border kept rose on hover too. */
 .practice-card--needed,
 .practice-card--needed:hover,
 .practice-card--needed:focus-visible {
@@ -8418,6 +9529,17 @@ details[open] .meditate-disclosure-summary::before {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) .practice-card {
     --card-accent: var(--card-fill-dark, var(--card-fill, #6b6b70));
+  }
+}
+
+/* Same light→dark swap for the section-header accent (icon chip, count pill, hairline). */
+:root[data-theme='dark'] .practices-group {
+  --section-accent: var(--section-fill-dark, var(--section-fill, var(--accent)));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .practices-group {
+    --section-accent: var(--section-fill-dark, var(--section-fill, var(--accent)));
   }
 }
 
@@ -8511,6 +9633,57 @@ details[open] .meditate-disclosure-summary::before {
 /* Quiet "How do you feel?" entry point on the calm home — a gentle text link, not a
    button, so logging a mood later (when the modal was skipped) stays reachable without
    adding chrome. */
+/* Daily reading — a quiet reflective card at the foot of the Today view: a short passage that
+   rotates each day, with attribution + a gentle nudge to reflect in the journal. An accent hairline
+   on the left reads as a "quote" without shouting; fully tokened so both themes stay on-brand. */
+.daily-reading {
+  margin: 1.5rem 0 0;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+.daily-reading-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.daily-reading-text {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.daily-reading-cite {
+  margin: 0.5rem 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.daily-reading-reflect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.7rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.daily-reading-reflect:hover,
+.daily-reading-reflect:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .mood-entry {
   margin: 0;
   text-align: center;
@@ -8902,7 +10075,8 @@ details[open] .meditate-disclosure-summary::before {
 
 .admin-tab {
   margin: 0;
-  padding: 0.4rem 0.85rem;
+  min-height: 2.3rem;
+  padding: 0.55rem 1rem;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
@@ -8912,7 +10086,7 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .admin-tab.is-active {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -9092,7 +10266,8 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .soundscape-chip {
-  padding: 0.3rem 0.7rem;
+  min-height: 2.3rem;
+  padding: 0.5rem 0.95rem;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: transparent;
@@ -9295,4 +10470,294 @@ details[open] .meditate-disclosure-summary::before {
 .admin-feedback-msg {
   margin: 0;
   white-space: pre-wrap;
+/* ── Chat with a philosopher ──────────────────────────────────────────────────
+   The picker reuses .practices-grid + .practice-card; only the small deltas below are
+   new (the card is a <button> here, and carries a tradition line). The chat view is a
+   simple thread + composer, styled to sit inside the app's calm card system. */
+.philo-picker-heading {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* The card is an interactive <button> here (picks a persona) rather than a link, so
+   normalise the button defaults back to the shared .practice-card look. */
+.philo-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Sharpen the persona cards beyond the shared practice-card base so they read as
+   distinct "guide" cards: a soft-filled round accent chip for the icon, the tradition
+   as a small pill, and a gentle lift + accent ring on hover/focus. */
+.philo-card .practice-card-icon {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
+}
+
+.philo-card-tradition {
+  display: inline-block;
+  width: fit-content;
+  margin: 0.15rem 0;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+}
+
+.philo-card:hover,
+.philo-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.philo-disclaimer {
+  margin-top: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* ── Chat view ──────────────────────────────────────────────────────────────── */
+.philo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* The chat header reads like the persona's picker card, scaled up: the round accent
+   chip beside a clear name + tradition. The `.dashboard` scoping out-specifies the
+   `.dashboard .page-head { display: block }` rule that would otherwise stack the avatar
+   above the name. */
+.dashboard .philo-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+.philo-chat-avatar {
+  flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
+}
+
+.philo-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  min-height: 40vh;
+}
+
+/* Before the conversation starts, don't reserve the tall thread height — let the intro
+   and the starters sit together near the top instead of being pushed apart. */
+.philo-thread--empty {
+  min-height: 0;
+  margin-bottom: var(--space-2);
+}
+
+.philo-thread--empty .philo-intro {
+  padding-bottom: var(--space-2);
+}
+
+.philo-intro {
+  max-width: 42ch;
+  align-self: center;
+  text-align: center;
+  padding: var(--space-4) 0;
+  line-height: 1.5;
+}
+
+/* Conversation starters shown on an empty chat — tappable first-person openers (the
+   persona's own, plus a personalized "today's practice" one). They sit between the
+   thread and the composer; tapping drops the text into the composer to send or edit. */
+.philo-openers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.philo-openers-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.philo-openers-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.philo-opener {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.3rem;
+  padding: 0.5rem 0.9rem;
+  text-align: left;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.philo-opener:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+/* The personalized "today's practice" opener — a soft accent tint + the spark icon, so it
+   reads as the one that's about *you*, distinct from the persona's generic starters. */
+.philo-opener--context {
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+
+.philo-opener--context:hover {
+  color: var(--accent-hover);
+}
+
+.philo-opener--context svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.philo-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 85%;
+}
+
+.philo-msg--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.philo-msg--guide {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.philo-msg-who {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.philo-msg-text {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.philo-msg--user .philo-msg-text {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--text-primary);
+  border-bottom-right-radius: var(--radius-control);
+}
+
+.philo-msg--guide .philo-msg-text {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+  border-bottom-left-radius: var(--radius-control);
+}
+
+.philo-typing {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.philo-notice {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.philo-composer {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  margin-top: var(--space-4);
+}
+
+/* An intentional-looking composer: a rounded, bordered input that lifts to an accent
+   ring on focus (rather than the browser-default textarea look). */
+.philo-composer textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 3rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.5;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.philo-composer textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.philo-composer textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.philo-send {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+@media (max-width: 32rem) {
+  .philo-composer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .philo-send {
+    justify-content: center;
+  }
 }

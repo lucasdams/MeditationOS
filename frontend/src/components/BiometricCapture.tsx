@@ -5,6 +5,7 @@ import { messageForError } from '../lib/errors'
 import { newClientToken } from '../lib/sessionDraft'
 import Modal from './Modal'
 import { ErrorBanner } from './StateViews'
+import { useT } from '../i18n'
 import type { BiometricReading, ReadingContext } from '../types'
 
 /**
@@ -36,6 +37,7 @@ export default function BiometricCapture({
   // Render as a plain in-page card (LogReadingPage) rather than a modal overlay.
   inline?: boolean
 }) {
+  const { t } = useT()
   const [bpm, setBpm] = useState('')
   const [hrv, setHrv] = useState('')
   const [saving, setSaving] = useState(false)
@@ -50,14 +52,14 @@ export default function BiometricCapture({
 
     const bpmNum = Number(bpm)
     if (!Number.isFinite(bpmNum) || bpmNum < 30 || bpmNum > 220) {
-      setError('Enter a heart rate between 30 and 220 bpm.')
+      setError(t('practice.biometric.error.bpm'))
       return
     }
     let hrvNum: number | null = null
     if (hrv.trim() !== '') {
       hrvNum = Number(hrv)
       if (!Number.isFinite(hrvNum) || hrvNum < 0) {
-        setError('HRV must be 0 or more (leave blank if unknown).')
+        setError(t('practice.biometric.error.hrv'))
         return
       }
     }
@@ -77,7 +79,7 @@ export default function BiometricCapture({
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? "Couldn't save the reading. Try again."
+          ? t('practice.biometric.error.save')
           : messageForError(err),
       )
       setSaving(false)
@@ -90,44 +92,47 @@ export default function BiometricCapture({
       <p className="biometric-intro">{intro}</p>
 
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="bio-bpm">Heart rate (bpm)</label>
+        <label htmlFor="bio-bpm">{t('practice.biometric.bpmLabel')}</label>
         <input
           id="bio-bpm"
           type="number"
           inputMode="numeric"
           min="30"
           max="220"
-          placeholder="e.g. 68"
+          placeholder={t('practice.biometric.bpmPlaceholder')}
           aria-describedby="bio-bpm-hint"
           value={bpm}
           onChange={(e) => setBpm(e.target.value)}
           autoFocus
         />
         <p id="bio-bpm-hint" className="muted field-hint">
-          Between 30 and 220 bpm
+          {t('practice.biometric.bpmHint')}
         </p>
 
-        <label htmlFor="bio-hrv">HRV in ms (optional, if you know it)</label>
+        <label htmlFor="bio-hrv">{t('practice.biometric.hrvLabel')}</label>
         <input
           id="bio-hrv"
           type="number"
           inputMode="numeric"
           min="0"
-          placeholder="e.g. 45"
+          placeholder={t('practice.biometric.hrvPlaceholder')}
           value={hrv}
+          aria-describedby="bio-hrv-hint"
           onChange={(e) => setHrv(e.target.value)}
         />
+        <p id="bio-hrv-hint" className="muted field-hint">
+          {t('practice.biometric.hrvHint')}
+        </p>
 
         <ErrorBanner message={error} />
 
         <p className="biometric-disclaimer">
-          A personal wellness signal you enter yourself — not a medical measurement
-          or diagnosis.
+          {t('practice.biometric.disclaimer')}
         </p>
 
         <div className="biometric-actions">
           <button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save reading'}
+            {saving ? t('practice.biometric.saving') : t('practice.biometric.save')}
           </button>
           {onSkip && (
             <button
@@ -136,7 +141,7 @@ export default function BiometricCapture({
               onClick={onSkip}
               disabled={saving}
             >
-              Skip
+              {t('practice.biometric.skip')}
             </button>
           )}
         </div>

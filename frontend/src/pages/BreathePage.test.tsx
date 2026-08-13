@@ -40,8 +40,8 @@ vi.mock('../services/biometrics', () => ({ biometricsService: { linkSession: vi.
 vi.mock('../services/moodLogs', () => ({
   moodLogService: { create: (...a: unknown[]) => mockMoodCreate(...a) },
 }))
-// A stable navigate spy so tests can assert where a finished sit routes (e.g. the onboarding
-// hatch → /spirit/choose). Reset per test where it matters.
+// A stable navigate spy so tests can assert where a finished sit routes. Reset per test
+// where it matters.
 const navigate = vi.fn()
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
@@ -55,7 +55,6 @@ vi.mock('../components/RewardOverlay', () => ({
     return null
   },
 }))
-vi.mock('../components/Spirit', () => ({ default: () => null }))
 vi.mock('../context/ToastContext', () => ({ useToast: () => ({ showToast: vi.fn() }) }))
 // Audio engines touch Web Audio APIs jsdom lacks — stub them out entirely.
 vi.mock('../lib/breathAudio', () => ({
@@ -352,8 +351,8 @@ describe('BreathePage — best-effort post-save stats', () => {
 // ── Guided first sit (onboarding §5) ──────────────────────────────────────────
 // `?guided=1` strips the page to a zero-config breath: Resonance, fixed short duration, no
 // pattern/pace/duration/sound config — just the orb, one gentle cue, and a single Begin. On
-// completion, if the onboarding hatch flag is set, the reward overlay's close routes to the
-// companion choose page (the "hatch") instead of the usual reflection / home path.
+// completion it closes the usual way (reward → optional reflection); the old onboarding
+// "hatch" routing to the companion choose page is gone (the Spirit UI is dormant).
 describe('BreathePage — guided first sit', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -396,7 +395,9 @@ describe('BreathePage — guided first sit', () => {
     await vi.waitFor(() => expect(rewardOverlayState.onClose).not.toBeNull())
   }
 
-  it('on completion with the hatch flag set, routes to /spirit/choose instead of the usual close', async () => {
+  it('even with a stale onboarding hatch flag set, never routes to the removed /spirit/choose', async () => {
+    // Users mid-onboarding when the Spirit UI was hidden may still carry the old flag —
+    // the close must ignore it (no dead-end navigation to an unrouted page).
     localStorage.setItem('onboarding.pendingHatch', '1')
     localStorage.setItem('onboarding.intent', 'calm')
 
@@ -405,12 +406,11 @@ describe('BreathePage — guided first sit', () => {
       rewardOverlayState.onClose!()
     })
 
-    // The hatch fires once: navigate to the choose page, and the flag is cleared.
-    expect(navigate).toHaveBeenCalledWith('/spirit/choose')
-    expect(localStorage.getItem('onboarding.pendingHatch')).toBeNull()
+    expect(navigate).not.toHaveBeenCalledWith('/spirit/choose')
+    await screen.findByText(/how was that/i) // the usual reflection modal
   })
 
-  it('without the hatch flag, a guided sit closes the usual way (reflection, not the hatch)', async () => {
+  it('a guided sit closes the usual way (reward → optional reflection)', async () => {
     await driveGuidedToReward()
     await act(async () => {
       rewardOverlayState.onClose!()
