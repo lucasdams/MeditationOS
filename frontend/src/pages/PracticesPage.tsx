@@ -535,7 +535,7 @@ export default function PracticesPage() {
       )}
 
       {noMatches && (
-        <p className="practices-empty" role="status">
+        <p className="empty-state" role="status">
           {t('practice.hub.noMatches', { query: query.trim() })}
         </p>
       )}

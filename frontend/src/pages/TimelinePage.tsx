@@ -270,7 +270,7 @@ export default function TimelinePage() {
   return (
     <main id="main-content" className="dashboard">
       <Link to="/" className="back-link">
-        {t('common.backDashboard')}
+        {t('common.backHome')}
       </Link>
       <header className="page-head">
         <h1>{t('tracking.timeline.title')}</h1>
