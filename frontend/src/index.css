@@ -10413,14 +10413,22 @@ details[open] .meditate-disclosure-summary::before {
   cursor: pointer;
 }
 
-.philo-chat-head {
+/* The chat header reads like the persona's picker card, scaled up: the round accent
+   chip beside a clear name + tradition. The `.dashboard` scoping out-specifies the
+   `.dashboard .page-head { display: block }` rule that would otherwise stack the avatar
+   above the name. */
+.dashboard .philo-chat-head {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--space-3);
 }
 
 .philo-chat-avatar {
   flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
 }
 
 .philo-thread {
