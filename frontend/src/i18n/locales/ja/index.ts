@@ -2,6 +2,7 @@
 // back to English at lookup time, so partial coverage always degrades gracefully.
 import { common } from './common'
 import { auth } from './auth'
+import { landing } from './landing'
 import { home } from './home'
 import { practice } from './practice'
 import { tracking } from './tracking'
@@ -14,6 +15,7 @@ import { prayer } from './prayer'
 export const JA: Record<string, string> = {
   ...common,
   ...auth,
+  ...landing,
   ...home,
   ...practice,
   ...tracking,

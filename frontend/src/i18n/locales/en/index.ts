@@ -3,6 +3,7 @@
 // SOURCE OF TRUTH: every value must stay byte-identical to the literal it replaced.
 import { common } from './common'
 import { auth } from './auth'
+import { landing } from './landing'
 import { home } from './home'
 import { practice } from './practice'
 import { tracking } from './tracking'
@@ -15,6 +16,7 @@ import { prayer } from './prayer'
 export const EN: Record<string, string> = {
   ...common,
   ...auth,
+  ...landing,
   ...home,
   ...practice,
   ...tracking,
