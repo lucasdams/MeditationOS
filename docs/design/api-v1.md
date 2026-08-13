@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Scheduling, Dashboard (stats + weekly review + consistency), Analytics, Spirit, Push, and Health — is built. This stays the living contract for further additions.
+**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Scheduling, Paths, Philosophers (AI chat), Prayers, Biometric readings, Dashboard (stats + weekly review + consistency), Analytics, Spirit, Push, Health, and an internal Admin surface — is built. This stays the living contract for further additions.
 
 ## Conventions
 
@@ -426,6 +426,48 @@ Plan future practice + export a single event as iCalendar.
 | GET | `/scheduled-sessions/{id}/ics` | ✓ | `text/calendar` download (an "add to calendar" event) |
 | DELETE | `/scheduled-sessions/{id}` | ✓ | `204` · `404` if not the caller's |
 
+## Paths ✅ implemented
+
+Short, day-by-day guided courses to settle into a practice. Enrollment is stored; each day's completion is **derived on read** from the user's real logged activity.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/paths` | ✓ | The course catalog with the caller's enrollment + per-day completion |
+| POST | `/paths/{path_id}/enroll` | ✓ | Enroll in a path → `201`; `404` unknown path; write-rate-limited |
+
+## Philosophers ✅ implemented (AI)
+
+A reflective chat with a chosen persona, backed by an LLM. Stateless: the client sends the bounded conversation history each turn and **nothing is stored server-side**.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/philosophers` | ✓ | The picker roster of personas |
+| POST | `/philosophers/{philosopher_id}/chat` | ✓ | `{ messages: [{ role: "user"\|"assistant", content }] }` → assistant reply; `403` for guests, `429` daily message cap, `404` unknown persona, `422` bad shape / over-length. History + per-message length are bounded; model output is treated as untrusted |
+
+## Prayers ✅ implemented
+
+A private prayer / intention log with an "answered" toggle (its own reflection surface, separate from journals).
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/prayers` | ✓ | `{ body }` → `201`; daily-create-capped |
+| GET | `/prayers` | ✓ | Caller's prayers, newest first; `?answered=true\|false` filter, `?limit`/`?offset` |
+| GET | `/prayers/{id}` | ✓ | `404` if not owned |
+| PATCH | `/prayers/{id}` | ✓ | `{ body?, answered? }` — edit the text or mark it answered |
+| DELETE | `/prayers/{id}` | ✓ | `204`; `404` if not owned |
+
+## Biometric readings ✅ implemented
+
+Optional heart-rate / HRV data points captured before or after a sit (or as a standalone resting entry) — a personal wellness signal, **not a clinical measurement**. See [ADR-0017](../decisions/0017-biometric-readings-data-model.md).
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/biometric-readings` | ✓ | `{ context, bpm, hrv_ms?, source?, measured_at, session_id?, client_token? }` → `201`; `bpm` 30–220; idempotent per `client_token`; daily-create-capped |
+| GET | `/biometric-readings` | ✓ | Caller's readings, newest first; `?days`/`?limit`/`?offset` |
+| GET | `/biometric-readings/delta` | ✓ | Average pre→post change around sits (the calming signal); `?days=` windows it |
+| PATCH | `/biometric-readings/{id}/session` | ✓ | Link/relink a reading to one of the caller's sessions; `404` if either isn't owned |
+| DELETE | `/biometric-readings/{id}` | ✓ | `204`; `404` if not owned |
+
 ## Push ✅ implemented
 
 Web Push subscriptions (provider-optional — no-ops without VAPID keys; see [notifications](notifications.md)).
@@ -441,6 +483,21 @@ Web Push subscriptions (provider-optional — no-ops without VAPID keys; see [no
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET | `/health` | — | Liveness probe → `{ "status": "ok" }` (DB-readiness check planned) |
+
+## Admin ✅ implemented (internal)
+
+An internal operator surface, **not part of the user-facing product**. Every route is gated by `require_admin` (default-deny; an allowlist via `ADMIN_EMAILS`) and returns `403` for non-admins. Reads are metadata / counts only — **never user content** (no journal/prayer/session text). Privileged mutations are written to the audit trail; an admin cannot disable or delete themselves.
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/admin/metrics` | admin | Aggregate business metrics across all users (counts / sums) |
+| GET | `/admin/users` | admin | Paginated user list; `?q=` search over email/username |
+| GET | `/admin/users/{id}` | admin | One account summary — metadata, counts, last activity (never content) |
+| POST | `/admin/users/{id}/resend-verification` | admin | Re-send the email-verification link → `202` (audited) |
+| POST | `/admin/users/{id}/disable` | admin | Suspend an account (blocks auth; can't disable self); audited |
+| POST | `/admin/users/{id}/enable` | admin | Restore a disabled account; audited |
+| DELETE | `/admin/users/{id}` | admin | Permanently delete an account; audited |
+| GET | `/admin/audit` | admin | The audit trail, newest-first (paginated) |
 
 ## Out of scope for V1
 
