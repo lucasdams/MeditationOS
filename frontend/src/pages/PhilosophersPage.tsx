@@ -164,7 +164,7 @@ export default function PhilosophersPage() {
   if (!selected) {
     return (
       <main id="main-content" className="dashboard philosophers">
-        <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+        <Link to="/" className="back-link">{t('common.backHome')}</Link>
         <header className="page-head">
           <h1>{t('philosophers.title')}</h1>
           <p className="page-subtitle">{t('philosophers.subtitle')}</p>

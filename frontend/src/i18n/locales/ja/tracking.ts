@@ -322,8 +322,10 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.month.rowSessions': 'セッション',
   'tracking.analytics.month.rowDays': 'プラクティスした日数',
   'tracking.analytics.month.unitMin': '分',
-  'tracking.analytics.month.unitSessions': 'セッション',
-  'tracking.analytics.month.unitDays': '日',
+  'tracking.analytics.month.unitSessions_one': 'セッション',
+  'tracking.analytics.month.unitSessions_other': 'セッション',
+  'tracking.analytics.month.unitDays_one': '日',
+  'tracking.analytics.month.unitDays_other': '日',
   'tracking.analytics.month.note': '今月のこれまでを、先月ひと月と比べています{noPrev}。',
   'tracking.analytics.month.noPrev': '（先月はまだプラクティスがありません）',
   // Charts
