@@ -141,6 +141,12 @@ export const settings: Record<string, string> = {
   'settings.phase.night': '夜',
   'settings.sounds': 'インターフェースの音（操作したときの、そっとしたクリック音）',
 
+  // プライバシー（匿名の利用状況分析のオプトアウト）
+  'settings.privacy.heading': 'プライバシー',
+  'settings.privacy.desc':
+    'MeditationOS は、何が役立つかを把握するため、ごく少数の匿名・非個人的な利用イベント（「セッションが完了した」など）のみを記録します。日記の内容・気分・メール・身元は一切記録しません。ブラウザの「トラッキング拒否（Do Not Track）」も尊重します。',
+  'settings.privacy.toggle': '匿名の利用状況分析を共有する',
+
   // データ（書き出し・削除）
   'settings.data.heading': 'あなたのデータ',
   'settings.data.desc': 'アカウントを JSON で書き出すか、すべてのデータごと完全に削除できます。',

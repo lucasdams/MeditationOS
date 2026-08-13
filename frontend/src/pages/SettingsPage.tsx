@@ -9,6 +9,7 @@ import PushToggle from '../components/PushToggle'
 import QuestPicker from '../components/QuestPicker'
 import { SEASON_PREFS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
+import { analyticsOptedOut, setAnalyticsOptOut } from '../lib/analytics'
 import { LOCALES, LOCALE_LABEL, setLocale, useT, fmtDate, fmtTime, type Locale } from '../i18n'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
@@ -82,6 +83,8 @@ export default function SettingsPage() {
   const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [reminderOk, setReminderOk] = useState(false)
+  // Privacy: local (per-browser) opt-out of the anonymous usage analytics.
+  const [analyticsOff, setAnalyticsOff] = useState(analyticsOptedOut())
   const [savingReminder, setSavingReminder] = useState(false)
   const [summaryEnabled, setSummaryEnabled] = useState(user?.weekly_summary_enabled ?? false)
   const [summaryDay, setSummaryDay] = useState(user?.weekly_summary_day ?? 1)
@@ -643,6 +646,23 @@ export default function SettingsPage() {
             {savingReminder ? t('common.saving') : t('settings.reminders.submit')}
           </button>
         </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>{t('settings.privacy.heading')}</h2>
+        <p className="muted">{t('settings.privacy.desc')}</p>
+        <label className="settings-check">
+          <input
+            type="checkbox"
+            checked={!analyticsOff}
+            onChange={(e) => {
+              const on = e.target.checked
+              setAnalyticsOptOut(!on)
+              setAnalyticsOff(!on)
+            }}
+          />
+          {t('settings.privacy.toggle')}
+        </label>
       </section>
 
       <section className="settings-section">

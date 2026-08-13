@@ -141,6 +141,12 @@ export const settings: Record<string, string> = {
   'settings.phase.night': 'night',
   'settings.sounds': 'Interface sounds (a soft tick when you tap controls)',
 
+  // Privacy (anonymous usage analytics opt-out)
+  'settings.privacy.heading': 'Privacy',
+  'settings.privacy.desc':
+    'MeditationOS records a few anonymous, non-personal usage events (like “a session was completed”) to see what helps — never your journal text, moods, emails, or identity. We also honor your browser’s Do Not Track.',
+  'settings.privacy.toggle': 'Share anonymous usage analytics',
+
   // Your data (export / delete)
   'settings.data.heading': 'Your data',
   'settings.data.desc': 'Download your account as JSON, or permanently delete it and all its data.',
