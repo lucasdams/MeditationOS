@@ -360,7 +360,7 @@ export default function SettingsPage() {
 
   return (
     <main id="main-content" className="settings">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <h1>{t('settings.title')}</h1>
 
       {user.is_guest && (

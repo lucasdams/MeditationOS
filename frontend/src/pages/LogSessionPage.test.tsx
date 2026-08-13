@@ -67,9 +67,10 @@ describe('LogSessionPage', () => {
     expect(screen.getByText(/record a meditation/i)).toBeInTheDocument()
   })
 
-  it('renders a back link to the dashboard', () => {
+  it('renders a back link to the home dashboard', () => {
     renderPage()
-    const link = screen.getByRole('link', { name: /dashboard/i })
+    // The crumb is labelled "← Home" (matching the nav), and still points at the dashboard route.
+    const link = screen.getByRole('link', { name: /home/i })
     expect(link).toHaveAttribute('href', '/')
   })
 
