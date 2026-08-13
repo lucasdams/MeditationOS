@@ -19,6 +19,8 @@ export interface User {
   // Daily-activity quests the user opted into (≥3 of QUEST_FEATURES). null until
   // they choose — the client shows a first-run picker while null.
   quest_features: string[] | null
+  // The user's small daily practice goal in minutes (the daily-goal ring target).
+  daily_goal_minutes: number
   created_at: string
 }
 
@@ -103,12 +105,9 @@ export interface DashboardStats {
   gratitude_count: number
   streak_bonus_xp: number
   daily_quests: DailyQuest[]
-}
-
-export interface ActivityDay {
-  date: string
-  seconds: number
-  all_quests: boolean // all three daily quests completed that day
+  // The daily-goal ring: the user's target and today's practiced minutes (local day).
+  daily_goal_minutes: number
+  today_minutes: number
 }
 
 export interface TypeBreakdown {
@@ -190,10 +189,16 @@ export interface InsightsResponse {
   needs_more_data: boolean
 }
 
-export interface ActivityCalendar {
+export interface ConsistencyDay {
+  date: string
+  minutes: number // whole practice minutes that day
+  sessions: number // how many sessions that day
+}
+
+export interface ConsistencyCalendar {
   start: string
   end: string
-  days: ActivityDay[] // sparse — only days with practice
+  days: ConsistencyDay[] // sparse — only days with practice, over ~12 weeks
 }
 
 export type GratitudeCategory =
@@ -477,10 +482,66 @@ export interface JournalPromptResponse {
   contextual: boolean // false when we fell back to a generic prompt
 }
 
+// An AI reflection on one journal entry: a short reflective note + one gentle
+// follow-up question. `source` says whether the model or the curated fallback wrote it.
+export interface AiReflection {
+  id: string
+  journal_id: string
+  reflection_text: string
+  followup_question: string
+  source: 'ai' | 'fallback'
+  created_at: string
+}
+
 export interface JournalCreate {
   body: string
   mood?: Mood | null
   session_id?: string | null
+}
+
+// A selectable historical thinker for the "chat with a philosopher" feature. The
+// system prompt lives server-side and is never sent to the client.
+export interface PhilosopherSummary {
+  id: string
+  name: string
+  tradition: string
+  blurb: string
+  // Short, first-person conversation starters in the persona's theme, shown as tappable
+  // chips on an empty chat so a fresh conversation is an invitation, not a blank page.
+  openers: string[]
+}
+
+// One turn in a philosopher chat. The client holds the whole conversation (the chat is
+// stateless server-side) and sends the bounded history each turn.
+export interface PhilosopherTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+// The guide's reply. `source` says whether the model or the curated fallback wrote it.
+export interface PhilosopherChatResponse {
+  reply: string
+  source: 'ai' | 'fallback'
+}
+
+// A prayer, intention, or blessing — a written entry the user can revisit and
+// optionally mark as answered. Non-denominational: the entry is just free text.
+export interface Prayer {
+  id: string
+  body: string
+  // ISO timestamp when the user marked it answered; null while it's still open.
+  answered_at: string | null
+  created_at: string
+}
+
+export interface PrayerCreate {
+  body: string
+}
+
+export interface PrayerUpdate {
+  body?: string
+  // true → mark answered (stamps answered_at); false → clear it (back to open).
+  answered?: boolean
 }
 
 export interface MoodLog {

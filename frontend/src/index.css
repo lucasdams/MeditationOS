@@ -712,10 +712,33 @@ a:hover { color: var(--accent-hover); }
   border: 1px solid var(--border-strong);
 }
 
-/* A distinct soft color per destination. */
+/* Top-level nav items (Home / Practice / Progress) share one calm treatment: a quiet
+   secondary-ink label + icon with no heavy border, a soft neutral wash on hover, and the
+   app's soft accent pill only on the CURRENT destination. The colourful per-destination
+   tints live in the dropdowns, so the top bar itself stays clean and unified. */
 .app-nav a.nav-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.app-nav a.nav-home:hover {
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+  filter: none;
+  box-shadow: none;
+}
+
+/* Current destination — the soft accent pill (no ring), reused for whichever top-level
+   item is active. */
+.app-nav a.nav-home.active {
   background: var(--nav-home-bg);
   color: var(--nav-home-text);
+  font-weight: 600;
+  box-shadow: none;
 }
 
 /* Meditate / Breathe / Gratitude / Journal / Candle-gazing moved off the flat nav into the
@@ -925,22 +948,31 @@ a:hover { color: var(--accent-hover); }
   margin: 0;
   width: auto;
   min-height: 2.4rem;
-  padding: 0.55rem 0.85rem;
+  padding: 0.4rem 0.8rem;
   border-radius: var(--radius-control);
   font-size: var(--text-sm);
   font-weight: 500;
-  background: var(--nav-more-bg);
-  color: var(--nav-more-text);
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 0 0 1px var(--nav-more-text), var(--shadow-card);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
   cursor: pointer;
 }
 
 .nav-menu-btn:hover {
-  filter: brightness(0.97);
-  transform: none;
-  /* Keep the colour ring on hover (don't let a glow replace it). */
-  box-shadow: 0 0 0 1px var(--nav-more-text), var(--shadow-card);
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+  filter: none;
+  box-shadow: none;
+}
+
+/* Current destination (Practice on /practices) or an open dropdown (Progress) — the same
+   soft accent pill as the active Home item, so the three read as one unified nav. */
+.nav-menu-btn.active,
+.nav-menu-btn[aria-expanded='true'] {
+  background: var(--nav-home-bg);
+  color: var(--nav-home-text);
+  font-weight: 600;
 }
 
 /* The caret flips up when its dropdown is open. */
@@ -1179,7 +1211,11 @@ a:hover { color: var(--accent-hover); }
 }
 
 .settings h1 {
+  /* Match the standard sub-page title (`.page-head h1`) so Settings doesn't read a
+     size larger than its siblings — it renders as a bare h1 without the page-head wrapper. */
   margin: 0.5rem 0 1.5rem;
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
 }
 
 .settings-section {
@@ -1988,6 +2024,147 @@ a:hover { color: var(--accent-hover); }
   overflow-wrap: anywhere;
 }
 
+/* ── Prayer journal ─────────────────────────────────────────────────────────
+   Reuses the journal composer/list/entry shells; only the answered state, the
+   answered toggle, and the filter tabs are prayer-specific. Kept calm and quiet. */
+.prayer-filter {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.prayer-filter-tab {
+  width: auto;
+  margin: 0;
+  padding: 0.3rem 0.85rem;
+  font-size: var(--text-sm);
+}
+
+/* An answered prayer softens: a calm accent rail + gently faded body, so it reads as
+   settled rather than shouting. Not loud — just a quiet visual "held". */
+.prayer-entry--answered {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface));
+}
+
+.prayer-entry--answered .journal-body {
+  color: var(--text-secondary);
+}
+
+.prayer-answered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* A quiet text button — discoverable but never a loud primary CTA. */
+.prayer-answer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: auto;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.prayer-answer-toggle:hover:not(:disabled) {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.prayer-answer-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* AI reflection — a quiet affordance and an even quieter card. No flashy AI
+   branding: a small sparkles glyph, soft accent tint, calm copy. */
+.reflection-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.35rem 0 0.1rem;
+}
+
+.reflect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  margin: 0;
+  padding: 0.28rem 0.7rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reflect-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.reflect-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.reflection-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.reflection-card {
+  margin: 0.4rem 0 0.15rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface));
+}
+
+.reflection-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.reflection-text {
+  margin: 0.3rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.reflection-question {
+  margin: 0.3rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  font-style: italic;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
 .journal-search {
   width: 100%;
   margin-bottom: 0.25rem;
@@ -2275,7 +2452,7 @@ form > button[type='submit'] {
 /* Solid (default-fill) buttons get the lift on hover. The :not() guards exclude the
    app's ghost / link / chip buttons, which set their own transparent background and
    shouldn't grow an accent lift. `.btn` opts out too — it owns its own neutral hover. */
-button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link):not(.app-user-trigger):not(.app-user-menu-item):not(.path-card--start):not(.practices-search-clear):not(.spirit-choose-roll-clear) {
+button:hover:not(:disabled):not(.btn):not(.link-button):not(.link-danger):not(.link-neutral):not(.resurface-btn):not(.show-more-toggle):not(.grat-more):not(.memory-close):not(.journal-nudge-dismiss):not(.soundscape-chip):not(.nav-menu-btn):not(.field-clear):not(.meditate-reset):not(.back-link):not(.mood-modal-skip):not(.mood-entry-link):not(.app-user-trigger):not(.app-user-menu-item):not(.path-card--start):not(.practices-search-clear):not(.spirit-choose-roll-clear):not(.prayer-answer-toggle) {
   transform: translateY(-1px);
   box-shadow: var(--glow-accent-hover);
   filter: brightness(1.04);
@@ -2935,10 +3112,16 @@ button.today-action:disabled {
   font-size: var(--text-sm);
   font-weight: 500;
   text-decoration: none;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .back-link:hover {
   color: var(--accent);
+  /* A whisper of leftward travel — a quiet "go back" affordance that matches the
+     app's snappy micro-interactions, applied consistently on every page's crumb. */
+  transform: translateX(-2px);
 }
 
 /* A calmer page header: a smaller, softer title with a one-line subtitle, instead of
@@ -6728,6 +6911,173 @@ button.today-action:disabled {
   height: 11px;
 }
 
+/* ── Daily-goal ring (dashboard) ─────────────────────────────────────────── */
+.dashboard-goal {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.goal-ring-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.goal-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+}
+
+.goal-ring-track {
+  stroke: var(--heatmap-cell-empty);
+}
+
+.goal-ring-progress {
+  stroke: var(--accent);
+  /* Gentle fill animation as progress lands; disabled under reduced motion below. */
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+/* Soft "met" state — a calm colour shift to the success hue, never confetti. */
+.goal-ring-card.met .goal-ring-progress {
+  stroke: var(--success-text);
+}
+
+.goal-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: var(--text-body, var(--text));
+}
+
+.goal-ring-center b {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.goal-ring-center small {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goal-ring-check {
+  color: var(--success-text);
+}
+
+.goal-ring-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.goal-ring-title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.goal-ring-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.goal-ring-card.met .goal-ring-sub {
+  color: var(--success-text);
+}
+
+.goal-ring-adjust {
+  font-size: var(--text-xs);
+  margin-top: 0.15rem;
+}
+
+/* ── Consistency heatmap (analytics) — ~12 weeks, shaded by daily minutes ─── */
+.consistency {
+  margin-top: 1.5rem;
+}
+
+.consistency h2 {
+  font-size: var(--text-base);
+}
+
+.consistency-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.consistency-grid {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.consistency-week {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.consistency-cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--heatmap-cell-empty); /* lvl-0 / no practice */
+  box-shadow: inset 0 0 0 1px var(--heatmap-cell-edge);
+}
+
+/* A calm 4-step ramp: the accent mixed over the empty cell in rising strength, so each
+   step clears the last and lvl-4 is the full accent. Themed tokens keep it right in both
+   light and dark. */
+.consistency-cell.lvl-1 {
+  background: color-mix(in srgb, var(--accent) 25%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-2 {
+  background: color-mix(in srgb, var(--accent) 45%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-3 {
+  background: color-mix(in srgb, var(--accent) 70%, var(--heatmap-cell-empty));
+}
+.consistency-cell.lvl-4 {
+  background: var(--accent);
+}
+
+.consistency-cell.out {
+  background: transparent;
+  box-shadow: none;
+}
+
+.consistency-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.consistency-key {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.consistency-key .consistency-cell {
+  width: 11px;
+  height: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-ring-progress {
+    transition: none;
+  }
+}
+
 /* Gratitude "Recent" reuses the journal card look, minus the composer divider. */
 .grat-log {
   list-style: none;
@@ -6985,6 +7335,22 @@ button.today-action:disabled {
 
 .grat-journal h2 {
   font-size: var(--text-base);
+}
+
+/* ── Sub-page section headers ────────────────────────────────────────────────
+   One calm, consistent divider for the content sub-pages: a small text-secondary
+   label with a thin accent bar. Previously only Analytics + Settings carried the
+   bar while "Recent" / "Past reflections" / "Upcoming" were plain (and mismatched
+   on colour). Unified here so every sub-page section reads as the same kind of
+   header. The gamified home hub (quests, consistency) keeps its own denser voice. */
+.analytics-section h2,
+.settings-section h2,
+.journal-list-title,
+.schedule-upcoming-title,
+.grat-journal h2 {
+  color: var(--text-secondary);
+  padding-left: 0.6rem;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 /* Breathing pacer */
@@ -8014,6 +8380,43 @@ details[open] .meditate-disclosure-summary::before {
     background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
     box-shadow: inset 0.2rem 0 0 var(--menu-ink);
   }
+  /* Practice / Progress collapsible group buttons (replace the old flat heading + list). */
+  .nav-mobile-group {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  .nav-mobile-group:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+  }
+  .nav-mobile-group-label {
+    flex: 1;
+  }
+  .nav-mobile-group-caret {
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+  }
+  .nav-mobile-group[aria-expanded='true'] .nav-mobile-group-caret {
+    transform: rotate(180deg);
+  }
+  /* The expanded group's links, slightly indented so they read as belonging to the group. */
+  .nav-mobile-group-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.15rem 0 0.35rem 0.6rem;
+  }
 }
 
 .settings-theme-now {
@@ -8649,10 +9052,18 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* Gentle empty state when a query matches nothing. */
-.practices-empty {
-  margin: 1.5rem 0;
+/* Shared empty-state line ("nothing yet") for every data view. A calm, centred note with
+   generous breathing room so an empty list reads as intentional quiet space, not a stray
+   sentence. Used by the shared <EmptyState> building block and the Practices no-matches note. */
+.empty-state {
+  margin: 1.75rem auto 0;
+  max-width: 36ch;
+  padding: 1.25rem 1rem;
+  text-align: center;
   color: var(--text-muted);
   font-size: var(--text-sm);
+  line-height: 1.6;
+  text-wrap: balance;
 }
 
 /* Each category is its own BLOCK, not one uniform grid: a real header (accent icon chip + title +
@@ -9911,4 +10322,353 @@ details[open] .meditate-disclosure-summary::before {
 :root:not([data-theme='light']):not([data-theme='dark']) .goal-checkin.done {
   color: var(--success-text);
   background: #25301c;
+}
+
+/* ── In-app feedback ─────────────────────────────────────────────────────── */
+.feedback-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: min(92vw, 30rem);
+}
+.feedback-modal textarea {
+  width: 100%;
+  resize: vertical;
+}
+.feedback-count {
+  margin: 0;
+  text-align: right;
+  font-size: var(--text-xs);
+}
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Admin feedback inbox */
+.admin-feedback-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.admin-feedback-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+}
+.admin-feedback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+.admin-feedback-cat {
+  text-transform: capitalize;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--text-xs);
+}
+.admin-feedback-msg {
+  margin: 0;
+  white-space: pre-wrap;
+/* ── Chat with a philosopher ──────────────────────────────────────────────────
+   The picker reuses .practices-grid + .practice-card; only the small deltas below are
+   new (the card is a <button> here, and carries a tradition line). The chat view is a
+   simple thread + composer, styled to sit inside the app's calm card system. */
+.philo-picker-heading {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* The card is an interactive <button> here (picks a persona) rather than a link, so
+   normalise the button defaults back to the shared .practice-card look. */
+.philo-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Sharpen the persona cards beyond the shared practice-card base so they read as
+   distinct "guide" cards: a soft-filled round accent chip for the icon, the tradition
+   as a small pill, and a gentle lift + accent ring on hover/focus. */
+.philo-card .practice-card-icon {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
+}
+
+.philo-card-tradition {
+  display: inline-block;
+  width: fit-content;
+  margin: 0.15rem 0;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+}
+
+.philo-card:hover,
+.philo-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.philo-disclaimer {
+  margin-top: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* ── Chat view ──────────────────────────────────────────────────────────────── */
+.philo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* The chat header reads like the persona's picker card, scaled up: the round accent
+   chip beside a clear name + tradition. The `.dashboard` scoping out-specifies the
+   `.dashboard .page-head { display: block }` rule that would otherwise stack the avatar
+   above the name. */
+.dashboard .philo-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+.philo-chat-avatar {
+  flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
+}
+
+.philo-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  min-height: 40vh;
+}
+
+/* Before the conversation starts, don't reserve the tall thread height — let the intro
+   and the starters sit together near the top instead of being pushed apart. */
+.philo-thread--empty {
+  min-height: 0;
+  margin-bottom: var(--space-2);
+}
+
+.philo-thread--empty .philo-intro {
+  padding-bottom: var(--space-2);
+}
+
+.philo-intro {
+  max-width: 42ch;
+  align-self: center;
+  text-align: center;
+  padding: var(--space-4) 0;
+  line-height: 1.5;
+}
+
+/* Conversation starters shown on an empty chat — tappable first-person openers (the
+   persona's own, plus a personalized "today's practice" one). They sit between the
+   thread and the composer; tapping drops the text into the composer to send or edit. */
+.philo-openers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.philo-openers-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.philo-openers-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.philo-opener {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.3rem;
+  padding: 0.5rem 0.9rem;
+  text-align: left;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.philo-opener:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+/* The personalized "today's practice" opener — a soft accent tint + the spark icon, so it
+   reads as the one that's about *you*, distinct from the persona's generic starters. */
+.philo-opener--context {
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+
+.philo-opener--context:hover {
+  color: var(--accent-hover);
+}
+
+.philo-opener--context svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.philo-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 85%;
+}
+
+.philo-msg--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.philo-msg--guide {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.philo-msg-who {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.philo-msg-text {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.philo-msg--user .philo-msg-text {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--text-primary);
+  border-bottom-right-radius: var(--radius-control);
+}
+
+.philo-msg--guide .philo-msg-text {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+  border-bottom-left-radius: var(--radius-control);
+}
+
+.philo-typing {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.philo-notice {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.philo-composer {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  margin-top: var(--space-4);
+}
+
+/* An intentional-looking composer: a rounded, bordered input that lifts to an accent
+   ring on focus (rather than the browser-default textarea look). */
+.philo-composer textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 3rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.5;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.philo-composer textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.philo-composer textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.philo-send {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+@media (max-width: 32rem) {
+  .philo-composer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .philo-send {
+    justify-content: center;
+  }
 }

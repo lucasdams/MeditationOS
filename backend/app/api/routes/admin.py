@@ -16,8 +16,16 @@ from app.core.exceptions import AdminSelfActionError, UserNotFoundError
 from app.models.user import User
 from app.schemas.admin import AdminMetrics
 from app.schemas.admin_users import AdminUserDetail, AdminUserList
+from app.schemas.analytics_event import AnalyticsEventSummary
 from app.schemas.audit import AuditEntry, AuditList
-from app.services import admin_service, admin_users_service, audit_service
+from app.schemas.feedback import AdminFeedbackList
+from app.services import (
+    admin_service,
+    admin_users_service,
+    analytics_event_service,
+    audit_service,
+    feedback_service,
+)
 
 router = APIRouter(
     prefix="/admin",
@@ -33,6 +41,17 @@ _USER_NOT_FOUND = not_found("User not found")
 def get_metrics(db: DBSession = Depends(get_db)) -> AdminMetrics:
     """Aggregate business metrics across the whole user base (counts/sums only)."""
     return admin_service.get_admin_metrics(db)
+
+
+@router.get("/analytics/summary", response_model=AnalyticsEventSummary)
+def get_analytics_summary(
+    db: DBSession = Depends(get_db),
+    days: int = Query(default=30, ge=1, le=90),
+) -> AnalyticsEventSummary:
+    """Aggregate product-analytics snapshot over the last `days`: total events, counts per
+    event name, and distinct active users per day. Aggregate COUNTS ONLY — never per-user
+    event dumps, identifiers, or props."""
+    return analytics_event_service.get_summary(db, days=days)
 
 
 # ── User management / support (metadata-only reads; audited writes) ─────────
@@ -141,3 +160,19 @@ def list_audit(
     return AuditList(
         entries=[AuditEntry.model_validate(r) for r in rows], total=total
     )
+
+
+# ── Feedback inbox (read) ──────────────────────────────────────────────────
+
+
+@router.get("/feedback", response_model=AdminFeedbackList)
+def list_feedback(
+    db: DBSession = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> AdminFeedbackList:
+    """Read the in-app feedback inbox, newest-first (paginated). Unlike the metadata-only
+    metrics/user views, this surfaces the message the user chose to send us, plus the
+    sender's email (null if that account was since deleted) so the owner can follow up."""
+    entries, total = feedback_service.list_feedback(db, limit=limit, offset=offset)
+    return AdminFeedbackList(entries=entries, total=total)

@@ -117,7 +117,7 @@ export default function SchedulePage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.schedule.title')}</h1>
         <p className="page-subtitle">

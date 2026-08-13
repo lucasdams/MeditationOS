@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, HandHeart, NotebookPen } from 'lucide-react'
+import { Brain, HandHeart, NotebookPen, Sparkles } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
+import { track } from '../lib/analytics'
 import { sessionService } from '../services/sessions'
 import { dashboardService } from '../services/dashboard'
 import { MOOD_COLORS, MOOD_META } from '../lib/colors'
@@ -15,7 +16,7 @@ import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
 import { fmtDate, useT } from '../i18n'
-import type { DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
+import type { AiReflection, DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
 const ZERO_STATS: DashboardStats = {
@@ -23,6 +24,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // Derive the journal mood palette from the shared MOOD_META so the composer, the
@@ -125,6 +127,19 @@ export default function JournalPage() {
     when: string
   } | null>(null)
   const [resurfacing, setResurfacing] = useState(false)
+  // AI reflections, one per entry, fetched on tap. The POST is create-or-return-
+  // existing, so tapping Reflect on an already-reflected entry just surfaces it.
+  const [reflections, setReflections] = useState<Record<string, AiReflection>>({})
+  const [reflectingId, setReflectingId] = useState<string | null>(null)
+  // One quiet inline notice at a time, on the entry that was tapped.
+  const [reflectNotice, setReflectNotice] = useState<{
+    id: string
+    kind: 'error' | 'cap' | 'guest'
+  } | null>(null)
+  // Once the daily generation cap is hit (429), further Reflect taps are disabled.
+  const [reflectCapHit, setReflectCapHit] = useState(false)
+  // Guests can't generate reflections (403). Once told, disable further Reflect taps.
+  const [reflectGuestBlocked, setReflectGuestBlocked] = useState(false)
   // Inline editing of an existing entry (body + mood).
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editBody, setEditBody] = useState('')
@@ -226,6 +241,7 @@ export default function JournalPage() {
         mood: mood || null,
         session_id: sessionId || null,
       })
+      track('journal_created')
       setEntries((prev) => [created, ...(prev ?? [])])
       setBody('')
       setMood('')
@@ -241,6 +257,29 @@ export default function JournalPage() {
       setError(t('tracking.journal.saveError'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function reflectOn(id: string) {
+    setReflectingId(id)
+    setReflectNotice(null)
+    try {
+      const r = await journalService.reflect(id)
+      setReflections((prev) => ({ ...prev, [id]: r }))
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        setReflectCapHit(true)
+        setReflectNotice({ id, kind: 'cap' })
+      } else if (err instanceof ApiError && err.status === 403) {
+        // Guest account — reflections are for saved accounts. Gentle note, no retry.
+        setReflectGuestBlocked(true)
+        setReflectNotice({ id, kind: 'guest' })
+      } else {
+        // The button stays put, so tapping Reflect again is the retry.
+        setReflectNotice({ id, kind: 'error' })
+      }
+    } finally {
+      setReflectingId(null)
     }
   }
 
@@ -330,7 +369,7 @@ export default function JournalPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.journal.title')}</h1>
         <p className="page-subtitle">
@@ -571,6 +610,7 @@ export default function JournalPage() {
         {entries?.map((j) => {
           const linked = j.session_id ? sessionById.get(j.session_id) : undefined
           const editing = editingId === j.id
+          const reflection = reflections[j.id]
           return (
             <article
               key={j.id}
@@ -668,6 +708,41 @@ export default function JournalPage() {
                   <Brain size={15} strokeWidth={1.75} aria-hidden="true" /> {t('tracking.journal.on', { session: sessionLabel(linked) })}
                 </p>
               )}
+              {!editing &&
+                (reflection ? (
+                  <div className="reflection-card">
+                    <span className="reflection-kind">
+                      <Sparkles size={14} strokeWidth={1.75} aria-hidden="true" />
+                      {t('tracking.journal.reflect.title')}
+                    </span>
+                    <p className="reflection-text">{reflection.reflection_text}</p>
+                    <p className="reflection-question">{reflection.followup_question}</p>
+                  </div>
+                ) : (
+                  <div className="reflection-row">
+                    <button
+                      type="button"
+                      className="reflect-btn"
+                      aria-label={t('tracking.journal.reflect.aria')}
+                      disabled={reflectingId === j.id || reflectCapHit || reflectGuestBlocked}
+                      onClick={() => reflectOn(j.id)}
+                    >
+                      <Sparkles size={14} strokeWidth={1.75} aria-hidden="true" />
+                      {reflectingId === j.id
+                        ? t('tracking.journal.reflect.loading')
+                        : t('tracking.journal.reflect.button')}
+                    </button>
+                    {reflectNotice?.id === j.id && (
+                      <span className="reflection-note" role="status">
+                        {reflectNotice.kind === 'cap'
+                          ? t('tracking.journal.reflect.capReached')
+                          : reflectNotice.kind === 'guest'
+                            ? t('tracking.journal.reflect.guestBlocked')
+                            : t('tracking.journal.reflect.error')}
+                      </span>
+                    )}
+                  </div>
+                ))}
             </article>
           )
         })}

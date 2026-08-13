@@ -24,6 +24,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // The meditation style picker was dropped; only the structural meditation-vs-breathing
@@ -149,7 +150,7 @@ export default function LogSessionPage() {
 
   return (
     <main id="main-content" className="dashboard log-session">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.logSession.title')}</h1>
         <p className="page-subtitle">

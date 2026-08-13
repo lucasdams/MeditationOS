@@ -73,6 +73,15 @@ export const settings: Record<string, string> = {
   'settings.missions.feature.gratitude': 'Gratitude',
   'settings.missions.feature.journal': 'Journal',
 
+  // Daily goal
+  'settings.goal.heading': 'Daily goal',
+  'settings.goal.desc':
+    'A small daily practice target — the ring on your home fills toward it. 1–120 minutes.',
+  'settings.goal.label': 'Minutes per day',
+  'settings.goal.ok': 'Daily goal saved.',
+  'settings.goal.submit': 'Save goal',
+  'settings.goal.err.range': 'Choose between 1 and 120 minutes.',
+
   // Practice reminders
   'settings.reminders.heading': 'Practice reminders',
   'settings.reminders.desc':
@@ -131,6 +140,33 @@ export const settings: Record<string, string> = {
   'settings.phase.dusk': 'dusk',
   'settings.phase.night': 'night',
   'settings.sounds': 'Interface sounds (a soft tick when you tap controls)',
+
+  // Privacy (anonymous usage analytics opt-out)
+  'settings.privacy.heading': 'Privacy',
+  'settings.privacy.desc':
+    'MeditationOS records a few anonymous, non-personal usage events (like “a session was completed”) to see what helps — never your journal text, moods, emails, or identity. We also honor your browser’s Do Not Track.',
+  'settings.privacy.toggle': 'Share anonymous usage analytics',
+
+  // Feedback (send a note to the owner)
+  'settings.feedback.heading': 'Feedback',
+  'settings.feedback.desc':
+    'Found a bug, have an idea, or just want to say hi? Send a note — it goes straight to the person who builds MeditationOS.',
+  'settings.feedback.open': 'Send feedback',
+  'settings.feedback.title': 'Send feedback',
+  'settings.feedback.categoryLabel': 'What kind of note?',
+  'settings.feedback.cat.idea': 'Idea',
+  'settings.feedback.cat.bug': 'Bug',
+  'settings.feedback.cat.praise': 'Praise',
+  'settings.feedback.cat.other': 'Other',
+  'settings.feedback.messageLabel': 'Your message',
+  'settings.feedback.placeholder': 'What’s on your mind?',
+  'settings.feedback.send': 'Send',
+  'settings.feedback.sending': 'Sending…',
+  'settings.feedback.cancel': 'Cancel',
+  'settings.feedback.close': 'Close',
+  'settings.feedback.sent': 'Thank you — your note is on its way. It helps a lot.',
+  'settings.feedback.emptyErr': 'Please write a short message.',
+  'settings.feedback.sendErr': 'Couldn’t send your feedback. Please try again.',
 
   // Your data (export / delete)
   'settings.data.heading': 'Your data',

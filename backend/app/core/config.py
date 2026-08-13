@@ -62,8 +62,20 @@ class Settings(BaseSettings):
     # this list is treated as an admin (matched case-insensitively). Migration-free and
     # matches the app's env-config ethos (CORS/SMTP/VAPID are all env). Empty = no admins.
     admin_emails: str = ""
-    # Anthropic API key for AI features (gratitude suggestions). Empty = curated fallback.
+    # AI provider selection for the two AI features (reflection coach + gratitude
+    # suggester). `llm_provider` is the PRIMARY provider; the other provider is tried
+    # as a secondary only when its key is configured. With neither key set, both
+    # features degrade to their curated fallback — the app works either way.
+    # "openai" | "anthropic".
+    llm_provider: str = "openai"
+    # OpenAI API key. Empty = OpenAI disabled (secondary/fallback path used).
+    openai_api_key: str = ""
+    # OpenAI model id (env-overridable). Defaults to GPT-5 nano.
+    openai_model: str = "gpt-5-nano"
+    # Anthropic API key for AI features. Empty = Anthropic disabled (fallback used).
     anthropic_api_key: str = ""
+    # Anthropic model id (env-overridable). Used when Anthropic is the active provider.
+    anthropic_model: str = "claude-haiku-4-5-20251001"
     # Web Push (VAPID). Both keys empty = push disabled (subscriptions still store, sends
     # no-op) — mirrors the email/AI provider-optional pattern. Generate with
     # `web-push generate-vapid-keys`. The public key is safe to expose to the client.
@@ -87,6 +99,11 @@ class Settings(BaseSettings):
     # ONLY once verification email delivery (SMTP_*) is live and confirmed, or you lock
     # out every unconfirmed user. Mirrors the provider-optional pattern (email/AI/push).
     require_email_verification: bool = False
+    # First-party product analytics (self-hosted event ingest). Kill switch: when False,
+    # POST /api/v1/events acknowledges (204) but stores nothing — so tracking can be shut
+    # off instantly via env without a deploy. Default True (privacy-first by design: the
+    # events table is allowlisted + PII-free, see app/schemas/analytics_event.py).
+    analytics_enabled: bool = True
     # Error monitoring (Sentry). Leave blank to disable — the app runs identically
     # without a DSN (provider-optional pattern, same as email/AI/push).
     sentry_dsn: str = ""

@@ -30,7 +30,7 @@ export function ErrorBanner({ message, id }: { message?: string | null; id?: str
 
 // A muted empty-state line ("No … yet"). Accepts text or richer children.
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="muted">{children}</p>
+  return <p className="empty-state">{children}</p>
 }
 
 // A load-error banner with a "Try again" action, for data-fetching views where a

@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Flame, Moon, Sprout, Star, Check, ArrowRight } from 'lucide-react'
 import { dashboardService } from '../services/dashboard'
-import { spiritService } from '../services/spirit'
 import { moodLogService } from '../services/moodLogs'
 import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
-import Spirit from '../components/Spirit'
 import EncouragementNote from '../components/EncouragementNote'
 import DailyReading from '../components/DailyReading'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
@@ -17,15 +15,14 @@ import GraduationCard, {
 import MoodCheckin from '../components/MoodCheckin'
 import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
-import CoinIcon from '../components/CoinIcon'
+import DailyGoalRing from '../components/DailyGoalRing'
 import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, type Activity } from '../lib/colors'
 import { RetryableError } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
 import { recommendedPractice } from '../lib/recommendation'
-import { roundOutFacet } from '../lib/spiritNeeds'
 import { useT } from '../i18n'
-import type { DashboardStats, Mood, PathSummary, SpiritState } from '../types'
+import type { DashboardStats, Mood, PathSummary } from '../types'
 
 // Where each daily-quest card deep-links — keyed by the backend quest key.
 const QUEST_LINKS: Record<string, string> = {
@@ -70,10 +67,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
-  // The home-screen spirit, fetched once here and shared: it drives both the top-line coin
-  // chip (its derived spendable balance) and the <Spirit/> companion below (passed as a prop,
-  // so the companion doesn't fire a second GET /spirit). null until loaded / on a quiet failure.
-  const [spirit, setSpirit] = useState<SpiritState | null>(null)
   // The user's enrolled-but-not-yet-finished path, if any — makes the Today CTA path-aware:
   // when set, the primary action becomes "Day N · {title}" launching the current day's
   // practice instead of the generic breathe CTA. null = not enrolled (or already finished, or a
@@ -115,13 +108,6 @@ export default function DashboardPage() {
   useEffect(() => {
     loadStats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    spiritService
-      .get()
-      .then((s) => setSpirit(s))
-      .catch(() => {}) // non-critical; the coin chip + companion simply stay hidden on failure
   }, [])
 
   // Path-aware CTA: pick the user's enrolled, not-yet-completed path (the first if several).
@@ -167,15 +153,10 @@ export default function DashboardPage() {
       {!stats && !error && <p>{loadingLine}</p>}
 
       {/* First-run orientation: leads the dashboard for genuinely new users, above the
-          tabs. Hidden once dismissed or once they've practiced. Also stood down for a
-          just-onboarded, still-pathless user (first sit done, no companion chosen yet) so the
-          companion's warm "hatch" invite leads instead of two competing get-started prompts. */}
-      {stats &&
-        !firstRunDismissed &&
-        shouldShowFirstRun(stats.session_count) &&
-        !(spirit?.path === null && stats.session_count >= 1) && (
-          <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
-        )}
+          tabs. Hidden once dismissed or once they've practiced. */}
+      {stats && !firstRunDismissed && shouldShowFirstRun(stats.session_count) && (
+        <FirstRunCard onDismiss={() => setFirstRunDismissed(true)} />
+      )}
 
       {/* Graduation depth (Phase 4): once a user has genuinely stuck around, a warm card
           resurfaces the advanced surfaces (HRV measurement, full analytics, full customization)
@@ -189,36 +170,31 @@ export default function DashboardPage() {
           and a quiet "this week" glance with a link out to full analytics at the foot. */}
       {stats && (
         <div>
-          {/* Slim pill row — only coins + streak. The big level badge and XP bar moved off the
+          {/* Slim pill row — only the streak. The big level badge and XP bar moved off the
               home (XP now lives quietly under the Progress tab), so the everyday view doesn't
               read as a scoreboard. Reuses the HUD pill classes for a consistent look. */}
-          {(spirit || stats.current_streak_days > 0) && (
+          {stats.current_streak_days > 0 && (
             <div className="dashboard-pills hud-pills">
-              {spirit && (
-                <span className="hud-pill hud-pill-coins">
-                  <CoinIcon /> {spirit.coins}
-                </span>
-              )}
-              {stats.current_streak_days > 0 && (
-                <span
-                  className="hud-pill hud-pill-streak"
-                  aria-label={t('home.streak.aria', { count: stats.current_streak_days })}
-                >
-                  <Flame size={16} strokeWidth={1.75} aria-hidden="true" /> {stats.current_streak_days}
-                </span>
-              )}
+              <span
+                className="hud-pill hud-pill-streak"
+                aria-label={t('home.streak.aria', { count: stats.current_streak_days })}
+              >
+                <Flame size={16} strokeWidth={1.75} aria-hidden="true" /> {stats.current_streak_days}
+              </span>
             </div>
           )}
 
-          {/* The spirit — the home-screen centrepiece (docs/design/spirit.md, ADR-0022). A calm,
-              static glowing companion that grows with practice. We fetch it once above (for the
-              coin chip) and pass it down, so the companion doesn't fire a second GET /spirit; it
-              waits quietly while the prop is still null. */}
-          <div className="home-companion">
-            <Spirit spirit={spirit} sessionCount={stats.session_count} />
+          {/* A calm daily-goal ring near the top, by the streak — today's practiced minutes
+              filling toward the user's small goal, with a soft "met" state (never confetti).
+              Always present (the goal always exists) and fed straight from the stats payload. */}
+          <div className="dashboard-goal">
+            <DailyGoalRing
+              todayMinutes={stats.today_minutes}
+              goalMinutes={stats.daily_goal_minutes}
+            />
           </div>
 
-          {/* A pocket of warmth under the companion — a gentle affirmation + a heart to tap for love. */}
+          {/* A pocket of warmth — a gentle affirmation + a heart to tap for love. */}
           <EncouragementNote />
 
           {/* The quiet rest-day reassurance, when it applies, so the gentle "skipping one is
@@ -243,15 +219,10 @@ export default function DashboardPage() {
                 </Link>
               )
             }
-            // No active path → one gentle, optional recommendation for the hero, personalised to
-            // the companion's least-represented facet when its balance is uneven, else the time of
-            // day (see lib/recommendation.ts). The four quick-access tiles below stay the stable
-            // anchors; this is only a suggestion, and the guided-path invite remains.
-            const facet =
-              spirit && spirit.path != null && spirit.needs
-                ? roundOutFacet(spirit.needs)
-                : null
-            const rec = recommendedPractice({ hour: new Date().getHours(), facet })
+            // No active path → one gentle, optional recommendation for the hero, keyed to the
+            // time of day (see lib/recommendation.ts). The four quick-access tiles below stay the
+            // stable anchors; this is only a suggestion, and the guided-path invite remains.
+            const rec = recommendedPractice({ hour: new Date().getHours(), facet: null })
             return (
               <>
                 <Link to={rec.to} className="today-action">

@@ -4,7 +4,7 @@ import { analyticsService } from '../services/analytics'
 import { biometricsService } from '../services/biometrics'
 import { TYPE_COLORS, MOOD_COLORS, PALETTE } from '../lib/colors'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
-import ActivityHeatmap from '../components/ActivityHeatmap'
+import ConsistencyHeatmap from '../components/ConsistencyHeatmap'
 import { messageForError } from '../lib/errors'
 import { t as translate, useT } from '../i18n'
 import type {
@@ -419,12 +419,15 @@ function MonthVsLast({ data }: { data: MonthComparison }) {
   // A signed delta line: an arrow + magnitude + plain-language comparison, or a calm
   // "same as last month" when unchanged. Decorative arrow is aria-hidden; the text
   // (e.g. "12 more than last month") carries the meaning for screen readers.
-  const Delta = ({ delta, unit }: { delta: number; unit: string }) => {
+  const Delta = ({ delta, unitKey }: { delta: number; unitKey: string }) => {
     if (delta === 0) {
       return <span className="month-delta month-delta-flat">{t('tracking.analytics.month.same')}</span>
     }
     const up = delta > 0
     const mag = Math.abs(delta)
+    // Resolve the unit against the magnitude so it reads "1 session" / "2 sessions",
+    // not "1 sessions" (the catalog carries _one/_other; "min" is count-invariant).
+    const unit = t(`tracking.analytics.month.${unitKey}`, { count: mag })
     return (
       <span className={`month-delta ${up ? 'month-delta-up' : 'month-delta-down'}`}>
         <span aria-hidden="true">{up ? '▲' : '▼'}</span>{' '}
@@ -435,14 +438,14 @@ function MonthVsLast({ data }: { data: MonthComparison }) {
     )
   }
 
-  const rows: { label: string; now: number; delta: number; unit: string }[] = [
-    { label: t('tracking.analytics.month.rowMinutes'), now: now.minutes, delta: data.minutes_delta, unit: t('tracking.analytics.month.unitMin') },
-    { label: t('tracking.analytics.month.rowSessions'), now: now.sessions, delta: data.sessions_delta, unit: t('tracking.analytics.month.unitSessions') },
+  const rows: { label: string; now: number; delta: number; unitKey: string }[] = [
+    { label: t('tracking.analytics.month.rowMinutes'), now: now.minutes, delta: data.minutes_delta, unitKey: 'unitMin' },
+    { label: t('tracking.analytics.month.rowSessions'), now: now.sessions, delta: data.sessions_delta, unitKey: 'unitSessions' },
     {
       label: t('tracking.analytics.month.rowDays'),
       now: now.days_practiced,
       delta: data.days_practiced_delta,
-      unit: t('tracking.analytics.month.unitDays'),
+      unitKey: 'unitDays',
     },
   ]
 
@@ -454,7 +457,7 @@ function MonthVsLast({ data }: { data: MonthComparison }) {
           <li key={r.label} className="month-compare-row">
             <span className="month-metric-label">{r.label}</span>
             <span className="month-metric-value">{r.now}</span>
-            <Delta delta={r.delta} unit={r.unit} />
+            <Delta delta={r.delta} unitKey={r.unitKey} />
           </li>
         ))}
       </ul>
@@ -496,7 +499,7 @@ export default function AnalyticsPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.analytics.title')}</h1>
         <p className="page-subtitle">{t('tracking.analytics.subtitle')}</p>
@@ -532,10 +535,10 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          {/* Activity calendar — a month-at-a-glance heatmap of practice/all-quest days.
-              Lives here with the rest of the stats (moved off the calm home). Self-fetches
+          {/* Consistency calendar — ~12 weeks of practice shaded by daily minutes.
+              Lives here with the rest of the stats (off the calm home). Self-fetches
               and carries its own loading/empty/error states. */}
-          <ActivityHeatmap />
+          <ConsistencyHeatmap />
 
           <MonthVsLast data={data.monthly_comparison} />
 

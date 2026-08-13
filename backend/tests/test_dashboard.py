@@ -65,6 +65,26 @@ def test_stats_user_scoped(client):
     assert body["session_count"] == 0
 
 
+def test_stats_include_daily_goal_defaults(client):
+    _auth(client, "goal_stats@example.com")
+    body = client.get("/api/v1/dashboard/stats").json()
+    assert body["daily_goal_minutes"] == 10  # server default
+    assert body["today_minutes"] == 0  # no practice yet
+
+
+def test_stats_today_minutes_reflects_today_session(client):
+    _auth(client, "goal_today@example.com")
+    today = datetime.now(UTC).date()
+    # 12 minutes today (720s) + a session on another day that must NOT count toward today.
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600)
+    _session(client, f"{today.isoformat()}T17:00:00", seconds=120)  # same day → summed
+    _session(client, "2026-01-01T08:00:00", seconds=1800)  # a different day
+    client.post("/api/v1/auth/daily-goal", json={"minutes": 15})
+    body = client.get("/api/v1/dashboard/stats").json()
+    assert body["daily_goal_minutes"] == 15
+    assert body["today_minutes"] == 12  # (600 + 120) // 60, today only
+
+
 def test_activity_requires_auth(client):
     resp = client.get("/api/v1/dashboard/activity")
     assert resp.status_code == 401
@@ -113,6 +133,62 @@ def test_activity_days_param_out_of_range_rejected(client):
     _auth(client, "act_days_bad@example.com")
     assert client.get("/api/v1/dashboard/activity?days=0").status_code == 422
     assert client.get("/api/v1/dashboard/activity?days=400").status_code == 422
+
+
+def test_consistency_requires_auth(client):
+    resp = client.get("/api/v1/dashboard/consistency")
+    assert resp.status_code == 401
+    assert "detail" in resp.json()
+
+
+def test_consistency_empty_for_fresh_user(client):
+    _auth(client, "cons_empty@example.com")
+    today = datetime.now(UTC).date()
+    body = client.get("/api/v1/dashboard/consistency").json()
+    assert body["end"] == today.isoformat()
+    # 12 weeks (84 days) → start is 83 days before today.
+    assert body["start"] == (today - timedelta(days=83)).isoformat()
+    assert body["days"] == []
+
+
+def test_consistency_per_day_minutes_and_sessions(client):
+    _auth(client, "cons_agg@example.com")
+    today = datetime.now(UTC).date()
+    # Two sessions today (summed) + one on another in-window day.
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600)  # 10 min
+    _session(client, f"{today.isoformat()}T18:00:00", seconds=300)  # +5 min, 2 sessions
+    older = today - timedelta(days=10)
+    _session(client, f"{older.isoformat()}T08:00:00", seconds=120)  # 2 min, 1 session
+    body = client.get("/api/v1/dashboard/consistency").json()
+    by_date = {d["date"]: d for d in body["days"]}
+    assert by_date[today.isoformat()] == {
+        "date": today.isoformat(),
+        "minutes": 15,
+        "sessions": 2,
+    }
+    assert by_date[older.isoformat()] == {
+        "date": older.isoformat(),
+        "minutes": 2,
+        "sessions": 1,
+    }
+
+
+def test_consistency_excludes_days_outside_window(client):
+    _auth(client, "cons_window@example.com")
+    today = datetime.now(UTC).date()
+    outside = today - timedelta(days=90)  # older than the 84-day window
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600)
+    _session(client, f"{outside.isoformat()}T08:00:00", seconds=600)
+    days = client.get("/api/v1/dashboard/consistency").json()["days"]
+    assert [d["date"] for d in days] == [today.isoformat()]
+
+
+def test_consistency_user_scoped(client):
+    _auth(client, "cons_owner@example.com")
+    today = datetime.now(UTC).date()
+    _session(client, f"{today.isoformat()}T08:00:00", seconds=600)
+    _auth(client, "cons_other@example.com")  # different user
+    assert client.get("/api/v1/dashboard/consistency").json()["days"] == []
 
 
 def test_stats_breathing_earns_triple_xp(client):

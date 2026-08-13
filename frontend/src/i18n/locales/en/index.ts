@@ -9,6 +9,8 @@ import { tracking } from './tracking'
 import { spirit } from './spirit'
 import { settings } from './settings'
 import { paths } from './paths'
+import { philosophers } from './philosophers'
+import { prayer } from './prayer'
 
 export const EN: Record<string, string> = {
   ...common,
@@ -19,4 +21,6 @@ export const EN: Record<string, string> = {
   ...spirit,
   ...settings,
   ...paths,
+  ...philosophers,
+  ...prayer,
 }

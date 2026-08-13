@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { HandHeart } from 'lucide-react'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
+import { track } from '../lib/analytics'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
@@ -18,6 +19,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // Category themes are TEXT-FIRST (no system emoji): each chip shows its label with a small
@@ -215,6 +217,7 @@ export default function GratitudePage() {
         return ZERO_STATS
       })
       const entry = await gratitudeService.create({ category, text: text.trim() })
+      track('gratitude_created')
       setEntries((prev) => [entry, ...(prev ?? [])])
       // The new row shifts everything down by one server-side; advance the cursor so
       // the next loadMore doesn't re-fetch the row now sitting at the old boundary.
@@ -242,7 +245,7 @@ export default function GratitudePage() {
 
   return (
     <main id="main-content" className="gratitude">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.gratitude.title')}</h1>
         <p className="page-subtitle">

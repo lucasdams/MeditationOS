@@ -44,6 +44,13 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       ENVIRONMENT: production # gunicorn workers (no DEV_RELOAD) + prod config validation
+      # LLM provider config for the AI features (reflection coach + gratitude).
+      # Passed from the environment; unset → the app degrades to its curated fallback.
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       REDIS_URL: ${REDIS_URL:-} # empty → in-memory throttles (per-worker; fine for local)
     ports:

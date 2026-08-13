@@ -169,7 +169,7 @@ export default function GoalsPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.goals.title')}</h1>
         <p className="page-subtitle">{t('tracking.goals.subtitle')}</p>

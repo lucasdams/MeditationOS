@@ -54,6 +54,14 @@ export const tracking: Record<string, string> = {
   'tracking.journal.deleteError': 'その振り返りを削除できませんでした。',
   'tracking.journal.resurfaceError': '思い出を呼び起こせませんでした — もう一度お試しください。',
   'tracking.journal.resurfaceEmpty': 'まだ呼び起こせるものがありません — もう少し記録してみましょう。',
+  // 記録へのAIリフレクション（静かに、臨床的にならないトーンで）
+  'tracking.journal.reflect.button': 'そっと振り返る',
+  'tracking.journal.reflect.loading': '振り返り中…',
+  'tracking.journal.reflect.aria': 'この記録へのやさしい振り返りを受け取る',
+  'tracking.journal.reflect.title': 'やさしい振り返り',
+  'tracking.journal.reflect.error': '振り返りを受け取れませんでした — もう一度お試しください。',
+  'tracking.journal.reflect.capReached': '今日の振り返りはここまで — また明日どうぞ。',
+  'tracking.journal.reflect.guestBlocked': 'AIの振り返りを使うには、アカウントを保存してください。',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': '感謝',
@@ -314,8 +322,10 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.month.rowSessions': 'セッション',
   'tracking.analytics.month.rowDays': 'プラクティスした日数',
   'tracking.analytics.month.unitMin': '分',
-  'tracking.analytics.month.unitSessions': 'セッション',
-  'tracking.analytics.month.unitDays': '日',
+  'tracking.analytics.month.unitSessions_one': 'セッション',
+  'tracking.analytics.month.unitSessions_other': 'セッション',
+  'tracking.analytics.month.unitDays_one': '日',
+  'tracking.analytics.month.unitDays_other': '日',
   'tracking.analytics.month.note': '今月のこれまでを、先月ひと月と比べています{noPrev}。',
   'tracking.analytics.month.noPrev': '（先月はまだプラクティスがありません）',
   // Charts
@@ -373,4 +383,15 @@ export const tracking: Record<string, string> = {
   'tracking.heatmap.month.oct': '10月',
   'tracking.heatmap.month.nov': '11月',
   'tracking.heatmap.month.dec': '12月',
+
+  // ── Consistency heatmap (last ~12 weeks, shaded by daily minutes) ─────────
+  'tracking.consistency.title': 'あなたの継続',
+  'tracking.consistency.loading': '継続を読み込み中…',
+  'tracking.consistency.empty':
+    'この 12 週間はまだプラクティスがありません。最初のセッションでここが灯ります。',
+  'tracking.consistency.cellLabel': '{iso} に {minutes} 分',
+  'tracking.consistency.cellLabelEmpty': '{iso} はプラクティスなし',
+  'tracking.consistency.summary_other': '過去 12 週間で {days} 日・計 {minutes} 分',
+  'tracking.consistency.less': '少',
+  'tracking.consistency.more': '多',
 }

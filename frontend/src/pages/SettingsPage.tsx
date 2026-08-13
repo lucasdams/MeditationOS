@@ -6,9 +6,11 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
+import FeedbackButton from '../components/FeedbackButton'
 import QuestPicker from '../components/QuestPicker'
 import { SEASON_PREFS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
+import { analyticsOptedOut, setAnalyticsOptOut } from '../lib/analytics'
 import { LOCALES, LOCALE_LABEL, setLocale, useT, fmtDate, fmtTime, type Locale } from '../i18n'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
@@ -69,6 +71,12 @@ export default function SettingsPage() {
   const [questOk, setQuestOk] = useState(false)
   const [savingQuests, setSavingQuests] = useState(false)
 
+  // Daily-goal section — the target the dashboard ring fills toward (1–120 minutes).
+  const [dailyGoal, setDailyGoal] = useState(user?.daily_goal_minutes ?? 10)
+  const [goalError, setGoalError] = useState<string | null>(null)
+  const [goalOk, setGoalOk] = useState(false)
+  const [savingGoal, setSavingGoal] = useState(false)
+
   // Reminders section.
   const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
   const [streakSaveEnabled, setStreakSaveEnabled] = useState(user?.streak_save_enabled ?? true)
@@ -76,6 +84,8 @@ export default function SettingsPage() {
   const [reminderHour, setReminderHour] = useState(user?.reminder_hour ?? 8)
   const [reminderError, setReminderError] = useState<string | null>(null)
   const [reminderOk, setReminderOk] = useState(false)
+  // Privacy: local (per-browser) opt-out of the anonymous usage analytics.
+  const [analyticsOff, setAnalyticsOff] = useState(analyticsOptedOut())
   const [savingReminder, setSavingReminder] = useState(false)
   const [summaryEnabled, setSummaryEnabled] = useState(user?.weekly_summary_enabled ?? false)
   const [summaryDay, setSummaryDay] = useState(user?.weekly_summary_day ?? 1)
@@ -288,6 +298,26 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleDailyGoal(e: FormEvent) {
+    e.preventDefault()
+    setGoalError(null)
+    setGoalOk(false)
+    if (!Number.isFinite(dailyGoal) || dailyGoal < 1 || dailyGoal > 120) {
+      setGoalError(t('settings.goal.err.range'))
+      return
+    }
+    setSavingGoal(true)
+    try {
+      await authService.setDailyGoal(Math.round(dailyGoal))
+      await refresh()
+      setGoalOk(true)
+    } catch (err) {
+      setGoalError(messageForError(err))
+    } finally {
+      setSavingGoal(false)
+    }
+  }
+
   async function handleReminders(e: FormEvent) {
     e.preventDefault()
     setReminderError(null)
@@ -334,7 +364,7 @@ export default function SettingsPage() {
 
   return (
     <main id="main-content" className="settings">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <h1>{t('settings.title')}</h1>
 
       {user.is_guest && (
@@ -532,6 +562,35 @@ export default function SettingsPage() {
       </section>
 
       <section className="settings-section">
+        <h2>{t('settings.goal.heading')}</h2>
+        <p className="muted">{t('settings.goal.desc')}</p>
+        <form onSubmit={handleDailyGoal} noValidate>
+          <label htmlFor="daily-goal">{t('settings.goal.label')}</label>
+          <input
+            id="daily-goal"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={120}
+            value={dailyGoal}
+            onChange={(e) => {
+              setDailyGoal(Number(e.target.value))
+              setGoalOk(false)
+            }}
+          />
+          {goalError && (
+            <p role="alert" className="error">
+              {goalError}
+            </p>
+          )}
+          {goalOk && <p role="status" className="success">{t('settings.goal.ok')}</p>}
+          <button type="submit" disabled={savingGoal}>
+            {savingGoal ? t('common.saving') : t('settings.goal.submit')}
+          </button>
+        </form>
+      </section>
+
+      <section className="settings-section">
         <h2>{t('settings.reminders.heading')}</h2>
         <p className="muted">
           {t('settings.reminders.desc')}
@@ -588,6 +647,29 @@ export default function SettingsPage() {
             {savingReminder ? t('common.saving') : t('settings.reminders.submit')}
           </button>
         </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>{t('settings.privacy.heading')}</h2>
+        <p className="muted">{t('settings.privacy.desc')}</p>
+        <label className="settings-check">
+          <input
+            type="checkbox"
+            checked={!analyticsOff}
+            onChange={(e) => {
+              const on = e.target.checked
+              setAnalyticsOptOut(!on)
+              setAnalyticsOff(!on)
+            }}
+          />
+          {t('settings.privacy.toggle')}
+        </label>
+      </section>
+
+      <section className="settings-section">
+        <h2>{t('settings.feedback.heading')}</h2>
+        <p className="muted">{t('settings.feedback.desc')}</p>
+        <FeedbackButton />
       </section>
 
       <section className="settings-section">

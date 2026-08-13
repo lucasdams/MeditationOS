@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Brain } from 'lucide-react'
 import { sessionService } from '../services/sessions'
+import { track } from '../lib/analytics'
 import { dashboardService } from '../services/dashboard'
 import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
@@ -52,6 +53,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 const DRAFT_PAGE = 'meditate'
@@ -297,10 +299,11 @@ export default function MeditatePage() {
   }, [])
 
   // Enforce the guided-structure level gate ONCE the level is known: if the current
-  // choice is a locked structure (e.g. a `?guided=chakra-om` deep-link below level 5),
-  // fall back to plain unguided sitting rather than offering a locked practice. We
-  // wait for a non-null level so a deep-link to a gated structure isn't wrongly reset
-  // to 'none' during the brief window before the level fetch resolves.
+  // choice is a locked structure (a deep-link to a level-gated structure below its
+  // minimum level), fall back to plain unguided sitting rather than offering a locked
+  // practice. We wait for a non-null level so a deep-link to a gated structure isn't
+  // wrongly reset to 'none' during the brief window before the level fetch resolves.
+  // (No structures are level-gated at the moment, but the guard stays wired.)
   useEffect(() => {
     if (level == null) return
     if (guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level)) {
@@ -491,6 +494,7 @@ export default function MeditatePage() {
     }
 
     savedSessionIdRef.current = saved.id
+    track('session_completed', { type: MEDITATION_TYPE })
     // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
     savedRef.current = true
     clearDraft(DRAFT_PAGE)
@@ -636,7 +640,7 @@ export default function MeditatePage() {
   const speechOn = isGuided && spokenPref && speechSupported
 
   // The <select>'s EFFECTIVE value: fall back to 'none' whenever the current choice
-  // resolves to a locked option (e.g. a `?guided=chakra-om` deep-link while level is
+  // resolves to a locked option (a deep-link to a level-gated structure while level is
   // still loading, or below the gate). The async gate effect above eventually resets
   // guidedChoice itself, but binding the control to this computed value means it never
   // points at a `disabled` <option> even transiently — which some browsers render

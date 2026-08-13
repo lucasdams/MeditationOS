@@ -57,6 +57,14 @@ export const tracking: Record<string, string> = {
   'tracking.journal.deleteError': "Couldn't delete that reflection.",
   'tracking.journal.resurfaceError': "Couldn't resurface a memory — try again.",
   'tracking.journal.resurfaceEmpty': 'Nothing to resurface yet — give it a few entries.',
+  // AI reflection on an entry (quiet, non-clinical)
+  'tracking.journal.reflect.button': 'Reflect',
+  'tracking.journal.reflect.loading': 'Reflecting…',
+  'tracking.journal.reflect.aria': 'Get a gentle reflection on this entry',
+  'tracking.journal.reflect.title': 'A gentle reflection',
+  'tracking.journal.reflect.error': "Couldn't reflect on this entry — tap Reflect to try again.",
+  'tracking.journal.reflect.capReached': "That's all the reflections for today — more tomorrow.",
+  'tracking.journal.reflect.guestBlocked': 'Save your account to use AI reflections.',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
   'tracking.gratitude.title': 'Gratitude',
@@ -321,8 +329,10 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.month.rowSessions': 'Sessions',
   'tracking.analytics.month.rowDays': 'Days practiced',
   'tracking.analytics.month.unitMin': 'min',
-  'tracking.analytics.month.unitSessions': 'sessions',
-  'tracking.analytics.month.unitDays': 'days',
+  'tracking.analytics.month.unitSessions_one': 'session',
+  'tracking.analytics.month.unitSessions_other': 'sessions',
+  'tracking.analytics.month.unitDays_one': 'day',
+  'tracking.analytics.month.unitDays_other': 'days',
   'tracking.analytics.month.note': 'This calendar month so far, compared with all of last month{noPrev}.',
   'tracking.analytics.month.noPrev': ' (no practice last month yet)',
   // Charts
@@ -382,4 +392,16 @@ export const tracking: Record<string, string> = {
   'tracking.heatmap.month.oct': 'Oct',
   'tracking.heatmap.month.nov': 'Nov',
   'tracking.heatmap.month.dec': 'Dec',
+
+  // ── Consistency heatmap (last ~12 weeks, shaded by daily minutes) ─────────
+  'tracking.consistency.title': 'Your consistency',
+  'tracking.consistency.loading': 'Loading your consistency…',
+  'tracking.consistency.empty':
+    'No practice in the last 12 weeks yet — your first session will light this up.',
+  'tracking.consistency.cellLabel': '{minutes} min on {iso}',
+  'tracking.consistency.cellLabelEmpty': 'No practice on {iso}',
+  'tracking.consistency.summary_one': '{minutes} min across {days} day in the last 12 weeks',
+  'tracking.consistency.summary_other': '{minutes} min across {days} days in the last 12 weeks',
+  'tracking.consistency.less': 'Less',
+  'tracking.consistency.more': 'More',
 }

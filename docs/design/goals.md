@@ -31,8 +31,8 @@ active or archived.
 | `journal` | journal entries |
 | `custom` | manual **check-ins** (see below) |
 
-`period` is `day` (today, in the user's local timezone) or `week` (a rolling 7-day
-window ending today). Sessions are counted by their local `occurred_at` day; gratitude
+`period` is `day` (today, in the user's local timezone), `week` (a rolling 7-day
+window ending today), or `total` (an all-time cumulative target). Sessions are counted by their local `occurred_at` day; gratitude
 and journal entries by their local `created_at` day — consistent with streaks and the
 dashboard.
 

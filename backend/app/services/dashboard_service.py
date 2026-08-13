@@ -14,17 +14,21 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
+from app.models.prayer import Prayer
 from app.models.session import BREATHING_SESSION_TYPES, Session
 from app.models.user import QUEST_FEATURES
 from app.schemas.dashboard import (
     ActivityCalendar,
     ActivityDay,
+    ConsistencyCalendar,
+    ConsistencyDay,
     DailyTotal,
     DashboardStats,
     QuestStatus,
 )
 from app.services.gratitude_service import GRATITUDE_XP
 from app.services.journal_service import JOURNAL_XP
+from app.services.prayer_service import PRAYER_XP
 from app.services.quest_pool import categories_for_day, quest_for
 from app.services.time_utils import MIN_PRACTICE_SECONDS, compute_streaks, local_date
 
@@ -107,6 +111,7 @@ MEDITATE_QUEST_SECONDS = 60
 # under these; beyond them the entries still save, they just stop paying XP.
 GRATITUDE_XP_DAILY_CAP = 5
 JOURNAL_XP_DAILY_CAP = 5
+PRAYER_XP_DAILY_CAP = 5
 # A day with at least this much resonance breathing completes the base breathing quest;
 # the "deep breathe" challenge variant asks for DEEP_BREATHE_SECONDS.
 BREATHE_QUEST_SECONDS = 60
@@ -436,6 +441,11 @@ def _xp_basis(
     journal_xp_units = _capped_daily_xp_units(
         db, Journal, user_id=user_id, tz=tz, cap=JOURNAL_XP_DAILY_CAP, since=since
     )
+    # Prayers earn XP exactly like a journal reflection — the same per-entry amount
+    # (PRAYER_XP) under the same per-day anti-farm cap.
+    prayer_xp_units = _capped_daily_xp_units(
+        db, Prayer, user_id=user_id, tz=tz, cap=PRAYER_XP_DAILY_CAP, since=since
+    )
 
     # Practice XP: each session is run through the front-loaded curve (sub-minute sits
     # earn 0; resonance breathing counts BREATHING_XP_MULTIPLIER×), then summed across
@@ -450,6 +460,7 @@ def _xp_basis(
         practice_xp
         + gratitude_xp_units * GRATITUDE_XP
         + journal_xp_units * JOURNAL_XP
+        + prayer_xp_units * PRAYER_XP
         + quest_bonus_xp
     )
     return _XpBasis(
@@ -616,6 +627,7 @@ def get_stats(
     today: date,
     tz: str = "UTC",
     quest_features: list[str] | None = None,
+    daily_goal_minutes: int = 10,
 ) -> DashboardStats:
     total_seconds, session_count = db.execute(
         select(
@@ -651,6 +663,10 @@ def get_stats(
     for i in range(7):
         day = week_start + timedelta(days=i)
         this_week.append(DailyTotal(date=day, seconds=by_date.get(day, 0)))
+
+    # Today's practiced minutes for the daily-goal ring — reuse the week aggregate (today
+    # is in-window) so we don't run a second query. Floored to whole minutes.
+    today_minutes = int(by_date.get(today, 0)) // 60
 
     # Total XP adds the streak bonus back; the displayed level rides full XP.
     xp = basis.xp
@@ -713,6 +729,8 @@ def get_stats(
         gratitude_count=basis.gratitude_count,
         streak_bonus_xp=streak_bonus_xp,
         daily_quests=daily_quests,
+        daily_goal_minutes=daily_goal_minutes,
+        today_minutes=today_minutes,
     )
 
 
@@ -777,3 +795,50 @@ def get_activity(
         for row in rows
     ]
     return ActivityCalendar(start=start, end=today, days=active_days)
+
+
+# The consistency heatmap spans roughly the last 12 weeks (columns) × 7 weekdays.
+CONSISTENCY_WEEKS = 12
+
+
+def get_consistency(
+    db: DBSession,
+    user_id: uuid.UUID,
+    *,
+    today: date,
+    tz: str = "UTC",
+    weeks: int = CONSISTENCY_WEEKS,
+) -> ConsistencyCalendar:
+    """Per-day practice over roughly the last `weeks` weeks for the consistency heatmap.
+
+    Sparse (only days with at least one session), aggregated in SQL and scoped to the
+    user. Each day carries its total practice minutes (whole-minute floored) and the
+    number of sessions; the client shades each cell by minutes and fills the empty days.
+    Uses the user's local day for bucketing.
+    """
+    start = today - timedelta(days=weeks * 7 - 1)
+    local_day = _local_date(tz, Session.occurred_at)
+    rows = db.execute(
+        select(
+            local_day,
+            func.coalesce(func.sum(Session.duration_seconds), 0),
+            func.count(Session.id),
+        )
+        .where(
+            Session.user_id == user_id,
+            local_day >= start,
+            local_day <= today,
+        )
+        .group_by(local_day)
+        .order_by(local_day)
+    ).all()
+
+    days = [
+        ConsistencyDay(
+            date=row[0],
+            minutes=int(row[1]) // 60,
+            sessions=int(row[2]),
+        )
+        for row in rows
+    ]
+    return ConsistencyCalendar(start=start, end=today, days=days)
