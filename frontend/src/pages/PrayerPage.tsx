@@ -216,7 +216,7 @@ export default function PrayerPage() {
 
   return (
     <main id="main-content" className="dashboard">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('prayer.title')}</h1>
         <p className="page-subtitle">{t('prayer.subtitle')}</p>

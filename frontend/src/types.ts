@@ -506,6 +506,9 @@ export interface PhilosopherSummary {
   name: string
   tradition: string
   blurb: string
+  // Short, first-person conversation starters in the persona's theme, shown as tappable
+  // chips on an empty chat so a fresh conversation is an invitation, not a blank page.
+  openers: string[]
 }
 
 // One turn in a philosopher chat. The client holds the whole conversation (the chat is

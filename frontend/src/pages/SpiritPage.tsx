@@ -463,7 +463,7 @@ export default function SpiritPage() {
   return (
     <main id="main-content" className="dashboard spirit-page">
       <Link to="/" className="back-link">
-        {t('common.backDashboard')}
+        {t('common.backHome')}
       </Link>
       <header className="page-head">
         <h1>{t('spirit.page.title')}</h1>

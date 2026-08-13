@@ -1179,7 +1179,11 @@ a:hover { color: var(--accent-hover); }
 }
 
 .settings h1 {
+  /* Match the standard sub-page title (`.page-head h1`) so Settings doesn't read a
+     size larger than its siblings — it renders as a bare h1 without the page-head wrapper. */
   margin: 0.5rem 0 1.5rem;
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
 }
 
 .settings-section {
@@ -3076,10 +3080,16 @@ button.today-action:disabled {
   font-size: var(--text-sm);
   font-weight: 500;
   text-decoration: none;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .back-link:hover {
   color: var(--accent);
+  /* A whisper of leftward travel — a quiet "go back" affordance that matches the
+     app's snappy micro-interactions, applied consistently on every page's crumb. */
+  transform: translateX(-2px);
 }
 
 /* A calmer page header: a smaller, softer title with a one-line subtitle, instead of
@@ -7384,6 +7394,22 @@ button.today-action:disabled {
   font-size: var(--text-base);
 }
 
+/* ── Sub-page section headers ────────────────────────────────────────────────
+   One calm, consistent divider for the content sub-pages: a small text-secondary
+   label with a thin accent bar. Previously only Analytics + Settings carried the
+   bar while "Recent" / "Past reflections" / "Upcoming" were plain (and mismatched
+   on colour). Unified here so every sub-page section reads as the same kind of
+   header. The gamified home hub (quests, consistency) keeps its own denser voice. */
+.analytics-section h2,
+.settings-section h2,
+.journal-list-title,
+.schedule-upcoming-title,
+.grat-journal h2 {
+  color: var(--text-secondary);
+  padding-left: 0.6rem;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 /* Breathing pacer */
 .breathe {
   max-width: 30rem;
@@ -9083,10 +9109,18 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 /* Gentle empty state when a query matches nothing. */
-.practices-empty {
-  margin: 1.5rem 0;
+/* Shared empty-state line ("nothing yet") for every data view. A calm, centred note with
+   generous breathing room so an empty list reads as intentional quiet space, not a stray
+   sentence. Used by the shared <EmptyState> building block and the Practices no-matches note. */
+.empty-state {
+  margin: 1.75rem auto 0;
+  max-width: 36ch;
+  padding: 1.25rem 1rem;
+  text-align: center;
   color: var(--text-muted);
   font-size: var(--text-sm);
+  line-height: 1.6;
+  text-wrap: balance;
 }
 
 /* Each category is its own BLOCK, not one uniform grid: a real header (accent icon chip + title +
@@ -10413,14 +10447,22 @@ details[open] .meditate-disclosure-summary::before {
   cursor: pointer;
 }
 
-.philo-chat-head {
+/* The chat header reads like the persona's picker card, scaled up: the round accent
+   chip beside a clear name + tradition. The `.dashboard` scoping out-specifies the
+   `.dashboard .page-head { display: block }` rule that would otherwise stack the avatar
+   above the name. */
+.dashboard .philo-chat-head {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--space-3);
 }
 
 .philo-chat-avatar {
   flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  color: var(--accent);
 }
 
 .philo-thread {
@@ -10431,12 +10473,90 @@ details[open] .meditate-disclosure-summary::before {
   min-height: 40vh;
 }
 
+/* Before the conversation starts, don't reserve the tall thread height — let the intro
+   and the starters sit together near the top instead of being pushed apart. */
+.philo-thread--empty {
+  min-height: 0;
+  margin-bottom: var(--space-2);
+}
+
+.philo-thread--empty .philo-intro {
+  padding-bottom: var(--space-2);
+}
+
 .philo-intro {
   max-width: 42ch;
   align-self: center;
   text-align: center;
   padding: var(--space-4) 0;
   line-height: 1.5;
+}
+
+/* Conversation starters shown on an empty chat — tappable first-person openers (the
+   persona's own, plus a personalized "today's practice" one). They sit between the
+   thread and the composer; tapping drops the text into the composer to send or edit. */
+.philo-openers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+
+.philo-openers-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.philo-openers-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.philo-opener {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.3rem;
+  padding: 0.5rem 0.9rem;
+  text-align: left;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.philo-opener:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+/* The personalized "today's practice" opener — a soft accent tint + the spark icon, so it
+   reads as the one that's about *you*, distinct from the persona's generic starters. */
+.philo-opener--context {
+  color: var(--accent);
+  font-weight: 500;
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
+}
+
+.philo-opener--context:hover {
+  color: var(--accent-hover);
+}
+
+.philo-opener--context svg {
+  flex: none;
+  color: var(--accent);
 }
 
 .philo-msg {
