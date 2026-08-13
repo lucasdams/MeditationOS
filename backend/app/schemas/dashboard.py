@@ -34,6 +34,10 @@ class DashboardStats(BaseModel):
     gratitude_count: int = 0
     streak_bonus_xp: int = 0
     daily_quests: list[QuestStatus] = []
+    # The daily-goal ring: the user's target and today's practiced minutes (local day),
+    # so the client can render progress without a second call.
+    daily_goal_minutes: int = 10
+    today_minutes: int = 0
 
 
 class ActivityDay(BaseModel):
@@ -55,3 +59,24 @@ class ActivityCalendar(BaseModel):
     start: date
     end: date
     days: list[ActivityDay]
+
+
+class ConsistencyDay(BaseModel):
+    """One practiced day in the consistency heatmap: the day's total practice minutes
+    and how many sessions it took. Intensity (minutes) drives the cell's shade."""
+
+    date: date
+    minutes: int
+    sessions: int
+
+
+class ConsistencyCalendar(BaseModel):
+    """Per-day practice over roughly the last 12 weeks for a calm consistency heatmap.
+
+    `days` is sparse — only days with at least one session — and the client fills the
+    weeks × 7 grid across the `start`..`end` range.
+    """
+
+    start: date
+    end: date
+    days: list[ConsistencyDay]

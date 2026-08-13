@@ -54,6 +54,22 @@ class DailyLimitError(Exception):
 DAILY_LIMIT_DETAIL = "Daily limit reached. Please try again tomorrow."
 
 
+class GuestNotAllowedError(Exception):
+    """Raised when a guest account attempts an action reserved for saved accounts —
+    e.g. generating a paid AI reflection. Guests can be minted freely, so unguarded
+    such actions are a cost loop. Mapped to HTTP 403 app-wide (see `app/main.py`)."""
+
+
+# User-facing detail returned (as HTTP 403) when a GuestNotAllowedError reaches the
+# API boundary. A stable backend string; the frontend shows its own i18n copy.
+GUEST_NOT_ALLOWED_DETAIL = "Save your account to use this feature."
+
+
+class PhilosopherNotFoundError(Exception):
+    """Raised when a philosopher-chat request names an id that isn't in the roster.
+    Mapped to HTTP 404 in the route (an unknown persona is a missing resource)."""
+
+
 class GoalNotCheckableError(Exception):
     """Raised when checking in on a non-custom goal — built-in activities derive
     their progress and can't be manually marked done."""

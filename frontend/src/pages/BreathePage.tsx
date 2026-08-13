@@ -10,7 +10,6 @@ import { BreathAudio, AMBIENT_SOUNDS, type AmbientSound } from '../lib/breathAud
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import { mmss } from '../lib/format'
 import RewardOverlay from '../components/RewardOverlay'
-import Spirit from '../components/Spirit'
 import BiometricCapture from '../components/BiometricCapture'
 import BreathingInfo from '../components/BreathingInfo'
 import Modal from '../components/Modal'
@@ -20,6 +19,7 @@ import { ErrorBanner } from '../components/StateViews'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
+import { useT } from '../i18n'
 import { biometricsService } from '../services/biometrics'
 import { moodLogService } from '../services/moodLogs'
 import { dailySuggestion } from '../lib/intentionPrompts'
@@ -64,6 +64,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // How far ahead (seconds) the scheduler queues audio on the audio clock. Comfortably
@@ -133,10 +134,7 @@ function NoseCue({ active }: { active: 'left' | 'right' | null }) {
 // (see DIFFICULTY). A pace of N gives a total in/out time of round(60/N) seconds, split
 // ~2:3 inhale:exhale — the longer exhale is what makes resonance breathing
 // parasympathetic. Sessions store integer seconds, so the split rounds to whole seconds.
-const BPM_OPTIONS: StepperOption<number>[] = Array.from({ length: 19 }, (_, i) => {
-  const n = 10 - i * 0.5 // 10, 9.5, … 1
-  return { value: n, label: `${n} breaths/min` }
-})
+const BPM_VALUES: number[] = Array.from({ length: 19 }, (_, i) => 10 - i * 0.5) // 10, 9.5, … 1
 const DEFAULT_BPM = 4.5 // a moderate resonance pace
 const BPM_STORAGE_KEY = 'breathe.bpm'
 
@@ -154,10 +152,7 @@ const loadBpm = (): number => {
 
 // Box uses a "seconds per phase" control (3–7s each for in · hold · out · hold) rather
 // than breaths/min, since its long holds make bpm meaningless.
-const BOX_COUNTS: StepperOption<number>[] = [3, 4, 5, 6, 7].map((n) => ({
-  value: n,
-  label: `${n}s each`,
-}))
+const BOX_VALUES: number[] = [3, 4, 5, 6, 7]
 const DEFAULT_BOX = 4
 const BOX_STORAGE_KEY = 'breathe.box'
 
@@ -172,28 +167,43 @@ const loadBox = (): number => {
 }
 
 // Slower breathing is harder, so a lower bpm is more advanced. Surfaced next to the
-// pace so people know what they're choosing — below 3 bpm is genuinely demanding.
-const DIFFICULTY = (bpm: number): { label: string; key: string } => {
-  if (bpm < 3) return { label: 'Very advanced', key: 'expert' }
-  if (bpm < 4) return { label: 'Advanced', key: 'advanced' }
-  if (bpm < 6) return { label: 'Moderate', key: 'moderate' }
-  return { label: 'Gentle', key: 'gentle' }
+// pace so people know what they're choosing — below 3 bpm is genuinely demanding. Returns
+// the difficulty key; the display label is resolved from the catalog at the call site.
+const DIFFICULTY = (bpm: number): { key: string } => {
+  if (bpm < 3) return { key: 'expert' }
+  if (bpm < 4) return { key: 'advanced' }
+  if (bpm < 6) return { key: 'moderate' }
+  return { key: 'gentle' }
 }
 
-// Optional session length; 0 = open-ended (finish manually). Stepped left→right.
-const DURATIONS: StepperOption<number>[] = [
-  { value: 0, label: 'Open' },
-  { value: 2, label: '2 min' },
-  { value: 3, label: '3 min' },
-  { value: 5, label: '5 min' },
-  { value: 10, label: '10 min' },
-  { value: 15, label: '15 min' },
-  { value: 20, label: '20 min' },
-  { value: 30, label: '30 min' },
-  { value: 45, label: '45 min' },
-  { value: 60, label: '60 min' },
-  { value: 90, label: '90 min' },
+// Optional session length; 0 = open-ended (finish manually). Stepped left→right. Labels are
+// catalog keys resolved at render (re-label on locale switch); 0 → "Untimed".
+const DURATION_VALUES: { value: number; labelKey: string }[] = [
+  { value: 0, labelKey: 'practice.duration.untimed' },
+  // A 1-minute option — the gentlest timed sit, and the default a first-ever visit opens on so the
+  // newcomer's first breath reaches the whole minute that earns XP (see FIRST_SIT_TARGET_MIN).
+  { value: 1, labelKey: 'practice.mins.1' },
+  { value: 2, labelKey: 'practice.mins.2' },
+  { value: 3, labelKey: 'practice.mins.3' },
+  { value: 5, labelKey: 'practice.mins.5' },
+  { value: 10, labelKey: 'practice.mins.10' },
+  { value: 15, labelKey: 'practice.mins.15' },
+  { value: 20, labelKey: 'practice.mins.20' },
+  { value: 30, labelKey: 'practice.mins.30' },
+  { value: 45, labelKey: 'practice.mins.45' },
+  { value: 60, labelKey: 'practice.mins.60' },
+  { value: 90, labelKey: 'practice.mins.90' },
 ]
+
+// Plain-language "what you'll do" copy per pattern, for the beginner-friendly intro shown before
+// the breath starts. Keyed by preset key (matches the `?pattern=` deep-link values) → catalog key.
+const BREATHE_INTRO_KEY: Record<string, string> = {
+  resonance: 'practice.breathe.intro.resonance',
+  box: 'practice.breathe.intro.box',
+  energizing: 'practice.breathe.intro.energizing',
+  alternate: 'practice.breathe.intro.alternate',
+}
+const BREATHE_INTRO_DEFAULT_KEY = 'practice.breathe.intro.default'
 
 // Remember the last-used sound + duration setup so the next session opens where you
 // left off. (Pace/preset/box are persisted separately above.) One blob under a single
@@ -224,24 +234,39 @@ const loadPrefs = (): BreathePrefs => {
   return DEFAULT_PREFS
 }
 
-const DRAFT_PAGE = 'breathe'
-
-// Onboarding hatch flag (set by Onboarding §5): when '1', the first completed sit should route
-// to the companion choose page (the "hatch") instead of the usual close. Reads-and-clears in one
-// step so it only ever fires once; storage may be unavailable (private mode) — treat as no hatch.
-function consumePendingHatch(): boolean {
+// True once the breathe page has been used at least once on this device (its prefs blob was
+// persisted). Absent on the very first visit — used to give a brand-new practitioner a gentle
+// timed first sit (see the targetMin default).
+const hasBreathePrefs = (): boolean => {
   try {
-    if (localStorage.getItem('onboarding.pendingHatch') !== '1') return false
-    localStorage.removeItem('onboarding.pendingHatch')
-    return true
+    return localStorage.getItem(PREFS_KEY) != null
   } catch {
     return false
   }
 }
+// A first-ever sit opens with this gentle timer (minutes) so it reaches the whole minute that earns
+// XP, instead of an open-ended breath a newcomer might end after a few seconds (scoring 0).
+const FIRST_SIT_TARGET_MIN = 1
+
+const DRAFT_PAGE = 'breathe'
 
 export default function BreathePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useT()
+  // Stepper option lists with labels resolved from the catalog (re-label on locale change).
+  const DURATIONS: StepperOption<number>[] = DURATION_VALUES.map((d) => ({
+    value: d.value,
+    label: t(d.labelKey),
+  }))
+  const BPM_OPTIONS: StepperOption<number>[] = BPM_VALUES.map((n) => ({
+    value: n,
+    label: t('practice.breathe.bpmOption', { n }),
+  }))
+  const BOX_COUNTS: StepperOption<number>[] = BOX_VALUES.map((n) => ({
+    value: n,
+    label: t('practice.breathe.boxOption', { n }),
+  }))
   // Respect the OS reduced-motion preference: when on, keep the circle static so the
   // JS rAF scale animation doesn't override what the global CSS reset can't catch.
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -270,7 +295,11 @@ export default function BreathePage() {
   })
   const [running, setRunning] = useState(false)
   const [phase, setPhase] = useState<Segment>('inhale')
-  const [scale, setScale] = useState(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
+  // At rest ("Ready", and after a session ends) the orb sits at the settled mid-size — a
+  // present, inviting circle rather than the tiny MIN_SCALE dot it used to freeze at. The
+  // live breathing range is still MIN..MAX (driven by `scaleAt` in the run loop below); this
+  // only sets the idle pose. Reduced motion already parks here too.
+  const [scale, setScale] = useState(STATIC_SCALE)
   const [elapsed, setElapsed] = useState(0)
   const [cycles, setCycles] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -306,11 +335,14 @@ export default function BreathePage() {
   const [ambient, setAmbient] = useState<AmbientSound>(() => loadPrefs().ambient)
   const [chimeOn, setChimeOn] = useState(() => loadPrefs().chimeOn) // soft transition bell on by default
   const [volume, setVolume] = useState(() => loadPrefs().volume)
-  // A guided first sit auto-finishes at its fixed length (seconds → minutes for the timer).
-  // A normal visit keeps the remembered target.
-  const [targetMin, setTargetMin] = useState(() =>
-    searchParams.get('guided') === '1' ? guidedDurationSec / 60 : loadPrefs().targetMin,
-  )
+  // A guided first sit auto-finishes at its fixed length (seconds → minutes for the timer). A
+  // first-ever visit (no saved prefs) opens with a gentle 1-minute timer so the newcomer's first
+  // breath earns XP; otherwise a normal visit keeps the remembered target.
+  const [targetMin, setTargetMin] = useState(() => {
+    if (searchParams.get('guided') === '1') return guidedDurationSec / 60
+    if (!hasBreathePrefs()) return FIRST_SIT_TARGET_MIN
+    return loadPrefs().targetMin
+  })
   const [soundscape, setSoundscape] = useState<SoundscapeName>(loadSoundscapePref)
   const [soundscapeVol, setSoundscapeVol] = useState(loadSoundscapeVolPref)
   const soundscapeEngineRef = useRef<SoundscapeEngine | null>(null)
@@ -426,7 +458,7 @@ export default function BreathePage() {
     if (!payload) return
     writeDraft(DRAFT_PAGE, {
       clientToken: payload.client_token as string,
-      label: 'Breathing',
+      label: t('practice.breathe.recover.label'),
       elapsedSeconds: Math.floor(elapsedSec),
       payload,
       savedAt: Date.now(),
@@ -530,14 +562,20 @@ export default function BreathePage() {
     const tick = () => {
       const a = audio() // re-reads volume/ambient from the live refs, so mid-session
       //                    audio tweaks take effect on the next queued cue
-      if (!a.isRunning()) {
-        a.resume() // suspended (e.g. returning to a mobile tab) — re-anchor handles re-sync
-        return
-      }
-      const ctxNow = a.audioTime()
 
-      // Timed sessions finish + save even while backgrounded (within a throttle tick).
+      // The true elapsed needs no audio — compute it FIRST so timed sessions finish + save
+      // and the recovery draft stays fresh even while the AudioContext is suspended (a hidden
+      // tab / iOS interruption, where resume() may not succeed until foregrounded) and while
+      // rAF is paused in a background tab. Previously this sat below the isRunning() early
+      // return, so a backgrounded timed sit silently overshot and the pagehide draft carried
+      // a stale pre-hide elapsed.
       const total = baseElapsedRef.current + (performance.now() - cycleStartRef.current) / 1000
+      elapsedRef.current = total
+      const sec = Math.floor(total)
+      if (sec !== lastPersistRef.current) {
+        lastPersistRef.current = sec
+        persistDraft(total)
+      }
       if (targetRef.current > 0 && total >= targetRef.current * 60) {
         setRunning(false)
         a.stop()
@@ -545,6 +583,12 @@ export default function BreathePage() {
         void saveSession(targetRef.current * 60)
         return
       }
+
+      if (!a.isRunning()) {
+        a.resume() // suspended (e.g. returning to a mobile tab) — re-anchor handles re-sync
+        return
+      }
+      const ctxNow = a.audioTime()
 
       // Queue every cue whose start falls within the look-ahead window.
       const p = patternRef.current
@@ -662,7 +706,7 @@ export default function BreathePage() {
     elapsedRef.current = 0
     tokenRef.current = null
     clearDraft(DRAFT_PAGE)
-    setScale(prefersReducedMotion ? STATIC_SCALE : MIN_SCALE)
+    setScale(STATIC_SCALE) // back to the settled "Ready" pose
     setPhase('inhale')
     // Drop any captured-but-unlinked pre-reading so it can't link to a later sit
     // (matches MeditatePage.reset()).
@@ -701,7 +745,7 @@ export default function BreathePage() {
         intention: intention.trim() || null,
       })
     } catch (err) {
-      setError(err instanceof ApiError ? "Couldn't save the session." : messageForError(err))
+      setError(err instanceof ApiError ? t('practice.error.saveSession') : messageForError(err))
       setSaving(false)
       return
     }
@@ -740,7 +784,7 @@ export default function BreathePage() {
     }
 
     // True gain from the server (3× breathing XP + any daily-quest/streak bonus).
-    const bd = buildXpBreakdown(before, after, 'Breathing', Wind)
+    const bd = buildXpBreakdown(before, after, t('practice.breathe.recover.label'), Wind)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
@@ -768,9 +812,9 @@ export default function BreathePage() {
       await sessionService.create(restorable.payload)
       clearDraft(DRAFT_PAGE)
       setRestorable(null)
-      showToast('That breath is yours. 🌬️')
+      showToast(t('practice.recover.savedToast'))
     } catch {
-      setError("Couldn't save that session.")
+      setError(t('practice.recover.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -823,7 +867,7 @@ export default function BreathePage() {
       advanceToReading()
     } catch (err) {
       setReflectError(
-        err instanceof ApiError ? "Couldn't save reflection." : messageForError(err),
+        err instanceof ApiError ? t('practice.error.saveReflection') : messageForError(err),
       )
       setReflectSaving(false)
     }
@@ -836,17 +880,9 @@ export default function BreathePage() {
   }
 
   // What happens once the sit is saved and the reward step is done (whether the reward
-  // overlay was shown, or skipped because the stats fetch failed): the onboarding hatch
-  // takes precedence (first sit → companion choose page), otherwise offer the reflection,
+  // overlay was shown, or skipped because the stats fetch failed): offer the reflection,
   // else return home. Shared so the reward-overlay close and the stats-failed path agree.
   function proceedAfterReward() {
-    // Onboarding hatch (§5): the very first sit "hatches" the companion. If a hatch is
-    // pending, clear the flag and send the user to the choose page (the celebratory
-    // reveal) instead of the usual reflection-modal / home path.
-    if (consumePendingHatch()) {
-      navigate('/spirit/choose')
-      return
-    }
     // After XP, offer the optional reflection — never blocks.
     if (savedSessionIdRef.current) setShowReflection(true)
     else navigate('/')
@@ -874,22 +910,34 @@ export default function BreathePage() {
 
   return (
     <main id="main-content" className="breathe">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('practice.back.dashboard')}</Link>
       <header className="page-head">
-        <h1>Breathe</h1>
+        <h1>{t('practice.breathe.title')}</h1>
       </header>
+
+      {/* Beginner-friendly intro — a plain-language "what you'll do" before the breath starts, so
+          nobody is dropped cold into a pacer. Hidden in the zero-config guided first sit (which has
+          its own gentle cue) and once the breath is underway. */}
+      {!guided && !running && elapsed === 0 && (
+        <div className="practice-intro">
+          <p className="practice-intro-what">{t(BREATHE_INTRO_KEY[presetKey] ?? BREATHE_INTRO_DEFAULT_KEY)}</p>
+          <p className="practice-intro-how">
+            {t('practice.breathe.intro.how')}
+          </p>
+        </div>
+      )}
 
       {restorable && !running && elapsed === 0 && (
         <div className="session-recover">
           <span>
-            Unsaved breathing sit · {Math.round(restorable.elapsedSeconds / 60)} min from earlier.
+            {t('practice.breathe.recover.unsaved', { min: Math.round(restorable.elapsedSeconds / 60) })}
           </span>
           <div className="session-recover-actions">
             <button type="button" onClick={restoreSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save it'}
+              {saving ? t('practice.recover.saving') : t('practice.recover.save')}
             </button>
             <button type="button" className="link-neutral" onClick={discardRestore}>
-              Discard
+              {t('practice.recover.discard')}
             </button>
           </div>
         </div>
@@ -901,16 +949,6 @@ export default function BreathePage() {
             className={`breathe-circle ${running ? phase : 'idle'}`}
             style={{ transform: `scale(${scale})` }}
           />
-          {/* The companion breathes with you: while running, it syncs to the SAME `scale`
-              (the breathe-circle's `scaleAt` value) so its aura expands on the inhale and
-              contracts on the exhale — one rAF clock, no drift. When paused it sits idle, and
-              it gives a brief happy swell once the post-session reward appears (`celebrate`).
-              Reduced-motion holds it static (handled inside Spirit). */}
-          <Spirit
-            compact
-            paceScale={running ? scale : undefined}
-            celebrate={reward !== null}
-          />
           {/* aria-live="polite" announces phase changes (inhale / hold / exhale) to SR
               users — the primary cue when audio is off or headphones aren't in use. For
               alternate-nostril, the active side is appended so the announcement carries it
@@ -920,11 +958,11 @@ export default function BreathePage() {
               <>
                 {SEGMENT_LABEL[phase]}
                 {isAlternate && nostril && (
-                  <span className="breathe-nostril-label"> · {nostril}</span>
+                  <span className="breathe-nostril-label"> · {t(`practice.breathe.nostril.${nostril}`)}</span>
                 )}
               </>
             ) : (
-              'Ready'
+              t('practice.state.ready')
             )}
           </div>
           {/* Distinctive Nadi Shodhana cue: a little nose whose ACTIVE nostril glows open while
@@ -935,10 +973,10 @@ export default function BreathePage() {
               <NoseCue active={nostril} />
               <div className="breathe-nose-tags">
                 <span className={`breathe-nostril-tag${nostril === 'left' ? ' active' : ''}`}>
-                  left
+                  {t('practice.breathe.nostril.left')}
                 </span>
                 <span className={`breathe-nostril-tag${nostril === 'right' ? ' active' : ''}`}>
-                  right
+                  {t('practice.breathe.nostril.right')}
                 </span>
               </div>
             </div>
@@ -954,16 +992,22 @@ export default function BreathePage() {
             {mmss(elapsed)}
             {targetMin > 0 && ` / ${mmss(targetMin * 60)}`}
           </span>
-          <span>{cycles} cycles</span>
+          <span>{t('practice.breathe.cycles', { cycles })}</span>
           <span>
-            {preset.control === 'bpm' ? `${bpm} breaths per minute` : patternSummary(pattern)}
+            {preset.control === 'bpm' ? t('practice.breathe.bpm', { bpm }) : patternSummary(pattern)}
           </span>
         </div>
       )}
 
+      {/* The setup (pattern / pace / duration / sound) is hidden while the breath runs — say so,
+          so its disappearance reads as intentional rather than broken. */}
+      {running && !guided && (
+        <p className="breathe-running-hint muted">{t('practice.breathe.runningHint')}</p>
+      )}
+
       {/* Show the locked-in intention quietly during the sit. */}
       {(running || elapsed > 0) && intention.trim() && (
-        <p className="session-intention-locked" aria-label="Your intention for this sit">
+        <p className="session-intention-locked" aria-label={t('practice.meditate.intentionAria')}>
           <span className="session-intention-locked-icon" aria-hidden="true">✦</span>{' '}
           {intention.trim()}
         </p>
@@ -973,7 +1017,7 @@ export default function BreathePage() {
           duration/sound controls — just the orb, one gentle cue, and the Begin button below.
           Shown before the breath starts; once it's underway the orb + phase label carry it. */}
       {guided && !running && elapsed === 0 && (
-        <p className="breathe-guided-cue">Follow the orb — breathe with it.</p>
+        <p className="breathe-guided-cue">{t('practice.breathe.guidedCue')}</p>
       )}
 
       {/* Setup (pattern, pace, duration, sound) shows before/while paused; during a
@@ -981,8 +1025,8 @@ export default function BreathePage() {
           Hidden entirely for a guided first sit (zero configuration). */}
       {!guided && !running && (
         <>
-      <label>Pattern</label>
-      <div className="pattern-cards" role="group" aria-label="Breathing pattern">
+      <label>{t('practice.breathe.pattern.label')}</label>
+      <div className="pattern-cards" role="group" aria-label={t('practice.breathe.pattern.group')}>
         {PRESETS.map((p) => {
           const selected = presetKey === p.key
           return (
@@ -1015,23 +1059,23 @@ export default function BreathePage() {
 
       {isAlternate && (
         <p className="pattern-note">
-          Close one nostril with your thumb or finger; switch sides each round.
+          {t('practice.breathe.alternateNote')}
         </p>
       )}
 
       {preset.control === 'bpm' && (
         <>
-          <label>Pace</label>
+          <label>{t('practice.breathe.pace.label')}</label>
           <Stepper
             options={BPM_OPTIONS}
             value={bpm}
             disabled={running}
-            ariaLabel="Breaths per minute"
-            prevLabel="Gentler"
-            nextLabel="Harder"
+            ariaLabel={t('practice.breathe.pace.aria')}
+            prevLabel={t('practice.breathe.pace.gentler')}
+            nextLabel={t('practice.breathe.pace.harder')}
             valueSuffix={
               <span className={`pace-difficulty d-${DIFFICULTY(bpm).key}`}>
-                {DIFFICULTY(bpm).label}
+                {t(`practice.breathe.difficulty.${DIFFICULTY(bpm).key}`)}
               </span>
             }
             onChange={selectBpm}
@@ -1041,139 +1085,142 @@ export default function BreathePage() {
 
       {preset.control === 'count' && (
         <>
-          <label>Each phase</label>
+          <label>{t('practice.breathe.eachPhase.label')}</label>
           <Stepper
             options={BOX_COUNTS}
             value={boxCount}
             disabled={running}
-            ariaLabel="Seconds per phase"
-            prevLabel="Shorter"
-            nextLabel="Longer"
+            ariaLabel={t('practice.breathe.eachPhase.aria')}
+            prevLabel={t('practice.breathe.eachPhase.shorter')}
+            nextLabel={t('practice.breathe.eachPhase.longer')}
             onChange={selectBoxCount}
           />
         </>
       )}
 
-      <label>Duration</label>
+      <label>{t('practice.duration.label')}</label>
       <Stepper
         options={DURATIONS}
         value={targetMin}
         disabled={running}
-        ariaLabel="Duration"
+        ariaLabel={t('practice.duration.label')}
         onChange={setTargetMin}
       />
 
-      {/* Pre-session intention — optional, skippable; hidden once a sit is underway. */}
+      {/* Session prep — the optional intention + pre-session reading, folded behind ONE quiet
+          disclosure (mirrors MeditatePage) so the visible setup stays Pattern → Pace → Duration
+          → Start. Hidden once a sit is underway; values persist while collapsed. */}
       {elapsed === 0 && (
-        <div className="session-intention">
-          <label htmlFor="breathe-intention" className="session-intention-label">
-            Intention <span className="session-intention-opt">(optional)</span>
-          </label>
-          <textarea
-            id="breathe-intention"
-            className="session-intention-input"
-            rows={2}
-            maxLength={140}
-            placeholder={intentionPlaceholder}
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Optional pre-session reading — calm, skippable; captured now and linked to the
-          sit afterwards so the pre/post calming delta can pair them. */}
-      {elapsed === 0 && (
-        <div className="session-prereading">
-          {preReadingIdRef.current ? (
-            <p className="session-prereading-done" aria-live="polite">
-              <span aria-hidden="true">✓</span> Pre-breathing reading logged.
-            </p>
-          ) : (
-            <button
-              type="button"
-              className="link-neutral session-prereading-btn"
-              onClick={() => setShowPreReading(true)}
-            >
-              Log a reading first (optional)
-            </button>
-          )}
-        </div>
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">
+            {t('practice.prep.summary')}
+          </summary>
+          <div className="meditate-disclosure-body">
+            <div className="session-intention">
+              <label htmlFor="breathe-intention" className="session-intention-label">
+                {t('practice.intention.label')} <span className="session-intention-opt">{t('practice.intention.optional')}</span>
+              </label>
+              <textarea
+                id="breathe-intention"
+                className="session-intention-input"
+                rows={2}
+                maxLength={140}
+                placeholder={intentionPlaceholder}
+                value={intention}
+                onChange={(e) => setIntention(e.target.value)}
+              />
+            </div>
+            <div className="session-prereading">
+              {preReadingIdRef.current ? (
+                <p className="session-prereading-done" aria-live="polite">
+                  <span aria-hidden="true">✓</span> {t('practice.breathe.preReading.done')}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="link-neutral session-prereading-btn"
+                  onClick={() => setShowPreReading(true)}
+                >
+                  {t('practice.prereading.log')}
+                </button>
+              )}
+            </div>
+          </div>
+        </details>
       )}
         </>
       )}
 
-      {/* Audio stays adjustable during a session — a live comfort knob. Hidden for a guided
-          first sit, which keeps its calm defaults (the ambient wash + chime are on already). */}
+      {/* Sound — ALL the audio controls (breath wash, chime, volume, soundscape) live together
+          behind ONE quiet disclosure (mirrors MeditatePage's Sound & bells), instead of three
+          loose controls plus a separate soundscape collapse. Everything stays live-adjustable
+          during a session — open the disclosure to change it. Hidden for a guided first sit,
+          which keeps its calm defaults (the ambient wash + chime are on already). */}
       {!guided && (
-        <>
-      <label htmlFor="ambient">Sound</label>
-      <select
-        id="ambient"
-        value={audioOn ? ambient : 'off'}
-        onChange={(e) => {
-          const v = e.target.value
-          if (v === 'off') {
-            toggleAudio(false)
-          } else {
-            setAmbient(v as AmbientSound)
-            if (!audioOn) toggleAudio(true)
-            else if (running) audioRef.current?.stop() // switch the wash live (rebuilds next cue)
-          }
-        }}
-      >
-        <option value="off">Off</option>
-        {AMBIENT_SOUNDS.map((s) => (
-          <option key={s.value} value={s.value}>
-            {s.label}
-          </option>
-        ))}
-      </select>
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">{t('practice.breathe.audio.summary')}</summary>
+          <div className="meditate-disclosure-body">
+            <label htmlFor="ambient">{t('practice.breathe.sound.label')}</label>
+            <select
+              id="ambient"
+              value={audioOn ? ambient : 'off'}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === 'off') {
+                  toggleAudio(false)
+                } else {
+                  setAmbient(v as AmbientSound)
+                  if (!audioOn) toggleAudio(true)
+                  else if (running) audioRef.current?.stop() // switch the wash live (rebuilds next cue)
+                }
+              }}
+            >
+              <option value="off">{t('practice.breathe.sound.off')}</option>
+              {AMBIENT_SOUNDS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
 
-      <label className="breathe-check">
-        <input
-          type="checkbox"
-          checked={chimeOn}
-          onChange={(e) => toggleChime(e.target.checked)}
-        />
-        Chime
-      </label>
+            <label className="breathe-check">
+              <input
+                type="checkbox"
+                checked={chimeOn}
+                onChange={(e) => toggleChime(e.target.checked)}
+              />
+              {t('practice.breathe.chime')}
+            </label>
 
-      <label htmlFor="volume">Volume</label>
-      <input
-        id="volume"
-        className="breathe-volume"
-        type="range"
-        min="0"
-        max="1"
-        step="0.05"
-        value={volume}
-        disabled={!audioOn && !chimeOn}
-        onChange={(e) => setVolume(Number(e.target.value))}
-      />
+            <label htmlFor="volume">{t('practice.breathe.volume')}</label>
+            <input
+              id="volume"
+              className="breathe-volume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={volume}
+              disabled={!audioOn && !chimeOn}
+              onChange={(e) => setVolume(Number(e.target.value))}
+            />
 
-      {/* Ambient soundscape — secondary, tucked behind a collapsed disclosure so the
-          pre-start view stays calm. Open it to choose a backdrop (preview-on-select
-          still works), and to switch it live during a session. */}
-      <details className="meditate-disclosure">
-        <summary className="meditate-disclosure-summary">Ambient soundscape</summary>
-        <div className="meditate-disclosure-body">
-          <SoundscapePicker
-            value={soundscape}
-            volume={soundscapeVol}
-            previewEngineRef={soundscapeEngineRef}
-            previewEnabled={!(running || elapsed > 0)}
-            onSoundscapeChange={(name) => {
-              setSoundscape(name)
-              // Switch the live bed during a session, reusing the shared start/stop helper
-              // (which dedupes a matching engine) rather than re-implementing it inline.
-              if (running) startBreathSoundscape(name)
-            }}
-            onVolumeChange={setSoundscapeVol}
-          />
-        </div>
-      </details>
-        </>
+            <label>{t('practice.breathe.soundscape.summary')}</label>
+            <SoundscapePicker
+              value={soundscape}
+              volume={soundscapeVol}
+              previewEngineRef={soundscapeEngineRef}
+              previewEnabled={!(running || elapsed > 0)}
+              onSoundscapeChange={(name) => {
+                setSoundscape(name)
+                // Switch the live bed during a session, reusing the shared start/stop helper
+                // (which dedupes a matching engine) rather than re-implementing it inline.
+                if (running) startBreathSoundscape(name)
+              }}
+              onVolumeChange={setSoundscapeVol}
+            />
+          </div>
+        </details>
       )}
 
       <ErrorBanner message={error} />
@@ -1186,16 +1233,20 @@ export default function BreathePage() {
             onClick={start}
             disabled={saving}
           >
-            {elapsed > 0 ? 'Resume' : guided ? 'Begin' : 'Start'}
+            {elapsed > 0
+              ? t('practice.control.resume')
+              : guided
+                ? t('practice.control.begin')
+                : t('practice.control.start')}
           </button>
         ) : (
           <button type="button" onClick={pause}>
-            Pause
+            {t('practice.control.pause')}
           </button>
         )}
         {(running || elapsed > 0) && (
           <button type="button" className="secondary" onClick={finish} disabled={saving}>
-            {saving ? 'Saving…' : 'Finish & save'}
+            {saving ? t('practice.recover.saving') : t('practice.control.finishSave')}
           </button>
         )}
       </div>
@@ -1222,12 +1273,12 @@ export default function BreathePage() {
         <BiometricCapture
           context="pre"
           sessionId={null}
-          title="Log a reading first?"
-          intro="Optional: your heart rate now, to see how a breathing sit settles you."
+          title={t('practice.prereading.title')}
+          intro={t('practice.breathe.preReading.intro')}
           onDone={(reading) => {
             if (reading) preReadingIdRef.current = reading.id
             setShowPreReading(false)
-            showToast('Noted — your heart, on the record.')
+            showToast(t('practice.reading.notedToast'))
           }}
           onSkip={() => setShowPreReading(false)}
         />
@@ -1236,32 +1287,32 @@ export default function BreathePage() {
       {/* Post-session reflection — after the reward overlay, before the post reading.
           Patches focus/calm/notes onto the already-saved sit (no double-save). */}
       {showReflection && (
-        <Modal ariaLabel="Reflect on your breathing" cardClassName="biometric-card session-reflect-card">
-          <h2>How was that?</h2>
+        <Modal ariaLabel={t('practice.breathe.reflect.aria')} cardClassName="biometric-card session-reflect-card">
+          <h2>{t('practice.reflect.heading')}</h2>
           {intention.trim() && (
             <p className="session-reflect-intention">
-              Your intention: <em>{intention.trim()}</em>
+              {t('practice.breathe.reflect.intentionLabel')} <em>{intention.trim()}</em>
             </p>
           )}
           <p className="biometric-intro">
-            Optional — rate it, or jot a quick note.
+            {t('practice.reflect.intro')}
           </p>
 
           <div className="session-reflect-ratings">
             <div className="session-reflect-row">
-              <span className="session-reflect-label">Focus</span>
+              <span className="session-reflect-label">{t('practice.reflect.focus')}</span>
               <RatingChips
-                ariaLabel="Focus"
-                notRatedLabel="—"
+                ariaLabel={t('practice.reflect.focus')}
+                notRatedLabel={t('practice.reflect.notRated')}
                 value={reflectFocus}
                 onChange={setReflectFocus}
               />
             </div>
             <div className="session-reflect-row">
-              <span className="session-reflect-label">Calm</span>
+              <span className="session-reflect-label">{t('practice.reflect.calm')}</span>
               <RatingChips
-                ariaLabel="Calm"
-                notRatedLabel="—"
+                ariaLabel={t('practice.reflect.calm')}
+                notRatedLabel={t('practice.reflect.notRated')}
                 value={reflectCalm}
                 onChange={setReflectCalm}
               />
@@ -1270,18 +1321,18 @@ export default function BreathePage() {
 
           {/* Optional mood — logged via the MoodLog path so it feeds the mood trends. */}
           <div className="session-reflect-mood">
-            <span className="session-reflect-label">Mood (optional)</span>
+            <span className="session-reflect-label">{t('practice.reflect.moodLabel')}</span>
             <ReflectionMood value={reflectMood} onChange={setReflectMood} />
           </div>
 
           <div className="session-reflect-notes">
             <label htmlFor="breathe-reflect-notes" className="session-reflect-notes-label">
-              Notes (optional)
+              {t('practice.reflect.notesLabel')}
             </label>
             <textarea
               id="breathe-reflect-notes"
               rows={3}
-              placeholder="Anything that arose…"
+              placeholder={t('practice.reflect.notesPlaceholder')}
               value={reflectNotes}
               onChange={(e) => setReflectNotes(e.target.value)}
             />
@@ -1291,7 +1342,7 @@ export default function BreathePage() {
 
           <div className="biometric-actions">
             <button type="button" onClick={saveReflection} disabled={reflectSaving}>
-              {reflectSaving ? 'Saving…' : 'Keep it'}
+              {reflectSaving ? t('practice.recover.saving') : t('practice.reflect.keep')}
             </button>
             <button
               type="button"
@@ -1299,7 +1350,7 @@ export default function BreathePage() {
               onClick={advanceToReading}
               disabled={reflectSaving}
             >
-              Skip
+              {t('practice.reflect.skip')}
             </button>
           </div>
         </Modal>
@@ -1309,10 +1360,10 @@ export default function BreathePage() {
         <BiometricCapture
           context="post"
           sessionId={savedSessionIdRef.current}
-          title="Log a quick reading?"
-          intro="Optional: your heart rate now, to see how a breathing sit settles you."
+          title={t('practice.reflect.readingTitle')}
+          intro={t('practice.breathe.preReading.intro')}
           onDone={() => {
-            showToast('Noted — your heart, on the record.')
+            showToast(t('practice.reading.notedToast'))
             navigate('/')
           }}
           onSkip={() => navigate('/')}

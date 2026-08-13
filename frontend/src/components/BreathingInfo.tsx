@@ -1,44 +1,45 @@
+import { useT } from '../i18n'
+
 export default function BreathingInfo() {
+  const { t } = useT()
   return (
     <details className="breathe-info">
-      <summary>About resonance breathing</summary>
+      <summary>{t('practice.breathingInfo.summary')}</summary>
 
-      <h2>What it is</h2>
+      <h2>{t('practice.breathingInfo.whatHeading')}</h2>
       <p>
-        Resonance (or "coherence") breathing is slow, paced breathing — around 6 breaths a
-        minute or slower. At this pace your heart rate and breath fall into sync, which
-        maximizes <strong>heart-rate variability (HRV)</strong> and shifts your nervous system
-        toward "rest and digest" for a calmer, more focused state.
+        {t('practice.breathingInfo.whatBody.pre')}{' '}
+        <strong>{t('practice.breathingInfo.whatBody.emph')}</strong>{' '}
+        {t('practice.breathingInfo.whatBody.post')}
       </p>
 
-      <h2>Why the 2:3 ratio</h2>
+      <h2>{t('practice.breathingInfo.ratioHeading')}</h2>
       <p>
-        You breathe in for 2 counts and out for 3 — a slightly <strong>longer exhale</strong>,
-        which gently stimulates the vagus nerve and deepens relaxation. At a <em>Gentle</em>
-        pace (6 breaths a minute) that's about 4 seconds in, 6 seconds out; slower paces stretch
-        both.
+        {t('practice.breathingInfo.ratioBody.pre')}{' '}
+        <strong>{t('practice.breathingInfo.ratioBody.emph')}</strong>
+        {t('practice.breathingInfo.ratioBody.mid')} <em>{t('practice.breathingInfo.ratioBody.emph2')}</em>{' '}
+        {t('practice.breathingInfo.ratioBody.post')}
       </p>
 
-      <h2>Benefits</h2>
+      <h2>{t('practice.breathingInfo.benefitsHeading')}</h2>
       <ul>
-        <li>Lower stress and anxiety in the moment</li>
-        <li>Sharper focus and a steadier mind</li>
-        <li>Higher HRV — a marker of nervous-system resilience</li>
-        <li>Can support better sleep and emotional regulation</li>
+        <li>{t('practice.breathingInfo.benefit1')}</li>
+        <li>{t('practice.breathingInfo.benefit2')}</li>
+        <li>{t('practice.breathingInfo.benefit3')}</li>
+        <li>{t('practice.breathingInfo.benefit4')}</li>
       </ul>
 
-      <h2>How to do it</h2>
+      <h2>{t('practice.breathingInfo.howHeading')}</h2>
       <ol>
-        <li>Sit comfortably, shoulders relaxed.</li>
-        <li>Breathe through your nose, down into your belly — not your chest.</li>
-        <li>Follow the circle and tone: in as it grows, out as it shrinks.</li>
-        <li>Don't force it — if a pace strains, choose an easier (faster) one.</li>
-        <li>Start with a few minutes and build up over time.</li>
+        <li>{t('practice.breathingInfo.how1')}</li>
+        <li>{t('practice.breathingInfo.how2')}</li>
+        <li>{t('practice.breathingInfo.how3')}</li>
+        <li>{t('practice.breathingInfo.how4')}</li>
+        <li>{t('practice.breathingInfo.how5')}</li>
       </ol>
 
       <p className="muted">
-        General wellness guidance, not medical advice. Ease off or stop if you feel light-headed,
-        and check with a clinician first if you have a heart or respiratory condition.
+        {t('practice.breathingInfo.disclaimer')}
       </p>
     </details>
   )

@@ -31,6 +31,7 @@ from app.core.security import (
     password_fingerprint,
     verify_password,
 )
+from app.models.ai_reflection import AIReflection
 from app.models.biometric_reading import BiometricReading
 from app.models.breathing_pattern import BreathingPattern
 from app.models.goal import Goal, GoalCheckin
@@ -38,6 +39,7 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.mood_log import MoodLog
 from app.models.path_enrollment import PathEnrollment
+from app.models.prayer import Prayer
 from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
 from app.models.spirit import Spirit
@@ -96,6 +98,16 @@ def set_quest_features(db: Session, user: User, features: list[str]) -> User:
             f"choose at least {MIN_QUEST_FEATURES} quest features"
         )
     user.quest_features = chosen
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_daily_goal(db: Session, user: User, minutes: int) -> User:
+    """Set the user's daily practice goal (minutes) — the target the daily-goal ring
+    fills toward. The sane range (1–120) is enforced by the request schema
+    (`DailyGoalUpdate`), so this just persists the already-validated value."""
+    user.daily_goal_minutes = minutes
     db.commit()
     db.refresh(user)
     return user
@@ -450,6 +462,8 @@ def export_user_data(db: Session, user: User) -> dict:
         "scheduled_sessions": owned(ScheduledSession),
         "breathing_patterns": owned(BreathingPattern),
         "path_enrollments": owned(PathEnrollment),
+        "ai_reflections": owned(AIReflection),
+        "prayers": owned(Prayer),
     }
 
 

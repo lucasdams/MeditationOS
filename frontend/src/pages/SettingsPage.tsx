@@ -6,10 +6,11 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
-import QuestPicker, { tooFewQuestsMessage } from '../components/QuestPicker'
-import { SEASON_PREFS, SEASONS } from '../lib/theme'
+import QuestPicker from '../components/QuestPicker'
+import { SEASON_PREFS } from '../lib/theme'
 import { getInterfaceSounds, setInterfaceSounds, playClick } from '../lib/sfx'
 import { analyticsOptedOut, setAnalyticsOptOut } from '../lib/analytics'
+import { LOCALES, LOCALE_LABEL, setLocale, useT, fmtDate, fmtTime, type Locale } from '../i18n'
 import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
@@ -18,20 +19,25 @@ function formatJoined(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    : fmtDate(d, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+// Reminder day-of-week options as indexes (0 = Monday … 6 = Sunday), matching the backend.
+const WEEKDAYS = Array.from({ length: 7 }, (_, i) => i)
+// Locale-aware label for a reminder hour ("8:00 AM" in en, "8:00" in ja).
 function formatHour(h: number): string {
-  const period = h < 12 ? 'AM' : 'PM'
-  const display = h % 12 === 0 ? 12 : h % 12
-  return `${display}:00 ${period}`
+  return fmtTime(new Date(2024, 0, 1, h), { hour: 'numeric', minute: '2-digit' })
+}
+// Locale-aware weekday name for a summary-day index (0 = Monday). 2024-01-01 was a Monday.
+function weekdayLabel(i: number): string {
+  return fmtDate(new Date(2024, 0, 1 + i), { weekday: 'long' })
 }
 
 export default function SettingsPage() {
   const { user, refresh, logout } = useAuth()
   const { pref: seasonPref, setPref: setSeasonPref, season, dayPhase } = useTheme()
+  const { t, locale } = useT()
   const navigate = useNavigate()
 
   // Username section.
@@ -63,6 +69,12 @@ export default function SettingsPage() {
   const [questError, setQuestError] = useState<string | null>(null)
   const [questOk, setQuestOk] = useState(false)
   const [savingQuests, setSavingQuests] = useState(false)
+
+  // Daily-goal section — the target the dashboard ring fills toward (1–120 minutes).
+  const [dailyGoal, setDailyGoal] = useState(user?.daily_goal_minutes ?? 10)
+  const [goalError, setGoalError] = useState<string | null>(null)
+  const [goalOk, setGoalOk] = useState(false)
+  const [savingGoal, setSavingGoal] = useState(false)
 
   // Reminders section.
   const [remindersEnabled, setRemindersEnabled] = useState(user?.reminder_enabled ?? false)
@@ -102,11 +114,11 @@ export default function SettingsPage() {
     setUsernameError(null)
     setUsernameOk(false)
     if (!USERNAME_RE.test(username)) {
-      setUsernameError('3–20 characters: letters, numbers, and underscores only.')
+      setUsernameError(t('settings.username.err.format'))
       return
     }
     if (username === user!.username) {
-      setUsernameError('That’s already your username.')
+      setUsernameError(t('settings.username.err.same'))
       return
     }
     setSavingUsername(true)
@@ -117,7 +129,7 @@ export default function SettingsPage() {
     } catch (err) {
       setUsernameError(
         err instanceof ApiError && err.status === 409
-          ? 'That username is taken.'
+          ? t('settings.username.err.taken')
           : messageForError(err),
       )
     } finally {
@@ -130,15 +142,15 @@ export default function SettingsPage() {
     setPasswordError(null)
     setPasswordOk(false)
     if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters.')
+      setPasswordError(t('settings.password.err.short'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('The new passwords don’t match.')
+      setPasswordError(t('settings.password.err.mismatch'))
       return
     }
     if (hasPassword && !currentPassword) {
-      setPasswordError('Enter your current password.')
+      setPasswordError(t('settings.password.err.current'))
       return
     }
     setSavingPassword(true)
@@ -152,7 +164,7 @@ export default function SettingsPage() {
     } catch (err) {
       setPasswordError(
         err instanceof ApiError && err.status === 401
-          ? 'Your current password is incorrect.'
+          ? t('settings.password.err.wrong')
           : messageForError(err),
       )
     } finally {
@@ -165,15 +177,15 @@ export default function SettingsPage() {
     setEmailError(null)
     setEmailOk(false)
     if (!newEmail.trim()) {
-      setEmailError('Enter a new email.')
+      setEmailError(t('settings.email.err.enter'))
       return
     }
     if (newEmail.trim().toLowerCase() === user!.email.toLowerCase()) {
-      setEmailError('That’s already your email.')
+      setEmailError(t('settings.email.err.same'))
       return
     }
     if (!emailPassword) {
-      setEmailError('Enter your current password to confirm.')
+      setEmailError(t('settings.email.err.password'))
       return
     }
     setSavingEmail(true)
@@ -186,9 +198,9 @@ export default function SettingsPage() {
     } catch (err) {
       setEmailError(
         err instanceof ApiError && err.status === 409
-          ? 'That email already has an account.'
+          ? t('settings.email.err.taken')
           : err instanceof ApiError && err.status === 401
-            ? 'Your password is incorrect.'
+            ? t('settings.email.err.wrong')
             : messageForError(err),
       )
     } finally {
@@ -200,15 +212,15 @@ export default function SettingsPage() {
     e.preventDefault()
     setClaimError(null)
     if (!claimEmail) {
-      setClaimError('Enter an email.')
+      setClaimError(t('settings.claim.err.email'))
       return
     }
     if (claimPassword.length < 8) {
-      setClaimError('Password must be at least 8 characters.')
+      setClaimError(t('settings.claim.err.short'))
       return
     }
     if (claimPassword !== claimConfirm) {
-      setClaimError('The passwords don’t match.')
+      setClaimError(t('settings.claim.err.mismatch'))
       return
     }
     setSavingClaim(true)
@@ -218,7 +230,7 @@ export default function SettingsPage() {
     } catch (err) {
       setClaimError(
         err instanceof ApiError && err.status === 409
-          ? 'That email already has an account.'
+          ? t('settings.claim.err.taken')
           : messageForError(err),
       )
     } finally {
@@ -241,7 +253,7 @@ export default function SettingsPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      setDataError("Couldn't export your data. Try again.")
+      setDataError(t('settings.data.err.export'))
     } finally {
       setExporting(false)
     }
@@ -255,7 +267,7 @@ export default function SettingsPage() {
       await logout() // clears the (already-cleared) session + local user state
       navigate('/login')
     } catch {
-      setDataError("Couldn't delete your account. Try again.")
+      setDataError(t('settings.data.err.delete'))
       setDeleting(false)
     }
   }
@@ -270,7 +282,7 @@ export default function SettingsPage() {
     setQuestError(null)
     setQuestOk(false)
     if (questFeatures.length < MIN_QUEST_FEATURES) {
-      setQuestError(tooFewQuestsMessage)
+      setQuestError(t('settings.missions.tooFew', { min: MIN_QUEST_FEATURES }))
       return
     }
     setSavingQuests(true)
@@ -282,6 +294,26 @@ export default function SettingsPage() {
       setQuestError(messageForError(err))
     } finally {
       setSavingQuests(false)
+    }
+  }
+
+  async function handleDailyGoal(e: FormEvent) {
+    e.preventDefault()
+    setGoalError(null)
+    setGoalOk(false)
+    if (!Number.isFinite(dailyGoal) || dailyGoal < 1 || dailyGoal > 120) {
+      setGoalError(t('settings.goal.err.range'))
+      return
+    }
+    setSavingGoal(true)
+    try {
+      await authService.setDailyGoal(Math.round(dailyGoal))
+      await refresh()
+      setGoalOk(true)
+    } catch (err) {
+      setGoalError(messageForError(err))
+    } finally {
+      setSavingGoal(false)
     }
   }
 
@@ -305,7 +337,7 @@ export default function SettingsPage() {
       await refresh() // reflect whatever did persist
       setReminderError(
         remindersSaved
-          ? 'Your reminder time was saved, but the streak-save nudge couldn’t be updated. Please try again.'
+          ? t('settings.reminders.err.partial')
           : messageForError(err),
       )
     } finally {
@@ -331,17 +363,17 @@ export default function SettingsPage() {
 
   return (
     <main id="main-content" className="settings">
-      <Link to="/" className="back-link">← Dashboard</Link>
-      <h1>Settings</h1>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
+      <h1>{t('settings.title')}</h1>
 
       {user.is_guest && (
         <section className="settings-section">
-          <h2>Save your account</h2>
+          <h2>{t('settings.claim.heading')}</h2>
           <p className="muted">
-            Add an email and password so you can log back in and keep your progress.
+            {t('settings.claim.desc')}
           </p>
           <form onSubmit={handleClaim} noValidate>
-            <label htmlFor="claim-email">Email</label>
+            <label htmlFor="claim-email">{t('settings.claim.email')}</label>
             <input
               id="claim-email"
               type="email"
@@ -349,7 +381,7 @@ export default function SettingsPage() {
               value={claimEmail}
               onChange={(e) => setClaimEmail(e.target.value)}
             />
-            <label htmlFor="claim-password">Password</label>
+            <label htmlFor="claim-password">{t('settings.claim.password')}</label>
             <input
               id="claim-password"
               type="password"
@@ -357,7 +389,7 @@ export default function SettingsPage() {
               value={claimPassword}
               onChange={(e) => setClaimPassword(e.target.value)}
             />
-            <label htmlFor="claim-confirm">Confirm password</label>
+            <label htmlFor="claim-confirm">{t('settings.claim.confirm')}</label>
             <input
               id="claim-confirm"
               type="password"
@@ -371,27 +403,25 @@ export default function SettingsPage() {
               </p>
             )}
             <button type="submit" disabled={savingClaim}>
-              {savingClaim ? 'Saving…' : 'Save account'}
+              {savingClaim ? t('common.saving') : t('settings.claim.submit')}
             </button>
           </form>
         </section>
       )}
 
+      {/* Account — the read-only details (email, joined) and the editable username share ONE
+          section: the info lines alone don't earn their own divider. */}
       <section className="settings-section">
-        <h2>Account</h2>
+        <h2>{t('settings.account.heading')}</h2>
         <dl className="settings-info">
-          <dt>Email</dt>
-          <dd>{user.is_guest ? 'Guest account (not saved)' : user.email}</dd>
-          <dt>Member since</dt>
+          <dt>{t('settings.account.email')}</dt>
+          <dd>{user.is_guest ? t('settings.account.guest') : user.email}</dd>
+          <dt>{t('settings.account.memberSince')}</dt>
           <dd>{formatJoined(user.created_at)}</dd>
         </dl>
-      </section>
-
-      <section className="settings-section">
-        <h2>Username</h2>
-        <p className="muted">Your public name — shown instead of your email.</p>
+        <p className="muted">{t('settings.username.desc')}</p>
         <form onSubmit={handleUsername} noValidate>
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username">{t('settings.username.label')}</label>
           <input
             id="username"
             value={username}
@@ -405,21 +435,21 @@ export default function SettingsPage() {
               {usernameError}
             </p>
           )}
-          {usernameOk && <p role="status" className="success">Username updated.</p>}
+          {usernameOk && <p role="status" className="success">{t('settings.username.ok')}</p>}
           <button type="submit" disabled={savingUsername}>
-            {savingUsername ? 'Saving…' : 'Save username'}
+            {savingUsername ? t('common.saving') : t('settings.username.submit')}
           </button>
         </form>
       </section>
 
       {!user.is_guest && hasPassword && (
         <section className="settings-section">
-          <h2>Change email</h2>
+          <h2>{t('settings.email.heading')}</h2>
           <p className="muted">
-            You’ll need to confirm a verification link sent to the new address.
+            {t('settings.email.desc')}
           </p>
           <form onSubmit={handleEmail} noValidate>
-            <label htmlFor="new-email">New email</label>
+            <label htmlFor="new-email">{t('settings.email.new')}</label>
             <input
               id="new-email"
               type="email"
@@ -431,7 +461,7 @@ export default function SettingsPage() {
                 setEmailOk(false)
               }}
             />
-            <label htmlFor="email-password">Current password</label>
+            <label htmlFor="email-password">{t('settings.email.current')}</label>
             <input
               id="email-password"
               type="password"
@@ -445,10 +475,10 @@ export default function SettingsPage() {
               </p>
             )}
             {emailOk && (
-              <p role="status" className="success">Email updated — check your inbox to verify it.</p>
+              <p role="status" className="success">{t('settings.email.ok')}</p>
             )}
             <button type="submit" disabled={savingEmail}>
-              {savingEmail ? 'Saving…' : 'Change email'}
+              {savingEmail ? t('common.saving') : t('settings.email.submit')}
             </button>
           </form>
         </section>
@@ -456,17 +486,16 @@ export default function SettingsPage() {
 
       {!user.is_guest && (
       <section className="settings-section">
-        <h2>{hasPassword ? 'Change password' : 'Set a password'}</h2>
+        <h2>{hasPassword ? t('settings.password.headingChange') : t('settings.password.headingSet')}</h2>
         {!hasPassword && (
           <p className="muted">
-            Your account uses Sign in with Google. Set a password to also log in with
-            your email.
+            {t('settings.password.googleNote')}
           </p>
         )}
         <form onSubmit={handlePassword} noValidate>
           {hasPassword && (
             <>
-              <label htmlFor="current-password">Current password</label>
+              <label htmlFor="current-password">{t('settings.password.current')}</label>
               <input
                 id="current-password"
                 type="password"
@@ -476,7 +505,7 @@ export default function SettingsPage() {
               />
             </>
           )}
-          <label htmlFor="new-password">New password</label>
+          <label htmlFor="new-password">{t('settings.password.new')}</label>
           <input
             id="new-password"
             type="password"
@@ -484,7 +513,7 @@ export default function SettingsPage() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
-          <label htmlFor="confirm-password">Confirm new password</label>
+          <label htmlFor="confirm-password">{t('settings.password.confirm')}</label>
           <input
             id="confirm-password"
             type="password"
@@ -498,43 +527,72 @@ export default function SettingsPage() {
             </p>
           )}
           {passwordOk && (
-            <p role="status" className="success">{hasPassword ? 'Password changed.' : 'Password set.'}</p>
+            <p role="status" className="success">{hasPassword ? t('settings.password.okChanged') : t('settings.password.okSet')}</p>
           )}
           <button type="submit" disabled={savingPassword}>
-            {savingPassword ? 'Saving…' : hasPassword ? 'Change password' : 'Set password'}
+            {savingPassword ? t('common.saving') : hasPassword ? t('settings.password.submitChange') : t('settings.password.submitSet')}
           </button>
         </form>
       </section>
       )}
 
       <section className="settings-section">
-        <h2>Daily missions</h2>
+        <h2>{t('settings.missions.heading')}</h2>
         <p className="muted">
-          Choose which practices you get daily missions for — at least {MIN_QUEST_FEATURES}.
+          {t('settings.missions.desc', { min: MIN_QUEST_FEATURES })}
         </p>
         <form onSubmit={handleQuests} noValidate>
           <QuestPicker
             selected={questFeatures}
             onToggle={toggleQuest}
             optionClassName="settings-check"
-            legend="Daily mission practices"
+            legend={t('settings.missions.legend')}
           />
           {questError && (
             <p role="alert" className="error">
               {questError}
             </p>
           )}
-          {questOk && <p role="status" className="success">Mission preferences saved.</p>}
+          {questOk && <p role="status" className="success">{t('settings.missions.ok')}</p>}
           <button type="submit" disabled={savingQuests}>
-            {savingQuests ? 'Saving…' : 'Save missions'}
+            {savingQuests ? t('common.saving') : t('settings.missions.submit')}
           </button>
         </form>
       </section>
 
       <section className="settings-section">
-        <h2>Practice reminders</h2>
+        <h2>{t('settings.goal.heading')}</h2>
+        <p className="muted">{t('settings.goal.desc')}</p>
+        <form onSubmit={handleDailyGoal} noValidate>
+          <label htmlFor="daily-goal">{t('settings.goal.label')}</label>
+          <input
+            id="daily-goal"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={120}
+            value={dailyGoal}
+            onChange={(e) => {
+              setDailyGoal(Number(e.target.value))
+              setGoalOk(false)
+            }}
+          />
+          {goalError && (
+            <p role="alert" className="error">
+              {goalError}
+            </p>
+          )}
+          {goalOk && <p role="status" className="success">{t('settings.goal.ok')}</p>}
+          <button type="submit" disabled={savingGoal}>
+            {savingGoal ? t('common.saving') : t('settings.goal.submit')}
+          </button>
+        </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>{t('settings.reminders.heading')}</h2>
         <p className="muted">
-          A gentle daily email at your local time, skipped on days you’ve already practiced.
+          {t('settings.reminders.desc')}
         </p>
         <form onSubmit={handleReminders} noValidate>
           <label className="settings-check">
@@ -546,11 +604,11 @@ export default function SettingsPage() {
                 setReminderOk(false)
               }}
             />
-            Email me a daily reminder to practice
+            {t('settings.reminders.enable')}
           </label>
           {remindersEnabled && (
             <>
-              <label htmlFor="reminder-hour">Time of day</label>
+              <label htmlFor="reminder-hour">{t('settings.reminders.time')}</label>
               <select
                 id="reminder-hour"
                 value={reminderHour}
@@ -574,7 +632,7 @@ export default function SettingsPage() {
                     setReminderOk(false)
                   }}
                 />
-                Also send a gentle evening nudge if my streak is at risk
+                {t('settings.reminders.streakSave')}
               </label>
             </>
           )}
@@ -583,20 +641,16 @@ export default function SettingsPage() {
               {reminderError}
             </p>
           )}
-          {reminderOk && <p role="status" className="success">Reminder preferences saved.</p>}
+          {reminderOk && <p role="status" className="success">{t('settings.reminders.ok')}</p>}
           <button type="submit" disabled={savingReminder}>
-            {savingReminder ? 'Saving…' : 'Save reminders'}
+            {savingReminder ? t('common.saving') : t('settings.reminders.submit')}
           </button>
         </form>
       </section>
 
       <section className="settings-section">
-        <h2>Privacy</h2>
-        <p className="muted">
-          MeditationOS records a few anonymous, non-personal usage events (like “a session was
-          completed”) to see what helps — never your journal text, moods, emails, or identity.
-          We also honor your browser’s Do Not Track.
-        </p>
+        <h2>{t('settings.privacy.heading')}</h2>
+        <p className="muted">{t('settings.privacy.desc')}</p>
         <label className="settings-check">
           <input
             type="checkbox"
@@ -607,15 +661,14 @@ export default function SettingsPage() {
               setAnalyticsOff(!on)
             }}
           />
-          Share anonymous usage analytics
+          {t('settings.privacy.toggle')}
         </label>
       </section>
 
       <section className="settings-section">
-        <h2>Weekly summary</h2>
+        <h2>{t('settings.summary.heading')}</h2>
         <p className="muted">
-          A weekly email recap — minutes, streak, and your most-logged mood. Sent the morning
-          of your chosen day.
+          {t('settings.summary.desc')}
         </p>
         <form onSubmit={handleWeeklySummary} noValidate>
           <label className="settings-check">
@@ -627,11 +680,11 @@ export default function SettingsPage() {
                 setSummaryOk(false)
               }}
             />
-            Email me a weekly summary
+            {t('settings.summary.enable')}
           </label>
           {summaryEnabled && (
             <>
-              <label htmlFor="summary-day">Day of week</label>
+              <label htmlFor="summary-day">{t('settings.summary.day')}</label>
               <select
                 id="summary-day"
                 value={summaryDay}
@@ -640,9 +693,9 @@ export default function SettingsPage() {
                   setSummaryOk(false)
                 }}
               >
-                {WEEKDAYS.map((label, i) => (
+                {WEEKDAYS.map((i) => (
                   <option key={i} value={i}>
-                    {label}
+                    {weekdayLabel(i)}
                   </option>
                 ))}
               </select>
@@ -653,9 +706,9 @@ export default function SettingsPage() {
               {summaryError}
             </p>
           )}
-          {summaryOk && <p role="status" className="success">Weekly summary preferences saved.</p>}
+          {summaryOk && <p role="status" className="success">{t('settings.summary.ok')}</p>}
           <button type="submit" disabled={savingSummary}>
-            {savingSummary ? 'Saving…' : 'Save weekly summary'}
+            {savingSummary ? t('common.saving') : t('settings.summary.submit')}
           </button>
         </form>
       </section>
@@ -663,20 +716,36 @@ export default function SettingsPage() {
       <PushToggle />
 
       <section className="settings-section">
-        <h2>Timezone</h2>
+        <h2>{t('settings.timezone.heading')}</h2>
         <p className="muted">
-          Set from your browser, so streaks and quests roll over at your local midnight.
+          {t('settings.timezone.desc')}
         </p>
         <p className="settings-tz">{user.timezone}</p>
       </section>
 
       <section className="settings-section">
-        <h2>Appearance</h2>
+        <h2>{t('settings.appearance.heading')}</h2>
+
+        {/* Language (i18n) — persisted locally like the theme; setLocale re-renders live via
+            useT subscribers and flips <html lang> (which switches in the CJK font stack). */}
+        <label htmlFor="ui-language">{t('settings.language')}</label>
+        <select
+          id="ui-language"
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as Locale)}
+        >
+          {LOCALES.map((l) => (
+            <option key={l} value={l}>
+              {LOCALE_LABEL[l]}
+            </option>
+          ))}
+        </select>
+        <p className="muted settings-section-note">{t('settings.language.note')}</p>
 
         <p className="muted settings-section-note">
-          A seasonal tint colors the background. Pick one, or let it follow the calendar.
+          {t('settings.season.desc')}
         </p>
-        <label htmlFor="season">Season</label>
+        <label htmlFor="season">{t('settings.season.label')}</label>
         <select
           id="season"
           value={seasonPref}
@@ -684,13 +753,13 @@ export default function SettingsPage() {
         >
           {SEASON_PREFS.map((s) => (
             <option key={s.value} value={s.value}>
-              {s.label}
+              {t(`settings.season.${s.value}`)}
             </option>
           ))}
         </select>
         <p className="muted settings-theme-now">
-          Now showing: {SEASONS.find((s) => s.value === season)?.label}
-          {seasonPref === 'auto' && ' (auto)'} · {dayPhase}
+          {t('settings.season.now', { season: t(`settings.season.${season}`) })}
+          {seasonPref === 'auto' && t('settings.season.autoSuffix')} · {t(`settings.phase.${dayPhase}`)}
         </p>
         <label className="settings-check">
           <input
@@ -705,14 +774,14 @@ export default function SettingsPage() {
               if (on) playClick()
             }}
           />
-          Interface sounds (a soft tick when you tap controls)
+          {t('settings.sounds')}
         </label>
       </section>
 
       <section className="settings-section">
-        <h2>Your data</h2>
+        <h2>{t('settings.data.heading')}</h2>
         <p className="muted">
-          Download your account as JSON, or permanently delete it and all its data.
+          {t('settings.data.desc')}
         </p>
         {dataError && (
           <p role="alert" className="error">
@@ -726,7 +795,7 @@ export default function SettingsPage() {
             onClick={handleExport}
             disabled={exporting}
           >
-            {exporting ? 'Preparing…' : 'Export my data'}
+            {exporting ? t('settings.data.exporting') : t('settings.data.export')}
           </button>
 
           {!confirmingDelete ? (
@@ -735,11 +804,13 @@ export default function SettingsPage() {
               className="settings-danger"
               onClick={() => setConfirmingDelete(true)}
             >
-              Delete account
+              {t('settings.data.delete')}
             </button>
           ) : (
             <div className="settings-confirm">
-              <p>This permanently deletes your account and all your data. This can’t be undone.</p>
+              <p>
+                {t('settings.data.confirm')}
+              </p>
               <div className="settings-data-actions">
                 <button
                   type="button"
@@ -747,7 +818,7 @@ export default function SettingsPage() {
                   onClick={() => setConfirmingDelete(false)}
                   disabled={deleting}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -755,7 +826,7 @@ export default function SettingsPage() {
                   onClick={handleDelete}
                   disabled={deleting}
                 >
-                  {deleting ? 'Deleting…' : 'Delete permanently'}
+                  {deleting ? t('settings.data.deleting') : t('settings.data.deletePermanently')}
                 </button>
               </div>
             </div>

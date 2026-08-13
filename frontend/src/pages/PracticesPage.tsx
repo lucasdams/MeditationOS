@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Waves,
@@ -8,56 +8,40 @@ import {
   Brain,
   ScanLine,
   Heart,
-  HeartHandshake,
-  Album,
-  Coffee,
-  Trophy,
   HandHeart,
   NotebookPen,
   Flame,
-  SmilePlus,
-  AudioLines,
-  Accessibility,
   Crosshair,
   BedDouble,
-  Unplug,
   Repeat,
-  Footprints,
-  Dumbbell,
-  ListOrdered,
   Tags,
-  Ear,
-  Feather,
-  Sunrise,
-  PartyPopper,
-  Telescope,
   Sunset,
-  CloudMoon,
-  CloudOff,
-  Eye,
-  Hand,
-  OctagonPause,
-  Activity,
   Leaf,
-  DoorOpen,
   Lock,
   ChevronRight,
   Search,
   X,
   Compass,
   Plus,
+  Sparkles,
+  Moon,
+  Clock,
+  Sprout,
   type LucideProps,
 } from 'lucide-react'
-import { spiritService } from '../services/spirit'
 import { dashboardService } from '../services/dashboard'
 import { GUIDED_MIN_LEVEL, isGuidedUnlocked } from '../lib/guidedSessions'
-import { roundOutFacet } from '../lib/spiritNeeds'
-import { SpiritArt, NEED_COPY, prefersReducedMotion } from '../components/Spirit'
-import type { SpiritNeedKey, SpiritPath, SpiritState } from '../types'
+import { suggestedPractices } from '../lib/suggestions'
+import { useT } from '../i18n'
+import type { SpiritNeedKey, SpiritPath } from '../types'
 
 // The Practices hub — one browsable "activities" screen listing every practice technique grouped
 // by category. Each card deep-links into its practice with the variant pre-selected (Breathe reads
 // `?pattern=`, Meditate reads `?guided=`; the reflection pages have their own routes).
+//
+// Each category reads as a DISTINCT block — an accent icon, a real title + one-line blurb, and a
+// soft accent hairline — so the long list doesn't blur into one uniform grid. A small, optional
+// "Suggested for you" set sits up top (time-of-day, or the spirit's least-fed facet).
 //
 // It's also SPIRIT-AWARE: each card shows which of the spirit's three facets it feeds, and when you
 // have a living creature the page gently highlights the practices that round out whatever facet has
@@ -102,8 +86,11 @@ interface PracticeCard {
   to: string
   // A lucide line-icon component (consistent line icons, no system emoji).
   icon: ComponentType<LucideProps>
-  name: string
-  desc: string
+  // i18n catalog keys for the card's name + one-line description, resolved with t() at render
+  // (and before the search filter, so filtering matches the displayed language). English is the
+  // source of truth — the catalog values are byte-identical to the original literals.
+  nameKey: string
+  descKey: string
   kind: PracticeKind
   // Optional per-card BASE-need override. When set it replaces `BASE_NEED[kind]` as the need this
   // practice feeds (e.g. a heart/joy meditation feeds `joyful`, not `rested`). The signature logic
@@ -119,133 +106,220 @@ interface PracticeCard {
 }
 
 interface PracticeGroup {
-  title: string
+  // i18n catalog keys for the group's title + one-line blurb, resolved with t() at render.
+  titleKey: string
+  // A lucide icon + one-line blurb + accent (light/dark) give each category its own identity,
+  // so the sections read as distinct blocks rather than one long uniform grid.
+  icon: ComponentType<LucideProps>
+  blurbKey: string
+  light: string
+  dark: string
   cards: PracticeCard[]
 }
 
 const GROUPS: PracticeGroup[] = [
   {
-    title: 'Breathing',
+    titleKey: 'practice.group.breathing.title',
+    icon: Wind,
+    blurbKey: 'practice.group.breathing.blurb',
+    light: '#0e8aa6',
+    dark: '#5fd2e8',
     cards: [
-      { to: '/breathe?pattern=resonance', icon: Waves, name: 'Resonance', desc: 'Slow, longer-exhale breathing', kind: 'breathing', light: '#0e8aa6', dark: '#5fd2e8' },
-      { to: '/breathe?pattern=box', icon: Square, name: 'Box', desc: 'Equal in·hold·out·hold', kind: 'breathing', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/breathe?pattern=energizing', icon: Sun, name: 'Energizing', desc: 'Brisk, active inhale', kind: 'breathing', light: '#b9760a', dark: '#f5c151' },
-      { to: '/breathe?pattern=alternate', icon: Wind, name: 'Alternate nostril', desc: 'Nadi Shodhana — balance left & right', kind: 'breathing', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/breathe?pattern=resonance', icon: Waves, nameKey: 'practice.card.resonance.name', descKey: 'practice.card.resonance.desc', kind: 'breathing', light: '#0e8aa6', dark: '#5fd2e8' },
+      { to: '/breathe?pattern=box', icon: Square, nameKey: 'practice.card.box.name', descKey: 'practice.card.box.desc', kind: 'breathing', light: '#0891b2', dark: '#67d6e8' },
+      { to: '/breathe?pattern=energizing', icon: Sun, nameKey: 'practice.card.energizing.name', descKey: 'practice.card.energizing.desc', kind: 'breathing', light: '#b9760a', dark: '#f5c151' },
+      { to: '/breathe?pattern=alternate', icon: Wind, nameKey: 'practice.card.alternate.name', descKey: 'practice.card.alternate.desc', kind: 'breathing', light: '#7c3aed', dark: '#c4b5fd' },
     ],
   },
   {
-    // Meditation — attention / mind practices (kind:'meditation', feed Rest).
-    title: 'Meditation',
+    // Meditation — attention / mind / body practices (kind:'meditation', feed Rest). Loving-kindness
+    // carries a `feeds: 'joyful'` override so it still nourishes a Vata/heart spirit via the
+    // signature while feeding Joy; three-breaths is the smallest on-ramp.
+    titleKey: 'practice.group.meditation.title',
+    icon: Brain,
+    blurbKey: 'practice.group.meditation.blurb',
+    light: '#5847f0',
+    dark: '#a8a2ff',
     cards: [
-      { to: '/meditate', icon: Brain, name: 'Mindfulness', desc: 'Open, unguided sitting — just be with the breath', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=focus', icon: Crosshair, name: 'Focused attention', desc: 'Steady a scattered mind on one anchor', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
-      { to: '/meditate?guided=count-breath', icon: ListOrdered, name: 'Count the breath', desc: 'Count each breath one to ten, restart when you drift', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
-      { to: '/meditate?guided=noting', icon: Tags, name: 'Noting', desc: 'Softly label what arises — thinking, hearing, feeling', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=sound-bath', icon: Ear, name: 'Sound meditation', desc: 'Rest attention on the sounds around you, near and far', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=name-feelings', icon: SmilePlus, name: 'Name what you feel', desc: 'Notice a feeling, name it precisely, let it be', kind: 'meditation', light: '#2f6fe0', dark: '#82b4ff' },
-      { to: '/meditate?guided=chakra-om', icon: AudioLines, name: 'Chakra Om', desc: 'Chant Om up through the seven chakras', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd', gate: 'chakra-om' },
-      { to: '/meditate?guided=mantra', icon: Repeat, name: 'Mantra', desc: 'A word to rest the mind on — an anchor for a busy head', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=just-sit', icon: Unplug, name: 'Dopamine reset', desc: 'Sit with nothing — relearn stillness', kind: 'meditation', light: '#0d9488', dark: '#5eead4' },
-      { to: '/trataka', icon: Flame, name: 'Candle gazing', desc: 'Trataka — steady focus on a flame', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
+      { to: '/meditate', icon: Brain, nameKey: 'practice.card.mindfulness.name', descKey: 'practice.card.mindfulness.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
+      { to: '/meditate?guided=focus', icon: Crosshair, nameKey: 'practice.card.focus.name', descKey: 'practice.card.focus.desc', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
+      { to: '/meditate?guided=noting', icon: Tags, nameKey: 'practice.card.noting.name', descKey: 'practice.card.noting.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
+      { to: '/meditate?guided=mantra', icon: Repeat, nameKey: 'practice.card.mantra.name', descKey: 'practice.card.mantra.desc', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
+      { to: '/meditate?guided=body-scan', icon: ScanLine, nameKey: 'practice.card.bodyScan.name', descKey: 'practice.card.bodyScan.desc', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/meditate?guided=loving-kindness', icon: Heart, nameKey: 'practice.card.lovingKindness.name', descKey: 'practice.card.lovingKindness.desc', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
+      { to: '/trataka', icon: Flame, nameKey: 'practice.card.trataka.name', descKey: 'practice.card.trataka.desc', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
+      { to: '/meditate?guided=three-breaths', icon: Leaf, nameKey: 'practice.card.threeBreaths.name', descKey: 'practice.card.threeBreaths.desc', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
     ],
   },
   {
-    // Body — somatic practices (kind:'meditation', feed Rest): scanning, moving, releasing.
-    title: 'Body',
+    // Rest & sleep — wind-down practices (kind:'meditation', feed Rest). Softer voice, bells taper
+    // off, no bright end.
+    titleKey: 'practice.group.sleep.title',
+    icon: Moon,
+    blurbKey: 'practice.group.sleep.blurb',
+    light: '#4338ca',
+    dark: '#a5b4fc',
     cards: [
-      { to: '/meditate?guided=body-scan', icon: ScanLine, name: 'Body scan', desc: 'Move awareness through the body, head to toe', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
-      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, name: 'Yoga Nidra', desc: 'Non-sleep deep rest — lie back and unwind', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
-      { to: '/meditate?guided=pmr', icon: Dumbbell, name: 'Muscle release', desc: 'Tense and release, part by part, to melt tension out', kind: 'meditation', light: '#2563eb', dark: '#93c5fd' },
-      { to: '/meditate?guided=stretching', icon: Accessibility, name: 'Mindful stretching', desc: 'Gentle guided stretches — move with the breath', kind: 'meditation', light: '#0e8aa6', dark: '#5fd2e8' },
-      { to: '/meditate?guided=walking', icon: Footprints, name: 'Mindful walking', desc: 'Attention in motion — for when sitting is too much', kind: 'meditation', light: '#0284c7', dark: '#7dd3fc' },
+      { to: '/meditate?guided=wind-down', icon: Sunset, nameKey: 'practice.card.windDown.name', descKey: 'practice.card.windDown.desc', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
+      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, nameKey: 'practice.card.yogaNidra.name', descKey: 'practice.card.yogaNidra.desc', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
     ],
   },
   {
-    // Heart practices — guided meditations (kind:'meditation', so they still nourish a Vata/heart
-    // spirit via the signature) that FEED JOY rather than rest. The per-card `feeds: 'joyful'`
-    // override reclassifies them away from the default rested base need.
-    title: 'Heart',
+    titleKey: 'practice.group.reflection.title',
+    icon: NotebookPen,
+    blurbKey: 'practice.group.reflection.blurb',
+    light: '#b9760a',
+    dark: '#f5c151',
     cards: [
-      { to: '/meditate?guided=loving-kindness', icon: Heart, name: 'Loving-kindness', desc: 'Send warm wishes to yourself and outward', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
-      { to: '/meditate?guided=self-compassion', icon: HeartHandshake, name: 'Self-compassion', desc: 'Turn kindness inward, like a good friend', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
-      { to: '/meditate?guided=recall-good', icon: Album, name: 'Recount a good memory', desc: 'Relive a happy memory in vivid detail', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
-      { to: '/meditate?guided=savoring', icon: Coffee, name: 'Savor something good', desc: 'Slow down and soak in a simple good thing, right now', kind: 'meditation', feeds: 'joyful', light: '#16a34a', dark: '#4ade80' },
-      { to: '/meditate?guided=celebrate-win', icon: Trophy, name: 'Celebrate a win', desc: 'Acknowledge something you did — big or small', kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
-      { to: '/meditate?guided=forgiveness', icon: Feather, name: 'Forgiveness', desc: 'Set down an old hurt, gently — toward yourself or another', kind: 'meditation', feeds: 'joyful', light: '#8b5cf6', dark: '#c4b5fd' },
-      { to: '/meditate?guided=gratitude-sit', icon: Sunrise, name: 'Gratitude meditation', desc: 'A guided gratitude sit — bring to mind what holds you up', kind: 'meditation', feeds: 'joyful', light: '#d97706', dark: '#f5c151' },
-      { to: '/meditate?guided=sympathetic-joy', icon: PartyPopper, name: 'Sympathetic joy', desc: "Delight in others' good fortune — joy that costs nothing", kind: 'meditation', feeds: 'joyful', light: '#c026d3', dark: '#e879f9' },
-      { to: '/meditate?guided=awe', icon: Telescope, name: 'Awe & wonder', desc: 'Evoke a sense of vastness — and feel yourself part of it', kind: 'meditation', feeds: 'joyful', light: '#7c3aed', dark: '#c4b5fd' },
-    ],
-  },
-  {
-    // Sleep — wind-down practices (kind:'meditation', feed Rest). Softer voice, bells taper off,
-    // no bright end; several scripts intentionally underuse bells.
-    title: 'Sleep',
-    cards: [
-      { to: '/meditate?guided=wind-down', icon: Sunset, name: 'Wind down', desc: 'Let the body grow heavy and give yourself permission to drift', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
-      { to: '/meditate?guided=four-seven-eight', icon: CloudMoon, name: '4-7-8 breath', desc: 'In for four, hold for seven, out for eight — a settling rhythm', kind: 'meditation', feeds: 'rested', light: '#4338ca', dark: '#a5b4fc' },
-      { to: '/meditate?guided=set-down-day', icon: CloudOff, name: 'Set down the day', desc: "Put the day's loose ends somewhere safe till morning", kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
-    ],
-  },
-  {
-    // Steady — self-regulation practices for harder moments (kind:'meditation', feed Rest, except
-    // Soften/soothe/allow which feeds Joy as kindness toward self). Non-clinical: NOT treatment.
-    title: 'Steady',
-    cards: [
-      { to: '/meditate?guided=physiological-sigh', icon: Wind, name: 'Physiological sigh', desc: 'Two breaths in, one long breath out — the fastest reset', kind: 'meditation', feeds: 'rested', light: '#0e8aa6', dark: '#5fd2e8' },
-      { to: '/meditate?guided=steady-senses', icon: Eye, name: 'Ground in your senses', desc: 'Come back to now through your five senses (5-4-3-2-1)', kind: 'meditation', feeds: 'rested', light: '#0284c7', dark: '#7dd3fc' },
-      { to: '/meditate?guided=steady-feet', icon: Footprints, name: 'Feet on the ground', desc: 'Drop your weight down and feel held', kind: 'meditation', feeds: 'rested', light: '#0d9488', dark: '#5eead4' },
-      { to: '/meditate?guided=steady-soothe', icon: Hand, name: 'Soften, soothe, allow', desc: 'Meet a hard feeling with a kind touch', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
-    ],
-  },
-  {
-    // Everyday — short, anywhere, no-setup on-ramps (kind:'meditation', feed Rest).
-    title: 'Everyday',
-    cards: [
-      { to: '/meditate?guided=three-breaths', icon: Leaf, name: 'Three mindful breaths', desc: 'A one-minute reset — just three breaths', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
-      { to: '/meditate?guided=stop-pause', icon: OctagonPause, name: 'Pause & STOP', desc: 'Stop, Take a breath, Observe, Proceed', kind: 'meditation', feeds: 'rested', light: '#2563eb', dark: '#93c5fd' },
-      { to: '/meditate?guided=body-checkin', icon: Activity, name: 'Body check-in', desc: 'A quick weather-report on your body', kind: 'meditation', feeds: 'rested', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=arriving', icon: DoorOpen, name: 'Arriving', desc: 'A clean pause between tasks or places', kind: 'meditation', feeds: 'rested', light: '#5847f0', dark: '#a8a2ff' },
-    ],
-  },
-  {
-    title: 'Reflection',
-    cards: [
-      { to: '/gratitude', icon: HandHeart, name: 'Gratitude', desc: "Note what you're grateful for", kind: 'gratitude', light: '#b9760a', dark: '#f5c151' },
-      { to: '/journal', icon: NotebookPen, name: 'Journal', desc: 'Reflect in writing', kind: 'journal', light: '#2f6fe0', dark: '#82b4ff' },
+      { to: '/gratitude', icon: HandHeart, nameKey: 'practice.card.gratitude.name', descKey: 'practice.card.gratitude.desc', kind: 'gratitude', light: '#b9760a', dark: '#f5c151' },
+      { to: '/journal', icon: NotebookPen, nameKey: 'practice.card.journal.name', descKey: 'practice.card.journal.desc', kind: 'journal', light: '#2f6fe0', dark: '#82b4ff' },
     ],
   },
 ]
 
-// A small facet badge (icon + label) reusing NEED_COPY — `current` marks the facet the page is
-// gently suggesting you round out (ADR-0032), so the matching cards read as "a little more of this".
-function FeedBadge({ need, current }: { need: SpiritNeedKey; current: boolean }) {
-  const copy = NEED_COPY[need]
-  const NeedIcon = copy.icon
+// A flat lookup of every practice card by its route, so the Suggested-for-you set (which works in
+// routes) can resolve to real catalog cards and render them identically to the groups below.
+const CARD_BY_TO = new Map<string, PracticeCard>(
+  GROUPS.flatMap((group) => group.cards.map((card) => [card.to, card] as const)),
+)
+
+// Per-practice metadata for the friendlier hub, keyed by route (kept out of the catalog so the card
+// list stays lean). `mins` is a SUGGESTED length shown as a gentle time cue — meditations run for
+// whatever length you pick in the player, so it's guidance, not a hard limit. "You choose" here
+// (browsing: the length is up to you) is deliberately NOT the player's "Untimed" (a duration
+// option: no target at all) — the card describes the choice, the stepper names one option in it.
+// `beginner` flags the low-barrier, no-jargon practices with a "Good first practice" badge so
+// newcomers can spot easy entries anywhere in the list.
+// `minsKey` is an i18n catalog key resolved at render (numeric minute values reuse the shared
+// `practice.mins.*` keys; the browsing "You choose" cue has its own key). "You choose" here
+// (the length is up to you) is deliberately NOT the player's "Untimed" — the card describes the
+// choice, the stepper names one option in it.
+const PRACTICE_META: Record<string, { minsKey: string; beginner?: boolean }> = {
+  '/breathe?pattern=resonance': { minsKey: 'practice.mins.5', beginner: true },
+  '/breathe?pattern=box': { minsKey: 'practice.mins.4' },
+  '/breathe?pattern=energizing': { minsKey: 'practice.mins.3' },
+  '/breathe?pattern=alternate': { minsKey: 'practice.mins.5' },
+  '/meditate': { minsKey: 'practice.mins.youChoose' },
+  '/meditate?guided=focus': { minsKey: 'practice.mins.10', beginner: true },
+  '/meditate?guided=noting': { minsKey: 'practice.mins.10' },
+  '/meditate?guided=mantra': { minsKey: 'practice.mins.10' },
+  '/trataka': { minsKey: 'practice.mins.youChoose' },
+  '/meditate?guided=body-scan': { minsKey: 'practice.mins.15', beginner: true },
+  '/meditate?guided=yoga-nidra': { minsKey: 'practice.mins.20' },
+  '/meditate?guided=loving-kindness': { minsKey: 'practice.mins.10', beginner: true },
+  '/meditate?guided=wind-down': { minsKey: 'practice.mins.15' },
+  '/meditate?guided=three-breaths': { minsKey: 'practice.mins.1', beginner: true },
+  '/gratitude': { minsKey: 'practice.mins.3', beginner: true },
+  '/journal': { minsKey: 'practice.mins.5' },
+}
+
+// The "Start here" on-ramp — an ordered, curated handful of the gentlest practices. Lives behind
+// its own chip in the category bar (not a permanently-open section — one curation layer, not
+// three), so anyone can peek at it in one tap. All ungated + beginner-flagged above.
+const BEGINNER_STARTERS = [
+  '/meditate?guided=three-breaths',
+  '/breathe?pattern=resonance',
+  '/meditate?guided=body-scan',
+  '/meditate?guided=focus',
+]
+
+// The starter chip's sentinel value for `activeGroup` — distinct from every group titleKey.
+const STARTER_GROUP = 'starter'
+
+// One practice card — shared by the Suggested set and every category group so they stay identical.
+// `compact` is the calm catalog-grid diet: icon, name, beginner tag and minutes only (no
+// description) so the long shelves read quietly; the curated Beginner/Suggested sections render
+// full cards (their descriptions are the explanation). The spirit round-out still reads through
+// the `--needed` highlight + the nudge banner — the old per-card facet badges are gone (they were
+// the grid's noisiest element; ADR-0032 keeps the balance informational, not front-and-centre).
+// A level-locked card is non-interactive (a <div>, not a <Link>): a Lock badge over the icon,
+// muted text, and a "Reach level N to unlock" line in place of the description.
+function PracticeCardLink({
+  card,
+  need,
+  path,
+  level,
+  compact = false,
+}: {
+  card: PracticeCard
+  need: SpiritNeedKey | null
+  path: SpiritPath | null
+  level: number | null
+  compact?: boolean
+}) {
+  const { t } = useT()
+  const feeds = feedsFor(card, path)
+  const needed = need != null && feeds.includes(need)
+  const CardIcon = card.icon
+  const locked = card.gate != null && !isGuidedUnlocked(card.gate, level)
+  const meta = PRACTICE_META[card.to]
+
+  if (locked) {
+    const minLevel = GUIDED_MIN_LEVEL[card.gate!]
+    return (
+      <div className="practice-card practice-card--locked" aria-disabled="true">
+        <span className="practice-card-icon" aria-hidden="true">
+          <Lock size={20} strokeWidth={1.9} />
+        </span>
+        <span className="practice-card-body">
+          <span className="practice-card-name">{t(card.nameKey)}</span>
+          <span className="practice-card-desc practice-card-locked-hint">
+            {t('practice.hub.lockedHint', { level: minLevel ?? '' })}
+          </span>
+        </span>
+      </div>
+    )
+  }
+
   return (
-    <span className={`practice-feed-badge${current ? ' practice-feed-badge--current' : ''}`}>
-      <NeedIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {copy.label}
-    </span>
+    <Link
+      to={card.to}
+      className={`practice-card${needed ? ' practice-card--needed' : ''}`}
+      style={{
+        ['--card-fill' as string]: card.light,
+        ['--card-fill-dark' as string]: card.dark,
+      }}
+    >
+      <span className="practice-card-icon" aria-hidden="true">
+        <CardIcon size={20} strokeWidth={1.9} />
+      </span>
+      <span className="practice-card-body">
+        <span className="practice-card-name">
+          {t(card.nameKey)}
+          {meta?.beginner && (
+            <span className="practice-beginner-badge">
+              <Sprout size={12} strokeWidth={2} aria-hidden="true" /> {t('practice.hub.beginnerBadge')}
+            </span>
+          )}
+        </span>
+        {!compact && <span className="practice-card-desc">{t(card.descKey)}</span>}
+        {meta?.minsKey && (
+          <span className="practice-card-feeds">
+            <span className="practice-length">
+              <Clock size={14} strokeWidth={1.9} aria-hidden="true" /> {t(meta.minsKey)}
+            </span>
+          </span>
+        )}
+      </span>
+      <ChevronRight className="practice-card-go" size={18} strokeWidth={2} aria-hidden="true" />
+    </Link>
   )
 }
 
 export default function PracticesPage() {
-  const [spirit, setSpirit] = useState<SpiritState | null>(null)
-  // The user's level — drives the guided-practice level gates (e.g. Chakra Om at
-  // level 5). Fetched non-blocking like the header; null until known, which keeps
-  // gated cards locked (fail safe) rather than flashing them open then closing.
+  const { t } = useT()
+  // The user's level — drives any guided-practice level gates. Fetched non-blocking
+  // like the header; null until known, which keeps gated cards locked (fail safe)
+  // rather than flashing them open then closing. (No cards are gated at the moment,
+  // but the machinery stays wired for future level-gated practices.)
   const [level, setLevel] = useState<number | null>(null)
   // The live filter query — matched case-insensitively against each card's name + description.
   const [query, setQuery] = useState('')
-  const reducedMotion = prefersReducedMotion()
-
-  useEffect(() => {
-    // Non-blocking enhancement — a failure just hides the spirit nudge; the list still works.
-    spiritService
-      .get()
-      .then(setSpirit)
-      .catch(() => setSpirit(null))
-  }, [])
+  // The active category chip (a group titleKey), or null for the calm "All" overview where each
+  // group shows only its first few cards. One shelf at a time keeps the big catalog uncrowded.
+  const [activeGroup, setActiveGroup] = useState<string | null>(null)
+  // The chip bar — "See all" scrolls back up to it so the expanded shelf lands in view.
+  const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Non-blocking — a failure leaves level null so gated cards stay locked.
@@ -255,71 +329,86 @@ export default function PracticesPage() {
       .catch(() => {})
   }, [])
 
-  // Only suggest a round-out for a creature that has chosen a path. A pathless spark shows the
-  // practices + their generic feeds, but no highlight. ADR-0032: `need` is the least-represented
-  // facet worth gently rounding out, or null when the balance is even (then no highlight/nudge).
-  const guiding = spirit != null && spirit.path != null
-  const need = guiding ? roundOutFacet(spirit.needs) : null
-
-  // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc).
-  // With no query every group renders in full; with one, empty groups drop out and a gentle empty
-  // state shows if nothing at all matches. Filtering is presentational — it never touches the
-  // round-out highlight, which still keys off the (unfiltered) least-represented facet.
+  // Live search: filter each group's cards against the trimmed, lower-cased query (name + desc —
+  // the description still indexes even though the compact grid cards no longer display it). With a
+  // query, empty groups drop out and a gentle empty state shows if nothing at all matches. A search
+  // overrides the category chips (an explicit act — results show across every group, in full).
+  // Filtering is presentational — it never touches the round-out highlight, which still keys off
+  // the (unfiltered) least-represented facet.
   const q = query.trim().toLowerCase()
-  const filteredGroups = q
+  const searching = q !== ''
+  const filteredGroups = searching
     ? GROUPS.map((group) => ({
         ...group,
         cards: group.cards.filter(
           (card) =>
-            card.name.toLowerCase().includes(q) || card.desc.toLowerCase().includes(q),
+            t(card.nameKey).toLowerCase().includes(q) || t(card.descKey).toLowerCase().includes(q),
         ),
       })).filter((group) => group.cards.length > 0)
-    : GROUPS
-  const noMatches = q !== '' && filteredGroups.length === 0
+    : activeGroup === STARTER_GROUP
+      ? [] // the starter chip shows the curated on-ramp shelf instead of catalog groups
+      : activeGroup
+        ? GROUPS.filter((group) => group.titleKey === activeGroup)
+        : GROUPS
+  const noMatches = searching && filteredGroups.length === 0
+
+  // The calm "All" overview shows each group as a short PREVIEW (its first few cards + a quiet
+  // "See all N"); picking a chip (or searching) shows the full shelf. One shelf at a time keeps
+  // the catalog from reading as one endless, busy scroll.
+  const PREVIEW_COUNT = 3
+  const previewing = !searching && activeGroup === null
+
+  // Open one group's full shelf (its chip becomes active) and bring the chip bar back into view so
+  // the expanded shelf lands where the eye is. (scrollIntoView is absent in jsdom — guard it.)
+  function openGroup(titleKey: string) {
+    setActiveGroup(titleKey)
+    filterRef.current?.scrollIntoView?.({ block: 'start' })
+  }
+
+  // Newcomer heuristic: the personalised "Suggested for you" set only shows for returning
+  // practitioners (level > 3) — newcomers have the "Start here" chip instead. `null` (still
+  // loading) counts as a newcomer so nothing personalised flashes for a brand-new guest.
+  const newcomer = level == null || level <= 3
+  const notSearching = q === ''
+
+  // "New here? Start here" — the curated starter routes resolved to real cards (drop any that don't).
+  const beginnerCards = BEGINNER_STARTERS.map((to) => CARD_BY_TO.get(to)).filter(
+    (card): card is PracticeCard => card != null,
+  )
+
+  // Suggested-for-you — a few gentle picks for returning practitioners, shown only when not searching
+  // and not a newcomer (they get the starter section instead). Routes resolved to catalog cards.
+  const suggestion =
+    notSearching && !newcomer ? suggestedPractices({ hour: new Date().getHours(), facet: null }) : null
+  const suggestedCards = suggestion
+    ? suggestion.picks
+        .map((to) => CARD_BY_TO.get(to))
+        .filter((card): card is PracticeCard => card != null)
+    : []
 
   return (
     <main id="main-content" className="dashboard practices-page">
       <Link to="/" className="back-link">
-        ← Home
+        {t('common.backHome')}
       </Link>
       <header className="page-head">
-        <h1>Practices</h1>
-        <p className="page-subtitle">Every way to practice — and what it gives your spirit.</p>
+        <h1>{t('practice.hub.title')}</h1>
+        <p className="page-subtitle">{t('practice.hub.subtitle')}</p>
       </header>
 
-      {/* Programs — the two non-technique destinations reachable from here (the old nav dropdown is
-          gone): a multi-day guided path, and logging a past session. Navigation, not techniques, so
-          they sit in their own quiet row above the practice groups. */}
-      <nav className="practices-programs" aria-label="Programs">
+      {/* Programs — the two non-technique destinations reachable from here (a multi-day guided
+          path, and logging a past session). Navigation, not techniques — kept to ONE quiet line of
+          small links so they don't stack another card layer above the catalog. */}
+      <nav className="practices-programs" aria-label={t('practice.hub.programsLabel')}>
         <Link to="/paths" className="practices-program-link">
-          <span className="practices-program-icon" aria-hidden="true">
-            <Compass size={18} strokeWidth={1.9} />
-          </span>
-          <span className="practices-program-body">
-            <span className="practices-program-name">Guided paths</span>
-            <span className="practices-program-desc">A day-by-day course to settle in</span>
-          </span>
-          <ChevronRight
-            className="practices-program-go"
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <Compass size={15} strokeWidth={1.9} aria-hidden="true" />
+          {t('practice.hub.paths.name')}
+          <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
         </Link>
         <Link to="/sessions/new" className="practices-program-link">
-          <span className="practices-program-icon" aria-hidden="true">
-            <Plus size={18} strokeWidth={1.9} />
-          </span>
-          <span className="practices-program-body">
-            <span className="practices-program-name">Log a past session</span>
-            <span className="practices-program-desc">Record a practice you did offline</span>
-          </span>
-          <ChevronRight
-            className="practices-program-go"
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <Plus size={15} strokeWidth={1.9} aria-hidden="true" />
+          {t('practice.hub.logPast.name')}
+          <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
         </Link>
       </nav>
 
@@ -335,8 +424,8 @@ export default function PracticesPage() {
           type="search"
           className="practices-search-input"
           value={query}
-          placeholder="Search practices…"
-          aria-label="Search practices"
+          placeholder={t('practice.hub.search.placeholder')}
+          aria-label={t('practice.hub.search.label')}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') setQuery('')
@@ -346,7 +435,7 @@ export default function PracticesPage() {
           <button
             type="button"
             className="practices-search-clear"
-            aria-label="Clear search"
+            aria-label={t('practice.hub.search.clear')}
             onClick={() => setQuery('')}
           >
             <X size={16} strokeWidth={2} aria-hidden="true" />
@@ -354,108 +443,154 @@ export default function PracticesPage() {
         )}
       </div>
 
-      {guiding && need && (
-        <section className="practices-spirit-nudge" aria-live="polite">
-          <div className="practices-spirit-nudge-art" aria-hidden="true">
-            <SpiritArt
-              stage={spirit.stage}
-              path={spirit.path}
-              glow={spirit.condition.factor}
-              cosmetics={spirit.cosmetics}
-              reducedMotion={reducedMotion}
-            />
+      {/* Category chips — the calm browse: "All" previews each shelf; one chip = one full shelf.
+          A live search overrides the chips (results show across every group). */}
+      <div className="practices-filter" role="group" aria-label={t('practice.hub.filter.aria')} ref={filterRef}>
+        <button
+          type="button"
+          className={`chip${activeGroup === null ? ' chip-active' : ''}`}
+          aria-pressed={activeGroup === null}
+          onClick={() => setActiveGroup(null)}
+        >
+          {t('practice.hub.filter.all')}
+        </button>
+        {/* The curated "Start here" on-ramp lives behind its own chip — one tap for newcomers,
+            zero stacked sections for everyone else. */}
+        <button
+          type="button"
+          className={`chip practices-filter-starter${activeGroup === STARTER_GROUP ? ' chip-active' : ''}`}
+          aria-pressed={activeGroup === STARTER_GROUP}
+          onClick={() => setActiveGroup(STARTER_GROUP)}
+        >
+          <Sprout size={13} strokeWidth={2} aria-hidden="true" /> {t('practice.hub.filter.starter')}
+        </button>
+        {GROUPS.map((group) => (
+          <button
+            key={group.titleKey}
+            type="button"
+            className={`chip${activeGroup === group.titleKey ? ' chip-active' : ''}`}
+            aria-pressed={activeGroup === group.titleKey}
+            onClick={() => setActiveGroup(group.titleKey)}
+          >
+            {t(group.titleKey)}
+          </button>
+        ))}
+      </div>
+
+      {/* Start here — the curated on-ramp shelf, shown when its chip is picked (it no longer
+          stacks permanently above the catalog). Full cards (with descriptions): it's the one
+          place explanation matters most. */}
+      {notSearching && activeGroup === STARTER_GROUP && beginnerCards.length > 0 && (
+        <section className="practices-group practices-beginner">
+          <div className="practices-group-head">
+            <span className="practices-group-icon" aria-hidden="true">
+              <Sprout size={18} strokeWidth={1.9} />
+            </span>
+            <div className="practices-group-heading">
+              <h2 className="practices-group-title">{t('practice.hub.beginner.title')}</h2>
+              <p className="practices-group-blurb">
+                {t('practice.hub.beginner.blurb')}
+              </p>
+            </div>
           </div>
-          <p className="practices-spirit-nudge-text">
-            <strong>{spirit.name ?? 'Your spirit'}</strong> has had a little less{' '}
-            <strong className="practices-need-name">
-              {(() => {
-                const NeedIcon = NEED_COPY[need].icon
-                return <NeedIcon size={16} strokeWidth={1.75} aria-hidden="true" />
-              })()}{' '}
-              {NEED_COPY[need].label}
-            </strong>{' '}
-            lately — the highlighted practices would round things out, if you feel like it.
-          </p>
+          <div className="practices-grid">
+            {beginnerCards.map((card) => (
+              <PracticeCardLink
+                key={card.to}
+                card={card}
+                need={null}
+                path={null}
+                level={level}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Suggested for you — a small, ignorable set at the top: a time-of-day pick, plus a short
+          anytime on-ramp. Hidden while searching and on a single-category view. */}
+      {suggestion && suggestedCards.length > 0 && activeGroup === null && (
+        <section className="practices-group practices-suggested">
+          <div className="practices-group-head">
+            <span className="practices-group-icon" aria-hidden="true">
+              <Sparkles size={18} strokeWidth={1.9} />
+            </span>
+            <div className="practices-group-heading">
+              <h2 className="practices-group-title">{t('practice.hub.suggested.title')}</h2>
+              <p className="practices-group-blurb">{suggestion.subtitle}</p>
+            </div>
+          </div>
+          <div className="practices-grid">
+            {suggestedCards.map((card) => (
+              <PracticeCardLink
+                key={card.to}
+                card={card}
+                need={null}
+                path={null}
+                level={level}
+              />
+            ))}
+          </div>
         </section>
       )}
 
       {noMatches && (
-        <p className="practices-empty" role="status">
-          No practices match “{query.trim()}”.
+        <p className="empty-state" role="status">
+          {t('practice.hub.noMatches', { query: query.trim() })}
         </p>
       )}
 
-      {filteredGroups.map((group) => (
-        <section key={group.title} className="practices-group">
-          <h2 className="practices-group-title">
-            {group.title}
-            <span className="practices-group-count">{group.cards.length}</span>
-          </h2>
-          <div className="practices-grid">
-            {group.cards.map((card) => {
-              const feeds = feedsFor(card, spirit?.path ?? null)
-              const needed = need != null && feeds.includes(need)
-              const CardIcon = card.icon
-              const locked = card.gate != null && !isGuidedUnlocked(card.gate, level)
-
-              // A level-locked card is non-interactive (a <div>, not a <Link>): a Lock
-              // badge over the icon, muted text, and a "Reach level N to unlock" line in
-              // place of the description. No feed badges — it can't be practiced yet.
-              if (locked) {
-                const minLevel = GUIDED_MIN_LEVEL[card.gate!]
-                return (
-                  <div
-                    key={card.to}
-                    className="practice-card practice-card--locked"
-                    aria-disabled="true"
-                  >
-                    <span className="practice-card-icon" aria-hidden="true">
-                      <Lock size={20} strokeWidth={1.9} />
-                    </span>
-                    <span className="practice-card-body">
-                      <span className="practice-card-name">{card.name}</span>
-                      <span className="practice-card-desc practice-card-locked-hint">
-                        Reach level {minLevel} to unlock
-                      </span>
-                    </span>
-                  </div>
-                )
-              }
-
-              return (
-                <Link
+      {filteredGroups.map((group) => {
+        const GroupIcon = group.icon
+        // The "All" overview shows a short preview of each shelf; a chip / search shows it whole.
+        const visibleCards = previewing ? group.cards.slice(0, PREVIEW_COUNT) : group.cards
+        const hiddenCount = group.cards.length - visibleCards.length
+        return (
+          <section
+            key={group.titleKey}
+            className="practices-group"
+            style={{
+              ['--section-fill' as string]: group.light,
+              ['--section-fill-dark' as string]: group.dark,
+            }}
+          >
+            <div className="practices-group-head">
+              <span className="practices-group-icon" aria-hidden="true">
+                <GroupIcon size={18} strokeWidth={1.9} />
+              </span>
+              <div className="practices-group-heading">
+                <h2 className="practices-group-title">
+                  {t(group.titleKey)}
+                  <span className="practices-group-count">{group.cards.length}</span>
+                </h2>
+                <p className="practices-group-blurb">{t(group.blurbKey)}</p>
+              </div>
+            </div>
+            <div className="practices-grid">
+              {visibleCards.map((card) => (
+                <PracticeCardLink
                   key={card.to}
-                  to={card.to}
-                  className={`practice-card${needed ? ' practice-card--needed' : ''}`}
-                  style={{
-                    ['--card-fill' as string]: card.light,
-                    ['--card-fill-dark' as string]: card.dark,
-                  }}
-                >
-                  <span className="practice-card-icon" aria-hidden="true">
-                    <CardIcon size={20} strokeWidth={1.9} />
-                  </span>
-                  <span className="practice-card-body">
-                    <span className="practice-card-name">{card.name}</span>
-                    <span className="practice-card-desc">{card.desc}</span>
-                    <span className="practice-card-feeds">
-                      {feeds.map((n) => (
-                        <FeedBadge key={n} need={n} current={need === n} />
-                      ))}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    className="practice-card-go"
-                    size={18}
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-      ))}
+                  card={card}
+                  need={null}
+                  path={null}
+                  level={level}
+                  compact
+                />
+              ))}
+            </div>
+            {hiddenCount > 0 && (
+              <button
+                type="button"
+                className="practices-see-all"
+                onClick={() => openGroup(group.titleKey)}
+              >
+                {t('practice.hub.seeAll', { count: group.cards.length })}
+                <ChevronRight size={15} strokeWidth={2} aria-hidden="true" />
+              </button>
+            )}
+          </section>
+        )
+      })}
     </main>
   )
 }

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { useAuth } from '../context/AuthContext'
 import { track } from '../lib/analytics'
+import { useT } from '../i18n'
 
 /** "Use without signing up" — creates an anonymous account and enters the app. */
 export default function GuestButton({ onError }: { onError: (msg: string) => void }) {
   const { refresh } = useAuth()
+  const { t } = useT()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
 
@@ -19,14 +21,14 @@ export default function GuestButton({ onError }: { onError: (msg: string) => voi
       await refresh()
       navigate('/')
     } catch {
-      onError("Couldn't start a guest session. Try again.")
+      onError(t('auth.guest.error'))
       setLoading(false)
     }
   }
 
   return (
     <button type="button" className="btn btn--secondary guest-btn" onClick={handleGuest} disabled={loading}>
-      {loading ? 'Starting…' : 'Continue as a guest'}
+      {loading ? t('auth.guest.starting') : t('auth.guest.continue')}
     </button>
   )
 }

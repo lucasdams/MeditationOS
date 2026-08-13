@@ -9,8 +9,10 @@ import GoogleSignInButton from '../components/GoogleSignInButton'
 import GuestButton from '../components/GuestButton'
 import AuthBrand from '../components/AuthBrand'
 import { ErrorBanner } from '../components/StateViews'
+import { useT } from '../i18n'
 
 export default function LoginPage() {
+  const { t } = useT()
   const { refresh } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -26,7 +28,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (sessionStorage.getItem('sessionExpired')) {
       sessionStorage.removeItem('sessionExpired')
-      setNotice('Your session expired. Please log in again.')
+      setNotice(t('auth.login.sessionExpired'))
     }
   }, [])
 
@@ -35,12 +37,12 @@ export default function LoginPage() {
     setError(null)
 
     if (!EMAIL_RE.test(email)) {
-      setError('Please enter a valid email address.')
+      setError(t('auth.login.invalidEmail'))
       emailRef.current?.focus()
       return
     }
     if (!password) {
-      setError('Please enter your password.')
+      setError(t('auth.login.missingPassword'))
       passwordRef.current?.focus()
       return
     }
@@ -52,9 +54,9 @@ export default function LoginPage() {
       navigate('/')
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError('Invalid email or password.')
+        setError(t('auth.login.invalidCredentials'))
       } else if (err instanceof ApiError && err.status === 429) {
-        setError('Too many attempts. Please wait a moment and try again.')
+        setError(t('auth.login.tooManyAttempts'))
       } else {
         setError(messageForError(err))
       }
@@ -66,10 +68,10 @@ export default function LoginPage() {
   return (
     <main id="main-content" className="auth-card">
       <AuthBrand />
-      <h1>Log in</h1>
+      <h1>{t('auth.login.title')}</h1>
       {notice && <p role="status" className="auth-notice">{notice}</p>}
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="email">Email</label>
+        <label htmlFor="email">{t('auth.login.emailLabel')}</label>
         <input
           ref={emailRef}
           id="email"
@@ -81,7 +83,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password">{t('auth.login.passwordLabel')}</label>
         <input
           ref={passwordRef}
           id="password"
@@ -99,28 +101,28 @@ export default function LoginPage() {
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
           />
-          <span>Keep me signed in</span>
+          <span>{t('auth.login.rememberMe')}</span>
         </label>
 
         <ErrorBanner message={error} id="login-error" />
 
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Logging in…' : 'Log in'}
+          {submitting ? t('auth.login.submitting') : t('auth.login.cta')}
         </button>
       </form>
 
       <p className="auth-aux">
-        <Link to="/forgot-password">Forgot password?</Link>
+        <Link to="/forgot-password">{t('auth.login.forgotPassword')}</Link>
       </p>
 
       <div className="auth-divider">
-        <span>or</span>
+        <span>{t('auth.login.or')}</span>
       </div>
       <GoogleSignInButton onError={setError} />
       <GuestButton onError={setError} />
 
       <p>
-        No account? <Link to="/register">Register</Link>
+        {t('auth.login.noAccount.text')}<Link to="/register">{t('auth.login.noAccount.link')}</Link>
       </p>
     </main>
   )

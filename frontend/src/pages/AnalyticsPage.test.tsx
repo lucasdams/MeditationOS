@@ -1,8 +1,6 @@
 /**
- * Light smoke tests for the AnalyticsPage.
- * Focus: the activity calendar (ActivityHeatmap) now lives here — moved off the calm home —
- * alongside the rest of the practice stats. The real heatmap is mounted with a mocked
- * dashboard service so we exercise its own self-fetch and loading/empty/error behavior.
+ * Light smoke tests for the AnalyticsPage: the month-vs-last card and the mood-over-time
+ * threshold. The consistency heatmap self-fetches via a mocked dashboard service.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
@@ -10,7 +8,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 const getAnalytics = vi.fn()
 const getInsights = vi.fn()
-const getActivity = vi.fn()
+const getConsistency = vi.fn()
 const listBiometrics = vi.fn()
 const deltaBiometrics = vi.fn()
 
@@ -26,16 +24,16 @@ vi.mock('../services/biometrics', () => ({
     delta: (...a: unknown[]) => deltaBiometrics(...a),
   },
 }))
-// Use the real ActivityHeatmap; it fetches via the dashboard service, which we mock so the
-// component renders its actual "Activity" calendar without a backend.
+// The ConsistencyHeatmap self-fetches via the dashboard service — mock it so the page
+// renders without a backend.
 vi.mock('../services/dashboard', () => ({
   dashboardService: {
-    getActivity: (...a: unknown[]) => getActivity(...a),
+    getConsistency: (...a: unknown[]) => getConsistency(...a),
   },
 }))
 
 import AnalyticsPage from './AnalyticsPage'
-import type { AnalyticsSummary, ActivityCalendar } from '../types'
+import type { AnalyticsSummary } from '../types'
 
 const fakeMonthly = {
   this_month: { month_start: '2026-06-01', minutes: 120, sessions: 8, days_practiced: 6 },
@@ -59,15 +57,6 @@ const fakeSummary: AnalyticsSummary = {
   ratings_by_week: [],
 }
 
-const fakeCalendar: ActivityCalendar = {
-  start: '2026-05-15',
-  end: '2026-06-18',
-  days: [
-    { date: '2026-06-16', seconds: 600, all_quests: true },
-    { date: '2026-06-17', seconds: 300, all_quests: false },
-  ],
-}
-
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -79,7 +68,9 @@ function renderPage() {
 beforeEach(() => {
   getAnalytics.mockReset()
   getInsights.mockReset()
-  getActivity.mockReset()
+  getConsistency.mockReset()
+  // The consistency heatmap self-fetches; keep it quiet/empty here.
+  getConsistency.mockResolvedValue({ start: '2026-05-20', end: '2026-08-12', days: [] })
   listBiometrics.mockReset()
   deltaBiometrics.mockReset()
   // The insights and biometric panels stay quiet on failure; keep them empty/quiet here.
@@ -94,55 +85,9 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-describe('AnalyticsPage — activity calendar', () => {
-  it('renders the ActivityHeatmap (moved here from the home) once stats load', async () => {
-    getAnalytics.mockResolvedValue(fakeSummary)
-    getActivity.mockResolvedValue(fakeCalendar)
-
-    renderPage()
-
-    // The summary stats render…
-    expect(await screen.findByText(/hours practiced/i)).toBeInTheDocument()
-    // …and the activity calendar (its own "Activity" heading) appears alongside them.
-    expect(
-      await screen.findByRole('heading', { name: /^activity$/i, level: 2 }),
-    ).toBeInTheDocument()
-    // The heatmap was asked for its own data — it brought its self-fetch to Analytics.
-    expect(getActivity).toHaveBeenCalled()
-  })
-
-  it('shows the heatmap loading state while its data is in flight', async () => {
-    getAnalytics.mockResolvedValue(fakeSummary)
-    getActivity.mockReturnValue(new Promise(() => {})) // pending forever
-
-    renderPage()
-
-    await screen.findByText(/hours practiced/i)
-    expect(await screen.findByText(/loading activity/i)).toBeInTheDocument()
-  })
-
-  it('stays quiet if the heatmap fetch fails (no Activity heading, page still renders)', async () => {
-    getAnalytics.mockResolvedValue(fakeSummary)
-    getActivity.mockRejectedValue(new Error('boom'))
-
-    renderPage()
-
-    await screen.findByText(/hours practiced/i)
-    await waitFor(() =>
-      expect(screen.queryByText(/loading activity/i)).not.toBeInTheDocument(),
-    )
-    // The failed heatmap renders nothing; the rest of the analytics page is unaffected.
-    expect(
-      screen.queryByRole('heading', { name: /^activity$/i, level: 2 }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /analytics/i, level: 1 })).toBeInTheDocument()
-  })
-})
-
 describe('AnalyticsPage — this month vs last', () => {
   it('renders the card with the month totals and a positive (▲ more) delta', async () => {
     getAnalytics.mockResolvedValue(fakeSummary)
-    getActivity.mockResolvedValue(fakeCalendar)
 
     renderPage()
 
@@ -166,7 +111,6 @@ describe('AnalyticsPage — this month vs last', () => {
         days_practiced_delta: -2,
       },
     })
-    getActivity.mockResolvedValue(fakeCalendar)
 
     renderPage()
 
@@ -183,7 +127,6 @@ describe('AnalyticsPage — this month vs last', () => {
         days_practiced_delta: 0,
       },
     })
-    getActivity.mockResolvedValue(fakeCalendar)
 
     renderPage()
 
@@ -205,7 +148,6 @@ describe('AnalyticsPage — mood over time threshold', () => {
       // Only 3 tagged entries across weeks — below the 6-entry threshold.
       mood_by_week: [moodWeek('2026-06-01', { calm: 3 })],
     })
-    getActivity.mockResolvedValue(fakeCalendar)
 
     renderPage()
 
@@ -228,7 +170,6 @@ describe('AnalyticsPage — mood over time threshold', () => {
         moodWeek('2026-06-08', { calm: 2, tired: 2 }),
       ],
     })
-    getActivity.mockResolvedValue(fakeCalendar)
 
     renderPage()
 
