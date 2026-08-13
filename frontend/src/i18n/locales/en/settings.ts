@@ -168,6 +168,14 @@ export const settings: Record<string, string> = {
   'settings.feedback.emptyErr': 'Please write a short message.',
   'settings.feedback.sendErr': 'Couldn’t send your feedback. Please try again.',
 
+  // Guidance voice (on-device TTS picker)
+  'settings.voice.heading': 'Guidance voice',
+  'settings.voice.desc':
+    'The voice that reads guided-session cues aloud on this device. Preview one, then it’s used whenever spoken guidance is on.',
+  'settings.voice.label': 'Voice',
+  'settings.voice.auto': 'Automatic (recommended)',
+  'settings.voice.preview': 'Preview',
+
   // Your data (export / delete)
   'settings.data.heading': 'Your data',
   'settings.data.desc': 'Download your account as JSON, or permanently delete it and all its data.',

@@ -6,6 +6,7 @@ import { messageForError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import PushToggle from '../components/PushToggle'
+import VoicePicker from '../components/VoicePicker'
 import FeedbackButton from '../components/FeedbackButton'
 import QuestPicker from '../components/QuestPicker'
 import { SEASON_PREFS } from '../lib/theme'
@@ -784,6 +785,8 @@ export default function SettingsPage() {
           {t('settings.sounds')}
         </label>
       </section>
+
+      <VoicePicker />
 
       <section className="settings-section">
         <h2>{t('settings.data.heading')}</h2>

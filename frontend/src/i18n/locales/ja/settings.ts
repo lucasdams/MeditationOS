@@ -168,6 +168,14 @@ export const settings: Record<string, string> = {
   'settings.feedback.emptyErr': '短いメッセージを入力してください。',
   'settings.feedback.sendErr': 'フィードバックを送信できませんでした。もう一度お試しください。',
 
+  // 読み上げの声（端末内の音声合成の選択）
+  'settings.voice.heading': '読み上げの声',
+  'settings.voice.desc':
+    'ガイド付きセッションのキューをこの端末で読み上げる声です。試聴してから選ぶと、音声ガイドが有効なときに使われます。',
+  'settings.voice.label': '声',
+  'settings.voice.auto': '自動（おすすめ）',
+  'settings.voice.preview': '試聴',
+
   // データ（書き出し・削除）
   'settings.data.heading': 'あなたのデータ',
   'settings.data.desc': 'アカウントを JSON で書き出すか、すべてのデータごと完全に削除できます。',
