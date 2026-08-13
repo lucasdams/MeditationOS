@@ -4,6 +4,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 *.pem
 *.key
 *.crt
@@ -49,6 +50,7 @@ htmlcov/
 # Node / frontend (React + Vite)
 # ─────────────────────────────────────────────
 node_modules/
+node_modules
 dist/
 build/
 .vite/

@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
+  House,
   Compass,
   Wind,
   Brain,
   HandHeart,
   NotebookPen,
+  Feather,
+  MessagesSquare,
   LayoutGrid,
   Plus,
   ChartLine,
@@ -15,7 +18,6 @@ import {
   Target,
   CalendarDays,
   Wrench,
-  Flower2,
   Sparkles,
   TrendingUp,
   ChevronDown,
@@ -26,16 +28,14 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
-import { spiritService } from '../services/spirit'
-import { roundOutFacet } from '../lib/spiritNeeds'
-import { NEED_COPY } from './Spirit'
-import type { SpiritNeedKey, SpiritState } from '../types'
+import { t, useT } from '../i18n'
 
 // A menu destination. Each carries a per-destination accent (light + dark shades) so the menu
 // items read as the app's soft colour-tinted pills, not plain text. icon + label are separate
 // so the icon can sit in a fixed-width gutter (labels line up cleanly). `icon` is a lucide
-// line-icon component (no system emoji).
-type MenuLink = { to: string; icon: ComponentType<LucideProps>; label: string; light: string; dark: string }
+// line-icon component (no system emoji). `labelKey` is an i18n catalog key — resolved with t()
+// at render time so the menus re-label live on a locale switch.
+type MenuLink = { to: string; icon: ComponentType<LucideProps>; labelKey: string; light: string; dark: string }
 
 // Practice — everything you DO in a session. The direct activities lead (breathe / meditate /
 // candle gazing / gratitude / journal), then Paths (guided programs), then the hub ("All
@@ -44,25 +44,27 @@ type MenuLink = { to: string; icon: ComponentType<LucideProps>; label: string; l
 // Per-destination accents are drawn from the Cool Electric family (indigo / cyan / blue / violet /
 // amber-pop / pink): a deep light-mode shade + a lifted dark-mode shade, legible in both themes.
 const PRACTICE_LINKS: MenuLink[] = [
-  { to: '/breathe', icon: Wind, label: 'Breathe', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/meditate', icon: Brain, label: 'Meditate', light: '#5847f0', dark: '#a8a2ff' },
-  { to: '/trataka', icon: Flame, label: 'Candle gazing', light: '#d97706', dark: '#f5a742' },
-  { to: '/gratitude', icon: HandHeart, label: 'Gratitude', light: '#b9760a', dark: '#f5c151' },
-  { to: '/journal', icon: NotebookPen, label: 'Journal', light: '#2f6fe0', dark: '#82b4ff' },
-  { to: '/paths', icon: Compass, label: 'Paths', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/practices', icon: LayoutGrid, label: 'All practices', light: '#7c3aed', dark: '#c4b5fd' },
-  { to: '/sessions/new', icon: Plus, label: 'Log a session', light: '#5847f0', dark: '#a8a2ff' },
+  { to: '/breathe', icon: Wind, labelKey: 'nav.breathe', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/meditate', icon: Brain, labelKey: 'nav.meditate', light: '#5847f0', dark: '#a8a2ff' },
+  { to: '/trataka', icon: Flame, labelKey: 'nav.trataka', light: '#d97706', dark: '#f5a742' },
+  { to: '/gratitude', icon: HandHeart, labelKey: 'nav.gratitude', light: '#b9760a', dark: '#f5c151' },
+  { to: '/journal', icon: NotebookPen, labelKey: 'nav.journal', light: '#2f6fe0', dark: '#82b4ff' },
+  { to: '/prayer', icon: Feather, labelKey: 'nav.prayer', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/philosophers', icon: MessagesSquare, labelKey: 'nav.philosophers', light: '#7c3aed', dark: '#c4b5fd' },
+  { to: '/paths', icon: Compass, labelKey: 'nav.paths', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/practices', icon: LayoutGrid, labelKey: 'nav.allPractices', light: '#7c3aed', dark: '#c4b5fd' },
+  { to: '/sessions/new', icon: Plus, labelKey: 'nav.logSession', light: '#5847f0', dark: '#a8a2ff' },
 ]
 
 // Progress — everything you REVIEW or PLAN around your practice, plus account. Merges the old
 // "Progress" + "More" menus into one (candle gazing moved to Practice): stats (Analytics,
 // Timeline), planning (Goals, Schedule), then account (Settings, + Admin for admins below).
 const PROGRESS_LINKS: MenuLink[] = [
-  { to: '/analytics', icon: ChartLine, label: 'Analytics', light: '#d6396f', dark: '#f06a98' },
-  { to: '/timeline', icon: History, label: 'Timeline', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/goals', icon: Target, label: 'Goals', light: '#6a5cff', dark: '#a8a2ff' },
-  { to: '/schedule', icon: CalendarDays, label: 'Schedule', light: '#2f6fe0', dark: '#82b4ff' },
-  { to: '/settings', icon: Settings, label: 'Settings', light: '#545a73', dark: '#a6acc4' },
+  { to: '/analytics', icon: ChartLine, labelKey: 'nav.analytics', light: '#d6396f', dark: '#f06a98' },
+  { to: '/timeline', icon: History, labelKey: 'nav.timeline', light: '#0e8aa6', dark: '#5fd2e8' },
+  { to: '/goals', icon: Target, labelKey: 'nav.goals', light: '#6a5cff', dark: '#a8a2ff' },
+  { to: '/schedule', icon: CalendarDays, labelKey: 'nav.schedule', light: '#2f6fe0', dark: '#82b4ff' },
+  { to: '/settings', icon: Settings, labelKey: 'nav.settings', light: '#545a73', dark: '#a6acc4' },
 ]
 
 // Each menu's links render in two sibling containers (desktop dropdown + mobile inline list),
@@ -81,13 +83,16 @@ function renderMenuLink(l: MenuLink) {
       <span className="nav-menu-icon" aria-hidden="true">
         <Icon size={17} strokeWidth={1.75} />
       </span>
-      <span className="nav-menu-label">{l.label}</span>
+      <span className="nav-menu-label">{t(l.labelKey)}</span>
     </NavLink>
   )
 }
 
 export default function AppHeader() {
   const { user, logout } = useAuth()
+  // Subscribe to the locale so the whole header (incl. the module-level renderMenuLink t()
+  // calls made during this render) re-labels live when the language changes in Settings.
+  useT()
   const navigate = useNavigate()
   const location = useLocation()
   const [level, setLevel] = useState<number | null>(null)
@@ -95,19 +100,35 @@ export default function AppHeader() {
   // menu closes the other; outside-click / Escape close whichever is open.
   const [openMenu, setOpenMenu] = useState<'progress' | null>(null)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
+  // Which mobile nav group (Practice / Progress) is expanded inside the hamburger sheet.
+  // Collapsed by default so the opened menu reads as a few buttons, not one long list.
+  const [mobileSection, setMobileSection] = useState<'practice' | 'progress' | null>(null)
   const navRef = useRef<HTMLElement>(null)
-  // The companion's needs — drives the small header reminder chip ("what it prefers right now").
-  // Non-blocking + absent for a pathless spark / on failure.
-  const [spirit, setSpirit] = useState<SpiritState | null>(null)
   // The account dropdown (Settings + Log out) that opens from the name chip.
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
+
+  // Publish the header's live height as --app-header-h on <html>, so sticky page elements (e.g.
+  // the Spirit Customize viewer) can pin just below the fixed header. The header wraps to two rows
+  // on narrow widths, so its height is content- and viewport-dependent — measure it rather than
+  // hard-code. A ResizeObserver keeps the var correct across wraps, locale switches, and resizes.
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const publish = () =>
+      document.documentElement.style.setProperty('--app-header-h', `${el.offsetHeight}px`)
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // The admin entry renders only for admins (is_admin from /auth/me). Non-admins never
   // see it; the backend also 403s every /admin/* call regardless of the UI. It joins the
   // Progress menu (stats + account).
   const progressLinks = user?.is_admin
-    ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, label: 'Admin', light: '#545a73', dark: '#a6acc4' }]
+    ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, labelKey: 'nav.admin', light: '#545a73', dark: '#a6acc4' }]
     : PROGRESS_LINKS
 
   // Refetch on every navigation so the level stays live after earning XP.
@@ -120,21 +141,11 @@ export default function AppHeader() {
     return () => { ignore = true }
   }, [location.pathname])
 
-  // The spirit's needs for the header reminder chip — refetched on navigation so it stays current
-  // after tending / practicing. Non-blocking: a failure (or a pathless spark) just hides the chip.
-  useEffect(() => {
-    let ignore = false
-    spiritService
-      .get()
-      .then((s) => { if (!ignore) setSpirit(s) })
-      .catch(() => {})
-    return () => { ignore = true }
-  }, [location.pathname])
-
   // Close any open menu, the mobile nav, and the account dropdown on navigation.
   useEffect(() => {
     setOpenMenu(null)
     setNavOpen(false)
+    setMobileSection(null)
     setUserMenuOpen(false)
   }, [location.pathname])
 
@@ -173,15 +184,6 @@ export default function AppHeader() {
       document.removeEventListener('keydown', onKey)
     }
   }, [userMenuOpen])
-
-  // ADR-0032: the three needs are an informational balance, not debts. The chip is an OPTIONAL
-  // round-out invitation for the least-represented facet — and only when the balance is actually
-  // uneven (roundOutFacet returns null on an even mix → no chip). Only when a path is chosen (a
-  // pathless spark has no mix yet). Shared with the Practices hub via roundOutFacet() so both agree.
-  const need: SpiritNeedKey | null =
-    spirit && spirit.path != null ? roundOutFacet(spirit.needs) : null
-  const NeedIcon = need ? NEED_COPY[need].icon : null
-  const spiritName = spirit?.name ?? 'Your spirit'
 
   async function handleLogout() {
     await logout()
@@ -223,16 +225,20 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="app-header">
+    <header className="app-header" ref={headerRef}>
       <Link to="/" className="app-brand">
         MeditationOS
       </Link>
       <button
         type="button"
         className="nav-toggle"
-        aria-label="Menu"
+        aria-label={t('nav.menu')}
         aria-expanded={navOpen}
-        onClick={() => setNavOpen((o) => !o)}
+        onClick={() => {
+          // Always (re)open the sheet with its groups collapsed, so it starts compact.
+          setMobileSection(null)
+          setNavOpen((o) => !o)
+        }}
       >
         {navOpen ? (
           <X size={20} strokeWidth={1.75} aria-hidden="true" />
@@ -241,9 +247,10 @@ export default function AppHeader() {
         )}
       </button>
       <nav className={`app-nav${navOpen ? ' open' : ''}`} ref={navRef}>
-        <Link to="/" className="nav-home">
-          Home
-        </Link>
+        <NavLink to="/" end className="nav-home">
+          <House size={17} strokeWidth={1.75} aria-hidden="true" />
+          <span className="nav-menu-btn-label">{t('nav.home')}</span>
+        </NavLink>
 
         {/* Practice links straight to the all-practices hub (it lists every practice as cards) —
             clicking it navigates rather than opening a menu. Wrapped in .nav-menu so it hides on
@@ -252,38 +259,44 @@ export default function AppHeader() {
         <div className="nav-menu">
           <NavLink to="/practices" className="nav-menu-btn nav-menu-btn--practice">
             <Sparkles size={17} strokeWidth={1.75} aria-hidden="true" />
-            <span className="nav-menu-btn-label">Practice</span>
+            <span className="nav-menu-btn-label">{t('nav.practice')}</span>
           </NavLink>
         </div>
-        {renderMenu('progress', 'Progress', TrendingUp, progressLinks)}
+        {renderMenu('progress', t('nav.progress'), TrendingUp, progressLinks)}
 
-        {/* Spirit is the centerpiece — its own prominent standalone link, not tucked in a menu. */}
-        <Link to="/spirit" className="nav-spirit nav-spirit-feature">
-          <Flower2 size={17} strokeWidth={1.75} aria-hidden="true" /> Spirit
-        </Link>
-
-        {/* On mobile the dropdowns are hidden; their links show inline as labelled sections. */}
+        {/* On mobile the desktop dropdowns are hidden; Practice / Progress become collapsible
+            group buttons so the opened sheet stays compact (a few buttons, not one long list).
+            Tapping a group expands its links; only one group opens at a time. */}
         <div className="nav-mobile-extra">
-          <p className="nav-mobile-heading">Practice</p>
-          {PRACTICE_LINKS.map(renderMenuLink)}
-          <p className="nav-mobile-heading">Progress</p>
-          {progressLinks.map(renderMenuLink)}
+          <button
+            type="button"
+            className="nav-mobile-group"
+            aria-expanded={mobileSection === 'practice'}
+            onClick={() => setMobileSection((s) => (s === 'practice' ? null : 'practice'))}
+          >
+            <Sparkles size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className="nav-mobile-group-label">{t('nav.practice')}</span>
+            <ChevronDown size={16} strokeWidth={2} className="nav-mobile-group-caret" aria-hidden="true" />
+          </button>
+          {mobileSection === 'practice' && (
+            <div className="nav-mobile-group-links">{PRACTICE_LINKS.map(renderMenuLink)}</div>
+          )}
+          <button
+            type="button"
+            className="nav-mobile-group"
+            aria-expanded={mobileSection === 'progress'}
+            onClick={() => setMobileSection((s) => (s === 'progress' ? null : 'progress'))}
+          >
+            <TrendingUp size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className="nav-mobile-group-label">{t('nav.progress')}</span>
+            <ChevronDown size={16} strokeWidth={2} className="nav-mobile-group-caret" aria-hidden="true" />
+          </button>
+          {mobileSection === 'progress' && (
+            <div className="nav-mobile-group-links">{progressLinks.map(renderMenuLink)}</div>
+          )}
         </div>
       </nav>
       <div className="app-user" ref={userRef}>
-        {/* An optional, easy-to-ignore round-out invitation (ADR-0032) — surfaced only when the
-            recent-practice balance is a little uneven. A gentle suggestion, never a demand; links to
-            practices that round it out. Hidden for a pathless spark or an even balance. */}
-        {need && NeedIcon && (
-          <Link
-            to="/practices"
-            className="spirit-need-chip"
-            title={`${spiritName} has had less ${NEED_COPY[need].label.toLowerCase()} lately — a little would round things out`}
-          >
-            <NeedIcon size={15} strokeWidth={1.9} aria-hidden="true" />
-            <span className="spirit-need-chip-label">A little {NEED_COPY[need].label}?</span>
-          </Link>
-        )}
         <div className="app-user-menu-wrap">
           <button
             type="button"
@@ -294,22 +307,23 @@ export default function AppHeader() {
             onClick={() => setUserMenuOpen((o) => !o)}
           >
             <span>
-              {user?.username}
-              {level !== null && ` · Lv ${level}`}
+              {/* Guests get an auto username like guest_3f9a… — show a friendly label instead. */}
+              {user?.is_guest ? t('user.guest') : user?.username}
+              {level !== null && ` · ${t('user.level', { level })}`}
             </span>
             <ChevronDown size={14} strokeWidth={2} className="app-user-caret" aria-hidden="true" />
           </button>
           {userMenuOpen && (
             <div id="app-user-menu" className="app-user-menu">
               <Link to="/settings" className="app-user-menu-item">
-                <Settings size={16} strokeWidth={1.75} aria-hidden="true" /> Settings
+                <Settings size={16} strokeWidth={1.75} aria-hidden="true" /> {t('nav.settings')}
               </Link>
               <button
                 type="button"
                 className="app-user-menu-item app-user-menu-item--danger"
                 onClick={handleLogout}
               >
-                <LogOut size={16} strokeWidth={1.75} aria-hidden="true" /> Log out
+                <LogOut size={16} strokeWidth={1.75} aria-hidden="true" /> {t('user.logout')}
               </button>
             </div>
           )}

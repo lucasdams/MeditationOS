@@ -20,38 +20,41 @@ import {
 } from 'lucide-react'
 import GuestButton from '../components/GuestButton'
 import SiteFooter from '../components/SiteFooter'
+import { useT } from '../i18n'
 
 // Lucide line icons (not system emoji) to match the rest of the app — this is the public
-// first impression, so it reads as one clean, cool set.
-const FEATURES: { Icon: ComponentType<LucideProps>; title: string; body: string }[] = [
-  { Icon: Brain, title: 'Meditation timer', body: 'Unguided “sit now” sessions with a calm timer, optional start / interval / end bells, and timing that survives a backgrounded tab.' },
-  { Icon: Wind, title: 'HRV resonance breathing', body: 'A guided pacer at your chosen slow rate, with an ocean-breath audio guide and a breathing circle to follow.' },
-  { Icon: HandHeart, title: 'Gratitude', body: 'Capture small moments of gratitude across 37 themes — with AI-suggested prompts, or write your own.' },
-  { Icon: NotebookPen, title: 'Journal', body: 'Reflect on a sit, tag a mood, and resurface a random past entry to revisit.' },
-  { Icon: Flame, title: 'Candle gazing', body: 'An eyes-open focus practice (traditionally called Trataka) — rest your attention on a single, gently moving flame to steady a busy mind.' },
-  { Icon: Target, title: 'Goals', body: 'Set recurring habits — meditate, breathe, journal — and watch progress fill in automatically from your activity.' },
-  { Icon: Sparkles, title: 'Spirit', body: 'Awaken a living companion you raise through practice — it evolves down a path shaped by how you meditate, and grows as you show up.' },
-  { Icon: ChartLine, title: 'Dashboard & analytics', body: 'Streaks, levels, a weekly breakdown, an activity heatmap, and trends across type, day, and time.' },
-  { Icon: Sprout, title: 'Streaks, XP & missions', body: 'Rotating daily missions, XP and levels, and a streak with a forgiving rest day — gentle, not grindy.' },
+// first impression, so it reads as one clean, cool set. Copy lives in the i18n catalog
+// (`landing.*`); the arrays carry the icon + the catalog keys, resolved with t() at render.
+const FEATURES: { Icon: ComponentType<LucideProps>; titleKey: string; bodyKey: string }[] = [
+  { Icon: Brain, titleKey: 'landing.feature.timer.title', bodyKey: 'landing.feature.timer.body' },
+  { Icon: Wind, titleKey: 'landing.feature.breathing.title', bodyKey: 'landing.feature.breathing.body' },
+  { Icon: HandHeart, titleKey: 'landing.feature.gratitude.title', bodyKey: 'landing.feature.gratitude.body' },
+  { Icon: NotebookPen, titleKey: 'landing.feature.journal.title', bodyKey: 'landing.feature.journal.body' },
+  { Icon: Flame, titleKey: 'landing.feature.trataka.title', bodyKey: 'landing.feature.trataka.body' },
+  { Icon: Target, titleKey: 'landing.feature.goals.title', bodyKey: 'landing.feature.goals.body' },
+  { Icon: Sparkles, titleKey: 'landing.feature.spirit.title', bodyKey: 'landing.feature.spirit.body' },
+  { Icon: ChartLine, titleKey: 'landing.feature.dashboard.title', bodyKey: 'landing.feature.dashboard.body' },
+  { Icon: Sprout, titleKey: 'landing.feature.xp.title', bodyKey: 'landing.feature.xp.body' },
 ]
 
-// The three-step promise: what actually happens when you start. Kept to plain verbs.
-const STEPS: { Icon: ComponentType<LucideProps>; title: string; body: string }[] = [
-  { Icon: Sprout, title: 'Sit for a few minutes', body: 'Start a timer, follow a breathing pacer, or gaze at a candle. No account or audio download needed to try it.' },
-  { Icon: Repeat, title: 'Log it — automatically', body: 'Every session, breath, gratitude note, and journal entry lands in one place, building your streak as you go.' },
-  { Icon: LineChart, title: 'Watch the pattern emerge', body: 'Your dashboard turns the raw practice into streaks, trends, and a heatmap — so you can see the habit take hold.' },
+// The three-step promise: what actually happens when you start.
+const STEPS: { Icon: ComponentType<LucideProps>; titleKey: string; bodyKey: string }[] = [
+  { Icon: Sprout, titleKey: 'landing.step.sit.title', bodyKey: 'landing.step.sit.body' },
+  { Icon: Repeat, titleKey: 'landing.step.log.title', bodyKey: 'landing.step.log.body' },
+  { Icon: LineChart, titleKey: 'landing.step.watch.title', bodyKey: 'landing.step.watch.body' },
 ]
 
-// Honest "what you get" value stack — real capabilities the app already ships. No stats, no claims.
-const VALUE_STACK = [
-  'Nine ways to practice — timer, resonance breathing, gratitude, journal, candle gazing, and more',
-  'One clean dashboard that turns every session into streaks, trends, and an activity heatmap',
-  'A living Spirit companion you raise through practice, plus gentle XP, levels, and daily missions',
-  'Your data stays yours — export everything as JSON or delete your account at any time',
-  'Try it instantly as a guest — no email, no card, no audio library to wade through',
+// Honest "what you get" value stack — real capabilities the app already ships.
+const VALUE_KEYS = [
+  'landing.value.1',
+  'landing.value.2',
+  'landing.value.3',
+  'landing.value.4',
+  'landing.value.5',
 ]
 
 export default function LandingPage() {
+  const { t } = useT()
   const [guestError, setGuestError] = useState('')
 
   return (
@@ -59,26 +62,24 @@ export default function LandingPage() {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="landing-hero" aria-labelledby="landing-hero-title">
         <div className="landing-hero-copy">
-          <span className="landing-eyebrow">Data-first meditation</span>
+          <span className="landing-eyebrow">{t('landing.hero.eyebrow')}</span>
           <h1 id="landing-hero-title">
-            Meditation that <span className="landing-hero-accent">tracks itself</span>.
+            {t('landing.hero.titleLead')}
+            <span className="landing-hero-accent">{t('landing.hero.titleAccent')}</span>
+            {t('landing.hero.titleEnd')}
           </h1>
-          <p className="landing-tagline">
-            Track your practice, build streaks, and breathe with intention — all in one
-            place. MeditationOS is built around <strong>your practice data</strong>, not
-            another audio library. A few minutes a day, and the habit takes hold.
-          </p>
+          <p className="landing-tagline">{t('landing.hero.tagline')}</p>
           <div className="landing-cta">
             <Link to="/register" className="landing-primary">
-              Get started — it’s free
+              {t('landing.cta.getStarted')}
             </Link>
             <Link to="/login" className="landing-secondary">
-              Log in
+              {t('landing.cta.login')}
             </Link>
           </div>
           <div className="landing-guest">
             <GuestButton onError={setGuestError} />
-            <span className="muted">No sign-up needed to try it.</span>
+            <span className="muted">{t('landing.hero.guestNote')}</span>
             {guestError && (
               <p className="error" role="alert">
                 {guestError}
@@ -95,29 +96,27 @@ export default function LandingPage() {
             <span className="landing-breath-ring landing-breath-ring--mid" />
             <span className="landing-breath-orb" />
           </div>
-          <p className="landing-breath-caption">Breathe in… and out.</p>
+          <p className="landing-breath-caption">{t('landing.hero.breatheCaption')}</p>
         </div>
       </section>
 
       {/* ── How it works ─────────────────────────────────────────────────── */}
       <section className="landing-section" aria-labelledby="landing-how-title">
         <h2 id="landing-how-title" className="landing-section-title">
-          How it works
+          {t('landing.how.title')}
         </h2>
-        <p className="landing-section-lead muted">
-          Three steps, and the app does the tracking for you.
-        </p>
+        <p className="landing-section-lead muted">{t('landing.how.lead')}</p>
         <ol className="landing-steps">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="landing-step">
+            <li key={s.titleKey} className="landing-step">
               <span className="landing-step-num" aria-hidden="true">
                 {i + 1}
               </span>
               <span className="landing-step-icon" aria-hidden="true">
                 <s.Icon size={22} strokeWidth={1.75} />
               </span>
-              <h3>{s.title}</h3>
-              <p className="muted">{s.body}</p>
+              <h3>{t(s.titleKey)}</h3>
+              <p className="muted">{t(s.bodyKey)}</p>
             </li>
           ))}
         </ol>
@@ -126,20 +125,17 @@ export default function LandingPage() {
       {/* ── Feature highlights ───────────────────────────────────────────── */}
       <section className="landing-section" aria-labelledby="landing-features-title">
         <h2 id="landing-features-title" className="landing-section-title">
-          Everything in one calm place
+          {t('landing.features.title')}
         </h2>
-        <p className="landing-section-lead muted">
-          Nine ways to practice and reflect — every one of them feeds the same clean picture
-          of your progress.
-        </p>
+        <p className="landing-section-lead muted">{t('landing.features.lead')}</p>
         <div className="landing-features">
           {FEATURES.map((f) => (
-            <div key={f.title} className="landing-feature">
+            <div key={f.titleKey} className="landing-feature">
               <span className="landing-feature-icon" aria-hidden="true">
                 <f.Icon size={24} strokeWidth={1.75} />
               </span>
-              <h3>{f.title}</h3>
-              <p className="muted">{f.body}</p>
+              <h3>{t(f.titleKey)}</h3>
+              <p className="muted">{t(f.bodyKey)}</p>
             </div>
           ))}
         </div>
@@ -152,74 +148,56 @@ export default function LandingPage() {
             <ShieldCheck size={26} strokeWidth={1.75} />
           </span>
           <h2 id="landing-trust-title" className="landing-section-title">
-            Your practice data stays yours
+            {t('landing.trust.title')}
           </h2>
-          <p className="landing-section-lead muted">
-            Privacy-first by design. No selling your reflections, no dark patterns — just a
-            record of your practice that you fully control.
-          </p>
+          <p className="landing-section-lead muted">{t('landing.trust.lead')}</p>
         </div>
         <div className="landing-trust-grid">
           <div className="landing-trust-card">
             <span className="landing-trust-icon" aria-hidden="true">
               <Download size={20} strokeWidth={1.75} />
             </span>
-            <h3>Export anytime</h3>
-            <p className="muted">
-              Download everything you’ve logged as JSON whenever you want. It’s your data —
-              take it with you.
-            </p>
+            <h3>{t('landing.trust.export.title')}</h3>
+            <p className="muted">{t('landing.trust.export.body')}</p>
           </div>
           <div className="landing-trust-card">
             <span className="landing-trust-icon" aria-hidden="true">
               <Trash2 size={20} strokeWidth={1.75} />
             </span>
-            <h3>Delete anytime</h3>
-            <p className="muted">
-              Permanently delete your account and its data from Settings, in a couple of
-              clicks. No “contact support to cancel”.
-            </p>
+            <h3>{t('landing.trust.delete.title')}</h3>
+            <p className="muted">{t('landing.trust.delete.body')}</p>
           </div>
           <div className="landing-trust-card">
             <span className="landing-trust-icon" aria-hidden="true">
               <Lock size={20} strokeWidth={1.75} />
             </span>
-            <h3>Yours by default</h3>
+            <h3>{t('landing.trust.yours.title')}</h3>
             <p className="muted">
-              Your sessions and journals are tied to your account and not shared. Read exactly
-              what we store in the <Link to="/privacy">Privacy policy</Link>.
+              {t('landing.trust.yours.bodyPre')}
+              <Link to="/privacy">{t('landing.trust.yours.link')}</Link>
+              {t('landing.trust.yours.bodyPost')}
             </p>
           </div>
         </div>
-        <p className="landing-trust-note muted">
-          Why a few minutes a day? Because a small, repeatable practice is easier to keep than
-          a big one — and keeping it is the whole point. MeditationOS is a practice tracker,
-          not a treatment, and makes no medical claims.
-        </p>
+        <p className="landing-trust-note muted">{t('landing.trust.note')}</p>
       </section>
 
       {/* ── "Why I built this" + honest value stack ──────────────────────── */}
       <section className="landing-section landing-story" aria-labelledby="landing-story-title">
         <div className="landing-story-note">
           <h2 id="landing-story-title" className="landing-section-title">
-            Why I built this
+            {t('landing.story.title')}
           </h2>
-          <p>
-            I wanted to meditate consistently, but every app I tried was a wall of audio
-            tracks — and none of them showed me whether the habit was actually sticking. So I
-            built the tool I wanted: one that turns your practice into <em>data</em>, celebrates
-            you showing up, and stays out of the way. MeditationOS is that tool, and it’s free
-            to start.
-          </p>
-          <p className="muted landing-story-signoff">— The maker of MeditationOS</p>
+          <p>{t('landing.story.body')}</p>
+          <p className="muted landing-story-signoff">{t('landing.story.signoff')}</p>
         </div>
         <div className="landing-value">
-          <h3>What you get</h3>
+          <h3>{t('landing.value.heading')}</h3>
           <ul className="landing-value-list">
-            {VALUE_STACK.map((item) => (
-              <li key={item}>
+            {VALUE_KEYS.map((key) => (
+              <li key={key}>
                 <Sparkles size={16} strokeWidth={2} aria-hidden="true" />
-                <span>{item}</span>
+                <span>{t(key)}</span>
               </li>
             ))}
           </ul>
@@ -228,9 +206,7 @@ export default function LandingPage() {
         {/* Honest, easily-populated slot for REAL testimonials later. Ships with no
             fabricated quotes — just an invitation, so the section reads well today. */}
         <aside className="landing-testimonials" aria-label="Practitioner stories">
-          <p className="landing-testimonials-lead muted">
-            Building your practice with MeditationOS? We’d love to feature your story here.
-          </p>
+          <p className="landing-testimonials-lead muted">{t('landing.testimonials.lead')}</p>
           {/*
             TODO: replace this slot with real, opt-in testimonials once collected. Suggested shape:
             <figure className="landing-quote">
@@ -245,18 +221,15 @@ export default function LandingPage() {
       {/* ── Closing CTA ──────────────────────────────────────────────────── */}
       <section className="landing-section landing-final-cta" aria-labelledby="landing-final-title">
         <h2 id="landing-final-title" className="landing-section-title">
-          Start your practice today
+          {t('landing.final.title')}
         </h2>
-        <p className="landing-section-lead muted">
-          Free to begin, no audio library to sift through. Just you, a few quiet minutes, and a
-          record that grows with you.
-        </p>
+        <p className="landing-section-lead muted">{t('landing.final.lead')}</p>
         <div className="landing-cta landing-cta--center">
           <Link to="/register" className="landing-primary">
-            Get started — it’s free
+            {t('landing.cta.getStarted')}
           </Link>
           <Link to="/login" className="landing-secondary">
-            Log in
+            {t('landing.cta.login')}
           </Link>
         </div>
       </section>

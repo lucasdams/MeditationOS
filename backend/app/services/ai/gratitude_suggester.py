@@ -1,12 +1,12 @@
 """AI-generated gratitude prompt options, with a curated fallback.
 
-The Anthropic SDK is imported lazily so the dependency only loads when the feature
-is configured, and so tests can patch `suggest_options` without it. Model output is
-treated as untrusted and validated; any failure (no key, timeout, bad shape) falls
-back to a curated set. The curated pools live in `gratitude_fallback.json` (~90 per
-category) and are sampled randomly, so the "show different ideas" reload feels fresh
-even without a key. We never send the user's own gratitude text to the model.
-See .claude/rules/ai-product.md.
+The LLM call goes through the provider-agnostic `llm_client.complete` seam (OpenAI or
+Anthropic, per settings), so tests can patch either `suggest_options` or that seam.
+Model output is treated as untrusted and validated; any failure (no provider
+configured, timeout, bad shape) falls back to a curated set. The curated pools live in
+`gratitude_fallback.json` (~90 per category) and are sampled randomly, so the "show
+different ideas" reload feels fresh even without a key. We never send the user's own
+gratitude text to the model. See .claude/rules/ai-product.md.
 """
 
 import json
@@ -14,12 +14,11 @@ import logging
 import random
 from pathlib import Path
 
-from app.core.config import settings
 from app.prompts.gratitude import SYSTEM, user_message
+from app.services.ai import llm_client
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-haiku-4-5-20251001"
 MAX_OPTIONS = 10
 MAX_OPTION_LEN = 60
 TIMEOUT_SECONDS = 8.0
@@ -74,22 +73,16 @@ def _validate(raw: object) -> list[str] | None:
 
 def suggest_options(category: str) -> list[str]:
     """Return ~10 gratitude prompts for a category. Never raises — degrades to fallback."""
-    if not settings.anthropic_api_key:
-        return _fallback(category)
     try:
-        import anthropic
-
-        client = anthropic.Anthropic(
-            api_key=settings.anthropic_api_key, timeout=TIMEOUT_SECONDS
-        )
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=500,
-            temperature=1.0,
+        result = llm_client.complete(
             system=SYSTEM,
-            messages=[{"role": "user", "content": user_message(category)}],
+            user=user_message(category),
+            max_tokens=500,
+            timeout=TIMEOUT_SECONDS,
         )
-        text = "".join(b.text for b in message.content if b.type == "text")
+        if result is None:
+            raise ValueError("no LLM result")
+        text, _model = result
         start, end = text.find("["), text.rfind("]")
         if start == -1 or end == -1:
             raise ValueError("no JSON array in model output")
@@ -98,6 +91,6 @@ def suggest_options(category: str) -> list[str]:
             raise ValueError("model output failed validation")
         return options
     except Exception:
-        # Any failure (network, timeout, parse, validation) degrades gracefully.
+        # Any failure (no provider, timeout, parse, validation) degrades gracefully.
         logger.warning("gratitude suggester failed; using curated fallback", exc_info=False)
         return _fallback(category)

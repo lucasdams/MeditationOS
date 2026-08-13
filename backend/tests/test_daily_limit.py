@@ -28,6 +28,7 @@ CAPPED_ENDPOINTS = [
     ("sessions", "/api/v1/sessions", SESSION),
     ("gratitude", "/api/v1/gratitude", {"category": "people", "text": "grateful"}),
     ("journals", "/api/v1/journals", {"body": "a reflection"}),
+    ("prayers", "/api/v1/prayers", {"body": "a prayer"}),
     ("goals", "/api/v1/goals", {"activity": "meditate", "period": "day", "count": 1}),
     ("mood_logs", "/api/v1/mood-logs", {"mood": "calm"}),
     (

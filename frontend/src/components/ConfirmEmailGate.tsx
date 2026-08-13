@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useT } from '../i18n'
 
 type ResendState = 'idle' | 'sending' | 'sent' | 'throttled' | 'error'
 
@@ -14,6 +15,7 @@ type ResendState = 'idle' | 'sending' | 'sent' | 'throttled' | 'error'
  */
 export default function ConfirmEmailGate() {
   const { user, refresh, logout } = useAuth()
+  const { t } = useT()
   const [resend, setResend] = useState<ResendState>('idle')
   const [rechecking, setRechecking] = useState(false)
   const [recheckFailed, setRecheckFailed] = useState(false)
@@ -50,27 +52,27 @@ export default function ConfirmEmailGate() {
 
   return (
     <main id="main-content" className="auth-card">
-      <h1>Confirm your email</h1>
+      <h1>{t('auth.confirmGate.title')}</h1>
       <p>
-        To keep your account secure, please confirm your email address before
-        continuing. We sent a confirmation link to{' '}
-        <strong>{user?.email}</strong> — open it to finish, then come back here.
+        {t('auth.confirmGate.body.pre')}
+        <strong>{user?.email}</strong>
+        {t('auth.confirmGate.body.post')}
       </p>
 
       <button type="button" onClick={handleRecheck} disabled={rechecking}>
-        {rechecking ? 'Checking…' : 'I’ve confirmed — continue'}
+        {rechecking ? t('auth.confirmGate.checking') : t('auth.confirmGate.confirmed')}
       </button>
 
       {recheckFailed && (
         <p role="alert" className="error">
-          We still don’t see a confirmation. Open the link in your email, then try again.
+          {t('auth.confirmGate.recheckFailed')}
         </p>
       )}
 
       <p className="auth-aux">
-        Didn’t get it?{' '}
+        {t('auth.confirmGate.didntGet')}
         {resend === 'sent' ? (
-          <span className="verify-banner-note">Sent — check your inbox.</span>
+          <span className="verify-banner-note">{t('auth.verify.resent')}</span>
         ) : (
           <button
             type="button"
@@ -78,26 +80,26 @@ export default function ConfirmEmailGate() {
             onClick={handleResend}
             disabled={resend === 'sending'}
           >
-            {resend === 'sending' ? 'Sending…' : 'Resend the link'}
+            {resend === 'sending' ? t('auth.verify.resending') : t('auth.confirmGate.resendLink')}
           </button>
         )}
       </p>
 
       {resend === 'throttled' && (
         <p role="status" className="auth-notice">
-          You’ve requested a few links recently. Please wait a moment before trying again.
+          {t('auth.confirmGate.throttled')}
         </p>
       )}
       {resend === 'error' && (
         <p role="alert" className="error">
-          Couldn’t send the link. Please try again shortly.
+          {t('auth.verify.resendError')}
         </p>
       )}
 
       <p className="auth-aux">
-        Wrong address?{' '}
+        {t('auth.confirmGate.wrongAddress')}
         <button type="button" className="link-button" onClick={() => void logout()}>
-          Log out
+          {t('user.logout')}
         </button>
       </p>
     </main>

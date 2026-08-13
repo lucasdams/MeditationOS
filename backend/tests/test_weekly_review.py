@@ -80,6 +80,31 @@ def test_top_mood_tie_break_is_deterministic(client):
     assert client.get("/api/v1/dashboard/weekly-review").json()["top_mood"] == "calm"
 
 
+def test_streak_honors_practice_floor_and_agrees_with_dashboard(client):
+    # Regression: the weekly-review streak must apply the same MIN_PRACTICE_SECONDS
+    # (60s) floor the dashboard uses, so a run of sub-minute sits does NOT light a
+    # streak here while /dashboard/stats reports 0 (the two used to disagree).
+    _auth(client, "wr_streak_floor@example.com")
+    _session(client, 0, seconds=30)  # today, 30s — below the floor
+    _session(client, 1, seconds=30)  # yesterday, 30s — below the floor
+    weekly = client.get("/api/v1/dashboard/weekly-review").json()
+    dashboard = client.get("/api/v1/dashboard/stats").json()
+    assert weekly["current_streak_days"] == 0
+    assert weekly["current_streak_days"] == dashboard["current_streak_days"]
+
+
+def test_streak_counts_days_that_clear_the_floor(client):
+    # Two consecutive days that each total >= 60s of practice count as a 2-day streak,
+    # and the two surfaces agree.
+    _auth(client, "wr_streak_ok@example.com")
+    _session(client, 0, seconds=600)  # today, 10 min
+    _session(client, 1, seconds=600)  # yesterday, 10 min
+    weekly = client.get("/api/v1/dashboard/weekly-review").json()
+    dashboard = client.get("/api/v1/dashboard/stats").json()
+    assert weekly["current_streak_days"] == 2
+    assert weekly["current_streak_days"] == dashboard["current_streak_days"]
+
+
 def test_user_scoped(client):
     _auth(client, "wr_owner@example.com")
     _session(client, 0)

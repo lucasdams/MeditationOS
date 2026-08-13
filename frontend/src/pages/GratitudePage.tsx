@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom'
 import { HandHeart } from 'lucide-react'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
+import { track } from '../lib/analytics'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
 import RewardOverlay from '../components/RewardOverlay'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor } from '../lib/colors'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { fmtDate, useT } from '../i18n'
 import type { DashboardStats, Gratitude, GratitudeCategory } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -17,6 +19,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 // Category themes are TEXT-FIRST (no system emoji): each chip shows its label with a small
@@ -85,19 +88,25 @@ const COMMON_KEYS: GratitudeCategory[] = [
 const COMMON = CATEGORIES.filter((c) => COMMON_KEYS.includes(c.key))
 const REST = CATEGORIES.filter((c) => !COMMON_KEYS.includes(c.key))
 
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+// Locale-aware via the i18n fmtDate wrapper (never the browser locale). Named fmtDay so
+// it doesn't shadow the imported helper.
+const fmtDay = (iso: string) => fmtDate(new Date(iso), { month: 'short', day: 'numeric' })
 
 const GRAT_PAGE = 50
 const MAX_LEN = 500
+// How many suggestion chips show before the quiet "+N more ideas" toggle.
+const IDEAS_PREVIEW = 4
 // Show the remaining-characters hint only as the user nears the limit, so it stays quiet.
 const COUNTER_THRESHOLD = 50
 
 export default function GratitudePage() {
+  const { t } = useT()
   const [category, setCategory] = useState<GratitudeCategory | null>(null)
   const [showAllThemes, setShowAllThemes] = useState(false)
   const [options, setOptions] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
+  // Long idea lists wrap into a dense chip band — preview a handful with a quiet "see all".
+  const [allIdeasShown, setAllIdeasShown] = useState(false)
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null) // save / load-more action errors
@@ -122,7 +131,7 @@ export default function GratitudePage() {
     setList: setEntries,
     getId: (e) => e.id,
     remove: (id) => gratitudeService.remove(id),
-    messages: { success: 'Entry deleted.', error: "Couldn't delete that entry." },
+    messages: { success: t('tracking.gratitude.deleted'), error: t('tracking.gratitude.deleteError') },
     onStart: () => setError(null),
   })
 
@@ -136,7 +145,7 @@ export default function GratitudePage() {
         setLoadError(null)
       })
       .catch((err) =>
-        setLoadError(messageForError(err, "Couldn't load your gratitude journal.")),
+        setLoadError(messageForError(err, t('tracking.gratitude.loadError'))),
       )
       .finally(() => setRetrying(false))
   }
@@ -164,7 +173,7 @@ export default function GratitudePage() {
       })
       setHasMore(rows.length === GRAT_PAGE)
     } catch {
-      setError("Couldn't load more entries.")
+      setError(t('tracking.gratitude.loadMoreError'))
     } finally {
       setLoadingMore(false)
     }
@@ -185,7 +194,10 @@ export default function GratitudePage() {
 
   function pickCategory(cat: GratitudeCategory) {
     setCategory(cat)
-    setText('')
+    // Keep a hand-typed draft when switching themes — silently losing the user's words is
+    // worse than a stale category. Only clear text that was auto-filled verbatim from a
+    // suggestion (it belongs to the previous category's prompt set).
+    if (options.includes(text)) setText('')
     setOptions([])
     // "Custom" is write-your-own — no AI prompt suggestions.
     if (cat !== 'custom') void fetchOptions(cat)
@@ -205,6 +217,7 @@ export default function GratitudePage() {
         return ZERO_STATS
       })
       const entry = await gratitudeService.create({ category, text: text.trim() })
+      track('gratitude_created')
       setEntries((prev) => [entry, ...(prev ?? [])])
       // The new row shifts everything down by one server-side; advance the cursor so
       // the next loadMore doesn't re-fetch the row now sitting at the old boundary.
@@ -216,7 +229,7 @@ export default function GratitudePage() {
       // the breakdown would treat the user's entire lifetime XP as this entry's gain.
       if (beforeOk) {
         // True gain from the server, itemized (gratitude entry + any quest/streak bonus).
-        const bd = buildXpBreakdown(before, after, 'Gratitude', HandHeart)
+        const bd = buildXpBreakdown(before, after, t('tracking.gratitude.activityLabel'), HandHeart)
         setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
       }
       // Return to the "pick a category" state for next time.
@@ -224,7 +237,7 @@ export default function GratitudePage() {
       setText('')
       setOptions([])
     } catch {
-      setError("Couldn't save. Try again.")
+      setError(t('tracking.gratitude.saveError'))
     } finally {
       setSaving(false)
     }
@@ -232,11 +245,11 @@ export default function GratitudePage() {
 
   return (
     <main id="main-content" className="gratitude">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
-        <h1>Gratitude</h1>
+        <h1>{t('tracking.gratitude.title')}</h1>
         <p className="page-subtitle">
-          What are you grateful for? Pick a theme, or write your own.
+          {t('tracking.gratitude.subtitle')}
         </p>
       </header>
 
@@ -280,7 +293,7 @@ export default function GratitudePage() {
           aria-expanded={showAllThemes}
           onClick={() => setShowAllThemes((v) => !v)}
         >
-          {showAllThemes ? 'Fewer themes' : 'More themes…'}
+          {showAllThemes ? t('tracking.gratitude.fewerThemes') : t('tracking.gratitude.moreThemes')}
         </button>
       </div>
 
@@ -290,7 +303,7 @@ export default function GratitudePage() {
             <>
               <div className="grat-options-head">
                 <span className="muted">
-                  {loadingOptions ? 'Finding ideas…' : 'Tap an idea, or write your own'}
+                  {loadingOptions ? t('tracking.gratitude.loadingIdeas') : t('tracking.gratitude.tapIdea')}
                 </span>
                 <button
                   type="button"
@@ -298,12 +311,12 @@ export default function GratitudePage() {
                   onClick={() => void fetchOptions(category)}
                   disabled={loadingOptions}
                 >
-                  ↻ New ideas
+                  {t('tracking.gratitude.newIdeas')}
                 </button>
               </div>
               {!loadingOptions && options.length > 0 && (
                 <div className="grat-options">
-                  {options.map((opt) => (
+                  {(allIdeasShown ? options : options.slice(0, IDEAS_PREVIEW)).map((opt) => (
                     <button
                       key={opt}
                       type="button"
@@ -313,6 +326,16 @@ export default function GratitudePage() {
                       {opt}
                     </button>
                   ))}
+                  {!allIdeasShown && options.length > IDEAS_PREVIEW && (
+                    <button
+                      type="button"
+                      className="chip grat-more"
+                      aria-expanded={false}
+                      onClick={() => setAllIdeasShown(true)}
+                    >
+                      {t('tracking.gratitude.moreIdeas', { count: options.length - IDEAS_PREVIEW })}
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -321,17 +344,17 @@ export default function GratitudePage() {
             rows={3}
             value={text}
             maxLength={MAX_LEN}
-            aria-label="What you're grateful for"
-            placeholder={category === 'custom' ? 'Write your own…' : "I'm grateful for…"}
+            aria-label={t('tracking.gratitude.textAria')}
+            placeholder={category === 'custom' ? t('tracking.gratitude.customPlaceholder') : t('tracking.gratitude.gratefulPlaceholder')}
             onChange={(e) => setText(e.target.value)}
           />
           {MAX_LEN - text.length <= COUNTER_THRESHOLD && (
             <p className="grat-counter muted" aria-live="polite">
-              {MAX_LEN - text.length} left
+              {t('tracking.gratitude.charsLeft', { n: MAX_LEN - text.length })}
             </p>
           )}
           <button type="button" onClick={save} disabled={saving || !text.trim()}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('common.saving') : t('tracking.gratitude.save')}
           </button>
         </section>
       )}
@@ -339,11 +362,11 @@ export default function GratitudePage() {
       <ErrorBanner message={error} />
 
       <section className="grat-journal">
-        <h2>Recent</h2>
+        <h2>{t('tracking.gratitude.recent')}</h2>
         <RetryableError message={loadError} onRetry={retryLoad} retrying={retrying} />
         {!entries && !loadError && <Loading />}
         {entries && entries.length === 0 && (
-          <EmptyState>Nothing noted yet — name one small good thing above.</EmptyState>
+          <EmptyState>{t('tracking.gratitude.empty')}</EmptyState>
         )}
         {entries && entries.length > 0 && (
           <ul className="journal-list grat-log">
@@ -356,7 +379,7 @@ export default function GratitudePage() {
                 style={{ borderLeftColor: color }}
               >
                 <div className="journal-entry-head">
-                  <span className="muted">{fmtDate(e.created_at)}</span>
+                  <span className="muted">{fmtDay(e.created_at)}</span>
                   <span
                     className="journal-mood"
                     style={{ '--pill': color } as React.CSSProperties}
@@ -379,13 +402,13 @@ export default function GratitudePage() {
                           setMenuId(null)
                         }}
                       >
-                        Delete
+                        {t('tracking.gratitude.delete')}
                       </button>
                     )}
                     <button
                       type="button"
                       className="journal-entry-menu"
-                      aria-label="Entry actions"
+                      aria-label={t('tracking.gratitude.entryActions')}
                       aria-haspopup="true"
                       aria-expanded={menuId === e.id}
                       aria-controls={`menu-${e.id}`}
@@ -403,7 +426,7 @@ export default function GratitudePage() {
         )}
         {hasMore && (
           <button type="button" className="load-more" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? 'Loading…' : 'Load more'}
+            {loadingMore ? t('common.loading') : t('tracking.gratitude.loadMore')}
           </button>
         )}
       </section>

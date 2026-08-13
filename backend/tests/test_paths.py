@@ -388,3 +388,28 @@ def test_service_earliest_qualifying_date_used(db_session):
     assert summary.days[2].status == "current"  # day 3 (breathe ≥3m) waits
     assert summary.completed_days == 2
     assert summary.current_day == 3
+
+
+# ----------------------------------------------------------------------------------------
+# Catalog integrity — pure content invariants, so future path authoring can't ship a
+# malformed course (the derivation walks days by 1-based index in order).
+# ----------------------------------------------------------------------------------------
+
+
+def test_catalog_integrity():
+    from app.services.paths_catalog import all_paths
+
+    paths = all_paths()
+    ids = [p.id for p in paths]
+    assert len(ids) == len(set(ids)), "path ids must be unique"
+    for p in paths:
+        assert p.title.strip() and p.blurb.strip()
+        assert p.total_days == len(p.days) >= 3
+        for i, day in enumerate(p.days, start=1):
+            assert day.index == i, f"{p.id} day indexes must be 1-based and contiguous"
+            assert day.practice in ("breathe", "meditate", "gratitude"), f"{p.id} day {i}"
+            assert day.min_minutes >= 0
+            # A gratitude moment isn't timed — its bar must stay at "any entry counts".
+            if day.practice == "gratitude":
+                assert day.min_minutes == 0, f"{p.id} day {i}: gratitude days are untimed"
+            assert day.title.strip() and day.cue.strip()

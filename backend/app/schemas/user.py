@@ -71,6 +71,16 @@ class QuestFeaturesUpdate(BaseModel):
     features: list[str]
 
 
+class DailyGoalUpdate(BaseModel):
+    """Set the user's daily practice goal (minutes) — the target the daily-goal ring
+    fills toward. Bounded to a sane, gentle range; out-of-range values are rejected
+    (422) by the Field constraints below."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    minutes: int = Field(ge=1, le=120)
+
+
 class PasswordUpdate(BaseModel):
     """Change or set the account password.
 
@@ -179,6 +189,8 @@ class ExportData(BaseModel):
     scheduled_sessions: list[dict]
     breathing_patterns: list[dict]
     path_enrollments: list[dict]
+    ai_reflections: list[dict]
+    prayers: list[dict]
 
 
 class UserRead(BaseModel):
@@ -202,4 +214,6 @@ class UserRead(BaseModel):
     weekly_summary_enabled: bool
     weekly_summary_day: int | None
     quest_features: list[str] | None
+    # The user's daily practice goal in minutes (the daily-goal ring target).
+    daily_goal_minutes: int
     created_at: datetime

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.api.deps import get_current_user, require_verified_email, today_for_user
 from app.core.db import get_db
 from app.models.user import User
-from app.schemas.dashboard import ActivityCalendar, DashboardStats
+from app.schemas.dashboard import ActivityCalendar, ConsistencyCalendar, DashboardStats
 from app.schemas.weekly_review import WeeklyReview
 from app.services import dashboard_service, weekly_review_service
 
@@ -32,6 +32,7 @@ def get_stats(
         today=today,
         tz=tz,
         quest_features=current_user.quest_features,
+        daily_goal_minutes=current_user.daily_goal_minutes,
     )
 
 
@@ -54,3 +55,13 @@ def get_activity(
 ) -> ActivityCalendar:
     today, tz = today_tz
     return dashboard_service.get_activity(db, current_user.id, today=today, days=days, tz=tz)
+
+
+@router.get("/consistency", response_model=ConsistencyCalendar)
+def get_consistency(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    today_tz: tuple[date, str] = Depends(today_for_user),
+) -> ConsistencyCalendar:
+    today, tz = today_tz
+    return dashboard_service.get_consistency(db, current_user.id, today=today, tz=tz)

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Brain } from 'lucide-react'
 import { sessionService } from '../services/sessions'
+import { track } from '../lib/analytics'
 import { dashboardService } from '../services/dashboard'
 import { biometricsService } from '../services/biometrics'
 import { ApiError } from '../services/api'
@@ -19,6 +20,7 @@ import GuidedCues from '../components/GuidedCues'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
+import { useT } from '../i18n'
 import {
   MIN_DRAFT_SECONDS,
   beaconSave,
@@ -51,6 +53,7 @@ const ZERO_STATS: DashboardStats = {
   current_streak_days: 0, longest_streak_days: 0, rest_day_used: false,
   streak_bonus_xp: 0, total_seconds: 0, session_count: 0,
   gratitude_count: 0, this_week: [], daily_quests: [],
+  daily_goal_minutes: 10, today_minutes: 0,
 }
 
 const DRAFT_PAGE = 'meditate'
@@ -63,27 +66,30 @@ const DRAFT_PAGE = 'meditate'
 const MEDITATION_TYPE: MeditationType = 'mindfulness'
 
 // Target length; 0 = open-ended (count up, finish manually). Stepped left→right,
-// so "Open" sits at the low end and the increments grow as you step right.
-const DURATIONS: StepperOption<number>[] = [
-  { value: 0, label: 'Open' },
-  { value: 5, label: '5 min' },
-  { value: 10, label: '10 min' },
-  { value: 15, label: '15 min' },
-  { value: 20, label: '20 min' },
-  { value: 30, label: '30 min' },
-  { value: 45, label: '45 min' },
-  { value: 60, label: '60 min' },
-  { value: 90, label: '90 min' },
+// so "Untimed" sits at the low end and the increments grow as you step right.
+// ("Untimed", not "Open" — a first-timer read "Open" as a mode, not a duration.)
+// Labels are catalog keys resolved at render (so they re-label on a locale switch); 0 →
+// "Untimed", the rest reuse the shared minute keys.
+const DURATION_VALUES: { value: number; labelKey: string }[] = [
+  { value: 0, labelKey: 'practice.duration.untimed' },
+  { value: 5, labelKey: 'practice.mins.5' },
+  { value: 10, labelKey: 'practice.mins.10' },
+  { value: 15, labelKey: 'practice.mins.15' },
+  { value: 20, labelKey: 'practice.mins.20' },
+  { value: 30, labelKey: 'practice.mins.30' },
+  { value: 45, labelKey: 'practice.mins.45' },
+  { value: 60, labelKey: 'practice.mins.60' },
+  { value: 90, labelKey: 'practice.mins.90' },
 ]
 
 // One control for all bells. "Off" silences them; otherwise a soft bell rings at the
 // start and end, and optionally on an interval. Replaces a separate on/off checkbox +
-// interval dropdown that overlapped confusingly.
-const BELL_MODES = [
-  { value: 'off', label: 'Off' },
-  { value: 'ends', label: 'At start & end' },
-  { value: 'every5', label: 'Start, end & every 5 min' },
-  { value: 'every10', label: 'Start, end & every 10 min' },
+// interval dropdown that overlapped confusingly. Labels are catalog keys (resolved at render).
+const BELL_MODES: { value: string; labelKey: string }[] = [
+  { value: 'off', labelKey: 'practice.meditate.bells.off' },
+  { value: 'ends', labelKey: 'practice.meditate.bells.ends' },
+  { value: 'every5', labelKey: 'practice.meditate.bells.every5' },
+  { value: 'every10', labelKey: 'practice.meditate.bells.every10' },
 ]
 
 // Persist the last-chosen guided structure across sessions.
@@ -155,6 +161,12 @@ function writeSpokenGuidance(on: boolean) {
 export default function MeditatePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useT()
+  // Duration options with labels resolved from the catalog (re-labels on locale change).
+  const DURATIONS: StepperOption<number>[] = DURATION_VALUES.map((d) => ({
+    value: d.value,
+    label: t(d.labelKey),
+  }))
   const [searchParams] = useSearchParams()
   const [targetMin, setTargetMin] = useState(10)
   const [intervalMin, setIntervalMin] = useState(0)
@@ -287,10 +299,11 @@ export default function MeditatePage() {
   }, [])
 
   // Enforce the guided-structure level gate ONCE the level is known: if the current
-  // choice is a locked structure (e.g. a `?guided=chakra-om` deep-link below level 5),
-  // fall back to plain unguided sitting rather than offering a locked practice. We
-  // wait for a non-null level so a deep-link to a gated structure isn't wrongly reset
-  // to 'none' during the brief window before the level fetch resolves.
+  // choice is a locked structure (a deep-link to a level-gated structure below its
+  // minimum level), fall back to plain unguided sitting rather than offering a locked
+  // practice. We wait for a non-null level so a deep-link to a gated structure isn't
+  // wrongly reset to 'none' during the brief window before the level fetch resolves.
+  // (No structures are level-gated at the moment, but the guard stays wired.)
   useEffect(() => {
     if (level == null) return
     if (guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level)) {
@@ -325,7 +338,7 @@ export default function MeditatePage() {
     if (!payload) return
     writeDraft(DRAFT_PAGE, {
       clientToken: payload.client_token as string,
-      label: 'Meditation',
+      label: t('practice.meditate.recover.label'),
       elapsedSeconds: Math.floor(elapsedSec),
       payload,
       savedAt: Date.now(),
@@ -475,12 +488,13 @@ export default function MeditatePage() {
         intention: trimmedIntention ?? null,
       })
     } catch (err) {
-      setError(err instanceof ApiError ? "Couldn't save the session." : messageForError(err))
+      setError(err instanceof ApiError ? t('practice.error.saveSession') : messageForError(err))
       setSaving(false)
       return
     }
 
     savedSessionIdRef.current = saved.id
+    track('session_completed', { type: MEDITATION_TYPE })
     // Saved — drop the recovery draft and stop any tab-close beacon from re-firing.
     savedRef.current = true
     clearDraft(DRAFT_PAGE)
@@ -513,7 +527,7 @@ export default function MeditatePage() {
       return
     }
 
-    const bd = buildXpBreakdown(before, after, 'Meditation', Brain)
+    const bd = buildXpBreakdown(before, after, t('practice.meditate.recover.label'), Brain)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
 
@@ -541,9 +555,9 @@ export default function MeditatePage() {
       await sessionService.create(restorable.payload)
       clearDraft(DRAFT_PAGE)
       setRestorable(null)
-      showToast('That sit is yours.')
+      showToast(t('practice.recover.savedToast'))
     } catch {
-      setError("Couldn't save that session.")
+      setError(t('practice.recover.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -596,7 +610,7 @@ export default function MeditatePage() {
       advanceToReading()
     } catch (err) {
       setReflectError(
-        err instanceof ApiError ? "Couldn't save reflection." : messageForError(err),
+        err instanceof ApiError ? t('practice.error.saveReflection') : messageForError(err),
       )
       setReflectSaving(false)
     }
@@ -626,13 +640,20 @@ export default function MeditatePage() {
   const speechOn = isGuided && spokenPref && speechSupported
 
   // The <select>'s EFFECTIVE value: fall back to 'none' whenever the current choice
-  // resolves to a locked option (e.g. a `?guided=chakra-om` deep-link while level is
+  // resolves to a locked option (a deep-link to a level-gated structure while level is
   // still loading, or below the gate). The async gate effect above eventually resets
   // guidedChoice itself, but binding the control to this computed value means it never
   // points at a `disabled` <option> even transiently — which some browsers render
   // inconsistently. isGuidedUnlocked treats a null level as locked (fail safe).
   const selectedGuidedValue: GuidedChoice =
     guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level) ? 'none' : guidedChoice
+
+  // The guided structure currently in play (null for a plain unguided timer). Drives the calm
+  // beginner "what you'll do" intro shown before the sit starts.
+  const activeGuided =
+    selectedGuidedValue !== 'none'
+      ? GUIDED_STRUCTURES.find((s) => s.id === selectedGuidedValue) ?? null
+      : null
 
   const targetSec = targetMin * 60
   const remaining = targetSec > 0 ? Math.max(0, targetSec - elapsed) : elapsed
@@ -658,23 +679,43 @@ export default function MeditatePage() {
 
   return (
     <main id="main-content" className="breathe">
-      <Link to="/" className="back-link">← Dashboard</Link>
+      <Link to="/" className="back-link">{t('practice.back.dashboard')}</Link>
       <header className="page-head">
-        <h1>Meditate</h1>
+        <h1>{activeGuided ? activeGuided.label : t('practice.meditate.title')}</h1>
       </header>
+
+      {/* Beginner-friendly intro — a plain-language "what you'll do" shown before the sit starts, so
+          nobody is dropped cold into a timer. Reassures newcomers that guided sits just need
+          following along. Hidden once underway (then the cues + timer carry it). */}
+      {!started && (
+        <div className="practice-intro">
+          <p className="practice-intro-what">
+            {activeGuided
+              ? activeGuided.description
+              : t('practice.meditate.intro.whatUnguided')}
+          </p>
+          <p className="practice-intro-how">
+            {activeGuided
+              ? t('practice.meditate.intro.howGuided')
+              : t('practice.meditate.intro.howUnguided')}
+          </p>
+        </div>
+      )}
 
       {restorable && !started && (
         <div className="session-recover">
           <span>
-            Unsaved {restorable.label.toLowerCase()} sit ·{' '}
-            {Math.round(restorable.elapsedSeconds / 60)} min from earlier.
+            {t('practice.recover.unsavedSit', {
+              label: restorable.label.toLowerCase(),
+              min: Math.round(restorable.elapsedSeconds / 60),
+            })}
           </span>
           <div className="session-recover-actions">
             <button type="button" onClick={restoreSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save it'}
+              {saving ? t('practice.recover.saving') : t('practice.recover.save')}
             </button>
             <button type="button" className="link-neutral" onClick={discardRestore}>
-              Discard
+              {t('practice.recover.discard')}
             </button>
           </div>
         </div>
@@ -689,12 +730,12 @@ export default function MeditatePage() {
             intention.trim() ? (
               <span className="breathe-phase-intention">{intention.trim()}</span>
             ) : (
-              'Be here'
+              t('practice.meditate.phase.beHere')
             )
           ) : elapsed > 0 ? (
-            'Paused'
+            t('practice.state.paused')
           ) : (
-            'Ready'
+            t('practice.state.ready')
           )}
         </div>
       </div>
@@ -712,8 +753,8 @@ export default function MeditatePage() {
 
       {started && (
         <div className="breathe-stats">
-          <span>{mmss(elapsed)} elapsed</span>
-          {targetMin > 0 && <span>{targetMin} min sit</span>}
+          <span>{t('practice.elapsed', { time: mmss(elapsed) })}</span>
+          {targetMin > 0 && <span>{t('practice.meditate.minSit', { min: targetMin })}</span>}
         </div>
       )}
 
@@ -722,98 +763,79 @@ export default function MeditatePage() {
           the wrapper's `gap` owns the spacing (inner block margins are zeroed in CSS). */}
       <div className="meditate-setup">
       <div className="meditate-setup-field">
-        <label>Duration</label>
+        <label>{t('practice.duration.label')}</label>
         <Stepper
           options={DURATIONS}
           value={targetMin}
           disabled={settingsDisabled}
-          ariaLabel="Duration"
+          ariaLabel={t('practice.duration.label')}
           onChange={setTargetMin}
         />
       </div>
 
       <div className="meditate-setup-field">
-        <label htmlFor="guided-structure">Guided structure</label>
+        <label htmlFor="guided-structure">{t('practice.meditate.guidedStructure')}</label>
         <select
           id="guided-structure"
           value={selectedGuidedValue}
           disabled={settingsDisabled}
           onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
         >
-          <option value="none">None — plain timer</option>
+          <option value="none">{t('practice.meditate.guidedNone')}</option>
           {GUIDED_STRUCTURES.map((s) => {
             const locked = !isGuidedUnlocked(s.id, level)
             return (
               <option key={s.id} value={s.id} disabled={locked}>
                 {locked
-                  ? `${s.label} — Reach level ${GUIDED_MIN_LEVEL[s.id]} to unlock`
-                  : `${s.label} — ${s.description}`}
+                  ? t('practice.meditate.guidedLocked', { label: s.label, level: GUIDED_MIN_LEVEL[s.id] ?? '' })
+                  : t('practice.meditate.guidedOption', { label: s.label, desc: s.description })}
               </option>
             )
           })}
         </select>
 
-        {/* Spoken guidance — only meaningful for a guided sit. The voice reads each
-            cue aloud so eyes can stay closed; off falls back to text + bell. */}
-        {isGuided && (
-          <div className="meditate-spoken">
-            <label className="meditate-spoken-toggle" htmlFor="spoken-guidance">
-              <input
-                id="spoken-guidance"
-                type="checkbox"
-                checked={spokenPref}
-                disabled={settingsDisabled || !speechSupported}
-                onChange={(e) => setSpokenPref(e.target.checked)}
-              />
-              <span>Spoken guidance</span>
-            </label>
-            <p className="meditate-spoken-hint">
-              {!speechSupported
-                ? 'Voice unavailable here — cues show on screen with a soft bell.'
-                : spokenPref
-                  ? 'Cues are read aloud so you can keep your eyes closed.'
-                  : 'Cues show on screen with a soft bell.'}
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Pre-session intention — optional, skippable, hidden once the sit has started. */}
+      {/* Session prep — the optional intention + pre-session reading, folded behind ONE quiet
+          disclosure so the visible setup stays Duration → Guidance → Start. Hidden once the sit
+          has started; values persist while collapsed. */}
       {!started && (
-        <div className="session-intention">
-          <label htmlFor="intention" className="session-intention-label">
-            Intention <span className="session-intention-opt">(optional)</span>
-          </label>
-          <textarea
-            id="intention"
-            className="session-intention-input"
-            rows={2}
-            maxLength={140}
-            placeholder={intentionPlaceholder}
-            value={intention}
-            onChange={(e) => setIntention(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Optional pre-session reading — calm, skippable; captured now and linked to the
-          sit afterwards so the pre/post calming delta can pair them. */}
-      {!started && (
-        <div className="session-prereading">
-          {preReadingIdRef.current ? (
-            <p className="session-prereading-done" aria-live="polite">
-              <span aria-hidden="true">✓</span> Pre-sit reading logged.
-            </p>
-          ) : (
-            <button
-              type="button"
-              className="link-neutral session-prereading-btn"
-              onClick={() => setShowPreReading(true)}
-            >
-              Log a reading first (optional)
-            </button>
-          )}
-        </div>
+        <details className="meditate-disclosure">
+          <summary className="meditate-disclosure-summary">
+            {t('practice.prep.summary')}
+          </summary>
+          <div className="meditate-disclosure-body">
+            <div className="session-intention">
+              <label htmlFor="intention" className="session-intention-label">
+                {t('practice.intention.label')} <span className="session-intention-opt">{t('practice.intention.optional')}</span>
+              </label>
+              <textarea
+                id="intention"
+                className="session-intention-input"
+                rows={2}
+                maxLength={140}
+                placeholder={intentionPlaceholder}
+                value={intention}
+                onChange={(e) => setIntention(e.target.value)}
+              />
+            </div>
+            <div className="session-prereading">
+              {preReadingIdRef.current ? (
+                <p className="session-prereading-done" aria-live="polite">
+                  <span aria-hidden="true">✓</span> {t('practice.breathe.preReadingDone.meditate')}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="link-neutral session-prereading-btn"
+                  onClick={() => setShowPreReading(true)}
+                >
+                  {t('practice.prereading.log')}
+                </button>
+              )}
+            </div>
+          </div>
+        </details>
       )}
 
       {/* ── Secondary: Sound & bells — tucked behind a quiet disclosure ───────── */}
@@ -828,11 +850,11 @@ export default function MeditatePage() {
           className="meditate-disclosure-summary"
           aria-expanded={soundDisclosureOpen}
         >
-          Sound &amp; bells
+          {t('practice.meditate.sound.summary')}
         </summary>
 
         <div className="meditate-disclosure-body">
-          <label>Ambient sound</label>
+          <label>{t('practice.meditate.sound.ambient')}</label>
           <SoundscapePicker
             value={soundscape}
             volume={soundscapeVol}
@@ -853,16 +875,16 @@ export default function MeditatePage() {
             onVolumeChange={setSoundscapeVol}
           />
 
-          <label htmlFor="bells">Bells</label>
+          <label htmlFor="bells">{t('practice.meditate.bells.label')}</label>
           <select id="bells" value={bellMode} disabled={settingsDisabled} onChange={(e) => setBellMode(e.target.value)}>
             {BELL_MODES.map((b) => (
               <option key={b.value} value={b.value}>
-                {b.label}
+                {t(b.labelKey)}
               </option>
             ))}
           </select>
 
-          <label htmlFor="bell-volume">Bell volume</label>
+          <label htmlFor="bell-volume">{t('practice.meditate.bellVolume')}</label>
           <input
             id="bell-volume"
             className="breathe-volume"
@@ -874,13 +896,38 @@ export default function MeditatePage() {
             disabled={!bellsOn}
             onChange={(e) => setVolume(Number(e.target.value))}
           />
+
+          {/* Spoken guidance — only meaningful for a guided sit; lives here with the other
+              audio controls (voice, bells, soundscape) rather than stacking under the
+              structure picker. The voice reads each cue aloud so eyes can stay closed. */}
+          {isGuided && (
+            <div className="meditate-spoken">
+              <label className="meditate-spoken-toggle" htmlFor="spoken-guidance">
+                <input
+                  id="spoken-guidance"
+                  type="checkbox"
+                  checked={spokenPref}
+                  disabled={settingsDisabled || !speechSupported}
+                  onChange={(e) => setSpokenPref(e.target.checked)}
+                />
+                <span>{t('practice.meditate.spoken.toggle')}</span>
+              </label>
+              <p className="meditate-spoken-hint">
+                {!speechSupported
+                  ? t('practice.meditate.spoken.unavailable')
+                  : spokenPref
+                    ? t('practice.meditate.spoken.on')
+                    : t('practice.meditate.spoken.off')}
+              </p>
+            </div>
+          )}
         </div>
       </details>
       </div>
 
       {/* Show the locked-in intention quietly during the sit. */}
       {started && intention.trim() && (
-        <p className="session-intention-locked" aria-label="Your intention for this sit">
+        <p className="session-intention-locked" aria-label={t('practice.meditate.intentionAria')}>
           <span className="session-intention-locked-icon" aria-hidden="true">✦</span>{' '}
           {intention.trim()}
         </p>
@@ -891,23 +938,23 @@ export default function MeditatePage() {
       <div className="breathe-controls">
         {!running ? (
           <button type="button" onClick={start} disabled={saving}>
-            {elapsed > 0 ? 'Resume' : 'Start'}
+            {elapsed > 0 ? t('practice.control.resume') : t('practice.control.start')}
           </button>
         ) : (
           <button type="button" onClick={pause}>
-            Pause
+            {t('practice.control.pause')}
           </button>
         )}
         {started && (
           <button type="button" className="secondary" onClick={finish} disabled={saving}>
-            {saving ? 'Saving…' : 'Finish & save'}
+            {saving ? t('practice.recover.saving') : t('practice.control.finishSave')}
           </button>
         )}
       </div>
 
       {elapsed > 0 && !running && !saving && (
         <button type="button" className="meditate-reset" onClick={reset}>
-          Reset
+          {t('practice.control.reset')}
         </button>
       )}
 
@@ -917,12 +964,12 @@ export default function MeditatePage() {
         <BiometricCapture
           context="pre"
           sessionId={null}
-          title="Log a reading first?"
-          intro="Optional: your heart rate now, to see how a sit settles you."
+          title={t('practice.prereading.title')}
+          intro={t('practice.meditate.preReading.intro')}
           onDone={(reading) => {
             if (reading) preReadingIdRef.current = reading.id
             setShowPreReading(false)
-            showToast('Noted — your heart, on the record.')
+            showToast(t('practice.reading.notedToast'))
           }}
           onSkip={() => setShowPreReading(false)}
         />
@@ -945,32 +992,32 @@ export default function MeditatePage() {
       {/* Post-session reflection — shown after the reward overlay, before biometrics.
           Patches focus/calm/notes onto the already-saved session (no double-save). */}
       {showReflection && (
-        <Modal ariaLabel="Reflect on your sit" cardClassName="biometric-card session-reflect-card">
-          <h2>How was that?</h2>
+        <Modal ariaLabel={t('practice.meditate.reflect.aria')} cardClassName="biometric-card session-reflect-card">
+          <h2>{t('practice.reflect.heading')}</h2>
           {intention.trim() && (
             <p className="session-reflect-intention">
-              Your intention: <em>{intention.trim()}</em>
+              {t('practice.meditate.reflect.intentionLabel')} <em>{intention.trim()}</em>
             </p>
           )}
           <p className="biometric-intro">
-            Optional — rate it, or jot a quick note.
+            {t('practice.reflect.intro')}
           </p>
 
           <div className="session-reflect-ratings">
             <div className="session-reflect-row">
-              <span className="session-reflect-label">Focus</span>
+              <span className="session-reflect-label">{t('practice.reflect.focus')}</span>
               <RatingChips
-                ariaLabel="Focus"
-                notRatedLabel="—"
+                ariaLabel={t('practice.reflect.focus')}
+                notRatedLabel={t('practice.reflect.notRated')}
                 value={reflectFocus}
                 onChange={setReflectFocus}
               />
             </div>
             <div className="session-reflect-row">
-              <span className="session-reflect-label">Calm</span>
+              <span className="session-reflect-label">{t('practice.reflect.calm')}</span>
               <RatingChips
-                ariaLabel="Calm"
-                notRatedLabel="—"
+                ariaLabel={t('practice.reflect.calm')}
+                notRatedLabel={t('practice.reflect.notRated')}
                 value={reflectCalm}
                 onChange={setReflectCalm}
               />
@@ -979,18 +1026,18 @@ export default function MeditatePage() {
 
           {/* Optional mood — logged via the MoodLog path so it feeds the mood trends. */}
           <div className="session-reflect-mood">
-            <span className="session-reflect-label">Mood (optional)</span>
+            <span className="session-reflect-label">{t('practice.reflect.moodLabel')}</span>
             <ReflectionMood value={reflectMood} onChange={setReflectMood} />
           </div>
 
           <div className="session-reflect-notes">
             <label htmlFor="reflect-notes" className="session-reflect-notes-label">
-              Notes (optional)
+              {t('practice.reflect.notesLabel')}
             </label>
             <textarea
               id="reflect-notes"
               rows={3}
-              placeholder="Anything that arose…"
+              placeholder={t('practice.reflect.notesPlaceholder')}
               value={reflectNotes}
               onChange={(e) => setReflectNotes(e.target.value)}
             />
@@ -1000,7 +1047,7 @@ export default function MeditatePage() {
 
           <div className="biometric-actions">
             <button type="button" onClick={saveReflection} disabled={reflectSaving}>
-              {reflectSaving ? 'Saving…' : 'Keep it'}
+              {reflectSaving ? t('practice.recover.saving') : t('practice.reflect.keep')}
             </button>
             <button
               type="button"
@@ -1008,7 +1055,7 @@ export default function MeditatePage() {
               onClick={advanceToReading}
               disabled={reflectSaving}
             >
-              Skip
+              {t('practice.reflect.skip')}
             </button>
           </div>
         </Modal>
@@ -1018,10 +1065,10 @@ export default function MeditatePage() {
         <BiometricCapture
           context="post"
           sessionId={savedSessionIdRef.current}
-          title="Log a quick reading?"
-          intro="Optional: your heart rate now, to see how a sit settles you."
+          title={t('practice.reflect.readingTitle')}
+          intro={t('practice.meditate.preReading.intro')}
           onDone={() => {
-            showToast('Noted — your heart, on the record.')
+            showToast(t('practice.reading.notedToast'))
             navigate('/')
           }}
           onSkip={() => navigate('/')}

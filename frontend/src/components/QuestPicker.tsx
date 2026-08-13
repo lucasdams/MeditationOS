@@ -1,4 +1,5 @@
-import { QUEST_FEATURES, MIN_QUEST_FEATURES } from '../types'
+import { QUEST_FEATURES } from '../types'
+import { useT } from '../i18n'
 
 // Shared daily-quest feature picker used by both Onboarding and Settings so the
 // two screens cannot drift in markup, toggle behaviour, or the minimum-pick rule.
@@ -13,14 +14,13 @@ type QuestPickerProps = {
   legend?: string
 }
 
-export const tooFewQuestsMessage = `Pick at least ${MIN_QUEST_FEATURES}.`
-
 export default function QuestPicker({
   selected,
   onToggle,
   optionClassName = 'quest-option',
   legend,
 }: QuestPickerProps) {
+  const { t } = useT()
   return (
     <fieldset className="quest-picker">
       {legend && <legend className="sr-only">{legend}</legend>}
@@ -31,7 +31,7 @@ export default function QuestPicker({
             checked={selected.includes(f.key)}
             onChange={(e) => onToggle(f.key, e.target.checked)}
           />{' '}
-          {f.label}
+          {t(`settings.missions.feature.${f.key}`)}
         </label>
       ))}
     </fieldset>
