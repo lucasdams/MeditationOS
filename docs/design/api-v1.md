@@ -4,7 +4,7 @@
 
 REST API under `/api/v1`. JSON in/out. Auth via httpOnly cookie (see [authentication](authentication.md)). All resource routes are scoped to the authenticated user.
 
-**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Scheduling, Dashboard (stats + weekly review + activity), Analytics, Sanctuary, Push, and Health — is built. This stays the living contract for further additions.
+**Status legend:** ✅ implemented · ⏳ planned. The surface — Auth (incl. Sign in with Google), Sessions, Breathing patterns, Gratitude, Journals, Mood check-ins, Goals, Scheduling, Dashboard (stats + weekly review + consistency), Analytics, Spirit, Push, and Health — is built. This stays the living contract for further additions.
 
 ## Conventions
 
@@ -58,6 +58,7 @@ Errors return FastAPI's default shape:
 | POST | `/auth/username` | ✓ | `{ username }` | `200` user · `409` if taken |
 | POST | `/auth/timezone` | ✓ | `{ timezone }` | `200` user · `422` if not a valid IANA zone |
 | POST | `/auth/quest-features` | ✓ | `{ features: string[] }` | `200` user · `422` if any feature is unknown or fewer than 3 chosen |
+| POST | `/auth/daily-goal` | ✓ | `{ minutes }` | `200` user · `422` if `minutes` not 1–120 |
 | POST | `/auth/password` | ✓ | `{ current_password?, new_password }` | `200` user · `401` if current wrong |
 | POST | `/auth/password/reset-request` | — | `{ email }` | `202` always (no enumeration); rate-limited |
 | POST | `/auth/password/reset` | — | `{ token, new_password }` | `204` · `400` if token invalid/expired/used |
@@ -74,8 +75,10 @@ POST /api/v1/auth/register
 ```
 
 **Your data.** `GET /auth/export` returns a portable JSON snapshot of everything the
-account owns (profile minus the password hash, plus sessions, gratitude, journals,
-goals, sanctuary). `DELETE /auth/me` permanently deletes the account; all user-owned
+account owns (profile minus the password hash, plus sessions, gratitude, journals, mood
+logs, goals with check-ins, spirit, biometric readings, scheduled sessions, breathing
+patterns, path enrollments, AI reflections, and prayers). `DELETE /auth/me` permanently
+deletes the account; all user-owned
 rows cascade via their foreign keys (global breathing presets are untouched), and the
 session cookie is cleared. Both require auth.
 
@@ -163,7 +166,9 @@ POST /api/v1/sessions
 ```
 
 `breaths_per_minute` is computed in the response, never stored. `focus` and `calm`
-are an optional post-session self-rating (1–5 each); both nullable.
+are an optional post-session self-rating (1–5 each); both nullable. An optional
+`intention` — a short pre-session phrase (≤140 chars) — may also be sent, and is
+returned on the session.
 
 **Idempotent saves.** An optional `client_token` (client-generated id) lets the same
 in-progress sit be saved more than once without duplicating: a save whose token already
@@ -246,8 +251,8 @@ POST /api/v1/journals
 ```
 
 `mood` is an optional value from a fixed palette (`calm`, `content`, `focused`,
-`energized`, `grateful`, `neutral`, `restless`, `anxious`, `tired`, `low`); `body` is
-free text. A linked session must belong to the caller (`404` otherwise), and uses
+`energized`, `grateful`, `hopeful`, `excited`, `peaceful`, `neutral`, `restless`,
+`anxious`, `frustrated`, `overwhelmed`, `tired`, `low`); `body` is free text. A linked session must belong to the caller (`404` otherwise), and uses
 `ON DELETE SET NULL` so deleting the session keeps the reflection.
 
 ## Goals ✅ implemented
@@ -276,7 +281,8 @@ POST /api/v1/goals
 
 `activity` ∈ `meditate` (any session) · `breathe` (resonance-breathing sessions) ·
 `gratitude` · `journal` · `custom` (a self-tracked habit). `period` ∈ `day` (today) ·
-`week` (a rolling 7-day window). `count` is the target times per period (positive int).
+`week` (a rolling 7-day window) · `total` (an all-time cumulative target). `count` is the
+target times per period (positive int).
 `status` is `active` or `archived`. A `custom` goal **requires** a `label` (its name,
 ≤40 chars) and is advanced via the check-in endpoints rather than derived activity;
 built-in activities **reject** `label`. The response adds **computed** fields — `done`,
@@ -288,9 +294,10 @@ stored); for custom goals it's the count of stored daily check-ins.
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/dashboard/stats` | ✓ | Aggregates for the caller |
-| GET | `/dashboard/activity` | ✓ | Daily totals for the activity heatmap; `?days=` windows it (default `365`, `1`–`366`; the web UI requests `35` ≈ last month) |
+| GET | `/dashboard/stats` | ✓ | Aggregates for the caller (incl. the daily-goal ring) |
+| GET | `/dashboard/consistency` | ✓ | Per-day practice minutes + session counts over ~12 weeks, for the consistency heatmap |
 | GET | `/dashboard/weekly-review` | ✓ | Reflective last-7-days summary: minutes (+ vs last week), days practiced, streak, longest sit, and top mood — all computed, nothing stored |
+| GET | `/dashboard/activity` | ✓ | Daily totals for a calendar heatmap; `?days=` windows it (default `365`, `1`–`366`). Retained but **no longer consumed by the web UI** — the Activity heatmap was replaced by `/dashboard/consistency` |
 
 ```
 GET /api/v1/dashboard/stats
@@ -300,10 +307,15 @@ GET /api/v1/dashboard/stats
   "session_count": 42,
   "current_streak_days": 7,
   "longest_streak_days": 14,
+  "rest_day_used": false,
   "xp": 900,
   "level": 7,
   "xp_into_level": 60,
   "xp_for_next_level": 140,
+  "streak_bonus_xp": 70,
+  "gratitude_count": 12,
+  "daily_goal_minutes": 10,
+  "today_minutes": 15,
   "this_week": [
     { "date": "2026-06-03", "seconds": 600 },
     { "date": "2026-06-04", "seconds": 0 }
@@ -311,7 +323,9 @@ GET /api/v1/dashboard/stats
 }
 ```
 
-`this_week` is the last 7 calendar days, zero-filled. **XP = meditation minutes ×2 +
+`this_week` is the last 7 calendar days, zero-filled. `daily_goal_minutes` and
+`today_minutes` drive the **daily-goal ring** — the user's per-day target (set via
+`POST /auth/daily-goal`, 1–120) and today's practiced minutes in their local timezone. **XP = meditation minutes ×2 +
 breathing minutes ×3 + 5 per gratitude moment + 5 per journal entry + daily-quest
 bonuses + a streak bonus**; `level` follows a rising curve (computed, not stored).
 `daily_quests` lists the user's **chosen** quest categories — at least 3 of
@@ -353,6 +367,7 @@ heatmap). Kept separate from `/stats` so the per-navigation stats call stays lig
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET | `/analytics` | ✓ | Aggregated practice + journal insights for the caller |
+| GET | `/analytics/insights` | ✓ | Gentle pattern observations over the caller's own data (guarded by sample thresholds) |
 
 ```
 GET /api/v1/analytics
@@ -373,61 +388,22 @@ type; `by_weekday`/`by_time_of_day` bucket sessions by their local weekday/hour;
 `minutes_by_week` is the last 12 Monday-aligned weeks; `moods` is the journal mood
 distribution.
 
-## Sanctuary ✅ implemented
+## Spirit ✅ implemented (UI currently dormant)
 
-A small spend economy: earn coins by levelling, spend them to buy items (picking a
-**variant**) and apply mix-and-match **customizations**.
+The **companion** that replaced the earlier Sanctuary garden ([ADR-0022](../decisions/0022-spirit-companion-replaces-sanctuary.md), refined by [ADR-0032](../decisions/0032-spirit-vitality-and-balance.md)): one creature per user with a chosen path, cosmetics unlocked and equipped from a level- and coin-gated catalog, and a gentle tending/balance signal. The routes below are live, but the companion UI is currently hidden. The full state shape, coin economy, tending, and evolution rules live in [Spirit design](spirit.md) and are not restated here.
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/sanctuary` | ✓ | Coins, level, owned items (variant + customizations + available slots), and the shop (with variants) |
-| POST | `/sanctuary/buy` | ✓ | Buy a fresh item `{ item_key, variant?, name? }` (optional name plaque) → updated scene; `404` unknown item/variant · `409` level-locked or too few coins · `422` bad shape / over-length name |
-| POST | `/sanctuary/items/{id}/customize` | ✓ | Apply a customization `{ slot, option }` → updated scene; `404` not the caller's / unknown slot+option · `409` locked, already-applied, or too few coins · `422` bad shape |
-| PATCH | `/sanctuary/items/{id}` | ✓ | Set/clear cosmetic personalization `{ name?, note?, favorite? }` (partial; empty/null clears name/note) — never changes coins → updated scene; `404` not the caller's · `422` bad shape / over-length |
-| POST | `/sanctuary/items/{id}/move` | ✓ | Move to a grid cell `{ cell }` (layout only — never touches pricing); swaps with any occupant → updated scene; `404` not the caller's · `422` bad shape / out-of-bounds cell |
+| GET | `/spirit` | ✓ | The caller's spirit state (path, name, cosmetics, vitality/balance) |
+| GET | `/spirit/preview` | ✓ | Per-slot cosmetic previews for the customizer |
+| POST | `/spirit/choose` | ✓ | Choose the creature / path (optionally name it) |
+| POST | `/spirit/tend` | ✓ | Tend a facet (`nourished` / `rested` / `joyful`) |
+| POST | `/spirit/cosmetics` | ✓ | Unlock a cosmetic (coin- and level-gated) |
+| POST | `/spirit/cosmetics/equip` | ✓ | Equip an owned cosmetic into its slot |
+| POST | `/spirit/reset-name` | ✓ | Clear the spirit's name |
+| POST | `/spirit/awaken` | ✓ | Awaken a pathless spark into a chosen creature |
 
-```
-GET /api/v1/sanctuary
-→ 200
-{
-  "coins": 130,
-  "level": 5,
-  "owned": [
-    { "id": "…", "item_key": "tree", "track": "nature", "position": 0, "cell": 0,
-      "variant": "cherry", "customizations": { "foliage": "blossom" },
-      "name": "Grandpa's Oak", "note": "Planted on day one", "favorite": true,
-      "available": [
-        { "slot": "grown", "applied": null,
-          "options": [ { "option": "grown", "cost": 60, "unlocked": true,
-                         "unlock_hint": null, "affordable": true, "applied": false } ] }
-      ] }
-  ],
-  "shop": [
-    { "item_key": "flower", "track": "nature", "cost": 25, "unlocked": true, "hint": null,
-      "variants": [ { "variant": "rose", "cost_delta": 0, "unlocked": true, "unlock_hint": null } ] },
-    { "item_key": "pond", "track": "nature", "cost": 80, "unlocked": false,
-      "hint": "Reach level 4", "variants": [] }
-  ],
-  "vitality": "thriving",
-  "current_streak": 3
-}
-```
-
-```
-POST  /api/v1/sanctuary/buy                  { "item_key": "tree", "variant": "cherry", "name": "Grandpa's Oak" } → 201 (updated scene)
-POST  /api/v1/sanctuary/items/{id}/customize { "slot": "foliage", "option": "blossom" }    → 200 (updated scene)
-PATCH /api/v1/sanctuary/items/{id}           { "name": "Grandpa's Oak", "favorite": true } → 200 (updated scene; cosmetic, never changes coins)
-POST  /api/v1/sanctuary/items/{id}/move      { "cell": 5 }                                 → 200 (updated scene; layout only)
-```
-
-Only the holdings (`sanctuary_plantings`, with `variant` + `customizations`) are stored;
-the **coin balance is computed on read** — `level × COINS_PER_LEVEL − Σ spent`, where an
-item's spent is `buy_cost + variant_cost_delta + Σ (customization option costs)`, with the
-level taken from *earned XP* (total XP minus the streak bonus) so coins never decrease.
-`vitality` (`dormant` / `thriving` / `flourishing`) is from the current streak. See
-[ADR-0011](../decisions/0011-sanctuary-spend-economy.md),
-[ADR-0012](../decisions/0012-sanctuary-personalization.md), and the
-[Sanctuary design](sanctuary.md).
+All routes return the updated `SpiritState`. Coins are **computed on read** (level from *earned* XP so they never decrease); `vitality` is derived from the current streak. See [Spirit design](spirit.md) for the economy and rules.
 
 ## Mood check-ins ✅ implemented
 

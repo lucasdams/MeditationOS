@@ -27,7 +27,7 @@ All date bucketing is done in the **user's timezone** (`users.timezone`).
 `MEDITATE_QUEST_SECONDS` = 60s on the day), and gratitude/journal XP is capped to the
 first few entries per local day (the entries still save — they just stop paying). The
 displayed gratitude/journal totals stay uncapped. A day also only counts as practice for
-**streaks and the activity heatmap** once its total session time reaches
+**streaks and the consistency heatmap** once its total session time reaches
 `MIN_PRACTICE_SECONDS` = 60s, so daily 1-second sits can't prop up a streak or light the
 calendar (the weekly bars still show the real, uncapped seconds).
 
@@ -38,10 +38,11 @@ A Pokémon-style rising curve (`_level_progress`): cumulative XP to **reach** le
 levels, slower later. Returns `(level, xp_into_level, xp_for_next_level)`. The
 frontend mirrors the curve in `lib/level.ts` to animate the post-session reward
 overlay (XP bar fill + level-up fanfare). The level is displayed as a neutral
-**level badge** (◆ + number, `LevelCard.tsx`), decoupled from any tree metaphor —
-it also shows the **coins earned** to date and the **next Sanctuary item** the
-current level will unlock. XP rewards are **itemized** on the post-session overlay
-so the user sees exactly what they earned and why.
+**level badge** (◆ + number, `LevelCard.tsx`), decoupled from any tree metaphor, and
+shows the XP progress to the next level. The spendable **coin balance** lives on the
+home top line (sourced from the spirit companion), not on the level badge. XP rewards
+are **itemized** on the post-session overlay so the user sees exactly what they earned
+and why.
 
 **Front-loaded per-session XP curve:** longer sits earn more per minute via a
 concave curve, so sustained practice is rewarded more than many short sits. The
