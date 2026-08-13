@@ -14,8 +14,8 @@ Detailed schema for V1–V2. Conventions (UUID PKs, timestamps, indexing) live i
    ┌──────────┬───────────┬──────┴──────┬───────────┬──────────┐
    │ N        │ N         │ N           │ N         │ N        │ N
 ┌──▼───────┐ ┌▼─────────┐ ┌▼──────────┐ ┌▼─────────┐ ┌▼───────┐ ┌▼───────┐
-│ sessions │ │breathing_│ │gratitude_ │ │sanctuary_│ │journals│ │ goals  │
-│          │ │patterns  │ │entries    │ │plantings │ │        │ │        │
+│ sessions │ │breathing_│ │gratitude_ │ │ spirits  │ │journals│ │ goals  │
+│          │ │patterns  │ │entries    │ │          │ │        │ │        │
 └──┬───────┘ └──────────┘ └───────────┘ └──────────┘ └───▲────┘ └────────┘
    │ 0..1 (a session may reference the pattern it used)   │ 0..1
    └────────────► breathing_patterns                      └─ a journal may reference its session
@@ -45,8 +45,11 @@ Beyond the six shown, `users` also parents `goal_checkins`, `mood_logs`,
 | `weekly_summary_enabled` | bool | NOT NULL, default `false` — opt-in weekly summary email |
 | `weekly_summary_day` | int | NULL, CHECK 0–6 — local weekday (0=Mon…6=Sun) to send on; NULL when disabled |
 | `weekly_summary_last_sent_at` | timestamptz | NULL — once-per-ISO-week idempotency guard |
+| `streak_save_enabled` | bool | NOT NULL, default `true` — independent opt-out for the evening streak-save nudge (also gated by `reminder_enabled`) |
 | `streak_save_last_sent_at` | timestamptz | NULL — guards against sending more than one streak-save nudge per local day |
 | `quest_features` | text[] | NULL — daily-activity quests the user opted into (≥3 of `meditate`/`breathe`/`gratitude`/`journal`). NULL = not chosen yet → first-run picker; quest generation falls back to all four. Existing users backfilled to all four; guests seeded with all four |
+| `is_disabled` | bool | NOT NULL, default `false` — admin-only account suspension; blocks auth without deleting data |
+| `daily_goal_minutes` | int | NOT NULL, default `10` — daily practice target in minutes (the daily-goal ring); editable range 1–120 validated at the API layer |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()` |
 
@@ -68,9 +71,10 @@ A logged meditation. Resonance-breathing sessions reuse this table via `type` + 
 | `focus` | int | NULL, CHECK 1–5 — optional post-session self-rating |
 | `calm` | int | NULL, CHECK 1–5 — optional post-session self-rating |
 | `breathing_pattern_id` | UUID | FK → `breathing_patterns.id`, `ON DELETE SET NULL`, NULL |
-| `inhale_seconds` | int | NULL, CHECK > 0 (set when `type = resonance_breathing`) |
-| `exhale_seconds` | int | NULL, CHECK > 0 |
-| `cycles_completed` | int | NULL, CHECK >= 0 |
+| `inhale_seconds` | int | NULL (set when `type = resonance_breathing`) |
+| `exhale_seconds` | int | NULL |
+| `cycles_completed` | int | NULL |
+| `intention` | text | NULL — optional pre-session intention phrase (≤140 chars, validated in the schema) |
 | `client_token` | text | NULL — client idempotency key; a save with a token already seen for the user returns the existing row (lets the tab-close auto-save + a manual save collapse to one) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 | `updated_at` | timestamptz | NOT NULL, default `now()`, set to `now()` on update (sessions are editable via PATCH) |
@@ -115,26 +119,11 @@ accepts an AI-suggested) prompt as free `text`.
 - The **category taxonomy is fixed** (constrained by the CHECK) so entries stay filterable; the precise prompt is free text. The AI only generates *suggested* prompts within a category (never stored as the category).
 - Each entry awards **+5 XP** (computed in `dashboard_service`, like practice minutes); gratitude does **not** affect the practice streak.
 
-### `sanctuary_plantings`
+### `spirits`
 
-The user's garden as a **spend economy** ([ADR-0011](../decisions/0011-sanctuary-spend-economy.md)) with **personalization** ([ADR-0012](../decisions/0012-sanctuary-personalization.md)): each row is an item they **bought**, with a chosen `variant` and a set of `customizations`. The coin balance is computed on read (see [Sanctuary design](sanctuary.md)).
+The user's **companion** — one row per user — that replaced the earlier sanctuary garden ([ADR-0022](../decisions/0022-spirit-companion-replaces-sanctuary.md), refined by [ADR-0032](../decisions/0032-spirit-vitality-and-balance.md)). The companion's UI is currently dormant; its full schema, spend economy, tending, and evolution rules are owned by [Spirit design](spirit.md) and are not duplicated here.
 
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | UUID | PK |
-| `user_id` | UUID | FK → `users.id`, `ON DELETE CASCADE`, NOT NULL |
-| `item_key` | text | NOT NULL — references the in-code `SANCTUARY_CATALOG` (`tree`, `flower`, `cat`, `boat`, …); not a DB enum so the catalog can evolve without a migration |
-| `position` | int | NOT NULL — immutable acquisition order (0, 1, 2, …); the progressive-pricing economy key, never reordered ([ADR-0013](../decisions/0013-sanctuary-progressive-pricing.md)) |
-| `cell` | int | NOT NULL, default `0` — grid layout slot (row-major index) the user rearranges freely; layout-only, never affects cost ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)) |
-| `variant` | text | NULL — chosen base form (e.g. dog breed, tree species); `NULL` = the item's default variant |
-| `customizations` | jsonb | NOT NULL, default `'{}'` — `{slot: option}` of purchased mix-and-match customizations |
-| `created_at` | timestamptz | NOT NULL, default `now()` |
-
-**Constraints:** `UNIQUE(user_id, position)`, `UNIQUE(user_id, cell)`. **Index:** `user_id`.
-
-- **No wallet or transaction log** — the holdings *are* the ledger. `coins_spent` = Σ over owned items of `buy_cost + variant_cost_delta + Σ (customization option costs) + progressive_surcharge(position)`; `coins_earned = level × COINS_PER_LEVEL` (the level from *earned* XP, so coins never decrease); balance = earned − spent. All in `sanctuary_service`.
-- Buying inserts a row at the next `position` and the **lowest free `cell`** (with the chosen variant); customizing sets a key in the row's `customizations`; moving updates only `cell` (swapping with any occupant). The earlier `tier` column was folded into the `grown` customization and dropped (legacy spend preserved).
-- `position` and `cell` are deliberately separate ([ADR-0014](../decisions/0014-sanctuary-grid-layout.md)): `position` is the immutable economy key, `cell` is the rearrangeable layout. Moving an item never changes the balance.
+Key columns (`app/models/spirit.py`): `user_id` (FK → `users.id`, CASCADE — one spirit per user), `path` and `name` (the chosen creature and its name; `path` NULL for a pathless spark), `cosmetics` and `unlocked` (equipped + owned cosmetics/skills), `coins_spent` (spend ledger; balance = earned − spent, computed on read), the per-facet `nourished_tended_at` / `rested_tended_at` / `joyful_tended_at`, the lifecycle `awakened_at` / `needs_baseline_at` / `retired_at`, and `created_at` / `updated_at`.
 
 ### `journals`
 
@@ -169,7 +158,7 @@ carries a `label` and is tracked via stored `goal_checkins` instead.
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
 | `activity` | text | NOT NULL, CHECK in (`meditate`,`breathe`,`gratitude`,`journal`,`custom`) |
 | `label` | text | NULL — the habit name; set only for `custom` goals |
-| `period` | text | NOT NULL, CHECK in (`day`,`week`) |
+| `period` | text | NOT NULL, CHECK in (`day`,`week`,`total`) — `total` is an all-time cumulative target |
 | `count` | int | NOT NULL, CHECK > 0 — times per period |
 | `status` | text | NOT NULL, default `active`, CHECK in (`active`,`archived`) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
@@ -221,6 +210,7 @@ A planned future practice (date/time + type), so users can put practice on the c
 | `scheduled_at` | timestamptz | NOT NULL — when they plan to practice |
 | `duration_minutes` | int | NULL, CHECK > 0 — optional target length |
 | `note` | text | NULL |
+| `reminder_sent_at` | timestamptz | NULL — set once the "coming up" reminder has fired (once-per-session guard) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
 
 **Index:** `(user_id, scheduled_at)`.
@@ -252,17 +242,20 @@ session, or as a standalone resting entry. See
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users.id`, CASCADE, NOT NULL |
 | `session_id` | UUID | FK → `sessions.id`, `ON DELETE SET NULL`, NULL — the session this reading is linked to (if any) |
-| `heart_rate` | int | NULL, CHECK > 0 — beats per minute |
-| `hrv_ms` | float | NULL, CHECK >= 0 — HRV in milliseconds (RMSSD or similar) |
 | `context` | text | NOT NULL, CHECK in (`pre`, `post`, `resting`) — when the reading was taken relative to a session |
-| `source` | text | NOT NULL, CHECK in (`manual`, `estimated`, `camera`, `wearable`) — how it was captured; `camera` and `wearable` plug in without a schema change when those flows ship |
+| `bpm` | int | NOT NULL, CHECK between 30 and 220 — heart rate in beats per minute |
+| `hrv_ms` | float | NULL, CHECK >= 0 — optional HRV in milliseconds (RMSSD or similar) |
+| `source` | text | NOT NULL, default `manual`, CHECK in (`manual`, `estimated`, `camera`, `wearable`) — how it was captured; `camera`/`wearable` plug in without a schema change when those flows ship |
+| `measured_at` | timestamptz | NOT NULL — when the reading was taken (user-set, tz-aware) |
+| `client_token` | text | NULL — client idempotency key; a repeat submit for the user collapses to the existing row (keeps the pre/post delta deterministic) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
+| `updated_at` | timestamptz | NOT NULL, default `now()`, set to `now()` on update |
 
-**Index:** `(user_id, created_at)`.
+**Indexes:** `(user_id, measured_at)` — the trend view queries by user over time. Plus `(session_id)` for pre/post pairing, and a partial unique index on `(user_id, client_token)` where `client_token IS NOT NULL` (idempotent saves).
 
-- At least one of `heart_rate` or `hrv_ms` must be non-null (enforced in the service layer).
+- `bpm` is **required** (CHECK 30–220); `hrv_ms` is optional (manual entry often carries only heart rate).
 - The framing throughout is a personal wellness signal, not a medical measurement — this is enforced in the UI copy and the API response schema.
-- Pre/post delta on Analytics is `avg(post.heart_rate − pre.heart_rate)` across pairs linked to the same session.
+- Pre/post delta on Analytics is `avg(post.bpm − pre.bpm)` across pairs linked to the same session.
 
 ## Design notes
 
@@ -270,7 +263,7 @@ session, or as a standalone resting entry. See
 
 **Breathing data lives on `sessions`, not a separate table.** A resonance-breathing session *is* a meditation session with extra columns, so it shares streak/duration/aggregation logic for free rather than forcing a UNION across two tables.
 
-**Goals store intent, not progress.** A `goal` row is just a target (`type` + `target`) plus a lifecycle `status`. Current value, fraction, and whether it's met are **computed on read** from the same activity the dashboard aggregates — so a goal can never drift out of sync, and re-tuning what "counts" is a one-line change (same rationale as [ADR-0009](../decisions/0009-gamification-computed-from-activity.md)).
+**Goals store intent, not progress.** A `goal` row is just a target (`activity` + `count` + `period`) plus a lifecycle `status`. For built-in activities, current value, fraction, and whether it's met are **computed on read** from the same activity the dashboard aggregates (a `custom` goal instead tracks stored `goal_checkins`) — so a goal can never drift out of sync, and re-tuning what "counts" is a one-line change (same rationale as [ADR-0009](../decisions/0009-gamification-computed-from-activity.md)).
 
 **`ON DELETE` is explicit per relationship.** Child practice data cascades on user deletion (privacy: account deletion removes the user's data). `breathing_pattern_id` on a session uses `SET NULL` so deleting a saved pattern doesn't erase the history of sessions that used it.
 
