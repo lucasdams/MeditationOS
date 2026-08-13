@@ -18,6 +18,11 @@ export const philosophers: Record<string, string> = {
   'philosophers.change': 'Choose another guide',
   'philosophers.intro': 'A quiet space to reflect. Share whatever is on your mind, and {name} will respond in the spirit of {tradition}.',
   'philosophers.youLabel': 'You',
+  // Openers — the tappable conversation starters shown when a chat is empty. The opener
+  // text itself is English content (persona starters from the backend, or a line about
+  // today's practice); these keys are only the surrounding chrome.
+  'philosophers.startersHeading': 'A place to begin',
+  'philosophers.openerAria': 'Start with: {text}',
   'philosophers.composerAria': 'Your message',
   'philosophers.composerPlaceholder': 'Share what’s on your mind…',
   'philosophers.send': 'Send',

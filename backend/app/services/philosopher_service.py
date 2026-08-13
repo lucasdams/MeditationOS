@@ -97,9 +97,15 @@ def _enforce_daily_message_cap(user: User) -> None:
 
 
 def list_personas() -> list[PhilosopherSummary]:
-    """The picker roster — id, name, tradition, blurb. Never the system prompts."""
+    """The picker roster — id, name, tradition, blurb, openers. Never the system prompts."""
     return [
-        PhilosopherSummary(id=p.id, name=p.name, tradition=p.tradition, blurb=p.blurb)
+        PhilosopherSummary(
+            id=p.id,
+            name=p.name,
+            tradition=p.tradition,
+            blurb=p.blurb,
+            openers=list(p.openers),
+        )
         for p in philosophers.PHILOSOPHERS
     ]
 
