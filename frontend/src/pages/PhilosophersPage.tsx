@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { philosopherService } from '../services/philosophers'
+import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
@@ -52,8 +53,12 @@ export default function PhilosophersPage() {
   // Once the daily cap (429) or guest gate (403) is hit, further sends are disabled.
   const [capHit, setCapHit] = useState(false)
   const [guestBlocked, setGuestBlocked] = useState(false)
+  // Today's practiced minutes (local day) — powers a personalized opener that seeds the
+  // chat with the user's real sit. Non-blocking: null while loading or if the fetch fails.
+  const [todayMinutes, setTodayMinutes] = useState<number | null>(null)
 
   const listEndRef = useRef<HTMLDivElement | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   function loadRoster() {
     philosopherService
@@ -68,6 +73,12 @@ export default function PhilosophersPage() {
 
   useEffect(() => {
     loadRoster()
+    // Non-blocking: today's practice powers a personalized opener. A failure just omits
+    // it — the persona's own starters still show, and the chat is unaffected.
+    dashboardService
+      .getStats()
+      .then((s) => setTodayMinutes(s.today_minutes))
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -132,6 +143,15 @@ export default function PhilosophersPage() {
     }
   }
 
+  // Tapping a starter drops it into the composer and focuses it — the user can send as
+  // is or edit first (mirrors the Journal writing-prompt "use" behaviour). It never
+  // auto-sends, so there's no surprise LLM call or accidental cap spend.
+  function fillOpener(text: string) {
+    setInput(text)
+    setNotice(null)
+    composerRef.current?.focus()
+  }
+
   function onComposerKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     // Enter sends; Shift+Enter inserts a newline (familiar chat behaviour).
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -144,7 +164,7 @@ export default function PhilosophersPage() {
   if (!selected) {
     return (
       <main id="main-content" className="dashboard philosophers">
-        <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+        <Link to="/" className="back-link">{t('common.backHome')}</Link>
         <header className="page-head">
           <h1>{t('philosophers.title')}</h1>
           <p className="page-subtitle">{t('philosophers.subtitle')}</p>
@@ -190,6 +210,17 @@ export default function PhilosophersPage() {
 
   // ── Chat view ───────────────────────────────────────────────────────────────
   const Icon = ICONS[selected.id] ?? MessageCircle
+  // A personalized opener when the user has practiced today: it seeds the chat with their
+  // real sit so the guide reflects on something true, not a generic prompt. English
+  // content (the whole conversation is English), like the persona's own openers.
+  const contextOpener =
+    todayMinutes && todayMinutes > 0
+      ? `I sat for ${todayMinutes} ${todayMinutes === 1 ? 'minute' : 'minutes'} today — I’d like to reflect on it.`
+      : null
+  // Starters shown on an empty chat: the personalized one first (when present), then the
+  // persona's own. Hidden once a gate is hit (nothing to start) or the chat has begun.
+  const openers = [...(contextOpener ? [contextOpener] : []), ...(selected.openers ?? [])]
+  const showOpeners = messages.length === 0 && !sending && !capHit && !guestBlocked && openers.length > 0
   return (
     <main id="main-content" className="dashboard philosophers philosophers-chat">
       <button type="button" className="back-link philo-back" onClick={backToPicker}>
@@ -206,7 +237,11 @@ export default function PhilosophersPage() {
         </span>
       </header>
 
-      <div className="philo-thread" role="log" aria-live="polite">
+      <div
+        className={`philo-thread${messages.length === 0 ? ' philo-thread--empty' : ''}`}
+        role="log"
+        aria-live="polite"
+      >
         {messages.length === 0 && (
           <p className="philo-intro muted">
             {t('philosophers.intro', { name: selected.name, tradition: selected.tradition })}
@@ -231,6 +266,29 @@ export default function PhilosophersPage() {
         <div ref={listEndRef} />
       </div>
 
+      {showOpeners && (
+        <div className="philo-openers">
+          <p className="philo-openers-heading muted">{t('philosophers.startersHeading')}</p>
+          <div className="philo-openers-chips">
+            {openers.map((o) => {
+              const isContext = o === contextOpener
+              return (
+                <button
+                  key={o}
+                  type="button"
+                  className={`philo-opener${isContext ? ' philo-opener--context' : ''}`}
+                  aria-label={t('philosophers.openerAria', { text: o })}
+                  onClick={() => fillOpener(o)}
+                >
+                  {isContext && <Sparkles size={13} strokeWidth={2} aria-hidden="true" />}
+                  {o}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {notice && (
         <p className="philo-notice" role="status">
           {notice.kind === 'cap'
@@ -243,6 +301,7 @@ export default function PhilosophersPage() {
 
       <div className="philo-composer">
         <textarea
+          ref={composerRef}
           rows={2}
           value={input}
           maxLength={MAX_LEN}

@@ -243,7 +243,7 @@ export default function GratitudePage() {
 
   return (
     <main id="main-content" className="gratitude">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.gratitude.title')}</h1>
         <p className="page-subtitle">

@@ -150,7 +150,7 @@ export default function LogSessionPage() {
 
   return (
     <main id="main-content" className="dashboard log-session">
-      <Link to="/" className="back-link">{t('common.backDashboard')}</Link>
+      <Link to="/" className="back-link">{t('common.backHome')}</Link>
       <header className="page-head">
         <h1>{t('tracking.logSession.title')}</h1>
         <p className="page-subtitle">

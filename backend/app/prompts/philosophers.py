@@ -55,19 +55,37 @@ Boundaries (never break these):
 
 @dataclass(frozen=True)
 class Persona:
-    """One selectable philosopher persona. `system` is the fully-composed prompt."""
+    """One selectable philosopher persona. `system` is the fully-composed prompt.
+
+    `openers` are a few short, first-person conversation starters in the persona's
+    theme — the client shows them as tappable chips when a chat is empty, so a fresh
+    conversation is a gentle invitation rather than a blank page. They are content the
+    user *sends* (they fill the composer), so they read as the person's own opening
+    reflection, not the guide's line. Exposed in the picker roster; never the system
+    prompt itself.
+    """
 
     id: str
     name: str
     tradition: str
     blurb: str
+    openers: tuple[str, ...]
     system: str
 
 
-def _persona(id: str, name: str, tradition: str, blurb: str, voice: str) -> Persona:
+def _persona(
+    id: str,
+    name: str,
+    tradition: str,
+    blurb: str,
+    voice: str,
+    openers: tuple[str, ...],
+) -> Persona:
     """Compose a persona's full SYSTEM prompt: its voice, then the shared frame."""
     system = f"{voice.strip()}\n\n{_COMMON}"
-    return Persona(id=id, name=name, tradition=tradition, blurb=blurb, system=system)
+    return Persona(
+        id=id, name=name, tradition=tradition, blurb=blurb, openers=openers, system=system
+    )
 
 
 PHILOSOPHERS: tuple[Persona, ...] = (
@@ -83,6 +101,11 @@ own judgments, choices, and responses) from what is not (other people, outcomes,
 past). You return them, gently, to the present task and to acting with reason and
 kindness. You value plain acceptance of what is, and quiet virtue over applause.
 """,
+        openers=(
+            "Something outside my control is weighing on me.",
+            "Help me focus on what's actually mine to do today.",
+            "I want to meet today with more steadiness.",
+        ),
     ),
     _persona(
         id="buddha",
@@ -96,6 +119,11 @@ mindful, compassionate attention — can loosen its hold. You point toward imper
 the breath and the present moment, and lovingkindness toward oneself and others. You are
 calm and unforceful; you invite noticing rather than prescribe.
 """,
+        openers=(
+            "I'm holding onto something and I can't seem to let go.",
+            "The same craving keeps pulling at me.",
+            "Help me sit with a difficult feeling instead of fleeing it.",
+        ),
     ),
     _persona(
         id="confucius",
@@ -109,6 +137,11 @@ and the small daily practices that shape a person. You attend to relationships a
 — family, friends, community — and to acting with integrity even when unseen. You favour
 steady self-cultivation over grand gestures, and often reflect through a simple example.
 """,
+        openers=(
+            "I want to act with more integrity in a relationship that matters.",
+            "How do small daily habits shape the person I become?",
+            "I fell short today of who I want to be.",
+        ),
     ),
     _persona(
         id="laozi",
@@ -122,6 +155,11 @@ rather than forcing (wu wei), to the strength of softness and yielding, and to t
 value of simplicity, stillness, and emptiness that leaves room for life. Your tone is
 spacious and unhurried, often pointing to water, nature, and quiet as teachers.
 """,
+        openers=(
+            "I've been forcing things and it isn't working.",
+            "I want to move more with the flow of my day, not against it.",
+            "Help me find a little stillness.",
+        ),
     ),
     _persona(
         id="eckhart-tolle",
@@ -136,6 +174,11 @@ this moment — the breath, the body, the space around thinking. You are calm an
 spacious, and you point to presence rather than analyse the mind's stories. You do not
 claim to be Eckhart Tolle; you offer this way of noticing in his spirit.
 """,
+        openers=(
+            "My mind won't stop narrating everything.",
+            "I want to come back to the present moment.",
+            "I feel caught up in my thoughts today.",
+        ),
     ),
     _persona(
         id="carl-jung",
@@ -150,6 +193,11 @@ push away, and toward what images and feelings might be pointing to. Keep this
 exploratory and reflective, in the spirit of his ideas — NOT clinical analysis,
 diagnosis, or therapy. You are a companion for reflection, not a doctor.
 """,
+        openers=(
+            "A dream has been staying with me.",
+            "There's a part of myself I keep pushing away.",
+            "I want to understand a feeling I don't have words for.",
+        ),
     ),
     _persona(
         id="miyamoto-musashi",
@@ -164,6 +212,11 @@ ready mind that meets difficulty without flinching. You favour cutting away dist
 and excess, self-reliance, and walking your own path with resolve. Your tone is spare,
 grounded, and direct — the Way as discipline and mastery, never a glorifying of violence.
 """,
+        openers=(
+            "I keep getting pulled away from what matters.",
+            "Help me commit to one practice and see it through.",
+            "I want to meet a hard challenge with a steady mind.",
+        ),
     ),
 )
 

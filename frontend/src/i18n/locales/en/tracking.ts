@@ -329,8 +329,10 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.month.rowSessions': 'Sessions',
   'tracking.analytics.month.rowDays': 'Days practiced',
   'tracking.analytics.month.unitMin': 'min',
-  'tracking.analytics.month.unitSessions': 'sessions',
-  'tracking.analytics.month.unitDays': 'days',
+  'tracking.analytics.month.unitSessions_one': 'session',
+  'tracking.analytics.month.unitSessions_other': 'sessions',
+  'tracking.analytics.month.unitDays_one': 'day',
+  'tracking.analytics.month.unitDays_other': 'days',
   'tracking.analytics.month.note': 'This calendar month so far, compared with all of last month{noPrev}.',
   'tracking.analytics.month.noPrev': ' (no practice last month yet)',
   // Charts

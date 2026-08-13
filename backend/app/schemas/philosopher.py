@@ -66,6 +66,10 @@ class PhilosopherSummary(BaseModel):
     name: str
     tradition: str
     blurb: str
+    # A few short, first-person conversation starters in the persona's theme. The client
+    # shows them as tappable chips on an empty chat so a fresh conversation is an
+    # invitation, not a blank page. The system prompt is never exposed — only these.
+    openers: list[str]
 
 
 class PhilosopherChatResponse(BaseModel):

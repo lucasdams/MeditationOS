@@ -73,6 +73,7 @@ A logged meditation. Resonance-breathing sessions reuse this table via `type` + 
 | `cycles_completed` | int | NULL, CHECK >= 0 |
 | `client_token` | text | NULL — client idempotency key; a save with a token already seen for the user returns the existing row (lets the tab-close auto-save + a manual save collapse to one) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
+| `updated_at` | timestamptz | NOT NULL, default `now()`, set to `now()` on update (sessions are editable via PATCH) |
 
 **Indexes:** `(user_id, occurred_at)` — every dashboard/streak query filters by user and time. Plus a partial unique index on `(user_id, client_token)` where `client_token IS NOT NULL`, enforcing idempotent saves at the DB level.
 
@@ -147,6 +148,7 @@ A written reflection, optionally tied to a session, with an optional mood tag.
 | `body` | text | NOT NULL |
 | `mood` | text | NULL, CHECK in a fixed palette (`calm`, `content`, `focused`, `energized`, `grateful`, `hopeful`, `excited`, `peaceful`, `neutral`, `restless`, `anxious`, `frustrated`, `overwhelmed`, `tired`, `low`) — see `app/models/journal.py` `MOODS` |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
+| `updated_at` | timestamptz | NOT NULL, default `now()`, set to `now()` on update (reflections are editable via PATCH) |
 
 **Index:** `(user_id, created_at)`.
 
@@ -171,6 +173,7 @@ carries a `label` and is tracked via stored `goal_checkins` instead.
 | `count` | int | NOT NULL, CHECK > 0 — times per period |
 | `status` | text | NOT NULL, default `active`, CHECK in (`active`,`archived`) |
 | `created_at` | timestamptz | NOT NULL, default `now()` |
+| `updated_at` | timestamptz | NOT NULL, default `now()`, set to `now()` on update (goals are editable via PATCH) |
 
 **Index:** `(user_id, created_at)`.
 
