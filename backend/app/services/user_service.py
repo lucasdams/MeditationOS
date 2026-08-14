@@ -173,11 +173,11 @@ def _reset_email_body(user: User, link: str) -> str:
     return (
         f"Hi {name},\n\n"
         "We received a request to reset your MeditationOS password. Choose a new "
-        f"one here — the link expires in {settings.password_reset_expire_minutes} "
+        f"one here. The link expires in {settings.password_reset_expire_minutes} "
         f"minutes:\n\n{link}\n\n"
         "If you didn't request this, you can safely ignore this email; your "
         "password won't change.\n\n"
-        "— MeditationOS"
+        "MeditationOS"
     )
 
 
@@ -222,7 +222,7 @@ def _verification_email_body(user: User, link: str) -> str:
         "Welcome to MeditationOS! Please confirm your email address by clicking the "
         f"link below:\n\n{link}\n\n"
         "If you didn't create this account, you can ignore this email.\n\n"
-        "— MeditationOS"
+        "MeditationOS"
     )
 
 

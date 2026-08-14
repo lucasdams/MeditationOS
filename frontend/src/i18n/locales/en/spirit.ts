@@ -10,7 +10,7 @@ export const spirit: Record<string, string> = {
   'spirit.error': "Couldn't reach your spirit.",
 
   // First-visit intro
-  'spirit.intro.what': 'Your spirit grows with your practice — every session feeds it.',
+  'spirit.intro.what': 'Your spirit grows with your practice. Every session feeds it.',
   'spirit.intro.how':
     'Its needs are gentle and never punishing: any practice keeps it content. Levelling up earns coins you can spend on its look in Customize. That’s the whole game.',
   'spirit.intro.gotit': 'Got it',
@@ -38,7 +38,7 @@ export const spirit: Record<string, string> = {
     'Your companion shimmers with a special glow for wearing all {total} of its signature pieces.',
   'spirit.setbonus.radiance': 'Signature radiance',
   'spirit.setbonus.progress.tagline':
-    'A gentle, glowing shimmer your companion earns for wearing all {total} of its signature pieces — the special cosmetics only its kind can wear, one per slot.',
+    'A gentle, glowing shimmer your companion earns for wearing all {total} of its signature pieces: the special cosmetics only its kind can wear, one per slot.',
   'spirit.setbonus.progress.count': 'You have {count} of {total} so far.',
   'spirit.setbonus.previewing': 'Previewing the radiance…',
   'spirit.setbonus.see': 'See the radiance',
@@ -63,36 +63,36 @@ export const spirit: Record<string, string> = {
   'spirit.node.equipAria': 'Equip {label}',
   'spirit.node.unlock': 'Unlock',
   'spirit.node.unlockAria': 'Unlock {label} for {cost} coins',
-  'spirit.node.unlockUnaffordableAria': 'Unlock {label} for {cost} coins — need more coins',
+  'spirit.node.unlockUnaffordableAria': 'Unlock {label} for {cost} coins. Need more coins',
   'spirit.node.needMore': 'need {count} more coins',
 
   // Care section
   'spirit.care.title': 'Care',
   'spirit.care.fallbackName': 'Your spirit',
   'spirit.care.vitalityIs': ' is ',
-  'spirit.care.vitalityAny': ' — any practice keeps them so.',
+  'spirit.care.vitalityAny': '. Any practice keeps them so.',
   // Care subtitle, split around the bolded facet words (Rest / Joy / Nourishment).
   'spirit.care.subtitle.p1':
-    'Below is your recent practice balance — a gentle read of your mix, never a to-do. Sits fill ',
+    'Below is your recent practice balance: a gentle read of your mix, never a to-do. Sits fill ',
   'spirit.care.subtitle.p2': ', gratitude & journaling fill ',
   'spirit.care.subtitle.p3': ', and your creature’s own favourite practice fills ',
   'spirit.care.subtitle.p4': '. Tend a facet whenever you like, or just practice.',
   'spirit.tend.aria': 'Tend your spirit',
-  'spirit.tend.btnAria': '{label} — top up {need}',
+  'spirit.tend.btnAria': '{label}: top up {need}',
   'spirit.tend.hint': 'Practice fills a need fully; tending tops it up.',
 
   // Customize section
   'spirit.customize.title': 'Customize',
   'spirit.customize.subtitle':
-    'Give your companion a look. Coins come from levelling up — every session adds XP — and unlocked pieces are yours forever; swapping them is free.',
-  'spirit.customize.empty': 'Keep practicing — adornments unlock as your spirit grows.',
+    'Give your companion a look. Coins come from levelling up (every session adds XP), and unlocked pieces are yours forever; swapping them is free.',
+  'spirit.customize.empty': 'Keep practicing. Adornments unlock as your spirit grows.',
   'spirit.customize.slotsAria': 'Customization slots',
   'spirit.customize.preview': 'Preview',
 
   // Collection section
   'spirit.collection.title': 'Collection',
   'spirit.collection.subtitle': 'Spirits you grew to radiance and set free.',
-  'spirit.collection.empty': 'Empty for now — past companions rest here.',
+  'spirit.collection.empty': 'Empty for now. Past companions rest here.',
   'spirit.collection.retiredName': '{stage} spirit',
 
   // Reset name (foot of page)
@@ -105,15 +105,15 @@ export const spirit: Record<string, string> = {
   'spirit.journey.title': 'How your spirit grows',
   'spirit.journey.note.lead': 'Every practice grows your spirit through five stages, from a spark to fully ',
   'spirit.journey.note.radiantWord': 'radiant',
-  'spirit.journey.note.tail': '. Its look deepens at each stage — and it never slips back.',
-  'spirit.journey.note.radiantNow.lead': ' Radiant now — you can ',
+  'spirit.journey.note.tail': '. Its look deepens at each stage, and it never slips back.',
+  'spirit.journey.note.radiantNow.lead': ' Radiant now. You can ',
   'spirit.journey.note.radiantNow.setFree': 'set it free',
   'spirit.journey.note.radiantNow.tail': ' below.',
 
   // Awaken section
   'spirit.awaken.aria': 'Awaken a new spark',
   'spirit.awaken.note':
-    'Your radiant spirit’s journey is complete. When you’re ready, awaken a new spark and begin again — this one retires into your collection, kept forever.',
+    'Your radiant spirit’s journey is complete. When you’re ready, awaken a new spark and begin again. This one retires into your collection, kept forever.',
   'spirit.awaken.button': 'Awaken a new spark',
 
   // Awaken confirm modal
@@ -147,27 +147,27 @@ export const spirit: Record<string, string> = {
   'spirit.resetName.modal.cancel': 'Cancel',
 
   // Toasts
-  'spirit.toast.unlocked': '{label} unlocked — your spirit is delighted',
-  'spirit.toast.unlockFail': 'Not unlocked yet — practice earns the coins for it.',
+  'spirit.toast.unlocked': '{label} unlocked. Your spirit is delighted',
+  'spirit.toast.unlockFail': 'Not unlocked yet. Practice earns the coins for it.',
   'spirit.toast.equipOn': '{label} on.',
   'spirit.toast.slotCleared': '{slot} set aside.',
   'spirit.toast.equipFail': "Couldn't change that right now.",
   'spirit.toast.renamed': 'Renamed. It answers to that now.',
-  'spirit.toast.renameFail': "Couldn't change the name — you may need more coins.",
+  'spirit.toast.renameFail': "Couldn't change the name. You may need more coins.",
   'spirit.toast.awakened': 'A new spark awakens. Your radiant spirit joins your collection.',
-  'spirit.toast.awakenFail': 'Your spirit is not radiant yet — keep practicing.',
-  'spirit.toast.tended': '{label} topped up — practice fills it fully.',
-  'spirit.toast.tendFail': "Couldn't tend it just now — try once more.",
+  'spirit.toast.awakenFail': 'Your spirit is not radiant yet. Keep practicing.',
+  'spirit.toast.tended': '{label} topped up. Practice fills it fully.',
+  'spirit.toast.tendFail': "Couldn't tend it just now. Try once more.",
 
   // ── SpiritChoosePage ───────────────────────────────────────────────────────────────────────
   'spirit.choose.back': '← Spirit',
-  'spirit.choose.hatch.title': 'You took your first breath — now meet the companion you’ll grow.',
+  'spirit.choose.hatch.title': 'You took your first breath. Now meet the companion you’ll grow.',
   'spirit.choose.hatch.suggested':
-    'Based on what you told us, {name} might suit you — but choose whichever calls to you.',
-  'spirit.choose.hatch.any': 'Pick whichever calls to you — there’s no wrong choice.',
+    'Based on what you told us, {name} might suit you, but choose whichever calls to you.',
+  'spirit.choose.hatch.any': 'Pick whichever calls to you. There’s no wrong choice.',
   'spirit.choose.title': 'Choose your creature',
   'spirit.choose.subtitle':
-    'Each creature thrives on the practice that balances its nature — pick the one whose rhythm fits yours.',
+    'Each creature thrives on the practice that balances its nature. Pick the one whose rhythm fits yours.',
   'spirit.choose.suggestedForYou': 'Suggested for you',
   'spirit.choose.favours': 'Favours',
   'spirit.choose.tryonsAria': 'Try a random look for {name}',
@@ -178,14 +178,14 @@ export const spirit: Record<string, string> = {
   'spirit.choose.chooseDifferent': '← Choose a different creature',
   'spirit.choose.nameLabel': 'Name your {name} companion',
   'spirit.choose.namePlaceholder': 'e.g. Ember',
-  'spirit.choose.nameHint': 'Names stick — changing one later costs coins, so pick one you love.',
+  'spirit.choose.nameHint': 'Names stick. Changing one later costs coins, so pick one you love.',
   'spirit.choose.nameFirst': 'Name your companion first',
   'spirit.choose.awakening': 'Awakening…',
   'spirit.choose.awaken': 'Awaken {name}',
 
   // Choose-page toasts
   'spirit.choose.toast.awakens': 'Your {name} spirit awakens. {glyph}',
-  'spirit.choose.toast.chooseFail': "Couldn't choose that creature — please try again.",
+  'spirit.choose.toast.chooseFail': "Couldn't choose that creature. Please try again.",
 
   // About the doshas. The intro + note keep their inline <em>/<strong> emphasis in the JSX; only
   // the plain-text run around the markup is templated here (English frozen; markup unchanged).
@@ -194,18 +194,18 @@ export const spirit: Record<string, string> = {
   'spirit.dosha.about.intro.doshas': 'doshas',
   'spirit.dosha.about.intro.p2': ' are elemental energies, each kept healthy through ',
   'spirit.dosha.about.intro.balance': 'balance',
-  'spirit.dosha.about.intro.p3': ' — by leaning into the ',
+  'spirit.dosha.about.intro.p3': ': by leaning into the ',
   'spirit.dosha.about.intro.opposite': 'opposite',
   'spirit.dosha.about.intro.p4': ' of its nature. So each companion thrives on the practice that ',
   'spirit.dosha.about.intro.counterbalances': 'counterbalances',
   'spirit.dosha.about.intro.p5': ' it:',
   // The list line: "(<element>) — <vibe>" + "wants a <balance> practice → <practice>."
-  'spirit.dosha.about.item.elementVibe': '({element}) — {vibe}',
+  'spirit.dosha.about.item.elementVibe': '({element}): {vibe}',
   'spirit.dosha.about.item.wants': ' wants a ',
   'spirit.dosha.about.item.practiceArrow': ' practice → ',
   'spirit.dosha.about.item.end': '.',
   'spirit.dosha.about.note.p1':
-    'A gentle, simplified take on a deep tradition — not medical advice. (For Kapha’s invigorating breath, try the ',
+    'A gentle, simplified take on a deep tradition, not medical advice. (For Kapha’s invigorating breath, try the ',
   'spirit.dosha.about.note.energizing': 'Energizing',
   'spirit.dosha.about.note.p2': ' pattern on the Breathe page.)',
 
@@ -235,7 +235,7 @@ export const spirit: Record<string, string> = {
   'spirit.dosha.kapha.practice': 'breathwork',
   'spirit.dosha.kapha.balance': 'energizing',
   'spirit.dosha.kapha.why':
-    'Earth-and-water Kapha can grow heavy and sluggish — breathwork gets its energy moving and keeps it bright.',
+    'Earth-and-water Kapha can grow heavy and sluggish. Breathwork gets its energy moving and keeps it bright.',
 
   'spirit.dosha.pitta.name': 'Pitta',
   'spirit.dosha.pitta.element': 'Fire + Water',
@@ -243,7 +243,7 @@ export const spirit: Record<string, string> = {
   'spirit.dosha.pitta.practice': 'gratitude & journaling',
   'spirit.dosha.pitta.balance': 'cooling',
   'spirit.dosha.pitta.why':
-    'Fiery Pitta runs hot and sharp — cooling, reflective gratitude & journaling soothes it so it doesn’t burn out.',
+    'Fiery Pitta runs hot and sharp. Cooling, reflective gratitude & journaling soothes it so it doesn’t burn out.',
 
   'spirit.dosha.vata.name': 'Vata',
   'spirit.dosha.vata.element': 'Air + Ether',
@@ -251,7 +251,7 @@ export const spirit: Record<string, string> = {
   'spirit.dosha.vata.practice': 'meditation',
   'spirit.dosha.vata.balance': 'grounding',
   'spirit.dosha.vata.why':
-    'Airy Vata is light and easily scattered — grounding meditation settles and steadies it.',
+    'Airy Vata is light and easily scattered. Grounding meditation settles and steadies it.',
 
   // ── Home-screen Spirit component (components/Spirit.tsx) ────────────────────────────────────
   'spirit.home.aria': 'Your spirit',
@@ -264,11 +264,11 @@ export const spirit: Record<string, string> = {
 
   // Needs read-out + optional round-out nudge (NeedsReadout / CareNudge in Spirit.tsx)
   'spirit.needs.aria': 'Recent practice balance',
-  'spirit.needs.barAria': '{label}: {pct} of 100 — {tier}',
+  'spirit.needs.barAria': '{label}: {pct} of 100, {tier}',
   'spirit.nudge.creature': 'Your {name}',
   'spirit.nudge.spark': 'Your spark',
   'spirit.nudge.line':
-    '{creature} has had a little less {facet} lately — {hint}, if you feel like it.',
+    '{creature} has had a little less {facet} lately: {hint}, if you feel like it.',
   'spirit.nudge.yourPractice': 'your practice',
   'spirit.nudge.hint.nourished': 'a few minutes of {practice} would round things out',
   'spirit.nudge.hint.rested': 'a calm daily rhythm would round things out',

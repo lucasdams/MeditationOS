@@ -5,7 +5,7 @@ export const philosophers: Record<string, string> = {
   // ── Page chrome ──────────────────────────────────────────────────────────
   'philosophers.title': 'Chat with a philosopher',
   'philosophers.subtitle': 'Pick a guide and reflect together, in the spirit of their tradition.',
-  'philosophers.disclaimer': 'A reflective companion — not a therapist, and not medical advice.',
+  'philosophers.disclaimer': 'A reflective companion. Not a therapist, and not medical advice.',
 
   // ── Picker ───────────────────────────────────────────────────────────────
   'philosophers.pickerHeading': 'Choose a guide',
@@ -31,6 +31,6 @@ export const philosophers: Record<string, string> = {
 
   // ── Notices ──────────────────────────────────────────────────────────────
   'philosophers.error': 'That didn’t go through. Try again.',
-  'philosophers.capReached': 'That’s enough reflection for today — come back tomorrow.',
+  'philosophers.capReached': 'That’s enough reflection for today. Come back tomorrow.',
   'philosophers.guestBlocked': 'Save your account to chat with a guide.',
 }

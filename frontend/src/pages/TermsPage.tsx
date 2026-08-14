@@ -14,7 +14,7 @@ export default function TermsPage() {
         MeditationOS provides wellness and mindfulness tools for general informational
         purposes only. It is <strong>not medical, psychological, or health advice</strong>{' '}
         and is not a substitute for professional care. Breathing exercises can cause
-        lightheadedness — practice seated or lying down, never while driving or in/near
+        lightheadedness, so practice seated or lying down, never while driving or in/near
         water, and stop if you feel unwell. Consult a qualified professional before
         starting any new practice, especially if you have a medical condition. By using
         the service you accept these risks.

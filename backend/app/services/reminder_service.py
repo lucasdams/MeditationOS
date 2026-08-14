@@ -43,7 +43,7 @@ from app.services.time_utils import (
 
 logger = logging.getLogger("meditationos.reminders")
 
-REMINDER_SUBJECT = "Time for your meditation 🧘"
+REMINDER_SUBJECT = "Time for your meditation"
 
 # Local hour at which the streak-save nudge becomes eligible. Late enough that the
 # user has had all day to practice; early enough to still act before midnight.
@@ -128,9 +128,9 @@ def _reminder_body(user: User) -> str:
     return (
         f"Hi {name},\n\n"
         "This is a gentle invitation to take a few quiet minutes for yourself "
-        "today — whenever it suits you.\n\n"
+        "today, whenever it suits you.\n\n"
         f"Begin when you're ready: {settings.app_base_url}\n\n"
-        "— MeditationOS\n\n"
+        "MeditationOS\n\n"
         "You can turn these off anytime in Settings."
     )
 
@@ -192,15 +192,15 @@ def _streak_save_body(user: User, streak: int) -> str:
     streak_label = f"{streak}-day streak" if streak != 1 else "1-day streak"
     return (
         f"Hi {name},\n\n"
-        f"Your {streak_label} is still going — a few quiet minutes today keeps it alive.\n\n"
+        f"Your {streak_label} is still going. A few quiet minutes today keeps it alive.\n\n"
         "No pressure, but if you have a moment this evening, your practice is waiting.\n\n"
         f"Open MeditationOS: {settings.app_base_url}\n\n"
-        "— MeditationOS\n\n"
+        "MeditationOS\n\n"
         "You can turn these off anytime in Settings."
     )
 
 
-STREAK_SAVE_SUBJECT = "Your streak is still going — keep it alive ✨"
+STREAK_SAVE_SUBJECT = "Your streak is still going. Keep it alive."
 
 
 def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> int:
@@ -286,7 +286,7 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
 # `ScheduledSession.reminder_sent_at` timestamp), per-row try/except isolation, and the
 # "skip if already practiced" rule — nudge, not nag.
 
-SCHEDULED_SESSION_SUBJECT = "Your scheduled session is coming up 🧘"
+SCHEDULED_SESSION_SUBJECT = "Your scheduled session is coming up"
 
 # How early, relative to scheduled_at, the nudge may fire — a small lead so the message
 # lands as "coming up", not "you're late".
@@ -306,10 +306,10 @@ def _scheduled_session_body(user: User, row: ScheduledSession) -> str:
     label = _TYPE_LABELS.get(row.type, "Meditation")
     return (
         f"Hi {name},\n\n"
-        f"Your scheduled {label.lower()} session is coming up — whenever you're ready. "
+        f"Your scheduled {label.lower()} session is coming up, whenever you're ready. "
         "No pressure; it's here for you when the moment feels right.\n\n"
         f"Begin when you're ready: {settings.app_base_url}\n\n"
-        "— MeditationOS\n\n"
+        "MeditationOS\n\n"
         "You can turn these off anytime in Settings."
     )
 
@@ -368,7 +368,7 @@ def send_scheduled_session_reminders(
                 db,
                 user.id,
                 SCHEDULED_SESSION_SUBJECT,
-                "Your scheduled session is coming up — whenever you're ready.",
+                "Your scheduled session is coming up, whenever you're ready.",
             )
             sent += 1
         except Exception:

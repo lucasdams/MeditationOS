@@ -45,7 +45,7 @@ export const common: Record<string, string> = {
 
   // Header round-out chip (ADR-0032)
   'needChip.label': 'A little {need}?',
-  'needChip.title': '{name} has had less {need} lately — a little would round things out',
+  'needChip.title': '{name} has had less {need} lately, a little would round things out',
   'needChip.fallbackName': 'Your spirit',
 
   // Truly shared bits
@@ -75,11 +75,11 @@ export const common: Record<string, string> = {
 
   // 404 (NotFoundPage.tsx)
   'notFound.title': 'Page not found',
-  'notFound.body': 'This path leads nowhere — it’s gone or never was.',
+  'notFound.body': 'This path leads nowhere. It’s gone or never was.',
   'notFound.back': '← Back to home',
 
   // API-failure copy (lib/errors.ts) — network vs server-side, resolved at call time
-  'common.error.network': "Can't reach the server — check your connection and try again.",
+  'common.error.network': "Can't reach the server. Check your connection and try again.",
   'common.error.server': 'Something stumbled on our end. Give it a moment and try again.',
 
   // Render-error fallback (ErrorBoundary.tsx)

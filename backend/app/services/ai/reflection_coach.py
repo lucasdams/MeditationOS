@@ -42,7 +42,7 @@ FALLBACK_PAIRS: tuple[tuple[str, str], ...] = (
         "What feels most worth remembering from this moment?",
     ),
     (
-        "You took a moment to pause and reflect — that alone can soften a busy day.",
+        "You took a moment to pause and reflect. That alone can soften a busy day.",
         "What would feel like enough for the rest of today?",
     ),
     (
@@ -50,7 +50,7 @@ FALLBACK_PAIRS: tuple[tuple[str, str], ...] = (
         "Is there one small thing here you'd like to carry forward?",
     ),
     (
-        "Your words hold a snapshot of this moment — honest and unpolished, "
+        "Your words hold a snapshot of this moment, honest and unpolished, "
         "exactly as reflections should be.",
         "What might you say to a friend who wrote this same entry?",
     ),

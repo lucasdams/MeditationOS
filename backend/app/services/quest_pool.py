@@ -47,7 +47,7 @@ QUEST_POOL: dict[str, list[Quest]] = {
     "breathe": [
         Quest("breathe", "breathe", "Breathe for a minute", 20, "breathe"),
         Quest("breathe", "deep_breathe", "Breathe for 5+ minutes", 30, "deep_breathe"),
-        Quest("breathe", "slow_breathe", "Breathe slow — 5 bpm or under", 35, "slow_breathe"),
+        Quest("breathe", "slow_breathe", "Breathe slow, 5 bpm or under", 35, "slow_breathe"),
     ],
     "gratitude": [
         Quest("gratitude", "gratitude", "Write a gratitude", 10, "gratitude"),

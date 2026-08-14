@@ -191,7 +191,7 @@ describe('SpiritPage skill tree — the five node states (ADR-0027)', () => {
 
     // `rose` is unlockable but the balance (50) is below its 999 cost → Unlock disabled + a hint.
     const btn = await screen.findByRole('button', {
-      name: /Unlock Rose glow for 999 coins — need more coins/,
+      name: /Unlock Rose glow for 999 coins. Need more coins/,
     })
     expect(btn).toBeDisabled()
     // The shortfall hint is shown (999 − 50 = 949).
@@ -291,7 +291,7 @@ describe('SpiritPage unlock flow (ADR-0027)', () => {
     fireEvent.click(dialog.getByRole('button', { name: /^Unlock$/ }))
     await waitFor(() => expect(unlock).toHaveBeenCalledWith({ slot: 'aura', option: 'frost' }))
     await waitFor(() =>
-      expect(screen.getByText(/Frost glow unlocked — your spirit is delighted/)).toBeInTheDocument(),
+      expect(screen.getByText(/Frost glow unlocked. Your spirit is delighted/)).toBeInTheDocument(),
     )
   })
 
@@ -534,7 +534,7 @@ describe('SpiritPage collection gallery', () => {
     renderPage()
     await showTab('Collection')
 
-    expect(await screen.findByText('Empty for now — past companions rest here.')).toBeInTheDocument()
+    expect(await screen.findByText('Empty for now. Past companions rest here.')).toBeInTheDocument()
   })
 })
 
@@ -583,13 +583,13 @@ describe('SpiritPage tend loop (ADR-0031)', () => {
     renderPage()
     await showTab('Care')
 
-    fireEvent.click(screen.getByRole('button', { name: /Feed — top up Nourishment/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Feed: top up Nourishment/ }))
     await waitFor(() => expect(tend).toHaveBeenCalledWith('feed'))
 
-    fireEvent.click(screen.getByRole('button', { name: /Rest — top up Rest/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Rest: top up Rest/ }))
     await waitFor(() => expect(tend).toHaveBeenCalledWith('rest'))
 
-    fireEvent.click(screen.getByRole('button', { name: /Play — top up Joy/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Play: top up Joy/ }))
     await waitFor(() => expect(tend).toHaveBeenCalledWith('play'))
   })
 
@@ -600,9 +600,9 @@ describe('SpiritPage tend loop (ADR-0031)', () => {
     renderPage()
     await showTab('Care')
 
-    fireEvent.click(screen.getByRole('button', { name: /Feed — top up Nourishment/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Feed: top up Nourishment/ }))
     await waitFor(() =>
-      expect(screen.getByText(/Nourishment topped up — practice fills it fully/)).toBeInTheDocument(),
+      expect(screen.getByText(/Nourishment topped up. Practice fills it fully/)).toBeInTheDocument(),
     )
   })
 
@@ -622,7 +622,7 @@ describe('SpiritPage tend loop (ADR-0031)', () => {
     // No survival/death/sickness copy; the Care section + tend buttons still render normally.
     expect(screen.queryByText(/is ailing/)).toBeNull()
     expect(screen.queryByText(/may not make it/)).toBeNull()
-    expect(screen.getByRole('button', { name: /Feed — top up Nourishment/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Feed: top up Nourishment/ })).toBeInTheDocument()
   })
 })
 

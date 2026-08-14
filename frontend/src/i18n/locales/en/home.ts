@@ -8,7 +8,7 @@ export const home: Record<string, string> = {
 
   // Streak / rest-day
   'home.streak.aria': '{count} day streak',
-  'home.restDay': 'Rest day used — skipping one is fine.',
+  'home.restDay': 'Rest day used. Skipping one is fine.',
 
   // Daily-goal ring
   'home.goal.label': 'Daily goal',
@@ -16,7 +16,7 @@ export const home: Record<string, string> = {
   'home.goal.met': 'Goal met today',
   'home.goal.adjust': 'Adjust goal',
   'home.goal.aria.progress': '{done} of {goal} minutes practiced today',
-  'home.goal.aria.met': 'Daily goal met — {goal} minutes today',
+  'home.goal.aria.met': 'Daily goal met, {goal} minutes today',
 
   // Today CTA (path-aware + recommendation secondary)
   'home.today.pathDay': 'Day {index} · {title}',
@@ -28,9 +28,9 @@ export const home: Record<string, string> = {
   // Today's nudges (the old daily quests)
   'home.quests.heading': 'Today’s nudges',
   'home.quests.aria.detail': '. {detail}',
-  'home.quests.aria.progress': ' — {progress} of {target}',
-  'home.quests.aria.reward': ' — reward {xp} XP',
-  'home.quests.aria.done': ' — done',
+  'home.quests.aria.progress': ', {progress} of {target}',
+  'home.quests.aria.reward': ', reward {xp} XP',
+  'home.quests.aria.done': ', done',
   'home.quests.detail.meditate': 'Any non-breathing meditation, 1 min+',
   'home.quests.detail.long_sit': 'One meditation sit of 10 min+',
   'home.quests.detail.double_sit': 'Two separate meditation sits today',
@@ -75,7 +75,7 @@ export const home: Record<string, string> = {
   'home.encouragement.8': 'A few quiet breaths is a real win.',
   'home.encouragement.9': 'Whatever today holds, a few breaths help.',
   'home.encouragement.10': 'Progress isn’t always loud.',
-  'home.encouragement.11': 'Showing up is the hard part — and you did.',
+  'home.encouragement.11': 'Showing up is the hard part, and you did.',
   'home.encouragement.12': 'Every session leaves a little calm behind.',
   'home.encouragement.13': 'You’re building a habit, one breath at a time.',
   'home.encouragement.14': 'Show up enough and the habit carries you.',
@@ -95,7 +95,7 @@ export const home: Record<string, string> = {
   'home.graduation.dismiss': 'Dismiss',
   'home.graduation.title': 'You’ve grown a real practice',
   'home.graduation.body':
-    'You’ve stuck with it — that’s the hard part. When you’re ready: measure how your breathing moves your HRV, explore your full history, and give your companion a deeper look.',
+    'You’ve stuck with it. That’s the hard part. When you’re ready: measure how your breathing moves your HRV, explore your full history, and give your companion a deeper look.',
   'home.graduation.hrv': 'Measure your HRV',
   'home.graduation.analytics': 'Full analytics',
   'home.graduation.customize': 'Customize',
@@ -104,7 +104,7 @@ export const home: Record<string, string> = {
   // WeeklyReview
   'home.weekly.heading': 'This week',
   'home.weekly.gathering': 'Gathering your week…',
-  'home.weekly.empty': 'No practice logged yet this week — a few mindful minutes is a great start.',
+  'home.weekly.empty': 'No practice logged yet this week. A few mindful minutes is a great start.',
   'home.weekly.delta.same': 'same as last week',
   'home.weekly.delta.up': '▲ {delta} min vs last week',
   'home.weekly.delta.down': '▼ {delta} min vs last week',
@@ -125,12 +125,12 @@ export const home: Record<string, string> = {
   'home.moodCheckin.heading': 'How do you feel?',
   'home.moodCheckin.group': 'Log your mood',
   'home.moodCheckin.noted': 'Noted.',
-  'home.moodCheckin.error': "Couldn't log that mood — try again.",
-  'home.moodCheckin.thanks': 'Thanks for checking in — it feeds your trends.',
+  'home.moodCheckin.error': "Couldn't log that mood. Try again.",
+  'home.moodCheckin.thanks': 'Thanks for checking in. It feeds your trends.',
 
   // DailyReading — UI labels only (the passages themselves are content)
   'home.reading.aria': 'Daily reading',
   'home.reading.eyebrow': 'Daily reading',
-  'home.reading.cite': '— {attribution}',
+  'home.reading.cite': 'by {attribution}',
   'home.reading.reflect': 'Reflect on this',
 }

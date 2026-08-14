@@ -87,7 +87,7 @@ PATHS: tuple[Path, ...] = (
                 title="Day 5 · Lengthen the exhale",
                 practice="breathe",
                 min_minutes=5,
-                cue="Longer exhale than inhale — let it lengthen.",
+                cue="Longer exhale than inhale. Let it lengthen.",
             ),
             PathDay(
                 index=6,
@@ -150,14 +150,14 @@ PATHS: tuple[Path, ...] = (
                 title="Day 2 · The wander and the return",
                 practice="meditate",
                 min_minutes=3,
-                cue="Notice the moment the mind wanders. That noticing is the win — return gently.",
+                cue="Notice the moment the mind wanders. That noticing is the win. Return gently.",
             ),
             PathDay(
                 index=3,
                 title="Day 3 · One anchor",
                 practice="meditate",
                 min_minutes=4,
-                cue="Pick one spot — nostrils or belly — and rest your attention there.",
+                cue="Pick one spot (nostrils or belly) and rest your attention there.",
             ),
             PathDay(
                 index=4,
@@ -172,8 +172,8 @@ PATHS: tuple[Path, ...] = (
                 practice="meditate",
                 min_minutes=5,
                 cue=(
-                    "When something pulls you away, softly name it — "
-                    "thinking, hearing — and return."
+                    "When something pulls you away, softly name it ("
+                    "thinking, hearing) and return."
                 ),
             ),
             PathDay(
@@ -216,7 +216,7 @@ PATHS: tuple[Path, ...] = (
                 title="Day 3 · Longer exhale",
                 practice="breathe",
                 min_minutes=3,
-                cue="Let the exhale lengthen — the body reads it as safety.",
+                cue="Let the exhale lengthen. The body reads it as safety.",
             ),
             PathDay(
                 index=4,

@@ -6,7 +6,7 @@ export const tracking: Record<string, string> = {
   // ── Journal ──────────────────────────────────────────────────────────────
   'tracking.journal.title': 'Journal',
   'tracking.journal.subtitle':
-    'A space to reflect — on your practice, your day, or anything at all.',
+    'A space to reflect on your practice, your day, or anything at all.',
   // The activity line in the post-save XP breakdown (RewardOverlay)
   'tracking.journal.activityLabel': 'Journal entry',
   'tracking.journal.prompt.labelDim': 'Writing prompt · clear your draft to use it',
@@ -55,15 +55,15 @@ export const tracking: Record<string, string> = {
   'tracking.journal.updateError': "Couldn't update that reflection.",
   'tracking.journal.deleted': 'Reflection deleted.',
   'tracking.journal.deleteError': "Couldn't delete that reflection.",
-  'tracking.journal.resurfaceError': "Couldn't resurface a memory — try again.",
-  'tracking.journal.resurfaceEmpty': 'Nothing to resurface yet — give it a few entries.',
+  'tracking.journal.resurfaceError': "Couldn't resurface a memory. Try again.",
+  'tracking.journal.resurfaceEmpty': 'Nothing to resurface yet. Give it a few entries.',
   // AI reflection on an entry (quiet, non-clinical)
   'tracking.journal.reflect.button': 'Reflect',
   'tracking.journal.reflect.loading': 'Reflecting…',
   'tracking.journal.reflect.aria': 'Get a gentle reflection on this entry',
   'tracking.journal.reflect.title': 'A gentle reflection',
-  'tracking.journal.reflect.error': "Couldn't reflect on this entry — tap Reflect to try again.",
-  'tracking.journal.reflect.capReached': "That's all the reflections for today — more tomorrow.",
+  'tracking.journal.reflect.error': "Couldn't reflect on this entry. Tap Reflect to try again.",
+  'tracking.journal.reflect.capReached': "That's all the reflections for today. More tomorrow.",
   'tracking.journal.reflect.guestBlocked': 'Save your account to use AI reflections.',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ export const tracking: Record<string, string> = {
   'tracking.gratitude.charsLeft': '{n} left',
   'tracking.gratitude.save': 'Save',
   'tracking.gratitude.recent': 'Recent',
-  'tracking.gratitude.empty': 'Nothing noted yet — name one small good thing above.',
+  'tracking.gratitude.empty': 'Nothing noted yet. Name one small good thing above.',
   'tracking.gratitude.entryActions': 'Entry actions',
   'tracking.gratitude.delete': 'Delete',
   'tracking.gratitude.loadMore': 'Load more',
@@ -148,7 +148,7 @@ export const tracking: Record<string, string> = {
   'tracking.goals.created': 'Habit created.',
   'tracking.goals.createError': "Couldn't create that goal.",
   'tracking.goals.checkedIn': 'Done for today. ✓',
-  'tracking.goals.undone': 'Undone — no harm.',
+  'tracking.goals.undone': 'Undone. No harm.',
   'tracking.goals.checkinError': "Couldn't update that check-in.",
   'tracking.goals.archived': 'Tucked away.',
   'tracking.goals.reactivated': 'Back in rotation.',
@@ -160,7 +160,7 @@ export const tracking: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────────
   'tracking.timeline.title': 'Timeline',
   'tracking.timeline.subtitle': "Everything you've logged, in one place.",
-  'tracking.timeline.emptyPre': 'Nothing here yet — your first',
+  'tracking.timeline.emptyPre': 'Nothing here yet. Your first',
   'tracking.timeline.emptySit': 'sit',
   'tracking.timeline.emptyNote': 'note',
   'tracking.timeline.emptyGratitude': 'gratitude',
@@ -203,7 +203,7 @@ export const tracking: Record<string, string> = {
   'tracking.timeline.sessionDeleteError': "Couldn't delete that session.",
   'tracking.timeline.moodRemoved': 'Mood check-in removed.',
   'tracking.timeline.moodRemoveError': "Couldn't remove that check-in.",
-  'tracking.timeline.exported': "Exported — it's on your device.",
+  'tracking.timeline.exported': "Exported. It's on your device.",
   'tracking.timeline.exportError': "Couldn't export your sessions.",
 
   // ── Schedule ─────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ export const tracking: Record<string, string> = {
   'tracking.schedule.scheduling': 'Scheduling…',
   'tracking.schedule.schedule': 'Schedule it',
   'tracking.schedule.upcoming': 'Upcoming',
-  'tracking.schedule.empty': 'Nothing scheduled yet — plan your first sit above.',
+  'tracking.schedule.empty': 'Nothing scheduled yet. Plan your first sit above.',
   'tracking.schedule.addToCalendar': 'Add to calendar',
   'tracking.schedule.remove': 'Remove',
   // Toasts + errors
@@ -268,14 +268,14 @@ export const tracking: Record<string, string> = {
     'Record a resting heart rate (and HRV if you know it) to track your trend.',
   'tracking.logReading.captureTitle': 'Resting reading',
   'tracking.logReading.captureIntro': 'A baseline measure, taken while calm and still.',
-  'tracking.logReading.saved': 'Noted — your heart, on the record.',
+  'tracking.logReading.saved': 'Noted. Your heart, on the record.',
 
   // ── Analytics ────────────────────────────────────────────────────────────
   'tracking.analytics.title': 'Analytics',
   'tracking.analytics.subtitle': 'Patterns in your practice.',
   'tracking.analytics.loadError': "Couldn't load your analytics.",
   'tracking.analytics.empty':
-    'Nothing to chart yet — and that’s perfectly okay. Practice a few times and your patterns will gently surface here. No rush.',
+    'Nothing to chart yet, and that’s perfectly okay. Practice a few times and your patterns will gently surface here. No rush.',
   'tracking.analytics.stat.sessions': 'sessions',
   'tracking.analytics.stat.hours': 'hours practiced',
   'tracking.analytics.stat.days': 'days practiced',
@@ -288,12 +288,12 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.hr.title': 'Heart rate & HRV',
   'tracking.analytics.hr.loadError': 'Couldn’t load this section.',
   'tracking.analytics.hr.reading': 'Reading the tea leaves…',
-  'tracking.analytics.hr.emptyPre': 'No readings yet — whenever you’re ready. Log a quick one after a sit, or',
+  'tracking.analytics.hr.emptyPre': 'No readings yet. Whenever you’re ready, log a quick one after a sit, or',
   'tracking.analytics.hr.emptyLink': 'add a resting reading',
   'tracking.analytics.hr.emptyPost': ', to start a gentle trend.',
-  'tracking.analytics.hr.noteShort': 'A personal wellness signal you log yourself — not a medical measurement.',
+  'tracking.analytics.hr.noteShort': 'A personal wellness signal you log yourself, not a medical measurement.',
   'tracking.analytics.hr.noteLong':
-    'A personal wellness signal you log yourself — not a medical measurement. HRV is heart-rate variability; higher generally means more recovered.',
+    'A personal wellness signal you log yourself, not a medical measurement. HRV is heart-rate variability; higher generally means more recovered.',
   'tracking.analytics.hr.latest': 'Latest: {bpm} bpm',
   'tracking.analytics.hr.latestHrv': ' · HRV {hrv} ms',
   'tracking.analytics.hr.oneMore': 'Log one more reading to start a trend.',
@@ -397,7 +397,7 @@ export const tracking: Record<string, string> = {
   'tracking.consistency.title': 'Your consistency',
   'tracking.consistency.loading': 'Loading your consistency…',
   'tracking.consistency.empty':
-    'No practice in the last 12 weeks yet — your first session will light this up.',
+    'No practice in the last 12 weeks yet. Your first session will light this up.',
   'tracking.consistency.cellLabel': '{minutes} min on {iso}',
   'tracking.consistency.cellLabelEmpty': 'No practice on {iso}',
   'tracking.consistency.summary_one': '{minutes} min across {days} day in the last 12 weeks',
