@@ -14,7 +14,7 @@ import { t } from '../i18n'
 // Kept as named constants so tests can assert the exact wording; rendering resolves the
 // catalog keys below at CALL time, so the message follows the active locale.
 const NETWORK_MESSAGE =
-  "Can't reach the server — check your connection and try again."
+  "Can't reach the server. Check your connection and try again."
 const SERVER_MESSAGE =
   'Something stumbled on our end. Give it a moment and try again.'
 

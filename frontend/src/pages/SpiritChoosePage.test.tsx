@@ -153,7 +153,7 @@ describe('SpiritChoosePage', () => {
     // plain-language reason it suits it — no repetitive "grows into" tree.
     expect(await screen.findByPlaceholderText(/Ember/)).toBeInTheDocument()
     expect(screen.getByText(/Favours/)).toBeInTheDocument()
-    expect(screen.getByText(/cooling, reflective gratitude/)).toBeInTheDocument() // Pitta's "why"
+    expect(screen.getByText(/Cooling, reflective gratitude/)).toBeInTheDocument() // Pitta's "why"
   })
 
   it('still works when the preview fetch fails (non-blocking enhancement)', async () => {

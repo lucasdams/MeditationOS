@@ -23,7 +23,7 @@ export const settings: Record<string, string> = {
 
   // Username
   'settings.username.heading': 'Username',
-  'settings.username.desc': 'Your public name — shown instead of your email.',
+  'settings.username.desc': 'Your public name, shown instead of your email.',
   'settings.username.label': 'Username',
   'settings.username.ok': 'Username updated.',
   'settings.username.submit': 'Save username',
@@ -36,7 +36,7 @@ export const settings: Record<string, string> = {
   'settings.email.desc': 'You’ll need to confirm a verification link sent to the new address.',
   'settings.email.new': 'New email',
   'settings.email.current': 'Current password',
-  'settings.email.ok': 'Email updated — check your inbox to verify it.',
+  'settings.email.ok': 'Email updated. Check your inbox to verify it.',
   'settings.email.submit': 'Change email',
   'settings.email.err.enter': 'Enter a new email.',
   'settings.email.err.same': 'That’s already your email.',
@@ -63,7 +63,7 @@ export const settings: Record<string, string> = {
 
   // Daily missions
   'settings.missions.heading': 'Daily missions',
-  'settings.missions.desc': 'Choose which practices you get daily missions for — at least {min}.',
+  'settings.missions.desc': 'Choose which practices you get daily missions for, at least {min}.',
   'settings.missions.legend': 'Daily mission practices',
   'settings.missions.ok': 'Mission preferences saved.',
   'settings.missions.submit': 'Save missions',
@@ -76,7 +76,7 @@ export const settings: Record<string, string> = {
   // Daily goal
   'settings.goal.heading': 'Daily goal',
   'settings.goal.desc':
-    'A small daily practice target — the ring on your home fills toward it. 1–120 minutes.',
+    'A small daily practice target. The ring on your home fills toward it. 1–120 minutes.',
   'settings.goal.label': 'Minutes per day',
   'settings.goal.ok': 'Daily goal saved.',
   'settings.goal.submit': 'Save goal',
@@ -97,7 +97,7 @@ export const settings: Record<string, string> = {
   // Weekly summary
   'settings.summary.heading': 'Weekly summary',
   'settings.summary.desc':
-    'A weekly email recap — minutes, streak, and your most-logged mood. Sent the morning of your chosen day.',
+    'A weekly email recap: minutes, streak, and your most-logged mood. Sent the morning of your chosen day.',
   'settings.summary.enable': 'Email me a weekly summary',
   'settings.summary.day': 'Day of week',
   'settings.summary.ok': 'Weekly summary preferences saved.',
@@ -144,13 +144,13 @@ export const settings: Record<string, string> = {
   // Privacy (anonymous usage analytics opt-out)
   'settings.privacy.heading': 'Privacy',
   'settings.privacy.desc':
-    'MeditationOS records a few anonymous, non-personal usage events (like “a session was completed”) to see what helps — never your journal text, moods, emails, or identity. We also honor your browser’s Do Not Track.',
+    'MeditationOS records a few anonymous, non-personal usage events (like “a session was completed”) to see what helps. Never your journal text, moods, emails, or identity. We also honor your browser’s Do Not Track.',
   'settings.privacy.toggle': 'Share anonymous usage analytics',
 
   // Feedback (send a note to the owner)
   'settings.feedback.heading': 'Feedback',
   'settings.feedback.desc':
-    'Found a bug, have an idea, or just want to say hi? Send a note — it goes straight to the person who builds MeditationOS.',
+    'Found a bug, have an idea, or just want to say hi? Send a note. It goes straight to the person who builds MeditationOS.',
   'settings.feedback.open': 'Send feedback',
   'settings.feedback.title': 'Send feedback',
   'settings.feedback.categoryLabel': 'What kind of note?',
@@ -164,7 +164,7 @@ export const settings: Record<string, string> = {
   'settings.feedback.sending': 'Sending…',
   'settings.feedback.cancel': 'Cancel',
   'settings.feedback.close': 'Close',
-  'settings.feedback.sent': 'Thank you — your note is on its way. It helps a lot.',
+  'settings.feedback.sent': 'Thank you. Your note is on its way. It helps a lot.',
   'settings.feedback.emptyErr': 'Please write a short message.',
   'settings.feedback.sendErr': 'Couldn’t send your feedback. Please try again.',
 
@@ -183,7 +183,7 @@ export const settings: Record<string, string> = {
   'settings.data.exporting': 'Preparing…',
   'settings.data.delete': 'Delete account',
   'settings.data.confirm':
-    'This permanently deletes your account and everything in it — sessions, journal, gratitude, goals, and your spirit companion. This can’t be undone.',
+    'This permanently deletes your account and everything in it: sessions, journal, gratitude, goals, and your spirit companion. This can’t be undone.',
   'settings.data.deletePermanently': 'Delete permanently',
   'settings.data.deleting': 'Deleting…',
   'settings.data.err.export': 'Couldn’t export your data. Try again.',

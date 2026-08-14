@@ -90,7 +90,7 @@ def to_ics(row: ScheduledSession) -> str:
     label = _TYPE_LABELS.get(row.type, "Meditation")
     # SUMMARY and DESCRIPTION are TEXT properties — escape user-supplied values.
     summary = _ics_text(f"Meditation: {label}")
-    description = _ics_text(row.note or "Time to practice. — MeditationOS")
+    description = _ics_text(row.note or "Time to practice. MeditationOS")
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",

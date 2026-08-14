@@ -131,7 +131,7 @@ describe('PhilosophersPage', () => {
     fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'hello' } })
     fireEvent.click(screen.getByRole('button', { name: /Send/ }))
 
-    await screen.findByText('That’s enough reflection for today — come back tomorrow.')
+    await screen.findByText('That’s enough reflection for today. Come back tomorrow.')
     expect(screen.getByLabelText('Your message')).toBeDisabled()
   })
 

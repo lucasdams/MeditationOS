@@ -61,7 +61,7 @@ describe('VerifyEmailPage', () => {
       expect(screen.getByText(/invalid or has expired/i)).toBeInTheDocument(),
     )
     fireEvent.click(screen.getByRole('button', { name: /send a new link/i }))
-    await waitFor(() => expect(screen.getByText(/sent — check/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/sent\. check/i)).toBeInTheDocument())
     expect(resendVerification).toHaveBeenCalledOnce()
   })
 

@@ -4,7 +4,7 @@
 export const prayer: Record<string, string> = {
   'prayer.title': 'Prayer journal',
   'prayer.subtitle':
-    'A space for prayers, intentions, and blessings — write them down and return to them.',
+    'A space for prayers, intentions, and blessings. Write them down and return to them.',
   // The activity line in the post-save XP breakdown (RewardOverlay)
   'prayer.activityLabel': 'Prayer',
   'prayer.composerAria': 'Prayer, intention, or blessing',

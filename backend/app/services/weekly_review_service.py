@@ -26,7 +26,7 @@ from app.services.time_utils import (
 
 logger = logging.getLogger("meditationos.weekly_summary")
 
-WEEKLY_SUMMARY_SUBJECT = "Your week in practice 🧘"
+WEEKLY_SUMMARY_SUBJECT = "Your week in practice"
 # Local hour from which the summary may go out on the chosen day (so it lands in the
 # morning, not at midnight).
 SUMMARY_SEND_HOUR = 9
@@ -149,7 +149,7 @@ def _summary_body(user: User, review: WeeklyReview) -> str:
         f"  • That's {trend}."
         f"{mood}\n\n"
         f"Keep it going: {settings.app_base_url}\n\n"
-        "— MeditationOS\n\n"
+        "MeditationOS\n\n"
         "You can turn these off anytime in Settings."
     )
 

@@ -163,7 +163,7 @@ describe('PathsPage — enrolled', () => {
     expect(screen.getByText(/notice your shoulders drop/i)).toBeInTheDocument()
 
     // Warm re-entry copy, never a "you missed days" scold.
-    expect(screen.getByText(/welcome back — you're on day 2/i)).toBeInTheDocument()
+    expect(screen.getByText(/welcome back\. you're on day 2/i)).toBeInTheDocument()
   })
 
   it('does not make locked or done days actionable (only the current day has a Start link)', async () => {

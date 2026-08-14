@@ -270,7 +270,7 @@ def _calm_trend(db: DBSession, owned, local_day, today: date, weeks: int) -> lis
         title = "Calm trending up"
     else:
         detail = (
-            "Your calm ratings have dipped a little lately — gentle weeks happen, "
+            "Your calm ratings have dipped a little lately. Gentle weeks happen, "
             "and showing up is what counts."
         )
         title = "A gentler stretch"
@@ -299,7 +299,7 @@ def _consistency(db: DBSession, owned, local_day) -> list[Insight]:
             kind="consistency",
             title="Consistency is showing up",
             detail=(
-                "You've practiced on quite a few different days — small, regular sits "
+                "You've practiced on quite a few different days. Small, regular sits "
                 "tend to add up more than occasional long ones."
             ),
             basis=f"based on {days} days you've practiced",
