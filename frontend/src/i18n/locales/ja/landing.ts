@@ -1,4 +1,4 @@
-// landing ドメイン — ログアウト時の公開ホームページ（マーケティング）。キー: 'landing.*'。
+// landing ドメイン——ログアウト時の公開ホームページ（マーケティング）。キー: 'landing.*'。
 // 英語がソース・オブ・トゥルース。文言はマーケティング的ですが、他の UI と同様にカタログで
 // 管理し、ランディングページもローカライズします。
 export const landing: Record<string, string> = {
@@ -15,7 +15,7 @@ export const landing: Record<string, string> = {
   'landing.hero.breatheCaption': '吸って……吐いて。',
 
   // 共通の CTA（ヒーロー・末尾）
-  'landing.cta.getStarted': 'はじめる — 無料',
+  'landing.cta.getStarted': '無料ではじめる',
   'landing.cta.login': 'ログイン',
 
   // ── 仕組み ──────────────────────────────────────────────────────────────────

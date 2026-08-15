@@ -1,4 +1,4 @@
-// philosophers ドメイン — 「哲学者とチャット」機能（選択画面＋対話画面）。
+// philosophers ドメイン——「哲学者とチャット」機能（選択画面＋対話画面）。
 // 落ち着いた丁寧な語り口。{var} プレースホルダーはそのまま保持します。
 // 哲学者の名前・伝統・紹介文はバックエンド（英語コンテンツ）から届くため、ここには含めません。
 export const philosophers: Record<string, string> = {
@@ -18,7 +18,7 @@ export const philosophers: Record<string, string> = {
   'philosophers.change': '別のガイドを選ぶ',
   'philosophers.intro': '静かに振り返るための場所です。心にあることを話してみてください。{name}が{tradition}の精神で応えます。',
   'philosophers.youLabel': 'あなた',
-  // Openers — チャットが空のときに表示される、タップできる書き出し。書き出しの文言自体は
+  // Openers——チャットが空のときに表示される、タップできる書き出し。書き出しの文言自体は
   // 英語コンテンツ（バックエンドの各人物の候補、または今日の実践についての一文）で、
   // これらのキーは周りの表示のみです。
   'philosophers.startersHeading': 'まずはここから',

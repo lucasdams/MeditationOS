@@ -1,7 +1,7 @@
-// home domain (日本語) — HOME/ダッシュボードのまとまり。落ち着いた、あたたかい、ていねいな
+// home domain (日本語)——HOME/ダッシュボードのまとまり。落ち着いた、あたたかい、ていねいな
 // 表現（です・ます）。{var} プレースホルダーは英語版と同一に保つこと。
 export const home: Record<string, string> = {
-  // DashboardPage — タイトル
+  // DashboardPage——タイトル
   'home.title': 'あなたのプラクティス',
   'home.error.stats': '記録を読み込めませんでした。',
 
@@ -15,7 +15,7 @@ export const home: Record<string, string> = {
   'home.goal.met': '今日の目標を達成',
   'home.goal.adjust': '目標を調整',
   'home.goal.aria.progress': '今日は {goal} 分中 {done} 分プラクティスしました',
-  'home.goal.aria.met': '今日の目標を達成しました — {goal} 分',
+  'home.goal.aria.met': '今日の目標を達成しました——{goal} 分',
 
   // 今日のアクション（パス対応 + おすすめ）
   'home.today.pathDay': '{index} 日目 · {title}',
@@ -27,9 +27,9 @@ export const home: Record<string, string> = {
   // 今日のうながし（旧デイリークエスト）
   'home.quests.heading': '今日のうながし',
   'home.quests.aria.detail': '。{detail}',
-  'home.quests.aria.progress': ' — {progress} / {target}',
-  'home.quests.aria.reward': ' — ごほうび {xp} XP',
-  'home.quests.aria.done': ' — 完了',
+  'home.quests.aria.progress': '——{progress} / {target}',
+  'home.quests.aria.reward': '——ごほうび {xp} XP',
+  'home.quests.aria.done': '——完了',
   'home.quests.detail.meditate': '呼吸法以外の瞑想、1 分以上',
   'home.quests.detail.long_sit': '10 分以上の瞑想を 1 回',
   'home.quests.detail.double_sit': '今日、別々の瞑想を 2 回',
@@ -42,7 +42,7 @@ export const home: Record<string, string> = {
   'home.quests.detail.mood_journal': '気分をそえたジャーナルを 1 つ',
 
   // 気分の行
-  'home.mood.reflect': '{mood}な気分でしたね ',
+  'home.mood.reflect': '気分は「{mood}」でしたね ',
   'home.mood.log': '今日の気分を記録する',
 
   // まだ始めたばかりのとき（リンクの前後で分割）
@@ -61,7 +61,7 @@ export const home: Record<string, string> = {
   'home.moodModal.heading': '今の気分はいかがですか？',
   'home.moodModal.skip': '今はスキップ',
 
-  // EncouragementNote — ハートのボタン + めぐる励ましのことば
+  // EncouragementNote——ハートのボタン + めぐる励ましのことば
   'home.encouragement.sendLove': 'そっと愛をおくる',
   'home.encouragement.0': '今日、ここに来られましたね。',
   'home.encouragement.1': '自分にやさしくしてください。',
@@ -69,7 +69,7 @@ export const home: Record<string, string> = {
   'home.encouragement.3': '小さな一歩でも、前へ進んでいます。',
   'home.encouragement.4': '休むことも、プラクティスの一部です。',
   'home.encouragement.5': '少しのプラクティスが、大きな力になります。',
-  'home.encouragement.6': 'あなたの相棒が、ここにいます。',
+  'home.encouragement.6': '相棒は、ここにいます。',
   'home.encouragement.7': '始め方に、まちがいはありません。',
   'home.encouragement.8': '静かなひと呼吸も、りっぱな一歩です。',
   'home.encouragement.9': '今日がどんな日でも、ひと呼吸が助けになります。',
@@ -127,9 +127,47 @@ export const home: Record<string, string> = {
   'home.moodCheckin.error': '気分を記録できませんでした。もう一度お試しください。',
   'home.moodCheckin.thanks': 'チェックインありがとうございます。あなたの傾向に反映されます。',
 
-  // DailyReading — UI ラベルのみ（本文の一節はコンテンツなのでそのまま）
+  // DailyReading——UI ラベルのみ（本文の一節はコンテンツなのでそのまま）
   'home.reading.aria': '今日の一節',
   'home.reading.eyebrow': '今日の一節',
   'home.reading.cite': '— {attribution}',
   'home.reading.reflect': 'これについて振り返る',
+
+  // 日替わりのあいさつ（ダッシュボードのタイトル下・lib/zen.ts が日ごとに選ぶ）
+  'home.greeting.0': 'ナマステ',
+  'home.greeting.1': 'おかえりなさい。ひと呼吸、ゆったりと',
+  'home.greeting.2': '座布団が待っていましたよ',
+  'home.greeting.3': 'ひと呼吸ずつ',
+  'home.greeting.4': '「いま」が、そっとここにあります',
+  'home.greeting.5': 'いま、ここに',
+  'home.greeting.6': '静けさを吸って、あわただしさを吐いて',
+  'home.greeting.7': 'やわらかな心、静かな鼓動',
+  'home.greeting.8': '少しの静けさが、大きな助けになります',
+  'home.greeting.9': 'どこへ行っても、そこにあなたがいます',
+  'home.greeting.10': '今日ここに来ることで、少しずつ変わっていきます',
+  'home.greeting.11': 'ひと呼吸ずつ、習慣を育てましょう',
+
+  // 「読み込み中…」のかわりの、マインドフルなひとこと（lib/zen.ts）
+  'home.loading.0': '中心を見つけています…',
+  'home.loading.1': '吸って…吐いて…',
+  'home.loading.2': '静けさを集めています…',
+  'home.loading.3': '心を落ち着けています…',
+  'home.loading.4': '呼吸に戻ります…',
+  'home.loading.5': 'マインドフルなひととき…',
+
+  // おすすめプラクティス（lib/recommendation.ts）— ボタンの誘い + 一言の理由
+  'home.recommend.morning.cta': '集中の瞑想で、すっきり始める',
+  'home.recommend.morning.blurb': '一日の穏やかな始まりに。',
+  'home.recommend.afternoon.cta': 'ゆっくり、ひと呼吸おく',
+  'home.recommend.afternoon.blurb': '日中の小さなリセットに。',
+  'home.recommend.evening.cta': 'ヨガニドラでクールダウン',
+  'home.recommend.evening.blurb': '夜のための、深い休息を。',
+  'home.recommend.night.cta': 'ヨガニドラで、眠りへ',
+  'home.recommend.night.blurb': '一日をやさしく締めくくりましょう。',
+  'home.recommend.joyful.cta': '慈しみの瞑想で心を温める',
+  'home.recommend.joyful.blurb': 'もう少しの喜びで、バランスが整います。',
+  'home.recommend.rested.cta': 'ボディスキャンで落ち着く',
+  'home.recommend.rested.blurb': 'もう少しの休息で、バランスが整います。',
+  'home.recommend.nourished.cta': '集中の瞑想で自分を整える',
+  'home.recommend.nourished.blurb': '地に足をつけるプラクティスで、バランスを。',
 }

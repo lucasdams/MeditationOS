@@ -1,7 +1,7 @@
-// practice domain — Japanese. Calm, polite register (です/ます where sentences occur); natural
+// practice domain——Japanese. Calm, polite register (です/ます where sentences occur); natural
 // wellness-app phrasing. Placeholders ({var}) are preserved exactly.
 export const practice: Record<string, string> = {
-  // ── Practices hub — page chrome ──────────────────────────────────────────
+  // ── Practices hub——page chrome ──────────────────────────────────────────
   'practice.hub.title': 'プラクティス',
   'practice.hub.subtitle': 'すべてのプラクティスと、それがスピリットに与えるものです。',
   'practice.hub.programsLabel': 'プログラム',
@@ -12,13 +12,13 @@ export const practice: Record<string, string> = {
   'practice.hub.search.placeholder': 'プラクティスを検索…',
   'practice.hub.search.label': 'プラクティスを検索',
   'practice.hub.search.clear': '検索をクリア',
-  // カテゴリの絞り込みチップ — 「すべて」+「はじめて」+ 各グループ。ひと棚ずつ、落ち着いて。
+  // カテゴリの絞り込みチップ——「すべて」+「はじめて」+ 各グループ。ひと棚ずつ、落ち着いて。
   'practice.hub.filter.aria': 'カテゴリで絞り込み',
   'practice.hub.filter.all': 'すべて',
   'practice.hub.filter.starter': 'はじめて',
   'practice.hub.seeAll': 'すべて見る（{count}）',
   'practice.hub.beginner.title': 'はじめての方はこちらから',
-  'practice.hub.beginner.blurb': 'やさしい入り口です — 短く、シンプルで、経験は必要ありません。',
+  'practice.hub.beginner.blurb': 'やさしい入り口です——短く、シンプルで、経験は必要ありません。',
   'practice.hub.suggested.title': 'あなたへのおすすめ',
   'practice.hub.noMatches': '「{query}」に一致するプラクティスはありません。',
   'practice.hub.beginnerBadge': '最初におすすめ',
@@ -26,9 +26,9 @@ export const practice: Record<string, string> = {
   'practice.hub.nudge.fallbackName': 'あなたのスピリット',
   'practice.hub.nudge.before': 'は最近すこし',
   'practice.hub.nudge.after':
-    'が少なめです — よろしければ、ハイライトされたプラクティスでバランスを整えられます。',
+    'が少なめです——よろしければ、ハイライトされたプラクティスでバランスを整えられます。',
 
-  // ── Practices hub — group titles + blurbs ────────────────────────────────
+  // ── Practices hub——group titles + blurbs ────────────────────────────────
   'practice.group.breathing.title': '呼吸',
   'practice.group.breathing.blurb': '呼吸とともに、心と体を落ち着けます。',
   'practice.group.meditation.title': '瞑想',
@@ -36,9 +36,9 @@ export const practice: Record<string, string> = {
   'practice.group.sleep.title': '睡眠',
   'practice.group.sleep.blurb': '眠りへとやさしく導く、クールダウンのプラクティスです。',
   'practice.group.reflection.title': 'ふりかえり',
-  'practice.group.reflection.blurb': '一日を言葉にします — 感謝とジャーナリング。',
+  'practice.group.reflection.blurb': '一日を言葉にします——感謝とジャーナリング。',
 
-  // ── Practices hub — card names + descriptions ────────────────────────────
+  // ── Practices hub——card names + descriptions ────────────────────────────
   // Breathing
   'practice.card.resonance.name': 'レゾナンス',
   'practice.card.resonance.desc': 'ゆっくりと、吐く息を長くする呼吸',
@@ -47,29 +47,29 @@ export const practice: Record<string, string> = {
   'practice.card.energizing.name': '活性化',
   'practice.card.energizing.desc': '速く、力強い吸気',
   'practice.card.alternate.name': '片鼻呼吸',
-  'practice.card.alternate.desc': 'ナディ・ショーダナ — 左右のバランスを整える',
+  'practice.card.alternate.desc': 'ナディ・ショーダナ——左右のバランスを整える',
   // Meditation
   'practice.card.mindfulness.name': 'マインドフルネス',
-  'practice.card.mindfulness.desc': 'ガイドなしで開かれた瞑想 — ただ呼吸とともに',
+  'practice.card.mindfulness.desc': 'ガイドなしで開かれた瞑想——ただ呼吸とともに',
   'practice.card.focus.name': '集中の瞑想',
   'practice.card.focus.desc': '散らばった心をひとつの拠りどころに落ち着ける',
   'practice.card.noting.name': 'ラベリング',
-  'practice.card.noting.desc': '浮かぶものにそっと名前をつける — 考え、聞こえ、感じ',
+  'practice.card.noting.desc': '浮かぶものに、そっと名前をつける。思考・音・感覚に',
   'practice.card.mantra.name': 'マントラ',
-  'practice.card.mantra.desc': '心を休める言葉 — 忙しい頭のための拠りどころ',
+  'practice.card.mantra.desc': '心を休める言葉——忙しい頭のための拠りどころ',
   'practice.card.bodyScan.name': 'ボディスキャン',
   'practice.card.bodyScan.desc': '頭からつま先へ、身体に意識を巡らせる',
   'practice.card.lovingKindness.name': '慈しみの瞑想',
   'practice.card.lovingKindness.desc': '自分に、そして外へと、あたたかな願いを送る',
   'practice.card.trataka.name': 'キャンドル瞑想',
-  'practice.card.trataka.desc': 'トラータカ — 炎に集中を保つ',
+  'practice.card.trataka.desc': 'トラータカ——炎に集中を保つ',
   'practice.card.threeBreaths.name': '三度のマインドフルな呼吸',
-  'practice.card.threeBreaths.desc': '一分のリセット — ただ三度の呼吸',
+  'practice.card.threeBreaths.desc': '一分のリセット——ただ三度の呼吸',
   // Sleep
   'practice.card.windDown.name': 'ワインドダウン',
   'practice.card.windDown.desc': '体を重くして、まどろみに身を任せてよいと許す',
   'practice.card.yogaNidra.name': 'ヨガニドラ',
-  'practice.card.yogaNidra.desc': '眠らない深い休息 — 横になってほどけていく',
+  'practice.card.yogaNidra.desc': '眠らない深い休息——横になってほどけていく',
   // Reflection
   'practice.card.gratitude.name': '感謝',
   'practice.card.gratitude.desc': '感謝していることを書き留める',
@@ -118,7 +118,7 @@ export const practice: Record<string, string> = {
   'practice.error.saveSession': 'セッションを保存できませんでした。',
   'practice.error.saveReflection': 'ふりかえりを保存できませんでした。',
 
-  'practice.prep.summary': 'セッションの準備 — 意図と事前計測（任意）',
+  'practice.prep.summary': 'セッションの準備——意図と事前計測（任意）',
   'practice.intention.label': '意図',
   'practice.intention.optional': '（任意）',
 
@@ -126,7 +126,7 @@ export const practice: Record<string, string> = {
   'practice.prereading.title': '先に計測を記録しますか？',
 
   'practice.reflect.heading': 'いかがでしたか？',
-  'practice.reflect.intro': '任意です — 評価するか、ひとことメモを。',
+  'practice.reflect.intro': '任意です——評価するか、ひとことメモを。',
   'practice.reflect.focus': '集中',
   'practice.reflect.calm': '落ち着き',
   'practice.reflect.moodLabel': '気分（任意）',
@@ -148,25 +148,25 @@ export const practice: Record<string, string> = {
 
   'practice.reflectionMood.group': '気分（任意）',
 
-  'practice.reading.notedToast': '記録しました — あなたの心臓の記録です。',
+  'practice.reading.notedToast': '記録しました。あなたの鼓動を残しました。',
 
   // ── Meditate page ─────────────────────────────────────────────────────────
   'practice.meditate.title': '瞑想',
   'practice.meditate.intro.whatUnguided':
-    'ガイドなしの開かれた瞑想です — ただ、あなたと呼吸だけ。好きなだけどうぞ。',
+    'ガイドなしの開かれた瞑想です——ただ、あなたと呼吸だけ。好きなだけどうぞ。',
   'practice.meditate.intro.howGuided':
-    'やさしくガイドします — ついてくるだけで大丈夫です。経験は必要ありません。',
+    'やさしくガイドします——ついてくるだけで大丈夫です。経験は必要ありません。',
   'practice.meditate.intro.howUnguided':
     '楽な姿勢で座り、下で長さを選び、準備ができたら開始を押してください。',
   'practice.meditate.phase.beHere': 'ここにいる',
   'practice.meditate.minSit': '{min}分の瞑想',
   'practice.meditate.guidedStructure': 'ガイドの構成',
-  'practice.meditate.guidedNone': 'なし — シンプルなタイマー',
-  'practice.meditate.guidedLocked': '{label} — レベル{level}で解放',
-  'practice.meditate.guidedOption': '{label} — {desc}',
+  'practice.meditate.guidedNone': 'なし——シンプルなタイマー',
+  'practice.meditate.guidedLocked': '{label}——レベル{level}で解放',
+  'practice.meditate.guidedOption': '{label}——{desc}',
   'practice.meditate.spoken.toggle': '音声ガイド',
   'practice.meditate.spoken.unavailable':
-    'ここでは音声を利用できません — 合図は画面に表示され、やわらかなベルが鳴ります。',
+    'ここでは音声を利用できません——合図は画面に表示され、やわらかなベルが鳴ります。',
   'practice.meditate.spoken.on': '合図を読み上げるので、目を閉じたままでいられます。',
   'practice.meditate.spoken.off': '合図は画面に表示され、やわらかなベルが鳴ります。',
   'practice.meditate.preReading.intro':
@@ -188,14 +188,14 @@ export const practice: Record<string, string> = {
   // ── Breathe page ──────────────────────────────────────────────────────────
   'practice.breathe.title': '呼吸',
   'practice.breathe.intro.resonance':
-    'ゆっくりと均等に、吐く息を長くする呼吸 — やさしく落ち着く基本です。',
-  'practice.breathe.intro.box': '等しいカウント — 吸う、止める、吐く、止める。シンプルで安定します。',
+    'ゆっくりと均等に、吐く息を長くする呼吸——やさしく落ち着く基本です。',
+  'practice.breathe.intro.box': '等しいカウント——吸う、止める、吐く、止める。シンプルで安定します。',
   'practice.breathe.intro.energizing': '速く力強い吸気で、体を目覚めさせます。',
   'practice.breathe.intro.alternate':
-    '片鼻呼吸（ナディ・ショーダナ） — 左右のバランスを整えます。',
-  'practice.breathe.intro.default': '数分の落ち着いたペース呼吸です — ついてくるだけで大丈夫。',
+    '片鼻呼吸（ナディ・ショーダナ）——左右のバランスを整えます。',
+  'practice.breathe.intro.default': '数分の落ち着いたペース呼吸です——ついてくるだけで大丈夫。',
   'practice.breathe.intro.how':
-    'オーブに合わせて — 大きくなるとき吸い、小さくなるとき吐きます。間違えることはありません。',
+    'オーブに合わせて——大きくなるとき吸い、小さくなるとき吐きます。間違えることはありません。',
   'practice.breathe.recover.unsaved': '未保存の呼吸セッション · 先ほどの{min}分。',
   'practice.breathe.cycles': '{cycles}サイクル',
   'practice.breathe.bpm': '毎分{bpm}呼吸',
@@ -226,7 +226,7 @@ export const practice: Record<string, string> = {
   'practice.breathe.chime': 'チャイム',
   'practice.breathe.volume': '音量',
   'practice.breathe.soundscape.summary': '環境サウンドスケープ',
-  'practice.breathe.audio.summary': 'サウンド — 呼吸の音・チャイム・サウンドスケープ',
+  'practice.breathe.audio.summary': 'サウンド——呼吸の音・チャイム・サウンドスケープ',
   'practice.breathe.preReading.done': '呼吸前の計測を記録しました。',
   'practice.breathe.preReading.intro':
     '任意です：いまの心拍数を記録し、呼吸セッションでどれだけ落ち着くか見てみましょう。',
@@ -239,7 +239,7 @@ export const practice: Record<string, string> = {
   // ── Trataka (candle gazing) page ──────────────────────────────────────────
   'practice.trataka.title': 'キャンドル瞑想',
   'practice.trataka.intro.what':
-    'トラータカ — 開いた視線を炎に休め、そこに注意を落ち着けます。',
+    'トラータカ——開いた視線を炎に休め、そこに注意を落ち着けます。',
   'practice.trataka.intro.how':
     '心がさまよったら、そっと視線を炎へ戻します。必要なときはいつでもまばたきを。',
   'practice.trataka.guide': '視線をやわらかく炎に休めて',
@@ -252,22 +252,22 @@ export const practice: Record<string, string> = {
   'practice.trataka.flameAria': '見つめるための、やわらかく灯るキャンドルの炎',
   'practice.trataka.reflect.aria': '凝視をふりかえる',
   'practice.trataka.about.summary': 'キャンドル瞑想について',
-  'practice.trataka.about.p1intro': 'キャンドル瞑想 — 伝統的には',
+  'practice.trataka.about.p1intro': 'キャンドル瞑想——伝統的には',
   'practice.trataka.about.p1mid':
-    'と呼ばれ — ヨガの集中の実践（',
+    'と呼ばれ——ヨガの集中の実践（',
   'practice.trataka.about.p1end':
     'の一形態）です：ひとつの点、古典的にはろうそくの炎に開いた視線を休め、そこに注意を落ち着けます。心がさまよったら、そっと炎へ戻します。',
   'practice.trataka.about.p2intro': '伝統的には',
   'practice.trataka.about.p2emph': '持続的な注意を養う',
   'practice.trataka.about.p2end':
-    'ために用いられます — 一点に視覚的な焦点を保つことが、全体の注意の安定につながるという考えです。集中の実践に関する研究はまだ発展途上のため、これは証明された効果ではなく、人々が役立つと感じてきた長年の実践として捉えています。',
+    'ために用いられます——一点に視覚的な焦点を保つことが、全体の注意の安定につながるという考えです。集中の実践に関する研究はまだ発展途上のため、これは証明された効果ではなく、人々が役立つと感じてきた長年の実践として捉えています。',
   'practice.trataka.about.p3intro':
     '注意に困難のある方の中には、一点集中が落ち着くと感じる人もいます。とはいえ、キャンドル瞑想は',
   'practice.trataka.about.p3emph': 'ADHDやいかなる疾患の治療でもなく',
   'practice.trataka.about.p3end':
-    '、専門的なケアの代わりにもなりません — 医学的な心配がある場合は、資格を持つ専門家にご相談ください。',
+    '、専門的なケアの代わりにもなりません——医学的な心配がある場合は、資格を持つ専門家にご相談ください。',
   'practice.trataka.about.note':
-    'やさしく伝統的な集中の実践です — 支えとなるものであり、臨床的なものでも、医学的な計測や診断でもありません。',
+    'やさしく伝統的な集中の実践です——支えとなるものであり、臨床的なものでも、医学的な計測や診断でもありません。',
 
   // ── RewardOverlay ─────────────────────────────────────────────────────────
   'practice.reward.dismiss': 'ごほうびを閉じる',
@@ -281,14 +281,14 @@ export const practice: Record<string, string> = {
   'practice.reward.quest': 'ミッション: {label}',
   'practice.reward.streakBonus': '連続ボーナス',
   'practice.reward.praise.0': 'お見事でした。',
-  'practice.reward.praise.1': 'あなたは取り組みました — それが大切なことです。',
+  'practice.reward.praise.1': 'あなたは取り組みました——それが大切なことです。',
   'practice.reward.praise.2': '有意義な時間でしたね。',
   'practice.reward.praise.3': '自分への静かな贈り物です。',
   'practice.reward.praise.4': 'どの瞑想にも意味があります。',
   'practice.reward.praise.5': 'これができたあなたを誇りに思います。',
-  'practice.reward.praise.6': '脳へのもう一回の反復です。',
-  'practice.reward.praise.7': 'もう一回 — 習慣が根づいてきています。',
-  'practice.reward.praise.8': 'いま、その回路を強めました。',
+  'practice.reward.praise.6': 'また少し、習慣が根づきました。',
+  'practice.reward.praise.7': 'もう一回——習慣が根づいてきています。',
+  'practice.reward.praise.8': 'いまの時間が、習慣を少し強くしました。',
 
   // ── BiometricCapture ──────────────────────────────────────────────────────
   'practice.biometric.bpmLabel': '心拍数（bpm）',
@@ -297,9 +297,9 @@ export const practice: Record<string, string> = {
   'practice.biometric.hrvLabel': 'HRV（ミリ秒・任意、わかる場合）',
   'practice.biometric.hrvPlaceholder': '例：45',
   'practice.biometric.hrvHint':
-    '心拍変動 — 多くのウォッチやリングが計測できます。記録していなければ空欄でどうぞ。',
+    '心拍変動——多くのウォッチやリングが計測できます。記録していなければ空欄でどうぞ。',
   'practice.biometric.disclaimer':
-    'ご自身で入力する個人的なウェルネスの指標です — 医学的な計測や診断ではありません。',
+    'ご自身で入力する個人的なウェルネスの指標です——医学的な計測や診断ではありません。',
   'practice.biometric.save': '計測を保存',
   'practice.biometric.saving': '保存中…',
   'practice.biometric.skip': 'スキップ',
@@ -311,13 +311,13 @@ export const practice: Record<string, string> = {
   'practice.breathingInfo.summary': 'レゾナンス呼吸について',
   'practice.breathingInfo.whatHeading': 'これは何か',
   'practice.breathingInfo.whatBody.pre':
-    'レゾナンス（または「コヒーレンス」）呼吸は、ゆっくりとしたペース呼吸です — おおよそ毎分6呼吸、あるいはそれより遅く。このペースでは心拍と呼吸が同調し、',
+    'レゾナンス（または「コヒーレンス」）呼吸は、ゆっくりとしたペース呼吸です——おおよそ毎分6呼吸、あるいはそれより遅く。このペースでは心拍と呼吸が同調し、',
   'practice.breathingInfo.whatBody.emph': '心拍変動（HRV）',
   'practice.breathingInfo.whatBody.post':
     'を最大化し、神経系を「休息と消化」へと傾けて、より穏やかで集中した状態にします。',
   'practice.breathingInfo.ratioHeading': 'なぜ2:3の比率か',
   'practice.breathingInfo.ratioBody.pre':
-    '2カウントで吸い、3カウントで吐きます — わずかに',
+    '2カウントで吸い、3カウントで吐きます——わずかに',
   'practice.breathingInfo.ratioBody.emph': '長い吐く息',
   'practice.breathingInfo.ratioBody.mid':
     'は、迷走神経をやさしく刺激し、リラクゼーションを深めます。',
@@ -327,14 +327,24 @@ export const practice: Record<string, string> = {
   'practice.breathingInfo.benefitsHeading': '効果',
   'practice.breathingInfo.benefit1': 'その場でストレスと不安をやわらげる',
   'practice.breathingInfo.benefit2': '集中が鋭くなり、心が安定する',
-  'practice.breathingInfo.benefit3': 'HRVの向上 — 神経系のしなやかさの指標',
+  'practice.breathingInfo.benefit3': 'HRVの向上——神経系のしなやかさの指標',
   'practice.breathingInfo.benefit4': 'よりよい睡眠と感情の調整を支える',
   'practice.breathingInfo.howHeading': 'やり方',
   'practice.breathingInfo.how1': '肩の力を抜いて、楽に座ります。',
   'practice.breathingInfo.how2': '鼻から、胸ではなくお腹の奥へ息を通します。',
   'practice.breathingInfo.how3': '円と音に合わせて：大きくなるとき吸い、小さくなるとき吐きます。',
-  'practice.breathingInfo.how4': '無理をしないで — ペースがつらければ、楽な（速い）ものを選びます。',
+  'practice.breathingInfo.how4': '無理をしないで——ペースがつらければ、楽な（速い）ものを選びます。',
   'practice.breathingInfo.how5': '数分から始めて、少しずつ積み重ねていきます。',
   'practice.breathingInfo.disclaimer':
     '一般的なウェルネスのガイダンスであり、医学的な助言ではありません。めまいを感じたら加減するか中止し、心臓や呼吸器の疾患がある場合はまず医師にご相談ください。',
+
+  // 呼吸パターンの選択（名前 + 一言の説明。lib/breathPattern.ts の PRESETS をキーで解決）
+  'practice.breathe.preset.resonance.name': 'レゾナンス',
+  'practice.breathe.preset.resonance.hint': '吐く息を長めに、自分のペースで',
+  'practice.breathe.preset.box.name': 'ボックス呼吸',
+  'practice.breathe.preset.box.hint': '吸う・止める・吐く・止めるを同じ長さで',
+  'practice.breathe.preset.energizing.name': '活性化',
+  'practice.breathe.preset.energizing.hint': '積極的に吸って、テンポよく',
+  'practice.breathe.preset.alternate.name': '片鼻呼吸',
+  'practice.breathe.preset.alternate.hint': 'ナディ・ショーダナ。一周ごとに左右の鼻を替えます',
 }

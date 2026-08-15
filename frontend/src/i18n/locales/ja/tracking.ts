@@ -1,4 +1,4 @@
-// tracking domain — Japanese. Calm, polite register (です/ます where sentences occur);
+// tracking domain——Japanese. Calm, polite register (です/ます where sentences occur);
 // natural wellness-app phrasing. {var} placeholders are preserved exactly.
 export const tracking: Record<string, string> = {
   // ── Journal ──────────────────────────────────────────────────────────────
@@ -52,15 +52,15 @@ export const tracking: Record<string, string> = {
   'tracking.journal.updateError': 'その振り返りを更新できませんでした。',
   'tracking.journal.deleted': '振り返りを削除しました。',
   'tracking.journal.deleteError': 'その振り返りを削除できませんでした。',
-  'tracking.journal.resurfaceError': '思い出を呼び起こせませんでした — もう一度お試しください。',
-  'tracking.journal.resurfaceEmpty': 'まだ呼び起こせるものがありません — もう少し記録してみましょう。',
+  'tracking.journal.resurfaceError': '思い出を呼び起こせませんでした——もう一度お試しください。',
+  'tracking.journal.resurfaceEmpty': 'まだ呼び起こせるものがありません——もう少し記録してみましょう。',
   // 記録へのAIリフレクション（静かに、臨床的にならないトーンで）
   'tracking.journal.reflect.button': 'そっと振り返る',
   'tracking.journal.reflect.loading': '振り返り中…',
   'tracking.journal.reflect.aria': 'この記録へのやさしい振り返りを受け取る',
   'tracking.journal.reflect.title': 'やさしい振り返り',
-  'tracking.journal.reflect.error': '振り返りを受け取れませんでした — もう一度お試しください。',
-  'tracking.journal.reflect.capReached': '今日の振り返りはここまで — また明日どうぞ。',
+  'tracking.journal.reflect.error': '振り返りを受け取れませんでした——もう一度お試しください。',
+  'tracking.journal.reflect.capReached': '今日の振り返りはここまで——また明日どうぞ。',
   'tracking.journal.reflect.guestBlocked': 'AIの振り返りを使うには、アカウントを保存してください。',
 
   // ── Gratitude ────────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ export const tracking: Record<string, string> = {
   'tracking.gratitude.charsLeft': 'あと{n}文字',
   'tracking.gratitude.save': '保存',
   'tracking.gratitude.recent': '最近',
-  'tracking.gratitude.empty': 'まだ何も記録されていません — 上で小さな良いことをひとつ挙げてみましょう。',
+  'tracking.gratitude.empty': 'まだ何も記録されていません——上で小さな良いことをひとつ挙げてみましょう。',
   'tracking.gratitude.entryActions': '記録の操作',
   'tracking.gratitude.delete': '削除',
   'tracking.gratitude.loadMore': 'もっと見る',
@@ -145,7 +145,7 @@ export const tracking: Record<string, string> = {
   'tracking.goals.created': '習慣を作成しました。',
   'tracking.goals.createError': 'その目標を作成できませんでした。',
   'tracking.goals.checkedIn': '今日の分は完了です。✓',
-  'tracking.goals.undone': '取り消しました — 大丈夫です。',
+  'tracking.goals.undone': '取り消しました——大丈夫です。',
   'tracking.goals.checkinError': 'そのチェックインを更新できませんでした。',
   'tracking.goals.archived': 'しまっておきました。',
   'tracking.goals.reactivated': 'また取り組みましょう。',
@@ -157,7 +157,7 @@ export const tracking: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────────
   'tracking.timeline.title': 'タイムライン',
   'tracking.timeline.subtitle': '記録したすべてを、ひとつの場所に。',
-  'tracking.timeline.emptyPre': 'まだ何もありません — はじめての',
+  'tracking.timeline.emptyPre': 'まだ何もありません——はじめての',
   'tracking.timeline.emptySit': '座り',
   'tracking.timeline.emptyNote': 'メモ',
   'tracking.timeline.emptyGratitude': '感謝',
@@ -200,7 +200,7 @@ export const tracking: Record<string, string> = {
   'tracking.timeline.sessionDeleteError': 'そのセッションを削除できませんでした。',
   'tracking.timeline.moodRemoved': '気分のチェックインを削除しました。',
   'tracking.timeline.moodRemoveError': 'そのチェックインを削除できませんでした。',
-  'tracking.timeline.exported': 'エクスポートしました — お使いの端末に保存されています。',
+  'tracking.timeline.exported': 'エクスポートしました——お使いの端末に保存されています。',
   'tracking.timeline.exportError': 'セッションをエクスポートできませんでした。',
 
   // ── Schedule ─────────────────────────────────────────────────────────────
@@ -216,13 +216,13 @@ export const tracking: Record<string, string> = {
   'tracking.schedule.scheduling': '予定を登録中…',
   'tracking.schedule.schedule': '予定に入れる',
   'tracking.schedule.upcoming': '予定',
-  'tracking.schedule.empty': 'まだ予定がありません — 上で最初の座りを計画しましょう。',
+  'tracking.schedule.empty': 'まだ予定がありません——上で最初の座りを計画しましょう。',
   'tracking.schedule.addToCalendar': 'カレンダーに追加',
   'tracking.schedule.remove': '削除',
   // Toasts + errors
   'tracking.schedule.pickDate': '日付と時刻を選んでください。',
   'tracking.schedule.pickFuture': '未来の時刻を選んでください。',
-  'tracking.schedule.created': 'カレンダーに追加しました。そのときに。',
+  'tracking.schedule.created': 'カレンダーに追加しました。当日を楽しみに。',
   'tracking.schedule.createError': 'そのセッションを予定に入れられませんでした。',
   'tracking.schedule.removed': 'スケジュールから削除しました。',
   'tracking.schedule.removeError': 'そのセッションを削除できませんでした。',
@@ -264,14 +264,14 @@ export const tracking: Record<string, string> = {
   'tracking.logReading.subtitle': '安静時の心拍数（分かればHRVも）を記録して、傾向を追いましょう。',
   'tracking.logReading.captureTitle': '安静時の測定',
   'tracking.logReading.captureIntro': '落ち着いて静かにしているときの基準値です。',
-  'tracking.logReading.saved': '記録しました — あなたの心拍を残しました。',
+  'tracking.logReading.saved': '記録しました——あなたの心拍を残しました。',
 
   // ── Analytics ────────────────────────────────────────────────────────────
   'tracking.analytics.title': '分析',
   'tracking.analytics.subtitle': 'あなたのプラクティスに見えるパターン。',
   'tracking.analytics.loadError': '分析を読み込めませんでした。',
   'tracking.analytics.empty':
-    'まだ描けるものはありません — それでまったく大丈夫です。何度かプラクティスを重ねると、パターンがそっとここに現れます。急がなくて大丈夫です。',
+    'まだ描けるものはありません——それでまったく大丈夫です。何度かプラクティスを重ねると、パターンがそっとここに現れます。急がなくて大丈夫です。',
   'tracking.analytics.stat.sessions': 'セッション',
   'tracking.analytics.stat.hours': '時間（プラクティス）',
   'tracking.analytics.stat.days': '日数（プラクティス）',
@@ -284,12 +284,12 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.hr.title': '心拍数とHRV',
   'tracking.analytics.hr.loadError': 'このセクションを読み込めませんでした。',
   'tracking.analytics.hr.reading': '兆しを読み取っています…',
-  'tracking.analytics.hr.emptyPre': 'まだ測定値がありません — 準備ができたときで大丈夫です。座りのあとにさっと記録するか、',
+  'tracking.analytics.hr.emptyPre': 'まだ測定値がありません——準備ができたときで大丈夫です。座りのあとにさっと記録するか、',
   'tracking.analytics.hr.emptyLink': '安静時の測定を追加',
   'tracking.analytics.hr.emptyPost': 'すると、やさしい傾向を描きはじめられます。',
-  'tracking.analytics.hr.noteShort': 'ご自身で記録する個人的なウェルネスの目安です — 医療上の測定ではありません。',
+  'tracking.analytics.hr.noteShort': 'ご自身で記録する個人的なウェルネスの目安です——医療上の測定ではありません。',
   'tracking.analytics.hr.noteLong':
-    'ご自身で記録する個人的なウェルネスの目安です — 医療上の測定ではありません。HRVは心拍変動のことで、一般に高いほど回復している状態を示します。',
+    'ご自身で記録する個人的なウェルネスの目安です——医療上の測定ではありません。HRVは心拍変動のことで、一般に高いほど回復している状態を示します。',
   'tracking.analytics.hr.latest': '最新：{bpm} bpm',
   'tracking.analytics.hr.latestHrv': ' · HRV {hrv} ms',
   'tracking.analytics.hr.oneMore': 'もう1回記録すると傾向を描きはじめられます。',
@@ -343,7 +343,7 @@ export const tracking: Record<string, string> = {
   'tracking.analytics.type.mindfulness': 'マインドフルネス',
   'tracking.analytics.type.body_scan': 'ボディスキャン',
   'tracking.analytics.type.walking': '歩行',
-  'tracking.analytics.type.loving_kindness': '慈悲の瞑想',
+  'tracking.analytics.type.loving_kindness': '慈しみの瞑想',
   'tracking.analytics.type.resonance_breathing': 'レゾナンス呼吸',
   'tracking.analytics.type.energizing_breathing': '活力の呼吸',
   'tracking.analytics.type.other': 'その他',

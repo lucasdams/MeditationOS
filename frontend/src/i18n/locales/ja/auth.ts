@@ -1,15 +1,15 @@
-// auth domain (Japanese) — calm, polite register (です/ます for sentences; concise labels/buttons).
+// auth domain (Japanese)——calm, polite register (です/ます for sentences; concise labels/buttons).
 // Keep the SAME {var} placeholders as the English catalog. Keys mirror en/auth.ts.
 export const auth: Record<string, string> = {
   // ── AuthBrand ──
-  'auth.brand.tagline': 'あなたの瞑想の実践を、記録しましょう。',
+  'auth.brand.tagline': '瞑想の実践を、記録しましょう。',
 
   // ── LandingPage ──
   'auth.landing.tagline.pre': '音声ライブラリではなく、',
   'auth.landing.tagline.emphasis': 'あなたの実践データ',
   'auth.landing.tagline.post':
     'を軸にした瞑想アプリです。セッションを記録し、連続日数を積み重ね、習慣が根づいていく様子を見守りましょう。',
-  'auth.landing.getStarted': 'はじめる — 無料です',
+  'auth.landing.getStarted': '無料ではじめる',
   'auth.landing.login': 'ログイン',
   'auth.landing.noSignup': '登録なしでお試しいただけます。',
   // Feature grid
@@ -81,8 +81,8 @@ export const auth: Record<string, string> = {
   'auth.chooseUsername.title': 'ユーザー名を選ぶ',
   'auth.chooseUsername.intro':
     'これはメールアドレスの代わりにアプリで表示される名前です。あとで設定から変更できます。',
-  'auth.chooseUsername.tooShort': 'もう少し長くしてください — {min}文字以上でお願いします。',
-  'auth.chooseUsername.taken': 'このユーザー名は使われています — 別のものをお試しください。',
+  'auth.chooseUsername.tooShort': 'もう少し長くしてください——{min}文字以上でお願いします。',
+  'auth.chooseUsername.taken': 'このユーザー名は使われています——別のものをお試しください。',
   'auth.chooseUsername.label': 'ユーザー名',
   'auth.chooseUsername.placeholder': '例：calm_otter',
   'auth.chooseUsername.hint': '{min}〜{max}文字 · 半角英数字とアンダースコア',
@@ -92,11 +92,11 @@ export const auth: Record<string, string> = {
   // ── VerifyEmailPage ──
   'auth.verify.title': 'メールアドレスの確認',
   'auth.verify.verifying': 'メールアドレスを確認しています…',
-  'auth.verify.ok': 'メールアドレスが確認できました — これで準備完了です。',
+  'auth.verify.ok': 'メールアドレスが確認できました——これで準備完了です。',
   'auth.verify.missingToken': 'この確認リンクにはトークンが含まれていません。',
   'auth.verify.invalidToken': 'このリンクは無効か、有効期限が切れています。',
   'auth.verify.resendPrompt': '{email} に新しい確認リンクをお送りできます。',
-  'auth.verify.resent': '送信しました — 受信トレイをご確認ください。',
+  'auth.verify.resent': '送信しました——受信トレイをご確認ください。',
   'auth.verify.resending': '送信しています…',
   'auth.verify.resendCta': '新しいリンクを送る',
   'auth.verify.throttled':
@@ -139,7 +139,7 @@ export const auth: Record<string, string> = {
   // ── Onboarding ──
   'auth.onboarding.title': 'ようこそ',
   'auth.onboarding.intro':
-    'やさしい質問を一つ、それからゆっくりと一分間、ご一緒しましょう。焦らなくて大丈夫です — あとで設定からいつでも変更できます。',
+    'やさしい質問を一つ、それからゆっくりと一分間、ご一緒しましょう。焦らなくて大丈夫です——あとで設定からいつでも変更できます。',
   'auth.onboarding.question': '今日はどんな気持ちでいらっしゃいましたか？',
   'auth.onboarding.intent.calm.label': '落ち着き',
   'auth.onboarding.intent.calm.sub': 'ストレスの緩和',
@@ -154,13 +154,13 @@ export const auth: Record<string, string> = {
   'auth.google.error': 'Googleでのサインインに失敗しました。もう一度お試しください。',
 
   // ── GuestBanner ──
-  'auth.guestBanner.text.pre': 'あなたはゲストです — 進捗はこのブラウザにのみ保存され、Cookieを消去すると完全に失われます。失わないよう、メールアドレスを追加しましょう。',
+  'auth.guestBanner.text.pre': 'ゲストとして利用中です。進捗はこのブラウザにのみ保存され、Cookieを消去すると完全に失われます。失わないよう、メールアドレスを追加しましょう。',
   'auth.guestBanner.cta': 'アカウントを保存',
 
   // ── CookieNotice ──
   'auth.cookieNotice.aria': 'Cookieに関するお知らせ',
   'auth.cookieNotice.text.pre':
-    'ログイン状態を保つために、必須のCookieを1つだけ使用しています — サードパーティによるトラッキングはありません。詳しくは',
+    'ログイン状態を保つために、必須のCookieを1つだけ使用しています——サードパーティによるトラッキングはありません。詳しくは',
   'auth.cookieNotice.text.privacy': 'プライバシーポリシー',
   'auth.cookieNotice.text.post': 'をご覧ください。',
   'auth.cookieNotice.cta': '了解',
@@ -176,7 +176,7 @@ export const auth: Record<string, string> = {
     'アカウントを安全に保つため、続ける前にメールアドレスの確認をお願いします。確認リンクを ',
   'auth.confirmGate.body.post': ' にお送りしました。開いて完了したら、ここに戻ってください。',
   'auth.confirmGate.checking': '確認しています…',
-  'auth.confirmGate.confirmed': '確認しました — 続ける',
+  'auth.confirmGate.confirmed': '確認しました——続ける',
   'auth.confirmGate.recheckFailed':
     'まだ確認が取れていません。メールのリンクを開いてから、もう一度お試しください。',
   'auth.confirmGate.didntGet': '届きませんでしたか？ ',
