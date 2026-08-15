@@ -9379,11 +9379,14 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .onboarding-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   text-align: left;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border-var, rgba(0, 0, 0, 0.14));
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--card, rgba(255, 255, 255, 0.6));
+  background: var(--bg-surface);
   font: inherit;
   font-weight: 500;
   color: inherit; /* override the global white button text */
@@ -9391,12 +9394,12 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .onboarding-choice:hover {
-  border-color: var(--accent-var, #6a5cff);
+  border-color: var(--accent);
 }
 
 /* Border-color comes from .selectable.selected; this choice uses an inset ring. */
 .onboarding-choice.selected {
-  box-shadow: 0 0 0 1px var(--accent-var, #6a5cff) inset;
+  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 .onboarding-emoji {
@@ -9409,12 +9412,6 @@ details[open] .meditate-disclosure-summary::before {
 .onboarding-question {
   margin: 1.2rem 0 0;
   font-size: var(--text-lg);
-}
-
-.onboarding-choice {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
 }
 
 .onboarding-choice-body {
