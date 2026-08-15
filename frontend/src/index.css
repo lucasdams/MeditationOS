@@ -2492,11 +2492,30 @@ a:hover { color: var(--accent-hover); }
   margin-bottom: 0.4rem;
 }
 
+/* A quiet segmented toggle: inactive tabs are soft surface chips; the active one fills
+   with the accent. (The bare button would otherwise render accent-filled in every state,
+   making the active filter indistinguishable — .selectable.selected only adds a border,
+   which is invisible on an already-accent fill.) */
 .prayer-filter-tab {
   width: auto;
   margin: 0;
-  padding: 0.3rem 0.85rem;
+  padding: 0.35rem 0.85rem;
   font-size: var(--text-sm);
+  font-weight: 500;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+
+.prayer-filter-tab:hover:not(.selected):not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.prayer-filter-tab.selected {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 
 /* An answered prayer softens: a calm accent rail + gently faded body, so it reads as
@@ -3010,6 +3029,17 @@ textarea::placeholder {
     background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     filter var(--duration-fast) var(--ease-out);
+}
+
+/* Filled accent — the primary action. */
+.btn--primary {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 /* Surface + border — a quieter alternative action. */
@@ -8602,11 +8632,17 @@ details[open] .meditate-disclosure-summary::before {
   margin: 0;
 }
 
+/* Finish & save is the quiet counterpart to the accent Pause/Resume: a calm surface
+   button with a hairline border, not a stark near-black block. Gentle accent on hover. */
 .breathe-controls .secondary {
-  background: var(--text-primary);
-  /* Invert the label against the light dark-mode fill (same as the logout button) —
-     otherwise it inherits the base button's white text and is unreadable. */
-  color: var(--bg-surface);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+
+.breathe-controls .secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Start-of-practice focus cue: a one-line "where to look" prompt that fades out a few
