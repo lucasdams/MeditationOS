@@ -16,10 +16,10 @@ describe('slotForHour', () => {
 
 describe('recommendedPractice', () => {
   it('picks by time of day when there is no facet to round out', () => {
-    expect(recommendedPractice({ hour: 8, facet: null }).to).toBe('/meditate?guided=focus')
+    expect(recommendedPractice({ hour: 8, facet: null }).to).toBe('/meditate/focus')
     expect(recommendedPractice({ hour: 14, facet: null }).to).toBe('/breathe')
-    expect(recommendedPractice({ hour: 19, facet: null }).to).toBe('/meditate?guided=yoga-nidra')
-    expect(recommendedPractice({ hour: 23, facet: null }).to).toBe('/meditate?guided=yoga-nidra')
+    expect(recommendedPractice({ hour: 19, facet: null }).to).toBe('/meditate/yoga-nidra')
+    expect(recommendedPractice({ hour: 23, facet: null }).to).toBe('/meditate/yoga-nidra')
   })
 
   it('keeps the long-standing breathe invite for the afternoon default', () => {
@@ -32,10 +32,10 @@ describe('recommendedPractice', () => {
   it('overrides the time pick with a facet-rounding practice when the balance is uneven', () => {
     // Facet wins regardless of the hour — it is the more personal signal.
     expect(recommendedPractice({ hour: 14, facet: 'joyful' }).to).toBe(
-      '/meditate?guided=loving-kindness',
+      '/meditate/loving-kindness',
     )
-    expect(recommendedPractice({ hour: 8, facet: 'rested' }).to).toBe('/meditate?guided=body-scan')
-    expect(recommendedPractice({ hour: 19, facet: 'nourished' }).to).toBe('/meditate?guided=focus')
+    expect(recommendedPractice({ hour: 8, facet: 'rested' }).to).toBe('/meditate/body-scan')
+    expect(recommendedPractice({ hour: 19, facet: 'nourished' }).to).toBe('/meditate/focus')
   })
 
   it('always returns a non-empty cta + blurb + link', () => {

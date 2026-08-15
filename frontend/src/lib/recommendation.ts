@@ -33,7 +33,7 @@ const BY_TIME: Record<Slot, Recommendation> = {
   morning: {
     cta: 'home.recommend.morning.cta',
     blurb: 'home.recommend.morning.blurb',
-    to: '/meditate?guided=focus',
+    to: '/meditate/focus',
   },
   // Afternoon keeps the app's long-standing default breathe invite.
   afternoon: {
@@ -44,12 +44,12 @@ const BY_TIME: Record<Slot, Recommendation> = {
   evening: {
     cta: 'home.recommend.evening.cta',
     blurb: 'home.recommend.evening.blurb',
-    to: '/meditate?guided=yoga-nidra',
+    to: '/meditate/yoga-nidra',
   },
   night: {
     cta: 'home.recommend.night.cta',
     blurb: 'home.recommend.night.blurb',
-    to: '/meditate?guided=yoga-nidra',
+    to: '/meditate/yoga-nidra',
   },
 }
 
@@ -59,17 +59,17 @@ const BY_FACET: Record<SpiritNeedKey, Recommendation> = {
   joyful: {
     cta: 'home.recommend.joyful.cta',
     blurb: 'home.recommend.joyful.blurb',
-    to: '/meditate?guided=loving-kindness',
+    to: '/meditate/loving-kindness',
   },
   rested: {
     cta: 'home.recommend.rested.cta',
     blurb: 'home.recommend.rested.blurb',
-    to: '/meditate?guided=body-scan',
+    to: '/meditate/body-scan',
   },
   nourished: {
     cta: 'home.recommend.nourished.cta',
     blurb: 'home.recommend.nourished.blurb',
-    to: '/meditate?guided=focus',
+    to: '/meditate/focus',
   },
 }
 

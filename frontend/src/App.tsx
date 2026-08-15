@@ -74,6 +74,9 @@ export default function App() {
           />
           <Route path="/breathe" element={<BreathePage />} />
           <Route path="/meditate" element={<MeditatePage />} />
+          {/* Each guided practice has its own path (/meditate/body-scan). Same player
+              underneath — the segment selects the cue script. Bare /meditate is a plain sit. */}
+          <Route path="/meditate/:guided" element={<MeditatePage />} />
           <Route
             path="/trataka"
             element={<Suspense fallback={<PageFallback />}><TratakaPage /></Suspense>}

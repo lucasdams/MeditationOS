@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Brain, Sparkle } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { track } from '../lib/analytics'
@@ -34,7 +34,6 @@ import { moodLogService } from '../services/moodLogs'
 import { dailySuggestion } from '../lib/intentionPrompts'
 import {
   GUIDED_STRUCTURES,
-  GUIDED_MIN_LEVEL,
   isGuidedUnlocked,
   type GuidedStructureId,
 } from '../lib/guidedSessions'
@@ -92,41 +91,31 @@ const BELL_MODES: { value: string; labelKey: string }[] = [
   { value: 'every10', labelKey: 'practice.meditate.bells.every10' },
 ]
 
-// Persist the last-chosen guided structure across sessions.
-const GUIDED_STRUCTURE_KEY = 'meditate:guided-structure'
 type GuidedChoice = GuidedStructureId | 'none'
 
-// Recognised stored guided ids. A legacy 'acceptance' value (the old id) simply
-// isn't matched, so it falls back to 'none' — fine.
+// Recognised guided ids. An unrecognised value (a legacy id, a typo in the URL) simply
+// isn't matched, so it falls back to 'none' — a plain sit.
 const GUIDED_IDS: GuidedStructureId[] = GUIDED_STRUCTURES.map((s) => s.id)
 
-function readGuidedChoice(): GuidedChoice {
-  try {
-    const v = localStorage.getItem(GUIDED_STRUCTURE_KEY)
-    if (v != null && (GUIDED_IDS as string[]).includes(v)) return v as GuidedStructureId
-    return 'none'
-  } catch {
-    return 'none'
+// The practice is chosen by the URL: each guided practice has its own path
+// (/meditate/body-scan), so the `:guided` path segment names the structure. Map that
+// segment to a guided choice, or null when it's absent/unrecognised so the caller falls
+// back to the legacy query param and then to a plain unguided sit.
+export function guidedChoiceFromPath(segment: string | undefined): GuidedChoice | null {
+  if (segment != null && (GUIDED_IDS as string[]).includes(segment)) {
+    return segment as GuidedStructureId
   }
+  return null
 }
 
-function writeGuidedChoice(choice: GuidedChoice) {
-  try {
-    localStorage.setItem(GUIDED_STRUCTURE_KEY, choice)
-  } catch {
-    // ignore — preference simply won't persist
-  }
-}
-
-// Deep-link support: map a `?guided=` / `?style=` query param to a guided choice, or
-// null when there's no (recognised) param so the caller falls back to the stored
-// preference. `guided=<any structure id>` pre-selects that structure;
-// `guided=none` or `style=mindfulness` pre-selects plain unguided sitting.
+// Back-compat for old links/bookmarks that still use `?guided=` / `?style=` instead of a
+// path (the hub now links to /meditate/<id>). `guided=<structure id>` selects it;
+// `guided=none` or `style=mindfulness` selects a plain sit; anything else → null.
 //
-// NOTE: this does NOT enforce level gates — a deep-link to a locked structure (e.g.
-// chakra-om below level 5) still resolves to that id here. The page applies the gate
-// after fetching the user's level (see the gate effect) and falls back to 'none' if
-// the structure is locked, so the gate can't be bypassed via the URL.
+// NOTE: neither resolver enforces level gates — a deep-link to a locked structure still
+// resolves to that id. The page applies the (currently dormant) gate after fetching the
+// user's level and falls back to 'none' if the structure is locked, so it can't be
+// bypassed via the URL.
 export function guidedChoiceFromParams(params: URLSearchParams): GuidedChoice | null {
   const guided = params.get('guided')
   if (guided != null && (GUIDED_IDS as string[]).includes(guided)) {
@@ -168,16 +157,11 @@ export default function MeditatePage() {
     label: t(d.labelKey),
   }))
   const [searchParams] = useSearchParams()
+  const { guided: guidedParam } = useParams<{ guided?: string }>()
   const [targetMin, setTargetMin] = useState(10)
   const [intervalMin, setIntervalMin] = useState(0)
   const [bellsOn, setBellsOn] = useState(true)
   const [volume, setVolume] = useState(0.6)
-  // A `?guided=` deep-link (from the Practices hub) pre-selects that structure on this
-  // visit, overriding the stored preference; without the param we fall back to it. Read
-  // once at mount so a direct visit behaves exactly as before, and manual changes persist.
-  const [guidedChoice, setGuidedChoiceState] = useState<GuidedChoice>(
-    () => guidedChoiceFromParams(searchParams) ?? readGuidedChoice(),
-  )
   // The user's level — drives the guided-structure gate (e.g. Chakra Om unlocks at
   // level 5). Fetched non-blocking like the header does; null until known, which the
   // gate treats as locked for gated structures (fail safe).
@@ -297,19 +281,6 @@ export default function MeditatePage() {
       .catch(() => {})
     return () => { ignore = true }
   }, [])
-
-  // Enforce the guided-structure level gate ONCE the level is known: if the current
-  // choice is a locked structure (a deep-link to a level-gated structure below its
-  // minimum level), fall back to plain unguided sitting rather than offering a locked
-  // practice. We wait for a non-null level so a deep-link to a gated structure isn't
-  // wrongly reset to 'none' during the brief window before the level fetch resolves.
-  // (No structures are level-gated at the moment, but the guard stays wired.)
-  useEffect(() => {
-    if (level == null) return
-    if (guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level)) {
-      setGuidedChoiceState('none')
-    }
-  }, [guidedChoice, level])
 
   function bell() {
     if (bellsOnRef.current) {
@@ -622,11 +593,6 @@ export default function MeditatePage() {
     else navigate('/')
   }
 
-  function setGuidedChoice(choice: GuidedChoice) {
-    setGuidedChoiceState(choice)
-    writeGuidedChoice(choice)
-  }
-
   function setSpokenPref(on: boolean) {
     setSpokenPrefState(on)
     writeSpokenGuidance(on)
@@ -634,25 +600,29 @@ export default function MeditatePage() {
     if (!on) cancelSpeech()
   }
 
+  // The practice for this route, decided entirely by the URL: the /meditate/<id> path
+  // segment names the structure, a legacy ?guided= query param still resolves for old
+  // links, and bare /meditate is a plain unguided sit. There's no in-player picker to keep
+  // in sync — you switch practice by choosing another card in the Practices hub.
+  const routeChoice: GuidedChoice =
+    guidedChoiceFromPath(guidedParam) ?? guidedChoiceFromParams(searchParams) ?? 'none'
+  // Apply the (currently dormant) level gate: a locked structure falls back to a plain sit
+  // rather than offering a practice the user hasn't unlocked. isGuidedUnlocked treats a null
+  // level as locked for GATED structures only, so ungated practices — all of them today —
+  // resolve immediately without waiting on the level fetch.
+  const guidedChoice: GuidedChoice =
+    routeChoice !== 'none' && !isGuidedUnlocked(routeChoice, level) ? 'none' : routeChoice
+
   // Spoken guidance is actually active only on a guided sit, with the toggle on,
   // and a usable TTS voice present. Otherwise GuidedCues falls back to text + bell.
   const isGuided = guidedChoice !== 'none'
   const speechOn = isGuided && spokenPref && speechSupported
 
-  // The <select>'s EFFECTIVE value: fall back to 'none' whenever the current choice
-  // resolves to a locked option (a deep-link to a level-gated structure while level is
-  // still loading, or below the gate). The async gate effect above eventually resets
-  // guidedChoice itself, but binding the control to this computed value means it never
-  // points at a `disabled` <option> even transiently — which some browsers render
-  // inconsistently. isGuidedUnlocked treats a null level as locked (fail safe).
-  const selectedGuidedValue: GuidedChoice =
-    guidedChoice !== 'none' && !isGuidedUnlocked(guidedChoice, level) ? 'none' : guidedChoice
-
-  // The guided structure currently in play (null for a plain unguided timer). Drives the calm
-  // beginner "what you'll do" intro shown before the sit starts.
+  // The guided structure currently in play (null for a plain unguided timer). Drives the
+  // page title, the calm "what you'll do" intro, and the cue script.
   const activeGuided =
-    selectedGuidedValue !== 'none'
-      ? GUIDED_STRUCTURES.find((s) => s.id === selectedGuidedValue) ?? null
+    guidedChoice !== 'none'
+      ? GUIDED_STRUCTURES.find((s) => s.id === guidedChoice) ?? null
       : null
 
   const targetSec = targetMin * 60
@@ -699,6 +669,11 @@ export default function MeditatePage() {
               ? t('practice.meditate.intro.howGuided')
               : t('practice.meditate.intro.howUnguided')}
           </p>
+          {/* The practice is chosen in the Practices hub, not with an in-page control — so
+              "switch" is a quiet link back to the catalog rather than a high-stakes dropdown. */}
+          <Link to="/practices" className="practice-switch-link">
+            {t('practice.meditate.chooseAnother')}
+          </Link>
         </div>
       )}
 
@@ -764,42 +739,20 @@ export default function MeditatePage() {
       <div className="meditate-setup">
       {/* Length + guidance are locked once the sit begins, so they recede during it —
           the screen stays the orb, timer, and controls. Sound (below) stays adjustable. */}
+      {/* Duration is the only pre-sit choice left on the player — the practice itself is
+          picked in the Practices hub, so there's no guided-structure dropdown here. Locked
+          once the sit begins. */}
       {!started && (
-        <>
-      <div className="meditate-setup-field">
-        <label>{t('practice.duration.label')}</label>
-        <Stepper
-          options={DURATIONS}
-          value={targetMin}
-          disabled={settingsDisabled}
-          ariaLabel={t('practice.duration.label')}
-          onChange={setTargetMin}
-        />
-      </div>
-
-      <div className="meditate-setup-field">
-        <label htmlFor="guided-structure">{t('practice.meditate.guidedStructure')}</label>
-        <select
-          id="guided-structure"
-          value={selectedGuidedValue}
-          disabled={settingsDisabled}
-          onChange={(e) => setGuidedChoice(e.target.value as GuidedChoice)}
-        >
-          <option value="none">{t('practice.meditate.guidedNone')}</option>
-          {GUIDED_STRUCTURES.map((s) => {
-            const locked = !isGuidedUnlocked(s.id, level)
-            return (
-              <option key={s.id} value={s.id} disabled={locked}>
-                {locked
-                  ? t('practice.meditate.guidedLocked', { label: s.label, level: GUIDED_MIN_LEVEL[s.id] ?? '' })
-                  : t('practice.meditate.guidedOption', { label: s.label, desc: s.description })}
-              </option>
-            )
-          })}
-        </select>
-
-      </div>
-        </>
+        <div className="meditate-setup-field">
+          <label>{t('practice.duration.label')}</label>
+          <Stepper
+            options={DURATIONS}
+            value={targetMin}
+            disabled={settingsDisabled}
+            ariaLabel={t('practice.duration.label')}
+            onChange={setTargetMin}
+          />
+        </div>
       )}
 
       {/* Session prep — the optional intention + pre-session reading, folded behind ONE quiet

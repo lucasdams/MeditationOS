@@ -767,6 +767,30 @@ a:hover { color: var(--accent-hover); }
   box-shadow: none;
 }
 
+/* Header quick-start — the primary one-tap action, an accent-filled pill so it stands apart from
+   the plain nav links. Lives inside .app-nav, so it inherits the mobile-sheet layout too (where it
+   leads the opened hamburger). */
+.app-nav a.nav-quick-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+  font-weight: 600;
+}
+.app-nav a.nav-quick-start:hover {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+  filter: none;
+  box-shadow: none;
+}
+/* Already-primary, so the active state doesn't need to shift — keep the accent fill steady. */
+.app-nav a.nav-quick-start.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
 /* Meditate / Breathe / Gratitude / Journal / Candle-gazing moved off the flat nav into the
    Practice dropdown (styled via --menu-fill); their per-destination colour tokens above are
    kept since they're reused elsewhere (e.g. journal text). */
@@ -8904,7 +8928,14 @@ details[open] .meditate-disclosure-summary::before {
     background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
     box-shadow: inset 0.2rem 0 0 var(--menu-ink);
   }
-  /* Practice / Progress collapsible group buttons (replace the old flat heading + list). */
+  /* Practice + Explore are direct links in the mobile sheet — icon + label in a row, reusing the
+     shared .nav-mobile-extra a pill styling above for background/border. */
+  .nav-mobile-direct {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  /* Progress collapsible group button (the one grouped section left on mobile). */
   .nav-mobile-group {
     display: flex;
     align-items: center;
@@ -9732,6 +9763,19 @@ details[open] .meditate-disclosure-summary::before {
   line-height: 1.45;
   color: var(--text-secondary);
 }
+/* Quiet "← back to the catalog" affordance under the intro — the practice is chosen in the
+   Practices hub, so switching is a soft link, not a heavy in-page control. */
+.practice-switch-link {
+  display: inline-block;
+  margin: 0.6rem 0 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.practice-switch-link:hover {
+  text-decoration: underline;
+}
 
 .practices-grid {
   display: grid;
@@ -9746,7 +9790,9 @@ details[open] .meditate-disclosure-summary::before {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin: 0.9rem 0 0.25rem;
+  /* Enough gap below the chips that they read as their own row, not crowding the first
+     group's bordered panel. */
+  margin: 0.9rem 0 1.1rem;
 }
 /* The "Start here" chip carries a small sprout icon — align it with its label. */
 .practices-filter-starter {

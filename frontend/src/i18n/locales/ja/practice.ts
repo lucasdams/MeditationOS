@@ -36,7 +36,7 @@ export const practice: Record<string, string> = {
   'practice.group.sleep.title': '睡眠',
   'practice.group.sleep.blurb': '眠りへとやさしく導く、クールダウンのプラクティスです。',
   'practice.group.reflection.title': 'ふりかえり',
-  'practice.group.reflection.blurb': '一日を言葉にします——感謝とジャーナリング。',
+  'practice.group.reflection.blurb': '一日を言葉にします——感謝、ジャーナリング、そして祈り。',
 
   // ── Practices hub——card names + descriptions ────────────────────────────
   // Breathing
@@ -75,6 +75,8 @@ export const practice: Record<string, string> = {
   'practice.card.gratitude.desc': '感謝していることを書き留める',
   'practice.card.journal.name': 'ジャーナル',
   'practice.card.journal.desc': '書いてふりかえる',
+  'practice.card.prayer.name': '祈り',
+  'practice.card.prayer.desc': '静かな祈りのジャーナル',
 
   // ── Time cues ─────────────────────────────────────────────────────────────
   'practice.mins.youChoose': 'お好みで',
@@ -160,10 +162,7 @@ export const practice: Record<string, string> = {
     '楽な姿勢で座り、下で長さを選び、準備ができたら開始を押してください。',
   'practice.meditate.phase.beHere': 'ここにいる',
   'practice.meditate.minSit': '{min}分の瞑想',
-  'practice.meditate.guidedStructure': 'ガイドの構成',
-  'practice.meditate.guidedNone': 'なし——シンプルなタイマー',
-  'practice.meditate.guidedLocked': '{label}——レベル{level}で解放',
-  'practice.meditate.guidedOption': '{label}——{desc}',
+  'practice.meditate.chooseAnother': '別のプラクティスを選ぶ',
   'practice.meditate.spoken.toggle': '音声ガイド',
   'practice.meditate.spoken.unavailable':
     'ここでは音声を利用できません——合図は画面に表示され、やわらかなベルが鳴ります。',

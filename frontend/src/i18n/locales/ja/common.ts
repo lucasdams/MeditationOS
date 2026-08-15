@@ -2,6 +2,7 @@
 // use the natural conventions of Japanese wellness apps (katakana loans where they read better).
 export const common: Record<string, string> = {
   'nav.home': 'ホーム',
+  'nav.quickStart': '開始',
   'nav.practice': 'プラクティス',
   'nav.progress': '進捗',
   'nav.spirit': 'スピリット',

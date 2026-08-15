@@ -1,9 +1,10 @@
 /**
- * Smoke tests for the grouped header navigation: Home + Practice / Progress dropdown menus.
- * Verifies that opening a menu reveals its destinations, that Practice carries the activities
- * (incl. Candle gazing), that Progress carries stats + planning + Settings (the old "More" menu
- * merged in), that Admin is admin-only, and basic a11y (aria-expanded). The Spirit companion is
- * hidden from the UI (dormant) — the header carries no Spirit link and fetches no spirit state.
+ * Smoke tests for the header navigation: Home + Practice link + Philosophers link + Progress menu.
+ * Practice links straight to the all-practices hub (the hub owns the practice list — the nav no
+ * longer duplicates each practice); Philosophers links to the philosopher chat, outside the practice
+ * catalog; Progress carries stats + planning + Settings (the old "More" menu merged in), is the
+ * one collapsible group on mobile, and Admin is admin-only. The Spirit companion is hidden from
+ * the UI (dormant) — the header carries no Spirit link and fetches no spirit state.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -54,29 +55,44 @@ describe('AppHeader — grouped navigation', () => {
     vi.clearAllMocks()
   })
 
-  it('shows Home, a Practice LINK, and a Progress menu (no More, no Spirit link)', () => {
+  it('shows Home, Practice + Philosophers links, and a Progress menu (no More, no Spirit link)', () => {
     renderHeader()
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument()
-    // Practice is a direct link to the all-practices hub on desktop (no desktop dropdown button).
-    expect(screen.getByRole('link', { name: 'Practice' })).toHaveAttribute('href', '/practices')
+    // Practice is a direct link to the all-practices hub. It renders in both the desktop nav and
+    // the mobile sheet (jsdom has no media queries), so there are two — both point at /practices.
+    const practiceLinks = screen.getAllByRole('link', { name: 'Practice' })
+    expect(practiceLinks.length).toBeGreaterThan(0)
+    practiceLinks.forEach((l) => expect(l).toHaveAttribute('href', '/practices'))
+    // Philosophers is its own link to the philosopher chat — outside the practice catalog.
+    screen
+      .getAllByRole('link', { name: 'Philosophers' })
+      .forEach((l) => expect(l).toHaveAttribute('href', '/philosophers'))
     expect(desktopProgressBtn()).toBeInTheDocument()
-    // On mobile the two groups collapse into hamburger-sheet toggle buttons; the only BUTTON
-    // named "Practice" is that mobile group toggle (desktop Practice is a link).
-    expect(screen.getByRole('button', { name: /^Practice$/ })).toHaveClass('nav-mobile-group')
-    // The old "More" junk-drawer menu is gone — its items merged into Practice / Progress.
+    // Practice is a link everywhere now — there is no Practice group toggle button.
+    expect(screen.queryByRole('button', { name: /^Practice$/ })).toBeNull()
+    // The old "More" junk-drawer menu is gone — its items merged into Progress.
     expect(screen.queryByRole('button', { name: /More/ })).toBeNull()
     // The Spirit companion is hidden from the UI — no nav link to /spirit anywhere.
     expect(screen.queryByRole('link', { name: /Spirit/ })).toBeNull()
   })
 
-  it('Practice links straight to the all-practices hub (no dropdown)', () => {
+  it('offers a one-tap quick-start linking into a practice', () => {
     renderHeader()
-    expect(screen.getByRole('link', { name: 'Practice' })).toHaveAttribute('href', '/practices')
+    // The header's "Start" pill jumps into the time-of-day recommended practice (an ungated
+    // /meditate/* or /breathe route). Target varies by hour, so assert the link + a valid href.
+    const start = screen.getByRole('link', { name: /Start/ })
+    expect(start.getAttribute('href')).toMatch(/^\/(meditate|breathe)/)
+  })
+
+  it('Practice links straight to the all-practices hub (no dropdown, no per-practice items)', () => {
+    renderHeader()
+    screen
+      .getAllByRole('link', { name: 'Practice' })
+      .forEach((l) => expect(l).toHaveAttribute('href', '/practices'))
     expect(document.getElementById('nav-practice-dropdown')).toBeNull()
-    // The individual practices are reachable in the mobile hamburger sheet once its
-    // Practice group is expanded (collapsed by default to keep the opened menu compact).
-    fireEvent.click(screen.getByRole('button', { name: /^Practice$/ }))
-    expect(screen.getAllByRole('link', { name: /Meditate/ }).length).toBeGreaterThan(0)
+    // The nav no longer lists individual practices (Meditate/Breathe/…) — the hub owns that list.
+    expect(screen.queryByRole('link', { name: /Meditate/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Breathe/ })).toBeNull()
   })
 
   it('no longer has a separate More menu (merged into Progress)', () => {
@@ -134,23 +150,21 @@ describe('AppHeader — grouped navigation', () => {
     expect(within(document.getElementById('nav-progress-dropdown')!).getByRole('link', { name: /Admin/ })).toHaveAttribute('href', '/admin')
   })
 
-  it('mobile hamburger sheet: Practice / Progress are collapsible group toggles (one open at a time)', () => {
+  it('mobile hamburger sheet: Practice + Philosophers are direct links; Progress is the one collapsible group', () => {
     renderHeader()
-    const practiceGroup = screen.getByRole('button', { name: /^Practice$/ })
+    // Practice + Philosophers are plain links in the sheet — no group toggle button for them.
+    expect(screen.queryByRole('button', { name: /^Practice$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Philosophers$/ })).toBeNull()
     const progressGroup = screen
       .getAllByRole('button', { name: /Progress/ })
       .find((b) => b.classList.contains('nav-mobile-group'))!
     // Collapsed by default so the opened sheet stays compact — no inline group links yet.
-    expect(practiceGroup).toHaveAttribute('aria-expanded', 'false')
+    expect(progressGroup).toHaveAttribute('aria-expanded', 'false')
     expect(document.querySelector('.nav-mobile-group-links')).toBeNull()
-    // Tapping Practice expands its links inline.
-    fireEvent.click(practiceGroup)
-    expect(practiceGroup).toHaveAttribute('aria-expanded', 'true')
-    const links = document.querySelector('.nav-mobile-group-links') as HTMLElement
-    expect(within(links).getByRole('link', { name: /Breathe/ })).toHaveAttribute('href', '/breathe')
-    // Only one group open at a time: tapping Progress collapses Practice and opens Progress.
+    // Tapping Progress expands its links inline.
     fireEvent.click(progressGroup)
-    expect(practiceGroup).toHaveAttribute('aria-expanded', 'false')
     expect(progressGroup).toHaveAttribute('aria-expanded', 'true')
+    const links = document.querySelector('.nav-mobile-group-links') as HTMLElement
+    expect(within(links).getByRole('link', { name: /Analytics/ })).toHaveAttribute('href', '/analytics')
   })
 })

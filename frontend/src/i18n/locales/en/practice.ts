@@ -38,7 +38,7 @@ export const practice: Record<string, string> = {
   'practice.group.sleep.title': 'Sleep',
   'practice.group.sleep.blurb': 'Wind-down practices to ease toward sleep.',
   'practice.group.reflection.title': 'Reflection',
-  'practice.group.reflection.blurb': 'Put the day into words: gratitude and journaling.',
+  'practice.group.reflection.blurb': 'Put the day into words: gratitude, journaling, and prayer.',
 
   // ── Practices hub — card names + descriptions (keyed by route) ───────────
   // Breathing
@@ -77,6 +77,8 @@ export const practice: Record<string, string> = {
   'practice.card.gratitude.desc': "Note what you're grateful for",
   'practice.card.journal.name': 'Journal',
   'practice.card.journal.desc': 'Reflect in writing',
+  'practice.card.prayer.name': 'Prayer',
+  'practice.card.prayer.desc': 'A quiet prayer journal',
 
   // ── Time cues (PRACTICE_META.mins) ───────────────────────────────────────
   'practice.mins.youChoose': 'You choose',
@@ -176,10 +178,7 @@ export const practice: Record<string, string> = {
     'Find a comfortable seat, pick a length below, and press Start when you’re ready.',
   'practice.meditate.phase.beHere': 'Be here',
   'practice.meditate.minSit': '{min} min sit',
-  'practice.meditate.guidedStructure': 'Guided structure',
-  'practice.meditate.guidedNone': 'None (plain timer)',
-  'practice.meditate.guidedLocked': '{label}: Reach level {level} to unlock',
-  'practice.meditate.guidedOption': '{label}: {desc}',
+  'practice.meditate.chooseAnother': 'Choose another practice',
   'practice.meditate.spoken.toggle': 'Spoken guidance',
   'practice.meditate.spoken.unavailable':
     'Voice unavailable here. Cues show on screen with a soft bell.',

@@ -3,6 +3,7 @@
 export const common: Record<string, string> = {
   // Brand + top-level nav
   'nav.home': 'Home',
+  'nav.quickStart': 'Start',
   'nav.practice': 'Practice',
   'nav.progress': 'Progress',
   'nav.spirit': 'Spirit',
