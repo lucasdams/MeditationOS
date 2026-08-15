@@ -240,7 +240,15 @@ export default function AppHeader() {
         {/* Quick-start — the primary one-tap action: jumps straight into the time-of-day
             recommended practice. The full recommendation copy rides along as the title/tooltip so
             "Start" isn't opaque. Sits inside .app-nav so on mobile it leads the hamburger sheet. */}
-        <NavLink to={quickStart.to} className="nav-quick-start" title={t(quickStart.cta)}>
+        {/* aria-label carries the full recommendation to screen readers / voice control (the title
+            tooltip is hover-only, so touch + SR users would otherwise get just the opaque "Start").
+            It keeps the visible "Start" as a prefix so the accessible name still contains the label. */}
+        <NavLink
+          to={quickStart.to}
+          className="nav-quick-start"
+          title={t(quickStart.cta)}
+          aria-label={`${t('nav.quickStart')}: ${t(quickStart.cta)}`}
+        >
           <Play size={16} strokeWidth={2} aria-hidden="true" />
           <span className="nav-menu-btn-label">{t('nav.quickStart')}</span>
         </NavLink>

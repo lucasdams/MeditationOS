@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Brain, Sparkle } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { track } from '../lib/analytics'
@@ -1035,4 +1035,14 @@ export default function MeditatePage() {
       )}
     </main>
   )
+}
+
+// Route wrapper that REMOUNTS the player whenever the meditate URL changes. guidedChoice is derived
+// from the URL, but React reuses the MeditatePage instance across param changes, so without this a
+// mid-sit navigation (e.g. the header quick-start, or back/forward between practices) would swap the
+// cue script under a still-running timer. Keying by the full location starts a clean sit instead,
+// and covers both the /meditate/<id> path and the legacy ?guided= query.
+export function MeditateRoute() {
+  const location = useLocation()
+  return <MeditatePage key={location.pathname + location.search} />
 }
