@@ -9118,6 +9118,7 @@ details[open] .meditate-disclosure-summary::before {
 .session-intention-locked-icon {
   color: var(--accent);
   font-style: normal;
+  vertical-align: -0.15em; /* seat the inline lucide icon on the italic text baseline */
 }
 
 /* Phase label variant when an intention is set. */

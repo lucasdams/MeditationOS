@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Brain } from 'lucide-react'
+import { Brain, Sparkle } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { track } from '../lib/analytics'
 import { dashboardService } from '../services/dashboard'
@@ -762,6 +762,10 @@ export default function MeditatePage() {
           Wrapped in a flex column so every block keeps one even vertical rhythm;
           the wrapper's `gap` owns the spacing (inner block margins are zeroed in CSS). */}
       <div className="meditate-setup">
+      {/* Length + guidance are locked once the sit begins, so they recede during it —
+          the screen stays the orb, timer, and controls. Sound (below) stays adjustable. */}
+      {!started && (
+        <>
       <div className="meditate-setup-field">
         <label>{t('practice.duration.label')}</label>
         <Stepper
@@ -795,6 +799,8 @@ export default function MeditatePage() {
         </select>
 
       </div>
+        </>
+      )}
 
       {/* Session prep — the optional intention + pre-session reading, folded behind ONE quiet
           disclosure so the visible setup stays Duration → Guidance → Start. Hidden once the sit
@@ -928,7 +934,7 @@ export default function MeditatePage() {
       {/* Show the locked-in intention quietly during the sit. */}
       {started && intention.trim() && (
         <p className="session-intention-locked" aria-label={t('practice.meditate.intentionAria')}>
-          <span className="session-intention-locked-icon" aria-hidden="true">✦</span>{' '}
+          <Sparkle size={14} className="session-intention-locked-icon" aria-hidden="true" />{' '}
           {intention.trim()}
         </p>
       )}
