@@ -59,12 +59,12 @@ export default function MoodCheckin({ heading, initial = null, onLogged }: Props
             onClick={() => pick(m.mood)}
             disabled={saving !== null}
             aria-pressed={logged === m.mood}
-            title={m.label}
+            title={t(`mood.${m.mood}`)}
           >
             <span className="mood-emoji" aria-hidden="true">
               {m.emoji}
             </span>
-            <span className="mood-name">{m.label}</span>
+            <span className="mood-name">{t(`mood.${m.mood}`)}</span>
           </button>
         ))}
       </div>

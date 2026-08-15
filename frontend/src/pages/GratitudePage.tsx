@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HandHeart } from 'lucide-react'
+import { HandHeart, MoreHorizontal } from 'lucide-react'
 import { gratitudeService } from '../services/gratitude'
 import { dashboardService } from '../services/dashboard'
 import { track } from '../lib/analytics'
@@ -414,7 +414,7 @@ export default function GratitudePage() {
                       aria-controls={`menu-${e.id}`}
                       onClick={() => setMenuId(menuId === e.id ? null : e.id)}
                     >
-                      ⋯
+                      <MoreHorizontal size={18} aria-hidden="true" />
                     </button>
                   </span>
                 </div>

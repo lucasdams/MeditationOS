@@ -18,10 +18,12 @@ import type {
 
 // Trend window: recent weeks of readings feed the heart-rate (and HRV) chart.
 const TREND_DAYS = 84 // ~12 weeks
-const HR_COLOR = '#ef4444' // warm red for heart rate
-const HRV_COLOR = '#10b981' // green for HRV (higher generally = more recovered)
-const CALM_COLOR = '#06b6d4' // cyan for calm (matches the calm mood colour)
-const FOCUS_COLOR = '#f59e0b' // amber for focus
+// Chart-series colours come from theme tokens (index.css) so they re-cool on the dark
+// canvas rather than glowing pure red/green over slate.
+const HR_COLOR = 'var(--chart-hr)' // warm red for heart rate
+const HRV_COLOR = 'var(--chart-hrv)' // green for HRV (higher generally = more recovered)
+const CALM_COLOR = 'var(--chart-calm)' // cyan for calm (matches the calm mood colour)
+const FOCUS_COLOR = 'var(--chart-focus)' // amber for focus
 
 // Analytics-local label maps as i18n keys — resolved at render via translate() so a
 // locale switch re-labels the charts. The backend sends plain strings for types; an
@@ -68,7 +70,7 @@ function Bar({
   value,
   max,
   suffix = '',
-  color = '#6a5cff',
+  color = 'var(--accent)',
 }: {
   label: string
   value: number
@@ -649,7 +651,7 @@ export default function AnalyticsPage() {
                   return data.moods.map((m, i) => (
                     <Bar
                       key={m.mood}
-                      label={cap(m.mood)}
+                      label={t(`mood.${m.mood}`)}
                       value={m.count}
                       max={max}
                       color={moodColors[m.mood] ?? PALETTE[i % PALETTE.length]}
@@ -682,7 +684,7 @@ export default function AnalyticsPage() {
                       {data.mood_by_week.map((w) => {
                         const breakdown = present
                           .filter((m) => w.counts[m])
-                          .map((m) => `${cap(m)}: ${w.counts[m]}`)
+                          .map((m) => `${t(`mood.${m}`)}: ${w.counts[m]}`)
                           .join(', ')
                         return (
                           <li key={w.week_start}>{w.week_start}: {breakdown || t('tracking.analytics.noEntries')}</li>
@@ -704,7 +706,7 @@ export default function AnalyticsPage() {
                                   className="mood-seg"
                                   style={{
                                     height: `${(w.counts[m] / maxTotal) * 100}%`,
-                                    background: moodColors[m] ?? '#94a3b8',
+                                    background: moodColors[m] ?? 'var(--text-muted)',
                                   }}
                                 />
                               ) : null,
@@ -722,9 +724,9 @@ export default function AnalyticsPage() {
                         <span key={m} className="mood-legend-item">
                           <span
                             className="mood-legend-dot"
-                            style={{ background: moodColors[m] ?? '#94a3b8' }}
+                            style={{ background: moodColors[m] ?? 'var(--text-muted)' }}
                           />
-                          {cap(m)}
+                          {t(`mood.${m}`)}
                         </span>
                       ))}
                     </div>

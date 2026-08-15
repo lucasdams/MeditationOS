@@ -46,14 +46,14 @@ export default function ReflectionMood({
             type="button"
             className={`selectable mood-chip${selected ? ' selected' : ''}`}
             aria-pressed={selected}
-            title={meta.label}
+            title={t(`mood.${mood}`)}
             // Re-tapping the selected mood clears it — keeps the step skippable.
             onClick={() => onChange(selected ? null : mood)}
           >
             <span className="mood-emoji" aria-hidden="true">
               {meta.emoji}
             </span>
-            <span className="mood-name">{meta.label}</span>
+            <span className="mood-name">{t(`mood.${mood}`)}</span>
           </button>
         )
       })}

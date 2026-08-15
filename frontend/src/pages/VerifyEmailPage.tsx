@@ -4,6 +4,7 @@ import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { ErrorBanner } from '../components/StateViews'
+import AuthBrand from '../components/AuthBrand'
 import { useT } from '../i18n'
 
 type Status = 'verifying' | 'ok' | 'error' | 'missing'
@@ -62,6 +63,7 @@ export default function VerifyEmailPage() {
 
   return (
     <main className="auth-card">
+      <AuthBrand />
       <h1>{t('auth.verify.title')}</h1>
 
       {status === 'verifying' && <p>{t('auth.verify.verifying')}</p>}

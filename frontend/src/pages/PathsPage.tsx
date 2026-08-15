@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarRange, CircleCheck, ChevronRight } from 'lucide-react'
+import { ArrowRight, CalendarRange, Circle, CircleCheck, ChevronRight } from 'lucide-react'
 import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import { ACTIVITY_META, type Activity } from '../lib/colors'
@@ -42,14 +42,20 @@ function PathDayRow({ day }: { day: PathDay }) {
   return (
     <li className={`path-day path-day--${day.status}`}>
       <span className="path-day-marker" aria-hidden="true">
-        {day.status === 'done' ? '✓' : day.status === 'current' ? '▸' : '·'}
+        {day.status === 'done' ? (
+          <CircleCheck size={15} strokeWidth={2} />
+        ) : day.status === 'current' ? (
+          <ChevronRight size={16} strokeWidth={2.5} />
+        ) : (
+          <Circle size={7} strokeWidth={2} />
+        )}
       </span>
       <div className="path-day-body">
         <p className="path-day-head">
           <span className="path-day-num">{dayLabel(day)}</span>
           <span className="path-day-title">{day.title}</span>
           <span className="path-day-practice">
-            <PracticeIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {meta.label} · {minutes}
+            <PracticeIcon size={16} strokeWidth={1.75} aria-hidden="true" /> {translate(`activity.${day.practice}`)} · {minutes}
           </span>
         </p>
 

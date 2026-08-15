@@ -107,6 +107,13 @@
   /* Bar track (progress bars) */
   --bar-track: #e6e8f1;
 
+  /* Analytics chart series. Defined as tokens so the saturated hues can re-cool on the
+     dark canvas (see the dark blocks) instead of glowing pure red/green over slate. */
+  --chart-hr: #ef4444;
+  --chart-hrv: #10b981;
+  --chart-calm: #06b6d4;
+  --chart-focus: #f59e0b;
+
   /* Level card — soft indigo panel (gamified "level" surface). */
   --level-card-from: #eeedff;
   --level-card-to: #f3f3ff;
@@ -223,6 +230,8 @@
     radial-gradient(900px 640px at 50% -10%, rgba(124, 124, 255, 0.16), transparent 60%),
     radial-gradient(700px 520px at 85% 6%, rgba(34, 211, 238, 0.10), transparent 58%),
     linear-gradient(180deg, #0e1018 0%, #12141f 100%);
+  /* Deep base so overscroll never flashes white (see :root note above). */
+  background-color: #0e1018;
   --sky-top: 10%;
   --sky-bottom: 7%;
 
@@ -320,6 +329,12 @@
   /* Bar track */
   --bar-track: #232838;
 
+  /* Chart series, softened for the dark surface (align with --success-text / --streak-accent). */
+  --chart-hr: #f87171;
+  --chart-hrv: #34d399;
+  --chart-calm: #22d3ee;
+  --chart-focus: #fbbf24;
+
   /* Level card — deep indigo panel (mirrors the dark .level-card override). */
   --level-card-from: #1c1f3a;
   --level-card-to: #1d2138;
@@ -383,6 +398,8 @@
       radial-gradient(900px 640px at 50% -10%, rgba(124, 124, 255, 0.16), transparent 60%),
       radial-gradient(700px 520px at 85% 6%, rgba(34, 211, 238, 0.10), transparent 58%),
       linear-gradient(180deg, #0e1018 0%, #12141f 100%);
+    /* Deep base so overscroll never flashes white (see :root note above). */
+    background-color: #0e1018;
     --season-hue: 232;
     --season-sat: 22%;
     --sky-top: 10%;
@@ -445,6 +462,10 @@
     --nav-more-text: #a6acc4;
     --surface-analytics: #171a26;
     --bar-track: #232838;
+    --chart-hr: #f87171;
+    --chart-hrv: #34d399;
+    --chart-calm: #22d3ee;
+    --chart-focus: #fbbf24;
     --level-card-from: #1c1f3a;
     --level-card-to: #1d2138;
     --level-card-border: #2e3066;
@@ -499,6 +520,11 @@
     radial-gradient(900px 620px at 50% -8%, rgba(106, 92, 255, 0.11), transparent 64%),
     radial-gradient(720px 520px at 88% 4%, rgba(56, 189, 248, 0.08), transparent 60%),
     linear-gradient(180deg, #fbfcff 0%, #f3f5fc 100%);
+  /* Base canvas colour behind the fixed gradient: with background-attachment:fixed the
+     gradient doesn't paint the rubber-band/overscroll region, so without this the canvas
+     falls back to the browser default (a white flash in dark mode, black in some hosts).
+     Pinning the gradient's base tone keeps overscroll seamless in every browser. */
+  background-color: #f3f5fc;
   background-attachment: fixed;
   transition: background 1.5s ease;
 
@@ -1560,6 +1586,13 @@ a:hover { color: var(--accent-hover); }
   color: transparent;
 }
 
+/* Keep the heading's closing fragment from breaking mid-word. Matters most for CJK
+   (Japanese allows a line break between any two characters), where without this the
+   word 「瞑想」 could split across lines; harmless for the Latin "." it wraps in English. */
+.landing-hero-end {
+  white-space: nowrap;
+}
+
 .landing-tagline {
   max-width: 38rem;
   margin: 0 auto 1.75rem;
@@ -2419,14 +2452,16 @@ a:hover { color: var(--accent-hover); }
   gap: 0.75rem;
 }
 
-/* Quiet "⋯" toggle — edit/delete stay hidden behind it so they're not a prominent
-   default on every entry. */
+/* Quiet actions toggle (lucide MoreHorizontal) — edit/delete stay hidden behind it so
+   they're not a prominent default on every entry. */
 .journal-entry-menu {
   margin: 0;
   width: auto;
-  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.4rem;
   line-height: 1;
-  font-size: var(--text-lg);
   background: none;
   border: none;
   border-radius: var(--radius-control);
@@ -2834,6 +2869,29 @@ textarea {
 
 textarea {
   resize: vertical;
+}
+
+/* Replace the native OS dropdown arrow with a design-system chevron so <select>
+   reads as part of the app rather than a raw browser control. appearance:none drops
+   the native affordance; the inline-SVG chevron (muted grey, legible on both the
+   light and dark input surfaces) is drawn in its place with room reserved on the
+   right. Scoped to single selects so a rare list-box (multiple) keeps its native UI. */
+select:not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 2.1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a90a6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.72rem center;
+  background-size: 1rem;
+}
+
+/* Tint native checkboxes/radios to the brand accent instead of the OS default (a stock
+   blue that clashes with the violet system). accent-color keeps the accessible native
+   control and behaviour — no custom box needed — while matching the design system. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
 }
 
 small {
@@ -3313,6 +3371,7 @@ button.today-action:disabled {
 }
 .path-day {
   display: flex;
+  align-items: flex-start;
   gap: 0.7rem;
   padding: 0.7rem 0;
   border-top: 1px solid var(--border-light);
@@ -3322,9 +3381,11 @@ button.today-action:disabled {
 }
 .path-day-marker {
   flex: 0 0 1.2rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.5rem; /* match the head line so the icon seats against the first row */
   color: var(--text-muted);
-  line-height: 1.5;
 }
 .path-day-body {
   flex: 1 1 auto;
@@ -7597,6 +7658,7 @@ button.today-action:disabled {
 .timeline-intention-icon {
   color: var(--accent);
   font-style: normal;
+  vertical-align: -0.15em; /* seat the inline lucide icon on the italic text baseline */
 }
 
 /* The focus / calm self-ratings read-out — small pills set apart by a gap. */
@@ -8438,7 +8500,8 @@ details[open] .meditate-disclosure-summary::before {
 .stepper {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.75rem;
   margin: 0.35rem 0 1rem;
 }
 
@@ -8479,8 +8542,10 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .stepper-value {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 6.5rem;
   text-align: center;
+  font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
@@ -10804,6 +10869,8 @@ details[open] .meditate-disclosure-summary::before {
 .admin-feedback-msg {
   margin: 0;
   white-space: pre-wrap;
+}
+
 /* ── Chat with a philosopher ──────────────────────────────────────────────────
    The picker reuses .practices-grid + .practice-card; only the small deltas below are
    new (the card is a <button> here, and carries a tradition line). The chat view is a

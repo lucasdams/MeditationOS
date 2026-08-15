@@ -133,4 +133,42 @@ export const home: Record<string, string> = {
   'home.reading.eyebrow': 'Daily reading',
   'home.reading.cite': 'by {attribution}',
   'home.reading.reflect': 'Reflect on this',
+
+  // Daily greeting shown under the dashboard title (lib/zen.ts picks one per day).
+  'home.greeting.0': 'Namaste',
+  'home.greeting.1': 'Welcome back — breathe easy',
+  'home.greeting.2': 'Your cushion missed you',
+  'home.greeting.3': 'One breath at a time',
+  'home.greeting.4': 'The present moment says hi',
+  'home.greeting.5': 'Be here now',
+  'home.greeting.6': 'Inhale calm, exhale hustle',
+  'home.greeting.7': 'Soft mind, steady heart',
+  'home.greeting.8': 'A little stillness goes a long way',
+  'home.greeting.9': 'Wherever you go, there you are',
+  'home.greeting.10': 'Showing up today rewires you a little',
+  'home.greeting.11': 'Build the habit, one breath at a time',
+
+  // Mindful stand-ins for a bare "Loading…" (lib/zen.ts).
+  'home.loading.0': 'Finding your center…',
+  'home.loading.1': 'Inhale… exhale…',
+  'home.loading.2': 'Gathering your calm…',
+  'home.loading.3': 'Settling the dust…',
+  'home.loading.4': 'Returning to the breath…',
+  'home.loading.5': 'A mindful moment…',
+
+  // Recommended-practice hero (lib/recommendation.ts) — CTA + one-line reason.
+  'home.recommend.morning.cta': 'Start clear with focused attention',
+  'home.recommend.morning.blurb': 'A steady way into the morning.',
+  'home.recommend.afternoon.cta': 'Take a slow minute to breathe',
+  'home.recommend.afternoon.blurb': 'A small reset for the middle of the day.',
+  'home.recommend.evening.cta': 'Wind down with Yoga Nidra',
+  'home.recommend.evening.blurb': 'A deep rest for the evening.',
+  'home.recommend.night.cta': 'Ease toward sleep with Yoga Nidra',
+  'home.recommend.night.blurb': 'Let the day soften.',
+  'home.recommend.joyful.cta': 'Warm the heart with loving-kindness',
+  'home.recommend.joyful.blurb': 'A little more joy would round things out.',
+  'home.recommend.rested.cta': 'Settle with a body scan',
+  'home.recommend.rested.blurb': 'A little rest would round things out.',
+  'home.recommend.nourished.cta': 'Steady yourself with focused attention',
+  'home.recommend.nourished.blurb': 'A grounding practice to round things out.',
 }

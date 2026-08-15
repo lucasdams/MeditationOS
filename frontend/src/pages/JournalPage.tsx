@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, HandHeart, NotebookPen, Sparkles } from 'lucide-react'
+import { Brain, HandHeart, MoreHorizontal, NotebookPen, Sparkles } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { track } from '../lib/analytics'
@@ -577,7 +577,7 @@ export default function JournalPage() {
                 style={active ? { ['--pill' as any]: MOOD_COLORS[m] } : undefined}
                 onClick={() => setMoodFilter(active ? '' : m)}
               >
-                <span aria-hidden="true">{MOOD_META[m].emoji}</span> {MOOD_META[m].label}
+                <span aria-hidden="true">{MOOD_META[m].emoji}</span> {t(`mood.${m}`)}
               </button>
             )
           })}
@@ -599,7 +599,7 @@ export default function JournalPage() {
               ? t('tracking.journal.noMatch', {
                   criteria: [
                     query && `“${query}”`,
-                    moodFilter && t('tracking.journal.noMatchMood', { label: MOOD_META[moodFilter].label }),
+                    moodFilter && t('tracking.journal.noMatchMood', { label: t(`mood.${moodFilter}`) }),
                   ]
                     .filter(Boolean)
                     .join(' · '),
@@ -661,7 +661,7 @@ export default function JournalPage() {
                       aria-controls={`menu-${j.id}`}
                       onClick={() => setMenuId(menuId === j.id ? null : j.id)}
                     >
-                      ⋯
+                      <MoreHorizontal size={18} aria-hidden="true" />
                     </button>
                   </span>
                 )}

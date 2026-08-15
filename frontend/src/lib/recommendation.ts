@@ -10,9 +10,9 @@
 import type { SpiritNeedKey } from '../types'
 
 export interface Recommendation {
-  /** An inviting call-to-action for the hero button (a full phrase, not a bare label). */
+  /** i18n key for the hero button's call-to-action (resolved with t() at render). */
   cta: string
-  /** A short, gentle reason shown beneath the button. */
+  /** i18n key for the short, gentle reason shown beneath the button. */
   blurb: string
   /** Deep link to the practice (mirrors the Practices-hub hrefs; all ungated). */
   to: string
@@ -31,24 +31,24 @@ export function slotForHour(hour: number): Slot {
 // The time-of-day fallback — used when the companion's balance is even (or it has no path yet).
 const BY_TIME: Record<Slot, Recommendation> = {
   morning: {
-    cta: 'Start clear with focused attention',
-    blurb: 'A steady way into the morning.',
+    cta: 'home.recommend.morning.cta',
+    blurb: 'home.recommend.morning.blurb',
     to: '/meditate?guided=focus',
   },
   // Afternoon keeps the app's long-standing default breathe invite.
   afternoon: {
-    cta: 'Take a slow minute to breathe',
-    blurb: 'A small reset for the middle of the day.',
+    cta: 'home.recommend.afternoon.cta',
+    blurb: 'home.recommend.afternoon.blurb',
     to: '/breathe',
   },
   evening: {
-    cta: 'Wind down with Yoga Nidra',
-    blurb: 'A deep rest for the evening.',
+    cta: 'home.recommend.evening.cta',
+    blurb: 'home.recommend.evening.blurb',
     to: '/meditate?guided=yoga-nidra',
   },
   night: {
-    cta: 'Ease toward sleep with Yoga Nidra',
-    blurb: 'Let the day soften.',
+    cta: 'home.recommend.night.cta',
+    blurb: 'home.recommend.night.blurb',
     to: '/meditate?guided=yoga-nidra',
   },
 }
@@ -57,18 +57,18 @@ const BY_TIME: Record<Slot, Recommendation> = {
 // ungated pick that "rounds it out" (matching the ADR-0032 balance language).
 const BY_FACET: Record<SpiritNeedKey, Recommendation> = {
   joyful: {
-    cta: 'Warm the heart with loving-kindness',
-    blurb: 'A little more joy would round things out.',
+    cta: 'home.recommend.joyful.cta',
+    blurb: 'home.recommend.joyful.blurb',
     to: '/meditate?guided=loving-kindness',
   },
   rested: {
-    cta: 'Settle with a body scan',
-    blurb: 'A little rest would round things out.',
+    cta: 'home.recommend.rested.cta',
+    blurb: 'home.recommend.rested.blurb',
     to: '/meditate?guided=body-scan',
   },
   nourished: {
-    cta: 'Steady yourself with focused attention',
-    blurb: 'A grounding practice to round things out.',
+    cta: 'home.recommend.nourished.cta',
+    blurb: 'home.recommend.nourished.blurb',
     to: '/meditate?guided=focus',
   },
 }

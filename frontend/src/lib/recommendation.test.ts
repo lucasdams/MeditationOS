@@ -24,7 +24,8 @@ describe('recommendedPractice', () => {
 
   it('keeps the long-standing breathe invite for the afternoon default', () => {
     const rec = recommendedPractice({ hour: 14, facet: null })
-    expect(rec.cta).toMatch(/take a slow minute to breathe/i)
+    // cta/blurb are i18n keys (resolved with t() at render); assert the key + link.
+    expect(rec.cta).toBe('home.recommend.afternoon.cta')
     expect(rec.to).toBe('/breathe')
   })
 

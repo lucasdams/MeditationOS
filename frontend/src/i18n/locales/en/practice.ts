@@ -358,4 +358,14 @@ export const practice: Record<string, string> = {
   'practice.breathingInfo.how5': 'Start with a few minutes and build up over time.',
   'practice.breathingInfo.disclaimer':
     'General wellness guidance, not medical advice. Ease off or stop if you feel light-headed, and check with a clinician first if you have a heart or respiratory condition.',
+
+  // Breathing pattern picker (names + one-line hints; lib/breathPattern.ts PRESETS, resolved by key).
+  'practice.breathe.preset.resonance.name': 'Resonance',
+  'practice.breathe.preset.resonance.hint': 'Longer exhale, at your pace',
+  'practice.breathe.preset.box.name': 'Box',
+  'practice.breathe.preset.box.hint': 'Equal in · hold · out · hold',
+  'practice.breathe.preset.energizing.name': 'Energizing',
+  'practice.breathe.preset.energizing.hint': 'Active inhale, brisk pace',
+  'practice.breathe.preset.alternate.name': 'Alternate nostril',
+  'practice.breathe.preset.alternate.hint': 'Nadi Shodhana — switch nostrils each round',
 }
