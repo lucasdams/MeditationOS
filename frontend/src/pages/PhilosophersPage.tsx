@@ -242,9 +242,9 @@ export default function PhilosophersPage() {
                     </span>
                     <span className="practice-card-body">
                       <span className="practice-card-name">{p.name}</span>
-                      <span className="philo-card-tradition">
-                        {p.tradition}
-                        {meta.era && <span className="philo-card-era"> · {meta.era}</span>}
+                      <span className="philo-card-meta">
+                        <span className="philo-card-tradition">{p.tradition}</span>
+                        {meta.era && <span className="philo-card-era">{meta.era}</span>}
                       </span>
                       <span className="practice-card-desc">{p.blurb}</span>
                     </span>
@@ -329,9 +329,12 @@ export default function PhilosophersPage() {
         ['--card-fill-dark' as string]: meta.dark,
       }}
     >
-      {/* A large, faint, accent-tinted emblem of the guide floating behind the conversation —
-          gives each chat a sense of place. Decorative only (aria-hidden), doesn't scroll. */}
-      <Icon className="philo-emblem" aria-hidden="true" size={320} strokeWidth={0.6} />
+      {/* A faint, accent-tinted emblem of the guide bleeding off the top-right corner — a quiet
+          watermark that gives each chat a sense of place. Clipped by its own wrapper (never the
+          page container) and confined to the header zone so it stays clear of the reading text. */}
+      <span className="philo-emblem-wrap" aria-hidden="true">
+        <Icon className="philo-emblem" size={300} strokeWidth={0.7} />
+      </span>
 
       <button type="button" className="back-link philo-back" onClick={backToPicker}>
         <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> {t('philosophers.change')}
