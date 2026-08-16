@@ -7,6 +7,7 @@ import { ApiError } from '../services/api'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { philosopherMeta } from '../lib/philosopherMeta'
+import { useAuth } from '../context/AuthContext'
 import { useT } from '../i18n'
 import type { PhilosopherChatSummary, PhilosopherSummary, PhilosopherTurn } from '../types'
 
@@ -14,10 +15,15 @@ import type { PhilosopherChatSummary, PhilosopherSummary, PhilosopherTurn } from
 // before the request rather than surfacing a 422.
 const MAX_LEN = 4000
 
-type Notice = { kind: 'error' | 'cap' | 'guest' } | null
+// 'guestCap' — a guest hit their small trial cap (429); nudge toward a free account.
+// 'guest' — the (rare) hard block if a deployment gates the whole feature behind a saved
+// account; kept as a defensive fallback.
+type Notice = { kind: 'error' | 'cap' | 'guest' | 'guestCap' } | null
 
 export default function PhilosophersPage() {
   const { t } = useT()
+  const { user } = useAuth()
+  const isGuest = user?.is_guest ?? false
   const [searchParams] = useSearchParams()
   const [personas, setPersonas] = useState<PhilosopherSummary[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -164,8 +170,10 @@ export default function PhilosophersPage() {
       setMessages((prev) => prev.slice(0, -1))
       setInput(text)
       if (err instanceof ApiError && err.status === 429) {
+        // A guest hit their small trial cap → nudge toward a free account; a saved account
+        // hit the daily cap → the ordinary "enough for today" note.
         setCapHit(true)
-        setNotice({ kind: 'cap' })
+        setNotice({ kind: isGuest ? 'guestCap' : 'cap' })
       } else if (err instanceof ApiError && err.status === 403) {
         // Guest account — chatting is for saved accounts. Gentle note, no retry.
         setGuestBlocked(true)
@@ -406,11 +414,18 @@ export default function PhilosophersPage() {
 
       {notice && (
         <p className="philo-notice" role="status">
-          {notice.kind === 'cap'
-            ? t('philosophers.capReached')
-            : notice.kind === 'guest'
-              ? t('philosophers.guestBlocked')
-              : t('philosophers.error')}
+          {notice.kind === 'cap' ? (
+            t('philosophers.capReached')
+          ) : notice.kind === 'guestCap' ? (
+            <>
+              {t('philosophers.guestCapReached')}{' '}
+              <Link to="/register">{t('philosophers.createAccount')}</Link>
+            </>
+          ) : notice.kind === 'guest' ? (
+            t('philosophers.guestBlocked')
+          ) : (
+            t('philosophers.error')
+          )}
         </p>
       )}
 
@@ -436,6 +451,15 @@ export default function PhilosophersPage() {
           {sending ? t('philosophers.sending') : t('philosophers.send')}
         </button>
       </div>
+
+      {/* Gentle heads-up for guests so the trial cap isn't a surprise later — a quiet line,
+          not a wall. Hidden once the cap note is showing (it carries the same sign-up link). */}
+      {isGuest && !capHit && !guestBlocked && (
+        <p className="philo-guest-note muted">
+          {t('philosophers.guestNote')}{' '}
+          <Link to="/register">{t('philosophers.createAccount')}</Link>
+        </p>
+      )}
     </main>
   )
 }

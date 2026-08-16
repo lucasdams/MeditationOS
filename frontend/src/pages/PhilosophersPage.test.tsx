@@ -31,6 +31,9 @@ vi.mock('../services/dashboard', () => ({
   },
 }))
 
+const useAuthMock = vi.fn()
+vi.mock('../context/AuthContext', () => ({ useAuth: () => useAuthMock() }))
+
 import PhilosophersPage from './PhilosophersPage'
 import { ApiError } from '../services/api'
 
@@ -70,6 +73,8 @@ beforeEach(() => {
   deleteConversation.mockReset().mockResolvedValue(undefined)
   // Default: no practice today, so only the persona's own openers show.
   getStats.mockReset().mockResolvedValue({ today_minutes: 0 })
+  // Default: a saved (non-guest) account.
+  useAuthMock.mockReset().mockReturnValue({ user: { is_guest: false } })
 })
 
 afterEach(cleanup)
@@ -207,6 +212,32 @@ describe('PhilosophersPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send/ }))
 
     await screen.findByText('Save your account to chat with a guide.')
+    expect(screen.getByLabelText('Your message')).toBeDisabled()
+  })
+
+  it('shows a guest a gentle heads-up with a sign-up link (no upfront wall)', async () => {
+    useAuthMock.mockReturnValue({ user: { is_guest: true } })
+    await openChat()
+    // The composer is usable (guests get a trial), and a quiet note points to signing up.
+    expect(screen.getByLabelText('Your message')).not.toBeDisabled()
+    expect(screen.getByText(/reflecting as a guest/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Create a free account' })).toHaveAttribute(
+      'href',
+      '/register',
+    )
+  })
+
+  it('nudges a guest toward an account when the trial cap is hit (429)', async () => {
+    useAuthMock.mockReturnValue({ user: { is_guest: true } })
+    chatPersona.mockRejectedValue(new ApiError(429, 'Guest limit'))
+    await openChat()
+    fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'hello' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send/ }))
+    await screen.findByText(/guest limit for today/i)
+    expect(screen.getByRole('link', { name: 'Create a free account' })).toHaveAttribute(
+      'href',
+      '/register',
+    )
     expect(screen.getByLabelText('Your message')).toBeDisabled()
   })
 

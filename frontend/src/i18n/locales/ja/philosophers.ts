@@ -37,4 +37,7 @@ export const philosophers: Record<string, string> = {
   'philosophers.error': 'うまく送信できませんでした。もう一度お試しください。',
   'philosophers.capReached': '今日はここまでにしましょう。また明日どうぞ。',
   'philosophers.guestBlocked': 'ガイドとチャットするにはアカウントを保存してください。',
+  'philosophers.guestNote': 'ゲストとして体験中です——お試しで数回メッセージを送れます。',
+  'philosophers.guestCapReached': '本日のゲスト利用はここまでです。',
+  'philosophers.createAccount': '無料アカウントを作成',
 }

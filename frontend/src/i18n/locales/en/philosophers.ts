@@ -40,4 +40,8 @@ export const philosophers: Record<string, string> = {
   'philosophers.error': 'That didn’t go through. Try again.',
   'philosophers.capReached': 'That’s enough reflection for today. Come back tomorrow.',
   'philosophers.guestBlocked': 'Save your account to chat with a guide.',
+  // Guest trial — a gentle upfront note, and the sign-up nudge once the small cap is reached.
+  'philosophers.guestNote': 'You’re reflecting as a guest — a few messages to try it out.',
+  'philosophers.guestCapReached': 'That’s the guest limit for today.',
+  'philosophers.createAccount': 'Create a free account',
 }

@@ -99,7 +99,7 @@ def chat(
     The client sends the full (bounded) history each turn; the reply is appended to the saved
     conversation named by `data.chat_id` (created when absent) and its id returned.
 
-    GuestNotAllowedError → 403 and DailyLimitError → 429 are mapped app-wide (see app/main.py);
+    DailyLimitError → 429 (guests get a smaller trial cap) is mapped app-wide (see app/main.py);
     an unknown persona, or a chat_id the caller doesn't own, is a 404 here.
     """
     try:

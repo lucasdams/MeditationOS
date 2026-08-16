@@ -5,13 +5,13 @@ service picks the persona, enforces the safety/cost guards, calls the shared pro
 agnostic LLM seam (`llm_client.chat`) — degrading to a gentle in-character fallback line,
 never raising on an LLM failure — and PERSISTS the exchange to a saved conversation
 (`philosopher_chats`) so it can be reopened later. It raises the domain errors (404 unknown
-persona / unowned chat, 403 guest, 429 daily cap) so the route maps them to HTTP.
+persona / unowned chat, 429 daily cap) so the route maps them to HTTP.
 
 Cost/abuse guards:
-- Guests are blocked (each guest account is minted freely, and every message is a paid
-  LLM call — an unguarded guest is a cost loop). Mirrors the reflection coach.
+- A per-user daily message cap (429). Guests get a much SMALLER trial cap (they can try the
+  feature without signing up, but each message is a paid LLM call and guest accounts are
+  minted freely, so their allowance is small). See `_enforce_daily_message_cap`.
 - History is truncated to the last few turns before the model call (input-token cap).
-- A per-user daily message cap (429). See `_enforce_daily_message_cap`.
 
 Logging is metadata only — persona id, model, prompt version, ok/fallback. The
 conversation content is never logged (.claude/rules/ai-product.md).
@@ -27,7 +27,6 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.core.exceptions import (
     DailyLimitError,
-    GuestNotAllowedError,
     PhilosopherChatNotFoundError,
     PhilosopherNotFoundError,
 )
@@ -65,6 +64,13 @@ MAX_REPLY_LEN = 2000
 # spend/abuse per account. Kept comfortably above ordinary reflective use.
 DAILY_MESSAGE_CAP = 30
 
+# Guests get a small TRIAL of the feature rather than a hard block, so a visitor can
+# experience it without signing up. A much lower ceiling than the saved-account cap, since
+# guest accounts are minted freely — the trial is bounded per guest (and the per-IP
+# guest-creation + write rate limits bound how many guests can be minted). The frontend
+# nudges toward a free account when this is reached.
+GUEST_DAILY_MESSAGE_CAP = 5
+
 # A gentle, persona-neutral line returned when the model is unavailable or its output is
 # empty — reads well in any tradition's voice.
 FALLBACK_REPLY = "Let us pause a moment and return to this shortly."
@@ -89,13 +95,15 @@ def _local_day_key(user: User) -> str:
 
 def _enforce_daily_message_cap(user: User) -> None:
     """Count one message against the user's daily allowance, raising DailyLimitError
-    (→ 429) once the cap is reached. Resets when the user's local day changes."""
+    (→ 429) once the cap is reached. Guests get the smaller trial cap. Resets when the
+    user's local day changes."""
+    cap = GUEST_DAILY_MESSAGE_CAP if user.is_guest else DAILY_MESSAGE_CAP
     today = _local_day_key(user)
     with _daily_lock:
         day, count = _daily_counts.get(user.id, (today, 0))
         if day != today:
             count = 0  # new local day → fresh allowance
-        if count >= DAILY_MESSAGE_CAP:
+        if count >= cap:
             raise DailyLimitError()
         _daily_counts[user.id] = (today, count + 1)
 
@@ -196,17 +204,13 @@ def reply(
     plus the saved conversation's id.
 
     Raises PhilosopherNotFoundError (→ 404) for an unknown persona, PhilosopherChatNotFoundError
-    (→ 404) for a chat_id the user doesn't own, GuestNotAllowedError (→ 403) for guests,
-    DailyLimitError (→ 429) at the daily cap. Never raises for LLM failures — degrades to a
-    gentle in-character fallback line (still persisted, so the thread stays intact).
+    (→ 404) for a chat_id the user doesn't own, DailyLimitError (→ 429) at the daily cap
+    (guests get the smaller trial cap). Never raises for LLM failures — degrades to a gentle
+    in-character fallback line (still persisted, so the thread stays intact).
     """
     persona = philosophers.BY_ID.get(philosopher_id)
     if persona is None:
         raise PhilosopherNotFoundError()
-
-    # Guests are blocked from the paid LLM call. Mirrors the reflection coach.
-    if user.is_guest:
-        raise GuestNotAllowedError()
 
     # Verify ownership of an existing conversation BEFORE the cap/LLM, so a bad id neither
     # consumes the daily allowance nor triggers a paid call.

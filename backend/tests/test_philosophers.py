@@ -126,12 +126,22 @@ def test_chat_falls_back_when_llm_unavailable(client):
 # ── Chat: guest gate ──────────────────────────────────────────────────────────
 
 
-def test_guest_cannot_chat(client):
+def test_guest_can_chat_until_the_small_trial_cap(client, monkeypatch):
+    """Guests get a small trial of the feature (not a hard block), then a 429 that the
+    frontend turns into a 'create a free account' nudge."""
+    monkeypatch.setattr(philosopher_service, "GUEST_DAILY_MESSAGE_CAP", 2)
     client.post("/api/v1/auth/guest")
-    with patch(CHAT) as chat:
-        res = client.post("/api/v1/philosophers/confucius/chat", json=VALID)
-    assert res.status_code == 403
-    chat.assert_not_called()  # no paid LLM call for a guest
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        assert client.post("/api/v1/philosophers/confucius/chat", json=VALID).status_code == 200
+        assert client.post("/api/v1/philosophers/confucius/chat", json=VALID).status_code == 200
+        capped = client.post("/api/v1/philosophers/confucius/chat", json=VALID)
+    assert capped.status_code == 429
+    assert chat.call_count == 2  # capped before the 3rd (paid) call
+
+
+def test_guest_cap_is_smaller_than_the_saved_account_cap(client):
+    """Sanity: a freely-minted guest gets a much smaller allowance than a saved account."""
+    assert philosopher_service.GUEST_DAILY_MESSAGE_CAP < philosopher_service.DAILY_MESSAGE_CAP
 
 
 # ── Chat: unknown persona ─────────────────────────────────────────────────────

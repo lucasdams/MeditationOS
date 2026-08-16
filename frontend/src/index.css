@@ -11433,6 +11433,12 @@ details[open] .meditate-disclosure-summary::before {
   color: var(--text-secondary);
   font-size: var(--text-sm);
 }
+/* A quiet one-line guest heads-up under the composer — informational, not a wall. */
+.philo-guest-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  text-align: center;
+}
 
 .philo-composer {
   display: flex;
