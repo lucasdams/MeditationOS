@@ -53,6 +53,35 @@ const BY_TIME: Record<Slot, Recommendation> = {
   },
 }
 
+// Newcomers (low level) get the gentlest, most basic pick for the time of day — short, unintimidating
+// practices ahead of the fuller default set (e.g. Three mindful breaths instead of a 10-min focus sit,
+// a body scan instead of a 20-min Yoga Nidra). Keeps the first sits easy so the habit can take hold.
+// The cutoff mirrors the Practices-hub "newcomer" heuristic (level ≤ 3).
+export const BEGINNER_MAX_LEVEL = 3
+
+const BY_TIME_BEGINNER: Record<Slot, Recommendation> = {
+  morning: {
+    cta: 'home.recommend.beginner.morning.cta',
+    blurb: 'home.recommend.beginner.morning.blurb',
+    to: '/meditate/three-breaths',
+  },
+  afternoon: {
+    cta: 'home.recommend.beginner.afternoon.cta',
+    blurb: 'home.recommend.beginner.afternoon.blurb',
+    to: '/breathe?pattern=resonance',
+  },
+  evening: {
+    cta: 'home.recommend.beginner.evening.cta',
+    blurb: 'home.recommend.beginner.evening.blurb',
+    to: '/meditate/body-scan',
+  },
+  night: {
+    cta: 'home.recommend.beginner.night.cta',
+    blurb: 'home.recommend.beginner.night.blurb',
+    to: '/meditate/body-scan',
+  },
+}
+
 // When the companion's balance is uneven, lean toward the least-represented facet — a personal,
 // ungated pick that "rounds it out" (matching the ADR-0032 balance language).
 const BY_FACET: Record<SpiritNeedKey, Recommendation> = {
@@ -74,14 +103,21 @@ const BY_FACET: Record<SpiritNeedKey, Recommendation> = {
 }
 
 /**
- * One gentle, optional practice suggestion for the home hero. Personalised to the companion's
- * least-represented `facet` when its balance is uneven (pass `null` for an even balance or a
- * spark with no path yet); otherwise a sensible pick for the time of day. All picks are ungated.
+ * One gentle, optional practice suggestion for the home hero + header quick-start. For newcomers
+ * (known `level` ≤ BEGINNER_MAX_LEVEL) it's the easiest time-appropriate pick, so early sits stay
+ * basic. Otherwise it's personalised to the companion's least-represented `facet` when its balance
+ * is uneven (pass `null` for an even balance or a spark with no path yet), else a sensible pick for
+ * the time of day. `level` unknown (`null`/omitted) is NOT treated as a beginner, so the target
+ * doesn't flash for returning practitioners while the level loads. All picks are ungated.
  */
 export function recommendedPractice(opts: {
   hour: number
   facet: SpiritNeedKey | null
+  level?: number | null
 }): Recommendation {
+  if (opts.level != null && opts.level <= BEGINNER_MAX_LEVEL) {
+    return BY_TIME_BEGINNER[slotForHour(opts.hour)]
+  }
   if (opts.facet) return BY_FACET[opts.facet]
   return BY_TIME[slotForHour(opts.hour)]
 }

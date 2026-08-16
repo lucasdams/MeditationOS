@@ -171,4 +171,13 @@ export const home: Record<string, string> = {
   'home.recommend.rested.blurb': 'A little rest would round things out.',
   'home.recommend.nourished.cta': 'Steady yourself with focused attention',
   'home.recommend.nourished.blurb': 'A grounding practice to round things out.',
+  // Newcomer picks (level ≤ 3) — the easiest way in for each time of day.
+  'home.recommend.beginner.morning.cta': 'Ease in with three mindful breaths',
+  'home.recommend.beginner.morning.blurb': 'The simplest way to begin.',
+  'home.recommend.beginner.afternoon.cta': 'Take a slow minute to breathe',
+  'home.recommend.beginner.afternoon.blurb': 'A small reset for the middle of the day.',
+  'home.recommend.beginner.evening.cta': 'Settle with a gentle body scan',
+  'home.recommend.beginner.evening.blurb': 'An easy way to unwind.',
+  'home.recommend.beginner.night.cta': 'Soften into a body scan',
+  'home.recommend.beginner.night.blurb': 'Let the day go, gently.',
 }

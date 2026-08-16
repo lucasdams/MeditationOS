@@ -170,4 +170,13 @@ export const home: Record<string, string> = {
   'home.recommend.rested.blurb': 'もう少しの休息で、バランスが整います。',
   'home.recommend.nourished.cta': '集中の瞑想で自分を整える',
   'home.recommend.nourished.blurb': '地に足をつけるプラクティスで、バランスを。',
+  // 初心者向けのおすすめ（レベル3以下）——時間帯ごとの、いちばんやさしい入り口。
+  'home.recommend.beginner.morning.cta': '3回のマインドフルな呼吸から',
+  'home.recommend.beginner.morning.blurb': 'いちばんシンプルな始め方。',
+  'home.recommend.beginner.afternoon.cta': 'ひと呼吸、ゆっくりと',
+  'home.recommend.beginner.afternoon.blurb': '日中のちいさなリセット。',
+  'home.recommend.beginner.evening.cta': 'やさしいボディスキャンで整える',
+  'home.recommend.beginner.evening.blurb': 'かんたんにほぐす方法。',
+  'home.recommend.beginner.night.cta': 'ボディスキャンでやわらかく',
+  'home.recommend.beginner.night.blurb': '一日をそっと手放して。',
 }

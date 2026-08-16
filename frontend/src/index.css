@@ -8849,7 +8849,10 @@ details[open] .meditate-disclosure-summary::before {
 
 /* On phones the nav collapses behind a hamburger — the header stays one compact row,
    and tapping ☰ opens a dropdown with every destination stacked. */
-@media (max-width: 760px) {
+/* Keep the full nav inline in the header bar down to small-tablet width; only genuinely narrow
+   (phone) widths collapse it behind the hamburger. The desktop .app-nav is flex-wrap:wrap, so at
+   tighter widths it wraps to a second row rather than overflowing. */
+@media (max-width: 600px) {
   .nav-toggle {
     display: inline-flex;
     align-items: center;

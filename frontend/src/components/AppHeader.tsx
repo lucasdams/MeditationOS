@@ -75,10 +75,6 @@ export default function AppHeader() {
   useT()
   const navigate = useNavigate()
   const location = useLocation()
-  // One-tap quick-start in the header — the time-of-day recommended practice (same gentle rule as
-  // the home hero; facet left null since the Spirit balance is dormant). Now that the nav no longer
-  // lists each practice, this keeps a sit one tap away from any page.
-  const quickStart = recommendedPractice({ hour: new Date().getHours(), facet: null })
   const [level, setLevel] = useState<number | null>(null)
   // A single source of truth for which dropdown is open: a menu id or null. Opening one
   // menu closes the other; outside-click / Escape close whichever is open.
@@ -115,6 +111,12 @@ export default function AppHeader() {
   const progressLinks = user?.is_admin
     ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, labelKey: 'nav.admin', light: '#545a73', dark: '#a6acc4' }]
     : PROGRESS_LINKS
+
+  // One-tap quick-start in the header — the recommended practice (same gentle rule as the home
+  // hero; facet null since the Spirit balance is dormant). Level-aware: newcomers get the easiest
+  // pick for the time of day. Recomputes once the level fetch resolves. Now that the nav no longer
+  // lists each practice, this keeps a sit one tap away from any page.
+  const quickStart = recommendedPractice({ hour: new Date().getHours(), facet: null, level })
 
   // Refetch on every navigation so the level stays live after earning XP.
   useEffect(() => {

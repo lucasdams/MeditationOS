@@ -222,7 +222,7 @@ export default function DashboardPage() {
             // No active path → one gentle, optional recommendation for the hero, keyed to the
             // time of day (see lib/recommendation.ts). The four quick-access tiles below stay the
             // stable anchors; this is only a suggestion, and the guided-path invite remains.
-            const rec = recommendedPractice({ hour: new Date().getHours(), facet: null })
+            const rec = recommendedPractice({ hour: new Date().getHours(), facet: null, level: stats?.level ?? null })
             return (
               <>
                 <Link to={rec.to} className="today-action">
