@@ -15,6 +15,9 @@ export const philosophers: Record<string, string> = {
   'philosophers.choose': '{name}とチャットする',
 
   // ── 対話画面 ──────────────────────────────────────────────────────────────
+  'philosophers.savedHeading': 'これまでの対話',
+  'philosophers.deleteConvo': '対話を削除：{title}',
+
   'philosophers.change': '別のガイドを選ぶ',
   'philosophers.intro': '静かに振り返るための場所です。心にあることを話してみてください。{name}が{tradition}の精神で応えます。',
   'philosophers.youLabel': 'あなた',

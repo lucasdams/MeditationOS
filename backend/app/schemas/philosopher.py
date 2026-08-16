@@ -6,6 +6,8 @@ content, a per-message length ceiling, a bounded history) are enforced here so m
 or oversized payloads are rejected at the API boundary with a 422, before any LLM call.
 """
 
+import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -43,11 +45,17 @@ class ChatTurn(BaseModel):
 
 
 class PhilosopherChatRequest(BaseModel):
-    """The full (bounded) conversation history the client sends each turn."""
+    """The full (bounded) conversation history the client sends each turn.
+
+    `chat_id` is optional: when present, the exchange is appended to (and overwrites) that
+    saved conversation, which must belong to the caller; when absent, a new saved
+    conversation is created and its id returned on the response.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     messages: list[ChatTurn]
+    chat_id: uuid.UUID | None = None
 
     @field_validator("messages")
     @classmethod
@@ -73,7 +81,34 @@ class PhilosopherSummary(BaseModel):
 
 
 class PhilosopherChatResponse(BaseModel):
-    """The guide's reply, plus whether it came from the model or a curated fallback."""
+    """The guide's reply, plus whether it came from the model or a curated fallback, and the
+    id of the saved conversation the exchange was persisted to (new or existing)."""
 
     reply: str
     source: Literal["ai", "fallback"]
+    chat_id: uuid.UUID
+
+
+class PhilosopherChatSummary(BaseModel):
+    """One saved conversation as shown in the "your conversations" list — no message content,
+    just enough to identify and reopen it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    philosopher_id: str
+    title: str
+    updated_at: datetime
+
+
+class PhilosopherChatDetail(BaseModel):
+    """A saved conversation's full turns, for reopening it in the client."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    philosopher_id: str
+    title: str
+    messages: list[ChatTurn]
+    created_at: datetime
+    updated_at: datetime

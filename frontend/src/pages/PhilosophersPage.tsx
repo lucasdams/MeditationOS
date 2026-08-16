@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Send, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Send, Sparkles, Trash2 } from 'lucide-react'
 import { philosopherService } from '../services/philosophers'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
@@ -8,7 +8,7 @@ import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { philosopherMeta } from '../lib/philosopherMeta'
 import { useT } from '../i18n'
-import type { PhilosopherSummary, PhilosopherTurn } from '../types'
+import type { PhilosopherChatSummary, PhilosopherSummary, PhilosopherTurn } from '../types'
 
 // How long a single message may be — mirrors the backend MAX_CONTENT_LEN so we validate
 // before the request rather than surfacing a 422.
@@ -25,6 +25,11 @@ export default function PhilosophersPage() {
 
   const [selected, setSelected] = useState<PhilosopherSummary | null>(null)
   const [messages, setMessages] = useState<PhilosopherTurn[]>([])
+  // The saved conversation the current chat threads onto (undefined = a fresh, not-yet-saved
+  // conversation; set from the first reply's chat_id, or when reopening a saved one).
+  const [chatId, setChatId] = useState<string | undefined>(undefined)
+  // The user's saved conversations, shown on the picker to resume or delete. Non-blocking.
+  const [conversations, setConversations] = useState<PhilosopherChatSummary[] | null>(null)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [notice, setNotice] = useState<Notice>(null)
@@ -49,8 +54,17 @@ export default function PhilosophersPage() {
       .finally(() => setRetrying(false))
   }
 
+  // The saved conversations list — non-blocking; a failure just leaves the section absent.
+  function loadConversations() {
+    philosopherService
+      .listConversations()
+      .then(setConversations)
+      .catch(() => {})
+  }
+
   useEffect(() => {
     loadRoster()
+    loadConversations()
     // Non-blocking: today's practice powers a personalized opener. A failure just omits
     // it — the persona's own starters still show, and the chat is unaffected.
     dashboardService
@@ -85,6 +99,7 @@ export default function PhilosophersPage() {
   function pickPersona(persona: PhilosopherSummary) {
     setSelected(persona)
     setMessages([])
+    setChatId(undefined) // a fresh conversation
     setInput('')
     setNotice(null)
     setCapHit(false)
@@ -94,8 +109,38 @@ export default function PhilosophersPage() {
   function backToPicker() {
     setSelected(null)
     setMessages([])
+    setChatId(undefined)
     setInput('')
     setNotice(null)
+    loadConversations() // reflect the conversation we just had (or its updates)
+  }
+
+  // Reopen a saved conversation: load its turns and thread new messages onto it. Resolves the
+  // guide from the roster; a stale row (guide gone / already deleted) just refreshes the list.
+  async function reopenConversation(summary: PhilosopherChatSummary) {
+    const persona = personas?.find((p) => p.id === summary.philosopher_id)
+    if (!persona) return
+    try {
+      const detail = await philosopherService.getConversation(summary.id)
+      setSelected(persona)
+      setMessages(detail.messages)
+      setChatId(detail.id)
+      setInput('')
+      setNotice(null)
+      setCapHit(false)
+      setGuestBlocked(false)
+    } catch {
+      loadConversations()
+    }
+  }
+
+  async function removeConversation(id: string) {
+    try {
+      await philosopherService.deleteConversation(id)
+    } catch {
+      // Ignore — the reload below reconciles (e.g. it was already gone).
+    }
+    setConversations((prev) => prev?.filter((c) => c.id !== id) ?? null)
   }
 
   async function send() {
@@ -110,8 +155,9 @@ export default function PhilosophersPage() {
     setNotice(null)
     setSending(true)
     try {
-      const res = await philosopherService.chat(selected.id, history)
+      const res = await philosopherService.chat(selected.id, history, chatId)
       setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }])
+      setChatId(res.chat_id) // thread subsequent turns onto the now-saved conversation
     } catch (err) {
       // The send didn't land — roll the optimistic user turn back out and restore the
       // draft so the composer holds the words (a retry, or an edit before the gate copy).
@@ -199,6 +245,53 @@ export default function PhilosophersPage() {
               })}
             </div>
             <p className="philo-disclaimer muted">{t('philosophers.disclaimer')}</p>
+
+            {/* Saved conversations — resume where you left off, or delete. Newest first
+                (the API orders them). Only shown once there's something to resume. */}
+            {conversations && conversations.length > 0 && (
+              <section className="philo-saved">
+                <h2 className="philo-picker-heading">{t('philosophers.savedHeading')}</h2>
+                <ul className="philo-saved-list">
+                  {conversations.map((c) => {
+                    const cMeta = philosopherMeta(c.philosopher_id)
+                    const CIcon = cMeta.icon
+                    const persona = personas.find((p) => p.id === c.philosopher_id)
+                    return (
+                      <li
+                        key={c.id}
+                        className="philo-saved-item"
+                        style={{
+                          ['--card-fill' as string]: cMeta.light,
+                          ['--card-fill-dark' as string]: cMeta.dark,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="philo-saved-open"
+                          onClick={() => reopenConversation(c)}
+                        >
+                          <span className="philo-saved-icon" aria-hidden="true">
+                            <CIcon size={18} strokeWidth={1.75} />
+                          </span>
+                          <span className="philo-saved-body">
+                            <span className="philo-saved-who">{persona?.name ?? c.philosopher_id}</span>
+                            <span className="philo-saved-title">{c.title}</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="philo-saved-delete"
+                          aria-label={t('philosophers.deleteConvo', { title: c.title })}
+                          onClick={() => removeConversation(c.id)}
+                        >
+                          <Trash2 size={16} strokeWidth={1.9} aria-hidden="true" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </main>
@@ -228,6 +321,10 @@ export default function PhilosophersPage() {
         ['--card-fill-dark' as string]: meta.dark,
       }}
     >
+      {/* A large, faint, accent-tinted emblem of the guide floating behind the conversation —
+          gives each chat a sense of place. Decorative only (aria-hidden), doesn't scroll. */}
+      <Icon className="philo-emblem" aria-hidden="true" size={320} strokeWidth={0.6} />
+
       <button type="button" className="back-link philo-back" onClick={backToPicker}>
         <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> {t('philosophers.change')}
       </button>

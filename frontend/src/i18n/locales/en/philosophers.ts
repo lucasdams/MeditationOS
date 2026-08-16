@@ -15,6 +15,10 @@ export const philosophers: Record<string, string> = {
   'philosophers.choose': 'Chat with {name}',
 
   // ── Chat view ────────────────────────────────────────────────────────────
+  // Saved conversations (picker) — resume or delete past reflections.
+  'philosophers.savedHeading': 'Your conversations',
+  'philosophers.deleteConvo': 'Delete conversation: {title}',
+
   'philosophers.change': 'Choose another guide',
   'philosophers.intro': 'A quiet space to reflect. Share whatever is on your mind, and {name} will respond in the spirit of {tradition}.',
   'philosophers.youLabel': 'You',

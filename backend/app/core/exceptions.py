@@ -70,6 +70,12 @@ class PhilosopherNotFoundError(Exception):
     Mapped to HTTP 404 in the route (an unknown persona is a missing resource)."""
 
 
+class PhilosopherChatNotFoundError(Exception):
+    """Raised when a saved conversation id doesn't exist OR isn't owned by the caller.
+    Mapped to HTTP 404 in the route — returning 404 (not 403) for another user's row
+    avoids leaking that the id exists (id-enumeration guard, per security.md)."""
+
+
 class GoalNotCheckableError(Exception):
     """Raised when checking in on a non-custom goal — built-in activities derive
     their progress and can't be manually marked done."""

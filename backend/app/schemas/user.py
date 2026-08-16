@@ -191,6 +191,7 @@ class ExportData(BaseModel):
     path_enrollments: list[dict]
     ai_reflections: list[dict]
     prayers: list[dict]
+    philosopher_chats: list[dict]
 
 
 class UserRead(BaseModel):

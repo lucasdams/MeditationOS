@@ -195,6 +195,109 @@ def test_daily_cap_returns_429(client, monkeypatch):
     assert capped.status_code == 429
 
 
+# ── Saved conversations (persistence) ─────────────────────────────────────────
+
+
+def _start_chat(client, philosopher="marcus-aurelius", content="I feel restless today."):
+    """Create a saved conversation via the chat route (LLM patched); return the JSON body."""
+    with patch(CHAT, return_value=AI_RESULT):
+        res = client.post(
+            f"/api/v1/philosophers/{philosopher}/chat",
+            json={"messages": [{"role": "user", "content": content}]},
+        )
+    assert res.status_code == 200
+    return res.json()
+
+
+def test_conversations_require_auth(client):
+    assert client.get("/api/v1/philosophers/conversations").status_code == 401
+
+
+def test_chat_persists_and_lists_the_conversation(client):
+    _auth(client, "psave@example.com")
+    body = _start_chat(client)
+    assert body["chat_id"]
+    convos = client.get("/api/v1/philosophers/conversations").json()
+    assert len(convos) == 1
+    assert convos[0]["id"] == body["chat_id"]
+    assert convos[0]["philosopher_id"] == "marcus-aurelius"
+    assert convos[0]["title"] == "I feel restless today."  # from the first user message
+
+
+def test_chat_appends_to_existing_conversation(client):
+    _auth(client, "pappend@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    with patch(CHAT, return_value=("Return to the task at hand.", "gpt-5-nano")):
+        res = client.post(
+            "/api/v1/philosophers/marcus-aurelius/chat",
+            json={
+                "chat_id": chat_id,
+                "messages": [
+                    {"role": "user", "content": "I feel restless today."},
+                    {"role": "assistant", "content": AI_RESULT[0]},
+                    {"role": "user", "content": "What should I do?"},
+                ],
+            },
+        )
+    assert res.status_code == 200
+    assert res.json()["chat_id"] == chat_id
+    # Still ONE conversation; now four turns (the three sent + the new reply).
+    assert len(client.get("/api/v1/philosophers/conversations").json()) == 1
+    detail = client.get(f"/api/v1/philosophers/conversations/{chat_id}").json()
+    assert len(detail["messages"]) == 4
+    assert detail["messages"][-1] == {"role": "assistant", "content": "Return to the task at hand."}
+
+
+def test_get_conversation_returns_full_turns(client):
+    _auth(client, "pget@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    detail = client.get(f"/api/v1/philosophers/conversations/{chat_id}").json()
+    assert detail["philosopher_id"] == "marcus-aurelius"
+    assert detail["messages"][0] == {"role": "user", "content": "I feel restless today."}
+
+
+def test_delete_conversation(client):
+    _auth(client, "pdel@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    assert client.delete(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 204
+    assert client.get("/api/v1/philosophers/conversations").json() == []
+    assert client.get(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 404
+
+
+def test_conversations_are_scoped_to_owner(client):
+    _auth(client, "powner@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    # A different user cannot read, delete, or append to it — 404 (not 403), no enumeration.
+    _auth(client, "pother@example.com")
+    assert client.get(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 404
+    assert client.delete(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 404
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        res = client.post(
+            "/api/v1/philosophers/marcus-aurelius/chat",
+            json={"chat_id": chat_id, "messages": [{"role": "user", "content": "mine now"}]},
+        )
+    assert res.status_code == 404
+    chat.assert_not_called()  # ownership rejected before any (paid) LLM call
+    assert client.get("/api/v1/philosophers/conversations").json() == []  # B saw nothing
+
+
+def test_fallback_reply_is_still_persisted(client):
+    _auth(client, "pfallsave@example.com")
+    with patch(CHAT, return_value=None):
+        res = client.post(
+            "/api/v1/philosophers/laozi/chat",
+            json={"messages": [{"role": "user", "content": "help"}]},
+        )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["source"] == "fallback"
+    detail = client.get(f"/api/v1/philosophers/conversations/{body['chat_id']}").json()
+    assert detail["messages"] == [
+        {"role": "user", "content": "help"},
+        {"role": "assistant", "content": philosopher_service.FALLBACK_REPLY},
+    ]
+
+
 # ── The service/roster themselves ─────────────────────────────────────────────
 
 

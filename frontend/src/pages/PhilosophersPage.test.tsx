@@ -10,12 +10,18 @@ import { MemoryRouter } from 'react-router-dom'
 
 const listPersonas = vi.fn()
 const chatPersona = vi.fn()
+const listConversations = vi.fn()
+const getConversation = vi.fn()
+const deleteConversation = vi.fn()
 const getStats = vi.fn()
 
 vi.mock('../services/philosophers', () => ({
   philosopherService: {
     list: (...a: unknown[]) => listPersonas(...a),
     chat: (...a: unknown[]) => chatPersona(...a),
+    listConversations: (...a: unknown[]) => listConversations(...a),
+    getConversation: (...a: unknown[]) => getConversation(...a),
+    deleteConversation: (...a: unknown[]) => deleteConversation(...a),
   },
 }))
 
@@ -58,6 +64,10 @@ function renderPageAt(path: string) {
 beforeEach(() => {
   listPersonas.mockReset().mockResolvedValue(ROSTER)
   chatPersona.mockReset()
+  // Default: no saved conversations, so the picker shows just the roster.
+  listConversations.mockReset().mockResolvedValue([])
+  getConversation.mockReset()
+  deleteConversation.mockReset().mockResolvedValue(undefined)
   // Default: no practice today, so only the persona's own openers show.
   getStats.mockReset().mockResolvedValue({ today_minutes: 0 })
 })
@@ -101,7 +111,7 @@ describe('PhilosophersPage', () => {
   })
 
   it('sends a message and shows the reply', async () => {
-    chatPersona.mockResolvedValue({ reply: 'What is in your control?', source: 'ai' })
+    chatPersona.mockResolvedValue({ reply: 'What is in your control?', source: 'ai', chat_id: 'c1' })
     await openChat()
 
     const box = screen.getByLabelText('Your message')
@@ -110,10 +120,64 @@ describe('PhilosophersPage', () => {
 
     expect(await screen.findByText('What is in your control?')).toBeInTheDocument()
     expect(screen.getByText('I feel restless.')).toBeInTheDocument()
-    // The full history (the new user turn) is sent to the chosen persona.
-    expect(chatPersona).toHaveBeenCalledWith('marcus-aurelius', [
-      { role: 'user', content: 'I feel restless.' },
+    // The full history (the new user turn) is sent to the chosen persona; no chat_id yet on
+    // the first send (a fresh conversation).
+    expect(chatPersona).toHaveBeenCalledWith(
+      'marcus-aurelius',
+      [{ role: 'user', content: 'I feel restless.' }],
+      undefined,
+    )
+  })
+
+  it('threads follow-up turns onto the saved conversation from the first reply', async () => {
+    chatPersona.mockResolvedValue({ reply: 'Reply one.', source: 'ai', chat_id: 'chat-123' })
+    await openChat()
+    fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'first' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send/ }))
+    await screen.findByText('Reply one.')
+    // The second send carries the chat_id returned by the first reply.
+    fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'second' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send/ }))
+    await waitFor(() => expect(chatPersona).toHaveBeenCalledTimes(2))
+    expect(chatPersona).toHaveBeenLastCalledWith(
+      'marcus-aurelius',
+      expect.arrayContaining([{ role: 'user', content: 'second' }]),
+      'chat-123',
+    )
+  })
+
+  it('lists saved conversations and reopens one with its stored turns', async () => {
+    listConversations.mockResolvedValue([
+      { id: 'c1', philosopher_id: 'buddha', title: 'I am clinging.', updated_at: '2026-08-16T00:00:00Z' },
     ])
+    getConversation.mockResolvedValue({
+      id: 'c1',
+      philosopher_id: 'buddha',
+      title: 'I am clinging.',
+      messages: [
+        { role: 'user', content: 'I am clinging.' },
+        { role: 'assistant', content: 'Notice the grasping, gently.' },
+      ],
+      created_at: '2026-08-16T00:00:00Z',
+      updated_at: '2026-08-16T00:00:00Z',
+    })
+    renderPage()
+    await screen.findByText('Your conversations')
+    fireEvent.click(screen.getByText('I am clinging.'))
+    expect(await screen.findByText('Notice the grasping, gently.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Buddha')
+    expect(getConversation).toHaveBeenCalledWith('c1')
+  })
+
+  it('deletes a saved conversation', async () => {
+    listConversations.mockResolvedValue([
+      { id: 'c1', philosopher_id: 'buddha', title: 'I am clinging.', updated_at: '2026-08-16T00:00:00Z' },
+    ])
+    renderPage()
+    await screen.findByText('Your conversations')
+    fireEvent.click(screen.getByRole('button', { name: /Delete conversation/ }))
+    await waitFor(() => expect(deleteConversation).toHaveBeenCalledWith('c1'))
+    await waitFor(() => expect(screen.queryByText('I am clinging.')).toBeNull())
   })
 
   it('offers the persona openers on an empty chat and fills the composer when tapped', async () => {
