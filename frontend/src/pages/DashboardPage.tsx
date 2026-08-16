@@ -7,6 +7,7 @@ import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import EncouragementNote from '../components/EncouragementNote'
 import DailyReading from '../components/DailyReading'
+import ReflectWithGuide from '../components/ReflectWithGuide'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import GraduationCard, {
   shouldShowGraduation,
@@ -363,6 +364,11 @@ export default function DashboardPage() {
           {/* A quiet daily reading — one short, calming passage (Stoic/wisdom, rotating each day)
               to close the Today view with a gentle moment of reflection. */}
           <DailyReading />
+
+          {/* A gentle way into the philosopher feature from home: a guide-of-the-day + prompt,
+              deep-linking into that guide's chat. Optional — renders nothing if the roster is
+              unavailable. */}
+          <ReflectWithGuide />
 
           {/* Quiet fallback for the no-sessions state — only when the richer first-run card
               isn't on screen (dismissed), so the user never sees two "get started" prompts.

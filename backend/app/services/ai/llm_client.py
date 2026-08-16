@@ -39,10 +39,20 @@ Message = dict[str, str]
 
 
 def _openai_chat(
-    *, system: str, messages: list[Message], max_tokens: int, timeout: float
+    *,
+    system: str,
+    messages: list[Message],
+    max_tokens: int,
+    timeout: float,
+    temperature: float | None = None,
 ) -> tuple[str, str] | None:
     """Chat via OpenAI Chat Completions. Returns (text, model) or None on any
-    failure/misconfiguration. Never raises."""
+    failure/misconfiguration. Never raises.
+
+    `temperature` is accepted for a uniform seam but deliberately NOT sent: GPT-5 models
+    reject a custom temperature (see below), so per-guide temperature is a no-op here and
+    only bites on providers that honour it (Anthropic)."""
+    del temperature  # unsupported on the GPT-5 path; kept in the signature for parity
     if not settings.openai_api_key:
         return None
     model = settings.openai_model
@@ -82,10 +92,16 @@ def _openai_chat(
 
 
 def _anthropic_chat(
-    *, system: str, messages: list[Message], max_tokens: int, timeout: float
+    *,
+    system: str,
+    messages: list[Message],
+    max_tokens: int,
+    timeout: float,
+    temperature: float | None = None,
 ) -> tuple[str, str] | None:
     """Chat via the Anthropic Messages API. Returns (text, model) or None on any
-    failure/misconfiguration. Never raises."""
+    failure/misconfiguration. Never raises. Honours a per-call `temperature` (falling back
+    to 1.0), which is how per-guide tuning takes effect on this provider."""
     if not settings.anthropic_api_key:
         return None
     model = settings.anthropic_model
@@ -100,7 +116,7 @@ def _anthropic_chat(
         message = client.messages.create(
             model=model,
             max_tokens=max_tokens,
-            temperature=1.0,
+            temperature=temperature if temperature is not None else 1.0,
             system=system,
             messages=messages,
         )
@@ -130,19 +146,29 @@ def _ordered_providers() -> tuple[str, str]:
 
 
 def chat(
-    *, system: str, messages: list[Message], max_tokens: int, timeout: float
+    *,
+    system: str,
+    messages: list[Message],
+    max_tokens: int,
+    timeout: float,
+    temperature: float | None = None,
 ) -> tuple[str, str] | None:
     """Continue a multi-turn conversation via the configured LLM provider.
 
     `messages` is the ordered conversation history, each turn
-    `{"role": "user"|"assistant", "content": str}` (ending on a user turn). Returns
-    `(raw_text, model_id)` on success, or `None` on any failure or misconfiguration.
-    Never raises. Tries the PRIMARY provider first, then the OTHER provider as a
-    secondary (each self-guards on its own key).
+    `{"role": "user"|"assistant", "content": str}` (ending on a user turn). `temperature`
+    is an optional per-call override (used for per-guide tuning); providers that don't
+    honour it ignore it. Returns `(raw_text, model_id)` on success, or `None` on any
+    failure or misconfiguration. Never raises. Tries the PRIMARY provider first, then the
+    OTHER provider as a secondary (each self-guards on its own key).
     """
     for name in _ordered_providers():
         result = _PROVIDERS[name](
-            system=system, messages=messages, max_tokens=max_tokens, timeout=timeout
+            system=system,
+            messages=messages,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            temperature=temperature,
         )
         if result is not None:
             return result

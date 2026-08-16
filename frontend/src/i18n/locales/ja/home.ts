@@ -179,4 +179,8 @@ export const home: Record<string, string> = {
   'home.recommend.beginner.evening.blurb': 'かんたんにほぐす方法。',
   'home.recommend.beginner.night.cta': 'ボディスキャンでやわらかく',
   'home.recommend.beginner.night.blurb': '一日をそっと手放して。',
+
+  // ガイドと振り返るホームカード（components/ReflectWithGuide.tsx）。
+  'home.guide.heading': 'ガイドと振り返る',
+  'home.guide.cta': '{name}と振り返る',
 }

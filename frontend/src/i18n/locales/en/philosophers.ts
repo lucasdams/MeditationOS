@@ -18,6 +18,9 @@ export const philosophers: Record<string, string> = {
   'philosophers.change': 'Choose another guide',
   'philosophers.intro': 'A quiet space to reflect. Share whatever is on your mind, and {name} will respond in the spirit of {tradition}.',
   'philosophers.youLabel': 'You',
+  // The guide-suggested practice chip — a practice in this guide's spirit, deep-linking back
+  // into the app. The practice name itself comes from the shared practice.card.*.name keys.
+  'philosophers.practiceSuggestion': 'A practice in {name}’s spirit',
   // Openers — the tappable conversation starters shown when a chat is empty. The opener
   // text itself is English content (persona starters from the backend, or a line about
   // today's practice); these keys are only the surrounding chrome.

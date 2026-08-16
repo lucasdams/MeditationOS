@@ -18,6 +18,7 @@ export const philosophers: Record<string, string> = {
   'philosophers.change': '別のガイドを選ぶ',
   'philosophers.intro': '静かに振り返るための場所です。心にあることを話してみてください。{name}が{tradition}の精神で応えます。',
   'philosophers.youLabel': 'あなた',
+  'philosophers.practiceSuggestion': '{name}の精神にふれるプラクティス',
   // Openers——チャットが空のときに表示される、タップできる書き出し。書き出しの文言自体は
   // 英語コンテンツ（バックエンドの各人物の候補、または今日の実践についての一文）で、
   // これらのキーは周りの表示のみです。

@@ -1,37 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  ArrowLeft,
-  BookOpen,
-  Flower2,
-  Landmark,
-  MessageCircle,
-  Send,
-  Sparkles,
-  Sun,
-  Swords,
-  Wind,
-  type LucideIcon,
-} from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Send, Sparkles } from 'lucide-react'
 import { philosopherService } from '../services/philosophers'
 import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
+import { philosopherMeta } from '../lib/philosopherMeta'
 import { useT } from '../i18n'
 import type { PhilosopherSummary, PhilosopherTurn } from '../types'
-
-// Per-persona line icon (lucide, not emoji), keyed on the stable backend id. A neutral
-// MessageCircle covers any id we don't have a bespoke icon for.
-const ICONS: Record<string, LucideIcon> = {
-  'marcus-aurelius': Landmark,
-  buddha: Flower2,
-  confucius: BookOpen,
-  laozi: Wind,
-  'eckhart-tolle': Sun,
-  'carl-jung': Sparkles,
-  'miyamoto-musashi': Swords,
-}
 
 // How long a single message may be — mirrors the backend MAX_CONTENT_LEN so we validate
 // before the request rather than surfacing a 422.
@@ -41,6 +18,7 @@ type Notice = { kind: 'error' | 'cap' | 'guest' } | null
 
 export default function PhilosophersPage() {
   const { t } = useT()
+  const [searchParams] = useSearchParams()
   const [personas, setPersonas] = useState<PhilosopherSummary[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -81,6 +59,17 @@ export default function PhilosophersPage() {
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Deep-link preselect: /philosophers?guide=<id> opens straight into that guide (the dashboard
+  // "reflect with a guide" card links here). Runs once the roster is loaded; ignores an unknown id.
+  useEffect(() => {
+    if (!personas || selected) return
+    const wanted = searchParams.get('guide')
+    if (!wanted) return
+    const match = personas.find((p) => p.id === wanted)
+    if (match) pickPersona(match)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personas])
 
   // Keep the newest message in view as the conversation grows.
   useEffect(() => {
@@ -180,12 +169,17 @@ export default function PhilosophersPage() {
             <h2 className="philo-picker-heading">{t('philosophers.pickerHeading')}</h2>
             <div className="practices-grid">
               {personas.map((p) => {
-                const Icon = ICONS[p.id] ?? MessageCircle
+                const meta = philosopherMeta(p.id)
+                const Icon = meta.icon
                 return (
                   <button
                     key={p.id}
                     type="button"
                     className="practice-card philo-card"
+                    style={{
+                      ['--card-fill' as string]: meta.light,
+                      ['--card-fill-dark' as string]: meta.dark,
+                    }}
                     aria-label={t('philosophers.choose', { name: p.name })}
                     onClick={() => pickPersona(p)}
                   >
@@ -194,7 +188,10 @@ export default function PhilosophersPage() {
                     </span>
                     <span className="practice-card-body">
                       <span className="practice-card-name">{p.name}</span>
-                      <span className="philo-card-tradition">{p.tradition}</span>
+                      <span className="philo-card-tradition">
+                        {p.tradition}
+                        {meta.era && <span className="philo-card-era"> · {meta.era}</span>}
+                      </span>
                       <span className="practice-card-desc">{p.blurb}</span>
                     </span>
                   </button>
@@ -209,7 +206,8 @@ export default function PhilosophersPage() {
   }
 
   // ── Chat view ───────────────────────────────────────────────────────────────
-  const Icon = ICONS[selected.id] ?? MessageCircle
+  const meta = philosopherMeta(selected.id)
+  const Icon = meta.icon
   // A personalized opener when the user has practiced today: it seeds the chat with their
   // real sit so the guide reflects on something true, not a generic prompt. English
   // content (the whole conversation is English), like the persona's own openers.
@@ -222,7 +220,14 @@ export default function PhilosophersPage() {
   const openers = [...(contextOpener ? [contextOpener] : []), ...(selected.openers ?? [])]
   const showOpeners = messages.length === 0 && !sending && !capHit && !guestBlocked && openers.length > 0
   return (
-    <main id="main-content" className="dashboard philosophers philosophers-chat">
+    <main
+      id="main-content"
+      className="dashboard philosophers philosophers-chat"
+      style={{
+        ['--card-fill' as string]: meta.light,
+        ['--card-fill-dark' as string]: meta.dark,
+      }}
+    >
       <button type="button" className="back-link philo-back" onClick={backToPicker}>
         <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> {t('philosophers.change')}
       </button>
@@ -233,9 +238,22 @@ export default function PhilosophersPage() {
         </span>
         <span>
           <h1>{selected.name}</h1>
-          <p className="page-subtitle">{selected.tradition}</p>
+          <p className="page-subtitle">
+            {selected.tradition}
+            {meta.era && <span className="philo-card-era"> · {meta.era}</span>}
+          </p>
         </span>
       </header>
+
+      {/* A practice in this guide's spirit — closes the loop from reflection back into the app.
+          Deterministic per guide (not model-generated), so it's a stable, safe deep-link. */}
+      <Link to={meta.practice.to} className="philo-practice">
+        <span>{t('philosophers.practiceSuggestion', { name: selected.name })}</span>
+        <span className="philo-practice-name">
+          {t(meta.practice.nameKey)}
+          <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
+        </span>
+      </Link>
 
       <div
         className={`philo-thread${messages.length === 0 ? ' philo-thread--empty' : ''}`}

@@ -7340,6 +7340,77 @@ button.today-action:disabled {
   text-align: center;
 }
 
+/* Reflect-with-a-guide home card — a quiet, accent-tinted panel (guide-of-the-day) that opens
+   into the philosopher chat. Carries the guide's --card-fill/-dark, resolved to --card-accent per
+   theme like the practice cards. */
+.dashboard-guide {
+  --card-accent: var(--card-fill, var(--accent));
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 22%, var(--border));
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--card-accent) 6%, var(--bg-surface));
+}
+:root[data-theme='dark'] .dashboard-guide {
+  --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .dashboard-guide {
+    --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+  }
+}
+.dashboard-guide-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.dashboard-guide-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-accent) 15%, var(--bg-surface));
+  color: var(--card-accent);
+}
+.dashboard-guide-heading {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--card-accent);
+}
+.dashboard-guide-who {
+  margin: 0.05rem 0 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dashboard-guide-tradition {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.dashboard-guide-prompt {
+  margin: 0.7rem 0 0.6rem;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.dashboard-guide-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--card-accent);
+  text-decoration: none;
+}
+.dashboard-guide-cta:hover {
+  text-decoration: underline;
+}
+
 .stat-value {
   font-size: var(--text-2xl);
   font-weight: 700;
@@ -10981,8 +11052,8 @@ details[open] .meditate-disclosure-summary::before {
    as a small pill, and a gentle lift + accent ring on hover/focus. */
 .philo-card .practice-card-icon {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  color: var(--accent);
+  background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-surface));
+  color: var(--card-accent);
 }
 
 .philo-card-tradition {
@@ -10991,18 +11062,23 @@ details[open] .meditate-disclosure-summary::before {
   margin: 0.15rem 0;
   padding: 0.12rem 0.55rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--card-accent) 12%, transparent);
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: var(--accent);
+  color: var(--card-accent);
+}
+/* The era tag rides inside the tradition pill as a quieter, unbolded suffix (place · dates). */
+.philo-card-era {
+  font-weight: 500;
+  opacity: 0.8;
 }
 
 .philo-card:hover,
 .philo-card:focus-visible {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--card-accent) 42%, var(--border));
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--card-accent) 55%, transparent);
 }
 
 .philo-disclaimer {
@@ -11031,11 +11107,57 @@ details[open] .meditate-disclosure-summary::before {
   gap: var(--space-3);
 }
 
+/* The chat view carries the selected guide's accent (set inline as --card-fill/-dark on the
+   main), resolved to --card-accent per theme just like the practice cards, so the avatar and
+   the suggested-practice chip tint to this guide. */
+.philosophers-chat {
+  --card-accent: var(--card-fill, var(--accent));
+}
+:root[data-theme='dark'] .philosophers-chat {
+  --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .philosophers-chat {
+    --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+  }
+}
+
 .philo-chat-avatar {
   flex: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  color: var(--accent);
+  background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-surface));
+  color: var(--card-accent);
+}
+
+/* Guide-suggested practice — a quiet full-width chip under the header linking to a practice in
+   this guide's spirit. Accent-tinted to the guide; reads as an offer, not a demand. */
+.philo-practice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: 0.55rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 26%, var(--border));
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--card-accent) 7%, var(--bg-surface));
+  text-decoration: none;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.philo-practice:hover,
+.philo-practice:focus-visible {
+  border-color: color-mix(in srgb, var(--card-accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--card-accent) 12%, var(--bg-surface));
+}
+.philo-practice-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  color: var(--card-accent);
+  white-space: nowrap;
 }
 
 .philo-thread {

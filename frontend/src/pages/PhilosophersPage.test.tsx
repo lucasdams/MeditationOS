@@ -47,6 +47,14 @@ function renderPage() {
   )
 }
 
+function renderPageAt(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <PhilosophersPage />
+    </MemoryRouter>,
+  )
+}
+
 beforeEach(() => {
   listPersonas.mockReset().mockResolvedValue(ROSTER)
   chatPersona.mockReset()
@@ -69,6 +77,20 @@ describe('PhilosophersPage', () => {
     expect(screen.getByText('Marcus Aurelius')).toBeInTheDocument()
     expect(screen.getByText('Buddha')).toBeInTheDocument()
     expect(screen.getByText('A Stoic voice.')).toBeInTheDocument()
+  })
+
+  it('deep-links straight into a guide via ?guide=', async () => {
+    // The dashboard "reflect with a guide" card links to /philosophers?guide=<id>.
+    renderPageAt('/philosophers?guide=buddha')
+    // Lands in the chat view for that guide (composer present), skipping the picker.
+    expect(await screen.findByLabelText('Your message')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Buddha')
+  })
+
+  it('offers a guide-suggested practice that deep-links back into the app', async () => {
+    await openChat() // Marcus Aurelius
+    const practice = await screen.findByRole('link', { name: /Focused attention/ })
+    expect(practice).toHaveAttribute('href', '/meditate/focus')
   })
 
   it('shows a load error with retry when the roster fetch fails', async () => {

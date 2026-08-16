@@ -137,11 +137,15 @@ def reply(
     _enforce_daily_message_cap(user)
 
     messages = [{"role": t.role, "content": t.content} for t in trimmed]
+    # Per-guide tuning (temperature + reply budget) shapes the voice on providers that
+    # honour it; the shared MAX_TOKENS is the fallback ceiling. See Persona for the caveat
+    # that the default GPT-5 path ignores temperature and floors the token budget.
     result = llm_client.chat(
         system=persona.system,
         messages=messages,
-        max_tokens=MAX_TOKENS,
+        max_tokens=min(persona.max_tokens, MAX_TOKENS),
         timeout=TIMEOUT_SECONDS,
+        temperature=persona.temperature,
     )
     if result is None:
         # Any LLM failure (no provider, timeout, empty) degrades gracefully. Metadata

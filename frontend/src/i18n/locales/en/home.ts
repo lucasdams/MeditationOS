@@ -180,4 +180,9 @@ export const home: Record<string, string> = {
   'home.recommend.beginner.evening.blurb': 'An easy way to unwind.',
   'home.recommend.beginner.night.cta': 'Soften into a body scan',
   'home.recommend.beginner.night.blurb': 'Let the day go, gently.',
+
+  // Reflect-with-a-guide home card (components/ReflectWithGuide.tsx). The prompt shown is the
+  // guide's own opener (English content); these keys are the surrounding chrome.
+  'home.guide.heading': 'Reflect with a guide',
+  'home.guide.cta': 'Reflect with {name}',
 }

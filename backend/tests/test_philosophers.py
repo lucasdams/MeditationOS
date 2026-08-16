@@ -208,6 +208,29 @@ def test_roster_is_seven_distinct_personas():
         assert p.name in p.system or p.tradition.split()[0] in p.system
 
 
+def test_personas_carry_touchstones_and_distinct_tuning():
+    """Each guide grounds its voice in a few touchstones and carries its own tuning, so the
+    roster isn't one shared template with a name swapped in."""
+    for p in philosophers.PHILOSOPHERS:
+        assert "Ideas you return to" in p.system  # touchstones composed into the prompt
+        assert 0.0 <= p.temperature <= 1.0
+        assert 100 <= p.max_tokens <= 500
+    # The guides are tuned differently, not all identical.
+    assert len({p.temperature for p in philosophers.PHILOSOPHERS}) > 1
+    assert len({p.max_tokens for p in philosophers.PHILOSOPHERS}) > 1
+
+
+def test_reply_forwards_persona_tuning_to_llm(client):
+    """The per-guide temperature + reply budget reach the LLM seam (capped at MAX_TOKENS)."""
+    _auth(client, "ptune@example.com")
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        client.post("/api/v1/philosophers/laozi/chat", json=VALID)
+    laozi = philosophers.BY_ID["laozi"]
+    kwargs = chat.call_args.kwargs
+    assert kwargs["temperature"] == laozi.temperature
+    assert kwargs["max_tokens"] == min(laozi.max_tokens, philosopher_service.MAX_TOKENS)
+
+
 def test_list_personas_omits_system_prompt():
     summaries = philosopher_service.list_personas()
     assert len(summaries) == 7
