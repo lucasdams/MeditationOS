@@ -33,6 +33,25 @@ def test_requires_auth(client):
     assert client.get("/api/v1/journals/prompt").status_code == 401
 
 
+def test_every_contextual_prompt_has_a_japanese_translation():
+    """Drift guard: no English contextual prompt should leak in the ja UI."""
+    from app.prompts import journal as jp
+
+    pools = [jp.AFTER_BREATHING, jp.AFTER_LOVING_KINDNESS, jp.AFTER_MEDITATION, jp.GENERIC]
+    pools += list(jp.STREAK_MILESTONE.values())
+    for pool in pools:
+        for p in pool:
+            assert jp.localized_text(p, "ja") != p.text  # a real translation exists
+            assert jp.localized_text(p, "en") == p.text  # English is the default
+
+
+def test_prompt_localized_to_japanese(client):
+    _auth(client, "jp_ja@example.com")
+    body = client.get("/api/v1/journals/prompt?locale=ja").json()
+    # Generic (no sessions) pool, in Japanese — no ASCII letters in the copy.
+    assert not any("a" <= c.lower() <= "z" for c in body["text"])
+
+
 def test_generic_fallback_when_no_sessions(client):
     """With no practice history, the prompt falls back to a generic one."""
     _auth(client, "jp_empty@example.com")

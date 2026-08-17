@@ -35,4 +35,11 @@ describe('randomPrompt', () => {
       expect(randomPrompt(current)).not.toBe(current)
     }
   })
+
+  it('every prompt carries a Japanese translation distinct from the English', () => {
+    for (const p of JOURNAL_PROMPTS) {
+      expect(p.textJa.trim().length).toBeGreaterThan(0)
+      expect(p.textJa).not.toBe(p.text)
+    }
+  })
 })

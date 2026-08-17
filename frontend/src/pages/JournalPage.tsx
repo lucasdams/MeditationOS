@@ -14,7 +14,7 @@ import { messageForError } from '../lib/errors'
 import { ApiError } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
+import { dailyPrompt, promptText, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
 import { fmtDate, getLocale, useT } from '../i18n'
 import type { AiReflection, DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
 
@@ -95,14 +95,15 @@ export default function JournalPage() {
   useEffect(() => {
     let ignore = false
     journalService
-      .prompt()
+      .prompt(getLocale())
       .then((p) => {
         if (!ignore && !promptTouched.current) {
           // `theme` is internal pool metadata, never rendered; the contextual prompt
           // carries its own server-side context, so we keep a neutral placeholder
           // here purely to satisfy the shared JournalPrompt shape (shuffle excludes
           // by text, not theme, so this never affects behavior).
-          setCurrentPrompt({ text: p.text, theme: 'practice' })
+          // The server contextual prompt is localized backend-side; carry its text as-is.
+          setCurrentPrompt({ text: p.text, textJa: p.text, theme: 'practice' })
         }
       })
       .catch(() => {})
@@ -398,7 +399,7 @@ export default function JournalPage() {
                 setComposing(true)
               }}
             >
-              {currentPrompt.text}
+              {promptText(currentPrompt)}
             </button>
             <div className="journal-nudge-actions">
               <button

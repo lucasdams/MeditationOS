@@ -14,7 +14,10 @@ export const journalService = {
   // A random past reflection (404 → ApiError when the user has none).
   random: () => api.get<Journal>('/journals/random'),
   // Today's journaling nudge, tuned to recent practice (generic fallback otherwise).
-  prompt: () => api.get<JournalPromptResponse>('/journals/prompt'),
+  prompt: (locale?: string) =>
+    api.get<JournalPromptResponse>(
+      `/journals/prompt${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`,
+    ),
   create: (data: JournalCreate) => api.post<Journal>('/journals', data),
   update: (id: string, data: { body?: string; mood?: Mood | null }) =>
     api.patch<Journal>(`/journals/${id}`, data),

@@ -76,27 +76,32 @@ def _pool_for_type(session_type: str) -> tuple[prompts.ContextualPrompt, ...]:
 
 
 def get_prompt(
-    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str
+    db: DBSession, user_id: uuid.UUID, *, today: date, tz: str, locale: str = "en"
 ) -> JournalPromptRead:
-    """Select today's journaling prompt for the user.
+    """Select today's journaling prompt for the user, in the given locale's language.
 
     Priority: a streak milestone (7/30/100 days) outranks a last-session-type
     prompt, since hitting a milestone is the more salient moment; otherwise the
     prompt is tuned to the last session's type; otherwise a generic fallback.
     """
+
+    def _read(pick: prompts.ContextualPrompt, *, contextual: bool) -> JournalPromptRead:
+        return JournalPromptRead(
+            text=prompts.localized_text(pick, locale),
+            context=pick.context,
+            contextual=contextual,
+        )
+
     # Streak milestone takes precedence — surface the largest one the user has reached.
     streak = _current_streak(db, user_id, today=today, tz=tz)
     for milestone in prompts.STREAK_MILESTONE_DAYS:
         if streak >= milestone:
-            pick = _daily_pick(prompts.STREAK_MILESTONE[milestone], today)
-            return JournalPromptRead(text=pick.text, context=pick.context, contextual=True)
+            return _read(_daily_pick(prompts.STREAK_MILESTONE[milestone], today), contextual=True)
 
     # Otherwise tune to the last session's type, when there is one.
     last_type = _last_session_type(db, user_id)
     if last_type is not None:
-        pick = _daily_pick(_pool_for_type(last_type), today)
-        return JournalPromptRead(text=pick.text, context=pick.context, contextual=True)
+        return _read(_daily_pick(_pool_for_type(last_type), today), contextual=True)
 
     # No usable context — fall back to a generic daily prompt.
-    pick = _daily_pick(prompts.GENERIC, today)
-    return JournalPromptRead(text=pick.text, context=pick.context, contextual=False)
+    return _read(_daily_pick(prompts.GENERIC, today), contextual=False)

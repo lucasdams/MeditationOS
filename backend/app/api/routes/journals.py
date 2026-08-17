@@ -82,14 +82,15 @@ def random_journal(
 # Declared before /{journal_id} so "prompt" isn't parsed as a UUID path param.
 @router.get("/prompt", response_model=JournalPromptRead)
 def journal_prompt(
+    locale: str = "en",
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> JournalPromptRead:
     """Today's journaling nudge, tuned to the user's recent practice (with a
-    generic fallback). Read-only; no data is stored."""
+    generic fallback), in the given locale's language. Read-only; no data is stored."""
     today, tz = today_tz
-    return journal_prompt_service.get_prompt(db, current_user.id, today=today, tz=tz)
+    return journal_prompt_service.get_prompt(db, current_user.id, today=today, tz=tz, locale=locale)
 
 
 # Unowned (or missing) IDs return 404 — never 403 — to avoid leaking which IDs exist.
