@@ -54,6 +54,7 @@ def test_list_returns_full_roster(client):
         "eckhart-tolle",
         "carl-jung",
         "miyamoto-musashi",
+        "krishnamurti",
     ]
     # Summaries carry the picker fields — and never the system prompt.
     for p in body:
@@ -311,10 +312,10 @@ def test_fallback_reply_is_still_persisted(client):
 # ── The service/roster themselves ─────────────────────────────────────────────
 
 
-def test_roster_is_seven_distinct_personas():
+def test_roster_is_eight_distinct_personas():
     ids = [p.id for p in philosophers.PHILOSOPHERS]
-    assert len(ids) == 7
-    assert len(set(ids)) == 7
+    assert len(ids) == 8
+    assert len(set(ids)) == 8
     # Every persona composes the shared boundaries into its system prompt.
     for p in philosophers.PHILOSOPHERS:
         assert "not a therapist" in p.system
@@ -346,7 +347,7 @@ def test_reply_forwards_persona_tuning_to_llm(client):
 
 def test_list_personas_omits_system_prompt():
     summaries = philosopher_service.list_personas()
-    assert len(summaries) == 7
+    assert len(summaries) == 8
     assert not hasattr(summaries[0], "system")
 
 

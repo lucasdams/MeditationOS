@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Eye,
   Flower2,
   Landmark,
   MessageCircle,
@@ -77,6 +78,13 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     dark: '#a6acc4',
     era: 'Japan · 1584–1645',
     practice: { to: '/trataka', nameKey: 'practice.card.trataka.name' },
+  },
+  krishnamurti: {
+    icon: Eye,
+    light: '#16a34a',
+    dark: '#4ade80',
+    era: 'India · 1895–1986',
+    practice: { to: '/meditate/noting', nameKey: 'practice.card.noting.name' },
   },
 }
 
