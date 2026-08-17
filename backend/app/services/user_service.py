@@ -199,7 +199,7 @@ def _reset_email_body(user: User, link: str) -> str:
         ),
         ja=(
             f"{email_i18n.greeting_ja(user)}\n\n"
-            "MeditationOSのパスワードをリセットするリクエストを受け取りました。"
+            "MeditationOSのパスワードをリセットするリクエストを受け付けました。"
             f"以下のリンクから新しいパスワードを設定してください。リンクは{minutes}分で"
             f"期限切れになります:\n\n{link}\n\n"
             "心当たりがない場合は、このメールを無視してください。パスワードは変更されません。\n\n"

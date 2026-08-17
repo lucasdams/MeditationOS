@@ -275,79 +275,79 @@ _JA: dict[str, str] = {
     "Three short days to find your calm on the out-breath.":
         "3日間、吐く息とともに落ち着きを見つける。",
     "Focus Foundations": "集中の土台",
-    "A week of short sits to steady a busy mind.": "忙しい心を落ち着ける、一週間の短い瞑想。",
+    "A week of short sits to steady a busy mind.": "ざわつく心を落ち着ける、一週間の短い瞑想。",
     "Wind-Down Week": "眠りへの一週間",
     "Seven evenings to soften the end of the day.": "一日の終わりをやわらげる、7つの夜。",
     # first-7-days
-    "Day 1 · Just one minute": "1日目 · まずは一分",
+    "Day 1 · Just one minute": "1日目・まずは一分",
     "Just follow the orb. One slow minute.": "オーブに合わせるだけ。ゆっくり一分。",
-    "Day 2 · A touch longer": "2日目 · 少しだけ長く",
+    "Day 2 · A touch longer": "2日目・少しだけ長く",
     "Same as yesterday, a touch longer.": "昨日と同じ、少しだけ長く。",
-    "Day 3 · Settle the shoulders": "3日目 · 肩をゆるめる",
+    "Day 3 · Settle the shoulders": "3日目・肩をゆるめる",
     "Notice your shoulders drop on the out-breath.": "吐く息で肩が下がるのに気づいて。",
-    "Day 4 · Eyes closed": "4日目 · 目を閉じて",
+    "Day 4 · Eyes closed": "4日目・目を閉じて",
     "Eyes closed. Rest attention on the breath; wander, return.":
         "目を閉じて。息に注意を置き、さまよったら戻る。",
-    "Day 5 · Lengthen the exhale": "5日目 · 吐く息を長く",
+    "Day 5 · Lengthen the exhale": "5日目・吐く息を長く",
     "Longer exhale than inhale. Let it lengthen.": "吸う息より、吐く息を長く。のびのびと。",
-    "Day 6 · One small thing": "6日目 · ちいさなひとつ",
+    "Day 6 · One small thing": "6日目・ちいさなひとつ",
     "One small thing you're grateful for.": "感謝できる、ちいさなひとつを。",
-    "Day 7 · Your way now": "7日目 · これからは自分流に",
-    "Your way now. You've built a week.": "これからは自分流に。一週間を積み上げました。",
+    "Day 7 · Your way now": "7日目・これからは自分流に",
+    "Your way now. You've built a week.": "これからは自分流に。一週間を積み重ねました。",
     # three-calm-breaths
-    "Day 1 · A single calm minute": "1日目 · 落ち着いた一分",
+    "Day 1 · A single calm minute": "1日目・落ち着いた一分",
     "Sit and follow the orb. Let the first out-breath soften you.":
         "座ってオーブに合わせて。最初の吐く息でやわらいで。",
-    "Day 2 · Sink a little deeper": "2日目 · もう少し深く",
+    "Day 2 · Sink a little deeper": "2日目・もう少し深く",
     "Two minutes today. Let each exhale carry the tension out.":
         "今日は二分。吐く息ごとに、こわばりを外へ。",
-    "Day 3 · Steady and slow": "3日目 · ゆっくり、安定して",
+    "Day 3 · Steady and slow": "3日目・ゆっくり、安定して",
     "Three slow minutes. Notice how much calmer the breath has become.":
         "ゆっくり三分。呼吸がどれだけ落ち着いたかに気づいて。",
     # focus-foundations
-    "Day 1 · Count the breath": "1日目 · 呼吸を数える",
+    "Day 1 · Count the breath": "1日目・呼吸を数える",
     "Count each out-breath, one to ten. Lose count? Begin again at one.":
         "吐く息を一から十まで数える。わからなくなったら、また一から。",
-    "Day 2 · The wander and the return": "2日目 · さまよいと、戻り",
+    "Day 2 · The wander and the return": "2日目・さまよいと、戻り",
     "Notice the moment the mind wanders. That noticing is the win. Return gently.":
         "心がさまよう瞬間に気づく。その気づきこそが肝心。そっと戻る。",
-    "Day 3 · One anchor": "3日目 · ひとつの拠りどころ",
+    "Day 3 · One anchor": "3日目・ひとつの拠りどころ",
     "Pick one spot (nostrils or belly) and rest your attention there.":
-        "一か所(鼻先かお腹)を選び、そこに注意を置く。",
-    "Day 4 · A slow reset": "4日目 · ゆっくり整える",
+        "一か所（鼻先かお腹）を選び、そこに注意を置く。",
+    "Day 4 · A slow reset": "4日目・ゆっくり整える",
     "Slow breathing steadies the mind. Follow the orb and let it set your pace.":
-        "ゆっくりの呼吸は心を整える。オーブに合わせ、ペースを任せて。",
-    "Day 5 · Name what pulls": "5日目 · 気をそらすものに名前を",
+        "ゆっくりした呼吸は心を整える。オーブに合わせ、ペースを任せて。",
+    "Day 5 · Name what pulls": "5日目・気をそらすものに名前を",
     "When something pulls you away, softly name it (thinking, hearing) and return.":
-        "何かに気をそらされたら、そっと名前をつけて(考えている、聞いている)、戻る。",
-    "Day 6 · A little longer": "6日目 · 少し長く",
+        "何かに気をそらされたら、そっと名前をつけて（考えている、聞いている）、戻る。",
+    "Day 6 · A little longer": "6日目・少し長く",
     "Same sit as yesterday, held a little longer. Let it be ordinary.":
         "昨日と同じ瞑想を、少し長く。ふつうのこととして。",
-    "Day 7 · Steady, your way": "7日目 · 自分流に、安定して",
+    "Day 7 · Steady, your way": "7日目・自分流に、安定して",
     "Choose your anchor and sit. A week of returns has built real steadiness.":
         "拠りどころを選んで座る。戻りを重ねた一週間が、確かな安定を育てました。",
     # wind-down-week
-    "Day 1 · Arrive home": "1日目 · 帰ってくる",
+    "Day 1 · Arrive home": "1日目・帰ってくる",
     "Two slow minutes. Let the day's pace drain out on each exhale.":
         "ゆっくり二分。吐く息ごとに、一日の慌ただしさを流して。",
-    "Day 2 · Put the day down": "2日目 · 一日を置く",
+    "Day 2 · Put the day down": "2日目・一日を置く",
     "Sit and let the day's replay soften. Nothing to fix tonight.":
         "座って、頭の中で繰り返す今日の場面をやわらげる。今夜、直すことはない。",
-    "Day 3 · Longer exhale": "3日目 · 吐く息を長く",
+    "Day 3 · Longer exhale": "3日目・吐く息を長く",
     "Let the exhale lengthen. The body reads it as safety.":
         "吐く息を長く。からだはそれを安心と受けとる。",
-    "Day 4 · One good thing": "4日目 · ひとつの良かったこと",
+    "Day 4 · One good thing": "4日目・ひとつの良かったこと",
     "Name one good thing from today, however small.":
         "今日の良かったことをひとつ、どんなに小さくても。",
-    "Day 5 · Heavy limbs": "5日目 · 手足を重く",
+    "Day 5 · Heavy limbs": "5日目・手足を重く",
     "Let your limbs grow heavy where you sit. Rest attention low in the body.":
         "座ったまま手足を重く。注意をからだの下のほうに置いて。",
-    "Day 6 · Slow to slower": "6日目 · ゆっくり、もっとゆっくり",
+    "Day 6 · Slow to slower": "6日目・ゆっくり、もっとゆっくり",
     "Five unhurried minutes. Let the pace settle to slower than feels usual.":
         "急がず五分。いつもより遅いくらいに、ペースを落として。",
-    "Day 7 · A kind close": "7日目 · やさしく締めくくる",
+    "Day 7 · A kind close": "7日目・やさしく締めくくる",
     "Close the week kindly: a quiet sit, then straight toward rest.":
-        "一週間をやさしく締めくくる:静かな瞑想、そのまま休みへ。",
+        "一週間をやさしく締めくくる：静かな瞑想、そのまま休みへ。",
 }
 
 

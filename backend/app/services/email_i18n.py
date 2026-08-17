@@ -30,3 +30,9 @@ def greeting_ja(user: User) -> str:
     user (e.g. a fresh account's first verification email) gets a plain こんにちは rather
     than the ungrammatical "こんにちはさん"."""
     return f"{user.username}さん、" if user.username else "こんにちは、"
+
+
+def streak_label_ja(days: int) -> str:
+    """Japanese label for a streak length. A single day reads 1日 (1日間 is unnatural
+    for a one-day span); every other length is N日間."""
+    return "1日" if days == 1 else f"{days}日間"

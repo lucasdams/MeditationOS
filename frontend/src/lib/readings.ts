@@ -109,12 +109,12 @@ const READING_TEXT_JA: Record<string, string> = {
     '自分の力の及ぶことを最大限に活かし、あとは起こるがままに受け入れよ。',
   'No one is free who is not master of themselves.': '自分を治められない者に自由はない。',
   'We suffer more often in imagination than in reality.':
-    '私たちは現実よりも、想像の中でより多く苦しむ。',
+    '私たちは現実よりも、想像の中で多く苦しむ。',
   'It is not that we have a short time to live, but that we waste much of it.':
     '人生が短いのではない。その多くを浪費しているのだ。',
   'Nature does not hurry, yet everything is accomplished.':
     '自然は急がない。それでいて、すべては成し遂げられる。',
-  'A journey of a thousand miles begins with a single step.': '千里の道も一歩から始まる。',
+  'A journey of a thousand miles begins with a single step.': '千里の道も一歩から。',
   'When I let go of what I am, I become what I might be.':
     '今の自分を手放したとき、なり得る自分になる。',
   'Peace comes from within. Do not seek it without.':
@@ -125,13 +125,13 @@ const READING_TEXT_JA: Record<string, string> = {
   'Tension is who you think you should be. Relaxation is who you are.':
     '緊張とは「こうあるべき」と思う自分。くつろぎとは、ありのままの自分。',
   'Dwell on the beauty of life. Watch the stars, and see yourself running with them.':
-    '人生の美しさに心をとめよ。星を眺め、その中を共に駆ける自分を見よ。',
+    '人生の美しさに心をとめよ。星を眺め、星とともに駆ける自分を見よ。',
   'The soul becomes dyed with the colour of its thoughts.':
     '魂は、その思いの色に染まっていく。',
   'The best revenge is not to be like your enemy.':
     '最良の復讐は、敵のようにならないことだ。',
   "Loss is nothing else but change, and change is Nature's delight.":
-    '失うこととは変化にほかならず、変化こそ自然の喜びである。',
+    '失うとは変化にほかならず、変化こそ自然の喜びである。',
   'First say to yourself what you would be; and then do what you have to do.':
     'まず、どうありたいかを自分に告げよ。それから、なすべきことをなせ。',
   'Wealth consists not in having great possessions, but in having few wants.':
@@ -189,7 +189,7 @@ const READING_TEXT_JA: Record<string, string> = {
   'How you breathe shapes how you feel — slow the exhale and the mind follows.':
     '呼吸のしかたが感じ方を形づくる。息を長く吐けば、心もそれに従う。',
   'This moment is the only place life actually happens.':
-    'この瞬間だけが、人生が実際に起こる唯一の場所である。',
+    'この瞬間こそ、人生が実際に起こる唯一の場所である。',
   'You are not the anxious voice in your head; you are the one who notices it.':
     'あなたは頭の中の不安な声ではない。それに気づいている者である。',
   'Rest is not the reward for the work — it is part of the work.':

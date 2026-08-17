@@ -192,10 +192,10 @@ def _summary_body(user: User, review: WeeklyReview) -> str:
         ),
         ja=(
             f"{email_i18n.greeting_ja(user)}\n\n"
-            "今週のプラクティスの振り返りです:\n\n"
+            "今週のプラクティスの振り返りです：\n\n"
             f"  • {review.sessions}回のセッションで合計{review.minutes}分\n"
             f"  • 7日間のうち{review.active_days}日実践\n"
-            f"  • {review.current_streak_days}日間の連続記録\n"
+            f"  • {email_i18n.streak_label_ja(review.current_streak_days)}の連続記録\n"
             f"  • {ja_trend}。"
             f"{ja_mood}\n\n"
             f"この調子で続けましょう: {url}\n\n"

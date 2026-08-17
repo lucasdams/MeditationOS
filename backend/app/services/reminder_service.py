@@ -222,7 +222,7 @@ def _streak_save_body(user: User, streak: int) -> str:
         ),
         ja=(
             f"{email_i18n.greeting_ja(user)}\n\n"
-            f"{streak}日間の連続記録が続いています。今日の静かな数分で、それを保てます。\n\n"
+            f"{email_i18n.streak_label_ja(streak)}の連続記録が続いています。今日の静かな数分で、それを保てます。\n\n"
             "無理はいりませんが、今晩少し時間があれば、あなたのプラクティスが待っています。\n\n"
             f"MeditationOSを開く: {url}\n\n"
             "MeditationOS\n\n"
@@ -307,7 +307,7 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
                         "— a few mindful minutes keeps it going."
                     ),
                     ja=(
-                        f"{current_streak}日間の連続記録はまだ続いています。"
+                        f"{email_i18n.streak_label_ja(current_streak)}の連続記録はまだ続いています。"
                         "数分のマインドフルな時間で保てます。"
                     ),
                 ),
@@ -341,9 +341,9 @@ _TYPE_LABELS_JA = {
     "mindfulness": "マインドフルネス",
     "body_scan": "ボディスキャン",
     "walking": "歩く瞑想",
-    "loving_kindness": "慈悲の瞑想",
+    "loving_kindness": "慈しみの瞑想",
     "resonance_breathing": "レゾナンス呼吸",
-    "energizing_breathing": "活性化の呼吸",
+    "energizing_breathing": "活力の呼吸",
     "other": "瞑想",
 }
 
