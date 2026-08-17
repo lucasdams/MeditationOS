@@ -10,7 +10,7 @@ import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { gratitudeColor } from '../lib/colors'
 import { Loading, ErrorBanner, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { fmtDate, useT } from '../i18n'
+import { fmtDate, getLocale, useT } from '../i18n'
 import type { DashboardStats, Gratitude, GratitudeCategory } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -68,6 +68,54 @@ const CATEGORIES: { key: GratitudeCategory; label: string }[] = [
 const LABELS: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.key, c.label]),
 )
+
+// Japanese category labels, keyed by the stable machine key (the English labels above are the
+// source of truth; the taxonomy/keys never change). categoryLabel() picks by locale.
+const LABELS_JA: Record<GratitudeCategory, string> = {
+  custom: 'カスタム',
+  people: '人',
+  health: '健康',
+  nature: '自然',
+  experiences: '経験',
+  growth: '成長',
+  home: '住まい',
+  self: '自分自身',
+  simple_pleasures: 'ささやかな喜び',
+  small_moments: 'ちいさな瞬間',
+  big_moments: '大きな出来事',
+  spiritual: '精神性',
+  material: '持っているもの',
+  work: '仕事',
+  food: '食べもの',
+  learning: '学び',
+  creativity: '創造性',
+  kindness: 'やさしさ',
+  music: '音楽',
+  animals: '動物',
+  travel: '旅',
+  friendship: '友情',
+  family: '家族',
+  love: '愛',
+  play: '遊び・楽しみ',
+  memories: '思い出',
+  hope: '希望',
+  body: 'からだ',
+  mind: 'こころ',
+  mornings: '朝',
+  evenings: '夜',
+  weather: '天気',
+  comfort: '心地よさ',
+  freedom: '自由',
+  abundance: '豊かさ',
+  community: 'コミュニティ',
+  beauty: '美しさ',
+}
+
+// The display label for a category in the given locale (Japanese where available, else English).
+function categoryLabel(key: GratitudeCategory, locale: string): string {
+  if (locale === 'ja') return LABELS_JA[key] ?? LABELS[key] ?? key
+  return LABELS[key] ?? key
+}
 
 // A short, common-first subset shown by default so the composer stays close to the top;
 // the rest hide behind "More themes". Keep "custom" (write-your-own) always visible.
@@ -183,7 +231,7 @@ export default function GratitudePage() {
     setOptions([])
     setLoadingOptions(true)
     try {
-      const res = await gratitudeService.suggestions(cat)
+      const res = await gratitudeService.suggestions(cat, getLocale())
       setOptions(res.options)
     } catch {
       setOptions([]) // suggestions are a nicety; manual input still works
@@ -266,7 +314,7 @@ export default function GratitudePage() {
               aria-hidden="true"
               style={{ backgroundColor: gratitudeColor(c.key) }}
             />{' '}
-            {c.label}
+            {categoryLabel(c.key, getLocale())}
           </button>
         ))}
         {/* Keep a chosen theme on screen even when its from the collapsed set. */}
@@ -283,7 +331,7 @@ export default function GratitudePage() {
                 aria-hidden="true"
                 style={{ backgroundColor: gratitudeColor(c.key) }}
               />{' '}
-              {c.label}
+              {categoryLabel(c.key, getLocale())}
             </button>
           ) : null,
         )}
@@ -384,7 +432,7 @@ export default function GratitudePage() {
                     className="journal-mood"
                     style={{ '--pill': color } as React.CSSProperties}
                   >
-                    {LABELS[e.category] ?? e.category}
+                    {categoryLabel(e.category, getLocale())}
                   </span>
                   <span className="journal-entry-actions" id={`menu-${e.id}`}>
                     {menuId === e.id && (

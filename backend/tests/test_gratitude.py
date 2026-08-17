@@ -119,6 +119,24 @@ def test_suggestions_requires_auth(client):
     assert client.get("/api/v1/gratitude/suggestions?category=people").status_code == 401
 
 
+def test_system_for_adds_japanese_directive():
+    from app.prompts.gratitude import SYSTEM, system_for
+
+    assert system_for("en") == SYSTEM
+    assert system_for() == SYSTEM
+    assert "日本語" in system_for("ja")
+
+
+def test_suggestions_locale_reaches_the_model(client):
+    _auth(client, "gja@example.com")
+    with patch(
+        "app.services.ai.gratitude_suggester.llm_client.complete", return_value=None
+    ) as complete:
+        client.get("/api/v1/gratitude/suggestions?category=people&locale=ja")
+    # The Japanese directive is in the system prompt sent to the model.
+    assert "日本語" in complete.call_args.kwargs["system"]
+
+
 def test_create_accepts_new_category(client):
     _auth(client, "g11@example.com")
     res = _entry(client, "spiritual", "A moment of awe")

@@ -14,7 +14,7 @@ import logging
 import random
 from pathlib import Path
 
-from app.prompts.gratitude import SYSTEM, user_message
+from app.prompts.gratitude import system_for, user_message
 from app.services.ai import llm_client
 
 logger = logging.getLogger(__name__)
@@ -71,11 +71,12 @@ def _validate(raw: object) -> list[str] | None:
     return cleaned[:MAX_OPTIONS] or None
 
 
-def suggest_options(category: str) -> list[str]:
-    """Return ~10 gratitude prompts for a category. Never raises — degrades to fallback."""
+def suggest_options(category: str, locale: str = "en") -> list[str]:
+    """Return ~10 gratitude prompts for a category, in the given locale's language. Never
+    raises — degrades to the curated (English) fallback."""
     try:
         result = llm_client.complete(
-            system=SYSTEM,
+            system=system_for(locale),
             user=user_message(category),
             max_tokens=500,
             timeout=TIMEOUT_SECONDS,

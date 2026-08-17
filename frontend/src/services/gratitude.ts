@@ -18,6 +18,8 @@ export const gratitudeService = {
   // A random past gratitude moment (404 → ApiError when the user has none).
   random: () => api.get<Gratitude>('/gratitude/random'),
   remove: (id: string) => api.del<void>(`/gratitude/${id}`),
-  suggestions: (category: GratitudeCategory) =>
-    api.get<GratitudeSuggestions>(`/gratitude/suggestions?category=${category}`),
+  suggestions: (category: GratitudeCategory, locale?: string) =>
+    api.get<GratitudeSuggestions>(
+      `/gratitude/suggestions?category=${category}${locale ? `&locale=${encodeURIComponent(locale)}` : ''}`,
+    ),
 }

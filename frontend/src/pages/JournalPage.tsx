@@ -15,7 +15,7 @@ import { ApiError } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
 import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
-import { fmtDate, useT } from '../i18n'
+import { fmtDate, getLocale, useT } from '../i18n'
 import type { AiReflection, DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -264,7 +264,7 @@ export default function JournalPage() {
     setReflectingId(id)
     setReflectNotice(null)
     try {
-      const r = await journalService.reflect(id)
+      const r = await journalService.reflect(id, getLocale())
       setReflections((prev) => ({ ...prev, [id]: r }))
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {

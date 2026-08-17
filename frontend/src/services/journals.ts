@@ -22,6 +22,9 @@ export const journalService = {
   // The AI reflection on one entry. POST is create-or-return-existing (the backend
   // generates at most one per entry; only NEW generations count toward the daily
   // cap → 429). GET 404s when the entry has no reflection yet.
-  reflect: (id: string) => api.post<AiReflection>(`/journals/${id}/reflection`),
+  reflect: (id: string, locale?: string) =>
+    api.post<AiReflection>(
+      `/journals/${id}/reflection${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`,
+    ),
   getReflection: (id: string) => api.get<AiReflection>(`/journals/${id}/reflection`),
 }

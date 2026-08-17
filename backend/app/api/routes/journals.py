@@ -124,13 +124,14 @@ def create_reflection(
     request: Request,  # required by the rate limiter
     journal_id: uuid.UUID,
     response: Response,
+    locale: str = "en",
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AIReflectionRead:
     """Generate (or return the existing) AI reflection for one of the user's
-    journal entries. 201 on first generation, 200 thereafter.
-    DailyLimitError → 429 is mapped app-wide (see app/main.py)."""
-    result = reflection_service.create_or_get(db, current_user.id, journal_id)
+    journal entries, in the given locale's language. 201 on first generation, 200
+    thereafter. DailyLimitError → 429 is mapped app-wide (see app/main.py)."""
+    result = reflection_service.create_or_get(db, current_user.id, journal_id, locale)
     if result is None:
         raise _NOT_FOUND
     reflection, created = result

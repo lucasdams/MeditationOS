@@ -86,6 +86,21 @@ def test_create_returns_reflection(client):
     assert reflection_coach.MODEL not in res.text
 
 
+def test_system_for_adds_japanese_directive():
+    from app.prompts.reflection import SYSTEM, system_for
+
+    assert system_for("en") == SYSTEM
+    assert "日本語" in system_for("ja")
+
+
+def test_reflection_locale_is_passed_through(client):
+    _auth(client, "rja@example.com")
+    journal_id = _entry(client)
+    with patch(GENERATE, return_value=AI_RESULT) as gen:
+        client.post(f"/api/v1/journals/{journal_id}/reflection?locale=ja")
+    assert gen.call_args.kwargs["locale"] == "ja"
+
+
 def test_fallback_result_reports_fallback_source(client):
     _auth(client, "rfall@example.com")
     journal_id = _entry(client)

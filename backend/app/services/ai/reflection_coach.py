@@ -13,7 +13,7 @@ import json
 import logging
 import random
 
-from app.prompts.reflection import SYSTEM, user_message
+from app.prompts.reflection import system_for, user_message
 from app.services.ai import llm_client
 
 logger = logging.getLogger(__name__)
@@ -102,17 +102,22 @@ def _validate(raw: object) -> tuple[str, str] | None:
     return reflection, followup
 
 
-def generate(body: str, mood: str | None = None, journal_id: object = None) -> tuple[str, str, str]:
-    """Return (reflection_text, followup_question, model) for a journal entry.
-    Never raises — degrades to a curated fallback pair. `journal_id` is only for
-    log metadata; the journal text itself is never logged."""
+def generate(
+    body: str,
+    mood: str | None = None,
+    journal_id: object = None,
+    locale: str = "en",
+) -> tuple[str, str, str]:
+    """Return (reflection_text, followup_question, model) for a journal entry, in the given
+    locale's language. Never raises — degrades to a curated (English) fallback pair.
+    `journal_id` is only for log metadata; the journal text itself is never logged."""
     try:
         # The seam carries the fail-fast posture (max_retries=0 + timeout): the SDK
         # otherwise retries, so one outage could pin a Starlette threadpool thread for
         # tens of seconds. We fail fast to the curated fallback instead (ai-product.md:
         # don't block on LLM calls).
         result = llm_client.complete(
-            system=SYSTEM,
+            system=system_for(locale),
             user=user_message(body, mood),
             max_tokens=MAX_TOKENS,
             timeout=TIMEOUT_SECONDS,
