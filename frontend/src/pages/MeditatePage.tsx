@@ -20,7 +20,7 @@ import GuidedCues from '../components/GuidedCues'
 import Stepper, { type StepperOption } from '../components/Stepper'
 import SoundscapePicker from '../components/SoundscapePicker'
 import { useToast } from '../context/ToastContext'
-import { useT } from '../i18n'
+import { getLocale, useT } from '../i18n'
 import {
   MIN_DRAFT_SECONDS,
   beaconSave,
@@ -35,6 +35,8 @@ import { dailySuggestion } from '../lib/intentionPrompts'
 import {
   GUIDED_STRUCTURES,
   isGuidedUnlocked,
+  localizedDescription,
+  localizedLabel,
   type GuidedStructureId,
 } from '../lib/guidedSessions'
 import { speechAvailable, onVoicesReady, cancelSpeech } from '../lib/speech'
@@ -651,7 +653,7 @@ export default function MeditatePage() {
     <main id="main-content" className="breathe">
       <Link to="/" className="back-link">{t('practice.back.dashboard')}</Link>
       <header className="page-head">
-        <h1>{activeGuided ? activeGuided.label : t('practice.meditate.title')}</h1>
+        <h1>{activeGuided ? localizedLabel(activeGuided, getLocale()) : t('practice.meditate.title')}</h1>
       </header>
 
       {/* Beginner-friendly intro — a plain-language "what you'll do" shown before the sit starts, so
@@ -661,7 +663,7 @@ export default function MeditatePage() {
         <div className="practice-intro">
           <p className="practice-intro-what">
             {activeGuided
-              ? activeGuided.description
+              ? localizedDescription(activeGuided, getLocale())
               : t('practice.meditate.intro.whatUnguided')}
           </p>
           <p className="practice-intro-how">

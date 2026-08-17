@@ -152,7 +152,8 @@ describe('GuidedCues — speech lifecycle', () => {
         speechOn
       />,
     )
-    expect(speak).toHaveBeenCalledWith(structure.phases[2].cue)
+    // The cue is spoken with the content locale (default 'en' in tests).
+    expect(speak).toHaveBeenCalledWith(structure.phases[2].cue, 'en')
   })
 
   it('cancels speech on unmount', () => {

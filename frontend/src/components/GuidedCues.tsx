@@ -24,12 +24,14 @@ import { useEffect, useRef } from 'react'
 import {
   buildSchedule,
   currentPhaseIndex,
+  localizedCue,
   tryGetStructure,
   type GuidedStructureId,
   type PhaseWindow,
 } from '../lib/guidedSessions'
 import { playBell } from '../lib/sfx'
 import { speak, cancelSpeech } from '../lib/speech'
+import { getLocale } from '../i18n'
 
 interface GuidedCuesProps {
   structureId: GuidedStructureId
@@ -109,7 +111,10 @@ export default function GuidedCues({
     if (!phase || !isForward) return
 
     if (speechOnRef.current) {
-      speak(phase.cue)
+      // Speak the localized cue, and tell the TTS the content language so it picks a
+      // Japanese voice for Japanese cues (not an English voice reading Japanese).
+      const locale = getLocale()
+      speak(localizedCue(structureId, phaseIdx, phase.cue, locale), locale)
     } else if (!isFirst && phase.bell && bellsOn) {
       try {
         playBell(volume)
@@ -132,7 +137,8 @@ export default function GuidedCues({
       cancelSpeech()
     } else if (!was && phase) {
       // off → on: resume — re-speak the cue the user is currently in.
-      speak(phase.cue)
+      const locale = getLocale()
+      speak(localizedCue(structureId, phaseIdx, phase.cue, locale), locale)
     }
   }, [speechOn, phase])
 
@@ -163,7 +169,9 @@ export default function GuidedCues({
   return (
     <div className="guided-cues">
       <div aria-live="polite" aria-atomic="true">
-        <p className="guided-cues-text">{phase.cue}</p>
+        <p className="guided-cues-text">
+          {localizedCue(structureId, phaseIdx, phase.cue, getLocale())}
+        </p>
       </div>
       <div className="guided-cues-footer" aria-hidden="true">
         <span className="guided-cues-progress-label">
