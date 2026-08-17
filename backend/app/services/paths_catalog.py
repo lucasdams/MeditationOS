@@ -310,7 +310,7 @@ _JA: dict[str, str] = {
         "吐く息を一から十まで数える。わからなくなったら、また一から。",
     "Day 2 · The wander and the return": "2日目 · さまよいと、戻り",
     "Notice the moment the mind wanders. That noticing is the win. Return gently.":
-        "心がさまよう瞬間に気づく。その気づきが勝ち。そっと戻る。",
+        "心がさまよう瞬間に気づく。その気づきこそが肝心。そっと戻る。",
     "Day 3 · One anchor": "3日目 · ひとつの拠りどころ",
     "Pick one spot (nostrils or belly) and rest your attention there.":
         "一か所(鼻先かお腹)を選び、そこに注意を置く。",
@@ -332,7 +332,7 @@ _JA: dict[str, str] = {
         "ゆっくり二分。吐く息ごとに、一日の慌ただしさを流して。",
     "Day 2 · Put the day down": "2日目 · 一日を置く",
     "Sit and let the day's replay soften. Nothing to fix tonight.":
-        "座って、一日の再生をやわらげる。今夜、直すことはない。",
+        "座って、頭の中で繰り返す今日の場面をやわらげる。今夜、直すことはない。",
     "Day 3 · Longer exhale": "3日目 · 吐く息を長く",
     "Let the exhale lengthen. The body reads it as safety.":
         "吐く息を長く。からだはそれを安心と受けとる。",

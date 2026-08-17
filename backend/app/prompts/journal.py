@@ -94,49 +94,49 @@ GENERIC: tuple[ContextualPrompt, ...] = (
 # truth). `localized_text(prompt, locale)` picks the Japanese where available, else English.
 _JA: dict[str, str] = {
     "How does your body feel now, after breathing?":
-        "呼吸のあと、からだは今どんな感じですか?",
+        "呼吸のあと、からだは今どんな感じですか？",
     "What shifted between your first breath and your last?":
-        "最初の呼吸と最後の呼吸で、何が変わりましたか?",
+        "最初の呼吸と最後の呼吸で、何が変わりましたか？",
     "Where do you notice the breath settling in your body?":
-        "からだのどこで、呼吸が落ち着くのを感じますか?",
+        "からだのどこで、呼吸が落ち着くのを感じますか？",
     "What did slowing your breath make a little easier?":
-        "呼吸をゆっくりにして、少し楽になったことは?",
+        "呼吸をゆっくりにして、少し楽になったことは？",
     "Who came to mind during your loving-kindness practice?":
-        "慈悲の瞑想のあいだ、誰が心に浮かびましたか?",
+        "慈悲の瞑想のあいだ、誰が心に浮かびましたか？",
     "What kind wish would you offer yourself right now?":
-        "今の自分に、どんなやさしい願いを贈りますか?",
+        "今の自分に、どんなやさしい願いを贈りますか？",
     "Where in your day could a little more warmth go?":
-        "一日のどこに、もう少しあたたかさを向けられそうですか?",
+        "一日のどこに、もう少しあたたかさを向けられそうですか？",
     "What felt tender, and what felt open, just now?":
-        "今、やわらかく感じたもの、開いたと感じたものは?",
+        "今、やわらかく感じたもの、開いたと感じたものは？",
     "What did you notice during or after your sit?":
-        "瞑想の最中や、そのあとに気づいたことは?",
+        "瞑想の最中や、そのあとに気づいたことは？",
     "Was there a moment of stillness, however brief?":
-        "たとえ一瞬でも、静けさの瞬間はありましたか?",
+        "たとえ一瞬でも、静けさの瞬間はありましたか？",
     "What would you carry from this sit into the rest of your day?":
-        "この瞑想から、一日に持っていきたいものは?",
+        "この瞑想から、一日に持っていきたいものは？",
     "How did your practice feel today — in body, in mind?":
-        "今日のプラクティスは——からだで、心で、どんな感じでしたか?",
+        "今日のプラクティスは——からだで、心で、どんな感じでしたか？",
     "A week of showing up — what's kept you coming back?":
-        "一週間続けて——何があなたを戻ってこさせたのでしょう?",
+        "一週間続けて——また戻ってきたくなるのは、何があるからでしょう？",
     "Seven days in. What feels different from when you began?":
-        "七日目。始めた頃と、何が違って感じますか?",
+        "七日目。始めた頃と、何が違って感じますか？",
     "A month of practice — how has it woven into your days?":
-        "一か月の実践——それは日々にどう織り込まれましたか?",
+        "一か月のプラクティス——それは日々にどう織り込まれましたか？",
     "Thirty days on. What would past-you be glad to hear?":
-        "三十日目。以前の自分が聞いたら喜ぶことは?",
+        "三十日目。以前の自分が聞いたら喜ぶことは？",
     "A hundred days. What has this practice quietly taught you?":
-        "百日。この実践が、そっと教えてくれたことは?",
+        "百日。このプラクティスが、そっと教えてくれたことは？",
     "One hundred days in — what are you grateful you stayed with?":
-        "百日目——続けてよかったと思えることは?",
+        "百日目——続けてよかったと思えることは？",
     "What's on your mind right now?":
-        "いま、心にあることは?",
+        "いま、心にあることは？",
     "What's one small thing you're grateful for right now?":
-        "いま、感謝できるちいさなことは何ですか?",
+        "いま、感謝できるちいさなことは何ですか？",
     "What emotion has been most present for you today?":
-        "今日、いちばん強く感じていた感情は?",
+        "今日、いちばん強く感じていた感情は？",
     "What would you like to let go of before you sleep tonight?":
-        "眠る前に手放したいものは?",
+        "眠る前に手放したいものは？",
 }
 
 

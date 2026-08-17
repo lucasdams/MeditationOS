@@ -57,7 +57,7 @@ describe('readings', () => {
       // Modern in-copyright title stays in its original form, with the JA "inspired" frame.
       expect(
         readingAttribution({ text: 'x', author: 'James Clear', work: 'Atomic Habits', inspired: true }),
-      ).toBe('Atomic Habitsに着想を得て')
+      ).toBe('Atomic Habitsに着想を得た一節')
     })
   })
 })

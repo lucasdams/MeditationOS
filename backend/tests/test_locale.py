@@ -78,6 +78,18 @@ def test_reset_email_japanese_when_locale_ja():
     assert "パスワードをリセット" in body
 
 
+def test_japanese_greeting_has_no_dangling_san_when_nameless():
+    # A fresh account has no username; the JA greeting must not render the ungrammatical
+    # "こんにちはさん" — it falls back to a plain こんにちは、.
+    nameless = User(email="x@example.com", username=None, locale="ja")
+    body = user_service._verification_email_body(nameless, "https://example.test/verify")
+    assert "こんにちはさん" not in body
+    assert body.startswith("こんにちは、")
+    # With a name, さん is appended as normal.
+    named = user_service._verification_email_body(_user("ja"), "https://example.test/verify")
+    assert named.startswith("Aikoさん、")
+
+
 def test_weekly_summary_mood_localized_to_ja():
     # top_mood is stored as an English key; the JA body names it in Japanese.
     from datetime import date

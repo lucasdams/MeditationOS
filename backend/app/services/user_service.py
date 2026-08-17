@@ -198,7 +198,7 @@ def _reset_email_body(user: User, link: str) -> str:
             "MeditationOS"
         ),
         ja=(
-            f"{user.username or 'こんにちは'}さん、\n\n"
+            f"{email_i18n.greeting_ja(user)}\n\n"
             "MeditationOSのパスワードをリセットするリクエストを受け取りました。"
             f"以下のリンクから新しいパスワードを設定してください。リンクは{minutes}分で"
             f"期限切れになります:\n\n{link}\n\n"
@@ -260,7 +260,7 @@ def _verification_email_body(user: User, link: str) -> str:
             "MeditationOS"
         ),
         ja=(
-            f"{user.username or 'こんにちは'}さん、\n\n"
+            f"{email_i18n.greeting_ja(user)}\n\n"
             "MeditationOSへようこそ！以下のリンクをクリックして、メールアドレスを"
             f"確認してください:\n\n{link}\n\n"
             "このアカウントに心当たりがない場合は、このメールを無視してください。\n\n"

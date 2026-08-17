@@ -23,3 +23,10 @@ def locale_of(user: User) -> str:
 def pick(user: User, *, en: str, ja: str) -> str:
     """Choose the copy matching the user's locale, defaulting to English."""
     return ja if locale_of(user) == "ja" else en
+
+
+def greeting_ja(user: User) -> str:
+    """The Japanese email opening. Appends さん only when there's a name — a nameless
+    user (e.g. a fresh account's first verification email) gets a plain こんにちは rather
+    than the ungrammatical "こんにちはさん"."""
+    return f"{user.username}さん、" if user.username else "こんにちは、"

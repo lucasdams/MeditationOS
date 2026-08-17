@@ -191,7 +191,7 @@ def _summary_body(user: User, review: WeeklyReview) -> str:
             "You can turn these off anytime in Settings."
         ),
         ja=(
-            f"{user.username or 'こんにちは'}さん、\n\n"
+            f"{email_i18n.greeting_ja(user)}\n\n"
             "今週のプラクティスの振り返りです:\n\n"
             f"  • {review.sessions}回のセッションで合計{review.minutes}分\n"
             f"  • 7日間のうち{review.active_days}日実践\n"

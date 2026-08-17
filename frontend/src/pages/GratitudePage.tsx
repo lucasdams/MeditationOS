@@ -73,7 +73,7 @@ const LABELS: Record<string, string> = Object.fromEntries(
 // source of truth; the taxonomy/keys never change). categoryLabel() picks by locale.
 const LABELS_JA: Record<GratitudeCategory, string> = {
   custom: 'カスタム',
-  people: '人',
+  people: '人々',
   health: '健康',
   nature: '自然',
   experiences: '経験',
@@ -102,7 +102,7 @@ const LABELS_JA: Record<GratitudeCategory, string> = {
   body: 'からだ',
   mind: 'こころ',
   mornings: '朝',
-  evenings: '夜',
+  evenings: '夕方',
   weather: '天気',
   comfort: '心地よさ',
   freedom: '自由',

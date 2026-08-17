@@ -141,7 +141,7 @@ def _reminder_body(user: User) -> str:
             "You can turn these off anytime in Settings."
         ),
         ja=(
-            f"{user.username or 'こんにちは'}さん、\n\n"
+            f"{email_i18n.greeting_ja(user)}\n\n"
             "今日、都合のよいときに、自分のための静かな数分を過ごしてみませんか。"
             "気軽にどうぞ。\n\n"
             f"準備ができたら始めましょう: {url}\n\n"
@@ -221,7 +221,7 @@ def _streak_save_body(user: User, streak: int) -> str:
             "You can turn these off anytime in Settings."
         ),
         ja=(
-            f"{user.username or 'こんにちは'}さん、\n\n"
+            f"{email_i18n.greeting_ja(user)}\n\n"
             f"{streak}日間の連続記録が続いています。今日の静かな数分で、それを保てます。\n\n"
             "無理はいりませんが、今晩少し時間があれば、あなたのプラクティスが待っています。\n\n"
             f"MeditationOSを開く: {url}\n\n"
@@ -307,8 +307,8 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
                         "— a few mindful minutes keeps it going."
                     ),
                     ja=(
-                        f"{current_streak}日間の連続記録はまだ続いています"
-                        "— 数分のマインドフルな時間で保てます。"
+                        f"{current_streak}日間の連続記録はまだ続いています。"
+                        "数分のマインドフルな時間で保てます。"
                     ),
                 ),
             )
@@ -340,7 +340,7 @@ _SCHEDULED_PUSH_JA = "予約したセッションがもうすぐです。準備�
 _TYPE_LABELS_JA = {
     "mindfulness": "マインドフルネス",
     "body_scan": "ボディスキャン",
-    "walking": "歩行",
+    "walking": "歩く瞑想",
     "loving_kindness": "慈悲の瞑想",
     "resonance_breathing": "レゾナンス呼吸",
     "energizing_breathing": "活性化の呼吸",
@@ -376,7 +376,7 @@ def _scheduled_session_body(user: User, row: ScheduledSession) -> str:
             "You can turn these off anytime in Settings."
         ),
         ja=(
-            f"{user.username or 'こんにちは'}さん、\n\n"
+            f"{email_i18n.greeting_ja(user)}\n\n"
             f"予約した{label_ja}のセッションがもうすぐ始まります。準備ができたらいつでも。"
             "無理はいりません。ちょうどよいと感じたときに、ここで待っています。\n\n"
             f"準備ができたら始めましょう: {url}\n\n"

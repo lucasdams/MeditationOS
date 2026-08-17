@@ -222,7 +222,7 @@ const AUTHOR_JA: Record<string, string> = {
   'Kahlil Gibran': 'カリール・ジブラン',
   'James Clear': 'ジェームズ・クリア',
   'Cal Newport': 'カル・ニューポート',
-  'Jon Kabat-Zinn': 'ジョン・カバットジン',
+  'Jon Kabat-Zinn': 'ジョン・カバット・ジン',
   'James Nestor': 'ジェームズ・ネスター',
   'Eckhart Tolle': 'エックハルト・トール',
   'Michael Singer': 'マイケル・シンガー',
@@ -260,7 +260,7 @@ export function readingAttribution(reading: Reading): string {
   if (getLocale() === 'ja') {
     const author = AUTHOR_JA[reading.author] ?? reading.author
     const work = reading.work ? WORK_JA[reading.work] ?? reading.work : undefined
-    if (reading.inspired) return `${work ?? author}に着想を得て`
+    if (reading.inspired) return `${work ?? author}に着想を得た一節`
     return work ? `${author}『${work}』` : author
   }
   if (reading.inspired) return `Inspired by ${reading.work ?? reading.author}`

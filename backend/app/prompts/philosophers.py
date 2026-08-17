@@ -406,7 +406,7 @@ _ROSTER_JA: dict[str, dict] = {
     },
     "laozi": {
         "name": "老子",
-        "tradition": "道教",
+        "tradition": "道家",
         "blurb": "流れ、やわらかさ、そして無理に押し進めないことについての、ゆったりとした声。",
         "openers": (
             "ずっと無理に押し進めていて、うまくいきません。",
