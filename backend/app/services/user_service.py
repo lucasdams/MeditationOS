@@ -311,6 +311,13 @@ def get_user_by_id(db: Session, user_id: str) -> User | None:
     return db.get(User, pk)
 
 
+# A constant, never-matching password hash. When the email doesn't exist (or the account
+# is Google-only / passwordless), we still run a verify against this decoy so the response
+# takes the same ~argon2 time as a real password check — closing the timing oracle that
+# would otherwise let an attacker distinguish registered from unregistered emails.
+_DECOY_PASSWORD_HASH = hash_password("meditationos-timing-decoy")
+
+
 def authenticate(db: Session, email: str, password: str) -> User | None:
     """Return the user if credentials are valid, else None (no enumeration hint).
 
@@ -319,9 +326,11 @@ def authenticate(db: Session, email: str, password: str) -> User | None:
     """
     user = get_user_by_email(db, email)
     # A Google-only account has no password_hash — it can't be logged into with one.
-    if user is None or user.password_hash is None or not verify_password(
-        password, user.password_hash
-    ):
+    # Always run verify_password (against a decoy when there's no real hash) so the timing
+    # is identical whether or not the account exists.
+    stored_hash = user.password_hash if user is not None else None
+    password_ok = verify_password(password, stored_hash or _DECOY_PASSWORD_HASH)
+    if user is None or stored_hash is None or not password_ok:
         return None
     if user.is_disabled:
         return None

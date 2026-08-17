@@ -27,6 +27,7 @@ import uuid
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
@@ -62,9 +63,21 @@ def enroll(
     if existing is None:
         existing = PathEnrollment(user_id=user_id, path_id=path_id, started_on=today)
         db.add(existing)
+        try:
+            db.commit()
+        except IntegrityError:
+            # Lost a race to the (user, path) unique constraint — a concurrent first-enroll
+            # of the same path won. Recover by loading that row and resetting its start,
+            # instead of surfacing a 500.
+            db.rollback()
+            existing = _enrollment(db, user_id, path_id)
+            if existing is None:  # should never happen post-conflict; surface if it does
+                raise
+            existing.started_on = today
+            db.commit()
     else:
         existing.started_on = today  # re-enroll resets the clock to today
-    db.commit()
+        db.commit()
     db.refresh(existing)
 
     return _summarize(db, user_id, paths_catalog.localized_path(path, locale), existing, tz=tz)

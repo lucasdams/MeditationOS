@@ -71,7 +71,7 @@ def suggestions(
     locale: str = "en",
     current_user: User = Depends(get_current_user),
 ) -> GratitudeSuggestions:
-    options = gratitude_suggester.suggest_options(category, locale)
+    options = gratitude_suggester.suggest_options(category, locale, user_id=current_user.id)
     return GratitudeSuggestions(category=category, options=options)
 
 

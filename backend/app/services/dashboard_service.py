@@ -16,7 +16,7 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.prayer import Prayer
 from app.models.session import BREATHING_SESSION_TYPES, Session
-from app.models.user import QUEST_FEATURES
+from app.models.user import QUEST_FEATURES, User
 from app.schemas.dashboard import (
     ActivityCalendar,
     ActivityDay,
@@ -739,8 +739,8 @@ def get_activity(
 ) -> ActivityCalendar:
     """Daily practice totals over the last `days`, sparse (active days only).
 
-    Each active day also carries `all_quests` — whether all three daily quests
-    (gratitude, ≥60s breathing, a session) were completed that local day — so the
+    Each active day also carries `all_quests` — whether the user completed every
+    daily-quest activity they opted into (`quest_features`) that local day — so the
     heatmap can colour days as inactive / active / all-quests-complete.
     """
     start = today - timedelta(days=days - 1)
@@ -760,8 +760,18 @@ def get_activity(
         .order_by(local_day)
     ).all()
 
-    # Days (in-window) with a gratitude entry, and with ≥60s of resonance breathing.
-    # A session is implied for every active day, so all_quests = gratitude ∧ breathing.
+    # `all_quests` marks a day on which the user completed every daily-quest activity they
+    # opted into (`quest_features`; NULL → all four). Each feature maps to its base daily
+    # condition — the same definitions the quest/XP system uses (meditate: a non-breathing
+    # session ≥ MEDITATE_QUEST_SECONDS; breathe: breathing ≥ BREATHE_QUEST_SECONDS;
+    # gratitude: a gratitude entry; journal: a journal entry). Personalizing this — rather
+    # than a fixed gratitude∧breathing trifecta — means a user who opted out of, say,
+    # breathing can still earn a "complete" day, instead of it being permanently unreachable.
+    quest_features = db.execute(
+        select(User.quest_features).where(User.id == user_id)
+    ).scalar_one_or_none()
+    selected = set(quest_features) if quest_features else set(QUEST_FEATURES)
+
     grat_day = _local_date(tz, GratitudeEntry.created_at)
     gratitude_days = {
         r[0]
@@ -785,12 +795,41 @@ def get_activity(
             .having(func.sum(Session.duration_seconds) >= BREATHE_QUEST_SECONDS)
         ).all()
     }
+    meditation_days = {
+        r[0]
+        for r in db.execute(
+            select(local_day)
+            .where(
+                Session.user_id == user_id,
+                Session.type.notin_(BREATHING_SESSION_TYPES),
+                local_day >= start,
+                local_day <= today,
+            )
+            .group_by(local_day)
+            .having(func.sum(Session.duration_seconds) >= MEDITATE_QUEST_SECONDS)
+        ).all()
+    }
+    journal_day = _local_date(tz, Journal.created_at)
+    journal_days = {
+        r[0]
+        for r in db.execute(
+            select(journal_day)
+            .where(Journal.user_id == user_id, journal_day >= start, journal_day <= today)
+            .distinct()
+        ).all()
+    }
+    feature_days = {
+        "meditate": meditation_days,
+        "breathe": breathing_days,
+        "gratitude": gratitude_days,
+        "journal": journal_days,
+    }
 
     active_days = [
         ActivityDay(
             date=row[0],
             seconds=int(row[1]),
-            all_quests=row[0] in gratitude_days and row[0] in breathing_days,
+            all_quests=all(row[0] in feature_days[f] for f in selected),
         )
         for row in rows
     ]

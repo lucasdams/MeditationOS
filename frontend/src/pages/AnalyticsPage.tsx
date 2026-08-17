@@ -528,7 +528,8 @@ export default function AnalyticsPage() {
               <div className="stat-label">{t('tracking.analytics.stat.sessions')}</div>
             </div>
             <div className="stat">
-              <div className="stat-value">{Math.round(data.total_minutes / 60)}</div>
+              {/* Floor, not round: 45 min of practice is "0" hours, not a misleading "1". */}
+              <div className="stat-value">{Math.floor(data.total_minutes / 60)}</div>
               <div className="stat-label">{t('tracking.analytics.stat.hours')}</div>
             </div>
             <div className="stat">

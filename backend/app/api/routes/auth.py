@@ -63,7 +63,10 @@ def _set_auth_cookie(
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=settings.environment == "production",  # HTTPS-only outside dev/test
+        # Default-secure: HTTPS-only in every environment except local dev/test. Guarding
+        # on "== production" would ship an insecure cookie on any other HTTPS deploy
+        # (e.g. "staging"), so gate on the known plaintext-local envs instead.
+        secure=settings.environment not in ("development", "test"),
         samesite="lax",
         max_age=minutes * 60,
     )
@@ -319,7 +322,9 @@ def change_email(
 
 
 @router.post("/claim", response_model=UserRead)
+@limiter.limit(settings.login_rate_limit)  # touches an email — throttle existence probing
 def claim_account(
+    request: Request,  # required by the rate limiter
     response: Response,
     data: ClaimAccount,
     db: Session = Depends(get_db),

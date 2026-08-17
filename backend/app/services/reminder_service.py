@@ -347,9 +347,12 @@ _TYPE_LABELS_JA = {
     "other": "瞑想",
 }
 
-# How early, relative to scheduled_at, the nudge may fire — a small lead so the message
-# lands as "coming up", not "you're late".
-_SCHEDULE_LEAD = timedelta(minutes=15)
+# How early, relative to scheduled_at, the nudge may fire. The send job runs hourly, so
+# the lead must be ≥ one run interval — otherwise a session that falls just after a run is
+# only caught on the NEXT run, up to ~an hour late, making the "coming up" copy retrospective.
+# A 65-minute lead guarantees every session is nudged on the run at or before its start
+# (slight early margin over the exact hour), so the message always reads as genuinely upcoming.
+_SCHEDULE_LEAD = timedelta(minutes=65)
 # How long after scheduled_at the row is still eligible. The send job runs hourly, so a
 # session that comes due between runs must still be caught on the next run; this window
 # covers a full job interval (plus margin) while never nudging for long-past sessions.
@@ -392,9 +395,10 @@ def send_scheduled_session_reminders(
     """Send a gentle nudge for each upcoming ScheduledSession whose time is at hand.
 
     A scheduled session is due when, for an opted-in user (`reminder_enabled`):
-      - now is within [scheduled_at - _SCHEDULE_LEAD, scheduled_at + _SCHEDULE_GRACE];
-      - the row hasn't already been reminded (`reminder_sent_at` is null); and
-      - the user hasn't already practiced today in their local timezone (nudge, not nag).
+      - now is within [scheduled_at - _SCHEDULE_LEAD, scheduled_at + _SCHEDULE_GRACE]; and
+      - the row hasn't already been reminded (`reminder_sent_at` is null).
+    A scheduled session is an explicit commitment, so — unlike the daily reminder — it is
+    NOT skipped just because the user practiced something else earlier today.
 
     Idempotent per row: `reminder_sent_at` is committed before the send attempt, so a
     crash or a re-run never double-nudges. Returns the number of reminders sent.
@@ -421,12 +425,11 @@ def send_scheduled_session_reminders(
     sent = 0
     for row, user in rows:
         try:
-            tz = user.timezone or "UTC"
-            local_today = now_utc.astimezone(zone(user.timezone)).date()
-            if _practiced_today(db, user.id, local_today, tz):
-                continue  # already practiced today — nudge, not nag
-            # Mark as reminded NOW so a crash mid-send never re-nudges, and so the push
-            # gate below is covered by the same per-row dedup.
+            # Unlike the generic daily reminder, a scheduled session is a specific time the
+            # user explicitly committed to — so we nudge it even if they've already
+            # practiced something else today ("practiced today" is not a reason to skip a
+            # standing appointment). Mark as reminded NOW so a crash mid-send never
+            # re-nudges, and so the push gate below is covered by the same per-row dedup.
             row.reminder_sent_at = now_utc
             db.commit()  # per-row commit — crash-safe
             subject = email_i18n.pick(

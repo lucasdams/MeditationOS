@@ -522,8 +522,9 @@ def test_scheduled_reminder_skipped_when_reminders_disabled(monkeypatch, db_sess
     assert sent == []
 
 
-def test_scheduled_reminder_skipped_when_practiced_today(monkeypatch, db_session):
-    """If the user already practiced today, the scheduled nudge is suppressed — nudge, not nag."""
+def test_scheduled_reminder_fires_even_when_practiced_today(monkeypatch, db_session):
+    """A scheduled session is a specific commitment, so — unlike the generic daily reminder —
+    its nudge still fires even if the user already practiced something else today."""
     sent = _capture(monkeypatch)
     user = _user(db_session, "did_sched@example.com", reminder_enabled=True, reminder_hour=8)
     _schedule(db_session, user.id, NOON_UTC + timedelta(minutes=10))
@@ -536,44 +537,8 @@ def test_scheduled_reminder_skipped_when_practiced_today(monkeypatch, db_session
         )
     )
     db_session.commit()
-    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 0
-    assert sent == []
-
-
-def test_scheduled_reminder_respects_timezone(monkeypatch, db_session):
-    """The 'already practiced today' skip is evaluated in the user's local day.
-
-    Both users practiced at 15:00 UTC on 2026-06-11 and both have a session scheduled
-    at ~NOON_UTC (2026-06-12 12:00). For the UTC user that practice was *yesterday*
-    (06-11) → not practiced today → nudge. For the Tokyo user 15:00 UTC 06-11 is 00:00
-    Tokyo 06-12 — i.e. *today* in their local day → already practiced → skipped.
-    """
-    sent = _capture(monkeypatch)
-    user_utc = _user(
-        db_session, "tz_utc@example.com", reminder_enabled=True, reminder_hour=8, timezone="UTC"
-    )
-    user_tokyo = _user(
-        db_session,
-        "tz_tokyo@example.com",
-        reminder_enabled=True,
-        reminder_hour=8,
-        timezone="Asia/Tokyo",
-    )
-    _schedule(db_session, user_utc.id, NOON_UTC + timedelta(minutes=5))
-    _schedule(db_session, user_tokyo.id, NOON_UTC + timedelta(minutes=5))
-    # 15:00 UTC on 2026-06-11 → 00:00 Tokyo on 2026-06-12 (Tokyo today; UTC yesterday).
-    practiced_at = datetime(2026, 6, 11, 15, 0, tzinfo=UTC)
-    for uid in (user_utc.id, user_tokyo.id):
-        db_session.add(
-            PracticeSession(
-                user_id=uid, type="mindfulness", duration_seconds=600, occurred_at=practiced_at
-            )
-        )
-    db_session.commit()
-    count = reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC)
-    # Tokyo: practiced today → skipped. UTC: practiced yesterday → nudged.
-    assert count == 1
-    assert [c[0] for c in sent] == ["tz_utc@example.com"]
+    assert reminder_service.send_scheduled_session_reminders(db_session, now_utc=NOON_UTC) == 1
+    assert [c[0] for c in sent] == ["did_sched@example.com"]
 
 
 def test_scheduled_reminder_push_not_refired_when_email_fails(monkeypatch, db_session):

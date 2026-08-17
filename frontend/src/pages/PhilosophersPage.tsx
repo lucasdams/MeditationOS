@@ -175,9 +175,12 @@ export default function PhilosophersPage() {
         setCapHit(true)
         setNotice({ kind: isGuest ? 'guestCap' : 'cap' })
       } else if (err instanceof ApiError && err.status === 403) {
-        // Guest account — chatting is for saved accounts. Gentle note, no retry.
-        setGuestBlocked(true)
-        setNotice({ kind: 'guest' })
+        // The only 403 this endpoint returns is the backend email-verification gate —
+        // guests arrive verified and hit the 429 trial cap above, so they never land here.
+        // The global `auth:forbidden` handler already surfaces the verification gate
+        // app-wide, so show a neutral note (never the wrong "guest" copy) and don't
+        // hard-block the composer.
+        setNotice({ kind: 'error' })
       } else {
         setNotice({ kind: 'error' })
       }

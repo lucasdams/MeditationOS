@@ -206,15 +206,20 @@ describe('PhilosophersPage', () => {
     expect(box.value).toContain('I sat for 12 minutes today')
   })
 
-  it('surfaces the guest note and disables the composer on 403', async () => {
-    chatPersona.mockRejectedValue(new ApiError(403, 'Save your account'))
+  it('treats a 403 as a neutral note, not the guest wall (guests hit 429, not 403)', async () => {
+    // The only 403 this endpoint returns is the email-verification gate; the global
+    // auth:forbidden handler surfaces that app-wide. Locally we show a neutral note and
+    // never the wrong "save your account" guest copy, and don't hard-block the composer.
+    chatPersona.mockRejectedValue(new ApiError(403, 'Verify your email'))
     await openChat()
 
-    fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'hello' } })
+    const box = screen.getByLabelText('Your message') as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: 'hello' } })
     fireEvent.click(screen.getByRole('button', { name: /Send/ }))
 
-    await screen.findByText('Save your account to chat with a guide.')
-    expect(screen.getByLabelText('Your message')).toBeDisabled()
+    await screen.findByText('That didn’t go through. Try again.')
+    expect(screen.queryByText('Save your account to chat with a guide.')).toBeNull()
+    expect(box).not.toBeDisabled()
   })
 
   it('shows a guest a gentle heads-up with a sign-up link (no upfront wall)', async () => {

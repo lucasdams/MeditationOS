@@ -156,3 +156,39 @@ def test_suggestions_fallback_returns_ten(client):
 def test_suggestions_rejects_bad_category(client):
     _auth(client, "g8@example.com")
     assert client.get("/api/v1/gratitude/suggestions?category=nope").status_code == 422
+
+
+def test_validate_dedupes_case_insensitively():
+    # Untrusted model output that repeats an option must not yield duplicate chips /
+    # duplicate React keys — de-dup is case-insensitive and order-preserving.
+    from app.services.ai import gratitude_suggester
+
+    out = gratitude_suggester._validate(["Sunlight", "sunlight ", "A warm cup", "SUNLIGHT"])
+    assert out == ["Sunlight", "A warm cup"]
+
+
+def test_per_user_daily_llm_budget_falls_back_to_curated(monkeypatch):
+    # Once a user spends their daily LLM budget, further suggestions serve the curated
+    # fallback WITHOUT calling the model — a per-user cost ceiling on top of the IP limit.
+    import uuid as _uuid
+
+    from app.services.ai import gratitude_suggester
+
+    monkeypatch.setattr(gratitude_suggester, "DAILY_LLM_CAP", 2)
+    monkeypatch.setattr(gratitude_suggester, "_daily_llm_counts", {})
+    calls = {"n": 0}
+
+    def _fake_complete(**_kwargs):
+        calls["n"] += 1
+        return ('["from model one", "from model two"]', "test-model")
+
+    monkeypatch.setattr(gratitude_suggester.llm_client, "complete", _fake_complete)
+    uid = _uuid.uuid4()
+    # First two calls hit the model (within budget).
+    gratitude_suggester.suggest_options("people", user_id=uid)
+    gratitude_suggester.suggest_options("people", user_id=uid)
+    assert calls["n"] == 2
+    # Third call is over budget → curated fallback, model NOT called again.
+    opts = gratitude_suggester.suggest_options("people", user_id=uid)
+    assert calls["n"] == 2
+    assert len(opts) > 0  # still returns useful (curated) options — no user-visible error

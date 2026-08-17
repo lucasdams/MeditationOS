@@ -346,11 +346,32 @@ def test_breathe_quest_tracks_breathing_and_meditation(client):
 
 
 def test_activity_all_quests_flag(client):
+    # A fresh account has no quest_features set → all four (meditate/breathe/gratitude/
+    # journal) are required for the "all quests complete" marker, so complete all four.
     _auth(client, "perfectday@example.com")
     today = datetime.now(UTC).date().isoformat()
-    _session(client, f"{today}T08:00:00", seconds=600)  # session quest
+    _session(client, f"{today}T08:00:00", seconds=600)  # meditate
     _session(client, f"{today}T09:00:00", seconds=120, type="resonance_breathing")  # breathe
     client.post("/api/v1/gratitude", json={"category": "people", "text": "a friend"})  # gratitude
+    client.post("/api/v1/journals", json={"body": "a few honest words about today"})  # journal
+    days = client.get("/api/v1/dashboard/activity").json()["days"]
+    day = next(d for d in days if d["date"] == today)
+    assert day["all_quests"] is True
+
+
+def test_activity_all_quests_respects_personalized_features(client):
+    # A user who opted OUT of breathing must still be able to earn an "all quests complete"
+    # day by finishing the quests they DID opt into (not an unreachable fixed trifecta).
+    _auth(client, "no_breathe@example.com")
+    client.post(
+        "/api/v1/auth/quest-features",
+        json={"features": ["meditate", "gratitude", "journal"]},
+    )
+    today = datetime.now(UTC).date().isoformat()
+    _session(client, f"{today}T08:00:00", seconds=600)  # meditate
+    client.post("/api/v1/gratitude", json={"category": "people", "text": "a friend"})  # gratitude
+    client.post("/api/v1/journals", json={"body": "today felt steady"})  # journal
+    # No breathing session at all — but breathing isn't in their opted-in set.
     days = client.get("/api/v1/dashboard/activity").json()["days"]
     day = next(d for d in days if d["date"] == today)
     assert day["all_quests"] is True

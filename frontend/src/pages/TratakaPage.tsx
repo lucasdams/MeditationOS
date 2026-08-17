@@ -257,7 +257,13 @@ export default function TratakaPage() {
   async function saveSession(durationSec: number) {
     setError(null)
     setSaving(true)
-    const before = await dashboardService.getStats().catch(() => ZERO_STATS)
+    // Pre-save stats are best-effort; track whether either snapshot fell back to zeros so
+    // we don't celebrate a fabricated "+0 XP" after a real sit (mirrors Breathe/Meditate).
+    let statsFailed = false
+    const before = await dashboardService.getStats().catch(() => {
+      statsFailed = true
+      return ZERO_STATS
+    })
 
     let saved: { id: string }
     try {
@@ -277,7 +283,18 @@ export default function TratakaPage() {
     savedRef.current = true
     clearDraft(DRAFT_PAGE)
 
-    const after = await dashboardService.getStats().catch(() => ZERO_STATS)
+    const after = await dashboardService.getStats().catch(() => {
+      statsFailed = true
+      return ZERO_STATS
+    })
+    // If either stats fetch fell back to zeros, the breakdown would render a confident
+    // "+0 XP" after a genuine sit. Skip the reward overlay and go straight to reflection
+    // (the session is already saved) rather than celebrating fake numbers.
+    if (statsFailed) {
+      setSaving(false)
+      setShowReflection(true)
+      return
+    }
     const bd = buildXpBreakdown(before, after, t('practice.trataka.recover.label'), FlameIcon)
     setReward({ afterXp: after.xp, xpGained: bd.total, breakdown: bd.lines })
   }
