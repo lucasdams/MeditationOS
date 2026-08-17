@@ -138,7 +138,8 @@ describe('PathsPage — not enrolled', () => {
     fireEvent.click(startBtn)
 
     // The service was called with the path id…
-    expect(enrollPath).toHaveBeenCalledWith('first-7')
+    // Enrol carries the UI locale (default 'en' in tests) so the returned path is localized.
+    expect(enrollPath).toHaveBeenCalledWith('first-7', 'en')
 
     // …and once it resolves the enrolled day list renders (the current day's "Start" appears).
     expect(await screen.findByRole('link', { name: /start day 2/i })).toBeInTheDocument()
