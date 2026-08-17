@@ -26,6 +26,9 @@ export const authService = {
 
   setTimezone: (timezone: string) => api.post<User>('/auth/timezone', { timezone }),
 
+  // Persist the UI language so server-sent emails can be localized.
+  setLocale: (locale: string) => api.post<User>('/auth/locale', { locale }),
+
   // Choose which daily-activity quests to receive (≥3; validated server-side).
   setQuestFeatures: (features: string[]) =>
     api.post<User>('/auth/quest-features', { features }),

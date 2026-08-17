@@ -28,6 +28,7 @@ from app.schemas.user import (
     EmailVerify,
     ExportData,
     GoogleLogin,
+    LocaleUpdate,
     PasswordResetConfirm,
     PasswordResetRequest,
     PasswordUpdate,
@@ -211,6 +212,16 @@ def set_timezone(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid timezone"
         ) from None
+
+
+@router.post("/locale", response_model=UserRead)
+def set_locale(
+    data: LocaleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    """Persist the user's UI language so server-sent emails can be localized."""
+    return user_service.set_locale(db, current_user, data.locale)
 
 
 @router.post("/quest-features", response_model=UserRead)

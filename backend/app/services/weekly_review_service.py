@@ -16,6 +16,7 @@ from app.models.mood_log import MoodLog
 from app.models.session import Session
 from app.models.user import User
 from app.schemas.weekly_review import WeeklyReview
+from app.services import email_i18n
 from app.services.notifications import email
 from app.services.time_utils import (
     MIN_PRACTICE_SECONDS,
@@ -27,6 +28,7 @@ from app.services.time_utils import (
 logger = logging.getLogger("meditationos.weekly_summary")
 
 WEEKLY_SUMMARY_SUBJECT = "Your week in practice"
+WEEKLY_SUMMARY_SUBJECT_JA = "今週のプラクティス"
 # Local hour from which the summary may go out on the chosen day (so it lands in the
 # morning, not at midnight).
 SUMMARY_SEND_HOUR = 9
@@ -129,28 +131,77 @@ def update_summary_settings(
     return user
 
 
+# Japanese labels for the logged moods (mirrors the frontend's `mood.*` catalog), so the
+# weekly summary can name the user's top mood in their language rather than an English key.
+_MOOD_JA = {
+    "calm": "おだやか",
+    "content": "満ち足りた",
+    "focused": "集中",
+    "energized": "元気",
+    "grateful": "感謝",
+    "hopeful": "前向き",
+    "excited": "わくわく",
+    "peaceful": "安らか",
+    "neutral": "ふつう",
+    "restless": "落ち着かない",
+    "anxious": "不安",
+    "frustrated": "イライラ",
+    "overwhelmed": "いっぱいいっぱい",
+    "tired": "疲れ",
+    "low": "落ち込み",
+}
+
+
 def _summary_body(user: User, review: WeeklyReview) -> str:
     name = user.username or "there"
     delta = review.minutes - review.last_week_minutes
-    trend = (
+    url = settings.app_base_url
+    en_trend = (
         "about the same as last week"
         if delta == 0
         else f"{delta} min more than last week"
         if delta > 0
         else f"{abs(delta)} min less than last week"
     )
-    mood = f"\nYou felt mostly {review.top_mood}." if review.top_mood else ""
-    return (
-        f"Hi {name},\n\n"
-        "Here's your week in practice:\n\n"
-        f"  • {review.minutes} minutes across {review.sessions} session(s)\n"
-        f"  • {review.active_days}/7 days practiced\n"
-        f"  • {review.current_streak_days}-day streak\n"
-        f"  • That's {trend}."
-        f"{mood}\n\n"
-        f"Keep it going: {settings.app_base_url}\n\n"
-        "MeditationOS\n\n"
-        "You can turn these off anytime in Settings."
+    ja_trend = (
+        "先週とほぼ同じです"
+        if delta == 0
+        else f"先週より{delta}分多いです"
+        if delta > 0
+        else f"先週より{abs(delta)}分少ないです"
+    )
+    en_mood = f"\nYou felt mostly {review.top_mood}." if review.top_mood else ""
+    ja_mood = (
+        f"\n主な気分は「{_MOOD_JA.get(review.top_mood, review.top_mood)}」でした。"
+        if review.top_mood
+        else ""
+    )
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            "Here's your week in practice:\n\n"
+            f"  • {review.minutes} minutes across {review.sessions} session(s)\n"
+            f"  • {review.active_days}/7 days practiced\n"
+            f"  • {review.current_streak_days}-day streak\n"
+            f"  • That's {en_trend}."
+            f"{en_mood}\n\n"
+            f"Keep it going: {url}\n\n"
+            "MeditationOS\n\n"
+            "You can turn these off anytime in Settings."
+        ),
+        ja=(
+            f"{user.username or 'こんにちは'}さん、\n\n"
+            "今週のプラクティスの振り返りです:\n\n"
+            f"  • {review.sessions}回のセッションで合計{review.minutes}分\n"
+            f"  • 7日間のうち{review.active_days}日実践\n"
+            f"  • {review.current_streak_days}日間の連続記録\n"
+            f"  • {ja_trend}。"
+            f"{ja_mood}\n\n"
+            f"この調子で続けましょう: {url}\n\n"
+            "MeditationOS\n\n"
+            "設定からいつでもオフにできます。"
+        ),
     )
 
 
@@ -194,7 +245,9 @@ def send_due_weekly_summaries(db: DBSession, *, now_utc: datetime | None = None)
             db.commit()
             email.send_email(
                 user.email,
-                WEEKLY_SUMMARY_SUBJECT,
+                email_i18n.pick(
+                    user, en=WEEKLY_SUMMARY_SUBJECT, ja=WEEKLY_SUMMARY_SUBJECT_JA
+                ),
                 _summary_body(user, review),
                 email.list_unsubscribe_headers(),
             )

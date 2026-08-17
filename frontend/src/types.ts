@@ -3,6 +3,8 @@ export interface User {
   email: string
   username: string | null
   timezone: string
+  // UI language ("en" | "ja"); kept in sync with the client so emails match the UI.
+  locale: string
   has_password: boolean
   email_verified: boolean
   is_guest: boolean

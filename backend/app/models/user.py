@@ -51,6 +51,11 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(
         String, nullable=False, server_default="UTC", default="UTC"
     )
+    # UI language for server-sent content the client can't localize itself — chiefly the
+    # transactional emails (reminders, weekly summary, verification). "en" | "ja"; default en.
+    locale: Mapped[str] = mapped_column(
+        String, nullable=False, server_default="en", default="en"
+    )
     # Daily practice reminder (opt-in). Fires at `reminder_hour` (0–23) in the
     # user's local timezone; `reminder_last_sent_at` guards against double-sends.
     reminder_enabled: Mapped[bool] = mapped_column(

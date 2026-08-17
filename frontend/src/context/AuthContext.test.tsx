@@ -5,12 +5,14 @@ import type { User } from '../types'
 
 const me = vi.fn()
 const setTimezone = vi.fn()
+const setLocale = vi.fn()
 const logout = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../services/auth', () => ({
   authService: {
     me: (...a: unknown[]) => me(...a),
     setTimezone: (...a: unknown[]) => setTimezone(...a),
+    setLocale: (...a: unknown[]) => setLocale(...a),
     logout: (...a: unknown[]) => logout(...a),
   },
 }))
@@ -34,6 +36,7 @@ const baseUser = (over: Partial<User> = {}): User =>
     email: 'a@b.com',
     username: 'a',
     timezone: 'UTC',
+    locale: 'en',
     has_password: true,
     email_verified: true,
     is_guest: false,
@@ -63,6 +66,7 @@ describe('AuthContext email-verification gate', () => {
   beforeEach(() => {
     me.mockReset()
     setTimezone.mockReset()
+    setLocale.mockReset()
     // Default: a verified account whose timezone already matches the browser, so
     // refresh() never calls setTimezone.
     me.mockResolvedValue(baseUser({ timezone: TZ }))

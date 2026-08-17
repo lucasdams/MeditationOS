@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import type { User } from '../types'
+import { getLocale } from '../i18n'
 
 interface AuthContextValue {
   user: User | null
@@ -40,6 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           me = await authService.setTimezone(browserTz)
         } catch {
           // non-fatal — keep the stored timezone
+        }
+      }
+      // Likewise keep the stored locale in sync with the UI language the user picked,
+      // so transactional emails go out in the language they actually read the app in.
+      const uiLocale = getLocale()
+      if (me.locale !== uiLocale) {
+        try {
+          me = await authService.setLocale(uiLocale)
+        } catch {
+          // non-fatal — keep the stored locale
         }
       }
       setUser(me)

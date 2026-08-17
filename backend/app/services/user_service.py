@@ -46,6 +46,7 @@ from app.models.session import Session as PracticeSession
 from app.models.spirit import Spirit
 from app.models.user import QUEST_FEATURES, User
 from app.schemas.user import UserCreate
+from app.services import email_i18n
 from app.services.notifications import email as email_channel
 
 
@@ -77,6 +78,19 @@ def set_timezone(db: Session, user: User, timezone: str) -> User:
     except (ZoneInfoNotFoundError, ValueError) as err:
         raise InvalidTimezoneError(timezone) from err
     user.timezone = timezone
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+# UI languages we localize server-sent content (emails) for. Anything else stays English.
+SUPPORTED_LOCALES = frozenset({"en", "ja"})
+
+
+def set_locale(db: Session, user: User, locale: str) -> User:
+    """Persist the user's UI language (so emails can be localized). Unknown locales fall
+    back to English rather than erroring — locale is a soft preference, never load-bearing."""
+    user.locale = locale if locale in SUPPORTED_LOCALES else "en"
     db.commit()
     db.refresh(user)
     return user
@@ -171,14 +185,26 @@ def _password_version(password_hash: str) -> str:
 
 def _reset_email_body(user: User, link: str) -> str:
     name = user.username or "there"
-    return (
-        f"Hi {name},\n\n"
-        "We received a request to reset your MeditationOS password. Choose a new "
-        f"one here. The link expires in {settings.password_reset_expire_minutes} "
-        f"minutes:\n\n{link}\n\n"
-        "If you didn't request this, you can safely ignore this email; your "
-        "password won't change.\n\n"
-        "MeditationOS"
+    minutes = settings.password_reset_expire_minutes
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            "We received a request to reset your MeditationOS password. Choose a new "
+            f"one here. The link expires in {minutes} "
+            f"minutes:\n\n{link}\n\n"
+            "If you didn't request this, you can safely ignore this email; your "
+            "password won't change.\n\n"
+            "MeditationOS"
+        ),
+        ja=(
+            f"{user.username or 'こんにちは'}さん、\n\n"
+            "MeditationOSのパスワードをリセットするリクエストを受け取りました。"
+            f"以下のリンクから新しいパスワードを設定してください。リンクは{minutes}分で"
+            f"期限切れになります:\n\n{link}\n\n"
+            "心当たりがない場合は、このメールを無視してください。パスワードは変更されません。\n\n"
+            "MeditationOS"
+        ),
     )
 
 
@@ -193,7 +219,13 @@ def request_password_reset(db: Session, email: str) -> None:
     token = create_password_reset_token(str(user.id), _password_version(user.password_hash))
     link = f"{settings.app_base_url}/reset-password?token={token}"
     email_channel.send_email(
-        user.email, "Reset your MeditationOS password", _reset_email_body(user, link)
+        user.email,
+        email_i18n.pick(
+            user,
+            en="Reset your MeditationOS password",
+            ja="MeditationOSのパスワードをリセット",
+        ),
+        _reset_email_body(user, link),
     )
 
 
@@ -218,12 +250,22 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
 
 def _verification_email_body(user: User, link: str) -> str:
     name = user.username or "there"
-    return (
-        f"Hi {name},\n\n"
-        "Welcome to MeditationOS! Please confirm your email address by clicking the "
-        f"link below:\n\n{link}\n\n"
-        "If you didn't create this account, you can ignore this email.\n\n"
-        "MeditationOS"
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            "Welcome to MeditationOS! Please confirm your email address by clicking the "
+            f"link below:\n\n{link}\n\n"
+            "If you didn't create this account, you can ignore this email.\n\n"
+            "MeditationOS"
+        ),
+        ja=(
+            f"{user.username or 'こんにちは'}さん、\n\n"
+            "MeditationOSへようこそ！以下のリンクをクリックして、メールアドレスを"
+            f"確認してください:\n\n{link}\n\n"
+            "このアカウントに心当たりがない場合は、このメールを無視してください。\n\n"
+            "MeditationOS"
+        ),
     )
 
 
@@ -235,7 +277,13 @@ def send_verification_email(db: Session, user: User) -> None:
     token = create_email_verification_token(str(user.id), user.email)
     link = f"{settings.app_base_url}/verify-email?token={token}"
     email_channel.send_email(
-        user.email, "Confirm your MeditationOS email", _verification_email_body(user, link)
+        user.email,
+        email_i18n.pick(
+            user,
+            en="Confirm your MeditationOS email",
+            ja="MeditationOSのメールアドレスを確認",
+        ),
+        _verification_email_body(user, link),
     )
 
 
