@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { BookOpen, ArrowRight } from 'lucide-react'
-import { dailyReading, readingAttribution } from '../lib/readings'
+import { dailyReading, readingAttribution, readingText } from '../lib/readings'
 import { useT } from '../i18n'
 
 // A calm "Daily reading" card for the home screen — one short passage that rotates each day
@@ -14,7 +14,7 @@ export default function DailyReading() {
       <p className="daily-reading-eyebrow">
         <BookOpen size={15} strokeWidth={1.9} aria-hidden="true" /> {t('home.reading.eyebrow')}
       </p>
-      <blockquote className="daily-reading-text">{reading.text}</blockquote>
+      <blockquote className="daily-reading-text">{readingText(reading)}</blockquote>
       <p className="daily-reading-cite">{t('home.reading.cite', { attribution: readingAttribution(reading) })}</p>
       <Link to="/journal" className="daily-reading-reflect">
         {t('home.reading.reflect')}

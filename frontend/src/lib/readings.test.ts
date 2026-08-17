@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { READINGS, dailyReading, readingAttribution } from './readings'
+import { afterEach, describe, expect, it } from 'vitest'
+import { READINGS, dailyReading, readingAttribution, readingText } from './readings'
+import { setLocale } from '../i18n'
 
 describe('readings', () => {
   it('is stable for a given calendar day and rotates day to day', () => {
@@ -33,5 +34,30 @@ describe('readings', () => {
     expect(
       readingAttribution({ text: 'x', author: 'James Clear', work: 'Atomic Habits', inspired: true }),
     ).toBe('Inspired by Atomic Habits')
+  })
+
+  describe('Japanese localization', () => {
+    afterEach(() => setLocale('en'))
+
+    it('every reading has a Japanese translation (no English fallthrough)', () => {
+      setLocale('ja')
+      for (const r of READINGS) {
+        const ja = readingText(r)
+        expect(ja, `missing JA for: ${r.text}`).not.toBe(r.text)
+        expect(ja.trim().length).toBeGreaterThan(0)
+      }
+    })
+
+    it('localizes attribution: 著者『作品』, and 着想 for paraphrases', () => {
+      setLocale('ja')
+      expect(readingAttribution({ text: 'x', author: 'Seneca' })).toBe('セネカ')
+      expect(
+        readingAttribution({ text: 'x', author: 'Lao Tzu', work: 'Tao Te Ching' }),
+      ).toBe('老子『道徳経』')
+      // Modern in-copyright title stays in its original form, with the JA "inspired" frame.
+      expect(
+        readingAttribution({ text: 'x', author: 'James Clear', work: 'Atomic Habits', inspired: true }),
+      ).toBe('Atomic Habitsに着想を得て')
+    })
   })
 })
