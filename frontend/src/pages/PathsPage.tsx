@@ -6,7 +6,7 @@ import { pathDayHref } from '../lib/pathRoutes'
 import { ACTIVITY_META, type Activity } from '../lib/colors'
 import { Loading, RetryableError, EmptyState, ErrorBanner } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { t as translate, useT } from '../i18n'
+import { getLocale, t as translate, useT } from '../i18n'
 import type { PathDay, PathSummary } from '../types'
 
 // Paths — short, multi-day guided courses (beginner-first revision §8). A warm, never-punishing
@@ -164,7 +164,7 @@ export default function PathsPage() {
 
   function load(ignored?: () => boolean) {
     pathsService
-      .list()
+      .list(getLocale())
       .then((res) => {
         if (ignored?.()) return
         setPaths(res.paths)
@@ -196,7 +196,7 @@ export default function PathsPage() {
     setEnrollingId(id)
     setEnrollError(null)
     pathsService
-      .enroll(id)
+      .enroll(id, getLocale())
       .then((enrolled) => {
         // Swap the freshly-enrolled path into view in place — no refetch needed.
         setPaths((cur) =>

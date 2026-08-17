@@ -48,7 +48,7 @@ def _enrollment(db: DBSession, user_id: uuid.UUID, path_id: str) -> PathEnrollme
 
 
 def enroll(
-    db: DBSession, user_id: uuid.UUID, path_id: str, *, today: date, tz: str
+    db: DBSession, user_id: uuid.UUID, path_id: str, *, today: date, tz: str, locale: str = "en"
 ) -> PathSummary:
     """Enroll the user in `path_id` (or reset an existing enrollment's start to today), then
     return the derived summary. Raises KeyError if the path id is unknown (mapped to 404 in
@@ -67,13 +67,14 @@ def enroll(
     db.commit()
     db.refresh(existing)
 
-    return _summarize(db, user_id, path, existing, tz=tz)
+    return _summarize(db, user_id, paths_catalog.localized_path(path, locale), existing, tz=tz)
 
 
 def list_paths(
-    db: DBSession, user_id: uuid.UUID, *, tz: str
+    db: DBSession, user_id: uuid.UUID, *, tz: str, locale: str = "en"
 ) -> list[PathSummary]:
-    """Every catalog path, each folded with the current user's derived progress."""
+    """Every catalog path, each folded with the current user's derived progress, with display
+    text localized to `locale`."""
     enrollments = {
         e.path_id: e
         for e in db.execute(
@@ -81,7 +82,9 @@ def list_paths(
         ).scalars()
     }
     return [
-        _summarize(db, user_id, path, enrollments.get(path.id), tz=tz)
+        _summarize(
+            db, user_id, paths_catalog.localized_path(path, locale), enrollments.get(path.id), tz=tz
+        )
         for path in paths_catalog.all_paths()
     ]
 

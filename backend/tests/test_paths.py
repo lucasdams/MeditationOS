@@ -115,6 +115,28 @@ def _seed_gratitude(db_session, user_id, *, day: date):
 # ========================================================================================
 
 
+def test_every_path_string_has_a_japanese_translation():
+    """Drift guard: no English path title/blurb/day-title/cue should leak in the ja UI."""
+    from app.services import paths_catalog
+
+    for path in paths_catalog.all_paths():
+        ja = paths_catalog.localized_path(path, "ja")
+        assert ja.title != path.title and ja.blurb != path.blurb
+        for d, dja in zip(path.days, ja.days, strict=True):
+            assert dja.title != d.title
+            assert dja.cue != d.cue
+
+
+def test_list_localized_to_japanese(client):
+    _auth(client, "p_ja@example.com")
+    body = client.get("/api/v1/paths?locale=ja").json()
+    titles = [p["title"] for p in body["paths"]]
+    assert "はじめの7日間" in titles
+    # Day titles + cues are localized too (no ASCII letters in the Japanese copy).
+    first = next(p for p in body["paths"] if p["title"] == "はじめの7日間")
+    assert not any("a" <= c.lower() <= "z" for c in first["days"][0]["cue"])
+
+
 def test_list_requires_auth(client):
     assert _get_paths(client).status_code == 401
 

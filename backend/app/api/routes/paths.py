@@ -27,12 +27,13 @@ router = APIRouter(
 
 @router.get("", response_model=PathList)
 def list_paths(
+    locale: str = "en",
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> PathList:
     _today, tz = today_tz
-    return PathList(paths=path_service.list_paths(db, current_user.id, tz=tz))
+    return PathList(paths=path_service.list_paths(db, current_user.id, tz=tz, locale=locale))
 
 
 @router.post(
@@ -44,12 +45,13 @@ def list_paths(
 def enroll(
     request: Request,  # required by the rate limiter
     path_id: str,
+    locale: str = "en",
     db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     today_tz: tuple[date, str] = Depends(today_for_user),
 ) -> PathSummary:
     today, tz = today_tz
     try:
-        return path_service.enroll(db, current_user.id, path_id, today=today, tz=tz)
+        return path_service.enroll(db, current_user.id, path_id, today=today, tz=tz, locale=locale)
     except KeyError:
         raise not_found("Unknown path") from None
