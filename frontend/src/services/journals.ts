@@ -14,7 +14,10 @@ export const journalService = {
   // A random past reflection (404 → ApiError when the user has none).
   random: () => api.get<Journal>('/journals/random'),
   // Today's journaling nudge, tuned to recent practice (generic fallback otherwise).
-  prompt: () => api.get<JournalPromptResponse>('/journals/prompt'),
+  prompt: (locale?: string) =>
+    api.get<JournalPromptResponse>(
+      `/journals/prompt${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`,
+    ),
   create: (data: JournalCreate) => api.post<Journal>('/journals', data),
   update: (id: string, data: { body?: string; mood?: Mood | null }) =>
     api.patch<Journal>(`/journals/${id}`, data),
@@ -22,6 +25,9 @@ export const journalService = {
   // The AI reflection on one entry. POST is create-or-return-existing (the backend
   // generates at most one per entry; only NEW generations count toward the daily
   // cap → 429). GET 404s when the entry has no reflection yet.
-  reflect: (id: string) => api.post<AiReflection>(`/journals/${id}/reflection`),
+  reflect: (id: string, locale?: string) =>
+    api.post<AiReflection>(
+      `/journals/${id}/reflection${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`,
+    ),
   getReflection: (id: string) => api.get<AiReflection>(`/journals/${id}/reflection`),
 }

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { ApiError } from '../services/api'
 import { ErrorBanner } from '../components/StateViews'
+import AuthBrand from '../components/AuthBrand'
 import { messageForError } from '../lib/errors'
 import { useT } from '../i18n'
 
@@ -46,6 +47,7 @@ export default function ResetPasswordPage() {
   if (done) {
     return (
       <main id="main-content" className="auth-card">
+        <AuthBrand />
         <h1>{t('auth.reset.doneTitle')}</h1>
         <p>{t('auth.reset.doneBody')}</p>
         <p className="auth-aux">
@@ -58,6 +60,7 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <main id="main-content" className="auth-card">
+        <AuthBrand />
         <h1>{t('auth.reset.missingTokenTitle')}</h1>
         <ErrorBanner message={t('auth.reset.missingToken')} />
         <p className="auth-aux">
@@ -69,6 +72,7 @@ export default function ResetPasswordPage() {
 
   return (
     <main id="main-content" className="auth-card">
+      <AuthBrand />
       <h1>{t('auth.reset.title')}</h1>
       <form onSubmit={handleSubmit} noValidate>
         <label htmlFor="new-password">{t('auth.reset.newPasswordLabel')}</label>

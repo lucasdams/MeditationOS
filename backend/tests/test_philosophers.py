@@ -54,6 +54,7 @@ def test_list_returns_full_roster(client):
         "eckhart-tolle",
         "carl-jung",
         "miyamoto-musashi",
+        "krishnamurti",
     ]
     # Summaries carry the picker fields — and never the system prompt.
     for p in body:
@@ -62,6 +63,43 @@ def test_list_returns_full_roster(client):
         # Each persona ships a few first-person conversation starters for the empty chat.
         assert isinstance(p["openers"], list) and 2 <= len(p["openers"]) <= 4
         assert all(isinstance(o, str) and o.strip() for o in p["openers"])
+
+
+# ── Roster localization ───────────────────────────────────────────────────────
+
+
+def test_list_localizes_roster_to_japanese(client):
+    _auth(client, "pja@example.com")
+    body = client.get("/api/v1/philosophers?locale=ja").json()
+    by_id = {p["id"]: p for p in body}
+    assert by_id["laozi"]["name"] == "老子"
+    assert by_id["confucius"]["tradition"] == "儒教"
+    # Openers are localized too — they become the user's message, so must be in the locale.
+    assert any("執着" in o for o in by_id["buddha"]["openers"])
+
+
+def test_list_defaults_to_english(client):
+    _auth(client, "pen@example.com")
+    names = {p["name"] for p in client.get("/api/v1/philosophers").json()}
+    assert "Lao Tzu" in names and "老子" not in names
+
+
+def test_chat_locale_adds_reply_directive(client):
+    """A ja locale tells the guide to reply in Japanese (the system prompt stays English)."""
+    _auth(client, "pjachat@example.com")
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        client.post(
+            "/api/v1/philosophers/laozi/chat",
+            json={"messages": [{"role": "user", "content": "help"}], "locale": "ja"},
+        )
+    assert "日本語" in chat.call_args.kwargs["system"]
+
+
+def test_chat_default_locale_has_no_reply_directive(client):
+    _auth(client, "pnodir@example.com")
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        client.post("/api/v1/philosophers/laozi/chat", json=VALID)
+    assert "日本語" not in chat.call_args.kwargs["system"]
 
 
 # ── Chat: auth ────────────────────────────────────────────────────────────────
@@ -126,12 +164,22 @@ def test_chat_falls_back_when_llm_unavailable(client):
 # ── Chat: guest gate ──────────────────────────────────────────────────────────
 
 
-def test_guest_cannot_chat(client):
+def test_guest_can_chat_until_the_small_trial_cap(client, monkeypatch):
+    """Guests get a small trial of the feature (not a hard block), then a 429 that the
+    frontend turns into a 'create a free account' nudge."""
+    monkeypatch.setattr(philosopher_service, "GUEST_DAILY_MESSAGE_CAP", 2)
     client.post("/api/v1/auth/guest")
-    with patch(CHAT) as chat:
-        res = client.post("/api/v1/philosophers/confucius/chat", json=VALID)
-    assert res.status_code == 403
-    chat.assert_not_called()  # no paid LLM call for a guest
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        assert client.post("/api/v1/philosophers/confucius/chat", json=VALID).status_code == 200
+        assert client.post("/api/v1/philosophers/confucius/chat", json=VALID).status_code == 200
+        capped = client.post("/api/v1/philosophers/confucius/chat", json=VALID)
+    assert capped.status_code == 429
+    assert chat.call_count == 2  # capped before the 3rd (paid) call
+
+
+def test_guest_cap_is_smaller_than_the_saved_account_cap(client):
+    """Sanity: a freely-minted guest gets a much smaller allowance than a saved account."""
+    assert philosopher_service.GUEST_DAILY_MESSAGE_CAP < philosopher_service.DAILY_MESSAGE_CAP
 
 
 # ── Chat: unknown persona ─────────────────────────────────────────────────────
@@ -195,22 +243,148 @@ def test_daily_cap_returns_429(client, monkeypatch):
     assert capped.status_code == 429
 
 
+# ── Saved conversations (persistence) ─────────────────────────────────────────
+
+
+def _start_chat(client, philosopher="marcus-aurelius", content="I feel restless today."):
+    """Create a saved conversation via the chat route (LLM patched); return the JSON body."""
+    with patch(CHAT, return_value=AI_RESULT):
+        res = client.post(
+            f"/api/v1/philosophers/{philosopher}/chat",
+            json={"messages": [{"role": "user", "content": content}]},
+        )
+    assert res.status_code == 200
+    return res.json()
+
+
+def test_conversations_require_auth(client):
+    assert client.get("/api/v1/philosophers/conversations").status_code == 401
+
+
+def test_chat_persists_and_lists_the_conversation(client):
+    _auth(client, "psave@example.com")
+    body = _start_chat(client)
+    assert body["chat_id"]
+    convos = client.get("/api/v1/philosophers/conversations").json()
+    assert len(convos) == 1
+    assert convos[0]["id"] == body["chat_id"]
+    assert convos[0]["philosopher_id"] == "marcus-aurelius"
+    assert convos[0]["title"] == "I feel restless today."  # from the first user message
+
+
+def test_chat_appends_to_existing_conversation(client):
+    _auth(client, "pappend@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    with patch(CHAT, return_value=("Return to the task at hand.", "gpt-5-nano")):
+        res = client.post(
+            "/api/v1/philosophers/marcus-aurelius/chat",
+            json={
+                "chat_id": chat_id,
+                "messages": [
+                    {"role": "user", "content": "I feel restless today."},
+                    {"role": "assistant", "content": AI_RESULT[0]},
+                    {"role": "user", "content": "What should I do?"},
+                ],
+            },
+        )
+    assert res.status_code == 200
+    assert res.json()["chat_id"] == chat_id
+    # Still ONE conversation; now four turns (the three sent + the new reply).
+    assert len(client.get("/api/v1/philosophers/conversations").json()) == 1
+    detail = client.get(f"/api/v1/philosophers/conversations/{chat_id}").json()
+    assert len(detail["messages"]) == 4
+    assert detail["messages"][-1] == {"role": "assistant", "content": "Return to the task at hand."}
+
+
+def test_get_conversation_returns_full_turns(client):
+    _auth(client, "pget@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    detail = client.get(f"/api/v1/philosophers/conversations/{chat_id}").json()
+    assert detail["philosopher_id"] == "marcus-aurelius"
+    assert detail["messages"][0] == {"role": "user", "content": "I feel restless today."}
+
+
+def test_delete_conversation(client):
+    _auth(client, "pdel@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    assert client.delete(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 204
+    assert client.get("/api/v1/philosophers/conversations").json() == []
+    assert client.get(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 404
+
+
+def test_conversations_are_scoped_to_owner(client):
+    _auth(client, "powner@example.com")
+    chat_id = _start_chat(client)["chat_id"]
+    # A different user cannot read, delete, or append to it — 404 (not 403), no enumeration.
+    _auth(client, "pother@example.com")
+    assert client.get(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 404
+    assert client.delete(f"/api/v1/philosophers/conversations/{chat_id}").status_code == 404
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        res = client.post(
+            "/api/v1/philosophers/marcus-aurelius/chat",
+            json={"chat_id": chat_id, "messages": [{"role": "user", "content": "mine now"}]},
+        )
+    assert res.status_code == 404
+    chat.assert_not_called()  # ownership rejected before any (paid) LLM call
+    assert client.get("/api/v1/philosophers/conversations").json() == []  # B saw nothing
+
+
+def test_fallback_reply_is_still_persisted(client):
+    _auth(client, "pfallsave@example.com")
+    with patch(CHAT, return_value=None):
+        res = client.post(
+            "/api/v1/philosophers/laozi/chat",
+            json={"messages": [{"role": "user", "content": "help"}]},
+        )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["source"] == "fallback"
+    detail = client.get(f"/api/v1/philosophers/conversations/{body['chat_id']}").json()
+    assert detail["messages"] == [
+        {"role": "user", "content": "help"},
+        {"role": "assistant", "content": philosopher_service.FALLBACK_REPLY},
+    ]
+
+
 # ── The service/roster themselves ─────────────────────────────────────────────
 
 
-def test_roster_is_seven_distinct_personas():
+def test_roster_is_eight_distinct_personas():
     ids = [p.id for p in philosophers.PHILOSOPHERS]
-    assert len(ids) == 7
-    assert len(set(ids)) == 7
+    assert len(ids) == 8
+    assert len(set(ids)) == 8
     # Every persona composes the shared boundaries into its system prompt.
     for p in philosophers.PHILOSOPHERS:
         assert "not a therapist" in p.system
         assert p.name in p.system or p.tradition.split()[0] in p.system
 
 
+def test_personas_carry_touchstones_and_distinct_tuning():
+    """Each guide grounds its voice in a few touchstones and carries its own tuning, so the
+    roster isn't one shared template with a name swapped in."""
+    for p in philosophers.PHILOSOPHERS:
+        assert "Ideas you return to" in p.system  # touchstones composed into the prompt
+        assert 0.0 <= p.temperature <= 1.0
+        assert 100 <= p.max_tokens <= 500
+    # The guides are tuned differently, not all identical.
+    assert len({p.temperature for p in philosophers.PHILOSOPHERS}) > 1
+    assert len({p.max_tokens for p in philosophers.PHILOSOPHERS}) > 1
+
+
+def test_reply_forwards_persona_tuning_to_llm(client):
+    """The per-guide temperature + reply budget reach the LLM seam (capped at MAX_TOKENS)."""
+    _auth(client, "ptune@example.com")
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        client.post("/api/v1/philosophers/laozi/chat", json=VALID)
+    laozi = philosophers.BY_ID["laozi"]
+    kwargs = chat.call_args.kwargs
+    assert kwargs["temperature"] == laozi.temperature
+    assert kwargs["max_tokens"] == min(laozi.max_tokens, philosopher_service.MAX_TOKENS)
+
+
 def test_list_personas_omits_system_prompt():
     summaries = philosopher_service.list_personas()
-    assert len(summaries) == 7
+    assert len(summaries) == 8
     assert not hasattr(summaries[0], "system")
 
 

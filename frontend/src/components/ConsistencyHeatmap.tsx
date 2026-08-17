@@ -15,8 +15,11 @@ const fmt = localYMD
 // faint). Gentle thresholds so a short sit still registers softly and a longer one reads
 // deeper — never a shouted, saturated block.
 type Level = 0 | 1 | 2 | 3 | 4
-function levelFor(minutes: number): Level {
-  if (minutes <= 0) return 0
+function levelFor(minutes: number, practiced: boolean): Level {
+  // A day with a session but under a minute of practice floors to 0 minutes; still show it
+  // faintly (level 1) rather than blank, so it doesn't render empty while being counted in
+  // "practiced N days".
+  if (minutes <= 0) return practiced ? 1 : 0
   if (minutes < 10) return 1
   if (minutes < 20) return 2
   if (minutes < 40) return 3
@@ -73,10 +76,12 @@ export default function ConsistencyHeatmap() {
       const iso = fmt(cursor)
       const inRange = cursor >= rangeStart && cursor <= end
       const minutes = byDate.get(iso) ?? 0
+      // Present in byDate ⇒ the day had ≥1 session (the backend only returns practiced days).
+      const practiced = byDate.has(iso)
       week.push({
         iso,
         date: new Date(cursor),
-        level: inRange ? levelFor(minutes) : 0,
+        level: inRange ? levelFor(minutes, practiced) : 0,
         minutes,
         inRange,
       })

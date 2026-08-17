@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const mockCreate = vi.fn()
 const mockUpdate = vi.fn()
@@ -82,6 +82,19 @@ function renderPageAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <MeditatePage />
+    </MemoryRouter>,
+  )
+}
+
+// Renders through the real /meditate + /meditate/:guided routes so the path segment is
+// parsed by useParams — the way each guided practice's own URL is resolved.
+function renderPageAtRoute(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/meditate" element={<MeditatePage />} />
+        <Route path="/meditate/:guided" element={<MeditatePage />} />
+      </Routes>
     </MemoryRouter>,
   )
 }
@@ -174,9 +187,10 @@ describe('MeditatePage — pre-session intention', () => {
 })
 
 // ── Deep-link pre-selection (Practices hub) ──────────────────────────────────
-// `/meditate?guided=<id>` pre-selects that guided structure on mount; `guided=none`
-// or `style=mindfulness` pre-selects plain unguided sitting; no param falls back to
-// the stored preference. Tests cover the pure param helper and the rendered <select>.
+// Each guided practice has its own path — /meditate/<id> — resolved by useParams; a
+// legacy `?guided=` query param still resolves for old links/bookmarks; `guided=none`,
+// `style=mindfulness`, or no param at all is a plain unguided sit. Tests cover the pure
+// param helper and the rendered page heading.
 
 describe('guidedChoiceFromParams', () => {
   it('maps known guided ids', () => {
@@ -202,18 +216,17 @@ describe('guidedChoiceFromParams', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('style=mindfulness'))).toBe('none')
   })
 
-  it('no longer maps the old "acceptance" id (renamed → falls back to stored pref)', () => {
+  it('no longer maps the old "acceptance" id (renamed → null → plain unguided)', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=acceptance'))).toBeNull()
   })
 
-  it('returns null for a cut guided id (falls back to stored pref → plain mindfulness)', () => {
-    // Old bookmarks to now-removed practices degrade gracefully to unguided.
+  it('returns null for a cut guided id (old bookmark degrades to plain unguided)', () => {
     expect(guidedChoiceFromParams(new URLSearchParams('guided=chakra-om'))).toBeNull()
     expect(guidedChoiceFromParams(new URLSearchParams('guided=walking'))).toBeNull()
     expect(guidedChoiceFromParams(new URLSearchParams('guided=stretching'))).toBeNull()
   })
 
-  it('returns null for no / unknown params (falls back to stored pref)', () => {
+  it('returns null for no / unknown params (→ plain unguided)', () => {
     expect(guidedChoiceFromParams(new URLSearchParams(''))).toBeNull()
     expect(guidedChoiceFromParams(new URLSearchParams('guided=bogus'))).toBeNull()
   })
@@ -228,39 +241,51 @@ describe('MeditatePage — guided deep-link', () => {
   })
   afterEach(cleanup)
 
-  it('pre-selects the Body scan structure from ?guided=body-scan', () => {
-    renderPageAt('/meditate?guided=body-scan')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    expect(select.value).toBe('body-scan')
+  // Each guided practice's own path (/meditate/body-scan) → its heading.
+  const PATH_LABELS: Record<string, string> = {
+    'body-scan': 'Body scan',
+    'loving-kindness': 'Loving-kindness',
+    focus: 'Focused attention',
+    noting: 'Noting',
+    mantra: 'Mantra',
+    'yoga-nidra': 'Yoga Nidra',
+    'wind-down': 'Wind down',
+    'three-breaths': 'Three mindful breaths',
+  }
+
+  it('titles the page with the practice named by its path (/meditate/body-scan)', () => {
+    renderPageAtRoute('/meditate/body-scan')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Body scan')
   })
 
-  it('pre-selects each guided structure in the trimmed core from its ?guided= param', () => {
-    for (const id of [
-      'loving-kindness',
-      'focus',
-      'noting',
-      'mantra',
-      'yoga-nidra',
-      'wind-down',
-      'three-breaths',
-    ] as const) {
-      renderPageAt(`/meditate?guided=${id}`)
-      const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-      expect(select.value).toBe(id)
+  it('resolves every guided practice from its own path', () => {
+    for (const [id, label] of Object.entries(PATH_LABELS)) {
+      renderPageAtRoute(`/meditate/${id}`)
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(label)
       cleanup()
     }
   })
 
-  it('falls back to unguided (None) for a cut guided id (old bookmark degrades gracefully)', () => {
-    renderPageAt('/meditate?guided=walking')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    expect(select.value).toBe('none')
+  it('still honours a legacy ?guided= query param (old links/bookmarks)', () => {
+    renderPageAt('/meditate?guided=loving-kindness')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Loving-kindness')
   })
 
-  it('defaults to unguided (None) with no param', () => {
-    renderPageAt('/meditate')
-    const select = screen.getByLabelText(/guided structure/i) as HTMLSelectElement
-    expect(select.value).toBe('none')
+  it('falls back to a plain sit for a cut practice id (old bookmark degrades gracefully)', () => {
+    renderPageAtRoute('/meditate/walking')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Meditate')
+  })
+
+  it('is a plain unguided sit at bare /meditate', () => {
+    renderPageAtRoute('/meditate')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Meditate')
+  })
+
+  it('offers a link back to the Practices hub to switch practice', () => {
+    renderPageAtRoute('/meditate/body-scan')
+    expect(
+      screen.getByRole('link', { name: /choose another practice/i }),
+    ).toHaveAttribute('href', '/practices')
   })
 })
 
@@ -554,28 +579,25 @@ describe('MeditatePage — spoken guidance toggle', () => {
   })
   afterEach(cleanup)
 
-  function selectGuided() {
-    fireEvent.change(screen.getByLabelText(/guided structure/i), {
-      target: { value: 'body-scan' },
-    })
+  // A guided sit is now a route, not a dropdown pick — /meditate/body-scan enters guided mode.
+  function renderGuided() {
+    return renderPageAtRoute('/meditate/body-scan')
   }
 
-  it('is hidden when no guided structure is selected', () => {
-    renderPage()
+  it('is hidden on a plain unguided sit', () => {
+    renderPageAtRoute('/meditate')
     expect(screen.queryByLabelText(/spoken guidance/i)).not.toBeInTheDocument()
   })
 
-  it('appears and is checked by default once a guided structure is chosen', () => {
-    renderPage()
-    selectGuided()
+  it('appears and is checked by default on a guided sit', () => {
+    renderGuided()
     const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
     expect(toggle).toBeInTheDocument()
     expect(toggle.checked).toBe(true)
   })
 
   it('persists an off choice to localStorage', () => {
-    renderPage()
-    selectGuided()
+    renderGuided()
     const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
     fireEvent.click(toggle)
     expect(toggle.checked).toBe(false)
@@ -584,16 +606,14 @@ describe('MeditatePage — spoken guidance toggle', () => {
 
   it('reads a persisted off choice on next mount', () => {
     localStorage.setItem('meditate:spoken-guidance', 'off')
-    renderPage()
-    selectGuided()
+    renderGuided()
     const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
     expect(toggle.checked).toBe(false)
   })
 
   it('is disabled with a fallback hint when no TTS voice is available', () => {
     speechState.available = false
-    renderPage()
-    selectGuided()
+    renderGuided()
     const toggle = screen.getByLabelText(/spoken guidance/i) as HTMLInputElement
     expect(toggle.disabled).toBe(true)
     expect(screen.getByText(/voice unavailable/i)).toBeInTheDocument()

@@ -1,4 +1,4 @@
-// Japanese catalog — merged from per-domain files, mirroring locales/en. A key missing here falls
+// Japanese catalog——merged from per-domain files, mirroring locales/en. A key missing here falls
 // back to English at lookup time, so partial coverage always degrades gracefully.
 import { common } from './common'
 import { auth } from './auth'

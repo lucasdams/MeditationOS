@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { MoreHorizontal, Sparkle } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { sessionService } from '../services/sessions'
@@ -454,7 +455,7 @@ export default function TimelinePage() {
                           aria-controls={`menu-${item.id}`}
                           onClick={() => setMenuId(menuId === item.id ? null : item.id)}
                         >
-                          ⋯
+                          <MoreHorizontal size={18} aria-hidden="true" />
                         </button>
                       </span>
                     )}
@@ -462,7 +463,7 @@ export default function TimelinePage() {
                   {/* Captured intention + focus/calm self-ratings, shown when present. */}
                   {item.kind === 'session' && item.session.intention && (
                     <p className="timeline-intention">
-                      <span className="timeline-intention-icon" aria-hidden="true">✦</span>{' '}
+                      <Sparkle size={14} className="timeline-intention-icon" aria-hidden="true" />{' '}
                       {item.session.intention}
                     </p>
                   )}

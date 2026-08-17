@@ -9,7 +9,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
 import BreathePage from './pages/BreathePage'
-import MeditatePage from './pages/MeditatePage'
+import { MeditateRoute } from './pages/MeditatePage'
 import GratitudePage from './pages/GratitudePage'
 import JournalPage from './pages/JournalPage'
 import PrivacyPage from './pages/PrivacyPage'
@@ -73,7 +73,11 @@ export default function App() {
             element={<Suspense fallback={<PageFallback />}><PathsPage /></Suspense>}
           />
           <Route path="/breathe" element={<BreathePage />} />
-          <Route path="/meditate" element={<MeditatePage />} />
+          {/* Each guided practice has its own path (/meditate/body-scan). Same player underneath —
+              the segment selects the cue script; bare /meditate is a plain sit. MeditateRoute keys
+              the player by URL so switching practice remounts a clean sit (see its comment). */}
+          <Route path="/meditate" element={<MeditateRoute />} />
+          <Route path="/meditate/:guided" element={<MeditateRoute />} />
           <Route
             path="/trataka"
             element={<Suspense fallback={<PageFallback />}><TratakaPage /></Suspense>}

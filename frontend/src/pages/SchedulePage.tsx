@@ -189,7 +189,7 @@ export default function SchedulePage() {
             <li
               key={s.id}
               className="schedule-item"
-              style={{ borderLeftColor: TYPE_COLORS[s.type] ?? '#9ca3af' }}
+              style={TYPE_COLORS[s.type] ? { borderLeftColor: TYPE_COLORS[s.type] } : undefined}
             >
               <div>
                 <strong>{formatWhen(s.scheduled_at)}</strong>

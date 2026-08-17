@@ -232,6 +232,162 @@ export const GUIDED_STRUCTURES: GuidedStructure[] = [
   THREE_BREATHS,
 ]
 
+// ── Japanese localization ──────────────────────────────────────────────────────
+// The English structures above are the source of truth (data + scheduling weights). This
+// parallel table holds the Japanese label/description and the cue lines in the SAME order
+// as each structure's `phases`, so `localizedCue(id, i)` maps 1:1. Keeping it separate
+// leaves the English data (and the weights/bells) untouched. Fallback: any missing entry
+// uses the English text.
+interface GuidedTranslation {
+  label: string
+  description: string
+  cues: string[] // same length + order as the structure's phases
+}
+
+const GUIDED_JA: Record<GuidedStructureId, GuidedTranslation> = {
+  'body-scan': {
+    label: 'ボディスキャン',
+    description: '頭からつま先まで、体をやさしく見わたしていきます。',
+    cues: [
+      '楽な姿勢で。そっと目を閉じましょう。',
+      '自然に呼吸します。息のリズムに気づきましょう。',
+      '頭のてっぺんに注意を向けます。頭皮、ひたい、あご。',
+      '首と肩へ。ゆるめていきましょう。',
+      '胸と背中の上のほうへ。ここで一呼吸ごとに感じます。',
+      'お腹と腰へ。こわばりがあれば、ほどいていきます。',
+      '骨盤と、座っている土台へ。下から支えられている感じを。',
+      '太ももと膝へ。何も変えなくて大丈夫です。',
+      'ふくらはぎ、足首、足へと注意を移します。',
+      '体全体を一度に感じて休みます——支えられ、呼吸し、満ちて。',
+      '準備ができたら、深く一息ついて、目を開けましょう。',
+    ],
+  },
+  'loving-kindness': {
+    label: '慈しみの瞑想',
+    description: '自分に、そして周りの人へ、あたたかな願いを送ります。',
+    cues: [
+      '楽な姿勢で。心をやすらがせましょう。',
+      'やさしく呼吸します。こわばりをほどいていきます。',
+      '自分自身を思い浮かべ、内側へ願いを送ります。\n私が安らかでありますように。健やかでありますように。幸せでありますように。楽に生きられますように。',
+      '大切な人を思い浮かべます。その顔をはっきりと。',
+      'あなたが安らかでありますように。健やかで、幸せで、楽に生きられますように。',
+      'あまり知らない人を思い浮かべます——ご近所の人、道ですれ違った人を。',
+      'あなたが安らかでありますように。健やかで、幸せで、楽に生きられますように。',
+      '気づきを外へ広げます——あなたの街、世界、すべての生きものへ。',
+      'すべての生きものが安らかで、健やかで、幸せで、楽に生きられますように。',
+      'ここで、開かれた心のまま休みます。もう何もすることはありません。',
+      'そっと呼吸へ戻ります。このあたたかさを持って。',
+    ],
+  },
+  focus: {
+    label: '集中の瞑想',
+    description: '一点に心を集める——散らばった心を落ち着けます。',
+    cues: [
+      '楽な姿勢で。背をのばし、目は閉じるか、そっと伏せて。',
+      'ひとつの拠りどころを選びます——鼻先の息、またはお腹のふくらみとしぼみ。',
+      'そこに注意をぜんぶ置きます。ただこの一点に。',
+      '心がさまよったら——きっとさまよいます——気づいて、そっと戻ります。いらだたずに。',
+      '戻るたびが一回の稽古。そうして集中は育ちます。',
+      '一息ごとに拠りどころにとどまります。ほかはすべて背景へ。',
+      '準備ができたら、注意を外へ広げ、目を開けましょう。',
+    ],
+  },
+  noting: {
+    label: 'ラベリング',
+    description: '起きてくるものにやさしく一語をそえて、通りすぎるにまかせます。',
+    cues: [
+      '楽な姿勢で。体を落ち着け、息が自分のペースを見つけるままに。',
+      '拠りどころとして、息に軽く注意を置きます。',
+      'さて、注意を引くものが来たら、ひと言でそっと迎えます。',
+      '考えが浮かんだら、心の中で「考えている」とそっとそえ、通りすぎるにまかせます。',
+      '音なら「聞いている」。感覚なら「感じている」。やさしいひと言、物語はなしで。',
+      'ラベルは軽く——判定ではなく、ささやきのように。そして息へ戻ります。',
+      'ラベルが作る小さな隙間に気づきます——考えから半歩うしろへ。',
+      'いくつも同時に来たら、いちばん大きいものだけ——「計画」「落ち着かない」——あとは流します。',
+      'ラベルをやわらげ、消していきます。ただ開かれた気づきに休みます。',
+      '準備ができたら目を開けます。その軽い気づきを持って。',
+    ],
+  },
+  mantra: {
+    label: 'マントラ',
+    description: '心を置く一語——忙しい頭のための拠りどころ。',
+    cues: [
+      '楽な姿勢で。体を静かに。',
+      'かんたんな言葉や音をひとつ選びます——「やすらぎ」「ソーハム」、ただ「ひとつ」でも。',
+      '楽な速さで、心の中でくり返します。ほとんど努力せずに。',
+      '心がそれたら、その言葉へ戻ります。やさしく、何度でも。',
+      'その言葉に、思考のあった隙間を満たしてもらいます。',
+      '消えていったら、静けさに休み、また拾い直します。',
+      '言葉を息に合わせなくて大丈夫。自然なリズムに任せましょう。',
+      '準備ができたら、言葉が溶けるにまかせ、目を開けましょう。',
+    ],
+  },
+  'yoga-nidra': {
+    label: 'ヨガニドラ',
+    description: '眠らない深い休息——横になり、体をほどいていきます。',
+    cues: [
+      'あお向けに寝て、腕は体の横、手のひらは上へ。床に身をあずけます。',
+      'ゆっくり数呼吸。今はただ休むだけ。',
+      '右手に気づきを向けます——親指、指、手のひら、手首。',
+      '右腕を上へ——前腕、ひじ、肩。同じように左腕と手も。',
+      '顔——ひたい、目、あご。のどと胸。',
+      'お腹、背中、腰。沈み、やわらいで。',
+      '両脚——太もも、膝、ふくらはぎ、足。すっかり休ませて。',
+      '体全体を一度に感じます。重く、静かに。目覚めたまま、深く安らいで。',
+      'ここで休みます。努力も、求めることもなく——ただ呼吸されるままに。',
+      '準備ができたら、指とつま先を動かし、ゆっくり戻ってきましょう。',
+    ],
+  },
+  'wind-down': {
+    label: '眠りへ',
+    description: '体を重く沈め、そのまままどろみにゆだねます。',
+    cues: [
+      '横になって、楽にします。ベッドに全体重をあずけて。',
+      '今夜、やり終えることは何もありません。もう一日を手放して大丈夫。',
+      '体が沈んでいくのを感じます——息を吐くごとに少し重く。',
+      '脚が重くなっていきます。あたたかく、ゆるく、沈んで。',
+      '腕が重くなっていきます。手は、すっかりやわらかく。',
+      '肩が、耳から離れて、下へとろけていきます。',
+      '顔がやわらいでいきます——あご、目、眉のあいだ。',
+      '体全体が、重く静かに。支えられ、どこへ行く必要もなく。',
+      '吐く息ごとに、少し深く。起きていなくて大丈夫。',
+      'まどろんでしまっても、それでいいのです。ただここで休んで。',
+      '今はただ息だけ。ゆっくり、もっとゆっくり。それにまかせて、眠りへ。',
+    ],
+  },
+  'three-breaths': {
+    label: '3回のマインドフルな呼吸',
+    description: '3回の呼吸を、ていねいに感じる——いちばん小さなプラクティス。',
+    cues: [
+      'どこにいても、今のままで十分。何も変えなくていい。',
+      '一呼吸目——ただ入ってきて、出ていくのを感じて。それだけ。',
+      '二呼吸目——少しゆっくり。肩の力を抜いて。',
+      '三呼吸目——いちばん深く。吸って、ぜんぶ手放して。',
+      'これも小さなプラクティスです。この落ち着きを持って行きましょう。',
+    ],
+  },
+}
+
+// The structure's label / description for the given locale (Japanese where available).
+export function localizedLabel(structure: GuidedStructure, locale: string): string {
+  return locale === 'ja' ? GUIDED_JA[structure.id]?.label ?? structure.label : structure.label
+}
+export function localizedDescription(structure: GuidedStructure, locale: string): string {
+  return locale === 'ja'
+    ? GUIDED_JA[structure.id]?.description ?? structure.description
+    : structure.description
+}
+// The cue for a phase index in the given locale, falling back to `fallback` (the English cue).
+export function localizedCue(
+  id: GuidedStructureId,
+  phaseIndex: number,
+  fallback: string,
+  locale: string,
+): string {
+  if (locale !== 'ja') return fallback
+  return GUIDED_JA[id]?.cues[phaseIndex] ?? fallback
+}
+
 // ── Level gates ───────────────────────────────────────────────────────────────
 // Some guided structures can unlock at a level, mirroring the spirit cosmetic
 // unlocks ("Reach level N"). A single source of truth so MeditatePage and

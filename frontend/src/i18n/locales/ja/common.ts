@@ -1,7 +1,8 @@
-// Common domain — Japanese. Calm, polite register (です/ます where sentences occur); nav labels
+// Common domain——Japanese. Calm, polite register (です/ます where sentences occur); nav labels
 // use the natural conventions of Japanese wellness apps (katakana loans where they read better).
 export const common: Record<string, string> = {
   'nav.home': 'ホーム',
+  'nav.quickStart': '開始',
   'nav.practice': 'プラクティス',
   'nav.progress': '進捗',
   'nav.spirit': 'スピリット',
@@ -37,7 +38,7 @@ export const common: Record<string, string> = {
   'needs.short.joyful': '喜び',
 
   'needChip.label': '{need}を少し？',
-  'needChip.title': '{name}は最近{need}が少なめです — 少し補うとバランスが整います',
+  'needChip.title': '{name}は最近{need}が少なめです。少し補うとバランスが整います',
   'needChip.fallbackName': 'あなたのスピリット',
 
   'common.save': '保存',
@@ -69,7 +70,7 @@ export const common: Record<string, string> = {
   'notFound.back': '← ホームに戻る',
 
   // API失敗時の文言（lib/errors.ts）— ネットワーク起因とサーバー側起因を区別
-  'common.error.network': 'サーバーに接続できません — 通信環境を確認して、もう一度お試しください。',
+  'common.error.network': 'サーバーに接続できません。通信環境を確認して、もう一度お試しください。',
   'common.error.server': 'こちら側で問題が起きました。少し待ってから、もう一度お試しください。',
 
   // 描画エラーのフォールバック（ErrorBoundary.tsx）
@@ -80,4 +81,28 @@ export const common: Record<string, string> = {
   'settings.language': '言語',
   'settings.language.note':
     'すぐに反映されます。長文コンテンツ（今日の一節・ガイド音声の台本など）は当面英語のままです。',
+
+  // プラクティスの表示名（共有 ACTIVITY_META は lib/colors.ts、描画時に解決）
+  'activity.meditate': '瞑想',
+  'activity.breathe': '呼吸',
+  'activity.gratitude': '感謝',
+  'activity.journal': 'ジャーナル',
+  'activity.custom': 'カスタム',
+
+  // 気分の表示名（共有 MOOD_META は lib/colors.ts、描画時に解決）
+  'mood.calm': 'おだやか',
+  'mood.content': '満ち足りた',
+  'mood.focused': '集中',
+  'mood.energized': '元気',
+  'mood.grateful': '感謝',
+  'mood.hopeful': '前向き',
+  'mood.excited': 'わくわく',
+  'mood.peaceful': '安らか',
+  'mood.neutral': 'ふつう',
+  'mood.restless': '落ち着かない',
+  'mood.anxious': '不安',
+  'mood.frustrated': 'イライラ',
+  'mood.overwhelmed': 'いっぱいいっぱい',
+  'mood.tired': '疲れ',
+  'mood.low': '落ち込み',
 }

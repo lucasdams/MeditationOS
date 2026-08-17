@@ -18,10 +18,10 @@ export interface SuggestionSet {
 
 // Time-of-day primary pick — used always, and as the sole basis when the balance is even.
 const TIME_PICK: Record<ReturnType<typeof slotForHour>, string> = {
-  morning: '/meditate?guided=focus',
+  morning: '/meditate/focus',
   afternoon: '/breathe?pattern=resonance',
-  evening: '/meditate?guided=wind-down',
-  night: '/meditate?guided=yoga-nidra',
+  evening: '/meditate/wind-down',
+  night: '/meditate/yoga-nidra',
 }
 
 const TIME_SUBTITLE: Record<ReturnType<typeof slotForHour>, string> = {
@@ -33,9 +33,9 @@ const TIME_SUBTITLE: Record<ReturnType<typeof slotForHour>, string> = {
 
 // When the companion's balance is uneven, lead with a pick that rounds out its weakest facet.
 const FACET_PICK: Record<SpiritNeedKey, string> = {
-  joyful: '/meditate?guided=loving-kindness',
-  rested: '/meditate?guided=body-scan',
-  nourished: '/meditate?guided=focus',
+  joyful: '/meditate/loving-kindness',
+  rested: '/meditate/body-scan',
+  nourished: '/meditate/focus',
 }
 
 const FACET_WORD: Record<SpiritNeedKey, string> = {
@@ -45,7 +45,7 @@ const FACET_WORD: Record<SpiritNeedKey, string> = {
 }
 
 // A short, always-safe on-ramp — rounds the set out to three without ever feeling demanding.
-const ANYTIME = '/meditate?guided=three-breaths'
+const ANYTIME = '/meditate/three-breaths'
 
 /**
  * A few gentle practice suggestions for the top of the Practices hub. Leads with the companion's

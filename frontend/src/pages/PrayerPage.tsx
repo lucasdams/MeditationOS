@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Feather, RotateCcw } from 'lucide-react'
+import { Check, Feather, MoreHorizontal, RotateCcw } from 'lucide-react'
 import { prayerService } from '../services/prayers'
 import { dashboardService } from '../services/dashboard'
 import { buildXpBreakdown, type XpLine } from '../lib/xpBreakdown'
@@ -339,7 +339,7 @@ export default function PrayerPage() {
                       aria-controls={`menu-${p.id}`}
                       onClick={() => setMenuId(menuId === p.id ? null : p.id)}
                     >
-                      ⋯
+                      <MoreHorizontal size={18} aria-hidden="true" />
                     </button>
                   </span>
                 )}

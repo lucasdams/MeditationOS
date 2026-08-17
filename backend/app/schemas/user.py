@@ -62,6 +62,14 @@ class TimezoneUpdate(BaseModel):
     timezone: str = Field(min_length=1, max_length=64)
 
 
+class LocaleUpdate(BaseModel):
+    """Set the user's UI language (persisted so emails can be localized)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    locale: str = Field(min_length=2, max_length=8)
+
+
 class QuestFeaturesUpdate(BaseModel):
     """Choose which daily-activity quests to receive (validated in the service:
     each must be a known feature and at least 3 must be selected)."""
@@ -191,6 +199,7 @@ class ExportData(BaseModel):
     path_enrollments: list[dict]
     ai_reflections: list[dict]
     prayers: list[dict]
+    philosopher_chats: list[dict]
 
 
 class UserRead(BaseModel):
@@ -202,6 +211,9 @@ class UserRead(BaseModel):
     email: EmailStr
     username: str | None
     timezone: str
+    # UI language ("en" | "ja"); lets the client keep its locale in sync and the
+    # server localize transactional emails.
+    locale: str
     has_password: bool
     email_verified: bool
     is_guest: bool

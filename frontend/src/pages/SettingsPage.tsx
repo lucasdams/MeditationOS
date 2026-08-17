@@ -740,7 +740,13 @@ export default function SettingsPage() {
         <select
           id="ui-language"
           value={locale}
-          onChange={(e) => setLocale(e.target.value as Locale)}
+          onChange={(e) => {
+            const next = e.target.value as Locale
+            setLocale(next)
+            // Persist server-side too, so transactional emails switch language right away
+            // (fire-and-forget — the local switch already took effect).
+            authService.setLocale(next).catch(() => {})
+          }}
         >
           {LOCALES.map((l) => (
             <option key={l} value={l}>

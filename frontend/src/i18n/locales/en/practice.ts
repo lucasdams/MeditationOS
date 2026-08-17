@@ -38,7 +38,7 @@ export const practice: Record<string, string> = {
   'practice.group.sleep.title': 'Sleep',
   'practice.group.sleep.blurb': 'Wind-down practices to ease toward sleep.',
   'practice.group.reflection.title': 'Reflection',
-  'practice.group.reflection.blurb': 'Put the day into words: gratitude and journaling.',
+  'practice.group.reflection.blurb': 'Put the day into words: gratitude, journaling, and prayer.',
 
   // ── Practices hub — card names + descriptions (keyed by route) ───────────
   // Breathing
@@ -77,6 +77,8 @@ export const practice: Record<string, string> = {
   'practice.card.gratitude.desc': "Note what you're grateful for",
   'practice.card.journal.name': 'Journal',
   'practice.card.journal.desc': 'Reflect in writing',
+  'practice.card.prayer.name': 'Prayer',
+  'practice.card.prayer.desc': 'A quiet prayer journal',
 
   // ── Time cues (PRACTICE_META.mins) ───────────────────────────────────────
   'practice.mins.youChoose': 'You choose',
@@ -176,10 +178,7 @@ export const practice: Record<string, string> = {
     'Find a comfortable seat, pick a length below, and press Start when you’re ready.',
   'practice.meditate.phase.beHere': 'Be here',
   'practice.meditate.minSit': '{min} min sit',
-  'practice.meditate.guidedStructure': 'Guided structure',
-  'practice.meditate.guidedNone': 'None (plain timer)',
-  'practice.meditate.guidedLocked': '{label}: Reach level {level} to unlock',
-  'practice.meditate.guidedOption': '{label}: {desc}',
+  'practice.meditate.chooseAnother': 'Choose another practice',
   'practice.meditate.spoken.toggle': 'Spoken guidance',
   'practice.meditate.spoken.unavailable':
     'Voice unavailable here. Cues show on screen with a soft bell.',
@@ -358,4 +357,14 @@ export const practice: Record<string, string> = {
   'practice.breathingInfo.how5': 'Start with a few minutes and build up over time.',
   'practice.breathingInfo.disclaimer':
     'General wellness guidance, not medical advice. Ease off or stop if you feel light-headed, and check with a clinician first if you have a heart or respiratory condition.',
+
+  // Breathing pattern picker (names + one-line hints; lib/breathPattern.ts PRESETS, resolved by key).
+  'practice.breathe.preset.resonance.name': 'Resonance',
+  'practice.breathe.preset.resonance.hint': 'Longer exhale, at your pace',
+  'practice.breathe.preset.box.name': 'Box',
+  'practice.breathe.preset.box.hint': 'Equal in · hold · out · hold',
+  'practice.breathe.preset.energizing.name': 'Energizing',
+  'practice.breathe.preset.energizing.hint': 'Active inhale, brisk pace',
+  'practice.breathe.preset.alternate.name': 'Alternate nostril',
+  'practice.breathe.preset.alternate.hint': 'Nadi Shodhana — switch nostrils each round',
 }

@@ -107,6 +107,13 @@
   /* Bar track (progress bars) */
   --bar-track: #e6e8f1;
 
+  /* Analytics chart series. Defined as tokens so the saturated hues can re-cool on the
+     dark canvas (see the dark blocks) instead of glowing pure red/green over slate. */
+  --chart-hr: #ef4444;
+  --chart-hrv: #10b981;
+  --chart-calm: #06b6d4;
+  --chart-focus: #f59e0b;
+
   /* Level card — soft indigo panel (gamified "level" surface). */
   --level-card-from: #eeedff;
   --level-card-to: #f3f3ff;
@@ -223,6 +230,8 @@
     radial-gradient(900px 640px at 50% -10%, rgba(124, 124, 255, 0.16), transparent 60%),
     radial-gradient(700px 520px at 85% 6%, rgba(34, 211, 238, 0.10), transparent 58%),
     linear-gradient(180deg, #0e1018 0%, #12141f 100%);
+  /* Deep base so overscroll never flashes white (see :root note above). */
+  background-color: #0e1018;
   --sky-top: 10%;
   --sky-bottom: 7%;
 
@@ -320,6 +329,12 @@
   /* Bar track */
   --bar-track: #232838;
 
+  /* Chart series, softened for the dark surface (align with --success-text / --streak-accent). */
+  --chart-hr: #f87171;
+  --chart-hrv: #34d399;
+  --chart-calm: #22d3ee;
+  --chart-focus: #fbbf24;
+
   /* Level card — deep indigo panel (mirrors the dark .level-card override). */
   --level-card-from: #1c1f3a;
   --level-card-to: #1d2138;
@@ -383,6 +398,8 @@
       radial-gradient(900px 640px at 50% -10%, rgba(124, 124, 255, 0.16), transparent 60%),
       radial-gradient(700px 520px at 85% 6%, rgba(34, 211, 238, 0.10), transparent 58%),
       linear-gradient(180deg, #0e1018 0%, #12141f 100%);
+    /* Deep base so overscroll never flashes white (see :root note above). */
+    background-color: #0e1018;
     --season-hue: 232;
     --season-sat: 22%;
     --sky-top: 10%;
@@ -445,6 +462,10 @@
     --nav-more-text: #a6acc4;
     --surface-analytics: #171a26;
     --bar-track: #232838;
+    --chart-hr: #f87171;
+    --chart-hrv: #34d399;
+    --chart-calm: #22d3ee;
+    --chart-focus: #fbbf24;
     --level-card-from: #1c1f3a;
     --level-card-to: #1d2138;
     --level-card-border: #2e3066;
@@ -499,6 +520,11 @@
     radial-gradient(900px 620px at 50% -8%, rgba(106, 92, 255, 0.11), transparent 64%),
     radial-gradient(720px 520px at 88% 4%, rgba(56, 189, 248, 0.08), transparent 60%),
     linear-gradient(180deg, #fbfcff 0%, #f3f5fc 100%);
+  /* Base canvas colour behind the fixed gradient: with background-attachment:fixed the
+     gradient doesn't paint the rubber-band/overscroll region, so without this the canvas
+     falls back to the browser default (a white flash in dark mode, black in some hosts).
+     Pinning the gradient's base tone keeps overscroll seamless in every browser. */
+  background-color: #f3f5fc;
   background-attachment: fixed;
   transition: background 1.5s ease;
 
@@ -739,6 +765,30 @@ a:hover { color: var(--accent-hover); }
   color: var(--nav-home-text);
   font-weight: 600;
   box-shadow: none;
+}
+
+/* Header quick-start — the primary one-tap action, an accent-filled pill so it stands apart from
+   the plain nav links. Lives inside .app-nav, so it inherits the mobile-sheet layout too (where it
+   leads the opened hamburger). */
+.app-nav a.nav-quick-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+  font-weight: 600;
+}
+.app-nav a.nav-quick-start:hover {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+  filter: none;
+  box-shadow: none;
+}
+/* Already-primary, so the active state doesn't need to shift — keep the accent fill steady. */
+.app-nav a.nav-quick-start.active {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 /* Meditate / Breathe / Gratitude / Journal / Candle-gazing moved off the flat nav into the
@@ -1558,6 +1608,13 @@ a:hover { color: var(--accent-hover); }
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Keep the heading's closing fragment from breaking mid-word. Matters most for CJK
+   (Japanese allows a line break between any two characters), where without this the
+   word 「瞑想」 could split across lines; harmless for the Latin "." it wraps in English. */
+.landing-hero-end {
+  white-space: nowrap;
 }
 
 .landing-tagline {
@@ -2419,14 +2476,16 @@ a:hover { color: var(--accent-hover); }
   gap: 0.75rem;
 }
 
-/* Quiet "⋯" toggle — edit/delete stay hidden behind it so they're not a prominent
-   default on every entry. */
+/* Quiet actions toggle (lucide MoreHorizontal) — edit/delete stay hidden behind it so
+   they're not a prominent default on every entry. */
 .journal-entry-menu {
   margin: 0;
   width: auto;
-  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.4rem;
   line-height: 1;
-  font-size: var(--text-lg);
   background: none;
   border: none;
   border-radius: var(--radius-control);
@@ -2457,11 +2516,30 @@ a:hover { color: var(--accent-hover); }
   margin-bottom: 0.4rem;
 }
 
+/* A quiet segmented toggle: inactive tabs are soft surface chips; the active one fills
+   with the accent. (The bare button would otherwise render accent-filled in every state,
+   making the active filter indistinguishable — .selectable.selected only adds a border,
+   which is invisible on an already-accent fill.) */
 .prayer-filter-tab {
   width: auto;
   margin: 0;
-  padding: 0.3rem 0.85rem;
+  padding: 0.35rem 0.85rem;
   font-size: var(--text-sm);
+  font-weight: 500;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+
+.prayer-filter-tab:hover:not(.selected):not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.prayer-filter-tab.selected {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 
 /* An answered prayer softens: a calm accent rail + gently faded body, so it reads as
@@ -2836,6 +2914,29 @@ textarea {
   resize: vertical;
 }
 
+/* Replace the native OS dropdown arrow with a design-system chevron so <select>
+   reads as part of the app rather than a raw browser control. appearance:none drops
+   the native affordance; the inline-SVG chevron (muted grey, legible on both the
+   light and dark input surfaces) is drawn in its place with room reserved on the
+   right. Scoped to single selects so a rare list-box (multiple) keeps its native UI. */
+select:not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 2.1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a90a6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.72rem center;
+  background-size: 1rem;
+}
+
+/* Tint native checkboxes/radios to the brand accent instead of the OS default (a stock
+   blue that clashes with the violet system). accent-color keeps the accessible native
+   control and behaviour — no custom box needed — while matching the design system. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+
 small {
   color: var(--text-muted);
 }
@@ -2952,6 +3053,17 @@ textarea::placeholder {
     background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     filter var(--duration-fast) var(--ease-out);
+}
+
+/* Filled accent — the primary action. */
+.btn--primary {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 /* Surface + border — a quieter alternative action. */
@@ -3313,6 +3425,7 @@ button.today-action:disabled {
 }
 .path-day {
   display: flex;
+  align-items: flex-start;
   gap: 0.7rem;
   padding: 0.7rem 0;
   border-top: 1px solid var(--border-light);
@@ -3322,9 +3435,11 @@ button.today-action:disabled {
 }
 .path-day-marker {
   flex: 0 0 1.2rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.5rem; /* match the head line so the icon seats against the first row */
   color: var(--text-muted);
-  line-height: 1.5;
 }
 .path-day-body {
   flex: 1 1 auto;
@@ -7225,6 +7340,77 @@ button.today-action:disabled {
   text-align: center;
 }
 
+/* Reflect-with-a-guide home card — a quiet, accent-tinted panel (guide-of-the-day) that opens
+   into the philosopher chat. Carries the guide's --card-fill/-dark, resolved to --card-accent per
+   theme like the practice cards. */
+.dashboard-guide {
+  --card-accent: var(--card-fill, var(--accent));
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 22%, var(--border));
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--card-accent) 6%, var(--bg-surface));
+}
+:root[data-theme='dark'] .dashboard-guide {
+  --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .dashboard-guide {
+    --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+  }
+}
+.dashboard-guide-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.dashboard-guide-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-accent) 15%, var(--bg-surface));
+  color: var(--card-accent);
+}
+.dashboard-guide-heading {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--card-accent);
+}
+.dashboard-guide-who {
+  margin: 0.05rem 0 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dashboard-guide-tradition {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.dashboard-guide-prompt {
+  margin: 0.7rem 0 0.6rem;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.dashboard-guide-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--card-accent);
+  text-decoration: none;
+}
+.dashboard-guide-cta:hover {
+  text-decoration: underline;
+}
+
 .stat-value {
   font-size: var(--text-2xl);
   font-weight: 700;
@@ -7597,6 +7783,7 @@ button.today-action:disabled {
 .timeline-intention-icon {
   color: var(--accent);
   font-style: normal;
+  vertical-align: -0.15em; /* seat the inline lucide icon on the italic text baseline */
 }
 
 /* The focus / calm self-ratings read-out — small pills set apart by a gap. */
@@ -8438,7 +8625,8 @@ details[open] .meditate-disclosure-summary::before {
 .stepper {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.75rem;
   margin: 0.35rem 0 1rem;
 }
 
@@ -8479,8 +8667,10 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .stepper-value {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 6.5rem;
   text-align: center;
+  font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-primary);
@@ -8537,11 +8727,17 @@ details[open] .meditate-disclosure-summary::before {
   margin: 0;
 }
 
+/* Finish & save is the quiet counterpart to the accent Pause/Resume: a calm surface
+   button with a hairline border, not a stark near-black block. Gentle accent on hover. */
 .breathe-controls .secondary {
-  background: var(--text-primary);
-  /* Invert the label against the light dark-mode fill (same as the logout button) —
-     otherwise it inherits the base button's white text and is unreadable. */
-  color: var(--bg-surface);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+
+.breathe-controls .secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Start-of-practice focus cue: a one-line "where to look" prompt that fades out a few
@@ -8724,7 +8920,10 @@ details[open] .meditate-disclosure-summary::before {
 
 /* On phones the nav collapses behind a hamburger — the header stays one compact row,
    and tapping ☰ opens a dropdown with every destination stacked. */
-@media (max-width: 760px) {
+/* Keep the full nav inline in the header bar down to small-tablet width; only genuinely narrow
+   (phone) widths collapse it behind the hamburger. The desktop .app-nav is flex-wrap:wrap, so at
+   tighter widths it wraps to a second row rather than overflowing. */
+@media (max-width: 600px) {
   .nav-toggle {
     display: inline-flex;
     align-items: center;
@@ -8803,7 +9002,14 @@ details[open] .meditate-disclosure-summary::before {
     background: color-mix(in srgb, var(--menu-ink) 22%, var(--bg-surface));
     box-shadow: inset 0.2rem 0 0 var(--menu-ink);
   }
-  /* Practice / Progress collapsible group buttons (replace the old flat heading + list). */
+  /* Practice + Explore are direct links in the mobile sheet — icon + label in a row, reusing the
+     shared .nav-mobile-extra a pill styling above for background/border. */
+  .nav-mobile-direct {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  /* Progress collapsible group button (the one grouped section left on mobile). */
   .nav-mobile-group {
     display: flex;
     align-items: center;
@@ -9053,6 +9259,7 @@ details[open] .meditate-disclosure-summary::before {
 .session-intention-locked-icon {
   color: var(--accent);
   font-style: normal;
+  vertical-align: -0.15em; /* seat the inline lucide icon on the italic text baseline */
 }
 
 /* Phase label variant when an intention is set. */
@@ -9277,11 +9484,14 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .onboarding-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   text-align: left;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border-var, rgba(0, 0, 0, 0.14));
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--card, rgba(255, 255, 255, 0.6));
+  background: var(--bg-surface);
   font: inherit;
   font-weight: 500;
   color: inherit; /* override the global white button text */
@@ -9289,12 +9499,12 @@ details[open] .meditate-disclosure-summary::before {
 }
 
 .onboarding-choice:hover {
-  border-color: var(--accent-var, #6a5cff);
+  border-color: var(--accent);
 }
 
 /* Border-color comes from .selectable.selected; this choice uses an inset ring. */
 .onboarding-choice.selected {
-  box-shadow: 0 0 0 1px var(--accent-var, #6a5cff) inset;
+  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 .onboarding-emoji {
@@ -9307,12 +9517,6 @@ details[open] .meditate-disclosure-summary::before {
 .onboarding-question {
   margin: 1.2rem 0 0;
   font-size: var(--text-lg);
-}
-
-.onboarding-choice {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
 }
 
 .onboarding-choice-body {
@@ -9633,6 +9837,19 @@ details[open] .meditate-disclosure-summary::before {
   line-height: 1.45;
   color: var(--text-secondary);
 }
+/* Quiet "← back to the catalog" affordance under the intro — the practice is chosen in the
+   Practices hub, so switching is a soft link, not a heavy in-page control. */
+.practice-switch-link {
+  display: inline-block;
+  margin: 0.6rem 0 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.practice-switch-link:hover {
+  text-decoration: underline;
+}
 
 .practices-grid {
   display: grid;
@@ -9647,7 +9864,9 @@ details[open] .meditate-disclosure-summary::before {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin: 0.9rem 0 0.25rem;
+  /* Enough gap below the chips that they read as their own row, not crowding the first
+     group's bordered panel. */
+  margin: 0.9rem 0 1.1rem;
 }
 /* The "Start here" chip carries a small sprout icon — align it with its label. */
 .practices-filter-starter {
@@ -10804,6 +11023,8 @@ details[open] .meditate-disclosure-summary::before {
 .admin-feedback-msg {
   margin: 0;
   white-space: pre-wrap;
+}
+
 /* ── Chat with a philosopher ──────────────────────────────────────────────────
    The picker reuses .practices-grid + .practice-card; only the small deltas below are
    new (the card is a <button> here, and carries a tradition line). The chat view is a
@@ -10831,28 +11052,40 @@ details[open] .meditate-disclosure-summary::before {
    as a small pill, and a gentle lift + accent ring on hover/focus. */
 .philo-card .practice-card-icon {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  color: var(--accent);
+  background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-surface));
+  color: var(--card-accent);
 }
 
+/* Tradition (accent pill) + era (quiet metadata beside it) on one meta row — the era sits
+   OUTSIDE the pill so the pill stays a clean, non-wrapping tag. */
+.philo-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.2rem 0;
+}
 .philo-card-tradition {
-  display: inline-block;
-  width: fit-content;
-  margin: 0.15rem 0;
   padding: 0.12rem 0.55rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--card-accent) 12%, transparent);
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: var(--accent);
+  color: var(--card-accent);
+  white-space: nowrap;
+}
+.philo-card-era {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .philo-card:hover,
 .philo-card:focus-visible {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--card-accent) 42%, var(--border));
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--card-accent) 55%, transparent);
 }
 
 .philo-disclaimer {
@@ -10881,11 +11114,184 @@ details[open] .meditate-disclosure-summary::before {
   gap: var(--space-3);
 }
 
+/* The chat view carries the selected guide's accent (set inline as --card-fill/-dark on the
+   main), resolved to --card-accent per theme just like the practice cards, so the avatar and
+   the suggested-practice chip tint to this guide. */
+.philosophers-chat {
+  --card-accent: var(--card-fill, var(--accent));
+}
+:root[data-theme='dark'] .philosophers-chat {
+  --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .philosophers-chat {
+    --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+  }
+}
+
 .philo-chat-avatar {
   flex: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-  color: var(--accent);
+  background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-surface));
+  color: var(--card-accent);
+}
+
+/* Guide-suggested practice — a quiet full-width chip under the header linking to a practice in
+   this guide's spirit. Accent-tinted to the guide; reads as an offer, not a demand. */
+.philo-practice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: 0.55rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 26%, var(--border));
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--card-accent) 7%, var(--bg-surface));
+  text-decoration: none;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.philo-practice:hover,
+.philo-practice:focus-visible {
+  border-color: color-mix(in srgb, var(--card-accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--card-accent) 12%, var(--bg-surface));
+}
+.philo-practice-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  color: var(--card-accent);
+  white-space: nowrap;
+}
+
+/* ── Saved conversations (picker) ─────────────────────────────────────────────── */
+.philo-saved {
+  margin-top: var(--space-6);
+}
+.philo-saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* Each row carries the guide's accent (set inline), resolved like the practice cards. */
+.philo-saved-item {
+  --card-accent: var(--card-fill, var(--accent));
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+:root[data-theme='dark'] .philo-saved-item {
+  --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .philo-saved-item {
+    --card-accent: var(--card-fill-dark, var(--card-fill, var(--accent)));
+  }
+}
+.philo-saved-item:hover {
+  border-color: color-mix(in srgb, var(--card-accent) 40%, var(--border));
+}
+.philo-saved-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 0.85rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.philo-saved-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-surface));
+  color: var(--card-accent);
+}
+.philo-saved-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.philo-saved-who {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--card-accent);
+}
+.philo-saved-title {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.philo-saved-delete {
+  flex: none;
+  width: auto;
+  padding: 0 0.8rem;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.philo-saved-delete:hover {
+  color: var(--danger, #d6396f);
+  background: color-mix(in srgb, var(--danger, #d6396f) 8%, transparent);
+}
+
+/* ── Floating guide emblem (chat watermark) ───────────────────────────────────── */
+.philosophers-chat {
+  position: relative;
+}
+/* The emblem lives in its OWN clipping wrapper pinned to the top-right corner, so the bleed
+   is clipped here — never on the page container (which would shave the content's left edge).
+   Confined to the header zone so it sits behind the name, not the conversation. */
+.philo-emblem-wrap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18rem;
+  height: 13rem;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.philo-emblem {
+  position: absolute;
+  top: -2.25rem;
+  right: -2.75rem;
+  color: var(--card-accent);
+  opacity: 0.06;
+}
+:root[data-theme='dark'] .philo-emblem {
+  opacity: 0.09;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .philo-emblem {
+    opacity: 0.09;
+  }
+}
+/* Keep the actual conversation UI above the watermark. */
+.philosophers-chat > *:not(.philo-emblem-wrap) {
+  position: relative;
+  z-index: 1;
 }
 
 .philo-thread {
@@ -11043,6 +11449,12 @@ details[open] .meditate-disclosure-summary::before {
   border: 1px solid var(--border);
   color: var(--text-secondary);
   font-size: var(--text-sm);
+}
+/* A quiet one-line guest heads-up under the composer — informational, not a wall. */
+.philo-guest-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  text-align: center;
 }
 
 .philo-composer {

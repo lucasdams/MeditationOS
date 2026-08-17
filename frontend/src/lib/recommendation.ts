@@ -10,9 +10,9 @@
 import type { SpiritNeedKey } from '../types'
 
 export interface Recommendation {
-  /** An inviting call-to-action for the hero button (a full phrase, not a bare label). */
+  /** i18n key for the hero button's call-to-action (resolved with t() at render). */
   cta: string
-  /** A short, gentle reason shown beneath the button. */
+  /** i18n key for the short, gentle reason shown beneath the button. */
   blurb: string
   /** Deep link to the practice (mirrors the Practices-hub hrefs; all ungated). */
   to: string
@@ -31,25 +31,54 @@ export function slotForHour(hour: number): Slot {
 // The time-of-day fallback — used when the companion's balance is even (or it has no path yet).
 const BY_TIME: Record<Slot, Recommendation> = {
   morning: {
-    cta: 'Start clear with focused attention',
-    blurb: 'A steady way into the morning.',
-    to: '/meditate?guided=focus',
+    cta: 'home.recommend.morning.cta',
+    blurb: 'home.recommend.morning.blurb',
+    to: '/meditate/focus',
   },
   // Afternoon keeps the app's long-standing default breathe invite.
   afternoon: {
-    cta: 'Take a slow minute to breathe',
-    blurb: 'A small reset for the middle of the day.',
+    cta: 'home.recommend.afternoon.cta',
+    blurb: 'home.recommend.afternoon.blurb',
     to: '/breathe',
   },
   evening: {
-    cta: 'Wind down with Yoga Nidra',
-    blurb: 'A deep rest for the evening.',
-    to: '/meditate?guided=yoga-nidra',
+    cta: 'home.recommend.evening.cta',
+    blurb: 'home.recommend.evening.blurb',
+    to: '/meditate/yoga-nidra',
   },
   night: {
-    cta: 'Ease toward sleep with Yoga Nidra',
-    blurb: 'Let the day soften.',
-    to: '/meditate?guided=yoga-nidra',
+    cta: 'home.recommend.night.cta',
+    blurb: 'home.recommend.night.blurb',
+    to: '/meditate/yoga-nidra',
+  },
+}
+
+// Newcomers (low level) get the gentlest, most basic pick for the time of day — short, unintimidating
+// practices ahead of the fuller default set (e.g. Three mindful breaths instead of a 10-min focus sit,
+// a body scan instead of a 20-min Yoga Nidra). Keeps the first sits easy so the habit can take hold.
+// The cutoff mirrors the Practices-hub "newcomer" heuristic (level ≤ 3).
+export const BEGINNER_MAX_LEVEL = 3
+
+const BY_TIME_BEGINNER: Record<Slot, Recommendation> = {
+  morning: {
+    cta: 'home.recommend.beginner.morning.cta',
+    blurb: 'home.recommend.beginner.morning.blurb',
+    to: '/meditate/three-breaths',
+  },
+  afternoon: {
+    cta: 'home.recommend.beginner.afternoon.cta',
+    blurb: 'home.recommend.beginner.afternoon.blurb',
+    to: '/breathe?pattern=resonance',
+  },
+  evening: {
+    cta: 'home.recommend.beginner.evening.cta',
+    blurb: 'home.recommend.beginner.evening.blurb',
+    to: '/meditate/body-scan',
+  },
+  night: {
+    cta: 'home.recommend.beginner.night.cta',
+    blurb: 'home.recommend.beginner.night.blurb',
+    to: '/meditate/body-scan',
   },
 }
 
@@ -57,31 +86,38 @@ const BY_TIME: Record<Slot, Recommendation> = {
 // ungated pick that "rounds it out" (matching the ADR-0032 balance language).
 const BY_FACET: Record<SpiritNeedKey, Recommendation> = {
   joyful: {
-    cta: 'Warm the heart with loving-kindness',
-    blurb: 'A little more joy would round things out.',
-    to: '/meditate?guided=loving-kindness',
+    cta: 'home.recommend.joyful.cta',
+    blurb: 'home.recommend.joyful.blurb',
+    to: '/meditate/loving-kindness',
   },
   rested: {
-    cta: 'Settle with a body scan',
-    blurb: 'A little rest would round things out.',
-    to: '/meditate?guided=body-scan',
+    cta: 'home.recommend.rested.cta',
+    blurb: 'home.recommend.rested.blurb',
+    to: '/meditate/body-scan',
   },
   nourished: {
-    cta: 'Steady yourself with focused attention',
-    blurb: 'A grounding practice to round things out.',
-    to: '/meditate?guided=focus',
+    cta: 'home.recommend.nourished.cta',
+    blurb: 'home.recommend.nourished.blurb',
+    to: '/meditate/focus',
   },
 }
 
 /**
- * One gentle, optional practice suggestion for the home hero. Personalised to the companion's
- * least-represented `facet` when its balance is uneven (pass `null` for an even balance or a
- * spark with no path yet); otherwise a sensible pick for the time of day. All picks are ungated.
+ * One gentle, optional practice suggestion for the home hero + header quick-start. For newcomers
+ * (known `level` ≤ BEGINNER_MAX_LEVEL) it's the easiest time-appropriate pick, so early sits stay
+ * basic. Otherwise it's personalised to the companion's least-represented `facet` when its balance
+ * is uneven (pass `null` for an even balance or a spark with no path yet), else a sensible pick for
+ * the time of day. `level` unknown (`null`/omitted) is NOT treated as a beginner, so the target
+ * doesn't flash for returning practitioners while the level loads. All picks are ungated.
  */
 export function recommendedPractice(opts: {
   hour: number
   facet: SpiritNeedKey | null
+  level?: number | null
 }): Recommendation {
+  if (opts.level != null && opts.level <= BEGINNER_MAX_LEVEL) {
+    return BY_TIME_BEGINNER[slotForHour(opts.hour)]
+  }
   if (opts.facet) return BY_FACET[opts.facet]
   return BY_TIME[slotForHour(opts.hour)]
 }

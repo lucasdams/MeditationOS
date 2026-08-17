@@ -15,9 +15,16 @@ export const philosophers: Record<string, string> = {
   'philosophers.choose': 'Chat with {name}',
 
   // ── Chat view ────────────────────────────────────────────────────────────
+  // Saved conversations (picker) — resume or delete past reflections.
+  'philosophers.savedHeading': 'Your conversations',
+  'philosophers.deleteConvo': 'Delete conversation: {title}',
+
   'philosophers.change': 'Choose another guide',
   'philosophers.intro': 'A quiet space to reflect. Share whatever is on your mind, and {name} will respond in the spirit of {tradition}.',
   'philosophers.youLabel': 'You',
+  // The guide-suggested practice chip — a practice in this guide's spirit, deep-linking back
+  // into the app. The practice name itself comes from the shared practice.card.*.name keys.
+  'philosophers.practiceSuggestion': 'A practice in {name}’s spirit',
   // Openers — the tappable conversation starters shown when a chat is empty. The opener
   // text itself is English content (persona starters from the backend, or a line about
   // today's practice); these keys are only the surrounding chrome.
@@ -33,4 +40,8 @@ export const philosophers: Record<string, string> = {
   'philosophers.error': 'That didn’t go through. Try again.',
   'philosophers.capReached': 'That’s enough reflection for today. Come back tomorrow.',
   'philosophers.guestBlocked': 'Save your account to chat with a guide.',
+  // Guest trial — a gentle upfront note, and the sign-up nudge once the small cap is reached.
+  'philosophers.guestNote': 'You’re reflecting as a guest — a few messages to try it out.',
+  'philosophers.guestCapReached': 'That’s the guest limit for today.',
+  'philosophers.createAccount': 'Create a free account',
 }

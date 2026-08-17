@@ -62,7 +62,7 @@ def get_reflection(
 
 
 def create_or_get(
-    db: DBSession, user_id: uuid.UUID, journal_id: uuid.UUID
+    db: DBSession, user_id: uuid.UUID, journal_id: uuid.UUID, locale: str = "en"
 ) -> tuple[AIReflection, bool] | None:
     """Return (reflection, created) for one of the user's journal entries,
     generating it on first request. None if the journal isn't the caller's (or was
@@ -97,7 +97,7 @@ def create_or_get(
     enforce_daily_create_cap(db, AIReflection, user_id, limit=REFLECTION_DAILY_LIMIT)
 
     reflection_text, followup_question, model = reflection_coach.generate(
-        journal.body, journal.mood, journal_id=journal_id
+        journal.body, journal.mood, journal_id=journal_id, locale=locale
     )
     row = AIReflection(
         user_id=user_id,

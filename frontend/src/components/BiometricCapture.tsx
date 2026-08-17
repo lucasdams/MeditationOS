@@ -58,7 +58,9 @@ export default function BiometricCapture({
     let hrvNum: number | null = null
     if (hrv.trim() !== '') {
       hrvNum = Number(hrv)
-      if (!Number.isFinite(hrvNum) || hrvNum < 0) {
+      // Mirror the backend bound (hrv_ms 0–1000) so an out-of-range value gets the specific
+      // HRV hint client-side instead of a generic 422 "couldn't save" from the API.
+      if (!Number.isFinite(hrvNum) || hrvNum < 0 || hrvNum > 1000) {
         setError(t('practice.biometric.error.hrv'))
         return
       }
@@ -115,6 +117,7 @@ export default function BiometricCapture({
           type="number"
           inputMode="numeric"
           min="0"
+          max="1000"
           placeholder={t('practice.biometric.hrvPlaceholder')}
           value={hrv}
           aria-describedby="bio-hrv-hint"

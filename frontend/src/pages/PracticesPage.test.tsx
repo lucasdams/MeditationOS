@@ -93,23 +93,23 @@ describe('PracticesPage', () => {
     )
     expect(within(medSection).getByRole('link', { name: /focused attention/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=focus',
+      '/meditate/focus',
     )
     expect(within(medSection).getByRole('link', { name: /^noting/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=noting',
+      '/meditate/noting',
     )
     expect(within(medSection).getByRole('link', { name: /^mantra/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=mantra',
+      '/meditate/mantra',
     )
     expect(within(medSection).getByRole('link', { name: /body scan/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=body-scan',
+      '/meditate/body-scan',
     )
     expect(within(medSection).getByRole('link', { name: /loving-kindness/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=loving-kindness',
+      '/meditate/loving-kindness',
     )
     expect(within(medSection).getByRole('link', { name: /candle gazing/i })).toHaveAttribute(
       'href',
@@ -117,7 +117,7 @@ describe('PracticesPage', () => {
     )
     expect(within(medSection).getByRole('link', { name: /three mindful breaths/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=three-breaths',
+      '/meditate/three-breaths',
     )
   })
 
@@ -135,11 +135,11 @@ describe('PracticesPage', () => {
     const sleepSection = screen.getByRole('heading', { name: /^sleep/i }).closest('section') as HTMLElement
     expect(within(sleepSection).getByRole('link', { name: /wind down/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=wind-down',
+      '/meditate/wind-down',
     )
     expect(within(sleepSection).getByRole('link', { name: /yoga nidra/i })).toHaveAttribute(
       'href',
-      '/meditate?guided=yoga-nidra',
+      '/meditate/yoga-nidra',
     )
   })
 
@@ -190,11 +190,12 @@ describe('PracticesPage — category chips + shelf previews', () => {
     expect(medSection.querySelectorAll('.practice-card').length).toBe(3)
     // …with a quiet "See all 8" at the shelf's foot.
     expect(within(medSection).getByRole('button', { name: /see all 8/i })).toBeInTheDocument()
-    // A small group (Reflection, 2 cards) shows whole — no See-all.
+    // A small group (Reflection, 3 cards: Gratitude, Journal, Prayer) shows whole — no See-all
+    // (the preview only truncates a group that runs more than one card past the preview count).
     const reflection = screen
       .getByRole('heading', { name: /reflection/i })
       .closest('section') as HTMLElement
-    expect(reflection.querySelectorAll('.practice-card').length).toBe(2)
+    expect(reflection.querySelectorAll('.practice-card').length).toBe(3)
     expect(within(reflection).queryByRole('button', { name: /see all/i })).toBeNull()
   })
 
@@ -232,7 +233,7 @@ describe('PracticesPage — category chips + shelf previews', () => {
     expect(starter).not.toBeNull()
     expect(
       within(starter).getByRole('link', { name: /three mindful breaths/i }),
-    ).toHaveAttribute('href', '/meditate?guided=three-breaths')
+    ).toHaveAttribute('href', '/meditate/three-breaths')
     // …and the catalog shelves stand aside while the on-ramp is open.
     expect(screen.queryByRole('heading', { name: /^breathing/i })).toBeNull()
     // "All" returns to the overview.

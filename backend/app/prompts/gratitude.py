@@ -11,6 +11,15 @@ Rules:
 - No numbering, no emojis, no quotation marks inside the strings.
 - Keep them broadly relatable and emotionally safe."""
 
+# Per-locale suffix so the suggestions come back in the user's language (the JSON shape is
+# unchanged — only the strings are translated). English needs no suffix.
+_LANG_SUFFIX = {"ja": "\nWrite every string in natural Japanese (日本語)."}
+
+
+def system_for(locale: str = "en") -> str:
+    """The system prompt for the given locale (a language suffix for non-English)."""
+    return SYSTEM + _LANG_SUFFIX.get(locale, "")
+
 # Human-readable labels for the user message (keys match the category taxonomy).
 CATEGORY_LABELS = {
     "people": "People in my life",

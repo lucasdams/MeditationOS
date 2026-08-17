@@ -7,6 +7,7 @@ import { pathsService } from '../services/paths'
 import { pathDayHref } from '../lib/pathRoutes'
 import EncouragementNote from '../components/EncouragementNote'
 import DailyReading from '../components/DailyReading'
+import ReflectWithGuide from '../components/ReflectWithGuide'
 import FirstRunCard, { shouldShowFirstRun, isFirstRunDismissed } from '../components/FirstRunCard'
 import GraduationCard, {
   shouldShowGraduation,
@@ -17,7 +18,7 @@ import Modal from '../components/Modal'
 import WeeklyReview from '../components/WeeklyReview'
 import DailyGoalRing from '../components/DailyGoalRing'
 import { ACTIVITY_COLORS, ACTIVITY_META, MOOD_COLORS, MOOD_META, type Activity } from '../lib/colors'
-import { RetryableError } from '../components/StateViews'
+import { RetryableError, Loading } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
 import { GREETINGS, LOADING, dailyOf, randomOf, localDateKey } from '../lib/zen'
 import { recommendedPractice } from '../lib/recommendation'
@@ -146,11 +147,11 @@ export default function DashboardPage() {
   return (
     <main id="main-content" className="dashboard">
       <h1>{t('home.title')}</h1>
-      <p className="zen-greeting muted">{greeting}</p>
+      <p className="zen-greeting muted">{t(greeting)}</p>
 
       <RetryableError message={error} onRetry={retryStats} retrying={retrying} />
 
-      {!stats && !error && <p>{loadingLine}</p>}
+      {!stats && !error && <Loading label={t(loadingLine)} />}
 
       {/* First-run orientation: leads the dashboard for genuinely new users, above the
           tabs. Hidden once dismissed or once they've practiced. */}
@@ -222,15 +223,15 @@ export default function DashboardPage() {
             // No active path → one gentle, optional recommendation for the hero, keyed to the
             // time of day (see lib/recommendation.ts). The four quick-access tiles below stay the
             // stable anchors; this is only a suggestion, and the guided-path invite remains.
-            const rec = recommendedPractice({ hour: new Date().getHours(), facet: null })
+            const rec = recommendedPractice({ hour: new Date().getHours(), facet: null, level: stats?.level ?? null })
             return (
               <>
                 <Link to={rec.to} className="today-action">
-                  {rec.cta}
+                  {t(rec.cta)}
                   <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </Link>
                 <p className="today-action-secondary">
-                  {rec.blurb} <Link to="/paths">{t('home.today.tryPath')}</Link>
+                  {t(rec.blurb)} <Link to="/paths">{t('home.today.tryPath')}</Link>
                 </p>
               </>
             )
@@ -239,7 +240,7 @@ export default function DashboardPage() {
           {/* Quick-access tiles — secondary now, a quiet row beneath the primary CTA: one tap
               to start any of the practices. */}
           <nav className="feature-tiles" aria-label={t('home.quickAccess.aria')}>
-            {FEATURE_TILES.map(({ label, icon: TileIcon, to, activity }) => (
+            {FEATURE_TILES.map(({ icon: TileIcon, to, activity }) => (
               <Link
                 key={to}
                 to={to}
@@ -249,7 +250,7 @@ export default function DashboardPage() {
                 <span className="feature-tile-emoji" aria-hidden="true">
                   <TileIcon size={22} strokeWidth={1.75} />
                 </span>
-                <span className="feature-tile-label">{label}</span>
+                <span className="feature-tile-label">{t(`activity.${activity}`)}</span>
               </Link>
             ))}
           </nav>
@@ -350,7 +351,7 @@ export default function DashboardPage() {
               >
                 {todayMood ? (
                   <>
-                    {t('home.mood.reflect', { mood: MOOD_META[todayMood].label.toLowerCase() })}
+                    {t('home.mood.reflect', { mood: t(`mood.${todayMood}`).toLowerCase() })}
                     <span aria-hidden="true">{MOOD_META[todayMood].emoji}</span>
                   </>
                 ) : (
@@ -363,6 +364,11 @@ export default function DashboardPage() {
           {/* A quiet daily reading — one short, calming passage (Stoic/wisdom, rotating each day)
               to close the Today view with a gentle moment of reflection. */}
           <DailyReading />
+
+          {/* A gentle way into the philosopher feature from home: a guide-of-the-day + prompt,
+              deep-linking into that guide's chat. Optional — renders nothing if the roster is
+              unavailable. */}
+          <ReflectWithGuide />
 
           {/* Quiet fallback for the no-sessions state — only when the richer first-run card
               isn't on screen (dismissed), so the user never sees two "get started" prompts.

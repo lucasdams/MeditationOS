@@ -39,12 +39,14 @@ from app.models.gratitude import GratitudeEntry
 from app.models.journal import Journal
 from app.models.mood_log import MoodLog
 from app.models.path_enrollment import PathEnrollment
+from app.models.philosopher_chat import PhilosopherChat
 from app.models.prayer import Prayer
 from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
 from app.models.spirit import Spirit
 from app.models.user import QUEST_FEATURES, User
 from app.schemas.user import UserCreate
+from app.services import email_i18n
 from app.services.notifications import email as email_channel
 
 
@@ -76,6 +78,19 @@ def set_timezone(db: Session, user: User, timezone: str) -> User:
     except (ZoneInfoNotFoundError, ValueError) as err:
         raise InvalidTimezoneError(timezone) from err
     user.timezone = timezone
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+# UI languages we localize server-sent content (emails) for. Anything else stays English.
+SUPPORTED_LOCALES = frozenset({"en", "ja"})
+
+
+def set_locale(db: Session, user: User, locale: str) -> User:
+    """Persist the user's UI language (so emails can be localized). Unknown locales fall
+    back to English rather than erroring — locale is a soft preference, never load-bearing."""
+    user.locale = locale if locale in SUPPORTED_LOCALES else "en"
     db.commit()
     db.refresh(user)
     return user
@@ -170,14 +185,26 @@ def _password_version(password_hash: str) -> str:
 
 def _reset_email_body(user: User, link: str) -> str:
     name = user.username or "there"
-    return (
-        f"Hi {name},\n\n"
-        "We received a request to reset your MeditationOS password. Choose a new "
-        f"one here. The link expires in {settings.password_reset_expire_minutes} "
-        f"minutes:\n\n{link}\n\n"
-        "If you didn't request this, you can safely ignore this email; your "
-        "password won't change.\n\n"
-        "MeditationOS"
+    minutes = settings.password_reset_expire_minutes
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            "We received a request to reset your MeditationOS password. Choose a new "
+            f"one here. The link expires in {minutes} "
+            f"minutes:\n\n{link}\n\n"
+            "If you didn't request this, you can safely ignore this email; your "
+            "password won't change.\n\n"
+            "MeditationOS"
+        ),
+        ja=(
+            f"{email_i18n.greeting_ja(user)}\n\n"
+            "MeditationOSのパスワードをリセットするリクエストを受け付けました。"
+            f"以下のリンクから新しいパスワードを設定してください。リンクは{minutes}分で"
+            f"期限切れになります:\n\n{link}\n\n"
+            "心当たりがない場合は、このメールを無視してください。パスワードは変更されません。\n\n"
+            "MeditationOS"
+        ),
     )
 
 
@@ -192,7 +219,13 @@ def request_password_reset(db: Session, email: str) -> None:
     token = create_password_reset_token(str(user.id), _password_version(user.password_hash))
     link = f"{settings.app_base_url}/reset-password?token={token}"
     email_channel.send_email(
-        user.email, "Reset your MeditationOS password", _reset_email_body(user, link)
+        user.email,
+        email_i18n.pick(
+            user,
+            en="Reset your MeditationOS password",
+            ja="MeditationOSのパスワードをリセット",
+        ),
+        _reset_email_body(user, link),
     )
 
 
@@ -217,12 +250,22 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
 
 def _verification_email_body(user: User, link: str) -> str:
     name = user.username or "there"
-    return (
-        f"Hi {name},\n\n"
-        "Welcome to MeditationOS! Please confirm your email address by clicking the "
-        f"link below:\n\n{link}\n\n"
-        "If you didn't create this account, you can ignore this email.\n\n"
-        "MeditationOS"
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            "Welcome to MeditationOS! Please confirm your email address by clicking the "
+            f"link below:\n\n{link}\n\n"
+            "If you didn't create this account, you can ignore this email.\n\n"
+            "MeditationOS"
+        ),
+        ja=(
+            f"{email_i18n.greeting_ja(user)}\n\n"
+            "MeditationOSへようこそ！以下のリンクをクリックして、メールアドレスを"
+            f"確認してください:\n\n{link}\n\n"
+            "このアカウントに心当たりがない場合は、このメールを無視してください。\n\n"
+            "MeditationOS"
+        ),
     )
 
 
@@ -234,7 +277,13 @@ def send_verification_email(db: Session, user: User) -> None:
     token = create_email_verification_token(str(user.id), user.email)
     link = f"{settings.app_base_url}/verify-email?token={token}"
     email_channel.send_email(
-        user.email, "Confirm your MeditationOS email", _verification_email_body(user, link)
+        user.email,
+        email_i18n.pick(
+            user,
+            en="Confirm your MeditationOS email",
+            ja="MeditationOSのメールアドレスを確認",
+        ),
+        _verification_email_body(user, link),
     )
 
 
@@ -262,6 +311,13 @@ def get_user_by_id(db: Session, user_id: str) -> User | None:
     return db.get(User, pk)
 
 
+# A constant, never-matching password hash. When the email doesn't exist (or the account
+# is Google-only / passwordless), we still run a verify against this decoy so the response
+# takes the same ~argon2 time as a real password check — closing the timing oracle that
+# would otherwise let an attacker distinguish registered from unregistered emails.
+_DECOY_PASSWORD_HASH = hash_password("meditationos-timing-decoy")
+
+
 def authenticate(db: Session, email: str, password: str) -> User | None:
     """Return the user if credentials are valid, else None (no enumeration hint).
 
@@ -270,9 +326,11 @@ def authenticate(db: Session, email: str, password: str) -> User | None:
     """
     user = get_user_by_email(db, email)
     # A Google-only account has no password_hash — it can't be logged into with one.
-    if user is None or user.password_hash is None or not verify_password(
-        password, user.password_hash
-    ):
+    # Always run verify_password (against a decoy when there's no real hash) so the timing
+    # is identical whether or not the account exists.
+    stored_hash = user.password_hash if user is not None else None
+    password_ok = verify_password(password, stored_hash or _DECOY_PASSWORD_HASH)
+    if user is None or stored_hash is None or not password_ok:
         return None
     if user.is_disabled:
         return None
@@ -466,6 +524,7 @@ def export_user_data(db: Session, user: User) -> dict:
         "path_enrollments": owned(PathEnrollment),
         "ai_reflections": owned(AIReflection),
         "prayers": owned(Prayer),
+        "philosopher_chats": owned(PhilosopherChat),
     }
 
 

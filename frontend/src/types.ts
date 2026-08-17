@@ -3,6 +3,8 @@ export interface User {
   email: string
   username: string | null
   timezone: string
+  // UI language ("en" | "ja"); kept in sync with the client so emails match the UI.
+  locale: string
   has_password: boolean
   email_verified: boolean
   is_guest: boolean
@@ -511,17 +513,37 @@ export interface PhilosopherSummary {
   openers: string[]
 }
 
-// One turn in a philosopher chat. The client holds the whole conversation (the chat is
-// stateless server-side) and sends the bounded history each turn.
+// One turn in a philosopher chat. The client holds the live conversation and sends the
+// bounded history each turn; the server also persists it to a saved conversation.
 export interface PhilosopherTurn {
   role: 'user' | 'assistant'
   content: string
 }
 
-// The guide's reply. `source` says whether the model or the curated fallback wrote it.
+// The guide's reply. `source` says whether the model or the curated fallback wrote it;
+// `chat_id` is the saved conversation the exchange was persisted to (new or existing).
 export interface PhilosopherChatResponse {
   reply: string
   source: 'ai' | 'fallback'
+  chat_id: string
+}
+
+// A saved conversation as shown in the "your conversations" list — no message content.
+export interface PhilosopherChatSummary {
+  id: string
+  philosopher_id: string
+  title: string
+  updated_at: string
+}
+
+// A saved conversation's full turns, for reopening it in the client.
+export interface PhilosopherChatDetail {
+  id: string
+  philosopher_id: string
+  title: string
+  messages: PhilosopherTurn[]
+  created_at: string
+  updated_at: string
 }
 
 // A prayer, intention, or blessing — a written entry the user can revisit and

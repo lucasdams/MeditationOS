@@ -9,6 +9,7 @@ import {
   ScanLine,
   Heart,
   HandHeart,
+  Feather,
   NotebookPen,
   Flame,
   Crosshair,
@@ -36,8 +37,9 @@ import { useT } from '../i18n'
 import type { SpiritNeedKey, SpiritPath } from '../types'
 
 // The Practices hub — one browsable "activities" screen listing every practice technique grouped
-// by category. Each card deep-links into its practice with the variant pre-selected (Breathe reads
-// `?pattern=`, Meditate reads `?guided=`; the reflection pages have their own routes).
+// by category. Each card links into its practice with the variant pre-selected (Breathe reads
+// `?pattern=`; each meditation has its own path, /meditate/<id>; the reflection pages have their
+// own routes).
 //
 // Each category reads as a DISTINCT block — an accent icon, a real title + one-line blurb, and a
 // soft accent hairline — so the long list doesn't blur into one uniform grid. A small, optional
@@ -142,13 +144,13 @@ const GROUPS: PracticeGroup[] = [
     dark: '#a8a2ff',
     cards: [
       { to: '/meditate', icon: Brain, nameKey: 'practice.card.mindfulness.name', descKey: 'practice.card.mindfulness.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=focus', icon: Crosshair, nameKey: 'practice.card.focus.name', descKey: 'practice.card.focus.desc', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
-      { to: '/meditate?guided=noting', icon: Tags, nameKey: 'practice.card.noting.name', descKey: 'practice.card.noting.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
-      { to: '/meditate?guided=mantra', icon: Repeat, nameKey: 'practice.card.mantra.name', descKey: 'practice.card.mantra.desc', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
-      { to: '/meditate?guided=body-scan', icon: ScanLine, nameKey: 'practice.card.bodyScan.name', descKey: 'practice.card.bodyScan.desc', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
-      { to: '/meditate?guided=loving-kindness', icon: Heart, nameKey: 'practice.card.lovingKindness.name', descKey: 'practice.card.lovingKindness.desc', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
+      { to: '/meditate/focus', icon: Crosshair, nameKey: 'practice.card.focus.name', descKey: 'practice.card.focus.desc', kind: 'meditation', light: '#4f46e5', dark: '#a5b4fc' },
+      { to: '/meditate/noting', icon: Tags, nameKey: 'practice.card.noting.name', descKey: 'practice.card.noting.desc', kind: 'meditation', light: '#5847f0', dark: '#a8a2ff' },
+      { to: '/meditate/mantra', icon: Repeat, nameKey: 'practice.card.mantra.name', descKey: 'practice.card.mantra.desc', kind: 'meditation', light: '#0891b2', dark: '#67d6e8' },
+      { to: '/meditate/body-scan', icon: ScanLine, nameKey: 'practice.card.bodyScan.name', descKey: 'practice.card.bodyScan.desc', kind: 'meditation', light: '#7c3aed', dark: '#c4b5fd' },
+      { to: '/meditate/loving-kindness', icon: Heart, nameKey: 'practice.card.lovingKindness.name', descKey: 'practice.card.lovingKindness.desc', kind: 'meditation', feeds: 'joyful', light: '#db2777', dark: '#f472b6' },
       { to: '/trataka', icon: Flame, nameKey: 'practice.card.trataka.name', descKey: 'practice.card.trataka.desc', kind: 'meditation', light: '#d97706', dark: '#f5a742' },
-      { to: '/meditate?guided=three-breaths', icon: Leaf, nameKey: 'practice.card.threeBreaths.name', descKey: 'practice.card.threeBreaths.desc', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
+      { to: '/meditate/three-breaths', icon: Leaf, nameKey: 'practice.card.threeBreaths.name', descKey: 'practice.card.threeBreaths.desc', kind: 'meditation', feeds: 'rested', light: '#16a34a', dark: '#4ade80' },
     ],
   },
   {
@@ -160,8 +162,8 @@ const GROUPS: PracticeGroup[] = [
     light: '#4338ca',
     dark: '#a5b4fc',
     cards: [
-      { to: '/meditate?guided=wind-down', icon: Sunset, nameKey: 'practice.card.windDown.name', descKey: 'practice.card.windDown.desc', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
-      { to: '/meditate?guided=yoga-nidra', icon: BedDouble, nameKey: 'practice.card.yogaNidra.name', descKey: 'practice.card.yogaNidra.desc', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
+      { to: '/meditate/wind-down', icon: Sunset, nameKey: 'practice.card.windDown.name', descKey: 'practice.card.windDown.desc', kind: 'meditation', feeds: 'rested', light: '#6d28d9', dark: '#c4b5fd' },
+      { to: '/meditate/yoga-nidra', icon: BedDouble, nameKey: 'practice.card.yogaNidra.name', descKey: 'practice.card.yogaNidra.desc', kind: 'meditation', light: '#6d28d9', dark: '#c4b5fd' },
     ],
   },
   {
@@ -173,6 +175,7 @@ const GROUPS: PracticeGroup[] = [
     cards: [
       { to: '/gratitude', icon: HandHeart, nameKey: 'practice.card.gratitude.name', descKey: 'practice.card.gratitude.desc', kind: 'gratitude', light: '#b9760a', dark: '#f5c151' },
       { to: '/journal', icon: NotebookPen, nameKey: 'practice.card.journal.name', descKey: 'practice.card.journal.desc', kind: 'journal', light: '#2f6fe0', dark: '#82b4ff' },
+      { to: '/prayer', icon: Feather, nameKey: 'practice.card.prayer.name', descKey: 'practice.card.prayer.desc', kind: 'journal', light: '#0e8aa6', dark: '#5fd2e8' },
     ],
   },
 ]
@@ -200,27 +203,28 @@ const PRACTICE_META: Record<string, { minsKey: string; beginner?: boolean }> = {
   '/breathe?pattern=energizing': { minsKey: 'practice.mins.3' },
   '/breathe?pattern=alternate': { minsKey: 'practice.mins.5' },
   '/meditate': { minsKey: 'practice.mins.youChoose' },
-  '/meditate?guided=focus': { minsKey: 'practice.mins.10', beginner: true },
-  '/meditate?guided=noting': { minsKey: 'practice.mins.10' },
-  '/meditate?guided=mantra': { minsKey: 'practice.mins.10' },
+  '/meditate/focus': { minsKey: 'practice.mins.10', beginner: true },
+  '/meditate/noting': { minsKey: 'practice.mins.10' },
+  '/meditate/mantra': { minsKey: 'practice.mins.10' },
   '/trataka': { minsKey: 'practice.mins.youChoose' },
-  '/meditate?guided=body-scan': { minsKey: 'practice.mins.15', beginner: true },
-  '/meditate?guided=yoga-nidra': { minsKey: 'practice.mins.20' },
-  '/meditate?guided=loving-kindness': { minsKey: 'practice.mins.10', beginner: true },
-  '/meditate?guided=wind-down': { minsKey: 'practice.mins.15' },
-  '/meditate?guided=three-breaths': { minsKey: 'practice.mins.1', beginner: true },
+  '/meditate/body-scan': { minsKey: 'practice.mins.15', beginner: true },
+  '/meditate/yoga-nidra': { minsKey: 'practice.mins.20' },
+  '/meditate/loving-kindness': { minsKey: 'practice.mins.10', beginner: true },
+  '/meditate/wind-down': { minsKey: 'practice.mins.15' },
+  '/meditate/three-breaths': { minsKey: 'practice.mins.1', beginner: true },
   '/gratitude': { minsKey: 'practice.mins.3', beginner: true },
   '/journal': { minsKey: 'practice.mins.5' },
+  '/prayer': { minsKey: 'practice.mins.5' },
 }
 
 // The "Start here" on-ramp — an ordered, curated handful of the gentlest practices. Lives behind
 // its own chip in the category bar (not a permanently-open section — one curation layer, not
 // three), so anyone can peek at it in one tap. All ungated + beginner-flagged above.
 const BEGINNER_STARTERS = [
-  '/meditate?guided=three-breaths',
+  '/meditate/three-breaths',
   '/breathe?pattern=resonance',
-  '/meditate?guided=body-scan',
-  '/meditate?guided=focus',
+  '/meditate/body-scan',
+  '/meditate/focus',
 ]
 
 // The starter chip's sentinel value for `activeGroup` — distinct from every group titleKey.
@@ -543,7 +547,12 @@ export default function PracticesPage() {
       {filteredGroups.map((group) => {
         const GroupIcon = group.icon
         // The "All" overview shows a short preview of each shelf; a chip / search shows it whole.
-        const visibleCards = previewing ? group.cards.slice(0, PREVIEW_COUNT) : group.cards
+        // But never hide just ONE card behind "See all" — that's more friction than it saves — so
+        // a group only truncates when it runs more than one card past the preview count. (Breathing
+        // has exactly 4, so its 4th — Alternate nostril — used to vanish behind "See all 4"; a
+        // 4-card group now shows in full.)
+        const truncated = previewing && group.cards.length > PREVIEW_COUNT + 1
+        const visibleCards = truncated ? group.cards.slice(0, PREVIEW_COUNT) : group.cards
         const hiddenCount = group.cards.length - visibleCards.length
         return (
           <section

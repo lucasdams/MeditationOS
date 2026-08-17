@@ -201,9 +201,10 @@ export function pickVoice(contentLang = 'en'): SpeechSynthesisVoice | null {
  * Must be reachable from a user gesture on first use (browser autoplay policy);
  * the caller only ever starts speech after the session Start click.
  */
-export function speak(text: string): void {
-  // No explicit voice → speak() resolves the user's saved choice (or default).
-  speakWith(text, pickVoice())
+export function speak(text: string, contentLang = 'en'): void {
+  // No explicit voice → resolve the user's saved choice, or a default voice in the
+  // CONTENT's language (so Japanese cues get a Japanese voice, not an English one).
+  speakWith(text, pickVoice(contentLang))
 }
 
 /**

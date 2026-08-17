@@ -32,7 +32,7 @@ from app.core.config import settings
 from app.models.scheduled_session import ScheduledSession
 from app.models.session import Session as PracticeSession
 from app.models.user import User
-from app.services import push_service
+from app.services import email_i18n, push_service
 from app.services.notifications import email
 from app.services.time_utils import (
     MIN_PRACTICE_SECONDS,
@@ -44,6 +44,10 @@ from app.services.time_utils import (
 logger = logging.getLogger("meditationos.reminders")
 
 REMINDER_SUBJECT = "Time for your meditation"
+REMINDER_SUBJECT_JA = "瞑想の時間です"
+# Push body that accompanies the reminder email (localized per recipient).
+_REMINDER_PUSH_EN = "A few quiet minutes for yourself, whenever it suits you."
+_REMINDER_PUSH_JA = "都合のよいときに、自分のための静かな数分を。"
 
 # Local hour at which the streak-save nudge becomes eligible. Late enough that the
 # user has had all day to practice; early enough to still act before midnight.
@@ -125,13 +129,25 @@ def _practiced_today(db: Session, user_id: uuid.UUID, today: date, tz: str) -> b
 
 def _reminder_body(user: User) -> str:
     name = user.username or "there"
-    return (
-        f"Hi {name},\n\n"
-        "This is a gentle invitation to take a few quiet minutes for yourself "
-        "today, whenever it suits you.\n\n"
-        f"Begin when you're ready: {settings.app_base_url}\n\n"
-        "MeditationOS\n\n"
-        "You can turn these off anytime in Settings."
+    url = settings.app_base_url
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            "This is a gentle invitation to take a few quiet minutes for yourself "
+            "today, whenever it suits you.\n\n"
+            f"Begin when you're ready: {url}\n\n"
+            "MeditationOS\n\n"
+            "You can turn these off anytime in Settings."
+        ),
+        ja=(
+            f"{email_i18n.greeting_ja(user)}\n\n"
+            "今日、都合のよいときに、自分のための静かな数分を過ごしてみませんか。"
+            "気軽にどうぞ。\n\n"
+            f"準備ができたら始めましょう: {url}\n\n"
+            "MeditationOS\n\n"
+            "設定からいつでもオフにできます。"
+        ),
     )
 
 
@@ -167,9 +183,10 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
             # and so the push gate below sees the updated timestamp.
             user.reminder_last_sent_at = now_utc
             db.commit()  # per-user commit — crash-safe
+            subject = email_i18n.pick(user, en=REMINDER_SUBJECT, ja=REMINDER_SUBJECT_JA)
             email.send_email(
                 user.email,
-                REMINDER_SUBJECT,
+                subject,
                 _reminder_body(user),
                 email.list_unsubscribe_headers(),
             )
@@ -178,8 +195,8 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
             push_service.send_to_user(
                 db,
                 user.id,
-                REMINDER_SUBJECT,
-                "A few quiet minutes for yourself, whenever it suits you.",
+                subject,
+                email_i18n.pick(user, en=_REMINDER_PUSH_EN, ja=_REMINDER_PUSH_JA),
             )
             sent += 1
         except Exception:
@@ -190,17 +207,32 @@ def send_due_reminders(db: Session, *, now_utc: datetime | None = None) -> int:
 def _streak_save_body(user: User, streak: int) -> str:
     name = user.username or "there"
     streak_label = f"{streak}-day streak" if streak != 1 else "1-day streak"
-    return (
-        f"Hi {name},\n\n"
-        f"Your {streak_label} is still going. A few quiet minutes today keeps it alive.\n\n"
-        "No pressure, but if you have a moment this evening, your practice is waiting.\n\n"
-        f"Open MeditationOS: {settings.app_base_url}\n\n"
-        "MeditationOS\n\n"
-        "You can turn these off anytime in Settings."
+    url = settings.app_base_url
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            f"Your {streak_label} is still going. A few quiet minutes today keeps it "
+            "alive.\n\n"
+            "No pressure, but if you have a moment this evening, your practice is "
+            "waiting.\n\n"
+            f"Open MeditationOS: {url}\n\n"
+            "MeditationOS\n\n"
+            "You can turn these off anytime in Settings."
+        ),
+        ja=(
+            f"{email_i18n.greeting_ja(user)}\n\n"
+            f"{email_i18n.streak_label_ja(streak)}の連続記録が続いています。今日の静かな数分で、それを保てます。\n\n"
+            "無理はいりませんが、今晩少し時間があれば、あなたのプラクティスが待っています。\n\n"
+            f"MeditationOSを開く: {url}\n\n"
+            "MeditationOS\n\n"
+            "設定からいつでもオフにできます。"
+        ),
     )
 
 
 STREAK_SAVE_SUBJECT = "Your streak is still going. Keep it alive."
+STREAK_SAVE_SUBJECT_JA = "連続記録は続いています。続けましょう。"
 
 
 def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> int:
@@ -253,9 +285,12 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
             user.streak_save_last_sent_at = now_utc
             db.commit()  # per-user commit
             body = _streak_save_body(user, current_streak)
+            subject = email_i18n.pick(
+                user, en=STREAK_SAVE_SUBJECT, ja=STREAK_SAVE_SUBJECT_JA
+            )
             email.send_email(
                 user.email,
-                STREAK_SAVE_SUBJECT,
+                subject,
                 body,
                 email.list_unsubscribe_headers(),
             )
@@ -264,9 +299,18 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
             push_service.send_to_user(
                 db,
                 user.id,
-                STREAK_SAVE_SUBJECT,
-                f"Your {current_streak}-day streak is still alive "
-                "— a few mindful minutes keeps it going.",
+                subject,
+                email_i18n.pick(
+                    user,
+                    en=(
+                        f"Your {current_streak}-day streak is still alive "
+                        "— a few mindful minutes keeps it going."
+                    ),
+                    ja=(
+                        f"{email_i18n.streak_label_ja(current_streak)}の連続記録はまだ続いています。"
+                        "数分のマインドフルな時間で保てます。"
+                    ),
+                ),
             )
             sent += 1
         except Exception:
@@ -287,10 +331,28 @@ def send_streak_save_nudges(db: Session, *, now_utc: datetime | None = None) -> 
 # "skip if already practiced" rule — nudge, not nag.
 
 SCHEDULED_SESSION_SUBJECT = "Your scheduled session is coming up"
+SCHEDULED_SESSION_SUBJECT_JA = "予約したセッションがもうすぐ始まります"
+_SCHEDULED_PUSH_EN = "Your scheduled session is coming up, whenever you're ready."
+_SCHEDULED_PUSH_JA = "予約したセッションがもうすぐです。準備ができたらいつでも。"
 
-# How early, relative to scheduled_at, the nudge may fire — a small lead so the message
-# lands as "coming up", not "you're late".
-_SCHEDULE_LEAD = timedelta(minutes=15)
+# Japanese labels for the scheduled-session types (English lives in
+# scheduled_session_service._TYPE_LABELS). Used only to fill the JA email body.
+_TYPE_LABELS_JA = {
+    "mindfulness": "マインドフルネス",
+    "body_scan": "ボディスキャン",
+    "walking": "歩く瞑想",
+    "loving_kindness": "慈しみの瞑想",
+    "resonance_breathing": "レゾナンス呼吸",
+    "energizing_breathing": "活力の呼吸",
+    "other": "瞑想",
+}
+
+# How early, relative to scheduled_at, the nudge may fire. The send job runs hourly, so
+# the lead must be ≥ one run interval — otherwise a session that falls just after a run is
+# only caught on the NEXT run, up to ~an hour late, making the "coming up" copy retrospective.
+# A 65-minute lead guarantees every session is nudged on the run at or before its start
+# (slight early margin over the exact hour), so the message always reads as genuinely upcoming.
+_SCHEDULE_LEAD = timedelta(minutes=65)
 # How long after scheduled_at the row is still eligible. The send job runs hourly, so a
 # session that comes due between runs must still be caught on the next run; this window
 # covers a full job interval (plus margin) while never nudging for long-past sessions.
@@ -304,13 +366,26 @@ def _scheduled_session_body(user: User, row: ScheduledSession) -> str:
 
     name = user.username or "there"
     label = _TYPE_LABELS.get(row.type, "Meditation")
-    return (
-        f"Hi {name},\n\n"
-        f"Your scheduled {label.lower()} session is coming up, whenever you're ready. "
-        "No pressure; it's here for you when the moment feels right.\n\n"
-        f"Begin when you're ready: {settings.app_base_url}\n\n"
-        "MeditationOS\n\n"
-        "You can turn these off anytime in Settings."
+    label_ja = _TYPE_LABELS_JA.get(row.type, "瞑想")
+    url = settings.app_base_url
+    return email_i18n.pick(
+        user,
+        en=(
+            f"Hi {name},\n\n"
+            f"Your scheduled {label.lower()} session is coming up, whenever you're "
+            "ready. No pressure; it's here for you when the moment feels right.\n\n"
+            f"Begin when you're ready: {url}\n\n"
+            "MeditationOS\n\n"
+            "You can turn these off anytime in Settings."
+        ),
+        ja=(
+            f"{email_i18n.greeting_ja(user)}\n\n"
+            f"予約した{label_ja}のセッションがもうすぐ始まります。準備ができたらいつでも。"
+            "無理はいりません。ちょうどよいと感じたときに、ここで待っています。\n\n"
+            f"準備ができたら始めましょう: {url}\n\n"
+            "MeditationOS\n\n"
+            "設定からいつでもオフにできます。"
+        ),
     )
 
 
@@ -320,9 +395,10 @@ def send_scheduled_session_reminders(
     """Send a gentle nudge for each upcoming ScheduledSession whose time is at hand.
 
     A scheduled session is due when, for an opted-in user (`reminder_enabled`):
-      - now is within [scheduled_at - _SCHEDULE_LEAD, scheduled_at + _SCHEDULE_GRACE];
-      - the row hasn't already been reminded (`reminder_sent_at` is null); and
-      - the user hasn't already practiced today in their local timezone (nudge, not nag).
+      - now is within [scheduled_at - _SCHEDULE_LEAD, scheduled_at + _SCHEDULE_GRACE]; and
+      - the row hasn't already been reminded (`reminder_sent_at` is null).
+    A scheduled session is an explicit commitment, so — unlike the daily reminder — it is
+    NOT skipped just because the user practiced something else earlier today.
 
     Idempotent per row: `reminder_sent_at` is committed before the send attempt, so a
     crash or a re-run never double-nudges. Returns the number of reminders sent.
@@ -349,17 +425,19 @@ def send_scheduled_session_reminders(
     sent = 0
     for row, user in rows:
         try:
-            tz = user.timezone or "UTC"
-            local_today = now_utc.astimezone(zone(user.timezone)).date()
-            if _practiced_today(db, user.id, local_today, tz):
-                continue  # already practiced today — nudge, not nag
-            # Mark as reminded NOW so a crash mid-send never re-nudges, and so the push
-            # gate below is covered by the same per-row dedup.
+            # Unlike the generic daily reminder, a scheduled session is a specific time the
+            # user explicitly committed to — so we nudge it even if they've already
+            # practiced something else today ("practiced today" is not a reason to skip a
+            # standing appointment). Mark as reminded NOW so a crash mid-send never
+            # re-nudges, and so the push gate below is covered by the same per-row dedup.
             row.reminder_sent_at = now_utc
             db.commit()  # per-row commit — crash-safe
+            subject = email_i18n.pick(
+                user, en=SCHEDULED_SESSION_SUBJECT, ja=SCHEDULED_SESSION_SUBJECT_JA
+            )
             email.send_email(
                 user.email,
-                SCHEDULED_SESSION_SUBJECT,
+                subject,
                 _scheduled_session_body(user, row),
                 email.list_unsubscribe_headers(),
             )
@@ -367,8 +445,8 @@ def send_scheduled_session_reminders(
             push_service.send_to_user(
                 db,
                 user.id,
-                SCHEDULED_SESSION_SUBJECT,
-                "Your scheduled session is coming up, whenever you're ready.",
+                subject,
+                email_i18n.pick(user, en=_SCHEDULED_PUSH_EN, ja=_SCHEDULED_PUSH_JA),
             )
             sent += 1
         except Exception:

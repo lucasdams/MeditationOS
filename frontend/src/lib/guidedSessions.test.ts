@@ -5,6 +5,9 @@ import {
   getStructure,
   tryGetStructure,
   isGuidedUnlocked,
+  localizedCue,
+  localizedDescription,
+  localizedLabel,
   GUIDED_MIN_LEVEL,
   GUIDED_STRUCTURES,
   type GuidedStructureId,
@@ -94,6 +97,32 @@ describe('guided structure catalog', () => {
   it.each(STRUCTURE_IDS)('%s carries no level gate (always unlocked)', (id) => {
     expect(GUIDED_MIN_LEVEL[id]).toBeUndefined()
     expect(isGuidedUnlocked(id, null)).toBe(true)
+  })
+})
+
+describe('Japanese localization', () => {
+  it('every structure has a Japanese label, description, and one cue per phase', () => {
+    for (const s of GUIDED_STRUCTURES) {
+      // ja label/description differ from the English (i.e. a real translation exists).
+      expect(localizedLabel(s, 'ja')).not.toBe('')
+      expect(localizedLabel(s, 'ja')).not.toBe(s.label)
+      expect(localizedDescription(s, 'ja')).not.toBe(s.description)
+      // A Japanese cue for every phase — no gaps that would fall back to English mid-sit.
+      s.phases.forEach((p, i) => {
+        const ja = localizedCue(s.id, i, p.cue, 'ja')
+        expect(ja).not.toBe(p.cue)
+        expect(ja.trim().length).toBeGreaterThan(0)
+      })
+    }
+  })
+
+  it('returns the English text for the en locale (and as a fallback)', () => {
+    const s = GUIDED_STRUCTURES[0]
+    expect(localizedLabel(s, 'en')).toBe(s.label)
+    expect(localizedDescription(s, 'en')).toBe(s.description)
+    expect(localizedCue(s.id, 0, s.phases[0].cue, 'en')).toBe(s.phases[0].cue)
+    // Out-of-range phase index falls back to the provided English cue.
+    expect(localizedCue(s.id, 999, 'fallback', 'ja')).toBe('fallback')
   })
 })
 

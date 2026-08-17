@@ -27,6 +27,17 @@ Output:
 - "reflection": 2-4 sentences, under 500 characters, plain warm language.
 - "followup": one open question, under 160 characters, ending with a question mark."""
 
+# Per-locale suffix so the reflection + follow-up come back in the user's language (the JSON
+# shape is unchanged — only the two string values are translated). English needs no suffix.
+_LANG_SUFFIX = {
+    "ja": "\nWrite both the reflection and the follow-up in natural Japanese (日本語)."
+}
+
+
+def system_for(locale: str = "en") -> str:
+    """The system prompt for the given locale (a language suffix for non-English)."""
+    return SYSTEM + _LANG_SUFFIX.get(locale, "")
+
 
 def user_message(body: str, mood: str | None = None) -> str:
     """Build the user turn. The journal entry is clearly delimited as quoted content;

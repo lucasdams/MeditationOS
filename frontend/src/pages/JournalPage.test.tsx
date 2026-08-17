@@ -134,7 +134,8 @@ describe('JournalPage — AI reflection', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('What helped you settle, do you think?')).toBeInTheDocument()
     expect(screen.getByText(/a gentle reflection/i)).toBeInTheDocument()
-    expect(reflectJournal).toHaveBeenCalledWith('j1')
+    // The reflection is requested in the user's locale (default 'en' in tests).
+    expect(reflectJournal).toHaveBeenCalledWith('j1', 'en')
     // The affordance is replaced by the card once the reflection is shown.
     expect(
       screen.queryByRole('button', { name: /get a gentle reflection on this entry/i }),

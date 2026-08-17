@@ -191,6 +191,7 @@ sessions stay private unless a member chooses otherwise.
 
 Powered by **Stripe** (Checkout + Billing + webhooks). API keys stay server-side; no card data touches our servers (PCI scope stays minimal).
 
+- [ ] **Donations / "buy me a coffee"** — an optional, no-strings way for users to support the project: a tip jar, not a paywall. Lightest-weight monetization and the best fit for a calm, non-pushy wellness app — surfaced quietly (Settings, or a small "Support / About" spot), never gated behind features and never nagged. Two build paths: a one-off Stripe Checkout contribution (reuses the infra below; lets us thank the supporter in-app), or simply an external **Buy Me a Coffee / Ko‑fi / GitHub Sponsors** link (zero backend). Start with the external link; graduate to Stripe Checkout if we want in-app acknowledgement (a quiet "thank you" note, never a badge that pressures others).
 - [ ] Subscription tiers / freemium model via Stripe Billing (if productized beyond portfolio)
 - [ ] One-off avatar purchases via Stripe Checkout (cosmetic — see [Profiles & Avatars](#profiles--avatars))
 - [ ] Stripe webhooks → entitlement updates (subscription active, payment failed, refund)

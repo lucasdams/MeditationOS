@@ -27,6 +27,7 @@ import uuid
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.gratitude import GratitudeEntry
@@ -48,7 +49,7 @@ def _enrollment(db: DBSession, user_id: uuid.UUID, path_id: str) -> PathEnrollme
 
 
 def enroll(
-    db: DBSession, user_id: uuid.UUID, path_id: str, *, today: date, tz: str
+    db: DBSession, user_id: uuid.UUID, path_id: str, *, today: date, tz: str, locale: str = "en"
 ) -> PathSummary:
     """Enroll the user in `path_id` (or reset an existing enrollment's start to today), then
     return the derived summary. Raises KeyError if the path id is unknown (mapped to 404 in
@@ -62,18 +63,31 @@ def enroll(
     if existing is None:
         existing = PathEnrollment(user_id=user_id, path_id=path_id, started_on=today)
         db.add(existing)
+        try:
+            db.commit()
+        except IntegrityError:
+            # Lost a race to the (user, path) unique constraint — a concurrent first-enroll
+            # of the same path won. Recover by loading that row and resetting its start,
+            # instead of surfacing a 500.
+            db.rollback()
+            existing = _enrollment(db, user_id, path_id)
+            if existing is None:  # should never happen post-conflict; surface if it does
+                raise
+            existing.started_on = today
+            db.commit()
     else:
         existing.started_on = today  # re-enroll resets the clock to today
-    db.commit()
+        db.commit()
     db.refresh(existing)
 
-    return _summarize(db, user_id, path, existing, tz=tz)
+    return _summarize(db, user_id, paths_catalog.localized_path(path, locale), existing, tz=tz)
 
 
 def list_paths(
-    db: DBSession, user_id: uuid.UUID, *, tz: str
+    db: DBSession, user_id: uuid.UUID, *, tz: str, locale: str = "en"
 ) -> list[PathSummary]:
-    """Every catalog path, each folded with the current user's derived progress."""
+    """Every catalog path, each folded with the current user's derived progress, with display
+    text localized to `locale`."""
     enrollments = {
         e.path_id: e
         for e in db.execute(
@@ -81,7 +95,9 @@ def list_paths(
         ).scalars()
     }
     return [
-        _summarize(db, user_id, path, enrollments.get(path.id), tz=tz)
+        _summarize(
+            db, user_id, paths_catalog.localized_path(path, locale), enrollments.get(path.id), tz=tz
+        )
         for path in paths_catalog.all_paths()
     ]
 

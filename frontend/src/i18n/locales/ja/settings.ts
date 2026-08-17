@@ -1,4 +1,4 @@
-// settings domain (日本語) — 設定ページ + プッシュ通知トグル + デイリーミッションの選択。
+// settings domain (日本語)——設定ページ + プッシュ通知トグル + デイリーミッションの選択。
 // 落ち着いた、ていねいな表現（です・ます）。{var} プレースホルダーは英語版と同一に保つこと。
 export const settings: Record<string, string> = {
   'settings.title': '設定',

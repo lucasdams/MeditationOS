@@ -1,4 +1,4 @@
-// prayer domain — Japanese. Calm, polite register. Non-denominational (どの信仰にも、
+// prayer domain——Japanese. Calm, polite register. Non-denominational (どの信仰にも、
 // また信仰がなくても開かれた表現). {var} placeholders are preserved exactly. A missing key
 // falls back to English at lookup time.
 export const prayer: Record<string, string> = {

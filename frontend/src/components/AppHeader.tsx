@@ -2,19 +2,11 @@ import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   House,
-  Compass,
-  Wind,
-  Brain,
-  HandHeart,
-  NotebookPen,
-  Feather,
+  Play,
   MessagesSquare,
-  LayoutGrid,
-  Plus,
   ChartLine,
   History,
   Settings,
-  Flame,
   Target,
   CalendarDays,
   Wrench,
@@ -28,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { dashboardService } from '../services/dashboard'
+import { recommendedPractice } from '../lib/recommendation'
 import { t, useT } from '../i18n'
 
 // A menu destination. Each carries a per-destination accent (light + dark shades) so the menu
@@ -37,24 +30,11 @@ import { t, useT } from '../i18n'
 // at render time so the menus re-label live on a locale switch.
 type MenuLink = { to: string; icon: ComponentType<LucideProps>; labelKey: string; light: string; dark: string }
 
-// Practice — everything you DO in a session. The direct activities lead (breathe / meditate /
-// candle gazing / gratitude / journal), then Paths (guided programs), then the hub ("All
-// practices") + "Log a session" for the full library or recording an offline sit. Candle gazing
-// (Trataka) lives HERE — it's a focal meditation, not a "more" extra.
-// Per-destination accents are drawn from the Cool Electric family (indigo / cyan / blue / violet /
-// amber-pop / pink): a deep light-mode shade + a lifted dark-mode shade, legible in both themes.
-const PRACTICE_LINKS: MenuLink[] = [
-  { to: '/breathe', icon: Wind, labelKey: 'nav.breathe', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/meditate', icon: Brain, labelKey: 'nav.meditate', light: '#5847f0', dark: '#a8a2ff' },
-  { to: '/trataka', icon: Flame, labelKey: 'nav.trataka', light: '#d97706', dark: '#f5a742' },
-  { to: '/gratitude', icon: HandHeart, labelKey: 'nav.gratitude', light: '#b9760a', dark: '#f5c151' },
-  { to: '/journal', icon: NotebookPen, labelKey: 'nav.journal', light: '#2f6fe0', dark: '#82b4ff' },
-  { to: '/prayer', icon: Feather, labelKey: 'nav.prayer', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/philosophers', icon: MessagesSquare, labelKey: 'nav.philosophers', light: '#7c3aed', dark: '#c4b5fd' },
-  { to: '/paths', icon: Compass, labelKey: 'nav.paths', light: '#0e8aa6', dark: '#5fd2e8' },
-  { to: '/practices', icon: LayoutGrid, labelKey: 'nav.allPractices', light: '#7c3aed', dark: '#c4b5fd' },
-  { to: '/sessions/new', icon: Plus, labelKey: 'nav.logSession', light: '#5847f0', dark: '#a8a2ff' },
-]
+// The Practice nav entry is a single link straight to the all-practices hub (/practices) — the one
+// place you choose what to do (every practice as a searchable, categorised card). The nav no longer
+// duplicates each practice as its own menu item; the hub owns that list. Philosophers ("Chat with a
+// philosopher") sits OUTSIDE the practice catalog as its own nav destination — it's a reflective
+// conversation, not a timed session. Paths (programs) and "Log a session" live on the hub itself.
 
 // Progress — everything you REVIEW or PLAN around your practice, plus account. Merges the old
 // "Progress" + "More" menus into one (candle gazing moved to Practice): stats (Analytics,
@@ -102,7 +82,8 @@ export default function AppHeader() {
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   // Which mobile nav group (Practice / Progress) is expanded inside the hamburger sheet.
   // Collapsed by default so the opened menu reads as a few buttons, not one long list.
-  const [mobileSection, setMobileSection] = useState<'practice' | 'progress' | null>(null)
+  // Only Progress is a collapsible group on mobile now — Practice + Philosophers are direct links.
+  const [mobileSection, setMobileSection] = useState<'progress' | null>(null)
   const navRef = useRef<HTMLElement>(null)
   // The account dropdown (Settings + Log out) that opens from the name chip.
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -130,6 +111,12 @@ export default function AppHeader() {
   const progressLinks = user?.is_admin
     ? [...PROGRESS_LINKS, { to: '/admin', icon: Wrench, labelKey: 'nav.admin', light: '#545a73', dark: '#a6acc4' }]
     : PROGRESS_LINKS
+
+  // One-tap quick-start in the header — the recommended practice (same gentle rule as the home
+  // hero; facet null since the Spirit balance is dormant). Level-aware: newcomers get the easiest
+  // pick for the time of day. Recomputes once the level fetch resolves. Now that the nav no longer
+  // lists each practice, this keeps a sit one tap away from any page.
+  const quickStart = recommendedPractice({ hour: new Date().getHours(), facet: null, level })
 
   // Refetch on every navigation so the level stays live after earning XP.
   useEffect(() => {
@@ -252,35 +239,51 @@ export default function AppHeader() {
           <span className="nav-menu-btn-label">{t('nav.home')}</span>
         </NavLink>
 
-        {/* Practice links straight to the all-practices hub (it lists every practice as cards) —
-            clicking it navigates rather than opening a menu. Wrapped in .nav-menu so it hides on
-            mobile like the dropdowns (mobile shows the inline sublinks below). Progress stays a
-            dropdown of stats/planning destinations (it has no single overview page). */}
+        {/* Quick-start — the primary one-tap action: jumps straight into the time-of-day
+            recommended practice. The full recommendation copy rides along as the title/tooltip so
+            "Start" isn't opaque. Sits inside .app-nav so on mobile it leads the hamburger sheet. */}
+        {/* aria-label carries the full recommendation to screen readers / voice control (the title
+            tooltip is hover-only, so touch + SR users would otherwise get just the opaque "Start").
+            It keeps the visible "Start" as a prefix so the accessible name still contains the label. */}
+        <NavLink
+          to={quickStart.to}
+          className="nav-quick-start"
+          title={t(quickStart.cta)}
+          aria-label={`${t('nav.quickStart')}: ${t(quickStart.cta)}`}
+        >
+          <Play size={16} strokeWidth={2} aria-hidden="true" />
+          <span className="nav-menu-btn-label">{t('nav.quickStart')}</span>
+        </NavLink>
+
+        {/* Practice + Philosophers both link straight to a page (no dropdown): Practice → the
+            all-practices hub (every practice as a card), Philosophers → the philosopher chat. Wrapped
+            in .nav-menu so they hide on mobile (the sheet shows their own links below). Progress
+            stays a dropdown of stats/planning destinations (it has no single overview page). */}
         <div className="nav-menu">
           <NavLink to="/practices" className="nav-menu-btn nav-menu-btn--practice">
             <Sparkles size={17} strokeWidth={1.75} aria-hidden="true" />
             <span className="nav-menu-btn-label">{t('nav.practice')}</span>
           </NavLink>
         </div>
+        <div className="nav-menu">
+          <NavLink to="/philosophers" className="nav-menu-btn nav-menu-btn--philosophers">
+            <MessagesSquare size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span className="nav-menu-btn-label">{t('nav.philosophers')}</span>
+          </NavLink>
+        </div>
         {renderMenu('progress', t('nav.progress'), TrendingUp, progressLinks)}
 
-        {/* On mobile the desktop dropdowns are hidden; Practice / Progress become collapsible
-            group buttons so the opened sheet stays compact (a few buttons, not one long list).
-            Tapping a group expands its links; only one group opens at a time. */}
+        {/* On mobile the desktop links/dropdown are hidden; Practice + Philosophers become direct links
+            and Progress stays a collapsible group so the opened sheet stays compact. */}
         <div className="nav-mobile-extra">
-          <button
-            type="button"
-            className="nav-mobile-group"
-            aria-expanded={mobileSection === 'practice'}
-            onClick={() => setMobileSection((s) => (s === 'practice' ? null : 'practice'))}
-          >
+          <NavLink to="/practices" className="nav-mobile-direct">
             <Sparkles size={17} strokeWidth={1.75} aria-hidden="true" />
-            <span className="nav-mobile-group-label">{t('nav.practice')}</span>
-            <ChevronDown size={16} strokeWidth={2} className="nav-mobile-group-caret" aria-hidden="true" />
-          </button>
-          {mobileSection === 'practice' && (
-            <div className="nav-mobile-group-links">{PRACTICE_LINKS.map(renderMenuLink)}</div>
-          )}
+            <span>{t('nav.practice')}</span>
+          </NavLink>
+          <NavLink to="/philosophers" className="nav-mobile-direct">
+            <MessagesSquare size={17} strokeWidth={1.75} aria-hidden="true" />
+            <span>{t('nav.philosophers')}</span>
+          </NavLink>
           <button
             type="button"
             className="nav-mobile-group"

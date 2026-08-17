@@ -7,9 +7,12 @@ import type { PathList, PathSummary } from '../types'
 export const pathsService = {
   // Every path with the caller's derived enrollment state (enrolled?, current day, per-day
   // status). Returns the available paths so the list page can render in one call.
-  list: () => api.get<PathList>('/paths'),
+  list: (locale?: string) =>
+    api.get<PathList>(`/paths${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`),
   // Enrol the user in a path (idempotent: re-enrolling is harmless). Returns the now-enrolled
   // path so the caller can swap it straight into view (refetch-free).
-  enroll: (pathId: string) =>
-    api.post<PathSummary>(`/paths/${pathId}/enroll`),
+  enroll: (pathId: string, locale?: string) =>
+    api.post<PathSummary>(
+      `/paths/${pathId}/enroll${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`,
+    ),
 }

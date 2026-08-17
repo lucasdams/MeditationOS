@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Waves, Square, Sun, Wind, type LucideProps } from 'lucide-react'
+import { Waves, Square, Sun, Wind, Sparkle, type LucideProps } from 'lucide-react'
 import { sessionService } from '../services/sessions'
 import { track } from '../lib/analytics'
 import { dashboardService } from '../services/dashboard'
@@ -1008,7 +1008,7 @@ export default function BreathePage() {
       {/* Show the locked-in intention quietly during the sit. */}
       {(running || elapsed > 0) && intention.trim() && (
         <p className="session-intention-locked" aria-label={t('practice.meditate.intentionAria')}>
-          <span className="session-intention-locked-icon" aria-hidden="true">✦</span>{' '}
+          <Sparkle size={14} className="session-intention-locked-icon" aria-hidden="true" />{' '}
           {intention.trim()}
         </p>
       )}
@@ -1049,8 +1049,10 @@ export default function BreathePage() {
                 })()}
               </span>
               <span className="pattern-card-body">
-                <span className="pattern-card-name">{p.label}</span>
-                {selected && <span className="pattern-card-hint">{p.hint}</span>}
+                <span className="pattern-card-name">{t(`practice.breathe.preset.${p.key}.name`)}</span>
+                {selected && (
+                  <span className="pattern-card-hint">{t(`practice.breathe.preset.${p.key}.hint`)}</span>
+                )}
               </span>
             </button>
           )

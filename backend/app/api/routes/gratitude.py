@@ -68,9 +68,10 @@ def random_entry(
 def suggestions(
     request: Request,  # required by the rate limiter
     category: GratitudeCategory,
+    locale: str = "en",
     current_user: User = Depends(get_current_user),
 ) -> GratitudeSuggestions:
-    options = gratitude_suggester.suggest_options(category)
+    options = gratitude_suggester.suggest_options(category, locale, user_id=current_user.id)
     return GratitudeSuggestions(category=category, options=options)
 
 

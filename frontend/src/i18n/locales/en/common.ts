@@ -3,6 +3,7 @@
 export const common: Record<string, string> = {
   // Brand + top-level nav
   'nav.home': 'Home',
+  'nav.quickStart': 'Start',
   'nav.practice': 'Practice',
   'nav.progress': 'Progress',
   'nav.spirit': 'Spirit',
@@ -91,4 +92,28 @@ export const common: Record<string, string> = {
   'settings.language': 'Language',
   'settings.language.note':
     'Applies right away. Long-form content (daily readings, guided scripts) stays in English for now.',
+
+  // Activity display names (shared ACTIVITY_META lives in lib/colors.ts; resolved at render).
+  'activity.meditate': 'Meditate',
+  'activity.breathe': 'Breathe',
+  'activity.gratitude': 'Gratitude',
+  'activity.journal': 'Journal',
+  'activity.custom': 'Custom',
+
+  // Mood display names (shared MOOD_META lives in lib/colors.ts; resolved at render).
+  'mood.calm': 'Calm',
+  'mood.content': 'Content',
+  'mood.focused': 'Focused',
+  'mood.energized': 'Energized',
+  'mood.grateful': 'Grateful',
+  'mood.hopeful': 'Hopeful',
+  'mood.excited': 'Excited',
+  'mood.peaceful': 'Peaceful',
+  'mood.neutral': 'Neutral',
+  'mood.restless': 'Restless',
+  'mood.anxious': 'Anxious',
+  'mood.frustrated': 'Frustrated',
+  'mood.overwhelmed': 'Overwhelmed',
+  'mood.tired': 'Tired',
+  'mood.low': 'Low',
 }

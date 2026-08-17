@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, HandHeart, NotebookPen, Sparkles } from 'lucide-react'
+import { Brain, HandHeart, MoreHorizontal, NotebookPen, Sparkles } from 'lucide-react'
 import { journalService } from '../services/journals'
 import { gratitudeService } from '../services/gratitude'
 import { track } from '../lib/analytics'
@@ -14,8 +14,8 @@ import { messageForError } from '../lib/errors'
 import { ApiError } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useUndoableDelete } from '../hooks/useUndoableDelete'
-import { dailyPrompt, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
-import { fmtDate, useT } from '../i18n'
+import { dailyPrompt, promptText, randomPrompt, type JournalPrompt } from '../lib/journalPrompts'
+import { fmtDate, getLocale, useT } from '../i18n'
 import type { AiReflection, DashboardStats, Journal, MeditationType, Mood, Session } from '../types'
 
 // Zero-value stats snapshot used as a fallback when a best-effort getStats call fails.
@@ -95,14 +95,15 @@ export default function JournalPage() {
   useEffect(() => {
     let ignore = false
     journalService
-      .prompt()
+      .prompt(getLocale())
       .then((p) => {
         if (!ignore && !promptTouched.current) {
           // `theme` is internal pool metadata, never rendered; the contextual prompt
           // carries its own server-side context, so we keep a neutral placeholder
           // here purely to satisfy the shared JournalPrompt shape (shuffle excludes
           // by text, not theme, so this never affects behavior).
-          setCurrentPrompt({ text: p.text, theme: 'practice' })
+          // The server contextual prompt is localized backend-side; carry its text as-is.
+          setCurrentPrompt({ text: p.text, textJa: p.text, theme: 'practice' })
         }
       })
       .catch(() => {})
@@ -264,7 +265,7 @@ export default function JournalPage() {
     setReflectingId(id)
     setReflectNotice(null)
     try {
-      const r = await journalService.reflect(id)
+      const r = await journalService.reflect(id, getLocale())
       setReflections((prev) => ({ ...prev, [id]: r }))
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
@@ -398,7 +399,7 @@ export default function JournalPage() {
                 setComposing(true)
               }}
             >
-              {currentPrompt.text}
+              {promptText(currentPrompt)}
             </button>
             <div className="journal-nudge-actions">
               <button
@@ -577,7 +578,7 @@ export default function JournalPage() {
                 style={active ? { ['--pill' as any]: MOOD_COLORS[m] } : undefined}
                 onClick={() => setMoodFilter(active ? '' : m)}
               >
-                <span aria-hidden="true">{MOOD_META[m].emoji}</span> {MOOD_META[m].label}
+                <span aria-hidden="true">{MOOD_META[m].emoji}</span> {t(`mood.${m}`)}
               </button>
             )
           })}
@@ -599,7 +600,7 @@ export default function JournalPage() {
               ? t('tracking.journal.noMatch', {
                   criteria: [
                     query && `“${query}”`,
-                    moodFilter && t('tracking.journal.noMatchMood', { label: MOOD_META[moodFilter].label }),
+                    moodFilter && t('tracking.journal.noMatchMood', { label: t(`mood.${moodFilter}`) }),
                   ]
                     .filter(Boolean)
                     .join(' · '),
@@ -661,7 +662,7 @@ export default function JournalPage() {
                       aria-controls={`menu-${j.id}`}
                       onClick={() => setMenuId(menuId === j.id ? null : j.id)}
                     >
-                      ⋯
+                      <MoreHorizontal size={18} aria-hidden="true" />
                     </button>
                   </span>
                 )}
