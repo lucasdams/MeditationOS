@@ -111,23 +111,36 @@ def _enforce_daily_message_cap(user: User) -> None:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-def list_personas() -> list[PhilosopherSummary]:
-    """The picker roster — id, name, tradition, blurb, openers. Never the system prompts."""
-    return [
-        PhilosopherSummary(
-            id=p.id,
-            name=p.name,
-            tradition=p.tradition,
-            blurb=p.blurb,
-            openers=list(p.openers),
+def list_personas(locale: str = "en") -> list[PhilosopherSummary]:
+    """The picker roster — id, name, tradition, blurb, openers (localized to `locale` where a
+    translation exists, else English). Never the system prompts."""
+    translations = philosophers._ROSTER_JA if locale == "ja" else {}
+    summaries = []
+    for p in philosophers.PHILOSOPHERS:
+        tr = translations.get(p.id)
+        summaries.append(
+            PhilosopherSummary(
+                id=p.id,
+                name=tr["name"] if tr else p.name,
+                tradition=tr["tradition"] if tr else p.tradition,
+                blurb=tr["blurb"] if tr else p.blurb,
+                openers=list(tr["openers"]) if tr else list(p.openers),
+            )
         )
-        for p in philosophers.PHILOSOPHERS
-    ]
+    return summaries
 
 
-def _generate_reply(persona: philosophers.Persona, turns: list[ChatTurn]) -> tuple[str, str]:
+def _generate_reply(
+    persona: philosophers.Persona, turns: list[ChatTurn], locale: str = "en"
+) -> tuple[str, str]:
     """Call the LLM for the persona's next reply, returning (reply_text, source). Degrades
     to (FALLBACK_REPLY, "fallback") on any failure/empty — never raises. Metadata-only logs."""
+    # The system prompt is English; a per-locale directive makes the guide reply in that
+    # language (see LANG_DIRECTIVE). Absent locale → reply as the prompt dictates (English).
+    system = persona.system
+    directive = philosophers.LANG_DIRECTIVE.get(locale)
+    if directive:
+        system = f"{system}\n\n{directive}"
     # Input-token guard: only the most recent turns reach the model.
     trimmed = turns[-MAX_HISTORY_TURNS:]
     messages = [{"role": t.role, "content": t.content} for t in trimmed]
@@ -135,7 +148,7 @@ def _generate_reply(persona: philosophers.Persona, turns: list[ChatTurn]) -> tup
     # honour it; the shared MAX_TOKENS is the fallback ceiling. See Persona for the caveat
     # that the default GPT-5 path ignores temperature and floors the token budget.
     result = llm_client.chat(
-        system=persona.system,
+        system=system,
         messages=messages,
         max_tokens=min(persona.max_tokens, MAX_TOKENS),
         timeout=TIMEOUT_SECONDS,
@@ -196,6 +209,7 @@ def reply(
     philosopher_id: str,
     turns: list[ChatTurn],
     chat_id: uuid.UUID | None = None,
+    locale: str = "en",
 ) -> PhilosopherChatResponse:
     """Generate the guide's next reply and persist the exchange to a saved conversation.
 
@@ -220,7 +234,7 @@ def reply(
     # persona/guest/ownership checks so a rejected request doesn't consume the allowance.
     _enforce_daily_message_cap(user)
 
-    reply_text, source = _generate_reply(persona, turns)
+    reply_text, source = _generate_reply(persona, turns, locale)
 
     # Persist the full client history (untrimmed — so reopening shows the whole thread) plus
     # this reply. Overwrites the existing row's messages, or creates a new conversation.

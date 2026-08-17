@@ -65,6 +65,43 @@ def test_list_returns_full_roster(client):
         assert all(isinstance(o, str) and o.strip() for o in p["openers"])
 
 
+# ── Roster localization ───────────────────────────────────────────────────────
+
+
+def test_list_localizes_roster_to_japanese(client):
+    _auth(client, "pja@example.com")
+    body = client.get("/api/v1/philosophers?locale=ja").json()
+    by_id = {p["id"]: p for p in body}
+    assert by_id["laozi"]["name"] == "老子"
+    assert by_id["confucius"]["tradition"] == "儒教"
+    # Openers are localized too — they become the user's message, so must be in the locale.
+    assert any("執着" in o for o in by_id["buddha"]["openers"])
+
+
+def test_list_defaults_to_english(client):
+    _auth(client, "pen@example.com")
+    names = {p["name"] for p in client.get("/api/v1/philosophers").json()}
+    assert "Lao Tzu" in names and "老子" not in names
+
+
+def test_chat_locale_adds_reply_directive(client):
+    """A ja locale tells the guide to reply in Japanese (the system prompt stays English)."""
+    _auth(client, "pjachat@example.com")
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        client.post(
+            "/api/v1/philosophers/laozi/chat",
+            json={"messages": [{"role": "user", "content": "help"}], "locale": "ja"},
+        )
+    assert "日本語" in chat.call_args.kwargs["system"]
+
+
+def test_chat_default_locale_has_no_reply_directive(client):
+    _auth(client, "pnodir@example.com")
+    with patch(CHAT, return_value=AI_RESULT) as chat:
+        client.post("/api/v1/philosophers/laozi/chat", json=VALID)
+    assert "日本語" not in chat.call_args.kwargs["system"]
+
+
 # ── Chat: auth ────────────────────────────────────────────────────────────────
 
 

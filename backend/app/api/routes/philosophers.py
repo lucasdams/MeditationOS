@@ -38,10 +38,12 @@ router = APIRouter(
 
 @router.get("", response_model=list[PhilosopherSummary])
 def list_philosophers(
+    locale: str = "en",
     current_user: User = Depends(get_current_user),
 ) -> list[PhilosopherSummary]:
-    """The picker roster. Auth-required for consistency with the other data routes."""
-    return philosopher_service.list_personas()
+    """The picker roster, localized to `locale` where available (else English). Auth-required
+    for consistency with the other data routes."""
+    return philosopher_service.list_personas(locale)
 
 
 # ── Saved conversations ─────────────────────────────────────────────────────────
@@ -104,7 +106,7 @@ def chat(
     """
     try:
         return philosopher_service.reply(
-            db, current_user, philosopher_id, data.messages, data.chat_id
+            db, current_user, philosopher_id, data.messages, data.chat_id, data.locale
         )
     except PhilosopherNotFoundError:
         raise not_found("Philosopher not found") from None

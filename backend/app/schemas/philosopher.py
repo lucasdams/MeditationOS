@@ -56,6 +56,8 @@ class PhilosopherChatRequest(BaseModel):
 
     messages: list[ChatTurn]
     chat_id: uuid.UUID | None = None
+    # UI locale, so the guide replies in the user's language (e.g. "ja"). Unknown/absent → English.
+    locale: str = "en"
 
     @field_validator("messages")
     @classmethod

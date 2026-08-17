@@ -352,3 +352,106 @@ that turns the person back to looking, now.
 
 # id → Persona, for O(1) lookup in the service.
 BY_ID: dict[str, Persona] = {p.id: p for p in PHILOSOPHERS}
+
+
+# ── Localization ────────────────────────────────────────────────────────────────
+# The system prompt (voice + touchstones + boundaries) stays ENGLISH — modern models follow
+# English instructions and reply fluently in the target language, so we don't maintain eight
+# translated prompts. Instead we append a per-locale reply directive, and translate only the
+# picker-facing roster text + the openers the user sends. English is the default/fallback.
+
+# Appended to the system prompt to make the guide REPLY in the given language (the person may
+# still write in any language). Keyed by locale; absent locale → reply as the prompt dictates.
+LANG_DIRECTIVE: dict[str, str] = {
+    "ja": (
+        "Always reply in natural, warm, fluent Japanese (日本語), whatever language the person "
+        "writes in — keeping the same brevity, cadence, and voice described above. Use plain, "
+        "human Japanese, not stiff or academic prose."
+    ),
+}
+
+# Per-locale roster text (display name, tradition, blurb, openers). The `system` prompt is
+# unaffected. `list_personas(locale)` reads this, falling back to the English fields on the
+# Persona for any locale/persona not covered here.
+_ROSTER_JA: dict[str, dict] = {
+    "marcus-aurelius": {
+        "name": "マルクス・アウレリウス",
+        "tradition": "ストア派",
+        "blurb": "自分にできることを見極め、落ち着いて一日に向き合うための、ストア派の声。",
+        "openers": (
+            "自分にはどうにもできないことが、重くのしかかっています。",
+            "今日、本当に自分がやるべきことに集中したいです。",
+            "もっと落ち着いて今日を迎えたいです。",
+        ),
+    },
+    "buddha": {
+        "name": "ブッダ",
+        "tradition": "仏教",
+        "blurb": "無常と、執着を手放すこと、そして苦しみをやわらげることについての、やさしい声。",
+        "openers": (
+            "何かに執着していて、どうしても手放せません。",
+            "同じ渇望に、いつも引っぱられます。",
+            "逃げずに、つらい感情とともにいられるよう助けてください。",
+        ),
+    },
+    "confucius": {
+        "name": "孔子",
+        "tradition": "儒教",
+        "blurb": "人格、人との関わり、そして誠実に生きることについての、地に足のついた声。",
+        "openers": (
+            "大切な関係の中で、もっと誠実にふるまいたいです。",
+            "小さな日々の習慣は、どんな自分をつくるのでしょう。",
+            "今日、なりたい自分に届きませんでした。",
+        ),
+    },
+    "laozi": {
+        "name": "老子",
+        "tradition": "道教",
+        "blurb": "流れ、やわらかさ、そして無理に押し進めないことについての、ゆったりとした声。",
+        "openers": (
+            "ずっと無理に押し進めていて、うまくいきません。",
+            "逆らうのではなく、一日の流れに沿って動きたいです。",
+            "少しの静けさを見つけたいです。",
+        ),
+    },
+    "eckhart-tolle": {
+        "name": "エックハルト・トール",
+        "tradition": "現在への気づき",
+        "blurb": "思考の騒がしさから抜け出し、「今」へと戻ることについての、現在の瞬間の声。",
+        "openers": (
+            "頭の中の実況が止まりません。",
+            "今この瞬間に戻ってきたいです。",
+            "今日は考えごとにとらわれています。",
+        ),
+    },
+    "carl-jung": {
+        "name": "カール・ユング",
+        "tradition": "深層心理学",
+        "blurb": "象徴、内なる生、そして自分の全体と親しくなることについての、内省的な声。",
+        "openers": (
+            "ある夢が心に残っています。",
+            "自分の中に、押しやってしまう部分があります。",
+            "うまく言葉にできない感情を、理解したいです。",
+        ),
+    },
+    "miyamoto-musashi": {
+        "name": "宮本武蔵",
+        "tradition": "武士道・兵法の道",
+        "blurb": "集中、鍛錬、そして覚悟をもって自分の道を歩むことについての、規律ある声。",
+        "openers": (
+            "大切なことから、いつも気がそれてしまいます。",
+            "ひとつの稽古を決めて、やり通せるよう助けてください。",
+            "難しい試練に、動じない心で向き合いたいです。",
+        ),
+    },
+    "krishnamurti": {
+        "name": "ジッドゥ・クリシュナムルティ",
+        "tradition": "自由と自己探究",
+        "blurb": "明晰に見ること、そして自らの条件づけからの自由についての、探究する声。",
+        "openers": (
+            "どうすべきか、いつも誰かに教えてほしくなります。",
+            "自分をごまかさずに、自分の心をはっきり見たいです。",
+            "感じたことを、ただ見るのではなく、いつも判断してしまいます。",
+        ),
+    },
+}

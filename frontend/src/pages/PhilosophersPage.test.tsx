@@ -126,11 +126,12 @@ describe('PhilosophersPage', () => {
     expect(await screen.findByText('What is in your control?')).toBeInTheDocument()
     expect(screen.getByText('I feel restless.')).toBeInTheDocument()
     // The full history (the new user turn) is sent to the chosen persona; no chat_id yet on
-    // the first send (a fresh conversation).
+    // the first send (a fresh conversation); the UI locale rides along.
     expect(chatPersona).toHaveBeenCalledWith(
       'marcus-aurelius',
       [{ role: 'user', content: 'I feel restless.' }],
       undefined,
+      'en',
     )
   })
 
@@ -148,6 +149,7 @@ describe('PhilosophersPage', () => {
       'marcus-aurelius',
       expect.arrayContaining([{ role: 'user', content: 'second' }]),
       'chat-123',
+      'en',
     )
   })
 

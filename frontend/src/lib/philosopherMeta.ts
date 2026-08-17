@@ -26,6 +26,8 @@ export interface PhilosopherMeta {
   light: string
   dark: string
   era: string
+  // Japanese era label (place · dates); `philosopherEra(id, locale)` picks it for the ja UI.
+  eraJa: string
   practice: { to: string; nameKey: string }
 }
 
@@ -35,6 +37,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#4f46e5',
     dark: '#a5b4fc',
     era: 'Rome · 121–180 CE',
+    eraJa: 'ローマ · 121–180年',
     practice: { to: '/meditate/focus', nameKey: 'practice.card.focus.name' },
   },
   buddha: {
@@ -42,6 +45,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#b9760a',
     dark: '#f5c151',
     era: 'India · 5th c. BCE',
+    eraJa: 'インド · 紀元前5世紀',
     practice: { to: '/meditate/loving-kindness', nameKey: 'practice.card.lovingKindness.name' },
   },
   confucius: {
@@ -49,6 +53,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#2f6fe0',
     dark: '#82b4ff',
     era: 'China · 551–479 BCE',
+    eraJa: '中国 · 紀元前551–479年',
     practice: { to: '/journal', nameKey: 'practice.card.journal.name' },
   },
   laozi: {
@@ -56,6 +61,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#0e8aa6',
     dark: '#5fd2e8',
     era: 'China · 6th c. BCE',
+    eraJa: '中国 · 紀元前6世紀',
     practice: { to: '/breathe?pattern=resonance', nameKey: 'practice.card.resonance.name' },
   },
   'eckhart-tolle': {
@@ -63,6 +69,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#d97706',
     dark: '#f5a742',
     era: 'b. 1948',
+    eraJa: '1948年生',
     practice: { to: '/meditate/three-breaths', nameKey: 'practice.card.threeBreaths.name' },
   },
   'carl-jung': {
@@ -70,6 +77,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#7c3aed',
     dark: '#c4b5fd',
     era: '1875–1961',
+    eraJa: '1875–1961年',
     practice: { to: '/journal', nameKey: 'practice.card.journal.name' },
   },
   'miyamoto-musashi': {
@@ -77,6 +85,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#545a73',
     dark: '#a6acc4',
     era: 'Japan · 1584–1645',
+    eraJa: '日本 · 1584–1645年',
     practice: { to: '/trataka', nameKey: 'practice.card.trataka.name' },
   },
   krishnamurti: {
@@ -84,6 +93,7 @@ export const PHILOSOPHER_META: Record<string, PhilosopherMeta> = {
     light: '#16a34a',
     dark: '#4ade80',
     era: 'India · 1895–1986',
+    eraJa: 'インド · 1895–1986年',
     practice: { to: '/meditate/noting', nameKey: 'practice.card.noting.name' },
   },
 }
@@ -95,9 +105,15 @@ export const PHILOSOPHER_META_FALLBACK: PhilosopherMeta = {
   light: '#5847f0',
   dark: '#a8a2ff',
   era: '',
+  eraJa: '',
   practice: { to: '/meditate/three-breaths', nameKey: 'practice.card.threeBreaths.name' },
 }
 
 export function philosopherMeta(id: string): PhilosopherMeta {
   return PHILOSOPHER_META[id] ?? PHILOSOPHER_META_FALLBACK
+}
+
+// The era label for the given locale (Japanese where available, else the English label).
+export function philosopherEra(meta: PhilosopherMeta, locale: string): string {
+  return locale === 'ja' && meta.eraJa ? meta.eraJa : meta.era
 }

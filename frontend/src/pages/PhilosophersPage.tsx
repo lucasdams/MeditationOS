@@ -6,9 +6,9 @@ import { dashboardService } from '../services/dashboard'
 import { ApiError } from '../services/api'
 import { Loading, RetryableError, EmptyState } from '../components/StateViews'
 import { messageForError } from '../lib/errors'
-import { philosopherMeta } from '../lib/philosopherMeta'
+import { philosopherEra, philosopherMeta } from '../lib/philosopherMeta'
 import { useAuth } from '../context/AuthContext'
-import { useT } from '../i18n'
+import { getLocale, useT } from '../i18n'
 import type { PhilosopherChatSummary, PhilosopherSummary, PhilosopherTurn } from '../types'
 
 // How long a single message may be — mirrors the backend MAX_CONTENT_LEN so we validate
@@ -51,7 +51,7 @@ export default function PhilosophersPage() {
 
   function loadRoster() {
     philosopherService
-      .list()
+      .list(getLocale())
       .then((rows) => {
         setPersonas(rows)
         setLoadError(null)
@@ -161,7 +161,7 @@ export default function PhilosophersPage() {
     setNotice(null)
     setSending(true)
     try {
-      const res = await philosopherService.chat(selected.id, history, chatId)
+      const res = await philosopherService.chat(selected.id, history, chatId, getLocale())
       setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }])
       setChatId(res.chat_id) // thread subsequent turns onto the now-saved conversation
     } catch (err) {
@@ -225,6 +225,7 @@ export default function PhilosophersPage() {
               {personas.map((p) => {
                 const meta = philosopherMeta(p.id)
                 const Icon = meta.icon
+                const era = philosopherEra(meta, getLocale())
                 return (
                   <button
                     key={p.id}
@@ -244,7 +245,7 @@ export default function PhilosophersPage() {
                       <span className="practice-card-name">{p.name}</span>
                       <span className="philo-card-meta">
                         <span className="philo-card-tradition">{p.tradition}</span>
-                        {meta.era && <span className="philo-card-era">{meta.era}</span>}
+                        {era && <span className="philo-card-era">{era}</span>}
                       </span>
                       <span className="practice-card-desc">{p.blurb}</span>
                     </span>
@@ -309,13 +310,15 @@ export default function PhilosophersPage() {
   // ── Chat view ───────────────────────────────────────────────────────────────
   const meta = philosopherMeta(selected.id)
   const Icon = meta.icon
-  // A personalized opener when the user has practiced today: it seeds the chat with their
-  // real sit so the guide reflects on something true, not a generic prompt. English
-  // content (the whole conversation is English), like the persona's own openers.
-  const contextOpener =
-    todayMinutes && todayMinutes > 0
-      ? `I sat for ${todayMinutes} ${todayMinutes === 1 ? 'minute' : 'minutes'} today — I’d like to reflect on it.`
-      : null
+  const era = philosopherEra(meta, getLocale())
+  // A personalized opener when the user has practiced today: it seeds the chat with their real
+  // sit so the guide reflects on something true, not a generic prompt. In the user's language
+  // (it becomes the message the guide replies to), like the persona's own openers.
+  const contextOpener = !todayMinutes || todayMinutes <= 0
+    ? null
+    : getLocale() === 'ja'
+      ? `今日は${todayMinutes}分すわりました。これについて、少し振り返りたいです。`
+      : `I sat for ${todayMinutes} ${todayMinutes === 1 ? 'minute' : 'minutes'} today — I’d like to reflect on it.`
   // Starters shown on an empty chat: the personalized one first (when present), then the
   // persona's own. Hidden once a gate is hit (nothing to start) or the chat has begun.
   const openers = [...(contextOpener ? [contextOpener] : []), ...(selected.openers ?? [])]
@@ -348,7 +351,7 @@ export default function PhilosophersPage() {
           <h1>{selected.name}</h1>
           <p className="page-subtitle">
             {selected.tradition}
-            {meta.era && <span className="philo-card-era"> · {meta.era}</span>}
+            {era && <span className="philo-card-era"> · {era}</span>}
           </p>
         </span>
       </header>
